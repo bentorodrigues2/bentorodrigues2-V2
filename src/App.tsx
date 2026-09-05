@@ -134,20 +134,20 @@ export default function App() {
   const [cooldownSeconds, setCooldownSeconds] = useState<number>(0);
   const [loginErrorMessage, setLoginErrorMessage] = useState<string>("");
   const [theme, setTheme] = useState<"light" | "dark">("light");
+// Cooldown countdown timer effect
+useEffect(() => {
+  const currentSecState = userSecurityMap[browserEmail] || {
+    email: browserEmail,
+    failedAttempts: 0,
+    cooldownUntil: null,
+    cooldownPassed: false,
+    postCooldownAttempts: 0,
+    isLocked: false,
+    mustResetPassword: false,
+    passwordHistory: [],
+    botChallengeRequired: false,
+  };
 
-  // Cooldown countdown timer effect
-  useEffect(() => {
-    const currentSecState = userSecurityMap[browserEmail] || {
-      email: browserEmail,
-      failedAttempts: 0,
-      cooldownUntil: null,
-      cooldownPassed: false,
-      postCooldownAttempts: 0,
-      isLocked: false,
-      mustResetPassword: false,
-      passwordHistory: [],
-      botChallengeRequired: false,
-    };
     useEffect(() => {
 if (currentSecState.cooldownUntil && currentSecState.cooldownUntil > Date.now()) {
   const interval = setInterval(() => {
