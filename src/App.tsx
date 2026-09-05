@@ -147,8 +147,7 @@ useEffect(() => {
     passwordHistory: [],
     botChallengeRequired: false,
   };
-
-    useEffect(() => {
+  
 if (currentSecState.cooldownUntil && currentSecState.cooldownUntil > Date.now()) {
   const interval = setInterval(() => {
     const remaining = Math.max(0, Math.ceil((currentSecState.cooldownUntil! - Date.now()) / 1000));
