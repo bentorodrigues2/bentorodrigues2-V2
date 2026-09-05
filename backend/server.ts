@@ -2,7 +2,8 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
-import { getAI } from "@google/generative-ai"; // se já tens, mantém
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 
 dotenv.config();
 
@@ -26,6 +27,32 @@ app.get("/", (req, res) => {
     status: "Backend online 🚀",
     supabase: "connected",
   });
+});
+
+// ------------------------------------------------------
+// 🔥 IA DO PROJETO → /api/ia
+// ------------------------------------------------------
+app.post("/api/ia", async (req, res) => {
+  try {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
+
+    const prompt = req.body.prompt;
+
+    const result = await model.generateContent(prompt);
+
+    return res.json({ text: result.response.text() });
+  } catch (e: any) {
+    console.error("Erro IA /api/ia:", e);
+    return res.status(500).json({ erro: e.message });
+  }
+});
+
+// ------------------------------------------------------
+// 🔥 TESTE DA IA → /api/ia/test
+// ------------------------------------------------------
+app.get("/api/ia/test", (req, res) => {
+  res.send("IA online 🚀");
 });
 
 // -----------------------------
@@ -63,15 +90,13 @@ app.post("/users", async (req, res) => {
 // ------------------------------------------------------
 app.post("/api/reconhecer-recibo", async (req, res) => {
   try {
-    const ai = getAI();
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: req.body.contents,
-    });
+    const result = await model.generateContent(req.body.contents);
 
-    return res.json(response);
-  } catch (e) {
+    return res.json({ text: result.response.text() });
+  } catch (e: any) {
     console.error("Erro IA:", e);
     return res.status(500).json({ erro: e.message });
   }
@@ -132,7 +157,7 @@ app.post("/api/email-processado", async (req, res) => {
     });
 
     return res.status(200).json({ sucesso: true, emailId: emailRow.id });
-  } catch (e) {
+  } catch (e: any) {
     console.error("Erro no endpoint:", e);
     return res.status(500).json({ erro: e.message });
   }
