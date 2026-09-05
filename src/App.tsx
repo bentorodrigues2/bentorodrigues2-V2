@@ -148,57 +148,53 @@ export default function App() {
       passwordHistory: [],
       botChallengeRequired: false,
     };
+    useEffect(() => {
+if (currentSecState.cooldownUntil && currentSecState.cooldownUntil > Date.now()) {
+  const interval = setInterval(() => {
+    const remaining = Math.max(0, Math.ceil((currentSecState.cooldownUntil! - Date.now()) / 1000));
+    setCooldownSeconds(remaining);
 
-    if (currentSecState.cooldownUntil && currentSecState.cooldownUntil > Date.now()) {
-      const interval = setInterval(() => {
-        const remaining = Math.max(0, Math.ceil((currentSecState.cooldownUntil! - Date.now()) / 1000));
-        setCooldownSeconds(remaining);
-        if (remaining <= 0) {
-          clearInterval(interval);
-          // Transition to cooldownPassed = true
-          setUserSecurityMap(prev => ({
-            ...prev,
-            [browserEmail]: {
-              ...prev[browserEmail],
-              cooldownUntil: null,
-              cooldownPassed: true,
-            }
-          }));
-          createSecurityLog(browserEmail, "BOT_CHALLENGE_PASSED", "Cooldown de 1 minuto terminado. Concedidas 3 tentativas pÃ³s-bloqueio.");
+    if (remaining <= 0) {
+      clearInterval(interval);
+
+      setUserSecurityMap(prev => ({
+        ...prev,
+        [browserEmail]: {
+          ...prev[browserEmail],
+          cooldownUntil: null,
+          cooldownPassed: true,
         }
-      }, 1000);
-      return (
-    
-    return () => clearInterval(interval);
-    } else {
-      setCooldownSeconds(0);
+      }));
+
+      createSecurityLog(
+        browserEmail,
+        "BOT_CHALLENGE_PASSED",
+        "Cooldown de 1 minuto terminado. Concedidas 3 tentativas pós-bloqueio."
+      );
     }
-  }, [browserEmail, userSecurityMap]);
+  }, 1000);
 
-  // Automatic Theme detection via prefers-color-scheme
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleThemeChange = (e: any) => {
-      setTheme(e.matches ? "dark" : "light");
-    };
+  return () => clearInterval(interval);
 
-    setTheme(mediaQuery.matches ? "dark" : "light");
-    mediaQuery.addEventListener("change", handleThemeChange);
-    return (
-    
-    return () => mediaQuery.removeEventListener('change', handleThemeChange);
-  }, []);
+} else {
+  setCooldownSeconds(0);
+}
+}, [browserEmail, userSecurityMap]);
 
-  // Update HTML class when theme state changes
-  useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [theme]);
+// Automatic Theme detection via prefers-color-scheme
+useEffect(() => {
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  const handleThemeChange = (e: any) => {
+    setTheme(e.matches ? "dark" : "light");
+  };
 
-  const [activeSection, setActiveSection] = useState("painel"); 
+  setTheme(mediaQuery.matches ? "dark" : "light");
+  mediaQuery.addEventListener("change", handleThemeChange);
+
+  return () => mediaQuery.removeEventListener("change", handleThemeChange);
+}, []);
+
+    const [activeSection, setActiveSection] = useState("painel"); 
   const [userProfileModalOpen, setUserProfileModalOpen] = useState(false);
   const [biometricsEnabled, setBiometricsEnabled] = useState<boolean>(true);
   const [openMenuPredios, setOpenMenuPredios] = useState(true);
