@@ -2523,7 +2523,7 @@ useEffect(() => {
       {/* GLOBAL SENDING REACTION MODAL */}
       <SendingReactionModal />
 
-      {/* FLOATING DRAGGABLE AI ASSISTANT FOR ADMIN AND GESTOR PROFILES */}
+           {/* FLOATING DRAGGABLE AI ASSISTANT FOR ADMIN AND GESTOR PROFILES */}
       <DraggableAIFloatingButton
         loggedUser={loggedUser}
         predio={predioAtivo}
@@ -2531,7 +2531,6 @@ useEffect(() => {
       />
 
     </div>
-  );
+      );
 }
-
-
+export default App;
