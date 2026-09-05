@@ -1,3 +1,4 @@
+﻿import AssistenteIA from "./components/AssistenteIA";
 import { Shield } from "lucide-react";
 import { useState, useEffect } from "react";
 import { ActionIcon } from "./components/ActionIcon";
@@ -85,7 +86,7 @@ export default function App() {
       id_reserva: "res-1",
       id_predio: "predio-1",
       id_fracao: "frac-1",
-      area_comum: "Ginásio",
+      area_comum: "GinÃ¡sio",
       data: "18-07-2026",
       hora_inicio: "08:00",
       hora_fim: "09:30",
@@ -106,21 +107,21 @@ export default function App() {
   ]);
 
   const [capacidades, setCapacidades] = useState<CapacidadeLimite[]>([
-    { area_comum: "Ginásio", limite: 5 },
+    { area_comum: "GinÃ¡sio", limite: 5 },
     { area_comum: "Spa", limite: 8 },
-    { area_comum: "Salão de Festas", limite: 40 },
+    { area_comum: "SalÃ£o de Festas", limite: 40 },
     { area_comum: "Churrasqueira", limite: 15 }
   ]);
 
   const [loggedUser, setLoggedUser] = useState<LoggedUser>({
-    nome: "Administrador do Condomínio",
+    nome: "Administrador do CondomÃ­nio",
     email: "condomanagerai@gmail.com",
     role: "ADMIN"
   });
 
   const [browserIsLoggedOut, setBrowserIsLoggedOut] = useState<boolean>(true);
   const [browserEmail, setBrowserEmail] = useState<string>("condomanagerai@gmail.com");
-  const [browserPassword, setBrowserPassword] = useState<string>("••••••••");
+  const [browserPassword, setBrowserPassword] = useState<string>("â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢");
   const [browserSelectedRole, setBrowserSelectedRole] = useState<LoggedUser["role"]>("ADMIN");
   const [browserBiometricScan, setBrowserBiometricScan] = useState<boolean>(false);
   const [browserBiometricProgress, setBrowserBiometricProgress] = useState<number>(0);
@@ -163,10 +164,12 @@ export default function App() {
               cooldownPassed: true,
             }
           }));
-          createSecurityLog(browserEmail, "BOT_CHALLENGE_PASSED", "Cooldown de 1 minuto terminado. Concedidas 3 tentativas pós-bloqueio.");
+          createSecurityLog(browserEmail, "BOT_CHALLENGE_PASSED", "Cooldown de 1 minuto terminado. Concedidas 3 tentativas pÃ³s-bloqueio.");
         }
       }, 1000);
-      return () => clearInterval(interval);
+      return (
+    <AssistenteIA />
+    ) => clearInterval(interval);
     } else {
       setCooldownSeconds(0);
     }
@@ -181,7 +184,9 @@ export default function App() {
 
     setTheme(mediaQuery.matches ? "dark" : "light");
     mediaQuery.addEventListener("change", handleThemeChange);
-    return () => mediaQuery.removeEventListener("change", handleThemeChange);
+    return (
+    <AssistenteIA />
+    ) => mediaQuery.removeEventListener("change", handleThemeChange);
   }, []);
 
   // Update HTML class when theme state changes
@@ -241,7 +246,9 @@ export default function App() {
 
     window.addEventListener("popstate", handleLocationChange);
     window.addEventListener("hashchange", handleLocationChange);
-    return () => {
+    return (
+    <AssistenteIA />
+    ) => {
       window.removeEventListener("popstate", handleLocationChange);
       window.removeEventListener("hashchange", handleLocationChange);
     };
@@ -264,7 +271,7 @@ export default function App() {
     // A. Role Navigation Guard
     const roleAccess = validateRoleAccess(loggedUser.role as UserRole, activeSection);
     if (!roleAccess.allowed) {
-      console.warn(`[RoleGuard] Acesso negado à secção '${activeSection}' para a função '${loggedUser.role}'. Redirecionando para '${roleAccess.redirectTab}'.`);
+      console.warn(`[RoleGuard] Acesso negado Ã  secÃ§Ã£o '${activeSection}' para a funÃ§Ã£o '${loggedUser.role}'. Redirecionando para '${roleAccess.redirectTab}'.`);
       setActiveSection(roleAccess.redirectTab);
     }
 
@@ -285,19 +292,21 @@ export default function App() {
     const sessionInterval = setInterval(() => {
       const val = validateSession(loggedUser.email, loggedUser.role as UserRole);
       if (!val.valid && val.shouldLogout) {
-        handleSecureLogout(val.reason || "Sessão expirada por inatividade.");
+        handleSecureLogout(val.reason || "SessÃ£o expirada por inatividade.");
       }
     }, 5000);
 
     // D. Cross-Tab Logout Listener
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "condomanager_active_session" && !e.newValue) {
-        handleSecureLogout("Sessão encerrada noutro separador.");
+        handleSecureLogout("SessÃ£o encerrada noutro separador.");
       }
     };
     window.addEventListener("storage", handleStorageChange);
 
-    return () => {
+    return (
+    <AssistenteIA />
+    ) => {
       interactionEvents.forEach(evt => window.removeEventListener(evt, handleUserInteraction));
       window.removeEventListener("storage", handleStorageChange);
       clearInterval(sessionInterval);
@@ -311,9 +320,9 @@ export default function App() {
     setCurrentRoute("/");
     window.history.pushState({}, "", "/");
     if (reason) {
-      setLoginErrorMessage(`ℹ️ ${reason}`);
+      setLoginErrorMessage(`â„¹ï¸ ${reason}`);
     } else {
-      setLoginErrorMessage("Sessão encerrada com sucesso.");
+      setLoginErrorMessage("SessÃ£o encerrada com sucesso.");
     }
   };
 
@@ -370,15 +379,15 @@ export default function App() {
 
     if (role === "EMPRESA_GESTORA") {
       email = "contacto@gestaoforte.pt";
-      nome = "Gestão Forte Administrações";
+      nome = "GestÃ£o Forte AdministraÃ§Ãµes";
       section = "ficha_gestora";
     } else if (role === "USER") {
       email = "ana.silva@gmail.com";
-      nome = "Ana Silva (Fração A - Condómino)";
+      nome = "Ana Silva (FraÃ§Ã£o A - CondÃ³mino)";
       section = "portal_condomino";
     } else if (role === "INQUILINO") {
       email = "tiago.inquilino@gmail.com";
-      nome = "Tiago Rocha (Inquilino Fração B)";
+      nome = "Tiago Rocha (Inquilino FraÃ§Ã£o B)";
       section = "portal_condomino";
     } else if (role === "TECNICO") {
       email = "rui.melo@vistoriasegura.pt";
@@ -390,11 +399,11 @@ export default function App() {
       section = "vistorias_limpezas";
     } else if (role === "JURIDICO") {
       email = "dra.margarida@legalcondo.pt";
-      nome = "Dra. Margarida Castro (Jurídico)";
+      nome = "Dra. Margarida Castro (JurÃ­dico)";
       section = "contencioso_juridico";
     } else if (role === "AUDITOR") {
       email = "antonio.auditor@auditchain.pt";
-      nome = "Dr. António Melo (Auditor)";
+      nome = "Dr. AntÃ³nio Melo (Auditor)";
       section = "auditoria_interna";
     } else if (role === "CONTABILISTA") {
       email = "paula.contas@tcontabilidade.pt";
@@ -441,7 +450,7 @@ export default function App() {
 
   const handleDeletePredio = (idPredio: string) => {
     if (predios.length <= 1) {
-      alert("Não é possível remover o único prédio cadastrado no sistema.");
+      alert("NÃ£o Ã© possÃ­vel remover o Ãºnico prÃ©dio cadastrado no sistema.");
       return;
     }
     const filtered = predios.filter(p => p.id_predio !== idPredio);
@@ -496,9 +505,9 @@ export default function App() {
     // Alarm notification to internal administrators
     const adms = fracoes.filter(f => f.id_predio === activePredioId && f.administrador_interno === "Sim");
     adms.forEach(adm => {
-      console.log(`[Alerta Push & E-mail] Enviado para Administrador Interno: ${adm.proprietario.nome} (${adm.proprietario.email}) - Nova ocorrência registada.`);
+      console.log(`[Alerta Push & E-mail] Enviado para Administrador Interno: ${adm.proprietario.nome} (${adm.proprietario.email}) - Nova ocorrÃªncia registada.`);
     });
-    alert(`Alerta PWA disparado! Os Administradores Internos foram notificados por E-mail e Push sobre esta nova ocorrência.`);
+    alert(`Alerta PWA disparado! Os Administradores Internos foram notificados por E-mail e Push sobre esta nova ocorrÃªncia.`);
   };
 
   const handleAddDocumento = (novoDoc: Documento) => {
@@ -514,7 +523,7 @@ export default function App() {
       const cleanEmail = (emailInput || "condomanagerai@gmail.com").trim().toLowerCase();
       const account = resolveUserByEmail(cleanEmail) || {
         role: "ADMIN" as const,
-        nome: "Administrador do Condomínio",
+        nome: "Administrador do CondomÃ­nio",
         email: cleanEmail
       };
       setLoggedUser({ role: account.role, email: account.email, nome: account.nome });
@@ -537,6 +546,8 @@ export default function App() {
     }
 
     return (
+    <AssistenteIA />
+    
       <div className={`h-screen w-screen flex flex-col items-center justify-center p-3 transition-all duration-300 ${theme === "dark" ? "bg-[#030712] text-slate-100" : "bg-slate-950 text-slate-100"}`}>
         <AuthForm
           initialEmail={browserEmail}
@@ -556,6 +567,8 @@ export default function App() {
   }
 
   return (
+    <AssistenteIA />
+    
     <div className={`h-screen w-screen flex overflow-hidden relative transition-all duration-300 ${theme === "dark" ? "bg-[#0b0f19] text-slate-100" : "bg-slate-50 text-slate-800"}`}>
       
       {/* OVERLAY SOMBREADO PARA MOBILE DRAWER */}
@@ -566,7 +579,7 @@ export default function App() {
         />
       )}
 
-      {/* BARRA LATERAL (MENU DINÂMICO RECOLHÍVEL E COMPATÍVEL COM MOBILE) */}
+      {/* BARRA LATERAL (MENU DINÃ‚MICO RECOLHÃVEL E COMPATÃVEL COM MOBILE) */}
       <aside className={`h-full flex flex-col select-none shrink-0 z-30 no-print transition-all duration-300 ${
         theme === "dark" ? "bg-[#030712] text-slate-300 border-r border-slate-900/50" : "bg-slate-900 text-slate-300"
       } ${
@@ -574,13 +587,13 @@ export default function App() {
       } ${
         sidebarCollapsed ? "w-20 md:w-20" : "w-72 md:w-72"
       }`}>
-        {/* Area do Logo - Limpa e Sem Sobreposições */}
+        {/* Area do Logo - Limpa e Sem SobreposiÃ§Ãµes */}
         <div className="w-full border-b border-slate-800 shrink-0 overflow-hidden bg-slate-900/40">
           <div className="w-full h-20 flex items-center justify-center p-2 relative overflow-hidden">
             <div 
               onClick={() => selectSection("painel")}
               className="w-full h-full flex items-center justify-center cursor-pointer hover:opacity-95 transition-all duration-300 overflow-hidden px-1"
-              title="Ir para a Página Inicial (Dashboard)"
+              title="Ir para a PÃ¡gina Inicial (Dashboard)"
             >
               <img 
                 src={whiteLabelLogo || "/marca/18-versao-horizontal-1.png"} 
@@ -596,12 +609,12 @@ export default function App() {
         <div className="w-full bg-slate-950/80 border-b border-slate-800/80 px-2.5 py-1.5 flex items-center justify-between shrink-0">
           {!sidebarCollapsed && (
             <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 font-mono truncate pl-1">
-              Navegação
+              NavegaÃ§Ã£o
             </span>
           )}
           
           <div className={`flex items-center gap-1.5 ${sidebarCollapsed ? "w-full justify-center" : "ml-auto"}`}>
-            {/* Botão Desktop com imagem 07-avancar.png */}
+            {/* BotÃ£o Desktop com imagem 07-avancar.png */}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
               className="hidden lg:flex items-center justify-center p-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/80 transition-all cursor-pointer shrink-0 shadow-md hover:scale-105 active:scale-95"
@@ -625,12 +638,12 @@ export default function App() {
           </div>
         </div>
 
-        {/* Seletor de Condomínio Ativo */}
+        {/* Seletor de CondomÃ­nio Ativo */}
         <div className="px-3 py-2 border-b border-slate-800 shrink-0 bg-slate-950/40">
           {!sidebarCollapsed ? (
             <div>
               <label className="block text-[9px] uppercase tracking-wider text-slate-400 font-extrabold font-mono mb-1">
-                Condomínio Ativo
+                CondomÃ­nio Ativo
               </label>
               <div className="relative flex items-center">
                 <select 
@@ -652,13 +665,13 @@ export default function App() {
               </p>
             </div>
           ) : (
-            <div className="flex justify-center py-1" title={`Condomínio Ativo: ${predioAtivo.nome || predioAtivo.morada_linha1}`}>
+            <div className="flex justify-center py-1" title={`CondomÃ­nio Ativo: ${predioAtivo.nome || predioAtivo.morada_linha1}`}>
               <i className="fa-solid fa-building text-emerald-400 text-base"></i>
             </div>
           )}
         </div>
 
-        {/* Navegação */}
+        {/* NavegaÃ§Ã£o */}
         <nav className="flex-grow px-3 py-4 space-y-1.5 overflow-y-auto">
           
           {/* 1. Dashboard Inicial */}
@@ -675,7 +688,7 @@ export default function App() {
             <span className={`${sidebarCollapsed ? "lg:hidden" : ""}`}>Dashboard Inicial</span>
           </button>
 
-          {/* 2. Registo de Prédio (Accordion Expandível) */}
+          {/* 2. Registo de PrÃ©dio (Accordion ExpandÃ­vel) */}
           <div className="space-y-1">
             <button 
               id="sidebar-item-predios"
@@ -694,8 +707,8 @@ export default function App() {
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <img src="/modulos/01-predio.png" alt="Prédio" className="w-5 h-5 object-contain shrink-0" />
-                <span className={`${sidebarCollapsed ? "lg:hidden" : ""}`}>Registo de Prédio</span>
+                <img src="/modulos/01-predio.png" alt="PrÃ©dio" className="w-5 h-5 object-contain shrink-0" />
+                <span className={`${sidebarCollapsed ? "lg:hidden" : ""}`}>Registo de PrÃ©dio</span>
               </div>
               <i className={`fa-solid fa-chevron-down text-[10px] transition-transform ${sidebarCollapsed ? "lg:hidden" : ""} ${openMenuPredios ? "rotate-180" : ""}`}></i>
             </button>
@@ -715,7 +728,7 @@ export default function App() {
                   }`}
                 >
                   <img src="/modulos/01-predio.png" alt="Registos" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Registos & Património</span>
+                  <span>Registos & PatrimÃ³nio</span>
                 </button>
 
                 {["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role) && (
@@ -732,7 +745,7 @@ export default function App() {
                     }`}
                   >
                     <i className="fa-solid fa-key text-amber-400 text-xs"></i>
-                    <span>Gestão de Chaves</span>
+                    <span>GestÃ£o de Chaves</span>
                   </button>
                 )}
 
@@ -755,7 +768,7 @@ export default function App() {
             )}
           </div>
 
-          {/* 3. Registo de Frações (Accordion) */}
+          {/* 3. Registo de FraÃ§Ãµes (Accordion) */}
           <div className="space-y-1">
             <button 
               id="sidebar-item-fracoes"
@@ -774,8 +787,8 @@ export default function App() {
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <img src="/modulos/07-fracao.png" alt="Frações" className="w-5 h-5 object-contain shrink-0" />
-                <span>Registo de Frações</span>
+                <img src="/modulos/07-fracao.png" alt="FraÃ§Ãµes" className="w-5 h-5 object-contain shrink-0" />
+                <span>Registo de FraÃ§Ãµes</span>
               </div>
               <i className={`fa-solid fa-chevron-down text-[10px] transition-transform ${openMenuFracoes ? "rotate-180" : ""}`}></i>
             </button>
@@ -794,8 +807,8 @@ export default function App() {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/08-piso.png" alt="Nova Fração" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Registar Nova Fração</span>
+                  <img src="/modulos/08-piso.png" alt="Nova FraÃ§Ã£o" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Registar Nova FraÃ§Ã£o</span>
                 </button>
                 <button
                   onClick={() => {
@@ -809,8 +822,8 @@ export default function App() {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/11-proprietario.png" alt="Proprietário" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Registar Proprietário</span>
+                  <img src="/modulos/11-proprietario.png" alt="ProprietÃ¡rio" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Registar ProprietÃ¡rio</span>
                 </button>
                 <button
                   onClick={() => {
@@ -825,7 +838,7 @@ export default function App() {
                   }`}
                 >
                   <img src="/modulos/17-documentos-pessoais.png" alt="Perfis" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Perfis de Acesso dos Condóminos</span>
+                  <span>Perfis de Acesso dos CondÃ³minos</span>
                 </button>
                 <button
                   onClick={() => {
@@ -916,7 +929,7 @@ export default function App() {
                   }`}
                 >
                   <i className="fa-solid fa-calendar-check text-emerald-400 text-xs"></i>
-                  <span>Agenda de Notificações</span>
+                  <span>Agenda de NotificaÃ§Ãµes</span>
                 </button>
                 <button
                   onClick={() => {
@@ -945,8 +958,8 @@ export default function App() {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/75-mensagem.png" alt="Portal Condómino" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Portal & Mensagens Condómino</span>
+                  <img src="/modulos/75-mensagem.png" alt="Portal CondÃ³mino" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Portal & Mensagens CondÃ³mino</span>
                 </button>
                 <button
                   onClick={() => {
@@ -961,7 +974,7 @@ export default function App() {
                   }`}
                 >
                   <img src="/modulos/76-sondagem.png" alt="Sondagens" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Sondagens & Votações</span>
+                  <span>Sondagens & VotaÃ§Ãµes</span>
                 </button>
                 <button
                   onClick={() => {
@@ -975,8 +988,8 @@ export default function App() {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/77-questionario.png" alt="Questionários" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Questionários & Inquérito</span>
+                  <img src="/modulos/77-questionario.png" alt="QuestionÃ¡rios" className="w-4 h-4 object-contain shrink-0" />
+                  <span>QuestionÃ¡rios & InquÃ©rito</span>
                 </button>
                 <button
                   onClick={() => {
@@ -990,14 +1003,14 @@ export default function App() {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/80-pdf-de-resultados.png" alt="Reuniões" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Reuniões & Convocatórias</span>
+                  <img src="/modulos/80-pdf-de-resultados.png" alt="ReuniÃµes" className="w-4 h-4 object-contain shrink-0" />
+                  <span>ReuniÃµes & ConvocatÃ³rias</span>
                 </button>
               </div>
             )}
           </div>
 
-          {/* 5. Área Financeira (Accordion) */}
+          {/* 5. Ãrea Financeira (Accordion) */}
           <div className="space-y-1">
             <button 
               id="sidebar-item-financeiro"
@@ -1016,8 +1029,8 @@ export default function App() {
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <img src="/modulos/57-quota.png" alt="Área Financeira" className="w-5 h-5 object-contain shrink-0" />
-                <span>Área Financeira</span>
+                <img src="/modulos/57-quota.png" alt="Ãrea Financeira" className="w-5 h-5 object-contain shrink-0" />
+                <span>Ãrea Financeira</span>
               </div>
               <i className={`fa-solid fa-chevron-down text-[10px] transition-transform ${openMenuFinanceiro ? "rotate-180" : ""}`}></i>
             </button>
@@ -1037,7 +1050,7 @@ export default function App() {
                   }`}
                 >
                   <img src="/modulos/59-recibo.png" alt="Recibos" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Emissão de Recibos</span>
+                  <span>EmissÃ£o de Recibos</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1066,8 +1079,8 @@ export default function App() {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/25-relatorio.png" alt="Relatórios" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Relatórios de Dívidas</span>
+                  <img src="/modulos/25-relatorio.png" alt="RelatÃ³rios" className="w-4 h-4 object-contain shrink-0" />
+                  <span>RelatÃ³rios de DÃ­vidas</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1082,7 +1095,7 @@ export default function App() {
                   }`}
                 >
                   <img src="/modulos/64-saldo.png" alt="Extrato" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Extrato de Dívidas e Saldo</span>
+                  <span>Extrato de DÃ­vidas e Saldo</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1096,8 +1109,8 @@ export default function App() {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/63-lista-de-pagamentos.png" alt="Conciliação" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Conciliação Bancária (OFX/CSV)</span>
+                  <img src="/modulos/63-lista-de-pagamentos.png" alt="ConciliaÃ§Ã£o" className="w-4 h-4 object-contain shrink-0" />
+                  <span>ConciliaÃ§Ã£o BancÃ¡ria (OFX/CSV)</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1172,14 +1185,14 @@ export default function App() {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/52-avaria-encontrada.png" alt="Incidências" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Incidências (enviadas pelas limpezas)</span>
+                  <img src="/modulos/52-avaria-encontrada.png" alt="IncidÃªncias" className="w-4 h-4 object-contain shrink-0" />
+                  <span>IncidÃªncias (enviadas pelas limpezas)</span>
                 </button>
               </div>
             )}
           </div>
 
-          {/* 7. Vistorias & Intervenções (Accordion) */}
+          {/* 7. Vistorias & IntervenÃ§Ãµes (Accordion) */}
           <div className="space-y-1">
             <button 
               id="sidebar-item-vistorias-intervencoes"
@@ -1198,8 +1211,8 @@ export default function App() {
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <img src="/modulos/28-intervencao.png" alt="Vistorias & Intervenções" className="w-5 h-5 object-contain shrink-0" />
-                <span>Vistorias & Intervenções</span>
+                <img src="/modulos/28-intervencao.png" alt="Vistorias & IntervenÃ§Ãµes" className="w-5 h-5 object-contain shrink-0" />
+                <span>Vistorias & IntervenÃ§Ãµes</span>
               </div>
               <i className={`fa-solid fa-chevron-down text-[10px] transition-transform ${openMenuVistoriasIntervencoes ? "rotate-180" : ""}`}></i>
             </button>
@@ -1218,8 +1231,8 @@ export default function App() {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/29-avaria.png" alt="Ocorrências" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Ocorrências</span>
+                  <img src="/modulos/29-avaria.png" alt="OcorrÃªncias" className="w-4 h-4 object-contain shrink-0" />
+                  <span>OcorrÃªncias</span>
                 </button>
 
                 <button
@@ -1234,8 +1247,8 @@ export default function App() {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/02-equipamentos-tecnicos.png" alt="Vistoria Técnica" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Vistoria Técnica</span>
+                  <img src="/modulos/02-equipamentos-tecnicos.png" alt="Vistoria TÃ©cnica" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Vistoria TÃ©cnica</span>
                 </button>
 
                 <button
@@ -1250,8 +1263,8 @@ export default function App() {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/28-intervencao.png" alt="Intervenções" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Intervenções (Reparações)</span>
+                  <img src="/modulos/28-intervencao.png" alt="IntervenÃ§Ãµes" className="w-4 h-4 object-contain shrink-0" />
+                  <span>IntervenÃ§Ãµes (ReparaÃ§Ãµes)</span>
                 </button>
 
                 <button
@@ -1266,8 +1279,8 @@ export default function App() {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/39-intervencao-concluida.png" alt="Concluídas" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Intervenções Concluídas</span>
+                  <img src="/modulos/39-intervencao-concluida.png" alt="ConcluÃ­das" className="w-4 h-4 object-contain shrink-0" />
+                  <span>IntervenÃ§Ãµes ConcluÃ­das</span>
                 </button>
 
                 <button
@@ -1283,7 +1296,7 @@ export default function App() {
                   }`}
                 >
                   <img src="/modulos/30-equipamento.png" alt="Agenda" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Agenda de Manutenção</span>
+                  <span>Agenda de ManutenÃ§Ã£o</span>
                 </button>
 
                 <button
@@ -1299,7 +1312,7 @@ export default function App() {
                   }`}
                 >
                   <img src="/modulos/41-obra.png" alt="Obras" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Intervenções Extraordinárias (Obras)</span>
+                  <span>IntervenÃ§Ãµes ExtraordinÃ¡rias (Obras)</span>
                 </button>
               </div>
             )}
@@ -1362,13 +1375,13 @@ export default function App() {
                   }`}
                 >
                   <i className="fa-solid fa-file-contract text-emerald-400 text-xs"></i>
-                  <span>Serviços contratados</span>
+                  <span>ServiÃ§os contratados</span>
                 </button>
               </div>
             )}
           </div>
 
-          {/* 9. Reuniões & Convocatórias */}
+          {/* 9. ReuniÃµes & ConvocatÃ³rias */}
           <button 
             id="sidebar-item-assembleias"
             onClick={() => {
@@ -1383,15 +1396,15 @@ export default function App() {
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <img src="/modulos/80-pdf-de-resultados.png" alt="Reuniões" className="w-5 h-5 object-contain shrink-0" />
-              <span>Reuniões & Convocatórias</span>
+              <img src="/modulos/80-pdf-de-resultados.png" alt="ReuniÃµes" className="w-5 h-5 object-contain shrink-0" />
+              <span>ReuniÃµes & ConvocatÃ³rias</span>
             </div>
             <span className="bg-emerald-500/20 text-emerald-300 text-[9px] font-black rounded px-1.5 py-0.5 border border-emerald-500/30">
               IA
             </span>
           </button>
 
-          {/* 10. Área Jurídica (Accordion) */}
+          {/* 10. Ãrea JurÃ­dica (Accordion) */}
           <div className="space-y-1">
             <button 
               id="sidebar-item-juridico-ai"
@@ -1410,8 +1423,8 @@ export default function App() {
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <img src="/modulos/23-contrato.png" alt="Área Jurídica" className="w-5 h-5 object-contain shrink-0" />
-                <span>Área Jurídica</span>
+                <img src="/modulos/23-contrato.png" alt="Ãrea JurÃ­dica" className="w-5 h-5 object-contain shrink-0" />
+                <span>Ãrea JurÃ­dica</span>
               </div>
               <i className={`fa-solid fa-chevron-down text-[10px] transition-transform ${openMenuJuridico ? "rotate-180" : ""}`}></i>
             </button>
@@ -1460,8 +1473,8 @@ export default function App() {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/23-contrato.png" alt="Carta de Não Dívida" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Carta de Não Dívida</span>
+                  <img src="/modulos/23-contrato.png" alt="Carta de NÃ£o DÃ­vida" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Carta de NÃ£o DÃ­vida</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1476,7 +1489,7 @@ export default function App() {
                   }`}
                 >
                   <img src="/modulos/15-documentos-da-fracao.png" alt="Documentos" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Documentos Obrigatórios</span>
+                  <span>Documentos ObrigatÃ³rios</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1490,8 +1503,8 @@ export default function App() {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/60-nota-de-cobranca.png" alt="Cobrança" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Carta de Cobrança</span>
+                  <img src="/modulos/60-nota-de-cobranca.png" alt="CobranÃ§a" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Carta de CobranÃ§a</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1505,8 +1518,8 @@ export default function App() {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/23-contrato.png" alt="Injunção" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Injunção Judicial</span>
+                  <img src="/modulos/23-contrato.png" alt="InjunÃ§Ã£o" className="w-4 h-4 object-contain shrink-0" />
+                  <span>InjunÃ§Ã£o Judicial</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1536,7 +1549,7 @@ export default function App() {
                   }`}
                 >
                   <img src="/modulos/03-regras-do-predio.png" alt="Estatutos" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Estatutos do Prédio</span>
+                  <span>Estatutos do PrÃ©dio</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1597,7 +1610,7 @@ export default function App() {
                   }`}
                 >
                   <i className="fa-solid fa-wand-magic-sparkles text-emerald-400 text-xs"></i>
-                  <span>Orçamentos & Projecções</span>
+                  <span>OrÃ§amentos & ProjecÃ§Ãµes</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1612,7 +1625,7 @@ export default function App() {
                   }`}
                 >
                   <i className="fa-solid fa-scale-balanced text-emerald-400 text-xs"></i>
-                  <span>Assistente Jurídico</span>
+                  <span>Assistente JurÃ­dico</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1642,7 +1655,7 @@ export default function App() {
                   }`}
                 >
                   <i className="fa-solid fa-handshake-angle text-emerald-400 text-xs"></i>
-                  <span>Bolsa de Orçamentos</span>
+                  <span>Bolsa de OrÃ§amentos</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1706,7 +1719,7 @@ export default function App() {
                 <span>Arranque & Saldos</span>
               </div>
               <span className="bg-amber-400/20 text-amber-300 text-[9px] font-black rounded-md px-1.5 py-0.5 border border-amber-400/30">
-                Transição
+                TransiÃ§Ã£o
               </span>
             </button>
           )}
@@ -1755,15 +1768,15 @@ export default function App() {
             </button>
           )}
 
-          {/* 14. Segurança & Credenciais (Último lugar da coluna central/sidebar) */}
+          {/* 14. SeguranÃ§a & Credenciais (Ãšltimo lugar da coluna central/sidebar) */}
           <button 
             id="sidebar-item-seguranca"
             onClick={() => setUserProfileModalOpen(true)}
             className="w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 text-emerald-400 hover:text-white hover:bg-slate-800/40 border border-slate-800/80 hover:border-emerald-500/40 bg-slate-900/60 shadow-xs group"
           >
             <div className="flex items-center gap-2.5">
-              <img src="/estados-acoes/18-seguranca.png" alt="Segurança" className="w-5 h-5 object-contain shrink-0 group-hover:scale-110 transition-transform" />
-              <span className="font-extrabold">Segurança & Acessos</span>
+              <img src="/estados-acoes/18-seguranca.png" alt="SeguranÃ§a" className="w-5 h-5 object-contain shrink-0 group-hover:scale-110 transition-transform" />
+              <span className="font-extrabold">SeguranÃ§a & Acessos</span>
             </div>
             <span className="bg-emerald-500/20 text-emerald-300 text-[9px] font-black rounded-md px-1.5 py-0.5 border border-emerald-500/30">
               Ativo
@@ -1776,7 +1789,7 @@ export default function App() {
         <div className="p-3 border-t border-slate-800 bg-slate-950/40 space-y-2">
           {!sidebarCollapsed && (
             <div className="flex items-center justify-between">
-              <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Definições</span>
+              <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">DefiniÃ§Ãµes</span>
               <div className="flex items-center space-x-1">
                 <button
                   onClick={() => setTheme(prev => prev === "light" ? "dark" : "light")}
@@ -1826,16 +1839,16 @@ export default function App() {
         </div>
       </aside>
 
-      {/* ÁREA DE TRABALHO PRINCIPAL (ADAPTÁVEL A MOBILE E DESKTOP) */}
+      {/* ÃREA DE TRABALHO PRINCIPAL (ADAPTÃVEL A MOBILE E DESKTOP) */}
       <main className={`flex-1 min-w-0 flex flex-col h-full overflow-hidden relative transition-all duration-300 ${theme === "dark" ? "bg-[#0b0f19]" : "bg-slate-50"}`}>
         {/* Header superior */}
         <header className={`h-16 px-3 sm:px-6 md:px-8 flex items-center justify-between shrink-0 z-10 no-print transition-all duration-300 ${theme === "dark" ? "bg-[#111827] border-b border-slate-800 text-slate-100" : "bg-white border-b border-slate-200 text-slate-800"}`}>
           <div className="flex items-center space-x-2 sm:space-x-3 overflow-hidden pr-2">
-            {/* Botão de Menu Mobile */}
+            {/* BotÃ£o de Menu Mobile */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="md:hidden p-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-emerald-400 border border-slate-700 flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 shadow-sm"
-              title="Abrir / Fechar Menu de Navegação"
+              title="Abrir / Fechar Menu de NavegaÃ§Ã£o"
             >
               <i className={`fa-solid ${mobileMenuOpen ? "fa-xmark" : "fa-bars"} text-sm`}></i>
               <span className="hidden sm:inline">Menu</span>
@@ -1844,53 +1857,53 @@ export default function App() {
             <div className="overflow-hidden">
               <h2 className={`text-xs sm:text-base md:text-xl font-bold transition-colors duration-300 truncate ${theme === "dark" ? "text-white" : "text-slate-800"}`}>
                 {activeSection === "painel" && "Painel de Controlo"}
-                {activeSection === "predios" && "Registo de Prédio"}
-                {(activeSection === "fracoes" || activeSection === "fracoes_nova" || activeSection === "fracoes_proprietario" || activeSection === "fracoes_perfis") && "Gestão de Frações, Proprietários & Perfis"}
+                {activeSection === "predios" && "Registo de PrÃ©dio"}
+                {(activeSection === "fracoes" || activeSection === "fracoes_nova" || activeSection === "fracoes_proprietario" || activeSection === "fracoes_perfis") && "GestÃ£o de FraÃ§Ãµes, ProprietÃ¡rios & Perfis"}
                 {activeSection === "fornecedores" && "Fichas de Fornecedores"}
-                {activeSection === "contas" && "Contas Bancárias do Condomínio"}
-                {activeSection === "emissao" && "Emissão de Avisos e Orçamentos"}
+                {activeSection === "contas" && "Contas BancÃ¡rias do CondomÃ­nio"}
+                {activeSection === "emissao" && "EmissÃ£o de Avisos e OrÃ§amentos"}
                 {activeSection === "movimentos" && "Registo de Movimentos Financeiros"}
-                {activeSection === "financeiro_recibos" && "Emissão de Recibos Manuais (100% Editável)"}
-                {activeSection === "financeiro_relatorios" && "Relatórios de Dívidas (por Condómino & Pro Condomínio)"}
-                {activeSection === "financeiro_extratos" && "Extrato de Movimentos e Saldo (Visão Condómino)"}
-                {activeSection === "financeiro_quotas_mensais" && "Mapa de Quotas Mensais de Condomínio"}
-                {activeSection === "financeiro_quotas_extra" && "Quotas Extraordinárias & Fundos Especiais"}
-                {activeSection === "conciliacao" && "Motor de Inteligência Artificial para Conciliação"}
-                {activeSection === "assembleias" && "Reuniões e Convocatórias (Elaboradas Manualmente ou com Auxílio de IA)"}
-                {activeSection === "reservas" && "Agenda & Reservas de Espaços Comuns"}
+                {activeSection === "financeiro_recibos" && "EmissÃ£o de Recibos Manuais (100% EditÃ¡vel)"}
+                {activeSection === "financeiro_relatorios" && "RelatÃ³rios de DÃ­vidas (por CondÃ³mino & Pro CondomÃ­nio)"}
+                {activeSection === "financeiro_extratos" && "Extrato de Movimentos e Saldo (VisÃ£o CondÃ³mino)"}
+                {activeSection === "financeiro_quotas_mensais" && "Mapa de Quotas Mensais de CondomÃ­nio"}
+                {activeSection === "financeiro_quotas_extra" && "Quotas ExtraordinÃ¡rias & Fundos Especiais"}
+                {activeSection === "conciliacao" && "Motor de InteligÃªncia Artificial para ConciliaÃ§Ã£o"}
+                {activeSection === "assembleias" && "ReuniÃµes e ConvocatÃ³rias (Elaboradas Manualmente ou com AuxÃ­lio de IA)"}
+                {activeSection === "reservas" && "Agenda & Reservas de EspaÃ§os Comuns"}
                 {(activeSection === "documentos" || activeSection === "arquivo") && "Arquivo Digital (Anos & Temas)"}
-                {activeSection === "ocorrencias" && "Gestão de Ocorrências e Avarias"}
-                {(activeSection === "vistorias_limpezas" || activeSection === "limpezas_vistorias") && "Limpezas & Vistorias Técnicas"}
-                {activeSection === "ia_avancada" && "Central de Inteligência Artificial Avançada"}
-                {activeSection === "ia_importacao" && "Assistente de Importação Global por IA (PDF/XLS)"}
+                {activeSection === "ocorrencias" && "GestÃ£o de OcorrÃªncias e Avarias"}
+                {(activeSection === "vistorias_limpezas" || activeSection === "limpezas_vistorias") && "Limpezas & Vistorias TÃ©cnicas"}
+                {activeSection === "ia_avancada" && "Central de InteligÃªncia Artificial AvanÃ§ada"}
+                {activeSection === "ia_importacao" && "Assistente de ImportaÃ§Ã£o Global por IA (PDF/XLS)"}
                 {activeSection === "contencioso_juridico" && "Resumo de Contencioso & Prazos Legais"}
-                {activeSection === "contencioso_juridico_processos" && "Constituição de Processos Judiciais & Acervo Probatório"}
-                {activeSection === "contencioso_juridico_nd" && "Carta de Não Dívida (Art. 54.º-A do DL 268/94)"}
-                {activeSection === "contencioso_juridico_doc_obrig" && "Documentos Obrigatórios do Condomínio"}
-                {activeSection === "contencioso_juridico_cartas" && "Carta de Cobrança (Notificação AR Regimental)"}
-                {activeSection === "contencioso_juridico_bni" && "Injunção Judicial Civil & Requerimento BNI"}
-                {activeSection === "contencioso_juridico_regulamento" && "Regulamento Interno do Edifício"}
-                {activeSection === "contencioso_juridico_estatutos" && "Estatutos do Prédio & Propriedade Horizontal"}
+                {activeSection === "contencioso_juridico_processos" && "ConstituiÃ§Ã£o de Processos Judiciais & Acervo ProbatÃ³rio"}
+                {activeSection === "contencioso_juridico_nd" && "Carta de NÃ£o DÃ­vida (Art. 54.Âº-A do DL 268/94)"}
+                {activeSection === "contencioso_juridico_doc_obrig" && "Documentos ObrigatÃ³rios do CondomÃ­nio"}
+                {activeSection === "contencioso_juridico_cartas" && "Carta de CobranÃ§a (NotificaÃ§Ã£o AR Regimental)"}
+                {activeSection === "contencioso_juridico_bni" && "InjunÃ§Ã£o Judicial Civil & Requerimento BNI"}
+                {activeSection === "contencioso_juridico_regulamento" && "Regulamento Interno do EdifÃ­cio"}
+                {activeSection === "contencioso_juridico_estatutos" && "Estatutos do PrÃ©dio & Propriedade Horizontal"}
                 {activeSection === "contencioso_juridico_ia" && "Assistente IA de Contencioso & Minutas Legais"}
-                {activeSection === "obras_futuras" && "Obras Futuras & Fundo Extraordinário"}
+                {activeSection === "obras_futuras" && "Obras Futuras & Fundo ExtraordinÃ¡rio"}
                 {activeSection === "ficha_gestora" && "Ficha da Empresa Gestora (White-Label)"}
-                {activeSection === "portal_condomino" && "Portal do Condómino & Perfis"}
-                {activeSection === "portal_orcamentos" && "Portal de Orçamentos de Fornecedores"}
-                {activeSection === "dashboard_kpis" && "Dashboard de KPIs do Prédio"}
-                {activeSection === "multi_condominio" && "Portal Multi-Condomínio Integrado"}
-                {activeSection === "configuracoes_gerais" && "Configurações Gerais do Condomínio"}
-                {activeSection === "configuracoes_ia" && "Configurações do Assistente IA e E-mail"}
-                {activeSection === "configuracoes_notificacoes" && "Configurações de Notificações Push & E-mail"}
-                {activeSection === "inventario_tecnico" && "Inventário Técnico e Arquitetura do Prédio"}
-                {activeSection === "manutencao_ocorrencias" && "Ocorrências & Avarias Reportadas"}
-                {activeSection === "manutencao_agenda" && "Agenda de Manutenção & Vistorias"}
-                {activeSection === "manutencao_intervencoes" && "Intervenções (Pequenas Reparações)"}
-                {activeSection === "manutencao_extraordinarias" && "Intervenções Extraordinárias (Grandes Obras)"}
-                {activeSection === "manutencao_concluidas" && "Histórico de Manutenções Concluídas"}
+                {activeSection === "portal_condomino" && "Portal do CondÃ³mino & Perfis"}
+                {activeSection === "portal_orcamentos" && "Portal de OrÃ§amentos de Fornecedores"}
+                {activeSection === "dashboard_kpis" && "Dashboard de KPIs do PrÃ©dio"}
+                {activeSection === "multi_condominio" && "Portal Multi-CondomÃ­nio Integrado"}
+                {activeSection === "configuracoes_gerais" && "ConfiguraÃ§Ãµes Gerais do CondomÃ­nio"}
+                {activeSection === "configuracoes_ia" && "ConfiguraÃ§Ãµes do Assistente IA e E-mail"}
+                {activeSection === "configuracoes_notificacoes" && "ConfiguraÃ§Ãµes de NotificaÃ§Ãµes Push & E-mail"}
+                {activeSection === "inventario_tecnico" && "InventÃ¡rio TÃ©cnico e Arquitetura do PrÃ©dio"}
+                {activeSection === "manutencao_ocorrencias" && "OcorrÃªncias & Avarias Reportadas"}
+                {activeSection === "manutencao_agenda" && "Agenda de ManutenÃ§Ã£o & Vistorias"}
+                {activeSection === "manutencao_intervencoes" && "IntervenÃ§Ãµes (Pequenas ReparaÃ§Ãµes)"}
+                {activeSection === "manutencao_extraordinarias" && "IntervenÃ§Ãµes ExtraordinÃ¡rias (Grandes Obras)"}
+                {activeSection === "manutencao_concluidas" && "HistÃ³rico de ManutenÃ§Ãµes ConcluÃ­das"}
                 {activeSection === "manutencao_arquivo" && "Arquivo Documental Registado"}
               </h2>
               <p className={`text-[10px] sm:text-xs transition-colors duration-300 truncate ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}>
-                Isolamento Multi-Prédio: {predioAtivo.nome || `${predioAtivo.morada_linha1} ${predioAtivo.num_porta}`}
+                Isolamento Multi-PrÃ©dio: {predioAtivo.nome || `${predioAtivo.morada_linha1} ${predioAtivo.num_porta}`}
               </p>
             </div>
           </div>
@@ -1902,21 +1915,21 @@ export default function App() {
             <div className={`hidden sm:block h-6 w-px transition-colors duration-300 ${theme === "dark" ? "bg-slate-800" : "bg-slate-200"}`}></div>
             <span className={`hidden md:flex text-[11px] ${getColorClasses("bgLight")} ${getColorClasses("text")} font-semibold px-2 py-0.5 rounded border ${getColorClasses("border")} items-center transition-all duration-300`}>
               <span className={`h-1.5 w-1.5 rounded-full ${getColorClasses("bg")} mr-1 animate-pulse`}></span>
-              {loggedUser.role === "ADMIN" ? "👑 Admin" : 
-               loggedUser.role === "EMPRESA_GESTORA" ? "🏢 Gestora" :
-               loggedUser.role === "USER" ? "🏠 Condómino" :
-               loggedUser.role === "INQUILINO" ? "🔑 Inquilino" :
-               loggedUser.role === "TECNICO" ? "🔍 Técnico" :
-               loggedUser.role === "LIMPEZAS" ? "🧹 Limpezas" : 
-               loggedUser.role === "JURIDICO" ? "⚖️ Jurídico" :
-               loggedUser.role === "AUDITOR" ? "🕵️ Auditor" : "📈 Contabilista"}
+              {loggedUser.role === "ADMIN" ? "ðŸ‘‘ Admin" : 
+               loggedUser.role === "EMPRESA_GESTORA" ? "ðŸ¢ Gestora" :
+               loggedUser.role === "USER" ? "ðŸ  CondÃ³mino" :
+               loggedUser.role === "INQUILINO" ? "ðŸ”‘ Inquilino" :
+               loggedUser.role === "TECNICO" ? "ðŸ” TÃ©cnico" :
+               loggedUser.role === "LIMPEZAS" ? "ðŸ§¹ Limpezas" : 
+               loggedUser.role === "JURIDICO" ? "âš–ï¸ JurÃ­dico" :
+               loggedUser.role === "AUDITOR" ? "ðŸ•µï¸ Auditor" : "ðŸ“ˆ Contabilista"}
             </span>
 
             <button
               id="header-btn-logout"
               onClick={() => handleSecureLogout()}
               className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white border border-red-500 text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 shadow-sm hover:scale-105 active:scale-95 shrink-0"
-              title="Terminar Sessão (Voltar ao Ecrã Inicial)"
+              title="Terminar SessÃ£o (Voltar ao EcrÃ£ Inicial)"
             >
               <img src="/estados-acoes/17-desligar.png" alt="Sair" className="h-5 w-5 object-contain shrink-0" />
               <span className="hidden sm:inline">Sair</span>
@@ -1924,7 +1937,7 @@ export default function App() {
           </div>
         </header>
 
-        {/* PAINEL DE CONTROLO DO SIMULADOR E PERFIS (CONDICIONADO AO MODO DE TESTES ATIVADO NO MENU SEGURANÇA) */}
+        {/* PAINEL DE CONTROLO DO SIMULADOR E PERFIS (CONDICIONADO AO MODO DE TESTES ATIVADO NO MENU SEGURANÃ‡A) */}
         {showTestingBar && (
           <div className="bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 md:px-8 py-2 md:py-3.5 no-print shrink-0 transition-colors duration-300">
             <div className="flex items-center justify-between gap-2">
@@ -1954,14 +1967,14 @@ export default function App() {
                     className={`px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-colors cursor-pointer ${viewMode === "BROWSER" ? "bg-slate-900 dark:bg-slate-800 text-white" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
                   >
                     <i className="fa-solid fa-desktop text-[11px]"></i>
-                    <span>💻 Navegador Web</span>
+                    <span>ðŸ’» Navegador Web</span>
                   </button>
                   <button
                     onClick={() => setViewMode("PWA")}
                     className={`px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-colors cursor-pointer ${viewMode === "PWA" ? `${getColorClasses("bg")} text-white` : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
                   >
                     <i className="fa-solid fa-mobile-screen text-[11px]"></i>
-                    <span>📱 Simulador PWA</span>
+                    <span>ðŸ“± Simulador PWA</span>
                   </button>
                 </div>
 
@@ -1970,65 +1983,65 @@ export default function App() {
                   <button 
                     onClick={() => handleProfileChange("ADMIN")}
                     className={`px-2 py-1 rounded transition-all cursor-pointer ${loggedUser.role === "ADMIN" ? "bg-indigo-600 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"}`}
-                    title="Administrador (Empresa Gestora) - Perfil Máximo"
+                    title="Administrador (Empresa Gestora) - Perfil MÃ¡ximo"
                   >
-                    👑 Admin
+                    ðŸ‘‘ Admin
                   </button>
                   <button 
                     onClick={() => handleProfileChange("EMPRESA_GESTORA")}
                     className={`px-2 py-1 rounded transition-all cursor-pointer ${loggedUser.role === "EMPRESA_GESTORA" ? "bg-violet-600 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"}`}
-                    title="Empresa Gestora - Perfil Máximo de Backoffice"
+                    title="Empresa Gestora - Perfil MÃ¡ximo de Backoffice"
                   >
-                    🏢 Gestora
+                    ðŸ¢ Gestora
                   </button>
                   <button 
                     onClick={() => handleProfileChange("USER")}
                     className={`px-2 py-1 rounded transition-all cursor-pointer ${loggedUser.role === "USER" ? "bg-emerald-600 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"}`}
-                    title="Condómino (Proprietário) - PWA + Backoffice Limitado"
+                    title="CondÃ³mino (ProprietÃ¡rio) - PWA + Backoffice Limitado"
                   >
-                    🏠 Condómino
+                    ðŸ  CondÃ³mino
                   </button>
                   <button 
                     onClick={() => handleProfileChange("INQUILINO")}
                     className={`px-2 py-1 rounded transition-all cursor-pointer ${loggedUser.role === "INQUILINO" ? "bg-amber-600 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"}`}
-                    title="Inquilino / Arrendatário - Sem acesso a dados financeiros"
+                    title="Inquilino / ArrendatÃ¡rio - Sem acesso a dados financeiros"
                   >
-                    🔑 Inquilino
+                    ðŸ”‘ Inquilino
                   </button>
                   <button 
                     onClick={() => handleProfileChange("TECNICO")}
                     className={`px-2 py-1 rounded transition-all cursor-pointer ${loggedUser.role === "TECNICO" ? "bg-amber-600 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"}`}
-                    title="Técnico de Manutenção - PWA + Backoffice Limitado"
+                    title="TÃ©cnico de ManutenÃ§Ã£o - PWA + Backoffice Limitado"
                   >
-                    🔍 Técnico
+                    ðŸ” TÃ©cnico
                   </button>
                   <button 
                     onClick={() => handleProfileChange("LIMPEZAS")}
                     className={`px-2 py-1 rounded transition-all cursor-pointer ${loggedUser.role === "LIMPEZAS" ? "bg-teal-600 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"}`}
                     title="Empresa de Limpeza - PWA Limitado"
                   >
-                    🧹 Limpezas
+                    ðŸ§¹ Limpezas
                   </button>
                   <button 
                     onClick={() => handleProfileChange("JURIDICO")}
                     className={`px-2 py-1 rounded transition-all cursor-pointer ${loggedUser.role === "JURIDICO" ? "bg-red-600 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"}`}
-                    title="Perfil Jurídico - Contencioso e Contratos"
+                    title="Perfil JurÃ­dico - Contencioso e Contratos"
                   >
-                    ⚖️ Jurídico
+                    âš–ï¸ JurÃ­dico
                   </button>
                   <button 
                     onClick={() => handleProfileChange("AUDITOR")}
                     className={`px-2 py-1 rounded transition-all cursor-pointer ${loggedUser.role === "AUDITOR" ? "bg-indigo-500 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"}`}
                     title="Auditor Interno (Opcional) - Apenas Consulta"
                   >
-                    🕵️ Auditor
+                    ðŸ•µï¸ Auditor
                   </button>
                   <button 
                     onClick={() => handleProfileChange("CONTABILISTA")}
                     className={`px-2 py-1 rounded transition-all cursor-pointer ${loggedUser.role === "CONTABILISTA" ? "bg-rose-500 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"}`}
-                    title="Contabilista (Opcional) - Validação e Extratos"
+                    title="Contabilista (Opcional) - ValidaÃ§Ã£o e Extratos"
                   >
-                    📈 Contabilista
+                    ðŸ“ˆ Contabilista
                   </button>
                 </div>
               </div>
@@ -2036,7 +2049,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Conteúdo Dinâmico (Responsivo para Telemóveis e Desktops) */}
+        {/* ConteÃºdo DinÃ¢mico (Responsivo para TelemÃ³veis e Desktops) */}
         <div className="flex-grow p-3 sm:p-5 md:p-8 overflow-y-auto">
           {viewMode === "PWA" ? (
             <PWASimulator 
@@ -2274,7 +2287,7 @@ export default function App() {
               fornecedores={fornecedores}
               onMovimentoCriado={(novoMov) => {
                 setMovements(prev => [novoMov, ...prev]);
-                alert("✨ Despesa/Movimento registado automaticamente pela IA nos Movimentos!");
+                alert("âœ¨ Despesa/Movimento registado automaticamente pela IA nos Movimentos!");
               }}
             />
           )}
@@ -2418,7 +2431,7 @@ export default function App() {
                 activeSection === "contencioso_juridico_nd" ? "carta_nao_divida" :
                 activeSection === "contencioso_juridico_doc_obrig" ? "documentos_obrigatorios" :
                 activeSection === "contencioso_juridico_cartas" ? "cartasar" :
-                activeSection === "contencioso_juridico_bni" ? "injuncões" :
+                activeSection === "contencioso_juridico_bni" ? "injuncÃµes" :
                 activeSection === "contencioso_juridico_regulamento" ? "regulamento" :
                 activeSection === "contencioso_juridico_estatutos" ? "estatutos" :
                 activeSection === "contencioso_juridico_ia" ? "assistente_ia" : "geral"
@@ -2528,3 +2541,4 @@ export default function App() {
     </div>
   );
 }
+
