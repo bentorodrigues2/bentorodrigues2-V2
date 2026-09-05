@@ -168,8 +168,8 @@ export default function App() {
         }
       }, 1000);
       return (
-    <AssistenteIA />
-    ) => clearInterval(interval);
+    
+    return () => clearInterval(interval);
     } else {
       setCooldownSeconds(0);
     }
@@ -185,8 +185,8 @@ export default function App() {
     setTheme(mediaQuery.matches ? "dark" : "light");
     mediaQuery.addEventListener("change", handleThemeChange);
     return (
-    <AssistenteIA />
-    ) => mediaQuery.removeEventListener("change", handleThemeChange);
+    
+    return () => mediaQuery.removeEventListener('change', handleThemeChange);
   }, []);
 
   // Update HTML class when theme state changes
@@ -246,9 +246,7 @@ export default function App() {
 
     window.addEventListener("popstate", handleLocationChange);
     window.addEventListener("hashchange", handleLocationChange);
-    return (
-    <AssistenteIA />
-    ) => {
+    return () => {
       window.removeEventListener("popstate", handleLocationChange);
       window.removeEventListener("hashchange", handleLocationChange);
     };
@@ -304,9 +302,7 @@ export default function App() {
     };
     window.addEventListener("storage", handleStorageChange);
 
-    return (
-    <AssistenteIA />
-    ) => {
+    return () => {
       interactionEvents.forEach(evt => window.removeEventListener(evt, handleUserInteraction));
       window.removeEventListener("storage", handleStorageChange);
       clearInterval(sessionInterval);
@@ -546,7 +542,7 @@ export default function App() {
     }
 
     return (
-    <AssistenteIA />
+    
     
       <div className={`h-screen w-screen flex flex-col items-center justify-center p-3 transition-all duration-300 ${theme === "dark" ? "bg-[#030712] text-slate-100" : "bg-slate-950 text-slate-100"}`}>
         <AuthForm
@@ -567,7 +563,7 @@ export default function App() {
   }
 
   return (
-    <AssistenteIA />
+    
     
     <div className={`h-screen w-screen flex overflow-hidden relative transition-all duration-300 ${theme === "dark" ? "bg-[#0b0f19] text-slate-100" : "bg-slate-50 text-slate-800"}`}>
       
@@ -2541,4 +2537,5 @@ export default function App() {
     </div>
   );
 }
+
 
