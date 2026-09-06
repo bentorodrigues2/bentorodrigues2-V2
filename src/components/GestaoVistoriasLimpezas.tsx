@@ -507,8 +507,8 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
         <body>
           <h2>RELATÓRIO GERAL DE VISTORIAS E DETEÇÃO DE ANOMALIAS</h2>
           <div class="info-predio">
-            <strong>Edifício:</strong> ${predio.nome || "Condomínio"}<br/>
-            <strong>Morada:</strong> ${predio.morada_linha1}, ${predio.num_porta} - ${predio.localidade}<br/>
+            <strong>Edifício:</strong> ${predio?.nome || "Condomínio"}<br/>
+            <strong>Morada:</strong> ${predio?.morada_linha1 || ""}, ${predio?.num_porta || ""} - ${predio?.localidade || ""}<br/>
             <strong>Data de Emissão:</strong> ${new Date().toLocaleDateString("pt-PT")}
           </div>
           <table>
@@ -565,8 +565,8 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
         <body>
           <h2>LIVRO DE REGISTO DIGITAL DE HIGIENIZAÇÕES E LIMPEZAS</h2>
           <div class="info-predio">
-            <strong>Edifício:</strong> ${predio.nome || "Condomínio"}<br/>
-            <strong>Morada:</strong> ${predio.morada_linha1}, ${predio.num_porta} - ${predio.localidade}<br/>
+            <strong>Edifício:</strong> ${predio?.nome || "Condomínio"}<br/>
+            <strong>Morada:</strong> ${predio?.morada_linha1 || ""}, ${predio?.num_porta || ""} - ${predio?.localidade || ""}<br/>
             <strong>Registo de Auditoria PWA - Emitido em:</strong> ${new Date().toLocaleDateString("pt-PT")}
           </div>
           <table>
@@ -1484,8 +1484,8 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                   <span className="bg-emerald-500 text-slate-950 font-extrabold text-[9px] uppercase px-2 py-0.5 rounded-full font-sans tracking-wider">
                     Placa de Limpeza Digital • CondoManager AI
                   </span>
-                  <h3 className="text-lg font-extrabold text-white tracking-tight mt-1">{predio.nome || "Edifício de Habitação"}</h3>
-                  <p className="text-[10px] text-slate-400 font-medium">{predio.morada_linha1}, {predio.num_porta} • {predio.localidade}</p>
+                  <h3 className="text-lg font-extrabold text-white tracking-tight mt-1">{predio?.nome || "Edifício de Habitação"}</h3>
+                  <p className="text-[10px] text-slate-400 font-medium">{predio?.morada_linha1 || ""}, {predio?.num_porta || ""} • {predio?.localidade || ""}</p>
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-bold text-white font-mono-custom">{new Date().toLocaleTimeString("pt-PT", {hour: "2-digit", minute:"2-digit"})}</div>

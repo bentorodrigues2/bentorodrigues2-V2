@@ -631,9 +631,9 @@ export function FinanceiroAvancado({
                           movimentoQuotaMensal: qm > 0 ? `MOV-2026-QM-${reciboNum}` : undefined,
                           movimentoFundoReserva: fr > 0 ? `MOV-2026-FR-${reciboNum}` : undefined,
                           movimentoQuotaExtra: qe > 0 ? `MOV-2026-QE-${reciboNum}` : undefined,
-                          buildingName: predio.nome,
-                          buildingAddress: `${predio.morada_linha1} ${predio.num_porta}, ${predio.localidade}`,
-                          buildingNif: predio.nif || "500000000",
+                          buildingName: predio?.nome || "Condomínio",
+                          buildingAddress: `${predio?.morada_linha1 || ""} ${predio?.num_porta || ""}, ${predio?.localidade || ""}`,
+                          buildingNif: predio?.nif || "500000000",
                           proprietarioNome: selectedFracao?.proprietario?.nome || "Condómino Registado",
                           proprietarioNif: selectedFracao?.proprietario?.nif || "200000000",
                           fracaoIdent: `Fração ${selectedFracao?.fracao_nome || "A"} (${selectedFracao?.piso || "Piso 1"})`,
@@ -735,9 +735,9 @@ export function FinanceiroAvancado({
                   <div className="grid grid-cols-2 gap-3 relative z-10">
                     <div className="border border-slate-300 rounded-xs p-2.5 bg-white/90">
                       <span className="text-[9px] font-bold uppercase text-sky-600 block">CONDOMÍNIO DO EDIFÍCIO:</span>
-                      <p className="text-[12.5px] font-black text-slate-900 uppercase mt-0.5">{predio.nome || "EDIFÍCIO ESTRELA DA BARRA"}</p>
-                      <p className="text-[10px] text-slate-700 mt-0.5">Morada: {predio.morada_linha1} {predio.num_porta}, {predio.localidade}</p>
-                      <p className="text-[10px] text-slate-700">NIF do Condomínio: {predio.nif || "900123456"}</p>
+                      <p className="text-[12.5px] font-black text-slate-900 uppercase mt-0.5">{predio?.nome || "Condomínio"}</p>
+                      <p className="text-[10px] text-slate-700 mt-0.5">Morada: {predio?.morada_linha1 || ""} {predio?.num_porta || ""}, {predio?.localidade || ""}</p>
+                      <p className="text-[10px] text-slate-700">NIF do Condomínio: {predio?.nif || "900123456"}</p>
                     </div>
                     <div className="border border-slate-300 rounded-xs p-2.5 bg-white/90">
                       <span className="text-[9px] font-bold uppercase text-sky-600 block">LIQUIDADO POR (PROPRIETÁRIO / FRAÇÃO):</span>

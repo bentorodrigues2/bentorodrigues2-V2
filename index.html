@@ -1,13 +1,36 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt">
   <head>
-    <link rel="icon" href="/marca/05-favicongr.png" />
     <meta charset="UTF-8" />
+    <!-- Favicon (Separador do browser no computador e favoritos) -->
+    <link rel="icon" type="image/png" href="/marca/04-icone-app.png" />
+
+    <!-- Web App Manifest (PWA para Android / Chromium com o atalho "Condomínio") -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Apple Touch Icon (Atalho no ecrã principal iOS Safari / iPhone com o título "Condomínio") -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/marca/04-icone-app.png" />
+    <link rel="apple-touch-icon" href="/marca/04-icone-app.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Condomínio" />
+
+    <!-- PWA Mobile Browser Meta -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Condomínio" />
+    <meta name="theme-color" content="#10b981" />
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bento Rodrigues2</title>
+    <meta name="description" content="Plataforma de gestão de condomínios baseada no AI Studio com controlo de frações, manutenção, financeiro e portal do condómino." />
+    <meta property="og:title" content="Bento Rodrigues2" />
+    <meta property="og:description" content="Plataforma de gestão de condomínios baseada no AI Studio com controlo de frações, manutenção, financeiro e portal do condómino." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+

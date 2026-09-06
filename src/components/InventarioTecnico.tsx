@@ -20,124 +20,13 @@ interface InventarioTecnicoProps {
 }
 
 export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps) {
-  // Pre-defined mandatory equipment list (from DOCUMENTO D)
+  // Estado limpo para testes com Supabase
   const [equipamentos, setEquipamentos] = useState<EquipamentoTecnico[]>(() => {
     const saved = localStorage.getItem(`inventario_tecnico_${predio.id_predio}`);
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { }
     }
-    return [
-      {
-        id: "eq-1",
-        nome: "Elevador Principal OTIS 2000",
-        categoria: "Elevadores",
-        andar: "Geral (Todos)",
-        estado: "Excelente",
-        ultimaInspecao: "2026-06-15",
-        frequenciaInspecao: "Mensal",
-        fabricante: "Otis Portugal Lda.",
-        detalhes: "Cabine renovada e guias de deslizamento calibradas."
-      },
-      {
-        id: "eq-2",
-        nome: "Bomba Hidropressora de Água Sanitária",
-        categoria: "Bombas de água",
-        andar: "Piso -2 (Central)",
-        estado: "Operacional",
-        ultimaInspecao: "2026-05-10",
-        frequenciaInspecao: "Semestral",
-        fabricante: "Grundfos PT",
-        detalhes: "Pressostato ajustado para 3.8 bar estável."
-      },
-      {
-        id: "eq-3",
-        nome: "Motor de Extração de Monóxido de Carbono",
-        categoria: "Motores",
-        andar: "Garagem (Piso -1)",
-        estado: "Operacional",
-        ultimaInspecao: "2026-04-12",
-        frequenciaInspecao: "Semestral",
-        fabricante: "Sodeca S.A.",
-        detalhes: "Ativação automática por sonda de monóxido operacional."
-      },
-      {
-        id: "eq-4",
-        nome: "Portas Corta-Fogo de Segurança",
-        categoria: "Portas corta-fogo",
-        andar: "Patamares de Escada (Todos)",
-        estado: "Excelente",
-        ultimaInspecao: "2026-07-02",
-        frequenciaInspecao: "Anual",
-        fabricante: "Dierre Doors",
-        detalhes: "Molas de fecho automático testadas e lubrificadas."
-      },
-      {
-        id: "eq-5",
-        nome: "Central do Sistema de Detecção de Incêndios",
-        categoria: "Sistema de incêndio",
-        andar: "Átrio de Entrada",
-        estado: "Operacional",
-        ultimaInspecao: "2026-07-11",
-        frequenciaInspecao: "Semestral",
-        fabricante: "Zeta Alarms",
-        detalhes: "Baterias de backup substituídas e sensores testados."
-      },
-      {
-        id: "eq-6",
-        nome: "Rede de Distribuição Geral de Gás",
-        categoria: "Sistema de gás",
-        andar: "Prumada Geral",
-        estado: "Operacional",
-        ultimaInspecao: "2026-02-18",
-        frequenciaInspecao: "Anual",
-        fabricante: "Galp Gás Centro",
-        detalhes: "Estanquicidade geral homologada por inspetor independente."
-      },
-      {
-        id: "eq-7",
-        nome: "Quadro Elétrico Geral e Colunas de Distribuição",
-        categoria: "Sistema elétrico",
-        andar: "Piso 0",
-        estado: "Excelente",
-        ultimaInspecao: "2026-06-20",
-        frequenciaInspecao: "Anual",
-        fabricante: "Efacec / Legrand",
-        detalhes: "Reaperto de bornes e termografia em conformidade."
-      },
-      {
-        id: "eq-8",
-        nome: "Bombas e Filtros de Areia da Piscina Comum",
-        categoria: "Piscina (bombas, filtros, motores)",
-        andar: "Exterior / Jardim",
-        estado: "Necessita Manutenção",
-        ultimaInspecao: "2026-07-05",
-        frequenciaInspecao: "Mensal",
-        fabricante: "AstralPool",
-        detalhes: "Pequena fuga no vedante da bomba secundária de circulação."
-      },
-      {
-        id: "eq-9",
-        nome: "Sistema de Aquecimento do Spa & Banho Turco",
-        categoria: "Spa (motores, filtros, aquecimento)",
-        andar: "Piso 0 (Área de Lazer)",
-        estado: "Excelente",
-        ultimaInspecao: "2026-07-09",
-        frequenciaInspecao: "Mensal",
-        fabricante: "Harvia Finland",
-        detalhes: "Resistências e sondas de temperatura calibradas."
-      },
-      {
-        id: "eq-10",
-        nome: "Passadeiras e Equipamentos Cardio do Ginásio",
-        categoria: "Ginásio (equipamentos de ginástica)",
-        andar: "Piso 0 (Área de Lazer)",
-        estado: "Operacional",
-        ultimaInspecao: "2026-07-12",
-        frequenciaInspecao: "Trimestral",
-        fabricante: "Technogym",
-        detalhes: "Passadeira #2 lubrificada na plataforma de corrida."
-      }
-    ];
+    return [];
   });
 
   // Save changes to localStorage

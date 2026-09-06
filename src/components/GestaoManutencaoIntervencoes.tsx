@@ -96,85 +96,19 @@ export function GestaoManutencaoIntervencoes({
   const [agenda, setAgenda] = useState<AgendaItem[]>(() => {
     const saved = localStorage.getItem(`agenda_manutencao_${predio.id_predio}`);
     if (saved) return JSON.parse(saved);
-    return [
-      {
-        id: "ag-1",
-        equipamento: "Extintores de Incêndio (Caves e Pisos)",
-        tipo: "inspeção_obrigatoria",
-        dataPlaneada: "2026-08-15",
-        periodicidade: "Anual",
-        estado: "Agendado"
-      },
-      {
-        id: "ag-2",
-        equipamento: "Grupo de Bombas Hidropressoras",
-        tipo: "preventiva",
-        dataPlaneada: "2026-09-01",
-        periodicidade: "Semestral",
-        estado: "Agendado"
-      },
-      {
-        id: "ag-3",
-        equipamento: "Portas Corta-Fogo e Saídas de Emergência",
-        tipo: "inspeção_obrigatoria",
-        dataPlaneada: "2026-08-10",
-        periodicidade: "Trimestral",
-        estado: "Agendado"
-      }
-    ];
+    return [];
   });
 
   const [intervencoes, setIntervencoes] = useState<Intervencao[]>(() => {
     const saved = localStorage.getItem(`intervencoes_${predio.id_predio}`);
     if (saved) return JSON.parse(saved);
-    return [
-      {
-        id: "int-1",
-        descricao: "Reparação do Trinco Elétrico do Portão da Garagem",
-        id_fracao: "common",
-        prioridade: "Alta",
-        fornecedor: "Serralharia Central, Lda.",
-        custoPrevisto: 180,
-        estado: "Pendente",
-        anoExercicio: "2026",
-        validadoAdmin: false
-      },
-      {
-        id: "int-2",
-        descricao: "Substituição de Lâmpadas Fundidas no Átrio",
-        id_fracao: "common",
-        prioridade: "Baixa",
-        fornecedor: "EletroLuz",
-        custoPrevisto: 45,
-        estado: "Pendente",
-        anoExercicio: "2026",
-        validadoAdmin: false
-      }
-    ];
+    return [];
   });
 
   const [obrasExtra, setObrasExtra] = useState<ObraExtraordinaria[]>(() => {
     const saved = localStorage.getItem(`obras_extra_${predio.id_predio}`);
     if (saved) return JSON.parse(saved);
-    return [
-      {
-        id: "obr-1",
-        descricao: "Pintura Geral e Impermeabilização da Fachada Exterior",
-        fornecedorId: fornecedores[0]?.id_fornecedor || "forn-1",
-        fornecedorNome: fornecedores[0]?.nome || "Pinturas do Norte, Lda.",
-        dataInicio: "2026-09-10",
-        dataFim: "2026-11-15",
-        custoTotal: 12500,
-        necessitaCotaExtra: true,
-        mesesFracionamento: 12,
-        valoresPorFracao: {},
-        impactoFundoReserva: 2500,
-        impactoSaldoAnual: -10000,
-        estado: "Planeada",
-        orcamentos: ["Orcamento_Pintura_Fachada_V1.pdf", "Orcamento_Pintura_Fachada_V2.pdf"],
-        documentosArquivados: false
-      }
-    ];
+    return [];
   });
 
   // Persist states

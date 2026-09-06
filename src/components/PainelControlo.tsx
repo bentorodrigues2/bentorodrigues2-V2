@@ -35,9 +35,9 @@ export function PainelControlo({
 }: PainelControloProps) {
 
   // Global list references derived from props
-  const predioFracoes = fracoes.filter(f => f.id_predio === predio.id_predio);
-  const predioMovements = movements.filter(m => m.id_predio === predio.id_predio);
-  const predioAvisos = avisos.filter(a => a.id_predio === predio.id_predio);
+  const predioFracoes = fracoes.filter(f => f.id_predio === predio?.id_predio);
+  const predioMovements = movements.filter(m => m.id_predio === predio?.id_predio);
+  const predioAvisos = avisos.filter(a => a.id_predio === predio?.id_predio);
 
   // Calculate dynamic stats
   const totalFundoReserva = predioMovements

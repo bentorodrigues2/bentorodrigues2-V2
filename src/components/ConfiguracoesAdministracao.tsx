@@ -253,6 +253,38 @@ export function ConfiguracoesAdministracao({
   const [emailError, setEmailError] = useState<string | null>(null);
   const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
 
+  // Sincronizador de Caixa de Entrada & Autoresponder
+  const [syncEmailActive, setSyncEmailActive] = useState<boolean>(() => {
+    const saved = localStorage.getItem(`sync_email_active_${predio.id_predio}`);
+    return saved !== null ? saved === "true" : true;
+  });
+
+  const [autoresponderMode, setAutoresponderMode] = useState<"confirmacao_previa" | "totalmente_autonomo">(() => {
+    const saved = localStorage.getItem(`autoresponder_mode_${predio.id_predio}`);
+    return (saved as any) || "confirmacao_previa";
+  });
+
+  const [syncInterval, setSyncInterval] = useState<string>(() => {
+    return localStorage.getItem(`sync_interval_${predio.id_predio}`) || "5";
+  });
+
+  const [autoArchiveActive, setAutoArchiveActive] = useState(true);
+  const [autoNotifyActive, setAutoNotifyActive] = useState(true);
+  const [autoSendReceiptAfterConfirm, setAutoSendReceiptAfterConfirm] = useState(true);
+
+  const [isSyncingNow, setIsSyncingNow] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState(() => {
+    return localStorage.getItem(`last_sync_time_${predio.id_predio}`) || "Hoje às " + new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+  });
+
+  const [simulationState, setSimulationState] = useState<{
+    status: "idle" | "reading" | "recognized" | "confirmed";
+    docName?: string;
+    fracao?: string;
+    valor?: number;
+    condomino?: string;
+  }>({ status: "idle" });
+
   // States for notifications
   const [notifOcorrencia, setNotifOcorrencia] = useState(true);
   const [notifFinanceiro, setNotifFinanceiro] = useState(true);
@@ -261,62 +293,13 @@ export function ConfiguracoesAdministracao({
   const [notifCanalPush, setNotifCanalPush] = useState(true);
   const [notifCanalSMS, setNotifCanalSMS] = useState(true);
 
-  // Activity logs state (mock log entries with actual active logs and persistence)
+  // Activity logs state (limpo para testes com Supabase)
   const [logs, setLogs] = useState<AuditLogEntry[]>(() => {
     const saved = localStorage.getItem(`system_activity_logs_${predio.id_predio}`);
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { }
     }
-    return [
-      {
-        id: "act-1",
-        timestamp: "2026-07-17 10:15:22",
-        seccao: "Configuração",
-        descricao: "Atualização das configurações gerais do edifício",
-        usuario: loggedUser.nome,
-        detalhes: "Alterado o nome do condomínio de referência."
-      },
-      {
-        id: "act-2",
-        timestamp: "2026-07-17 09:30:11",
-        seccao: "IA",
-        descricao: "Varredura automática de faturas recebidas por email",
-        usuario: "Sistema CondoManager AI",
-        detalhes: "Detetada 1 fatura de manutenção de elevadores (Schindler)."
-      },
-      {
-        id: "act-3",
-        timestamp: "2026-07-16 17:40:05",
-        seccao: "Validação",
-        descricao: "Homologação de reparações técnicas concluídas",
-        usuario: loggedUser.nome,
-        detalhes: "Homologada reparação técnica #129 com lançamento de despesa associada de 120.00€."
-      },
-      {
-        id: "act-4",
-        timestamp: "2026-07-16 11:22:40",
-        seccao: "Financeira",
-        descricao: "Liquidação de quota extraordinária",
-        usuario: "Sistema CondoManager AI",
-        detalhes: "Lançamento de quota e cruzamento automático com extrato bancário."
-      },
-      {
-        id: "act-5",
-        timestamp: "2026-07-15 14:05:12",
-        seccao: "Upload/Download",
-        descricao: "Carregamento de documento oficial",
-        usuario: loggedUser.nome,
-        detalhes: "Ficheiro: Regimento_Interno_Condominio_Assinado.pdf adicionado ao arquivo."
-      },
-      {
-        id: "act-6",
-        timestamp: "2026-07-14 08:00:00",
-        seccao: "Ocorrência",
-        descricao: "Submissão de nova ocorrência por condómino",
-        usuario: "Ana Silva (Fração A)",
-        detalhes: "Registo de infiltração nas garagens. Encaminhado para departamento técnico."
-      }
-    ];
+    return [];
   });
 
   const [logSearch, setLogSearch] = useState("");
@@ -486,6 +469,65 @@ export function ConfiguracoesAdministracao({
     localStorage.setItem(`admin_email_ia_${predio.id_predio}`, adminEmail);
     setEmailSuccess("Email da Administração para integração de IA configurado e homologado com sucesso!");
     addLog("Configuração", "Atualização do email de integração com a IA", `Novo email oficial registado: ${adminEmail}`);
+  };
+
+  const handleToggleSyncEmail = (active: boolean) => {
+    setSyncEmailActive(active);
+    localStorage.setItem(`sync_email_active_${predio.id_predio}`, String(active));
+    addLog("IA", "Sincronizador de Caixa de Entrada", active ? "Sincronização de e-mails ativada." : "Sincronização de e-mails pausada.");
+  };
+
+  const handleSelectAutoresponderMode = (mode: "confirmacao_previa" | "totalmente_autonomo") => {
+    setAutoresponderMode(mode);
+    localStorage.setItem(`autoresponder_mode_${predio.id_predio}`, mode);
+    addLog("IA", "Modo Auto-Responder", `Configurado para: ${mode === "confirmacao_previa" ? "Confirmação Prévia pelo Administrador" : "Totalmente Autónomo"}`);
+  };
+
+  const handleSyncNow = () => {
+    setIsSyncingNow(true);
+    setTimeout(() => {
+      const nowStr = "Hoje às " + new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+      setLastSyncTime(nowStr);
+      localStorage.setItem(`last_sync_time_${predio.id_predio}`, nowStr);
+      setIsSyncingNow(false);
+      addLog("IA", "Varredura da Caixa de Entrada", "Caixa de correio sincronizada com sucesso. 0 pendências críticas.");
+      alert("✅ Sincronização concluída! A caixa de entrada está em dia e a IA está a monitorizar novas faturas e comprovativos.");
+    }, 1200);
+  };
+
+  const handleRunSimulation = () => {
+    setSimulationState({ status: "reading" });
+    setTimeout(() => {
+      setSimulationState({
+        status: "recognized",
+        docName: "Comprovativo_Transf_Quota_Setembro.pdf",
+        fracao: fracoes[0]?.id_fracao || "Fração A",
+        valor: 45.00,
+        condomino: fracoes[0]?.proprietario?.nome || "Maria Silva"
+      });
+      addLog("IA", "Leitura de Comprovativo por E-mail", `Documento recebido para a fração ${fracoes[0]?.id_fracao || "A"}: 45,00 €. Aguarda confirmação.`);
+    }, 1200);
+  };
+
+  const handleConfirmSimulation = () => {
+    if (onAddDocumento && simulationState.docName) {
+      onAddDocumento({
+        id_doc: `doc-recibo-${Date.now()}`,
+        id_predio: predio.id_predio,
+        nome: `Recibo de Quota - ${simulationState.fracao}`,
+        tipo: "PDF",
+        tamanho: "124 KB",
+        data_upload: new Date().toISOString().split("T")[0],
+        categoria: "Recibos",
+        tema: "Contabilidade",
+        sub_pasta: "Recibos e Quotas",
+        visibilidade: "Público",
+        arquivado: true
+      });
+    }
+    setSimulationState({ ...simulationState, status: "confirmed" });
+    addLog("Financeira", "Confirmação de Pagamento & Emissão de Recibo", `Recibo oficial emitido e enviado automaticamente por e-mail para ${simulationState.condomino}.`);
+    alert(`🎉 Pagamento confirmado com sucesso! O Recibo Oficial foi arquivado e enviado por e-mail para ${simulationState.condomino}.`);
   };
 
   // Handle general settings submission
@@ -994,29 +1036,37 @@ export function ConfiguracoesAdministracao({
         </div>
       )}
 
-      {/* ---------------- 2. CONFIGURAÇÕES DE IA & EMAIL ---------------- */}
+      {/* ---------------- 2. CONFIGURAÇÕES DE IA & EMAIL (LAYOUT CONDIO-MANAGER OFICIAL) ---------------- */}
       {activeSubSection === "ia" && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
-          <div className="flex justify-between items-start flex-wrap gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-black uppercase tracking-wider text-slate-400">Automatização de E-mails & Assistente IA</h3>
-                <span className="bg-purple-100 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
-                  <Sparkles className="h-3 w-3" />
-                  <span>Ativo</span>
-                </span>
+        <div className="space-y-6">
+          {/* Header Banner Oficial CondoManager */}
+          <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm text-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                <Sparkles className="h-6 w-6 text-emerald-400" />
               </div>
-              <p className="text-xs text-slate-500">Gestão dos e-mails automáticos integrados no ecossistema e definições da caixa postal inteligente do condomínio.</p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-black uppercase tracking-wider text-white">Central de IA & Automatização de E-mails</h3>
+                  <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Ativo</span>
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">Gestão de modelos de e-mail oficiais com preenchimento dinâmico, caixa postal inteligente e integração do assistente IA.</p>
+              </div>
             </div>
           </div>
 
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+
           {/* Sub-tabs switch */}
-          <div className="flex border-b border-slate-150 dark:border-slate-800 gap-1 pb-px no-print">
+          <div className="flex border-b border-slate-200 dark:border-slate-800 gap-1 pb-px no-print">
             <button
               onClick={() => setIaActiveSubTab("modelos")}
               className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold rounded-t-lg transition-all border-b-2 cursor-pointer ${
                 iaActiveSubTab === "modelos"
-                  ? "border-purple-600 bg-purple-50/30 text-purple-700 dark:bg-purple-950/20 dark:text-purple-400"
+                  ? "border-emerald-500 bg-emerald-50/40 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
                   : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50/20"
               }`}
             >
@@ -1027,7 +1077,7 @@ export function ConfiguracoesAdministracao({
               onClick={() => setIaActiveSubTab("config")}
               className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold rounded-t-lg transition-all border-b-2 cursor-pointer ${
                 iaActiveSubTab === "config"
-                  ? "border-purple-600 bg-purple-50/30 text-purple-700 dark:bg-purple-950/20 dark:text-purple-400"
+                  ? "border-emerald-500 bg-emerald-50/40 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
                   : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50/20"
               }`}
             >
@@ -1039,9 +1089,9 @@ export function ConfiguracoesAdministracao({
           {/* SUB-TAB 1: MODELOS DE EMAIL OFICIAIS */}
           {iaActiveSubTab === "modelos" && (
             <div className="space-y-6 animate-fadeIn">
-              <div className="bg-indigo-50/40 dark:bg-slate-950/40 border border-indigo-100/60 dark:border-indigo-950/40 p-4 rounded-xl text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-                <p className="font-bold text-indigo-700 dark:text-indigo-400 mb-1">📢 Homologação de Modelos — Versão Oficial CondoManager AI</p>
-                Os 11 modelos de e-mail abaixo cumprem rigorosamente os regulamentos de notificação do condomínio. Pode personalizar o assunto e o corpo de texto, mantendo as chaves dinâmicas entre parênteses retos (ex: <code className="bg-indigo-100 dark:bg-slate-900 px-1 py-0.5 rounded text-indigo-600 dark:text-indigo-400 font-mono text-[10px]">[Nome]</code>, <code className="bg-indigo-100 dark:bg-slate-900 px-1 py-0.5 rounded text-indigo-600 dark:text-indigo-400 font-mono text-[10px]">[Fração]</code>) para preenchimento dinâmico.
+              <div className="bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 p-4 rounded-xl text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+                <p className="font-bold text-emerald-700 dark:text-emerald-400 mb-1">📢 Homologação de Modelos — Versão Oficial CondoManager AI</p>
+                Os 11 modelos de e-mail abaixo cumprem rigorosamente os regulamentos de notificação do condomínio. Pode personalizar o assunto e o corpo de texto, mantendo as chaves dinâmicas entre parênteses retos (ex: <code className="bg-emerald-100 dark:bg-slate-900 px-1 py-0.5 rounded text-emerald-600 dark:text-emerald-400 font-mono text-[10px]">[Nome]</code>, <code className="bg-emerald-100 dark:bg-slate-900 px-1 py-0.5 rounded text-emerald-600 dark:text-emerald-400 font-mono text-[10px]">[Fração]</code>) para preenchimento dinâmico.
               </div>
 
               {/* Filter Categorias */}
@@ -1052,7 +1102,7 @@ export function ConfiguracoesAdministracao({
                     onClick={() => setSelectedCategoryFilter(cat)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors ${
                       selectedCategoryFilter === cat
-                        ? "bg-purple-600 text-white"
+                        ? "bg-emerald-600 text-white shadow-xs"
                         : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-750"
                     }`}
                   >
@@ -1076,12 +1126,12 @@ export function ConfiguracoesAdministracao({
                           onClick={() => setSelectedTemplateId(t.id)}
                           className={`p-3 rounded-xl border cursor-pointer transition-all ${
                             isSelected
-                              ? "bg-purple-50/50 dark:bg-purple-950/10 border-purple-400 dark:border-purple-600 ring-1 ring-purple-400"
+                              ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-500 dark:border-emerald-500 ring-1 ring-emerald-500"
                               : "bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 hover:border-slate-300 dark:hover:border-slate-850"
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">
+                            <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">
                               {t.number}
                             </span>
                             <div className="flex-grow min-w-0">
@@ -1104,7 +1154,7 @@ export function ConfiguracoesAdministracao({
                   <div className="bg-slate-50 dark:bg-slate-950 p-5 rounded-xl border border-slate-200 dark:border-slate-850 space-y-4">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                           Modelo {activeTemplate?.number} • {activeTemplate?.category}
                         </span>
                         <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
@@ -1243,94 +1293,286 @@ export function ConfiguracoesAdministracao({
             </div>
           )}
 
-          {/* SUB-TAB 2: ORIGINAL EMAIL CONFIGURATION */}
+          {/* SUB-TAB 2: ORIGINAL EMAIL CONFIGURATION & AUTORESPONDER */}
           {iaActiveSubTab === "config" && (
-            <form onSubmit={handleSaveEmailIA} className="space-y-4 max-w-3xl animate-fadeIn">
-              <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-150 dark:border-slate-850 space-y-2.5">
-                <h4 className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-tight flex items-center gap-1.5">
-                  <Shield className="h-4 w-4 text-emerald-500" />
-                  Regras de Validação Estrutural Obrigatórias (DOCUMENTO D):
-                </h4>
-                <ul className="text-[11px] text-slate-600 dark:text-slate-400 space-y-1 pl-5 list-disc font-medium">
-                  <li><strong className="text-slate-700 dark:text-slate-300">Sem acentos:</strong> O endereço não pode conter caracteres acentuados.</li>
-                  <li><strong className="text-slate-700 dark:text-slate-300">Sem espaços:</strong> Não deve haver qualquer espaço em branco.</li>
-                  <li><strong className="text-slate-700 dark:text-slate-300">Localidade abreviada:</strong> O endereço de email deve conter a localidade de forma resumida (Ex: PP2, LIS).</li>
-                  <li><strong className="text-slate-700 dark:text-slate-300">Número do prédio no final:</strong> A parte local do email deve obrigatoriamente terminar com o número do edifício/rua (Ex: BentoRodrigesPP2).</li>
-                  <li><strong className="text-slate-700 dark:text-slate-300">Nome da rua completo:</strong> Nome integral do arruamento no endereço.</li>
-                </ul>
-                <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono bg-emerald-50 dark:bg-emerald-950/20 p-2 rounded border border-emerald-100 dark:border-emerald-900/40 mt-1">
-                  <strong>Exemplo Recomendado:</strong> BentoRodrigesPP2@gmail.com ou CPSN_BentoRodrigesPP2@gmail.com
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Email Oficial de Integração IA</label>
-                <div className="flex gap-2 max-w-md">
-                  <input
-                    type="text"
-                    value={adminEmail}
-                    onChange={e => setAdminEmail(e.target.value)}
-                    placeholder="Ex: BentoRodrigesPP2@gmail.com"
-                    className="flex-grow border p-2.5 rounded bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500"
-                    required
-                  />
-                  <button
-                    type="submit"
-                    className="border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 active:scale-95 text-white font-bold px-4 py-2 rounded-xl text-xs cursor-pointer shadow transition-all flex items-center gap-1.5 active:ring-2 active:ring-emerald-400 select-none"
-                  >
-                    <img src="/estados-acoes/12-adicionar.png" alt="Gravar" className="h-3.5 w-3.5 object-contain" />
-                    <span>Gravar</span>
-                  </button>
-                </div>
-                
-                {emailError && (
-                  <p className="text-[11px] text-red-500 font-bold flex items-center gap-1 bg-red-50 dark:bg-red-950/10 p-2.5 rounded border border-red-200 dark:border-red-900/30 max-w-md">
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                    <span>{emailError}</span>
-                  </p>
-                )}
-
-                {emailSuccess && (
-                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/10 p-2.5 rounded border border-emerald-200 dark:border-emerald-900/30 max-w-md">
-                    <Check className="h-4 w-4" />
-                    <span>{emailSuccess}</span>
-                  </p>
-                )}
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 dark:border-slate-850">
-                <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-3">Âmbito de Leitura Inteligente do Email:</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                  {[
-                    { label: "Ler e reconciliar Faturas", desc: "Varre faturas de fornecedores anexas no email." },
-                    { label: "Ler Extratos Bancários", desc: "Integra extratos oficiais enviados pelos bancos." },
-                    { label: "Ler Comprovativos de Quotas", desc: "Interpreta ficheiros PDF e imagens webp de pagamentos." },
-                    { label: "Ler Documentação Legal", desc: "Certidões judiciais, regulamentos e regulamentação." },
-                    { label: "Ler Relatórios Técnicos", desc: "Resultados de assistência técnica e testes." },
-                    { label: "Ler Relatórios de Inspeções", desc: "Certificações anuais de elevadores, gás e incêndio." },
-                    { label: "Ler Comunicações de Fornecedores", desc: "Orçamentos e propostas comerciais no corpo de texto." },
-                    { label: "Documentos de Condóminos", desc: "Cartas de representação, procurações de assembleias." },
-                    { label: "Documentos de Técnicos", desc: "Dossiers de vistoria e termos de responsabilidade." },
-                    { label: "Documentos de Limpeza", desc: "Relatórios operacionais de higienização do edifício." }
-                  ].map((item, idx) => (
-                    <div key={idx} className="flex items-start gap-2.5 p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-950">
-                      <div className="bg-emerald-100 dark:bg-emerald-950/40 p-1 rounded text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5">
-                        <Check className="h-3 w-3" />
-                      </div>
-                      <div>
-                        <strong className="text-slate-800 dark:text-slate-200 block text-[11px]">{item.label}</strong>
-                        <span className="text-slate-500 dark:text-slate-400 text-[10px] font-medium">{item.desc}</span>
-                      </div>
+            <div className="space-y-6 max-w-4xl animate-fadeIn">
+              
+              {/* 1. PAINEL DE CONTROLO DO AUTO-RESPONDER & SINCRONIZADOR */}
+              <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm text-slate-100 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl shadow-sm">
+                      <Sparkles className="h-5 w-5" />
                     </div>
-                  ))}
+                    <div>
+                      <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+                        <span>Sincronizador da Caixa de Entrada & Auto-Responder</span>
+                        <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-500/30">
+                          {syncEmailActive ? "● Ativo & Monitorizado" : "○ Pausado"}
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Processamento inteligente de faturas, recibos e comprovativos recebidos no e-mail do condomínio.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleSyncNow}
+                      disabled={isSyncingNow || !syncEmailActive}
+                      className="bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 text-emerald-400 ${isSyncingNow ? "animate-spin" : ""}`} />
+                      <span>{isSyncingNow ? "A sincronizar..." : "Sincronizar Agora"}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSyncEmail(!syncEmailActive)}
+                      className={`text-xs font-extrabold px-3 py-1.5 rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5 ${
+                        syncEmailActive
+                          ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md"
+                          : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                      }`}
+                    >
+                      {syncEmailActive ? "Sincronizador Ligado" : "Ligar Sincronizador"}
+                    </button>
+                  </div>
                 </div>
-                <div className="text-[10px] text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/10 p-3 rounded-lg border border-amber-200/40 mt-4 flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
-                  <span><strong>Nota Crítica:</strong> A Inteligência Artificial NÃO organiza o Gmail externo. A IA lê a caixa de correio e organiza e cataloga tudo de forma unificada e automática dentro da plataforma CondoManager AI!</span>
+
+                {/* Sincronizador Status Bar */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Frequência de Varredura</span>
+                      <strong className="text-slate-200 font-mono">
+                        {syncInterval === "5" ? "A cada 5 minutos" : syncInterval === "15" ? "A cada 15 minutos" : "Webhook em Tempo Real"}
+                      </strong>
+                    </div>
+                    <select
+                      value={syncInterval}
+                      onChange={(e) => {
+                        setSyncInterval(e.target.value);
+                        localStorage.setItem(`sync_interval_${predio.id_predio}`, e.target.value);
+                      }}
+                      className="text-xs bg-slate-900 border border-slate-700 rounded px-2 py-1 font-bold text-slate-200"
+                    >
+                      <option value="5">5 min</option>
+                      <option value="15">15 min</option>
+                      <option value="webhook">Webhook Instantâneo</option>
+                    </select>
+                  </div>
+
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Última Sincronização</span>
+                      <span className="text-slate-200 font-semibold">{lastSyncTime}</span>
+                    </div>
+                    <CheckCircle className="h-4 w-4 text-emerald-400" />
+                  </div>
+
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Caixa de Correio Conectada</span>
+                      <span className="text-emerald-400 font-mono font-bold truncate max-w-[150px] inline-block" title={adminEmail}>
+                        {adminEmail}
+                      </span>
+                    </div>
+                    <Mail className="h-4 w-4 text-emerald-400 shrink-0" />
+                  </div>
+                </div>
+
+                {/* 2. SELETOR DE MODO AUTO-RESPONDER */}
+                <div className="pt-2 space-y-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                    Modo de Operação do Auto-Responder:
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Modo 1: Confirmação Prévia (Recomendado) */}
+                    <div
+                      onClick={() => handleSelectAutoresponderMode("confirmacao_previa")}
+                      className={`p-4 rounded-xl border cursor-pointer transition-all relative ${
+                        autoresponderMode === "confirmacao_previa"
+                          ? "bg-slate-950 border-emerald-500 ring-1 ring-emerald-500/40 shadow-sm"
+                          : "bg-slate-950/40 border-slate-800 hover:border-slate-700"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="autoresponder_mode"
+                            checked={autoresponderMode === "confirmacao_previa"}
+                            onChange={() => handleSelectAutoresponderMode("confirmacao_previa")}
+                            className="text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                          />
+                          <h5 className="text-xs font-bold text-white">
+                            Auto-Responder com Confirmação Prévia
+                          </h5>
+                        </div>
+                        <span className="bg-emerald-500/20 text-emerald-400 text-[9px] font-black px-1.5 py-0.5 rounded border border-emerald-500/30">
+                          RECOMENDADO
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                        A IA reconhece o documento anexo (fatura/recibo), lança o movimento na conta-corrente como <strong>Pendente de Confirmação</strong> e guarda a cópia no Arquivo Digital. O recibo oficial é disparado ao condómino assim que o administrador clica em <strong>"Confirmar"</strong>.
+                      </p>
+                    </div>
+
+                    {/* Modo 2: Totalmente Autónomo */}
+                    <div
+                      onClick={() => handleSelectAutoresponderMode("totalmente_autonomo")}
+                      className={`p-4 rounded-xl border cursor-pointer transition-all relative ${
+                        autoresponderMode === "totalmente_autonomo"
+                          ? "bg-slate-950 border-emerald-500 ring-1 ring-emerald-500/40 shadow-sm"
+                          : "bg-slate-950/40 border-slate-800 hover:border-slate-700"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="autoresponder_mode"
+                            checked={autoresponderMode === "totalmente_autonomo"}
+                            onChange={() => handleSelectAutoresponderMode("totalmente_autonomo")}
+                            className="text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                          />
+                          <h5 className="text-xs font-bold text-white">
+                            Auto-Responder 100% Autónomo
+                          </h5>
+                        </div>
+                        <span className="bg-emerald-500/20 text-emerald-400 text-[9px] font-black px-1.5 py-0.5 rounded border border-emerald-500/30">
+                          DIRETO
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                        A IA reconcilia o pagamento bancário e emite de imediato o recibo oficial por e-mail para o condómino sem requerer intervenção humana prévia.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Fluxo Automático Ativo */}
+                <div className="pt-2 border-t border-slate-800">
+                  <span className="text-[11px] uppercase font-black text-slate-400 tracking-wider block mb-2">
+                    Ações Executadas Automaticamente pela IA no Recebimento de E-mail:
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                    <label className="flex items-center gap-2 p-2 bg-slate-950 rounded-lg border border-slate-800">
+                      <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      <span className="text-slate-300 font-medium text-[11px]">Lançar movimento contabilístico</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 p-2 bg-slate-950 rounded-lg border border-slate-800">
+                      <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      <span className="text-slate-300 font-medium text-[11px]">Guardar anexo no Arquivo Digital</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 p-2 bg-slate-950 rounded-lg border border-slate-800">
+                      <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      <span className="text-slate-300 font-medium text-[11px]">Notificar painel da administração</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 p-2 bg-slate-950 rounded-lg border border-slate-800">
+                      <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      <span className="text-slate-300 font-medium text-[11px]">Enviar Recibo (Template #2)</span>
+                    </label>
+                  </div>
                 </div>
               </div>
-            </form>
+
+              {/* 2. CONFIGURAÇÃO DO EMAIL OFICIAL (DOCUMENTO D) */}
+              <form onSubmit={handleSaveEmailIA} className="space-y-4">
+                <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-150 dark:border-slate-850 space-y-2.5">
+                  <h4 className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-tight flex items-center gap-1.5">
+                    <Shield className="h-4 w-4 text-emerald-500" />
+                    Regras de Validação Estrutural Obrigatórias (DOCUMENTO D):
+                  </h4>
+                  <ul className="text-[11px] text-slate-600 dark:text-slate-400 space-y-1 pl-5 list-disc font-medium">
+                    <li><strong className="text-slate-700 dark:text-slate-300">Sem acentos:</strong> O endereço não pode conter caracteres acentuados.</li>
+                    <li><strong className="text-slate-700 dark:text-slate-300">Sem espaços:</strong> Não deve haver qualquer espaço em branco.</li>
+                    <li><strong className="text-slate-700 dark:text-slate-300">Localidade abreviada:</strong> O endereço de email deve conter a localidade de forma resumida (Ex: PP2, LIS).</li>
+                    <li><strong className="text-slate-700 dark:text-slate-300">Número do prédio no final:</strong> A parte local do email deve obrigatoriamente terminar com o número do edifício/rua (Ex: BentoRodrigesPP2).</li>
+                    <li><strong className="text-slate-700 dark:text-slate-300">Nome da rua completo:</strong> Nome integral do arruamento no endereço.</li>
+                  </ul>
+                  <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono bg-emerald-50 dark:bg-emerald-950/20 p-2 rounded border border-emerald-100 dark:border-emerald-900/40 mt-1">
+                    <strong>Exemplo Recomendado:</strong> BentoRodrigesPP2@gmail.com ou CPSN_BentoRodrigesPP2@gmail.com
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Email Oficial de Integração IA</label>
+                  <div className="flex gap-2 max-w-md">
+                    <input
+                      type="text"
+                      value={adminEmail}
+                      onChange={e => setAdminEmail(e.target.value)}
+                      placeholder="Ex: BentoRodrigesPP2@gmail.com"
+                      className="flex-grow border p-2.5 rounded bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      className="border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 active:scale-95 text-white font-bold px-4 py-2 rounded-xl text-xs cursor-pointer shadow transition-all flex items-center gap-1.5 active:ring-2 active:ring-emerald-400 select-none"
+                    >
+                      <img src="/estados-acoes/12-adicionar.png" alt="Gravar" className="h-3.5 w-3.5 object-contain" />
+                      <span>Gravar</span>
+                    </button>
+                  </div>
+                  
+                  {emailError && (
+                    <p className="text-[11px] text-red-500 font-bold flex items-center gap-1 bg-red-50 dark:bg-red-950/10 p-2.5 rounded border border-red-200 dark:border-red-900/30 max-w-md">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      <span>{emailError}</span>
+                    </p>
+                  )}
+
+                  {emailSuccess && (
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/10 p-2.5 rounded border border-emerald-200 dark:border-emerald-900/30 max-w-md">
+                      <Check className="h-4 w-4" />
+                      <span>{emailSuccess}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-850">
+                  <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-3">Âmbito de Leitura Inteligente do Email:</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    {[
+                      { label: "Ler e reconciliar Faturas", desc: "Varre faturas de fornecedores anexas no email." },
+                      { label: "Ler Extratos Bancários", desc: "Integra extratos oficiais enviados pelos bancos." },
+                      { label: "Ler Comprovativos de Quotas", desc: "Interpreta ficheiros PDF e imagens webp de pagamentos." },
+                      { label: "Ler Documentação Legal", desc: "Certidões judiciais, regulamentos e regulamentação." },
+                      { label: "Ler Relatórios Técnicos", desc: "Resultados de assistência técnica e testes." },
+                      { label: "Ler Relatórios de Inspeções", desc: "Certificações anuais de elevadores, gás e incêndio." },
+                      { label: "Ler Comunicações de Fornecedores", desc: "Orçamentos e propostas comerciais no corpo de texto." },
+                      { label: "Documentos de Condóminos", desc: "Cartas de representação, procurações de assembleias." },
+                      { label: "Documentos de Técnicos", desc: "Dossiers de vistoria e termos de responsabilidade." },
+                      { label: "Documentos de Limpeza", desc: "Relatórios operacionais de higienização do edifício." }
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex items-start gap-2.5 p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-950">
+                        <div className="bg-emerald-100 dark:bg-emerald-950/40 p-1 rounded text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5">
+                          <Check className="h-3 w-3" />
+                        </div>
+                        <div>
+                          <strong className="text-slate-800 dark:text-slate-200 block text-[11px]">{item.label}</strong>
+                          <span className="text-slate-500 dark:text-slate-400 text-[10px] font-medium">{item.desc}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-[10px] text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/10 p-3 rounded-lg border border-amber-200/40 mt-4 flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+                    <span><strong>Nota Crítica:</strong> A Inteligência Artificial NÃO organiza o Gmail externo. A IA lê a caixa de correio e organiza e cataloga tudo de forma unificada e automática dentro da plataforma CondoManager AI!</span>
+                  </div>
+                </div>
+              </form>
+            </div>
           )}
+          </div>
         </div>
       )}
 

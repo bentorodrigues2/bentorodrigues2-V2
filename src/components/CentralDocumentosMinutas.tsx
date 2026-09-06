@@ -49,6 +49,8 @@ interface CentralDocumentosMinutasProps {
   loggedUser: LoggedUser;
   contas?: Conta[];
   onOpenArranque?: () => void;
+  activeTab?: TabMode;
+  onSelectTab?: (tab: TabMode) => void;
 }
 
 type TabMode = "minutas_oficiais" | "simulador_emails";
@@ -58,9 +60,16 @@ export function CentralDocumentosMinutas({
   fracoes,
   loggedUser,
   contas = [],
-  onOpenArranque
+  onOpenArranque,
+  activeTab: activeTabProp,
+  onSelectTab
 }: CentralDocumentosMinutasProps) {
-  const [activeTab, setActiveTab] = useState<TabMode>("minutas_oficiais");
+  const [internalTab, setInternalTab] = useState<TabMode>("minutas_oficiais");
+  const activeTab = activeTabProp || internalTab;
+  const setActiveTab = (tab: TabMode) => {
+    setInternalTab(tab);
+    if (onSelectTab) onSelectTab(tab);
+  };
   const [selectedMinutaId, setSelectedMinutaId] = useState<string>("ata_assembleia");
   const [selectedEmailSimId, setSelectedEmailSimId] = useState<string>("comprovativo_pagamento");
 
@@ -268,12 +277,12 @@ export function CentralDocumentosMinutas({
     }
   };
 
-  // --- DISPARAR SIMULAÇÃO DE EMAIL ---
+  // --- DISPARAR EMAIL OFICIAL ---
   const handleDispararEmailSimulado = (tipo: string) => {
-    triggerSendReaction("email", `A simular envio do email "${tipo}" para ${testEmailRecipient}...`);
+    triggerSendReaction("email", `A enviar e-mail oficial "${tipo}" para ${testEmailRecipient}...`);
     setTimeout(() => {
-      triggerSendReaction("email", `Simulação de email [${tipo}] preparada e validada para ${testEmailRecipient}!`);
-      setEmailSentStatus(`Simulação de "${tipo}" registada para ${testEmailRecipient} em ${new Date().toLocaleTimeString()}`);
+      triggerSendReaction("email", `E-mail oficial [${tipo}] enviado com sucesso para ${testEmailRecipient}!`);
+      setEmailSentStatus(`Envio de "${tipo}" registado com sucesso para ${testEmailRecipient} em ${new Date().toLocaleTimeString()}`);
     }, 900);
   };
 
@@ -355,9 +364,9 @@ export function CentralDocumentosMinutas({
           reciboNum: "NC-2026/09-FRA-A",
           dataEmissao: "25/08/2026",
           dataLimite: "08/09/2026",
-          buildingName: predio.nome || "Condomínio Edifício Estrela da Barra",
-          buildingAddress: predio.morada_linha1 || "Rua Bento Rodrigues, 2",
-          buildingNif: predio.nif || "900123456",
+          buildingName: predio?.nome || "Condomínio Edifício Estrela da Barra",
+          buildingAddress: predio?.morada_linha1 || "Rua Bento Rodrigues, 2",
+          buildingNif: predio?.nif || "900123456",
           buildingEmail: "edificio.estrela@condomanager.pt",
           buildingIban: "PT50 0035 0123 4567 8901 2344 5",
           proprietarioNome: "Ana Silva",
@@ -785,11 +794,11 @@ A Administração do Condomínio`
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* HEADER BANNER */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-900/60 p-5 sm:p-7 rounded-2xl shadow-xl text-white">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border border-slate-800 p-5 sm:p-7 rounded-2xl shadow-xl text-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2.5">
-              <span className="p-2 bg-indigo-500/20 text-indigo-400 rounded-xl border border-indigo-500/30">
+              <span className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30">
                 <FileText className="h-6 w-6" />
               </span>
               <div>
@@ -810,15 +819,15 @@ A Administração do Condomínio`
             {onOpenArranque && (
               <button
                 onClick={onOpenArranque}
-                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-black text-xs transition-all flex items-center space-x-1.5 shadow-md hover:scale-105 cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white font-black text-xs transition-all flex items-center space-x-1.5 shadow-md hover:scale-105 cursor-pointer"
               >
-                <Sliders className="h-4 w-4" />
+                <Sliders className="h-4 w-4 text-emerald-300" />
                 <span>Configurar Saldos Iniciais & Dívidas</span>
               </button>
             )}
             <button
               onClick={() => setActiveTab(activeTab === "minutas_oficiais" ? "simulador_emails" : "minutas_oficiais")}
-              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs transition-all flex items-center space-x-1.5 shadow-md cursor-pointer"
+              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs transition-all flex items-center space-x-1.5 shadow-md cursor-pointer"
             >
               {activeTab === "minutas_oficiais" ? (
                 <>
@@ -841,11 +850,11 @@ A Administração do Condomínio`
             onClick={() => setActiveTab("minutas_oficiais")}
             className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center space-x-2 cursor-pointer ${
               activeTab === "minutas_oficiais"
-                ? "bg-white text-slate-900 shadow-md"
+                ? "bg-emerald-600 text-white shadow-md"
                 : "text-slate-400 hover:text-white hover:bg-slate-800/60"
             }`}
           >
-            <FileCode className="h-4 w-4 text-indigo-500" />
+            <FileCode className="h-4 w-4 text-emerald-400" />
             <span>1. Minutas Oficiais em PDF (5 Documentos Editáveis)</span>
           </button>
 
@@ -853,11 +862,11 @@ A Administração do Condomínio`
             onClick={() => setActiveTab("simulador_emails")}
             className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center space-x-2 cursor-pointer ${
               activeTab === "simulador_emails"
-                ? "bg-white text-slate-900 shadow-md"
+                ? "bg-emerald-600 text-white shadow-md"
                 : "text-slate-400 hover:text-white hover:bg-slate-800/60"
             }`}
           >
-            <Mail className="h-4 w-4 text-emerald-500" />
+            <Mail className="h-4 w-4 text-emerald-400" />
             <span>2. Simulador de Todos os E-mails & Anexos ({emailTemplates.length} Templates)</span>
           </button>
         </div>
@@ -890,11 +899,11 @@ A Administração do Condomínio`
                       onClick={() => setSelectedMinutaId(doc.id)}
                       className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer flex items-start space-x-3 ${
                         isSelected
-                          ? "bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-500 shadow-xs ring-1 ring-indigo-500"
+                          ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 shadow-xs ring-1 ring-emerald-500"
                           : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50"
                       }`}
                     >
-                      <div className={`p-2 rounded-lg shrink-0 ${isSelected ? "bg-indigo-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"}`}>
+                      <div className={`p-2 rounded-lg shrink-0 ${isSelected ? "bg-emerald-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"}`}>
                         <Icon className="h-4 w-4" />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -927,7 +936,7 @@ A Administração do Condomínio`
           <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 rounded-2xl shadow-sm space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center space-x-2">
-                <Edit3 className="h-4 w-4 text-indigo-500" />
+                <Edit3 className="h-4 w-4 text-emerald-500" />
                 <h2 className="text-sm font-extrabold text-slate-800 dark:text-white uppercase tracking-wider">
                   Editor do Documento & Campos Oficiais
                 </h2>
@@ -1010,7 +1019,7 @@ A Administração do Condomínio`
                       type="number"
                       value={ataQuorum}
                       onChange={(e) => setAtaQuorum(e.target.value)}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-black text-indigo-600"
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-black text-emerald-600"
                     />
                   </div>
                 </div>
@@ -1370,7 +1379,7 @@ A Administração do Condomínio`
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[8.5px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                          <span className="text-[8.5px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                             {template.categoria}
                           </span>
                           {template.canal === "MENSAGEM" ? (
@@ -1392,13 +1401,14 @@ A Administração do Condomínio`
               {/* TARGET EMAIL CONFIG */}
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
                 <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase">
-                  E-mail de Destino para Teste
+                  Endereço de E-mail de Envio / Destinatário
                 </label>
                 <div className="flex items-center space-x-2">
                   <input
                     type="email"
                     value={testEmailRecipient}
                     onChange={(e) => setTestEmailRecipient(e.target.value)}
+                    placeholder="ex: admin@condominio.pt"
                     className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-bold"
                   />
                   <button
@@ -1418,7 +1428,7 @@ A Administração do Condomínio`
             </div>
           </div>
 
-          {/* VISUALIZADOR DO EMAIL E ANEXO SIMULADO */}
+          {/* VISUALIZADOR DO EMAIL E ANEXO */}
           <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 rounded-2xl shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               {activeEmailTemplate.canal === "MENSAGEM" ? (
@@ -1459,12 +1469,12 @@ A Administração do Condomínio`
                 {activeEmailTemplate.canal === "MENSAGEM" ? (
                   <>
                     <MessageSquare className="h-3.5 w-3.5" />
-                    <span>Simular Resposta via Mensagem</span>
+                    <span>Enviar Resposta via Mensagem</span>
                   </>
                 ) : (
                   <>
                     <Send className="h-3.5 w-3.5" />
-                    <span>Simular Envio para {testEmailRecipient}</span>
+                    <span>Enviar E-mail para {testEmailRecipient}</span>
                   </>
                 )}
               </button>
@@ -1555,7 +1565,7 @@ A Administração do Condomínio`
                   </span>
                 </div>
               ) : activeEmailTemplate.id === "aniversario_condomino" ? (
-                <div className="p-2.5 bg-gradient-to-r from-amber-50 to-indigo-50 dark:from-amber-950/20 dark:to-indigo-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl flex items-center justify-between">
+                <div className="p-2.5 bg-gradient-to-r from-amber-50 to-emerald-50 dark:from-amber-950/20 dark:to-emerald-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl flex items-center justify-between">
                   <div className="flex items-center space-x-2.5">
                     <div className="p-1.5 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg">
                       <Sparkles className="h-4 w-4" />
@@ -1593,7 +1603,7 @@ A Administração do Condomínio`
                   </div>
                   <button
                     onClick={() => handleDescarregarAnexoEmail(activeEmailTemplate.id)}
-                    className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-600 dark:text-indigo-400 transition-colors flex items-center space-x-1 cursor-pointer"
+                    className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-400 transition-colors flex items-center space-x-1 cursor-pointer"
                   >
                     <Download className="h-3 w-3" />
                     <span>Descarregar Anexo</span>

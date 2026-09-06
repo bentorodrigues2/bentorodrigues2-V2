@@ -1058,7 +1058,13 @@ export function PWASimulator({
           </div>
 
           {/* SCREEN INTERIOR */}
-          <div className="w-full h-full bg-[#ece7e7] dark:bg-[#ece7e7] text-slate-800 rounded-[38px] overflow-hidden flex flex-col relative font-sans" style={{ backgroundColor: "#ece7e7" }}>
+          <div 
+            className={`w-full h-full pwa-screen rounded-[38px] overflow-hidden flex flex-col relative font-sans ${
+              theme === "dark" ? "bg-slate-950 text-white" : "bg-[#ece7e7] text-slate-800"
+            }`} 
+            data-pwa="true"
+            style={{ backgroundColor: theme === "dark" ? "#020617" : "#ece7e7" }}
+          >
             
             {/* PWA BACKGROUND IMAGE TEMPLATE (Adaptive to space, sits behind cards) */}
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.08] z-0 p-8 select-none transition-all duration-300">
@@ -1071,7 +1077,14 @@ export function PWASimulator({
             </div>
             
             {/* STATUS BAR */}
-            <div className="h-10 shrink-0 bg-[#ece7e7] dark:bg-[#ece7e7] px-6 flex items-center justify-between text-[11px] font-bold text-slate-800 z-30 pt-1 border-b border-slate-300/40">
+            <div 
+              className={`h-10 shrink-0 px-6 flex items-center justify-between text-[11px] font-bold z-30 pt-1 border-b ${
+                theme === "dark" 
+                  ? "bg-slate-950 text-white border-slate-800" 
+                  : "bg-[#ece7e7] text-slate-800 border-slate-300/40"
+              }`}
+              style={{ backgroundColor: theme === "dark" ? "#020617" : "#ece7e7" }}
+            >
               <span>{currentTime || "15:21"}</span>
               <div className="flex items-center space-x-1.5">
                 <Signal className="h-3 w-3" />
@@ -1152,7 +1165,12 @@ export function PWASimulator({
             </div>
 
             {/* PWA DYNAMIC CONTENT SCROLL */}
-            <div className="flex-grow overflow-y-auto px-4 py-4 space-y-4 relative z-10 bg-[#ece7e7]" style={{ backgroundColor: "#ece7e7" }}>
+            <div 
+              className={`flex-grow overflow-y-auto px-4 py-4 space-y-4 relative z-10 pwa-container ${
+                theme === "dark" ? "bg-slate-950 text-white" : "bg-[#ece7e7] text-slate-800"
+              }`} 
+              style={{ backgroundColor: theme === "dark" ? "#020617" : "#ece7e7" }}
+            >
               
               {/* --- BENTO CARD NAVIGATION FOR HOME TAB (ALL NON-USER ROLES) --- */}
               {activeTab === "home" && loggedUser.role !== "USER" && (
@@ -1472,6 +1490,7 @@ export function PWASimulator({
                   onLogout={() => setPwaIsLoggedOut(true)}
                   biometricsEnabled={biometricsEnabled}
                   setBiometricsEnabled={setBiometricsEnabled}
+                  theme={theme}
                 />
               )}
 
@@ -2403,11 +2422,20 @@ export function PWASimulator({
             {/* POPUP WINDOWS FOR ADMINISTRATIVE BENTO CARDS */}
                 {selectedPwaSubmenu && (
                   <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs z-40 flex items-end justify-center p-3 animate-fade-in">
-                    <div className="bg-white border border-slate-200 text-slate-800 rounded-2xl w-full max-h-[85%] flex flex-col shadow-2xl overflow-hidden" style={{ backgroundColor: "#ffffff" }}>
+                    <div 
+                      className={`border rounded-2xl w-full max-h-[85%] flex flex-col shadow-2xl overflow-hidden ${
+                        theme === "dark" ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-800"
+                      }`} 
+                      style={{ backgroundColor: theme === "dark" ? "#0f172a" : "#ffffff" }}
+                    >
                       {/* Header */}
-                      <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center shrink-0">
+                      <div className={`px-4 py-3 border-b flex justify-between items-center shrink-0 ${
+                        theme === "dark" ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-200"
+                      }`}>
                         <div className="flex items-center space-x-2">
-                          <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                          <span className={`text-xs font-black uppercase tracking-wider ${
+                            theme === "dark" ? "text-white" : "text-slate-800"
+                          }`}>
                             {selectedPwaSubmenu === "aprovacoes" ? "📝 Menu: Aprovações & Agenda" :
                              selectedPwaSubmenu === "ocorrencias" ? "🔧 Menu: Ocorrências" :
                              selectedPwaSubmenu === "comunicar" ? "📢 Menu: Comunicação & IA" :
@@ -2437,15 +2465,15 @@ export function PWASimulator({
                             setSelectedPwaSubmenu(null);
                             setActivePwaSubMenuDetails(null);
                           }}
-                          className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white font-bold text-xs cursor-pointer px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 transition-colors"
+                          className="text-slate-500 hover:text-slate-800 dark:text-white dark:hover:text-emerald-400 font-bold text-xs cursor-pointer px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 transition-colors"
                         >
                           ✕
                         </button>
                       </div>
 
                       {/* Content */}
-                      <div className="p-4 overflow-y-auto space-y-3.5 text-xs text-slate-700 dark:text-slate-300">
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                      <div className="p-4 overflow-y-auto space-y-3.5 text-xs text-slate-700 dark:text-white">
+                        <p className="text-[10px] text-slate-500 dark:text-white font-medium">
                           Selecione o sub-menu correspondente para abrir em janela pop-up:
                         </p>
 
@@ -2457,7 +2485,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/60 dark:hover:bg-slate-900/90 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2472,7 +2500,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2489,7 +2517,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2503,7 +2531,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2517,7 +2545,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2533,7 +2561,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2548,7 +2576,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-sky-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-sky-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2562,7 +2590,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2576,7 +2604,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2590,7 +2618,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2603,7 +2631,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2617,7 +2645,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2630,7 +2658,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2643,7 +2671,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2657,7 +2685,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2671,7 +2699,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2685,7 +2713,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2698,7 +2726,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2712,7 +2740,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2726,7 +2754,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2740,7 +2768,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2755,7 +2783,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2770,7 +2798,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2786,7 +2814,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>
@@ -2816,7 +2844,7 @@ export function PWASimulator({
                             <button
                               key={opt.id}
                               onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-slate-150 font-bold cursor-pointer"
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
                             >
                               <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
                               <span className="text-[10.5px]">{opt.label}</span>

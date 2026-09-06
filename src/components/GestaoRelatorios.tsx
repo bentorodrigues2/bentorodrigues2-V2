@@ -268,7 +268,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] font-black uppercase text-slate-700 tracking-wider block">Documento Oficial de Gestão</span>
-                    <span className="text-xs font-bold text-slate-800 block">Condomínio {predio.nome || predio.morada_linha1}</span>
+                    <span className="text-xs font-bold text-slate-800 block">Condomínio {predio?.nome || predio?.morada_linha1 || "Geral"}</span>
                   </div>
                 </div>
 
@@ -285,7 +285,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                   </div>
                   <h3 className="text-base font-extrabold text-slate-800 mt-2">{compiledReport.titulo}</h3>
                   <p className="text-[11px] text-slate-450 mt-1 flex items-center">
-                    <i className="fa-solid fa-building mr-1.5"></i>Condomínio: {predio.nome || predio.morada_linha1} | Emitido em: {compiledReport.dataEmissao}
+                    <i className="fa-solid fa-building mr-1.5"></i>Condomínio: {predio?.nome || predio?.morada_linha1 || "Geral"} | Emitido em: {compiledReport.dataEmissao}
                   </p>
                 </div>
                 <div className="flex space-x-2 no-print">

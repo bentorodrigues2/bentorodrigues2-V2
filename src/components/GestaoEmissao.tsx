@@ -166,9 +166,9 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
       movimentoQuotaMensal: `MOV-2026-QM-${avisoHash}`,
       movimentoFundoReserva: `MOV-2026-FR-${avisoHash}`,
       movimentoQuotaExtra: `MOV-2026-QE-${avisoHash}`,
-      buildingName: predio.nome,
-      buildingAddress: `${predio.morada_linha1} ${predio.num_porta}, ${predio.localidade}`,
-      buildingNif: predio.nif || "500000000",
+      buildingName: predio?.nome || "Condomínio",
+      buildingAddress: `${predio?.morada_linha1 || ""} ${predio?.num_porta || ""}, ${predio?.localidade || ""}`,
+      buildingNif: predio?.nif || "500000000",
       proprietarioNome: customCondomino || frac?.proprietario?.nome || "Condómino Registado",
       proprietarioNif: frac?.proprietario?.nif || "200000000",
       fracaoIdent: `Fração ${frac?.fracao_nome || "A"} (${frac?.piso || "Piso 1"})`,
@@ -746,7 +746,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
                         &nbsp;({fracoes.find(f => f.id_fracao === selectedAviso.id_fracao)?.piso || "N/A"})
                       </p>
                       <p className="text-[9px] text-slate-500">
-                        Morada do Edifício: {predio.morada_linha1}, {predio.localidade}
+                        Morada do Edifício: {predio?.morada_linha1 || ""}, {predio?.localidade || ""}
                       </p>
                     </div>
                     

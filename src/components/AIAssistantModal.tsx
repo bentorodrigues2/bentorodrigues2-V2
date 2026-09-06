@@ -223,9 +223,9 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio }: AIAssi
           })),
           enableWebSearch,
           predioInfo: {
-            nome: predio.nome,
-            morada: `${predio.morada_linha1}, Nº ${predio.num_porta || ""}, ${predio.localidade}`,
-            nif: predio.nif
+            nome: predio?.nome || "Condomínio",
+            morada: `${predio?.morada_linha1 || ""}, Nº ${predio?.num_porta || ""}, ${predio?.localidade || ""}`,
+            nif: predio?.nif || ""
           }
         })
       });

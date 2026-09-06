@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Predio, Fracao, Aviso, Movimento, Reserva, Ocorrencia, LoggedUser, Conta } from "../types";
+import { defaultEmptyPredio } from "../data";
 import { 
   Building2, 
   Users, 
@@ -181,7 +182,7 @@ export function MultiCondominio({
     : "0.0";
 
   // Active Building Object
-  const currentPredio = predios.find(p => p.id_predio === selectedPredioId) || predios[0];
+  const currentPredio = predios.find(p => p.id_predio === selectedPredioId) || predios[0] || defaultEmptyPredio;
 
   // Submit new team member
   const handleAddTeamMember = (e: React.FormEvent) => {
@@ -488,7 +489,7 @@ export function MultiCondominio({
             <form onSubmit={handleAddTeamMember} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-xl space-y-4 shadow-sm">
               <h4 className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center">
                 <Briefcase className="h-4 w-4 text-emerald-500 mr-1.5" />
-                Registar Colaborador em {currentPredio.nome || currentPredio.morada_linha1}
+                Registar Colaborador em {currentPredio?.nome || currentPredio?.morada_linha1 || "Condomínio"}
               </h4>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

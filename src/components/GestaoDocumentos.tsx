@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { jsPDF } from "jspdf";
 import { Predio, Documento, LoggedUser } from "../types";
 import { formatDatePT, downloadBlob, addPdfHeaderWithLogo, downloadReceiptPDF, downloadNotaCobrancaPDF } from "../utils";
+import { getIllustratedManualHtml } from "../utils/manualIllustratedTemplates";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { 
   FileText, 
@@ -107,6 +108,11 @@ export function GestaoDocumentos({
 
   // Helper to generate full printable HTML content for any document
   const generateDocumentHtml = (doc: Documento) => {
+    const illustratedHtml = getIllustratedManualHtml(doc, predio);
+    if (illustratedHtml) {
+      return illustratedHtml;
+    }
+
     const isManualSintetizado = doc.id_doc === "doc-manual-4" || doc.nome.includes("Sintetizado");
     const isManualPerfis = doc.id_doc === "doc-manual-1" || doc.nome.includes("Perfis");
     const isManualPwa = doc.id_doc === "doc-manual-2" || doc.nome.includes("PWA");
@@ -871,8 +877,8 @@ export function GestaoDocumentos({
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; font-size: 11px; margin-top: 14px;">
       <div style="background: #f8fafc; padding: 10px 12px; border-radius: 4px; border: 1px solid #e2e8f0;">
         <strong style="color: #0284c7; text-transform: uppercase; font-size: 9.5px; display: block; margin-bottom: 4px;">Remetente:</strong>
-        Condomínio do Edifício ${predio.nome}<br>
-        ${predio.morada_linha1} ${predio.num_porta}, ${predio.localidade}
+        Condomínio do Edifício ${predio?.nome || "Condomínio"}<br>
+        ${predio?.morada_linha1 || ""} ${predio?.num_porta || ""}, ${predio?.localidade || ""}
       </div>
       <div style="background: #f8fafc; padding: 10px 12px; border-radius: 4px; border: 1px solid #e2e8f0;">
         <strong style="color: #0284c7; text-transform: uppercase; font-size: 9.5px; display: block; margin-bottom: 4px;">Destinatário / Requerido:</strong>
@@ -1428,6 +1434,28 @@ export function GestaoDocumentos({
   const [aiClassifying, setAiClassifying] = useState(false);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
 
+  // Email Delivery Modal State
+  const [emailModalDoc, setEmailModalDoc] = useState<Documento | null>(null);
+  const [emailDestinatario, setEmailDestinatario] = useState<string>("");
+  const [emailAssunto, setEmailAssunto] = useState<string>("");
+  const [emailMensagem, setEmailMensagem] = useState<string>("");
+  const [emailEnviarCopiaAdmin, setEmailEnviarCopiaAdmin] = useState<boolean>(true);
+
+  const abrirModalEnviarEmail = (doc: Documento) => {
+    setEmailModalDoc(doc);
+    setEmailDestinatario(predio.email_condominio || "jcafguerra@hotmail.com");
+    setEmailAssunto(`[CondoManager • ${predio.nome || "Edifício"}] ${doc.nome}`);
+    setEmailMensagem(`Exmo.(a) Sr.(a),\n\nSegue em anexo para os devidos efeitos o documento oficial "${doc.nome}" (${doc.tipo || "Documento"}), referente ao condomínio ${predio.nome || "Edifício"}.\n\nDocumento autenticado e emitido via plataforma CondoManager AI.\n\nCom os melhores cumprimentos,\nA Administração`);
+  };
+
+  const confirmarEnvioEmail = () => {
+    if (!emailModalDoc || !emailDestinatario.trim()) return;
+    const docNome = emailModalDoc.nome;
+    const dest = emailDestinatario.trim();
+    setEmailModalDoc(null);
+    triggerSendReaction("email", `A enviar "${docNome}" para ${dest}...`);
+  };
+
   // Available Filter Options
   const disponiveisAnos = ["Todos", "2026", "2025", "2024", "2023"];
 
@@ -1543,19 +1571,29 @@ export function GestaoDocumentos({
         (d.descricao && d.descricao.toLowerCase().includes(filtroFornecedor.toLowerCase()));
 
       const isPastaPagaDoc = (doc: Documento) => 
-        doc.sub_pasta !== "📁 Pasta Temporária - Teste & Verificação (Marca de Água)" &&
         !doc.sub_pasta?.startsWith("⚖️ Processos Jurídicos") &&
         (doc.categoria === "Pasta Paga. Quotas" || 
          doc.tema === "Pasta Paga. Quotas" || 
+         doc.sub_pasta === "Recibos e Quotas" ||
          ["Recibos", "Recibos Quotas extra", "Notas de cobrança"].includes(doc.sub_pasta || "") ||
          ["Recibo", "Recibo Quotas extra", "Nota de Cobrança"].includes(doc.tipo || ""));
 
+      const isManualDoc = (doc: Documento) =>
+        doc.tipo === "Manual Ilustrado" ||
+        doc.tipo === "Guia Rápido" ||
+        doc.categoria === "Instruções PWA & Desktop" ||
+        doc.sub_pasta === "Manuais & Guias Operacionais" ||
+        doc.sub_pasta === "05. Manuais & Guias Operacionais" ||
+        doc.sub_pasta === "Instruções PWA & Desktop";
+
       const matchesFolder = !selectedFolder || 
-        (selectedFolder === "Pasta Paga. Quotas" ? isPastaPagaDoc(d) : (
-          d.sub_pasta === selectedFolder || 
-          d.fornecedor === selectedFolder || 
-          d.tema === selectedFolder ||
-          d.categoria === selectedFolder
+        ((selectedFolder === "Pasta Paga. Quotas" || selectedFolder === "Recibos e Quotas") ? isPastaPagaDoc(d) : (
+          selectedFolder === "Manuais & Guias Operacionais" ? isManualDoc(d) : (
+            d.sub_pasta === selectedFolder || 
+            d.fornecedor === selectedFolder || 
+            d.tema === selectedFolder ||
+            d.categoria === selectedFolder
+          )
         ));
 
       const matchesSubFolder = !selectedSubPasta || d.sub_pasta === selectedSubPasta;
@@ -1577,20 +1615,55 @@ export function GestaoDocumentos({
     setSelectedSubPasta(null);
   };
 
+  // Pre-configured standard empty folders in Arquivo Digital
+  const PRECONFIGURED_FOLDERS = [
+    "Recibos e Quotas",
+    "Faturas Diversas",
+    "Fornecedores & Contratos",
+    "Atas & Convocatórias",
+    "Seguros & Apólices",
+    "Manuais & Guias Operacionais",
+    "Obras & Vistorias Técnicas"
+  ];
+
   // Group items by Fornecedor / Sub-Pasta for folder cards
   const folderGroups = useMemo(() => {
     const groups: { [key: string]: Documento[] } = {};
+
+    // 1. Initialize pre-configured standard folders so they exist even if empty
+    PRECONFIGURED_FOLDERS.forEach(folder => {
+      groups[folder] = [];
+    });
+
+    // 2. Distribute existing documents into folders
     docsDoTipo.forEach(doc => {
       const isPastaPaga = (
-        doc.sub_pasta !== "📁 Pasta Temporária - Teste & Verificação (Marca de Água)" &&
         !doc.sub_pasta?.startsWith("⚖️ Processos Jurídicos") &&
         (doc.categoria === "Pasta Paga. Quotas" || 
          doc.tema === "Pasta Paga. Quotas" ||
+         doc.sub_pasta === "Recibos e Quotas" ||
          ["Recibos", "Recibos Quotas extra", "Notas de cobrança"].includes(doc.sub_pasta || "") ||
          ["Recibo", "Recibo Quotas extra", "Nota de Cobrança"].includes(doc.tipo || ""))
       );
 
-      const folderName = isPastaPaga ? "Pasta Paga. Quotas" : (doc.sub_pasta || doc.fornecedor || doc.tema || "Geral");
+      const isManual = (
+        doc.tipo === "Manual Ilustrado" ||
+        doc.tipo === "Guia Rápido" ||
+        doc.categoria === "Instruções PWA & Desktop" ||
+        doc.sub_pasta === "Manuais & Guias Operacionais" ||
+        doc.sub_pasta === "05. Manuais & Guias Operacionais" ||
+        doc.sub_pasta === "Instruções PWA & Desktop"
+      );
+
+      let folderName: string;
+      if (isPastaPaga) {
+        folderName = "Recibos e Quotas";
+      } else if (isManual) {
+        folderName = "Manuais & Guias Operacionais";
+      } else {
+        folderName = doc.sub_pasta || doc.fornecedor || doc.tema || "Faturas Diversas";
+      }
+
       if (!groups[folderName]) {
         groups[folderName] = [];
       }
@@ -1991,32 +2064,46 @@ export function GestaoDocumentos({
         )}
       </div>
 
-      {/* PASTAS DINÂMICAS POR FORNECEDOR / SUB-PASTA (ACESSÍVEIS E EXPANDÍVEIS DINAMICAMENTE) */}
+      {/* PASTAS PRÉ-CONFIGURADAS & DINÂMICAS POR FORNECEDOR / SUB-PASTA */}
       {!selectedFolder && filtroFornecedor === "Todos" && !busca && (
         <div className="bg-white border-2 border-emerald-200 rounded-2xl p-4 space-y-3 shadow-xs">
-          <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-700">
-            <span className="flex items-center gap-1.5">
-              <FolderTree className="h-4 w-4 text-emerald-600" /> Pastas & Fornecedores no Arquivo ({Object.keys(folderGroups).length}):
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-100 pb-2.5">
+            <div className="flex items-center gap-2">
+              <FolderTree className="h-4 w-4 text-emerald-600" />
+              <span className="text-xs font-black uppercase tracking-wider text-slate-800">
+                Pastas no Arquivo Digital ({Object.keys(folderGroups).length})
+              </span>
+            </div>
+            <span className="text-[10px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 font-medium">
+              💡 Pastas pré-configuradas & IA cria subpastas automaticamente
             </span>
-            <span className="text-[10px] text-slate-500 font-normal">Clique para abrir a pasta correspondente</span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
-            {(Object.entries(folderGroups) as [string, Documento[]][]).map(([folderName, folderDocs]) => (
-              <button
-                key={folderName}
-                onClick={() => setSelectedFolder(folderName)}
-                className="bg-slate-50 hover:bg-emerald-50 border border-emerald-200 hover:border-emerald-400 p-3 rounded-xl flex flex-col items-center justify-center text-center transition-all cursor-pointer group shadow-xs"
-              >
-                <FolderOpen className="h-6 w-6 text-emerald-600 group-hover:scale-110 transition-transform mb-1" />
-                <span className="text-xs font-bold text-slate-800 line-clamp-1 group-hover:text-emerald-900">
-                  {folderName}
-                </span>
-                <span className="text-[10px] text-slate-500 mt-0.5 font-medium">
-                  {folderDocs.length} ficheiro{folderDocs.length !== 1 ? "s" : ""}
-                </span>
-              </button>
-            ))}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
+            {(Object.entries(folderGroups) as [string, Documento[]][]).map(([folderName, folderDocs]) => {
+              const isPreconfig = PRECONFIGURED_FOLDERS.includes(folderName);
+              const isEmpty = folderDocs.length === 0;
+
+              return (
+                <button
+                  key={folderName}
+                  onClick={() => setSelectedFolder(folderName)}
+                  className={`border p-3 rounded-xl flex flex-col items-center justify-center text-center transition-all cursor-pointer group shadow-xs ${
+                    isEmpty
+                      ? "bg-slate-50/70 hover:bg-emerald-50/70 border-dashed border-slate-300 hover:border-emerald-400"
+                      : "bg-slate-50 hover:bg-emerald-50 border-emerald-200 hover:border-emerald-400"
+                  }`}
+                >
+                  <FolderOpen className={`h-6 w-6 mb-1 group-hover:scale-110 transition-transform ${isEmpty ? "text-slate-400 group-hover:text-emerald-600" : "text-emerald-600"}`} />
+                  <span className="text-xs font-bold text-slate-800 line-clamp-1 group-hover:text-emerald-900">
+                    {folderName}
+                  </span>
+                  <span className={`text-[10px] mt-0.5 font-medium ${isEmpty ? "text-slate-400" : "text-slate-500"}`}>
+                    {isEmpty ? "0 ficheiros (Pronta)" : `${folderDocs.length} ficheiro${folderDocs.length !== 1 ? "s" : ""}`}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -2160,51 +2247,6 @@ export function GestaoDocumentos({
               </div>
             </div>
           )}
-
-          {/* PASTA ESPECIAL: PASTA TEMPORÁRIA (MARCA DE ÁGUA) */}
-          {selectedFolder === "📁 Pasta Temporária - Teste & Verificação (Marca de Água)" && (
-            <div className="bg-emerald-950/90 border border-emerald-600 rounded-xl p-3.5 space-y-3">
-              <div className="flex items-center justify-between text-[11px] text-emerald-300 font-bold border-b border-emerald-800/80 pb-2">
-                <span className="flex items-center gap-2">
-                  <span>📁</span> PASTA TEMPORÁRIA • EXEMPLARES DE TESTE & VERIFICAÇÃO COM MARCA DE ÁGUA OFICIAL
-                </span>
-                {busca && (
-                  <button 
-                    onClick={() => setBusca("")}
-                    className="text-amber-300 hover:underline text-[10px]"
-                  >
-                    Limpar pesquisa
-                  </button>
-                )}
-              </div>
-              <p className="text-[11px] text-emerald-200/90 leading-relaxed">
-                Contém 1 cópia de cada documento do ecossistema CondoManager AI para consulta rápida, verificação de conformidade e testes de pré-visualização. Todos os documentos incluem a marca de água oficial de validação.
-              </p>
-              <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                <span className="text-[10px] text-emerald-300 font-bold mr-1">Filtrar por Tipologia:</span>
-                {[
-                  { label: "Todos os Exemplares", query: "" },
-                  { label: "📄 Recibos de Pagamento", query: "Recibo" },
-                  { label: "📝 Notas de Cobrança", query: "Nota" },
-                  { label: "✉️ Comprovativos AR CTT", query: "Rececao" },
-                  { label: "💬 Prints & Provas", query: "Prints" },
-                  { label: "📸 Fotografias", query: "Fotografia" }
-                ].map(item => (
-                  <button
-                    key={item.label}
-                    onClick={() => setBusca(item.query)}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                      busca === item.query 
-                        ? "bg-emerald-400 text-slate-950 shadow-sm" 
-                        : "bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 border border-emerald-700"
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -2308,19 +2350,19 @@ export function GestaoDocumentos({
 
                   <button
                     onClick={() => abrirModalEditarDoc(doc)}
-                    title="Modo de Testes: Editar parâmetros, simular alterações e reemitir com Marca de Água & Logótipo"
-                    className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-all shadow-xs cursor-pointer"
+                    title="Editar metadados e registo oficial"
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-all border border-slate-300 shadow-xs cursor-pointer"
                   >
-                    <FileText className="h-3.5 w-3.5" />
-                    <span>Modo Testes (Editar & Reemitir)</span>
+                    <FileText className="h-3.5 w-3.5 text-slate-600" />
+                    <span>Editar Detalhes</span>
                   </button>
                 </div>
 
                 <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => triggerSendReaction("email", `A Enviar ${doc.nome} por E-mail...`)}
-                    title="Simular Envio por E-mail com Reação Visual"
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                    onClick={() => abrirModalEnviarEmail(doc)}
+                    title="Enviar documento oficial por e-mail com anexo"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-all cursor-pointer shadow-xs"
                   >
                     <Send className="h-3.5 w-3.5" />
                     <span>Enviar E-mail</span>
@@ -2883,18 +2925,18 @@ export function GestaoDocumentos({
         </div>
       )}
 
-      {/* MODAL MODO DE TESTES: EDITAR E REEMITIR DOCUMENTO COM MARCA DE ÁGUA E LOGÓTIPO */}
+      {/* MODAL EDITAR DADOS & METADADOS DO DOCUMENTO */}
       {editingDoc && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-slate-900 border border-emerald-500/40 rounded-2xl shadow-2xl max-w-lg w-full p-6 text-white flex flex-col space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/30">
+                <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30">
                   <FileText className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-white">Modo de Testes — Editar & Reemitir Documento</h3>
-                  <p className="text-[10px] text-amber-300 font-bold">Verificação com Marca de Água & Logótipo Oficial</p>
+                  <h3 className="text-sm font-black text-white">Editar Dados & Metadados do Documento</h3>
+                  <p className="text-[10px] text-emerald-300 font-bold">Arquivo Digital • Atualização do Registo Oficial</p>
                 </div>
               </div>
               <button
@@ -2912,7 +2954,7 @@ export function GestaoDocumentos({
                   type="text"
                   value={editNome}
                   onChange={e => setEditNome(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs font-semibold focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs font-semibold focus:outline-none focus:border-emerald-400"
                 />
               </div>
 
@@ -2922,7 +2964,7 @@ export function GestaoDocumentos({
                   type="text"
                   value={editCategoria}
                   onChange={e => setEditCategoria(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs font-semibold focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs font-semibold focus:outline-none focus:border-emerald-400"
                 />
               </div>
 
@@ -2932,24 +2974,24 @@ export function GestaoDocumentos({
                   type="text"
                   value={editAutor}
                   onChange={e => setEditAutor(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs font-semibold focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs font-semibold focus:outline-none focus:border-emerald-400"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">Conteúdo / Descrição do Documento de Teste</label>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">Conteúdo / Descrição do Documento</label>
                 <textarea
                   rows={4}
                   value={editDesc}
                   onChange={e => setEditDesc(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white text-xs leading-relaxed focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white text-xs leading-relaxed focus:outline-none focus:border-emerald-400"
                 />
               </div>
             </div>
 
-            <div className="bg-amber-950/40 border border-amber-500/30 p-3 rounded-xl text-[11px] text-amber-200 flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-amber-400 shrink-0" />
-              <span>O documento reemitido será gerado com o logótipo oficial do condomínio e marca de água autenticada.</span>
+            <div className="bg-emerald-950/40 border border-emerald-500/30 p-3 rounded-xl text-[11px] text-emerald-200 flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+              <span>O documento atualizado manterá a certificação e autenticidade no arquivo digital.</span>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
@@ -2961,10 +3003,135 @@ export function GestaoDocumentos({
               </button>
               <button
                 onClick={guardarEGuardarPdf}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-lg"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-lg"
               >
                 <DownloadCloud className="h-4 w-4" />
-                <span>Guardar & Reemitir PDF Oficial</span>
+                <span>Guardar & Atualizar Documento</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE ENVIO DE DOCUMENTO / MANUAL POR E-MAIL */}
+      {emailModalDoc && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-slate-900 border border-emerald-500/40 rounded-2xl shadow-2xl max-w-lg w-full p-6 text-white flex flex-col space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30">
+                  <Send className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">Enviar Documento / Manual por E-mail</h3>
+                  <p className="text-[10px] text-emerald-300 font-bold">Arquivo Digital • Envio com Validação & Anexo PDF</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEmailModalDoc(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Document details preview */}
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText className="h-4 w-4 text-emerald-400 shrink-0" />
+                <div className="min-w-0">
+                  <span className="font-bold text-white block truncate">{emailModalDoc.nome}</span>
+                  <span className="text-[10px] text-slate-400">{emailModalDoc.tipo} • {emailModalDoc.tamanho || "PDF"}</span>
+                </div>
+              </div>
+              <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700 shrink-0">
+                Anexo Incluído
+              </span>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-slate-300">
+                    Endereço de E-mail de Envio (Destinatário) *
+                  </label>
+                  <span className="text-[9px] text-emerald-400 font-medium">Obrigatório</span>
+                </div>
+                <input
+                  type="email"
+                  value={emailDestinatario}
+                  onChange={e => setEmailDestinatario(e.target.value)}
+                  placeholder="ex: condomino@exemplo.com ou administracao@condominio.pt"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs font-semibold focus:outline-none focus:border-emerald-400"
+                  required
+                />
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  <span className="text-[9px] text-slate-400">Atalhos rápidos:</span>
+                  {[
+                    { label: "Administração", email: predio.email_condominio || "administracao@condominio.pt" },
+                    { label: "Empresa Gestora", email: "gestao@condomanager.ai" },
+                    { label: "jcafguerra@hotmail.com", email: "jcafguerra@hotmail.com" }
+                  ].map(sug => (
+                    <button
+                      key={sug.label}
+                      type="button"
+                      onClick={() => setEmailDestinatario(sug.email)}
+                      className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[9px] border border-slate-700 cursor-pointer"
+                    >
+                      {sug.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">Assunto do E-mail</label>
+                <input
+                  type="text"
+                  value={emailAssunto}
+                  onChange={e => setEmailAssunto(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs font-semibold focus:outline-none focus:border-emerald-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">Mensagem / Observações de Acompanhamento</label>
+                <textarea
+                  rows={3}
+                  value={emailMensagem}
+                  onChange={e => setEmailMensagem(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white text-xs leading-relaxed focus:outline-none focus:border-emerald-400"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="emailCopiaAdmin"
+                  checked={emailEnviarCopiaAdmin}
+                  onChange={e => setEmailEnviarCopiaAdmin(e.target.checked)}
+                  className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-400"
+                />
+                <label htmlFor="emailCopiaAdmin" className="text-[10.5px] text-slate-300 cursor-pointer">
+                  Enviar cópia de confirmação para o e-mail da Administração
+                </label>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                onClick={() => setEmailModalDoc(null)}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarEnvioEmail}
+                disabled={!emailDestinatario.trim() || !emailDestinatario.includes("@")}
+                className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-lg"
+              >
+                <Send className="h-3.5 w-3.5" />
+                <span>Confirmar & Enviar E-mail</span>
               </button>
             </div>
           </div>

@@ -84,6 +84,7 @@ interface PWACondominoViewProps {
   onLogout?: () => void;
   biometricsEnabled?: boolean;
   setBiometricsEnabled?: (b: boolean) => void;
+  theme?: "light" | "dark";
 }
 
 export default function PWACondominoView({
@@ -104,7 +105,8 @@ export default function PWACondominoView({
   setPwaNotifications,
   onLogout,
   biometricsEnabled = false,
-  setBiometricsEnabled
+  setBiometricsEnabled,
+  theme = "light"
 }: PWACondominoViewProps) {
   // Mobile app navigation: handles both bottom quick tabs and the 10 modules
   const [activeTab, setActiveTab] = useState<string>("home");
@@ -500,7 +502,13 @@ export default function PWACondominoView({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#ece7e7] text-slate-800 font-sans relative z-10" style={{ backgroundColor: "#ece7e7" }}>
+    <div 
+      className={`flex flex-col h-full font-sans relative z-10 pwa-screen ${
+        theme === "dark" ? "bg-slate-950 text-white" : "bg-[#ece7e7] text-slate-800"
+      }`} 
+      data-pwa="true"
+      style={{ backgroundColor: theme === "dark" ? "#020617" : "#ece7e7" }}
+    >
       
       {/* BODY PANEL (SCROLLABLE CONTENT AREA) */}
       <div 
@@ -509,7 +517,10 @@ export default function PWACondominoView({
             setHasScrolled(true);
           }
         }}
-        className="flex-1 overflow-y-auto px-4 py-3 space-y-3 relative bg-[#ece7e7]" style={{ backgroundColor: "#ece7e7" }}
+        className={`flex-1 overflow-y-auto px-4 py-3 space-y-3 relative pwa-container ${
+          theme === "dark" ? "bg-slate-950 text-white" : "bg-[#ece7e7] text-slate-800"
+        }`} 
+        style={{ backgroundColor: theme === "dark" ? "#020617" : "#ece7e7" }}
       >
 
         {/* ========================================== */}
@@ -584,7 +595,7 @@ export default function PWACondominoView({
 
             {/* SQUARE CARDS BENTO GRID - UNIFORM DIMENSIONS AND DARKER GREEN DISPLAY */}
             <div className="space-y-2">
-              <span className="text-[9px] font-extrabold text-[#333] dark:text-slate-400 uppercase tracking-widest block">
+              <span className="text-[9px] font-extrabold text-[#333] dark:text-white uppercase tracking-widest block">
                 📋 Painel do Condómino (Cards de Estado)
               </span>
               <div className="grid grid-cols-2 gap-2.5">
@@ -913,7 +924,7 @@ export default function PWACondominoView({
               <span className="text-[8px] font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest block">
                 🤖 Pastas Organizadas por IA
               </span>
-              <div className="grid grid-cols-3 gap-2 text-[9px] font-bold text-slate-600 dark:text-slate-400">
+              <div className="grid grid-cols-3 gap-2 text-[9px] font-bold text-slate-600 dark:text-white">
                 <div className="p-1.5 bg-white dark:bg-slate-900 border border-indigo-50 dark:border-slate-800 rounded-lg text-center flex flex-col items-center justify-center space-y-1">
                   <span className="text-base">📁</span>
                   <span className="text-[8px] truncate max-w-[60px] block">Frações</span>
@@ -1046,7 +1057,7 @@ export default function PWACondominoView({
                             setSelectedDocPreview(doc);
                             alert(`A abrir visualizador inteligente para: ${doc.nome}`);
                           }}
-                          className="p-1 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 cursor-pointer"
+                          className="p-1 text-slate-500 hover:text-emerald-600 dark:text-white dark:hover:text-emerald-400 cursor-pointer"
                           title="Visualização Online"
                         >
                           <Eye className="h-3.5 w-3.5" />
@@ -1059,7 +1070,7 @@ export default function PWACondominoView({
                             doc.nome,
                             [{ label: "Condomínio", value: predio.nome }, { label: "Data Upload", value: doc.data_upload }, { label: "Categoria", value: doc.categoria || doc.tipo || "Geral" }]
                           )}
-                          className="p-1 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 cursor-pointer"
+                          className="p-1 text-slate-500 hover:text-emerald-600 dark:text-white dark:hover:text-emerald-400 cursor-pointer"
                           title="Fazer Download PDF"
                         >
                           <Download className="h-3.5 w-3.5" />
@@ -1102,7 +1113,7 @@ export default function PWACondominoView({
                       </div>
                     </div>
 
-                    <div className="border border-slate-200 dark:border-slate-850 p-3 rounded-lg bg-white dark:bg-slate-950 font-serif leading-normal text-[11px] text-slate-600 dark:text-slate-400 whitespace-pre-wrap min-h-[140px] select-none shadow-inner">
+                    <div className="border border-slate-200 dark:border-slate-850 p-3 rounded-lg bg-white dark:bg-slate-950 font-serif leading-normal text-[11px] text-slate-600 dark:text-white whitespace-pre-wrap min-h-[140px] select-none shadow-inner">
                       [CONTEÚDO DO DOCUMENTO SIMULADO EM TEMPO REAL]
                       {"\n\n"}
                       Considerando os estatutos do condomínio Activo correspondente ao edifício situado na Rua Bento Rodrigues nº 23, declara-se a validade do relatório documental em anexo para homologação e fecho do exercício.
@@ -1116,10 +1127,10 @@ export default function PWACondominoView({
                           selectedDocPreview.nome,
                           [{ 
                             heading: "Conteúdo Integral do Documento", 
-                            content: `Considerando os estatutos do condomínio Activo correspondente ao edifício situado em ${predio.morada_linha1}, declara-se a validade do relatório documental para homologação e fecho do exercício.\n\nTodos os condóminos foram notificados eletronicamente através dos canais digitais PWA.` 
+                            content: `Considerando os estatutos do condomínio Activo correspondente ao edifício situado em ${predio?.morada_linha1 || ""}, declara-se a validade do relatório documental para homologação e fecho do exercício.\n\nTodos os condóminos foram notificados eletronicamente através dos canais digitais PWA.` 
                           }],
                           selectedDocPreview.nome,
-                          [{ label: "Edifício", value: predio.nome }, { label: "Data de Envio", value: selectedDocPreview.data_upload }]
+                          [{ label: "Edifício", value: predio?.nome || "Condomínio" }, { label: "Data de Envio", value: selectedDocPreview.data_upload }]
                         );
                         setSelectedDocPreview(null);
                       }}
@@ -1697,7 +1708,7 @@ export default function PWACondominoView({
                     <span>Administração</span>
                     <span>12/07 16:15</span>
                   </div>
-                  <p className="text-slate-600 dark:text-slate-400 leading-normal">
+                  <p className="text-slate-600 dark:text-white leading-normal">
                     "Boa tarde Sr. João, informamos que a equipa de vistorias já reportou a anomalia na porta do ginásio. O fornecedor técnico foi adjudicado para verificação esta quarta-feira."
                   </p>
                   <span className="text-[8px] uppercase tracking-wider font-extrabold text-emerald-600 flex items-center">
@@ -2048,7 +2059,7 @@ export default function PWACondominoView({
               {isEmojiPickerOpen && (
                 <div className="absolute bottom-16 left-3 right-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-2xl shadow-2xl z-50 animate-fade-in">
                   <div className="flex justify-between items-center pb-1.5 mb-1.5 border-b border-slate-100 dark:border-slate-800">
-                    <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Selecionar Emoji</span>
+                    <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-white">Selecionar Emoji</span>
                     <button 
                       type="button" 
                       onClick={() => setIsEmojiPickerOpen(false)}
@@ -2079,7 +2090,7 @@ export default function PWACondominoView({
               {isAttachmentMenuOpen && (
                 <div className="absolute bottom-16 left-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2 rounded-2xl shadow-2xl z-50 animate-fade-in space-y-1 min-w-[200px]">
                   <div className="flex justify-between items-center pb-1 mb-1 border-b border-slate-100 dark:border-slate-800 px-1">
-                    <span className="text-[8.5px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Anexar Ficheiro</span>
+                    <span className="text-[8.5px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-white">Anexar Ficheiro</span>
                     <button 
                       type="button" 
                       onClick={() => setIsAttachmentMenuOpen(false)}
@@ -2335,7 +2346,7 @@ export default function PWACondominoView({
 
                 <div>
                   <span className="text-slate-400 block text-[8px] uppercase font-bold">Morada (Não Editável)</span>
-                  <div className="w-full bg-slate-100 dark:bg-slate-500/10 border border-slate-200 dark:border-slate-900 p-2 rounded-lg font-bold text-slate-500 dark:text-slate-400 cursor-not-allowed select-none">
+                  <div className="w-full bg-slate-100 dark:bg-slate-500/10 border border-slate-200 dark:border-slate-900 p-2 rounded-lg font-bold text-slate-500 dark:text-white cursor-not-allowed select-none">
                     {perfilMorada}
                   </div>
                 </div>
@@ -2669,7 +2680,7 @@ export default function PWACondominoView({
         <div className="bg-white dark:bg-slate-900 border-t border-b border-slate-200 dark:border-slate-800/80 px-3 py-2 shrink-0 shadow-xs z-10">
           {/* If we are on common spaces / regras tab */}
           {activeTab === "regras" && (
-          <div className="flex justify-around text-[9px] font-bold text-[#555] dark:text-slate-400 py-0.5">
+          <div className="flex justify-around text-[9px] font-bold text-[#555] dark:text-white py-0.5">
             <button onClick={() => alert("Reservas de Espaços Comuns")} className="flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white">
               <Clock className="h-3.5 w-3.5 text-[#1A1A1A]" /> <span className="text-[#1A1A1A] dark:text-slate-200">Reservar</span>
             </button>
@@ -2686,7 +2697,7 @@ export default function PWACondominoView({
 
         {/* If we are on obras tab */}
         {activeTab === "obras" && (
-          <div className="flex justify-around text-[9px] font-bold text-[#555] dark:text-slate-400 py-0.5">
+          <div className="flex justify-around text-[9px] font-bold text-[#555] dark:text-white py-0.5">
             <button onClick={() => alert("Obras Ativas em Curso no Prédio")} className="flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white">
               <Wrench className="h-3.5 w-3.5 text-[#1A1A1A]" /> <span className="text-[#1A1A1A] dark:text-slate-200">Obras em Curso</span>
             </button>
@@ -2699,7 +2710,7 @@ export default function PWACondominoView({
 
         {/* If we are on sondagens tab */}
         {activeTab === "sondagens" && (
-          <div className="flex justify-around text-[9px] font-bold text-[#555] dark:text-slate-400 py-0.5">
+          <div className="flex justify-around text-[9px] font-bold text-[#555] dark:text-white py-0.5">
             <button onClick={() => alert("Sondagens Ativas para Votação")} className="flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white">
               <Vote className="h-3.5 w-3.5 text-[#1A1A1A]" /> <span className="text-[#1A1A1A] dark:text-slate-200">Ativas</span>
             </button>
@@ -2712,7 +2723,7 @@ export default function PWACondominoView({
 
         {/* If we are on documentos tab */}
         {activeTab === "documentos" && (
-          <div className="flex justify-around text-[9px] font-bold text-[#555] dark:text-slate-400 py-0.5 w-full">
+          <div className="flex justify-around text-[9px] font-bold text-[#555] dark:text-white py-0.5 w-full">
             <button onClick={() => setDocumentCategory("Pendentes")} className={`flex items-center space-x-1 ${documentCategory === 'Pendentes' ? 'text-[#1A1A1A] dark:text-white font-black' : 'hover:text-[#1A1A1A]'}`}>
               <Clock className="h-3.5 w-3.5" /> <span>Pendentes</span>
             </button>
@@ -2729,7 +2740,7 @@ export default function PWACondominoView({
 
         {/* If we are on messages/contacts tab */}
         {activeTab === "mensagens" && (
-          <div className="flex justify-around text-[9px] font-bold text-[#555] dark:text-slate-400 py-0.5">
+          <div className="flex justify-around text-[9px] font-bold text-[#555] dark:text-white py-0.5">
             <button onClick={() => alert("Contacto Direto com a Administração")} className="flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white">
               <MessageSquare className="h-3.5 w-3.5 text-[#1A1A1A]" /> <span className="text-[#1A1A1A] dark:text-slate-200">Mensagens</span>
             </button>
@@ -2742,7 +2753,7 @@ export default function PWACondominoView({
 
         {/* If we are on financeiro tab */}
         {activeTab === "financeiro" && (
-          <div className="flex justify-around text-[9px] font-bold text-[#555] dark:text-slate-400 py-0.5">
+          <div className="flex justify-around text-[9px] font-bold text-[#555] dark:text-white py-0.5">
             <button onClick={() => setQuotaState("pago")} className="flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white">
               <CheckCircle className="h-3.5 w-3.5 text-[#1A1A1A]" /> <span className="text-[#1A1A1A] dark:text-slate-200">Quotas Liquidadas</span>
             </button>
@@ -3913,7 +3924,7 @@ export default function PWACondominoView({
         )}
 
       {/* PWA NATIVE BOTTOM NAVIGATION BAR (Specially customized for 5 key views with CondoManager AI colors) */}
-      <div className="h-14 shrink-0 bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800/80 px-2 flex items-center justify-around text-[9px] font-bold text-slate-500 dark:text-slate-400 z-10">
+      <div className="h-14 shrink-0 bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800/80 px-2 flex items-center justify-around text-[9px] font-bold text-slate-500 dark:text-white z-10">
         
         {/* 1. Início (Verde condomanagerai) */}
         <button 
@@ -3932,7 +3943,7 @@ export default function PWACondominoView({
           id="pwa-bottom-nav-hub"
           onClick={() => setActiveTab("modules_hub")} 
           className={`flex flex-col items-center space-y-0.5 cursor-pointer flex-1 py-1 transition-all ${
-            activeTab === "modules_hub" ? "scale-105 text-emerald-500 font-extrabold" : "text-slate-500 dark:text-slate-400 hover:text-emerald-500"
+            activeTab === "modules_hub" ? "scale-105 text-emerald-500 font-extrabold" : "text-slate-500 dark:text-white hover:text-emerald-500"
           }`}
         >
           <img src="/marca/10-icone-negativo.png" alt="Módulos" className="h-5 w-5 object-contain" />
@@ -3946,7 +3957,7 @@ export default function PWACondominoView({
           className={`flex flex-col items-center space-y-0.5 cursor-pointer flex-1 py-1 transition-all ${
             activeTab === "intervencoes" 
               ? "text-red-500 font-extrabold scale-105" 
-              : "text-slate-500 dark:text-slate-400 hover:text-red-500"
+              : "text-slate-500 dark:text-white hover:text-red-500"
           }`}
         >
           <img src="/modulos/29-avaria.png" alt="" className="h-4.5 w-4.5 object-contain" />
@@ -3960,7 +3971,7 @@ export default function PWACondominoView({
           className={`flex flex-col items-center space-y-0.5 cursor-pointer flex-1 py-1 transition-all ${
             activeTab === "obras" 
               ? "text-orange-500 font-extrabold scale-105" 
-              : "text-slate-500 dark:text-slate-400 hover:text-orange-500"
+              : "text-slate-500 dark:text-white hover:text-orange-500"
           }`}
         >
           <img src="/modulos/41-obra.png" alt="" className="h-4.5 w-4.5 object-contain" />
@@ -3972,7 +3983,7 @@ export default function PWACondominoView({
           id="pwa-bottom-nav-profile"
           onClick={() => setActiveTab("perfil")} 
           className={`flex flex-col items-center space-y-0.5 cursor-pointer flex-1 py-1 transition-all ${
-            activeTab === "perfil" ? "text-emerald-500 font-extrabold scale-105" : "text-slate-500 dark:text-slate-400 hover:text-emerald-500"
+            activeTab === "perfil" ? "text-emerald-500 font-extrabold scale-105" : "text-slate-500 dark:text-white hover:text-emerald-500"
           }`}
         >
           <User className="h-4.5 w-4.5" />

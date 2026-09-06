@@ -250,7 +250,7 @@ export function GestaoComunicacoes({
                 </span>
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Prédio: <strong className="text-emerald-900">{predio.nome || predio.morada_linha1}</strong> — Canal oficial de comunicação e envio de avisos.
+                Prédio: <strong className="text-emerald-900">{predio?.nome || predio?.morada_linha1 || "Condomínio"}</strong> — Canal oficial de comunicação e envio de avisos.
               </p>
             </div>
           </div>

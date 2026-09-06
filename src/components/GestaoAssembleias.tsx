@@ -194,7 +194,7 @@ export function GestaoAssembleias({ predio, fracoes, reunioes, onAddReuniao, set
 
     const hSegunda = somarMinutos(hora, 30);
     const videoSection = isVideoconferencia ? `\n\n🎥 ACESSO POR VÍDEO-CONFERÊNCIA (${plataformaVideo}):\nLink de Acesso Direto: ${linkFinal}\nNota Obrigatória: Quem assistir por vídeo-conferência deve assinar digitalmente e assinalar presença online.` : "";
-    const localStr = localReuniao.trim() ? localReuniao : `Sala Comum / Morada do Prédio (${predio.morada_linha1}, Nº ${predio.num_porta || ""})`;
+    const localStr = localReuniao.trim() ? localReuniao : `Sala Comum / Morada do Prédio (${predio?.morada_linha1 || ""}, Nº ${predio?.num_porta || ""})`;
 
     const textoConvocatoria = `Assunto: Convocatória – Assembleia de Condóminos (${isVideoconferencia ? "Presencial / Vídeo-Conferência" : "Presencial"})
 
@@ -357,7 +357,7 @@ Powered by CondoManager AI`;
     const quorumAusente = 1000 - activeQuorum;
     const localFinal = localReuniao || (activeMeeting.isVideoconferencia 
       ? `Videoconferência (${activeMeeting.plataformaVideoconferencia || "Google Meet"}) - Link: ${activeMeeting.linkVideoconferencia || "Plataforma Telemática"}`
-      : `Instalações do Condomínio do ${predio.nome || "Edifício"}, sito em ${predio.morada_linha1}, Nº ${predio.num_porta || ""}, ${predio.localidade}`);
+      : `Instalações do Condomínio do ${predio?.nome || "Edifício"}, sito em ${predio?.morada_linha1 || ""}, Nº ${predio?.num_porta || ""}, ${predio?.localidade || ""}`);
 
     try {
       const response = await fetch("/api/generate-minutes", {
@@ -374,10 +374,10 @@ Powered by CondoManager AI`;
           ordens_trabalho: activeMeeting.ordens_trabalho,
           notas: notasAta,
           predio: {
-            nome: predio.nome,
-            morada_linha1: predio.morada_linha1,
-            num_porta: predio.num_porta,
-            localidade: predio.localidade
+            nome: predio?.nome || "",
+            morada_linha1: predio?.morada_linha1 || "",
+            num_porta: predio?.num_porta || "",
+            localidade: predio?.localidade || ""
           },
           presentes: presentesFormatados,
           ausentes: ausentesFormatados,
@@ -418,9 +418,9 @@ Powered by CondoManager AI`;
         : "Não se registaram ausências (100% do capital presente).";
 
       const localAta = `ATA N.º ${activeMeeting.id_reuniao.replace(/\D/g, "") || "1"} DE ASSEMBLEIA GERAL DE CONDÓMINOS\n` +
-        `CONDOMÍNIO DO EDIFÍCIO: ${predio.nome || "Edifício Morada"}\n` +
-        `Sito em: ${predio.morada_linha1}, Nº ${predio.num_porta || ""}, ${predio.localidade}\n` +
-        `NIPC / Registo de Condomínio: ${predio.nif || "999 999 999"}\n\n` +
+        `CONDOMÍNIO DO EDIFÍCIO: ${predio?.nome || "Edifício Morada"}\n` +
+        `Sito em: ${predio?.morada_linha1 || ""}, Nº ${predio?.num_porta || ""}, ${predio?.localidade || ""}\n` +
+        `NIPC / Registo de Condomínio: ${predio?.nif || "999 999 999"}\n\n` +
         `================================================================================\n` +
         `I. ABERTURA, DATA, HORA E LOCAL DA REUNIÃO (Art. 1.º, n.º 1, DL 268/94):\n` +
         `Aos ${dataEscrito}, pelas ${activeMeeting.hora} horas, reuniu a Assembleia Geral de Condóminos do edifício acima identificado, ` +
@@ -606,7 +606,7 @@ Powered by CondoManager AI`;
     doc.setTextColor(30, 41, 59);
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
-    doc.text(`Condomínio: ${predio.nome || predio.morada_linha1}`, 14, 33);
+    doc.text(`Condomínio: ${predio?.nome || predio?.morada_linha1 || "Condomínio"}`, 14, 33);
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.text(`Data da Reunião: ${activeMeeting.data} às ${activeMeeting.hora} | Quórum Representado: ${activeQuorum}‰`, 14, 38);
@@ -928,8 +928,8 @@ Powered by CondoManager AI`;
           </div>
 
           <div class="header">
-            <h2 style="margin: 0; font-size: 16px; text-transform: uppercase; color: #1a1a1a;">CONDOMÍNIO DO EDIFÍCIO: ${predio.nome || "Edifício Morada"}</h2>
-            <p style="margin: 5px 0; font-size: 11px; font-weight: 500; color: #333333;">Sito em: ${predio.morada_linha1}, Nº ${predio.num_porta || ""}, ${predio.localidade}</p>
+            <h2 style="margin: 0; font-size: 16px; text-transform: uppercase; color: #1a1a1a;">CONDOMÍNIO DO EDIFÍCIO: ${predio?.nome || "Edifício Morada"}</h2>
+            <p style="margin: 5px 0; font-size: 11px; font-weight: 500; color: #333333;">Sito em: ${predio?.morada_linha1 || ""}, Nº ${predio?.num_porta || ""}, ${predio?.localidade || ""}</p>
             <p style="margin: 0; font-size: 10px; color: #555555; font-weight: bold;">CÓDIGO DE CONTROLO JURÍDICO - EMISSÃO EM: ${new Date().toLocaleDateString('pt-PT')}</p>
           </div>
           

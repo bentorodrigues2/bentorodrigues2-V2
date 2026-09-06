@@ -705,9 +705,9 @@ export function FichaEmpresaGestora({
                                 <span 
                                   key={p.id_predio}
                                   className="text-[9.5px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 truncate"
-                                  title={p.nome || p.morada_linha1}
+                                  title={p?.nome || p?.morada_linha1 || ""}
                                 >
-                                  {p.nome || p.morada_linha1}
+                                  {p?.nome || p?.morada_linha1 || "Sem morada"}
                                 </span>
                               ))
                             )}
@@ -1118,7 +1118,7 @@ export function FichaEmpresaGestora({
                           onChange={() => toggleModalPredio(p.id_predio)}
                           className="h-3.5 w-3.5 text-emerald-600 rounded border-slate-300 cursor-pointer"
                         />
-                        <span className="truncate">{p.nome || `${p.morada_linha1}, Nº ${p.num_porta}`}</span>
+                        <span className="truncate">{p?.nome || `${p?.morada_linha1 || ""}, Nº ${p?.num_porta || ""}`}</span>
                         {p.email && <span className="text-[9px] text-slate-400 font-mono ml-auto truncate">({p.email})</span>}
                       </label>
                     );

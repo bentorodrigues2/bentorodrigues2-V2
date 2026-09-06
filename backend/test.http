@@ -1,6 +1,0 @@
-POST https://bentorodrigues2.onrender.com/api/ia
-Content-Type: application/json
-
-{
-  "prompt": "Olá IA, estás a funcionar?"
-}

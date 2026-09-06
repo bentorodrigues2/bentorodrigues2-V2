@@ -164,7 +164,7 @@ export function FiltroRelatoriosPDFModal({
         <body>
           <div class="header">
             <h1>${targetTitle}</h1>
-            <p><strong>Edifício:</strong> ${predio.nome} &nbsp;|&nbsp; <strong>Morada:</strong> ${predio.morada_linha1}</p>
+            <p><strong>Edifício:</strong> ${predio?.nome || "Condomínio"} &nbsp;|&nbsp; <strong>Morada:</strong> ${predio?.morada_linha1 || ""}</p>
           </div>
 
           <div class="filter-banner">
