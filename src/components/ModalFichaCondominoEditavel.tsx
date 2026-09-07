@@ -85,7 +85,7 @@ export function ModalFichaCondominoEditavel({
 
   const handleDownloadPDF = () => {
     // Passes form data map to downloadFichaCondominoVaziaPDF so AcroForm interactive textfields & text are populated!
-    downloadFichaCondominoVaziaPDF(predio.nome, predio.morada_linha1, formData);
+    downloadFichaCondominoVaziaPDF(predio?.nome || "Condomínio", predio?.morada_linha1 || "", formData);
   };
 
   const handlePrint = () => {

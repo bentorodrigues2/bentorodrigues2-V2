@@ -1,0 +1,6 @@
+{
+  "name": "Bento Rodrigues2",
+  "description": "Plataforma de gestão de condomínios baseada no AI Studio com controlo de frações, manutenção, financeiro e portal do condómino.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

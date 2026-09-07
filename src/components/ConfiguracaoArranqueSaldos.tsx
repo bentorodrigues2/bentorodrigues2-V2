@@ -73,9 +73,9 @@ export function ConfiguracaoArranqueSaldos({
 
   // --- PASSO 1: DATA E SALDOS BANCÁRIOS DE ABERTURA ---
   const [dataAbertura, setDataAbertura] = useState<string>("2026-08-01");
-  const [saldoOrdem, setSaldoOrdem] = useState<string>("3450.00");
-  const [saldoPoupanca, setSaldoPoupanca] = useState<string>("8200.00");
-  const [saldoCaixa, setSaldoCaixa] = useState<string>("120.00");
+  const [saldoOrdem, setSaldoOrdem] = useState<string>("0.00");
+  const [saldoPoupanca, setSaldoPoupanca] = useState<string>("0.00");
+  const [saldoCaixa, setSaldoCaixa] = useState<string>("0.00");
   const [bancoNome, setBancoNome] = useState<string>("Millennium BCP");
   const [ibanAbertura, setIbanAbertura] = useState<string>(predio.iban || "PT50 0033 0000 1234 5678 9012 3");
 
@@ -83,30 +83,7 @@ export function ConfiguracaoArranqueSaldos({
   const predioFracoes = useMemo(() => fracoes.filter(f => f.id_predio === predio.id_predio), [fracoes, predio.id_predio]);
 
   const [saldosFracoes, setSaldosFracoes] = useState<SaldoInicialFracao[]>(() => {
-    return predioFracoes.map((f, idx) => {
-      // Pré-carrega um exemplo realista de dívida em 1 fração para demonstração
-      if (idx === 1) {
-        return {
-          id_fracao: f.id_fracao,
-          fracao_nome: f.fracao_nome,
-          proprietario_nome: f.proprietario.nome,
-          tipo_saldo: "DIVIDA",
-          valor_saldo: 135.00,
-          meses_atraso: 3,
-          observacoes: "Quotas de Maio, Junho e Julho de 2026 em atraso da gestão anterior."
-        };
-      }
-      if (idx === 3) {
-        return {
-          id_fracao: f.id_fracao,
-          fracao_nome: f.fracao_nome,
-          proprietario_nome: f.proprietario.nome,
-          tipo_saldo: "CREDITO",
-          valor_saldo: 45.00,
-          meses_atraso: 0,
-          observacoes: "1 quota paga adiantada."
-        };
-      }
+    return predioFracoes.map((f) => {
       return {
         id_fracao: f.id_fracao,
         fracao_nome: f.fracao_nome,
@@ -114,7 +91,7 @@ export function ConfiguracaoArranqueSaldos({
         tipo_saldo: "REGULARIZADO",
         valor_saldo: 0,
         meses_atraso: 0,
-        observacoes: "Sem valores pendentes da administração anterior."
+        observacoes: ""
       };
     });
   });
@@ -135,35 +112,7 @@ export function ConfiguracaoArranqueSaldos({
   };
 
   // --- PASSO 3: MOVIMENTOS HISTÓRICOS DE TRANSIÇÃO (OPCIONAL) ---
-  const [movimentosHistoricos, setMovimentosHistoricos] = useState<MovimentoHistoricoTransitor[]>([
-    {
-      id: "hist-1",
-      data: "2026-06-10",
-      descricao: "Eletricidade Áreas Comuns (EDP Comercial)",
-      categoria: "Eletricidade",
-      tipo: "DESPESA",
-      valor: 142.50,
-      conta: "ORDEM"
-    },
-    {
-      id: "hist-2",
-      data: "2026-06-18",
-      descricao: "Manutenção Elevadores (Schindler)",
-      categoria: "Elevadores",
-      tipo: "DESPESA",
-      valor: 230.00,
-      conta: "ORDEM"
-    },
-    {
-      id: "hist-3",
-      data: "2026-07-01",
-      descricao: "Cobrança Global de Quotas 2.º Trimestre",
-      categoria: "Quotas Ordinárias",
-      tipo: "RECEITA",
-      valor: 1850.00,
-      conta: "ORDEM"
-    }
-  ]);
+  const [movimentosHistoricos, setMovimentosHistoricos] = useState<MovimentoHistoricoTransitor[]>([]);
 
   // Form para adicionar movimento histórico
   const [novoHistDesc, setNovoHistDesc] = useState("");
@@ -319,20 +268,20 @@ export function ConfiguracaoArranqueSaldos({
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* BANNER DE CABEÇALHO */}
-      <div className="bg-gradient-to-r from-slate-900 via-amber-950/70 to-slate-900 border border-amber-800/40 p-5 sm:p-7 rounded-2xl shadow-xl text-white">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border border-slate-800 p-5 sm:p-7 rounded-2xl shadow-xl text-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center space-x-3">
-            <span className="p-2.5 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/30 shadow-inner">
+            <span className="p-2.5 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30 shadow-inner">
               <Sliders className="h-6 w-6" />
             </span>
             <div>
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
                 Assistente de Arranque Inicial & Transição de Gestão
-                <span className="text-xs px-2.5 py-0.5 bg-amber-500/20 text-amber-300 font-bold rounded-full border border-amber-500/30">
+                <span className="text-xs px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 font-bold rounded-full border border-emerald-500/30">
                   Balanço de Abertura
                 </span>
               </h1>
-              <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
+              <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
                 Defina os saldos bancários de abertura, as dívidas transitadas por fração e o histórico inicial de movimentos sem fricção.
               </p>
             </div>
@@ -341,7 +290,7 @@ export function ConfiguracaoArranqueSaldos({
           <div className="flex items-center space-x-3 bg-slate-950/60 px-4 py-2 rounded-xl border border-slate-800">
             <div className="text-right">
               <span className="text-[10px] text-slate-400 uppercase font-bold block">Ativo Líquido de Arranque</span>
-              <span className="text-sm sm:text-base font-black text-amber-400 font-mono">
+              <span className="text-sm sm:text-base font-black text-emerald-400 font-mono">
                 {ativoLiquidoAbertura.toLocaleString("pt-PT", { minimumFractionDigits: 2 })} €
               </span>
             </div>
@@ -364,14 +313,14 @@ export function ConfiguracaoArranqueSaldos({
                 onClick={() => setCurrentStep(s.step)}
                 className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center space-x-2.5 ${
                   isActive
-                    ? "bg-amber-500 text-slate-950 font-black border-amber-400 shadow-md ring-1 ring-amber-400"
+                    ? "bg-emerald-600 text-white font-black border-emerald-500 shadow-md ring-1 ring-emerald-400"
                     : isCompleted
                     ? "bg-slate-900/80 text-emerald-400 border-emerald-500/40"
                     : "bg-slate-950/40 text-slate-400 border-slate-800 hover:bg-slate-900/60"
                 }`}
               >
                 <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                  isActive ? "bg-slate-950 text-amber-400" : isCompleted ? "bg-emerald-500 text-slate-950" : "bg-slate-800 text-slate-400"
+                  isActive ? "bg-white text-emerald-700" : isCompleted ? "bg-emerald-500 text-slate-950" : "bg-slate-800 text-slate-400"
                 }`}>
                   {isCompleted ? <Check className="h-3.5 w-3.5" /> : s.step}
                 </span>

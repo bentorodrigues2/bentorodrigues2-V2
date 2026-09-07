@@ -1,9 +1,8 @@
-﻿import AssistenteIA from "./components/AssistenteIA";
 import { Shield } from "lucide-react";
 import { useState, useEffect } from "react";
 import { ActionIcon } from "./components/ActionIcon";
 import { LoggedUser, Predio, Conta, Fornecedor, Fracao, Aviso, Movimento, Reuniao, Documento, Ocorrencia, Reserva, CapacidadeLimite } from "./types";
-import { initialPredios, initialContas, initialFornecedores, initialFracoes, initialAvisos, initialMovements, initialReunioes, initialDocumentos, initialOcorrencias } from "./data";
+import { initialPredios, initialContas, initialFornecedores, initialFracoes, initialAvisos, initialMovements, initialReunioes, initialDocumentos, initialOcorrencias, defaultEmptyPredio } from "./data";
 import { PainelControlo } from "./components/PainelControlo";
 import { GestaoPredios } from "./components/GestaoPredios";
 import { GestaoFracoes } from "./components/GestaoFracoes";
@@ -86,7 +85,7 @@ export default function App() {
       id_reserva: "res-1",
       id_predio: "predio-1",
       id_fracao: "frac-1",
-      area_comum: "GinÃ¡sio",
+      area_comum: "Ginásio",
       data: "18-07-2026",
       hora_inicio: "08:00",
       hora_fim: "09:30",
@@ -107,21 +106,21 @@ export default function App() {
   ]);
 
   const [capacidades, setCapacidades] = useState<CapacidadeLimite[]>([
-    { area_comum: "GinÃ¡sio", limite: 5 },
+    { area_comum: "Ginásio", limite: 5 },
     { area_comum: "Spa", limite: 8 },
-    { area_comum: "SalÃ£o de Festas", limite: 40 },
+    { area_comum: "Salão de Festas", limite: 40 },
     { area_comum: "Churrasqueira", limite: 15 }
   ]);
 
   const [loggedUser, setLoggedUser] = useState<LoggedUser>({
-    nome: "Administrador do CondomÃ­nio",
+    nome: "Administrador do Condomínio",
     email: "condomanagerai@gmail.com",
     role: "ADMIN"
   });
 
   const [browserIsLoggedOut, setBrowserIsLoggedOut] = useState<boolean>(true);
   const [browserEmail, setBrowserEmail] = useState<string>("condomanagerai@gmail.com");
-  const [browserPassword, setBrowserPassword] = useState<string>("â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢");
+  const [browserPassword, setBrowserPassword] = useState<string>("••••••••");
   const [browserSelectedRole, setBrowserSelectedRole] = useState<LoggedUser["role"]>("ADMIN");
   const [browserBiometricScan, setBrowserBiometricScan] = useState<boolean>(false);
   const [browserBiometricProgress, setBrowserBiometricProgress] = useState<number>(0);
@@ -134,69 +133,70 @@ export default function App() {
   const [cooldownSeconds, setCooldownSeconds] = useState<number>(0);
   const [loginErrorMessage, setLoginErrorMessage] = useState<string>("");
   const [theme, setTheme] = useState<"light" | "dark">("light");
-// Cooldown countdown timer effect
-useEffect(() => {
-  const currentSecState = userSecurityMap[browserEmail] || {
-    email: browserEmail,
-    failedAttempts: 0,
-    cooldownUntil: null,
-    cooldownPassed: false,
-    postCooldownAttempts: 0,
-    isLocked: false,
-    mustResetPassword: false,
-    passwordHistory: [],
-    botChallengeRequired: false,
-  };
-  
-if (currentSecState.cooldownUntil && currentSecState.cooldownUntil > Date.now()) {
-  const interval = setInterval(() => {
-    const remaining = Math.max(0, Math.ceil((currentSecState.cooldownUntil! - Date.now()) / 1000));
-    setCooldownSeconds(remaining);
 
-    if (remaining <= 0) {
-      clearInterval(interval);
+  // Cooldown countdown timer effect
+  useEffect(() => {
+    const currentSecState = userSecurityMap[browserEmail] || {
+      email: browserEmail,
+      failedAttempts: 0,
+      cooldownUntil: null,
+      cooldownPassed: false,
+      postCooldownAttempts: 0,
+      isLocked: false,
+      mustResetPassword: false,
+      passwordHistory: [],
+      botChallengeRequired: false,
+    };
 
-      setUserSecurityMap(prev => ({
-        ...prev,
-        [browserEmail]: {
-          ...prev[browserEmail],
-          cooldownUntil: null,
-          cooldownPassed: true,
+    if (currentSecState.cooldownUntil && currentSecState.cooldownUntil > Date.now()) {
+      const interval = setInterval(() => {
+        const remaining = Math.max(0, Math.ceil((currentSecState.cooldownUntil! - Date.now()) / 1000));
+        setCooldownSeconds(remaining);
+        if (remaining <= 0) {
+          clearInterval(interval);
+          // Transition to cooldownPassed = true
+          setUserSecurityMap(prev => ({
+            ...prev,
+            [browserEmail]: {
+              ...prev[browserEmail],
+              cooldownUntil: null,
+              cooldownPassed: true,
+            }
+          }));
+          createSecurityLog(browserEmail, "BOT_CHALLENGE_PASSED", "Cooldown de 1 minuto terminado. Concedidas 3 tentativas pós-bloqueio.");
         }
-      }));
-
-      createSecurityLog(
-        browserEmail,
-        "BOT_CHALLENGE_PASSED",
-        "Cooldown de 1 minuto terminado. Concedidas 3 tentativas pós-bloqueio."
-      );
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      setCooldownSeconds(0);
     }
-  }, 1000);
+  }, [browserEmail, userSecurityMap]);
 
-  return () => clearInterval(interval);
+  // Automatic Theme detection via prefers-color-scheme
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleThemeChange = (e: any) => {
+      setTheme(e.matches ? "dark" : "light");
+    };
 
-} else {
-  setCooldownSeconds(0);
-}
-}, [browserEmail, userSecurityMap]);
+    setTheme(mediaQuery.matches ? "dark" : "light");
+    mediaQuery.addEventListener("change", handleThemeChange);
+    return () => mediaQuery.removeEventListener("change", handleThemeChange);
+  }, []);
 
-// Automatic Theme detection via prefers-color-scheme
-useEffect(() => {
-  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-  const handleThemeChange = (e: any) => {
-    setTheme(e.matches ? "dark" : "light");
-  };
+  // Update HTML class when theme state changes
+  useEffect(() => {
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [theme]);
 
-  setTheme(mediaQuery.matches ? "dark" : "light");
-  mediaQuery.addEventListener("change", handleThemeChange);
-
-  return () => mediaQuery.removeEventListener("change", handleThemeChange);
-}, []);
-
-    const [activeSection, setActiveSection] = useState("painel"); 
+  const [activeSection, setActiveSection] = useState("painel"); 
   const [userProfileModalOpen, setUserProfileModalOpen] = useState(false);
   const [biometricsEnabled, setBiometricsEnabled] = useState<boolean>(true);
-  const [openMenuPredios, setOpenMenuPredios] = useState(true);
+  const [openMenuPredios, setOpenMenuPredios] = useState(false);
   const [openMenuFracoes, setOpenMenuFracoes] = useState(false);
   const [openMenuFinanceiro, setOpenMenuFinanceiro] = useState(false);
   const [openMenuLimpezas, setOpenMenuLimpezas] = useState(false);
@@ -264,7 +264,7 @@ useEffect(() => {
     // A. Role Navigation Guard
     const roleAccess = validateRoleAccess(loggedUser.role as UserRole, activeSection);
     if (!roleAccess.allowed) {
-      console.warn(`[RoleGuard] Acesso negado Ã  secÃ§Ã£o '${activeSection}' para a funÃ§Ã£o '${loggedUser.role}'. Redirecionando para '${roleAccess.redirectTab}'.`);
+      console.warn(`[RoleGuard] Acesso negado à secção '${activeSection}' para a função '${loggedUser.role}'. Redirecionando para '${roleAccess.redirectTab}'.`);
       setActiveSection(roleAccess.redirectTab);
     }
 
@@ -285,14 +285,14 @@ useEffect(() => {
     const sessionInterval = setInterval(() => {
       const val = validateSession(loggedUser.email, loggedUser.role as UserRole);
       if (!val.valid && val.shouldLogout) {
-        handleSecureLogout(val.reason || "SessÃ£o expirada por inatividade.");
+        handleSecureLogout(val.reason || "Sessão expirada por inatividade.");
       }
     }, 5000);
 
     // D. Cross-Tab Logout Listener
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "condomanager_active_session" && !e.newValue) {
-        handleSecureLogout("SessÃ£o encerrada noutro separador.");
+        handleSecureLogout("Sessão encerrada noutro separador.");
       }
     };
     window.addEventListener("storage", handleStorageChange);
@@ -311,9 +311,9 @@ useEffect(() => {
     setCurrentRoute("/");
     window.history.pushState({}, "", "/");
     if (reason) {
-      setLoginErrorMessage(`â„¹ï¸ ${reason}`);
+      setLoginErrorMessage(`ℹ️ ${reason}`);
     } else {
-      setLoginErrorMessage("SessÃ£o encerrada com sucesso.");
+      setLoginErrorMessage("Sessão encerrada com sucesso.");
     }
   };
 
@@ -370,15 +370,15 @@ useEffect(() => {
 
     if (role === "EMPRESA_GESTORA") {
       email = "contacto@gestaoforte.pt";
-      nome = "GestÃ£o Forte AdministraÃ§Ãµes";
+      nome = "Gestão Forte Administrações";
       section = "ficha_gestora";
     } else if (role === "USER") {
       email = "ana.silva@gmail.com";
-      nome = "Ana Silva (FraÃ§Ã£o A - CondÃ³mino)";
+      nome = "Ana Silva (Fração A - Condómino)";
       section = "portal_condomino";
     } else if (role === "INQUILINO") {
       email = "tiago.inquilino@gmail.com";
-      nome = "Tiago Rocha (Inquilino FraÃ§Ã£o B)";
+      nome = "Tiago Rocha (Inquilino Fração B)";
       section = "portal_condomino";
     } else if (role === "TECNICO") {
       email = "rui.melo@vistoriasegura.pt";
@@ -390,11 +390,11 @@ useEffect(() => {
       section = "vistorias_limpezas";
     } else if (role === "JURIDICO") {
       email = "dra.margarida@legalcondo.pt";
-      nome = "Dra. Margarida Castro (JurÃ­dico)";
+      nome = "Dra. Margarida Castro (Jurídico)";
       section = "contencioso_juridico";
     } else if (role === "AUDITOR") {
       email = "antonio.auditor@auditchain.pt";
-      nome = "Dr. AntÃ³nio Melo (Auditor)";
+      nome = "Dr. António Melo (Auditor)";
       section = "auditoria_interna";
     } else if (role === "CONTABILISTA") {
       email = "paula.contas@tcontabilidade.pt";
@@ -416,7 +416,7 @@ useEffect(() => {
     manutencao: true
   });
 
-  const predioAtivo = predios.find(p => p.id_predio === activePredioId) || predios[0];
+  const predioAtivo = predios.find(p => p.id_predio === activePredioId) || predios[0] || defaultEmptyPredio;
 
   const toggleSidebarSub = (menu: "administracao" | "operacoes" | "financeiro" | "condomino" | "documentacao" | "juridico" | "manutencao") => {
     setSidebarExpanded(prev => ({ ...prev, [menu]: !prev[menu] }));
@@ -441,7 +441,7 @@ useEffect(() => {
 
   const handleDeletePredio = (idPredio: string) => {
     if (predios.length <= 1) {
-      alert("NÃ£o Ã© possÃ­vel remover o Ãºnico prÃ©dio cadastrado no sistema.");
+      alert("Não é possível remover o único prédio cadastrado no sistema.");
       return;
     }
     const filtered = predios.filter(p => p.id_predio !== idPredio);
@@ -496,9 +496,9 @@ useEffect(() => {
     // Alarm notification to internal administrators
     const adms = fracoes.filter(f => f.id_predio === activePredioId && f.administrador_interno === "Sim");
     adms.forEach(adm => {
-      console.log(`[Alerta Push & E-mail] Enviado para Administrador Interno: ${adm.proprietario.nome} (${adm.proprietario.email}) - Nova ocorrÃªncia registada.`);
+      console.log(`[Alerta Push & E-mail] Enviado para Administrador Interno: ${adm.proprietario.nome} (${adm.proprietario.email}) - Nova ocorrência registada.`);
     });
-    alert(`Alerta PWA disparado! Os Administradores Internos foram notificados por E-mail e Push sobre esta nova ocorrÃªncia.`);
+    alert(`Alerta PWA disparado! Os Administradores Internos foram notificados por E-mail e Push sobre esta nova ocorrência.`);
   };
 
   const handleAddDocumento = (novoDoc: Documento) => {
@@ -514,7 +514,7 @@ useEffect(() => {
       const cleanEmail = (emailInput || "condomanagerai@gmail.com").trim().toLowerCase();
       const account = resolveUserByEmail(cleanEmail) || {
         role: "ADMIN" as const,
-        nome: "Administrador do CondomÃ­nio",
+        nome: "Administrador do Condomínio",
         email: cleanEmail
       };
       setLoggedUser({ role: account.role, email: account.email, nome: account.nome });
@@ -537,8 +537,6 @@ useEffect(() => {
     }
 
     return (
-    
-    
       <div className={`h-screen w-screen flex flex-col items-center justify-center p-3 transition-all duration-300 ${theme === "dark" ? "bg-[#030712] text-slate-100" : "bg-slate-950 text-slate-100"}`}>
         <AuthForm
           initialEmail={browserEmail}
@@ -558,8 +556,6 @@ useEffect(() => {
   }
 
   return (
-    
-    
     <div className={`h-screen w-screen flex overflow-hidden relative transition-all duration-300 ${theme === "dark" ? "bg-[#0b0f19] text-slate-100" : "bg-slate-50 text-slate-800"}`}>
       
       {/* OVERLAY SOMBREADO PARA MOBILE DRAWER */}
@@ -570,7 +566,7 @@ useEffect(() => {
         />
       )}
 
-      {/* BARRA LATERAL (MENU DINÃ‚MICO RECOLHÃVEL E COMPATÃVEL COM MOBILE) */}
+      {/* BARRA LATERAL (MENU DINÂMICO RECOLHÍVEL E COMPATÍVEL COM MOBILE) */}
       <aside className={`h-full flex flex-col select-none shrink-0 z-30 no-print transition-all duration-300 ${
         theme === "dark" ? "bg-[#030712] text-slate-300 border-r border-slate-900/50" : "bg-slate-900 text-slate-300"
       } ${
@@ -578,18 +574,18 @@ useEffect(() => {
       } ${
         sidebarCollapsed ? "w-20 md:w-20" : "w-72 md:w-72"
       }`}>
-        {/* Area do Logo - Limpa e Sem SobreposiÃ§Ãµes */}
+        {/* Area do Logo - Limpa e Sem Sobreposições */}
         <div className="w-full border-b border-slate-800 shrink-0 overflow-hidden bg-slate-900/40">
           <div className="w-full h-20 flex items-center justify-center p-2 relative overflow-hidden">
             <div 
               onClick={() => selectSection("painel")}
               className="w-full h-full flex items-center justify-center cursor-pointer hover:opacity-95 transition-all duration-300 overflow-hidden px-1"
-              title="Ir para a PÃ¡gina Inicial (Dashboard)"
+              title="Ir para a Página Inicial (Dashboard)"
             >
               <img 
-                src={whiteLabelLogo || "/marca/18-versao-horizontal-1.png"} 
+                src={sidebarCollapsed ? "/marca/04-icone-app.png" : (whiteLabelLogo || "/marca/18-versao-horizontal-1.png")} 
                 alt="CondoManager AI" 
-                className={`w-full h-full object-contain select-none transition-transform duration-300 drop-shadow-xl ${sidebarCollapsed ? "scale-90" : "scale-145 sm:scale-155 max-w-[290px]"}`} 
+                className={`w-full h-full object-contain select-none transition-transform duration-300 drop-shadow-xl ${sidebarCollapsed ? "max-h-12 max-w-12 p-1" : "scale-145 sm:scale-155 max-w-[290px]"}`} 
                 referrerPolicy="no-referrer"
               />
             </div>
@@ -600,22 +596,18 @@ useEffect(() => {
         <div className="w-full bg-slate-950/80 border-b border-slate-800/80 px-2.5 py-1.5 flex items-center justify-between shrink-0">
           {!sidebarCollapsed && (
             <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 font-mono truncate pl-1">
-              NavegaÃ§Ã£o
+              Navegação
             </span>
           )}
           
           <div className={`flex items-center gap-1.5 ${sidebarCollapsed ? "w-full justify-center" : "ml-auto"}`}>
-            {/* BotÃ£o Desktop com imagem 07-avancar.png */}
+            {/* Botão Desktop para recolher/expandir coluna central/lateral com símbolo explícito */}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="hidden lg:flex items-center justify-center p-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/80 transition-all cursor-pointer shrink-0 shadow-md hover:scale-105 active:scale-95"
-              title={sidebarCollapsed ? "Expandir Menu Lateral" : "Recolher Menu Lateral"}
+              className="hidden lg:flex items-center justify-center w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 transition-all cursor-pointer shrink-0 shadow-md hover:scale-105 active:scale-95"
+              title={sidebarCollapsed ? "Expandir Coluna Central" : "Recolher Coluna Central"}
             >
-              <img 
-                src="/estados-acoes/07-avancar.png" 
-                alt="Alternar Menu" 
-                className={`h-5 w-5 object-contain transition-transform duration-300 ${sidebarCollapsed ? "rotate-0" : "rotate-180"}`} 
-              />
+              <i className={`fa-solid ${sidebarCollapsed ? "fa-angles-right" : "fa-angles-left"} text-sm text-emerald-400 font-bold`}></i>
             </button>
 
             {/* Mobile Close Drawer */}
@@ -629,12 +621,12 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Seletor de CondomÃ­nio Ativo */}
+        {/* Seletor de Condomínio Ativo */}
         <div className="px-3 py-2 border-b border-slate-800 shrink-0 bg-slate-950/40">
           {!sidebarCollapsed ? (
             <div>
               <label className="block text-[9px] uppercase tracking-wider text-slate-400 font-extrabold font-mono mb-1">
-                CondomÃ­nio Ativo
+                Condomínio Ativo
               </label>
               <div className="relative flex items-center">
                 <select 
@@ -642,9 +634,13 @@ useEffect(() => {
                   onChange={(e) => setActivePredioId(e.target.value)}
                   className="w-full bg-slate-800/90 border border-slate-700 text-white rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer appearance-none pr-7 font-semibold truncate shadow-inner"
                 >
-                  {predios.map(p => (
-                    <option key={p.id_predio} value={p.id_predio}>{p.nome || `${p.morada_linha1} ${p.num_porta}`}</option>
-                  ))}
+                  {predios.length === 0 ? (
+                    <option value="">Aguardando Condomínio (Base Limpa / Supabase)</option>
+                  ) : (
+                    predios.map(p => (
+                      <option key={p.id_predio} value={p.id_predio}>{p.nome || `${p.morada_linha1} ${p.num_porta}`}</option>
+                    ))
+                  )}
                 </select>
                 <div className="absolute inset-y-0 right-2.5 flex items-center pointer-events-none text-slate-400">
                   <i className="fa-solid fa-chevron-down text-[10px]"></i>
@@ -652,17 +648,21 @@ useEffect(() => {
               </div>
               <p className="text-[10px] text-slate-400 mt-1 px-1 flex items-center">
                 <i className="fa-solid fa-location-dot text-slate-500 mr-1 shrink-0"></i>
-                <span className="truncate">{predioAtivo.morada_linha1} {predioAtivo.num_porta}, {predioAtivo.localidade}</span>
+                <span className="truncate">
+                  {predioAtivo?.id_predio !== "predio-temp" && predioAtivo?.morada_linha1
+                    ? `${predioAtivo.morada_linha1} ${predioAtivo.num_porta || ""}, ${predioAtivo.localidade || ""}`
+                    : "Sem condomínio registado (Base Limpa)"}
+                </span>
               </p>
             </div>
           ) : (
-            <div className="flex justify-center py-1" title={`CondomÃ­nio Ativo: ${predioAtivo.nome || predioAtivo.morada_linha1}`}>
+            <div className="flex justify-center py-1" title={`Condomínio Ativo: ${predioAtivo?.nome || predioAtivo?.morada_linha1 || "Base Limpa"}`}>
               <i className="fa-solid fa-building text-emerald-400 text-base"></i>
             </div>
           )}
         </div>
 
-        {/* NavegaÃ§Ã£o */}
+        {/* Navegação */}
         <nav className="flex-grow px-3 py-4 space-y-1.5 overflow-y-auto">
           
           {/* 1. Dashboard Inicial */}
@@ -679,7 +679,7 @@ useEffect(() => {
             <span className={`${sidebarCollapsed ? "lg:hidden" : ""}`}>Dashboard Inicial</span>
           </button>
 
-          {/* 2. Registo de PrÃ©dio (Accordion ExpandÃ­vel) */}
+          {/* 2. Registo de Prédio (Accordion Expandível) */}
           <div className="space-y-1">
             <button 
               id="sidebar-item-predios"
@@ -698,8 +698,8 @@ useEffect(() => {
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <img src="/modulos/01-predio.png" alt="PrÃ©dio" className="w-5 h-5 object-contain shrink-0" />
-                <span className={`${sidebarCollapsed ? "lg:hidden" : ""}`}>Registo de PrÃ©dio</span>
+                <img src="/modulos/01-predio.png" alt="Prédio" className="w-5 h-5 object-contain shrink-0" />
+                <span className={`${sidebarCollapsed ? "lg:hidden" : ""}`}>Registo de Prédio</span>
               </div>
               <i className={`fa-solid fa-chevron-down text-[10px] transition-transform ${sidebarCollapsed ? "lg:hidden" : ""} ${openMenuPredios ? "rotate-180" : ""}`}></i>
             </button>
@@ -719,7 +719,7 @@ useEffect(() => {
                   }`}
                 >
                   <img src="/modulos/01-predio.png" alt="Registos" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Registos & PatrimÃ³nio</span>
+                  <span>Registos & Património</span>
                 </button>
 
                 {["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role) && (
@@ -736,7 +736,7 @@ useEffect(() => {
                     }`}
                   >
                     <i className="fa-solid fa-key text-amber-400 text-xs"></i>
-                    <span>GestÃ£o de Chaves</span>
+                    <span>Gestão de Chaves</span>
                   </button>
                 )}
 
@@ -759,7 +759,7 @@ useEffect(() => {
             )}
           </div>
 
-          {/* 3. Registo de FraÃ§Ãµes (Accordion) */}
+          {/* 3. Registo de Frações (Accordion) */}
           <div className="space-y-1">
             <button 
               id="sidebar-item-fracoes"
@@ -778,8 +778,8 @@ useEffect(() => {
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <img src="/modulos/07-fracao.png" alt="FraÃ§Ãµes" className="w-5 h-5 object-contain shrink-0" />
-                <span>Registo de FraÃ§Ãµes</span>
+                <img src="/modulos/07-fracao.png" alt="Frações" className="w-5 h-5 object-contain shrink-0" />
+                <span>Registo de Frações</span>
               </div>
               <i className={`fa-solid fa-chevron-down text-[10px] transition-transform ${openMenuFracoes ? "rotate-180" : ""}`}></i>
             </button>
@@ -798,8 +798,8 @@ useEffect(() => {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/08-piso.png" alt="Nova FraÃ§Ã£o" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Registar Nova FraÃ§Ã£o</span>
+                  <img src="/modulos/08-piso.png" alt="Nova Fração" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Registar Nova Fração</span>
                 </button>
                 <button
                   onClick={() => {
@@ -813,8 +813,8 @@ useEffect(() => {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/11-proprietario.png" alt="ProprietÃ¡rio" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Registar ProprietÃ¡rio</span>
+                  <img src="/modulos/11-proprietario.png" alt="Proprietário" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Registar Proprietário</span>
                 </button>
                 <button
                   onClick={() => {
@@ -829,7 +829,7 @@ useEffect(() => {
                   }`}
                 >
                   <img src="/modulos/17-documentos-pessoais.png" alt="Perfis" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Perfis de Acesso dos CondÃ³minos</span>
+                  <span>Perfis de Acesso dos Condóminos</span>
                 </button>
                 <button
                   onClick={() => {
@@ -920,7 +920,7 @@ useEffect(() => {
                   }`}
                 >
                   <i className="fa-solid fa-calendar-check text-emerald-400 text-xs"></i>
-                  <span>Agenda de NotificaÃ§Ãµes</span>
+                  <span>Agenda de Notificações</span>
                 </button>
                 <button
                   onClick={() => {
@@ -949,8 +949,8 @@ useEffect(() => {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/75-mensagem.png" alt="Portal CondÃ³mino" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Portal & Mensagens CondÃ³mino</span>
+                  <img src="/modulos/75-mensagem.png" alt="Portal Condómino" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Portal & Mensagens Condómino</span>
                 </button>
                 <button
                   onClick={() => {
@@ -965,7 +965,7 @@ useEffect(() => {
                   }`}
                 >
                   <img src="/modulos/76-sondagem.png" alt="Sondagens" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Sondagens & VotaÃ§Ãµes</span>
+                  <span>Sondagens & Votações</span>
                 </button>
                 <button
                   onClick={() => {
@@ -979,8 +979,8 @@ useEffect(() => {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/77-questionario.png" alt="QuestionÃ¡rios" className="w-4 h-4 object-contain shrink-0" />
-                  <span>QuestionÃ¡rios & InquÃ©rito</span>
+                  <img src="/modulos/77-questionario.png" alt="Questionários" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Questionários & Inquérito</span>
                 </button>
                 <button
                   onClick={() => {
@@ -994,14 +994,14 @@ useEffect(() => {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/80-pdf-de-resultados.png" alt="ReuniÃµes" className="w-4 h-4 object-contain shrink-0" />
-                  <span>ReuniÃµes & ConvocatÃ³rias</span>
+                  <img src="/modulos/80-pdf-de-resultados.png" alt="Reuniões" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Reuniões & Convocatórias</span>
                 </button>
               </div>
             )}
           </div>
 
-          {/* 5. Ãrea Financeira (Accordion) */}
+          {/* 5. Área Financeira (Accordion) */}
           <div className="space-y-1">
             <button 
               id="sidebar-item-financeiro"
@@ -1020,8 +1020,8 @@ useEffect(() => {
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <img src="/modulos/57-quota.png" alt="Ãrea Financeira" className="w-5 h-5 object-contain shrink-0" />
-                <span>Ãrea Financeira</span>
+                <img src="/modulos/57-quota.png" alt="Área Financeira" className="w-5 h-5 object-contain shrink-0" />
+                <span>Área Financeira</span>
               </div>
               <i className={`fa-solid fa-chevron-down text-[10px] transition-transform ${openMenuFinanceiro ? "rotate-180" : ""}`}></i>
             </button>
@@ -1041,7 +1041,7 @@ useEffect(() => {
                   }`}
                 >
                   <img src="/modulos/59-recibo.png" alt="Recibos" className="w-4 h-4 object-contain shrink-0" />
-                  <span>EmissÃ£o de Recibos</span>
+                  <span>Emissão de Recibos</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1070,8 +1070,8 @@ useEffect(() => {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/25-relatorio.png" alt="RelatÃ³rios" className="w-4 h-4 object-contain shrink-0" />
-                  <span>RelatÃ³rios de DÃ­vidas</span>
+                  <img src="/modulos/25-relatorio.png" alt="Relatórios" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Relatórios de Dívidas</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1086,7 +1086,7 @@ useEffect(() => {
                   }`}
                 >
                   <img src="/modulos/64-saldo.png" alt="Extrato" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Extrato de DÃ­vidas e Saldo</span>
+                  <span>Extrato de Dívidas e Saldo</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1100,8 +1100,8 @@ useEffect(() => {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/63-lista-de-pagamentos.png" alt="ConciliaÃ§Ã£o" className="w-4 h-4 object-contain shrink-0" />
-                  <span>ConciliaÃ§Ã£o BancÃ¡ria (OFX/CSV)</span>
+                  <img src="/modulos/63-lista-de-pagamentos.png" alt="Conciliação" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Conciliação Bancária (OFX/CSV)</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1176,14 +1176,14 @@ useEffect(() => {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/52-avaria-encontrada.png" alt="IncidÃªncias" className="w-4 h-4 object-contain shrink-0" />
-                  <span>IncidÃªncias (enviadas pelas limpezas)</span>
+                  <img src="/modulos/52-avaria-encontrada.png" alt="Incidências" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Incidências (enviadas pelas limpezas)</span>
                 </button>
               </div>
             )}
           </div>
 
-          {/* 7. Vistorias & IntervenÃ§Ãµes (Accordion) */}
+          {/* 7. Vistorias & Intervenções (Accordion) */}
           <div className="space-y-1">
             <button 
               id="sidebar-item-vistorias-intervencoes"
@@ -1202,8 +1202,8 @@ useEffect(() => {
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <img src="/modulos/28-intervencao.png" alt="Vistorias & IntervenÃ§Ãµes" className="w-5 h-5 object-contain shrink-0" />
-                <span>Vistorias & IntervenÃ§Ãµes</span>
+                <img src="/modulos/28-intervencao.png" alt="Vistorias & Intervenções" className="w-5 h-5 object-contain shrink-0" />
+                <span>Vistorias & Intervenções</span>
               </div>
               <i className={`fa-solid fa-chevron-down text-[10px] transition-transform ${openMenuVistoriasIntervencoes ? "rotate-180" : ""}`}></i>
             </button>
@@ -1222,8 +1222,8 @@ useEffect(() => {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/29-avaria.png" alt="OcorrÃªncias" className="w-4 h-4 object-contain shrink-0" />
-                  <span>OcorrÃªncias</span>
+                  <img src="/modulos/29-avaria.png" alt="Ocorrências" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Ocorrências</span>
                 </button>
 
                 <button
@@ -1238,8 +1238,8 @@ useEffect(() => {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/02-equipamentos-tecnicos.png" alt="Vistoria TÃ©cnica" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Vistoria TÃ©cnica</span>
+                  <img src="/modulos/02-equipamentos-tecnicos.png" alt="Vistoria Técnica" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Vistoria Técnica</span>
                 </button>
 
                 <button
@@ -1254,8 +1254,8 @@ useEffect(() => {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/28-intervencao.png" alt="IntervenÃ§Ãµes" className="w-4 h-4 object-contain shrink-0" />
-                  <span>IntervenÃ§Ãµes (ReparaÃ§Ãµes)</span>
+                  <img src="/modulos/28-intervencao.png" alt="Intervenções" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Intervenções (Reparações)</span>
                 </button>
 
                 <button
@@ -1270,8 +1270,8 @@ useEffect(() => {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/39-intervencao-concluida.png" alt="ConcluÃ­das" className="w-4 h-4 object-contain shrink-0" />
-                  <span>IntervenÃ§Ãµes ConcluÃ­das</span>
+                  <img src="/modulos/39-intervencao-concluida.png" alt="Concluídas" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Intervenções Concluídas</span>
                 </button>
 
                 <button
@@ -1287,7 +1287,7 @@ useEffect(() => {
                   }`}
                 >
                   <img src="/modulos/30-equipamento.png" alt="Agenda" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Agenda de ManutenÃ§Ã£o</span>
+                  <span>Agenda de Manutenção</span>
                 </button>
 
                 <button
@@ -1303,7 +1303,7 @@ useEffect(() => {
                   }`}
                 >
                   <img src="/modulos/41-obra.png" alt="Obras" className="w-4 h-4 object-contain shrink-0" />
-                  <span>IntervenÃ§Ãµes ExtraordinÃ¡rias (Obras)</span>
+                  <span>Intervenções Extraordinárias (Obras)</span>
                 </button>
               </div>
             )}
@@ -1366,13 +1366,13 @@ useEffect(() => {
                   }`}
                 >
                   <i className="fa-solid fa-file-contract text-emerald-400 text-xs"></i>
-                  <span>ServiÃ§os contratados</span>
+                  <span>Serviços contratados</span>
                 </button>
               </div>
             )}
           </div>
 
-          {/* 9. ReuniÃµes & ConvocatÃ³rias */}
+          {/* 9. Reuniões & Convocatórias */}
           <button 
             id="sidebar-item-assembleias"
             onClick={() => {
@@ -1387,15 +1387,15 @@ useEffect(() => {
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <img src="/modulos/80-pdf-de-resultados.png" alt="ReuniÃµes" className="w-5 h-5 object-contain shrink-0" />
-              <span>ReuniÃµes & ConvocatÃ³rias</span>
+              <img src="/modulos/80-pdf-de-resultados.png" alt="Reuniões" className="w-5 h-5 object-contain shrink-0" />
+              <span>Reuniões & Convocatórias</span>
             </div>
             <span className="bg-emerald-500/20 text-emerald-300 text-[9px] font-black rounded px-1.5 py-0.5 border border-emerald-500/30">
               IA
             </span>
           </button>
 
-          {/* 10. Ãrea JurÃ­dica (Accordion) */}
+          {/* 10. Área Jurídica (Accordion) */}
           <div className="space-y-1">
             <button 
               id="sidebar-item-juridico-ai"
@@ -1414,8 +1414,8 @@ useEffect(() => {
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <img src="/modulos/23-contrato.png" alt="Ãrea JurÃ­dica" className="w-5 h-5 object-contain shrink-0" />
-                <span>Ãrea JurÃ­dica</span>
+                <img src="/modulos/23-contrato.png" alt="Área Jurídica" className="w-5 h-5 object-contain shrink-0" />
+                <span>Área Jurídica</span>
               </div>
               <i className={`fa-solid fa-chevron-down text-[10px] transition-transform ${openMenuJuridico ? "rotate-180" : ""}`}></i>
             </button>
@@ -1464,8 +1464,8 @@ useEffect(() => {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/23-contrato.png" alt="Carta de NÃ£o DÃ­vida" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Carta de NÃ£o DÃ­vida</span>
+                  <img src="/modulos/23-contrato.png" alt="Carta de Não Dívida" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Carta de Não Dívida</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1480,7 +1480,7 @@ useEffect(() => {
                   }`}
                 >
                   <img src="/modulos/15-documentos-da-fracao.png" alt="Documentos" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Documentos ObrigatÃ³rios</span>
+                  <span>Documentos Obrigatórios</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1494,8 +1494,8 @@ useEffect(() => {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/60-nota-de-cobranca.png" alt="CobranÃ§a" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Carta de CobranÃ§a</span>
+                  <img src="/modulos/60-nota-de-cobranca.png" alt="Cobrança" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Carta de Cobrança</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1509,8 +1509,8 @@ useEffect(() => {
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/23-contrato.png" alt="InjunÃ§Ã£o" className="w-4 h-4 object-contain shrink-0" />
-                  <span>InjunÃ§Ã£o Judicial</span>
+                  <img src="/modulos/23-contrato.png" alt="Injunção" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Injunção Judicial</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1540,7 +1540,7 @@ useEffect(() => {
                   }`}
                 >
                   <img src="/modulos/03-regras-do-predio.png" alt="Estatutos" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Estatutos do PrÃ©dio</span>
+                  <span>Estatutos do Prédio</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1601,7 +1601,7 @@ useEffect(() => {
                   }`}
                 >
                   <i className="fa-solid fa-wand-magic-sparkles text-emerald-400 text-xs"></i>
-                  <span>OrÃ§amentos & ProjecÃ§Ãµes</span>
+                  <span>Orçamentos & Projecções</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1616,7 +1616,7 @@ useEffect(() => {
                   }`}
                 >
                   <i className="fa-solid fa-scale-balanced text-emerald-400 text-xs"></i>
-                  <span>Assistente JurÃ­dico</span>
+                  <span>Assistente Jurídico</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1646,7 +1646,7 @@ useEffect(() => {
                   }`}
                 >
                   <i className="fa-solid fa-handshake-angle text-emerald-400 text-xs"></i>
-                  <span>Bolsa de OrÃ§amentos</span>
+                  <span>Bolsa de Orçamentos</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1677,20 +1677,20 @@ useEffect(() => {
             }}
             className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
               activeSection === "minutas_oficiais" || activeSection === "simulador_emails"
-                ? "bg-indigo-600 text-white font-extrabold shadow-sm border border-indigo-500"
+                ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                 : "text-slate-400 hover:text-white hover:bg-slate-800/30"
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <i className="fa-solid fa-file-signature w-5 text-center text-indigo-400 text-sm"></i>
+              <i className="fa-solid fa-file-signature w-5 text-center text-emerald-400 text-sm"></i>
               <span>Minutas & E-mails</span>
             </div>
-            <span className="bg-indigo-500/20 text-indigo-300 text-[10px] font-black rounded-full px-1.5 py-0.5 border border-indigo-400/30 shadow-xs flex items-center justify-center min-w-[20px] h-5">
+            <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-black rounded-full px-1.5 py-0.5 border border-emerald-400/30 shadow-xs flex items-center justify-center min-w-[20px] h-5">
               5 Docs
             </span>
           </button>
 
-          {/* 13. Arranque & Saldos Iniciais (NOVO) */}
+          {/* 13. Arranque & Saldos Iniciais */}
           {["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role) && (
             <button 
               id="sidebar-item-arranque-saldos"
@@ -1701,16 +1701,16 @@ useEffect(() => {
               }}
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 activeSection === "configuracao_arranque"
-                  ? "bg-amber-500 text-slate-950 font-black shadow-sm border border-amber-400"
-                  : "text-amber-400/90 hover:text-amber-300 hover:bg-amber-950/30 border border-amber-900/30"
+                  ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/30"
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <i className="fa-solid fa-sliders w-5 text-center text-amber-400 text-sm"></i>
+                <i className="fa-solid fa-sliders w-5 text-center text-emerald-400 text-sm"></i>
                 <span>Arranque & Saldos</span>
               </div>
-              <span className="bg-amber-400/20 text-amber-300 text-[9px] font-black rounded-md px-1.5 py-0.5 border border-amber-400/30">
-                TransiÃ§Ã£o
+              <span className="bg-emerald-500/20 text-emerald-300 text-[9px] font-black rounded-md px-1.5 py-0.5 border border-emerald-400/30">
+                Transição
               </span>
             </button>
           )}
@@ -1759,15 +1759,41 @@ useEffect(() => {
             </button>
           )}
 
-          {/* 14. SeguranÃ§a & Credenciais (Ãšltimo lugar da coluna central/sidebar) */}
+          {/* Configurações IA & E-mail */}
+          {["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role) && (
+            <button 
+              id="sidebar-item-config-ia"
+              onClick={() => {
+                setActiveSection("configuracoes_ia");
+                setViewMode("BROWSER");
+                setIaInitialTab(undefined);
+              }}
+              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                activeSection === "configuracoes_ia" || activeSection === "configuracoes_gerais"
+                  ? "bg-purple-600 text-white font-extrabold shadow-sm border border-purple-500" 
+                  : "text-purple-400 hover:text-white hover:bg-slate-800/30"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <img src="/modulos/82-automacao.png" alt="Configurações IA" className="w-5 h-5 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                <i className="fa-solid fa-envelope-circle-check w-5 text-center text-purple-400 text-sm"></i>
+                <span>Configurações IA & E-mail</span>
+              </div>
+              <span className="bg-purple-500/20 text-purple-300 text-[9px] font-black rounded-md px-1.5 py-0.5 border border-purple-400/30">
+                Ativo
+              </span>
+            </button>
+          )}
+
+          {/* 14. Segurança & Credenciais (Último lugar da coluna central/sidebar) */}
           <button 
             id="sidebar-item-seguranca"
             onClick={() => setUserProfileModalOpen(true)}
             className="w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 text-emerald-400 hover:text-white hover:bg-slate-800/40 border border-slate-800/80 hover:border-emerald-500/40 bg-slate-900/60 shadow-xs group"
           >
             <div className="flex items-center gap-2.5">
-              <img src="/estados-acoes/18-seguranca.png" alt="SeguranÃ§a" className="w-5 h-5 object-contain shrink-0 group-hover:scale-110 transition-transform" />
-              <span className="font-extrabold">SeguranÃ§a & Acessos</span>
+              <img src="/estados-acoes/18-seguranca.png" alt="Segurança" className="w-5 h-5 object-contain shrink-0 group-hover:scale-110 transition-transform" />
+              <span className="font-extrabold">Segurança & Acessos</span>
             </div>
             <span className="bg-emerald-500/20 text-emerald-300 text-[9px] font-black rounded-md px-1.5 py-0.5 border border-emerald-500/30">
               Ativo
@@ -1780,7 +1806,7 @@ useEffect(() => {
         <div className="p-3 border-t border-slate-800 bg-slate-950/40 space-y-2">
           {!sidebarCollapsed && (
             <div className="flex items-center justify-between">
-              <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">DefiniÃ§Ãµes</span>
+              <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Definições</span>
               <div className="flex items-center space-x-1">
                 <button
                   onClick={() => setTheme(prev => prev === "light" ? "dark" : "light")}
@@ -1809,8 +1835,8 @@ useEffect(() => {
           
           <div className="flex items-center justify-between pt-1 border-t border-slate-800/60">
             <div className="flex items-center space-x-2 overflow-hidden">
-              <div className="h-7 w-7 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 font-bold border border-slate-700 shrink-0" title={loggedUser.nome}>
-                <i className="fa-solid fa-user-shield text-[10px]"></i>
+              <div className="h-7 w-7 rounded-lg bg-slate-800 flex items-center justify-center border border-slate-700 shrink-0 overflow-hidden" title={loggedUser.nome}>
+                <img src="/marca/04-icone-app.png" alt="CondoManager App Icon" className="h-full w-full object-contain p-0.5" />
               </div>
               {!sidebarCollapsed && (
                 <div className="overflow-hidden">
@@ -1830,16 +1856,16 @@ useEffect(() => {
         </div>
       </aside>
 
-      {/* ÃREA DE TRABALHO PRINCIPAL (ADAPTÃVEL A MOBILE E DESKTOP) */}
+      {/* ÁREA DE TRABALHO PRINCIPAL (ADAPTÁVEL A MOBILE E DESKTOP) */}
       <main className={`flex-1 min-w-0 flex flex-col h-full overflow-hidden relative transition-all duration-300 ${theme === "dark" ? "bg-[#0b0f19]" : "bg-slate-50"}`}>
         {/* Header superior */}
         <header className={`h-16 px-3 sm:px-6 md:px-8 flex items-center justify-between shrink-0 z-10 no-print transition-all duration-300 ${theme === "dark" ? "bg-[#111827] border-b border-slate-800 text-slate-100" : "bg-white border-b border-slate-200 text-slate-800"}`}>
           <div className="flex items-center space-x-2 sm:space-x-3 overflow-hidden pr-2">
-            {/* BotÃ£o de Menu Mobile */}
+            {/* Botão de Menu Mobile */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="md:hidden p-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-emerald-400 border border-slate-700 flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer shrink-0 shadow-sm"
-              title="Abrir / Fechar Menu de NavegaÃ§Ã£o"
+              title="Abrir / Fechar Menu de Navegação"
             >
               <i className={`fa-solid ${mobileMenuOpen ? "fa-xmark" : "fa-bars"} text-sm`}></i>
               <span className="hidden sm:inline">Menu</span>
@@ -1848,79 +1874,79 @@ useEffect(() => {
             <div className="overflow-hidden">
               <h2 className={`text-xs sm:text-base md:text-xl font-bold transition-colors duration-300 truncate ${theme === "dark" ? "text-white" : "text-slate-800"}`}>
                 {activeSection === "painel" && "Painel de Controlo"}
-                {activeSection === "predios" && "Registo de PrÃ©dio"}
-                {(activeSection === "fracoes" || activeSection === "fracoes_nova" || activeSection === "fracoes_proprietario" || activeSection === "fracoes_perfis") && "GestÃ£o de FraÃ§Ãµes, ProprietÃ¡rios & Perfis"}
+                {activeSection === "predios" && "Registo de Prédio"}
+                {(activeSection === "fracoes" || activeSection === "fracoes_nova" || activeSection === "fracoes_proprietario" || activeSection === "fracoes_perfis") && "Gestão de Frações, Proprietários & Perfis"}
                 {activeSection === "fornecedores" && "Fichas de Fornecedores"}
-                {activeSection === "contas" && "Contas BancÃ¡rias do CondomÃ­nio"}
-                {activeSection === "emissao" && "EmissÃ£o de Avisos e OrÃ§amentos"}
+                {activeSection === "contas" && "Contas Bancárias do Condomínio"}
+                {activeSection === "emissao" && "Emissão de Avisos e Orçamentos"}
                 {activeSection === "movimentos" && "Registo de Movimentos Financeiros"}
-                {activeSection === "financeiro_recibos" && "EmissÃ£o de Recibos Manuais (100% EditÃ¡vel)"}
-                {activeSection === "financeiro_relatorios" && "RelatÃ³rios de DÃ­vidas (por CondÃ³mino & Pro CondomÃ­nio)"}
-                {activeSection === "financeiro_extratos" && "Extrato de Movimentos e Saldo (VisÃ£o CondÃ³mino)"}
-                {activeSection === "financeiro_quotas_mensais" && "Mapa de Quotas Mensais de CondomÃ­nio"}
-                {activeSection === "financeiro_quotas_extra" && "Quotas ExtraordinÃ¡rias & Fundos Especiais"}
-                {activeSection === "conciliacao" && "Motor de InteligÃªncia Artificial para ConciliaÃ§Ã£o"}
-                {activeSection === "assembleias" && "ReuniÃµes e ConvocatÃ³rias (Elaboradas Manualmente ou com AuxÃ­lio de IA)"}
-                {activeSection === "reservas" && "Agenda & Reservas de EspaÃ§os Comuns"}
+                {activeSection === "financeiro_recibos" && "Emissão de Recibos Manuais (100% Editável)"}
+                {activeSection === "financeiro_relatorios" && "Relatórios de Dívidas (por Condómino & Pro Condomínio)"}
+                {activeSection === "financeiro_extratos" && "Extrato de Movimentos e Saldo (Visão Condómino)"}
+                {activeSection === "financeiro_quotas_mensais" && "Mapa de Quotas Mensais de Condomínio"}
+                {activeSection === "financeiro_quotas_extra" && "Quotas Extraordinárias & Fundos Especiais"}
+                {activeSection === "conciliacao" && "Motor de Inteligência Artificial para Conciliação"}
+                {activeSection === "assembleias" && "Reuniões e Convocatórias (Elaboradas Manualmente ou com Auxílio de IA)"}
+                {activeSection === "reservas" && "Agenda & Reservas de Espaços Comuns"}
                 {(activeSection === "documentos" || activeSection === "arquivo") && "Arquivo Digital (Anos & Temas)"}
-                {activeSection === "ocorrencias" && "GestÃ£o de OcorrÃªncias e Avarias"}
-                {(activeSection === "vistorias_limpezas" || activeSection === "limpezas_vistorias") && "Limpezas & Vistorias TÃ©cnicas"}
-                {activeSection === "ia_avancada" && "Central de InteligÃªncia Artificial AvanÃ§ada"}
-                {activeSection === "ia_importacao" && "Assistente de ImportaÃ§Ã£o Global por IA (PDF/XLS)"}
+                {activeSection === "ocorrencias" && "Gestão de Ocorrências e Avarias"}
+                {(activeSection === "vistorias_limpezas" || activeSection === "limpezas_vistorias") && "Limpezas & Vistorias Técnicas"}
+                {activeSection === "ia_avancada" && "Central de Inteligência Artificial Avançada"}
+                {activeSection === "ia_importacao" && "Assistente de Importação Global por IA (PDF/XLS)"}
                 {activeSection === "contencioso_juridico" && "Resumo de Contencioso & Prazos Legais"}
-                {activeSection === "contencioso_juridico_processos" && "ConstituiÃ§Ã£o de Processos Judiciais & Acervo ProbatÃ³rio"}
-                {activeSection === "contencioso_juridico_nd" && "Carta de NÃ£o DÃ­vida (Art. 54.Âº-A do DL 268/94)"}
-                {activeSection === "contencioso_juridico_doc_obrig" && "Documentos ObrigatÃ³rios do CondomÃ­nio"}
-                {activeSection === "contencioso_juridico_cartas" && "Carta de CobranÃ§a (NotificaÃ§Ã£o AR Regimental)"}
-                {activeSection === "contencioso_juridico_bni" && "InjunÃ§Ã£o Judicial Civil & Requerimento BNI"}
-                {activeSection === "contencioso_juridico_regulamento" && "Regulamento Interno do EdifÃ­cio"}
-                {activeSection === "contencioso_juridico_estatutos" && "Estatutos do PrÃ©dio & Propriedade Horizontal"}
+                {activeSection === "contencioso_juridico_processos" && "Constituição de Processos Judiciais & Acervo Probatório"}
+                {activeSection === "contencioso_juridico_nd" && "Carta de Não Dívida (Art. 54.º-A do DL 268/94)"}
+                {activeSection === "contencioso_juridico_doc_obrig" && "Documentos Obrigatórios do Condomínio"}
+                {activeSection === "contencioso_juridico_cartas" && "Carta de Cobrança (Notificação AR Regimental)"}
+                {activeSection === "contencioso_juridico_bni" && "Injunção Judicial Civil & Requerimento BNI"}
+                {activeSection === "contencioso_juridico_regulamento" && "Regulamento Interno do Edifício"}
+                {activeSection === "contencioso_juridico_estatutos" && "Estatutos do Prédio & Propriedade Horizontal"}
                 {activeSection === "contencioso_juridico_ia" && "Assistente IA de Contencioso & Minutas Legais"}
-                {activeSection === "obras_futuras" && "Obras Futuras & Fundo ExtraordinÃ¡rio"}
+                {activeSection === "obras_futuras" && "Obras Futuras & Fundo Extraordinário"}
                 {activeSection === "ficha_gestora" && "Ficha da Empresa Gestora (White-Label)"}
-                {activeSection === "portal_condomino" && "Portal do CondÃ³mino & Perfis"}
-                {activeSection === "portal_orcamentos" && "Portal de OrÃ§amentos de Fornecedores"}
-                {activeSection === "dashboard_kpis" && "Dashboard de KPIs do PrÃ©dio"}
-                {activeSection === "multi_condominio" && "Portal Multi-CondomÃ­nio Integrado"}
-                {activeSection === "configuracoes_gerais" && "ConfiguraÃ§Ãµes Gerais do CondomÃ­nio"}
-                {activeSection === "configuracoes_ia" && "ConfiguraÃ§Ãµes do Assistente IA e E-mail"}
-                {activeSection === "configuracoes_notificacoes" && "ConfiguraÃ§Ãµes de NotificaÃ§Ãµes Push & E-mail"}
-                {activeSection === "inventario_tecnico" && "InventÃ¡rio TÃ©cnico e Arquitetura do PrÃ©dio"}
-                {activeSection === "manutencao_ocorrencias" && "OcorrÃªncias & Avarias Reportadas"}
-                {activeSection === "manutencao_agenda" && "Agenda de ManutenÃ§Ã£o & Vistorias"}
-                {activeSection === "manutencao_intervencoes" && "IntervenÃ§Ãµes (Pequenas ReparaÃ§Ãµes)"}
-                {activeSection === "manutencao_extraordinarias" && "IntervenÃ§Ãµes ExtraordinÃ¡rias (Grandes Obras)"}
-                {activeSection === "manutencao_concluidas" && "HistÃ³rico de ManutenÃ§Ãµes ConcluÃ­das"}
+                {activeSection === "portal_condomino" && "Portal do Condómino & Perfis"}
+                {activeSection === "portal_orcamentos" && "Portal de Orçamentos de Fornecedores"}
+                {activeSection === "dashboard_kpis" && "Dashboard de KPIs do Prédio"}
+                {activeSection === "multi_condominio" && "Portal Multi-Condomínio Integrado"}
+                {activeSection === "configuracoes_gerais" && "Configurações Gerais do Condomínio"}
+                {activeSection === "configuracoes_ia" && "Configurações do Assistente IA e E-mail"}
+                {activeSection === "configuracoes_notificacoes" && "Configurações de Notificações Push & E-mail"}
+                {activeSection === "inventario_tecnico" && "Inventário Técnico e Arquitetura do Prédio"}
+                {activeSection === "manutencao_ocorrencias" && "Ocorrências & Avarias Reportadas"}
+                {activeSection === "manutencao_agenda" && "Agenda de Manutenção & Vistorias"}
+                {activeSection === "manutencao_intervencoes" && "Intervenções (Pequenas Reparações)"}
+                {activeSection === "manutencao_extraordinarias" && "Intervenções Extraordinárias (Grandes Obras)"}
+                {activeSection === "manutencao_concluidas" && "Histórico de Manutenções Concluídas"}
                 {activeSection === "manutencao_arquivo" && "Arquivo Documental Registado"}
               </h2>
               <p className={`text-[10px] sm:text-xs transition-colors duration-300 truncate ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}>
-                Isolamento Multi-PrÃ©dio: {predioAtivo.nome || `${predioAtivo.morada_linha1} ${predioAtivo.num_porta}`}
+                Isolamento Multi-Prédio: {predioAtivo?.id_predio !== "predio-temp" && (predioAtivo?.nome || predioAtivo?.morada_linha1) ? (predioAtivo.nome || `${predioAtivo.morada_linha1} ${predioAtivo.num_porta || ""}`) : "Base Limpa (Aguardando Dados)"}
               </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
             <span className={`hidden sm:inline-block text-[11px] font-mono-custom font-medium px-2 py-0.5 rounded border transition-colors duration-300 ${theme === "dark" ? "bg-slate-800 text-slate-300 border-slate-700" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
-              NIF: {predioAtivo.nif}
+              NIF: {predioAtivo?.id_predio !== "predio-temp" ? predioAtivo?.nif : "---"}
             </span>
             <div className={`hidden sm:block h-6 w-px transition-colors duration-300 ${theme === "dark" ? "bg-slate-800" : "bg-slate-200"}`}></div>
             <span className={`hidden md:flex text-[11px] ${getColorClasses("bgLight")} ${getColorClasses("text")} font-semibold px-2 py-0.5 rounded border ${getColorClasses("border")} items-center transition-all duration-300`}>
               <span className={`h-1.5 w-1.5 rounded-full ${getColorClasses("bg")} mr-1 animate-pulse`}></span>
-              {loggedUser.role === "ADMIN" ? "ðŸ‘‘ Admin" : 
-               loggedUser.role === "EMPRESA_GESTORA" ? "ðŸ¢ Gestora" :
-               loggedUser.role === "USER" ? "ðŸ  CondÃ³mino" :
-               loggedUser.role === "INQUILINO" ? "ðŸ”‘ Inquilino" :
-               loggedUser.role === "TECNICO" ? "ðŸ” TÃ©cnico" :
-               loggedUser.role === "LIMPEZAS" ? "ðŸ§¹ Limpezas" : 
-               loggedUser.role === "JURIDICO" ? "âš–ï¸ JurÃ­dico" :
-               loggedUser.role === "AUDITOR" ? "ðŸ•µï¸ Auditor" : "ðŸ“ˆ Contabilista"}
+              {loggedUser.role === "ADMIN" ? "👑 Admin" : 
+               loggedUser.role === "EMPRESA_GESTORA" ? "🏢 Gestora" :
+               loggedUser.role === "USER" ? "🏠 Condómino" :
+               loggedUser.role === "INQUILINO" ? "🔑 Inquilino" :
+               loggedUser.role === "TECNICO" ? "🔍 Técnico" :
+               loggedUser.role === "LIMPEZAS" ? "🧹 Limpezas" : 
+               loggedUser.role === "JURIDICO" ? "⚖️ Jurídico" :
+               loggedUser.role === "AUDITOR" ? "🕵️ Auditor" : "📈 Contabilista"}
             </span>
 
             <button
               id="header-btn-logout"
               onClick={() => handleSecureLogout()}
               className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white border border-red-500 text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 shadow-sm hover:scale-105 active:scale-95 shrink-0"
-              title="Terminar SessÃ£o (Voltar ao EcrÃ£ Inicial)"
+              title="Terminar Sessão (Voltar ao Ecrã Inicial)"
             >
               <img src="/estados-acoes/17-desligar.png" alt="Sair" className="h-5 w-5 object-contain shrink-0" />
               <span className="hidden sm:inline">Sair</span>
@@ -1928,119 +1954,7 @@ useEffect(() => {
           </div>
         </header>
 
-        {/* PAINEL DE CONTROLO DO SIMULADOR E PERFIS (CONDICIONADO AO MODO DE TESTES ATIVADO NO MENU SEGURANÃ‡A) */}
-        {showTestingBar && (
-          <div className="bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 md:px-8 py-2 md:py-3.5 no-print shrink-0 transition-colors duration-300">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center space-x-2">
-                <span className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse"></span>
-                <span className="text-[10px] font-black tracking-wider text-slate-500 dark:text-slate-400 uppercase">
-                  Seletor de Perfil & Simulador PWA (Modo de Teste)
-                </span>
-              </div>
-              
-              <button
-                onClick={() => setSimulatorBarCollapsed(!simulatorBarCollapsed)}
-                className="p-1 px-2.5 text-[10px] font-bold rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-all cursor-pointer flex items-center gap-1.5 shrink-0 border border-slate-300 dark:border-slate-700 shadow-xs"
-                title={simulatorBarCollapsed ? "Expandir Seletor de Perfis" : "Recolher Seletor de Perfis"}
-              >
-                <span>{simulatorBarCollapsed ? "Expandir Painel" : "Recolher Painel"}</span>
-                <i className={`fa-solid ${simulatorBarCollapsed ? "fa-chevron-down" : "fa-chevron-up"} text-[9px]`}></i>
-              </button>
-            </div>
-
-            {!simulatorBarCollapsed && (
-              <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3">
-                {/* View Mode Toggle */}
-                <div className="flex items-center space-x-2 bg-white dark:bg-slate-950 p-1 rounded-xl border dark:border-slate-800/80 shadow-sm text-xs">
-                  <button
-                    onClick={() => setViewMode("BROWSER")}
-                    className={`px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-colors cursor-pointer ${viewMode === "BROWSER" ? "bg-slate-900 dark:bg-slate-800 text-white" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-                  >
-                    <i className="fa-solid fa-desktop text-[11px]"></i>
-                    <span>ðŸ’» Navegador Web</span>
-                  </button>
-                  <button
-                    onClick={() => setViewMode("PWA")}
-                    className={`px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-colors cursor-pointer ${viewMode === "PWA" ? `${getColorClasses("bg")} text-white` : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-                  >
-                    <i className="fa-solid fa-mobile-screen text-[11px]"></i>
-                    <span>ðŸ“± Simulador PWA</span>
-                  </button>
-                </div>
-
-                {/* Profiles selector */}
-                <div className="flex flex-wrap items-center gap-1.5 bg-white dark:bg-slate-950 p-1.5 rounded-xl border dark:border-slate-800/80 shadow-sm text-[10px] font-bold max-w-full overflow-x-auto">
-                  <button 
-                    onClick={() => handleProfileChange("ADMIN")}
-                    className={`px-2 py-1 rounded transition-all cursor-pointer ${loggedUser.role === "ADMIN" ? "bg-indigo-600 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"}`}
-                    title="Administrador (Empresa Gestora) - Perfil MÃ¡ximo"
-                  >
-                    ðŸ‘‘ Admin
-                  </button>
-                  <button 
-                    onClick={() => handleProfileChange("EMPRESA_GESTORA")}
-                    className={`px-2 py-1 rounded transition-all cursor-pointer ${loggedUser.role === "EMPRESA_GESTORA" ? "bg-violet-600 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"}`}
-                    title="Empresa Gestora - Perfil MÃ¡ximo de Backoffice"
-                  >
-                    ðŸ¢ Gestora
-                  </button>
-                  <button 
-                    onClick={() => handleProfileChange("USER")}
-                    className={`px-2 py-1 rounded transition-all cursor-pointer ${loggedUser.role === "USER" ? "bg-emerald-600 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"}`}
-                    title="CondÃ³mino (ProprietÃ¡rio) - PWA + Backoffice Limitado"
-                  >
-                    ðŸ  CondÃ³mino
-                  </button>
-                  <button 
-                    onClick={() => handleProfileChange("INQUILINO")}
-                    className={`px-2 py-1 rounded transition-all cursor-pointer ${loggedUser.role === "INQUILINO" ? "bg-amber-600 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"}`}
-                    title="Inquilino / ArrendatÃ¡rio - Sem acesso a dados financeiros"
-                  >
-                    ðŸ”‘ Inquilino
-                  </button>
-                  <button 
-                    onClick={() => handleProfileChange("TECNICO")}
-                    className={`px-2 py-1 rounded transition-all cursor-pointer ${loggedUser.role === "TECNICO" ? "bg-amber-600 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"}`}
-                    title="TÃ©cnico de ManutenÃ§Ã£o - PWA + Backoffice Limitado"
-                  >
-                    ðŸ” TÃ©cnico
-                  </button>
-                  <button 
-                    onClick={() => handleProfileChange("LIMPEZAS")}
-                    className={`px-2 py-1 rounded transition-all cursor-pointer ${loggedUser.role === "LIMPEZAS" ? "bg-teal-600 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"}`}
-                    title="Empresa de Limpeza - PWA Limitado"
-                  >
-                    ðŸ§¹ Limpezas
-                  </button>
-                  <button 
-                    onClick={() => handleProfileChange("JURIDICO")}
-                    className={`px-2 py-1 rounded transition-all cursor-pointer ${loggedUser.role === "JURIDICO" ? "bg-red-600 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"}`}
-                    title="Perfil JurÃ­dico - Contencioso e Contratos"
-                  >
-                    âš–ï¸ JurÃ­dico
-                  </button>
-                  <button 
-                    onClick={() => handleProfileChange("AUDITOR")}
-                    className={`px-2 py-1 rounded transition-all cursor-pointer ${loggedUser.role === "AUDITOR" ? "bg-indigo-500 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"}`}
-                    title="Auditor Interno (Opcional) - Apenas Consulta"
-                  >
-                    ðŸ•µï¸ Auditor
-                  </button>
-                  <button 
-                    onClick={() => handleProfileChange("CONTABILISTA")}
-                    className={`px-2 py-1 rounded transition-all cursor-pointer ${loggedUser.role === "CONTABILISTA" ? "bg-rose-500 text-white" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"}`}
-                    title="Contabilista (Opcional) - ValidaÃ§Ã£o e Extratos"
-                  >
-                    ðŸ“ˆ Contabilista
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ConteÃºdo DinÃ¢mico (Responsivo para TelemÃ³veis e Desktops) */}
+        {/* Conteúdo Dinâmico (Responsivo para Telemóveis e Desktops) */}
         <div className="flex-grow p-3 sm:p-5 md:p-8 overflow-y-auto">
           {viewMode === "PWA" ? (
             <PWASimulator 
@@ -2278,7 +2192,7 @@ useEffect(() => {
               fornecedores={fornecedores}
               onMovimentoCriado={(novoMov) => {
                 setMovements(prev => [novoMov, ...prev]);
-                alert("âœ¨ Despesa/Movimento registado automaticamente pela IA nos Movimentos!");
+                alert("✨ Despesa/Movimento registado automaticamente pela IA nos Movimentos!");
               }}
             />
           )}
@@ -2422,7 +2336,7 @@ useEffect(() => {
                 activeSection === "contencioso_juridico_nd" ? "carta_nao_divida" :
                 activeSection === "contencioso_juridico_doc_obrig" ? "documentos_obrigatorios" :
                 activeSection === "contencioso_juridico_cartas" ? "cartasar" :
-                activeSection === "contencioso_juridico_bni" ? "injuncÃµes" :
+                activeSection === "contencioso_juridico_bni" ? "injuncões" :
                 activeSection === "contencioso_juridico_regulamento" ? "regulamento" :
                 activeSection === "contencioso_juridico_estatutos" ? "estatutos" :
                 activeSection === "contencioso_juridico_ia" ? "assistente_ia" : "geral"
@@ -2471,6 +2385,8 @@ useEffect(() => {
               fracoes={fracoes}
               loggedUser={loggedUser}
               contas={contas}
+              activeTab={activeSection === "simulador_emails" ? "simulador_emails" : "minutas_oficiais"}
+              onSelectTab={(tab) => setActiveSection(tab)}
               onOpenArranque={() => setActiveSection("configuracao_arranque")}
             />
           )}
@@ -2522,7 +2438,7 @@ useEffect(() => {
       {/* GLOBAL SENDING REACTION MODAL */}
       <SendingReactionModal />
 
-           {/* FLOATING DRAGGABLE AI ASSISTANT FOR ADMIN AND GESTOR PROFILES */}
+      {/* FLOATING DRAGGABLE AI ASSISTANT FOR ADMIN AND GESTOR PROFILES */}
       <DraggableAIFloatingButton
         loggedUser={loggedUser}
         predio={predioAtivo}
@@ -2530,5 +2446,5 @@ useEffect(() => {
       />
 
     </div>
-      );
+  );
 }

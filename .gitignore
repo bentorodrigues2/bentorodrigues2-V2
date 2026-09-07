@@ -1,4 +1,8 @@
-.env
 node_modules/
-.vercel
+build/
+dist/
+coverage/
+.DS_Store
+*.log
 .env*
+!.env.example

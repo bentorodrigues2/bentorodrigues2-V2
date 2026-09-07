@@ -990,7 +990,7 @@ export function PortalCondomino({
                       </label>
                       <input
                         type="text"
-                        value={`${predio.morada_linha1}, ${predio.num_porta}`}
+                        value={`${predio?.morada_linha1 || ""}, ${predio?.num_porta || ""}`}
                         disabled
                         className="bg-slate-50 border border-slate-100 text-slate-400 px-3 py-1.5 text-xs rounded-lg cursor-not-allowed font-medium"
                       />

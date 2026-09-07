@@ -1493,13 +1493,13 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 </span>
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Prédio: <strong className="text-emerald-900">{predio.nome || predio.morada_linha1}</strong> — Algoritmos generativos e auditoria para gestão de condomínio.
+                Prédio: <strong className="text-emerald-900">{predio?.nome || predio?.morada_linha1 || "Condomínio"}</strong> — Algoritmos generativos e auditoria para gestão de condomínio.
               </p>
             </div>
           </div>
           <div className="bg-white px-3.5 py-1.5 rounded-lg border border-emerald-300 text-[11px] font-bold text-emerald-800 shadow-xs flex items-center gap-1.5">
             <i className="fa-solid fa-circle-check text-emerald-600"></i>
-            <span>Modo de Testes & Simulação Ativo</span>
+            <span>Motor de IA Ativo & Operacional</span>
           </div>
         </div>
 

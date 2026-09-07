@@ -32,13 +32,54 @@ aside .text-slate-300 {
   color: #cbd5e1;
 }
 
-/* Ensure white cards always keep dark text even inside dark container */
-.bg-white, [class*="bg-white"] {
+/* Light mode card text default - only apply when not in dark mode */
+html:not(.dark) .bg-white, 
+html:not(.dark) [class*="bg-white"]:not([class*="dark:"]) {
   color: #0f172a;
 }
-.bg-white h1, .bg-white h2, .bg-white h3, .bg-white h4, .bg-white h5, .bg-white h6,
-.bg-white p, .bg-white span, .bg-white td, .bg-white th, .bg-white label {
+html:not(.dark) .bg-white h1, 
+html:not(.dark) .bg-white h2, 
+html:not(.dark) .bg-white h3, 
+html:not(.dark) .bg-white h4, 
+html:not(.dark) .bg-white h5, 
+html:not(.dark) .bg-white h6,
+html:not(.dark) .bg-white p, 
+html:not(.dark) .bg-white span, 
+html:not(.dark) .bg-white td, 
+html:not(.dark) .bg-white th, 
+html:not(.dark) .bg-white label {
   color: inherit;
+}
+
+/* PWA & Global Dark Mode - High Contrast White Text Rule */
+.dark .pwa-screen,
+.dark .pwa-container,
+.dark [data-pwa="true"],
+.dark .custom-pwa-backoffice-content {
+  color: #ffffff;
+}
+
+/* Ensure all text labels, headings, spans and paragraphs in dark mode are crisp white and readable */
+.dark .pwa-screen .text-slate-800,
+.dark .pwa-screen .text-slate-900,
+.dark .pwa-screen .text-slate-700,
+.dark .pwa-screen .text-slate-600,
+.dark .pwa-screen .text-black,
+.dark .pwa-screen .text-\[\#333\],
+.dark .pwa-screen .text-\[\#555\],
+.dark .custom-pwa-backoffice-content .text-slate-800,
+.dark .custom-pwa-backoffice-content .text-slate-900,
+.dark .custom-pwa-backoffice-content .text-slate-700,
+.dark .custom-pwa-backoffice-content .text-slate-600,
+.dark .custom-pwa-backoffice-content .text-black {
+  color: #ffffff !important;
+}
+
+.dark .pwa-screen .text-slate-500,
+.dark .pwa-screen .text-slate-400,
+.dark .custom-pwa-backoffice-content .text-slate-500,
+.dark .custom-pwa-backoffice-content .text-slate-400 {
+  color: #e2e8f0 !important;
 }
 
 /* Inputs in dark mode */

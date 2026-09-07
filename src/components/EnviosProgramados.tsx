@@ -35,14 +35,14 @@ export function EnviosProgramados({
   avisos = [],
   loggedUser
 }: EnviosProgramadosProps) {
-  const predioFracoes = fracoes.filter(f => f.id_predio === predio.id_predio);
+  const predioFracoes = fracoes.filter(f => f.id_predio === predio?.id_predio);
   const [filterTipo, setFilterTipo] = useState<"TODOS" | "DIA_25" | "DIA_05" | "PAUSADOS">("TODOS");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [previewItem, setPreviewItem] = useState<EnvioProgramadoItem | null>(null);
 
   // Compute transfer code helper
   const computeCode = (piso: string, fracaoNome: string) => {
-    const pPart = (predio.morada_linha1 || "BR2").replace(/\s+/g, "").substring(0, 3).toUpperCase();
+    const pPart = (predio?.morada_linha1 || "BR2").replace(/\s+/g, "").substring(0, 3).toUpperCase();
     const fPart = fracaoNome.replace(/\s+/g, "").toUpperCase();
     return `${pPart}-F${fPart}`;
   };
