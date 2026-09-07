@@ -1,9 +1,15 @@
 {
-  "short_name": "CondoManager",
+  "short_name": "Condomínio",
   "name": "CondoManager AI - Automação Ativa de Condomínios",
   "icons": [
     {
       "src": "/marca/05-favicon1.png",
+      "type": "image/png",
+      "sizes": "192x192 512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/marca/04-icone-app.png",
       "type": "image/png",
       "sizes": "192x192 512x512",
       "purpose": "any maskable"
@@ -15,5 +21,5 @@
   "display": "standalone",
   "orientation": "portrait",
   "scope": "/",
-  "description": "Plataforma Inteligente de Gestão e Automação de Condomínios com PWA e Inteligência Artificial"
+  "description": "Plataforma Inteligente de Gestão de Condomínios com AI"
 }
