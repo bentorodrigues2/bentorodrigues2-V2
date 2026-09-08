@@ -79,6 +79,10 @@ export interface Fornecedor {
 }
 
 export interface Proprietario {
+  id_proprietario?: string;
+  id_predio?: string;
+  id_fracao?: string;
+  fracao_nome?: string;
   nome: string;
   nif: string;
   email: string;
@@ -89,6 +93,8 @@ export interface Proprietario {
   morada_alternativa?: string | null;
   foto?: string | null;
   data_nascimento?: string;
+  administrador_interno?: string;
+  notificacao_preferencial?: string;
 }
 
 export interface Inquilino {

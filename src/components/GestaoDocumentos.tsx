@@ -4,6 +4,7 @@ import { Predio, Documento, LoggedUser } from "../types";
 import { formatDatePT, downloadBlob, addPdfHeaderWithLogo, downloadReceiptPDF, downloadNotaCobrancaPDF } from "../utils";
 import { getIllustratedManualHtml } from "../utils/manualIllustratedTemplates";
 import { triggerSendReaction } from "./SendingReactionModal";
+import { EnciclopediaPlataforma } from "./EnciclopediaPlataforma";
 import { 
   FileText, 
   Trash2, 
@@ -36,7 +37,9 @@ import {
   FolderTree,
   Folder,
   SlidersHorizontal,
-  Eye
+  Eye,
+  BookOpen,
+  Video
 } from "lucide-react";
 
 interface GestaoDocumentosProps {
@@ -54,8 +57,8 @@ export function GestaoDocumentos({
   loggedUser,
   setDocumentos 
 }: GestaoDocumentosProps) {
-  // Main view mode tab: "documentos" or "fotografias"
-  const [activeTab, setActiveTab] = useState<"documentos" | "fotografias">("documentos");
+  // Main view mode tab: "documentos" or "fotografias" or "enciclopedia"
+  const [activeTab, setActiveTab] = useState<"documentos" | "fotografias" | "enciclopedia">("documentos");
 
   // Single dynamic filter bar states
   const [busca, setBusca] = useState("");
@@ -1495,10 +1498,19 @@ export function GestaoDocumentos({
     "Dra. Margarida Jurídico"
   ];
 
-  // Base list of documents for building
+  // Base list of documents for building (includes global manuals so they never disappear)
   const predioDocsRaw = useMemo(() => {
-    return documentos.filter(d => d.id_predio === predio.id_predio);
-  }, [documentos, predio.id_predio]);
+    return documentos.filter(d => 
+      d.id_predio === predio?.id_predio || 
+      d.id_predio === "global" ||
+      d.categoria === "Manuais & Guias Operacionais" ||
+      d.sub_pasta === "Manuais & Guias Operacionais" ||
+      d.categoria === "Instruções PWA & Desktop" ||
+      d.sub_pasta === "Instruções PWA & Desktop" ||
+      d.tipo === "Manual Ilustrado" ||
+      d.tipo === "Guia Rápido"
+    );
+  }, [documentos, predio?.id_predio]);
 
   // Profile-based access filtering
   const predioDocsWithProfileAccess = useMemo(() => {
@@ -1937,6 +1949,24 @@ export function GestaoDocumentos({
               {predioDocsWithProfileAccess.filter(d => d.tipo_arquivo === "fotografia" || d.tipo === "Fotografia" || !!d.url_foto).length}
             </span>
           </button>
+
+          <button
+            onClick={() => {
+              setActiveTab("enciclopedia");
+              setSelectedFolder(null);
+            }}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === "enciclopedia"
+                ? "bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-300"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            <BookOpen className="h-4 w-4" />
+            <span>Enciclopédia & Vídeos PWA</span>
+            <span className="ml-1 bg-amber-400 text-amber-950 px-2 py-0.5 rounded-full text-[9px] font-black uppercase shadow-xs">
+              Novo
+            </span>
+          </button>
         </div>
 
         {/* PROFILE INDICATOR */}
@@ -1946,8 +1976,17 @@ export function GestaoDocumentos({
         </div>
       </div>
 
-      {/* UNICA BARRA DE FILTROS DINÂMICOS (UMA ÚNICA BARRA COMPACTA) */}
-      <div className="bg-white border border-emerald-200 p-3 rounded-2xl shadow-sm text-slate-800">
+      {/* SEPARADOR ATIVO: ENCICLOPÉDIA OU DOCUMENTOS/FOTOS */}
+      {activeTab === "enciclopedia" ? (
+        <EnciclopediaPlataforma
+          documentos={documentos}
+          onOpenManual={(doc) => handleDownloadPdf(doc)}
+          userRole={loggedUser.role}
+        />
+      ) : (
+        <>
+          {/* UNICA BARRA DE FILTROS DINÂMICOS (UMA ÚNICA BARRA COMPACTA) */}
+          <div className="bg-white border border-emerald-200 p-3 rounded-2xl shadow-sm text-slate-800">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-2.5 items-center">
           
           {/* PESQUISA POR PALAVRA / FRASE (COL 4) */}
@@ -2477,6 +2516,8 @@ export function GestaoDocumentos({
             </div>
           ))}
         </div>
+      )}
+        </>
       )}
 
       {/* MODAL IA AUTO-ARQUIVAMENTO DE DOCUMENTO / FOTOGRAFIA */}

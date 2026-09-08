@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { Predio, Fracao, LoggedUser, Aviso } from "../types";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Predio, Fracao, LoggedUser, Aviso, Proprietario } from "../types";
 import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCondominoVaziaPDF, downloadFichaCondominoPreenchidaPDF, downloadListaCondominosPDF, generateCondominoPwaManualPDF } from "../utils";
 import { ModalFichaCondominoEditavel } from "./ModalFichaCondominoEditavel";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
+import { supabase } from '@/lib/supabaseClient';
+import { saveFracaoToSupabase, deleteFracaoFromSupabase, saveProprietarioToSupabase, deleteProprietarioFromSupabase } from "../lib/supabaseService";
 
 interface GestaoFracoesProps {
   predio: Predio;
@@ -28,11 +30,17 @@ export function GestaoFracoes({
   const [fracaoNome, setFracaoNome] = useState("");
   const [piso, setPiso] = useState("");
   const [permilagem, setPermilagem] = useState("");
-  const [tipologia, setTipologia] = useState("Residencial");
+  const [tipologia, setTipologia] = useState("T2");
   const [tipoAcesso, setTipoAcesso] = useState("Acesso Comum pelas Escadas");
   const [garagem, setGaragem] = useState(false);
   const [arrecadacao, setArrecadacao] = useState(false);
   
+  // Modos de Edição e Estados de Navegação
+  const [editingFracaoId, setEditingFracaoId] = useState<string | null>(null);
+  const [editingOwnerKey, setEditingOwnerKey] = useState<string | null>(null);
+  const [justCreatedFracao, setJustCreatedFracao] = useState<Fracao | null>(null);
+  const [unassignedProprietarios, setUnassignedProprietarios] = useState<Proprietario[]>([]);
+
   const [propNome, setPropNome] = useState("");
   const [propNif, setPropNif] = useState("");
   const [propEmail, setPropEmail] = useState("");
@@ -275,8 +283,40 @@ export function GestaoFracoes({
     }
   }, [activeSubSection]);
 
-  const predioFracoes = fracoes.filter(f => f.id_predio === predio.id_predio);
-  const totalPermilagem = predioFracoes.reduce((acc, curr) => acc + curr.permilagem, 0);
+  const predioFracoes = useMemo(() => fracoes.filter(f => f.id_predio === predio.id_predio), [fracoes, predio.id_predio]);
+  const totalPermilagem = useMemo(() => predioFracoes.reduce((acc, curr) => acc + (Number(curr.permilagem) || 0), 0), [predioFracoes]);
+
+  // Lista unificada de todos os proprietários registados no prédio
+  const todosProprietarios: Proprietario[] = useMemo(() => {
+    const list: Proprietario[] = [];
+    const seenNifs = new Set<string>();
+
+    // 1. Proprietários principais das frações
+    predioFracoes.forEach(f => {
+      if (f.proprietario && f.proprietario.nome && f.proprietario.nome.trim() !== "") {
+        const nifKey = f.proprietario.nif || f.proprietario.nome;
+        seenNifs.add(nifKey);
+        list.push({
+          ...f.proprietario,
+          id_fracao: f.id_fracao,
+          fracao_nome: `Fração ${f.fracao_nome} (${f.piso})`,
+          administrador_interno: f.administrador_interno || f.proprietario.administrador_interno || "Não",
+          notificacao_preferencial: f.notificacao_preferencial || f.proprietario.notificacao_preferencial || "Digital (E-mail e Mensagens Push)"
+        });
+      }
+    });
+
+    // 2. Proprietários não associados ou adicionais
+    unassignedProprietarios.forEach(p => {
+      const nifKey = p.nif || p.nome;
+      if (!seenNifs.has(nifKey)) {
+        seenNifs.add(nifKey);
+        list.push(p);
+      }
+    });
+
+    return list;
+  }, [predioFracoes, unassignedProprietarios]);
 
   useEffect(() => {
     if (!selectedFracaoId && predioFracoes.length > 0) {
@@ -284,52 +324,254 @@ export function GestaoFracoes({
     }
   }, [predioFracoes, selectedFracaoId]);
 
-  // Load existing owner data when selectedFracaoId changes or sub-tab is fracoes_proprietario
+  // Carregar listas de frações e proprietários diretamente do Supabase
   useEffect(() => {
-    if (currentSubTab === "fracoes_proprietario" && selectedFracaoId) {
-      const targetFracao = predioFracoes.find(f => f.id_fracao === selectedFracaoId);
-      if (targetFracao) {
-        if (targetFracao.proprietario) {
-          setPropNome(targetFracao.proprietario.nome || "");
-          setPropNif(targetFracao.proprietario.nif || "");
-          setPropEmail(targetFracao.proprietario.email || "");
-          setPropTlm(targetFracao.proprietario.tlm || "");
-          setPropIban(targetFracao.proprietario.iban || "");
-          setPropTitular(targetFracao.proprietario.titular_conta || targetFracao.proprietario.nome || "");
-          setPropBanco(targetFracao.proprietario.entidade_bancaria || "");
-          setPropMoradaAlt(targetFracao.proprietario.morada_alternativa || "");
-          setPropFoto(targetFracao.proprietario.foto || null);
-        } else {
-          setPropNome("");
-          setPropNif("");
-          setPropEmail("");
-          setPropTlm("");
-          setPropIban("");
-          setPropTitular("");
-          setPropBanco("");
-          setPropMoradaAlt("");
-          setPropFoto(null);
+    let isMounted = true;
+    const carregarDadosSupabase = async () => {
+      try {
+        const { data: fracoesData, error: errFracoes } = await supabase
+          .from('fracoes')
+          .select('*');
+        if (errFracoes) {
+          console.warn("[Supabase] Aviso ao ler fracoes:", errFracoes.message);
+        } else if (fracoesData && fracoesData.length > 0 && isMounted) {
+          const fracoesFormatadas: Fracao[] = fracoesData.map((row: any) => ({
+            id_fracao: row.id_fracao,
+            id_predio: row.id_predio,
+            fracao_nome: row.fracao_nome,
+            piso: row.piso || "",
+            permilagem: Number(row.permilagem) || 0,
+            tipologia: row.tipologia || "T2",
+            tipo_access: row.tipo_access || "Residencial",
+            tem_garagem_spot: Boolean(row.tem_garagem_spot),
+            tem_arrecadacao_box: Boolean(row.tem_arrecadacao_box),
+            is_arrendada: Boolean(row.is_arrendada),
+            administrador_interno: row.administrador_interno || "Não",
+            notificacao_preferencial: row.notificacao_preferencial || "Digital (E-mail e Mensagens Push)",
+            proprietario: row.proprietario || null,
+            proprietarios_adicionais: row.proprietarios_adicionais || [],
+            inquilino: row.inquilino || null,
+            seguradora: row.seguradora || "",
+            apolice_num: row.apolice_num || "",
+            apolice_validade: row.apolice_validade || ""
+          }));
+          onUpdateFracoes(fracoesFormatadas);
         }
-        setProprietariosAdicionais(targetFracao.proprietarios_adicionais || []);
-        setArrendada(Boolean(targetFracao.is_arrendada));
-        if (targetFracao.inquilino) {
-          setInqNome(targetFracao.inquilino.nome || "");
-          setInqNif(targetFracao.inquilino.nif || "");
-          setInqEmail(targetFracao.inquilino.email || "");
-          setInqTlm(targetFracao.inquilino.tlm || "");
-          setInqFoto(targetFracao.inquilino.foto || null);
-        } else {
-          setInqNome("");
-          setInqNif("");
-          setInqEmail("");
-          setInqTlm("");
-          setInqFoto(null);
+
+        const { data: propsData, error: errProps } = await supabase
+          .from('proprietarios')
+          .select('*');
+        if (errProps) {
+          console.warn("[Supabase] Aviso ao ler proprietarios:", errProps.message);
+        } else if (propsData && propsData.length > 0 && isMounted) {
+          const propsFormatados: Proprietario[] = propsData.map((row: any) => ({
+            id_proprietario: row.id_proprietario || row.nif,
+            id_predio: row.id_predio,
+            id_fracao: row.id_fracao,
+            nome: row.nome,
+            nif: row.nif,
+            email: row.email,
+            tlm: row.tlm,
+            iban: row.iban || "",
+            titular_conta: row.titular_conta || row.nome,
+            entidade_bancaria: row.entidade_bancaria || "",
+            morada_alternativa: row.morada_alternativa || null,
+            foto: row.foto || null,
+            administrador_interno: row.administrador_interno || "Não",
+            notificacao_preferencial: row.notificacao_preferencial || "Digital (E-mail e Mensagens Push)"
+          }));
+          setUnassignedProprietarios(propsFormatados);
         }
-        setAdminInterno(targetFracao.administrador_interno || "Não");
-        setNotificacao(targetFracao.notificacao_preferencial || "Digital (E-mail e Mensagens Push)");
+      } catch (err: any) {
+        console.warn("[Supabase] Erro ao carregar dados iniciais:", err?.message);
       }
+    };
+    carregarDadosSupabase();
+    return () => { isMounted = false; };
+  }, [predio.id_predio]);
+
+  // Helper para carregar dados de proprietário para o formulário (apenas em cliques explícitos!)
+  const carregarProprietarioParaEdicao = (prop: Proprietario, fracaoId?: string) => {
+    setPropNome(prop.nome || "");
+    setPropNif(prop.nif || "");
+    setPropEmail(prop.email || "");
+    setPropTlm(prop.tlm || "");
+    setPropIban(prop.iban || "");
+    setPropTitular(prop.titular_conta || prop.nome || "");
+    setPropBanco(prop.entidade_bancaria || "");
+    setPropMoradaAlt(prop.morada_alternativa || "");
+    setPropFoto(prop.foto || null);
+    setAdminInterno(prop.administrador_interno || "Não");
+    setNotificacao(prop.notificacao_preferencial || "Digital (E-mail e Mensagens Push)");
+    
+    if (fracaoId) {
+      setSelectedFracaoId(fracaoId);
+    } else if (prop.id_fracao) {
+      setSelectedFracaoId(prop.id_fracao);
     }
-  }, [selectedFracaoId, currentSubTab, predioFracoes]);
+
+    setEditingOwnerKey(prop.nif || prop.nome);
+    setCurrentSubTab("fracoes_proprietario");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const limparFormProprietario = () => {
+    setPropNome("");
+    setPropNif("");
+    setPropEmail("");
+    setPropTlm("");
+    setPropIban("");
+    setPropTitular("");
+    setPropBanco("");
+    setPropMoradaAlt("");
+    setPropFoto(null);
+    setAdminInterno("Não");
+    setNotificacao("Digital (E-mail e Mensagens Push)");
+    setCoNome("");
+    setCoNif("");
+    setCoEmail("");
+    setCoTlm("");
+    setCoFoto(null);
+    setProprietariosAdicionais([]);
+    setArrendada(false);
+    setInqNome("");
+    setInqEmail("");
+    setInqTlm("");
+    setInqNif("");
+    setInqFoto(null);
+    setEditingOwnerKey(null);
+  };
+
+  // Helper para carregar dados de uma fração para edição
+  const handleEditarFracao = (f: Fracao) => {
+    setFracaoNome(f.fracao_nome);
+    setPiso(f.piso);
+    setPermilagem(String(f.permilagem));
+    setTipologia(f.tipologia || "T2");
+    setTipoAcesso(f.tipo_access || "Acesso Comum pelas Escadas");
+    setGaragem(Boolean(f.tem_garagem_spot));
+    setArrecadacao(Boolean(f.tem_arrecadacao_box));
+    setEditingFracaoId(f.id_fracao);
+    setCurrentSubTab("fracoes_nova");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const cancelarEdicaoFracao = () => {
+    setFracaoNome("");
+    setPiso("");
+    setPermilagem("");
+    setTipologia("T2");
+    setTipoAcesso("Acesso Comum pelas Escadas");
+    setGaragem(false);
+    setArrecadacao(false);
+    setEditingFracaoId(null);
+  };
+
+  // Eliminar fração com confirmação e persistência no Supabase
+  const handleEliminarFracao = async (idFracao: string, nomeFracao: string) => {
+    if (!window.confirm(`Tem a certeza que deseja eliminar a Fração ${nomeFracao}? Esta ação é irreversível e removerá os dados do Supabase.`)) {
+      return;
+    }
+    try {
+      // DELETE na tabela 'fracoes'
+      const { error: deleteError } = await supabase
+        .from('fracoes')
+        .delete()
+        .eq('id_fracao', idFracao);
+
+      if (deleteError) {
+        alert(`Erro ao eliminar fração no Supabase: ${deleteError.message}`);
+        return;
+      }
+
+      // Regra 2: Depois de gravar/eliminar, atualizar a lista com select('*')
+      const { data: fracoesRestantes, error: readError } = await supabase
+        .from('fracoes')
+        .select('*');
+
+      if (readError) {
+        console.warn("[Supabase] Aviso ao atualizar lista com select('*'):", readError.message);
+      }
+
+      const updated = fracoes.filter(f => f.id_fracao !== idFracao);
+      onUpdateFracoes(updated);
+      await deleteFracaoFromSupabase(idFracao);
+
+      if (selectedFracaoId === idFracao) {
+        setSelectedFracaoId(updated.length > 0 ? updated[0].id_fracao : null);
+      }
+      if (editingFracaoId === idFracao) {
+        cancelarEdicaoFracao();
+      }
+      alert(`Fração ${nomeFracao} eliminada com sucesso do Supabase.`);
+    } catch (err: any) {
+      alert(`Erro na ligação com o Supabase: ${err?.message || "Erro desconhecido"}`);
+    }
+  };
+
+  // Eliminar proprietário com confirmação e persistência no Supabase
+  const handleEliminarProprietario = async (prop: Proprietario) => {
+    if (!window.confirm(`Tem a certeza que deseja remover o proprietário ${prop.nome}? Esta ação irá apagar o registo no Supabase.`)) {
+      return;
+    }
+    try {
+      // DELETE na tabela 'proprietarios'
+      const { error: deleteError } = await supabase
+        .from('proprietarios')
+        .delete()
+        .eq('nif', prop.nif);
+
+      if (deleteError) {
+        console.warn("[Supabase] Aviso ao eliminar na tabela 'proprietarios':", deleteError.message);
+      }
+
+      if (prop.id_fracao) {
+        // Atualizar fração no Supabase
+        const { error: fracError } = await supabase
+          .from('fracoes')
+          .update({
+            proprietario: null,
+            administrador_interno: "Não"
+          })
+          .eq('id_fracao', prop.id_fracao);
+
+        if (fracError) {
+          alert(`Erro ao desassociar proprietário da fração no Supabase: ${fracError.message}`);
+          return;
+        }
+
+        const target = fracoes.find(f => f.id_fracao === prop.id_fracao);
+        if (target) {
+          const updatedFracao: Fracao = {
+            ...target,
+            proprietario: null,
+            administrador_interno: "Não"
+          };
+          const updatedList = fracoes.map(f => f.id_fracao === prop.id_fracao ? updatedFracao : f);
+          onUpdateFracoes(updatedList);
+          await saveFracaoToSupabase(updatedFracao);
+        }
+      }
+
+      // Regra 2: Depois de gravar/eliminar, atualizar a lista com select('*')
+      const { data: propsRestantes, error: readError } = await supabase
+        .from('proprietarios')
+        .select('*');
+
+      if (readError) {
+        console.warn("[Supabase] Aviso ao ler proprietarios:", readError.message);
+      }
+
+      setUnassignedProprietarios(prev => prev.filter(p => (p.nif || p.nome) !== (prop.nif || prop.nome)));
+      await deleteProprietarioFromSupabase(prop.nif || prop.nome, prop.id_fracao);
+      if (editingOwnerKey === (prop.nif || prop.nome)) {
+        limparFormProprietario();
+      }
+      alert(`Proprietário ${prop.nome} removido com sucesso.`);
+    } catch (err: any) {
+      alert(`Erro na ligação com o Supabase: ${err?.message || "Erro desconhecido"}`);
+    }
+  };
 
   const processarFotoWebP = (e: React.ChangeEvent<HTMLInputElement>, targetSetter: (val: string | null) => void) => {
     const file = e.target.files?.[0];
@@ -362,136 +604,305 @@ export function GestaoFracoes({
     reader.readAsDataURL(file);
   };
 
-  // Sub-menu 1: Registar Nova Fração (Totalmente Independente)
-  const submeterNovaFracao = (e: React.FormEvent) => {
+  // Sub-menu 1: Registar ou Atualizar Fração (Totalmente Independente)
+  const submeterNovaFracao = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loggedUser.role !== 'ADMIN' && loggedUser.role !== 'EMPRESA_GESTORA') {
-      return alert("Apenas administradores podem registar frações!");
+      return alert("Apenas administradores podem registar ou editar frações!");
     }
     if (!fracaoNome.trim() || !piso.trim()) {
-      alert("Por favor, indique pelo menos a Fração (Letra/Identificação) e o Piso.");
+      alert("Por favor, indique a Fração (Letra/Identificação) e o Piso.");
+      return;
+    }
+    if (!tipologia.trim()) {
+      alert("A Tipologia é um campo obrigatório. Por favor, selecione uma opção.");
+      return;
+    }
+    if (!permilagem || isNaN(Number(permilagem)) || Number(permilagem) <= 0) {
+      alert("A Permilagem/M2 é um campo obrigatório. Por favor, insira o valor da permilagem (ex: 125).");
       return;
     }
 
-    const calculatedPermilagem = permilagem ? Number(permilagem) : Math.max(1, 1000 - totalPermilagem);
-    const hasProprietario = Boolean(propNome.trim() && propEmail.trim());
+    const valorPermilagem = Number(permilagem);
 
+    // Se estiver em modo de edição de fração existente
+    if (editingFracaoId) {
+      const targetFracao = fracoes.find(f => f.id_fracao === editingFracaoId);
+      if (!targetFracao) return;
+
+      const updatedFracao: Fracao = {
+        ...targetFracao,
+        fracao_nome: fracaoNome.trim(),
+        piso: piso.trim(),
+        permilagem: valorPermilagem,
+        tipologia: tipologia.trim(),
+        tipo_access: tipoAcesso,
+        tem_garagem_spot: garagem,
+        tem_arrecadacao_box: arrecadacao
+      };
+
+      try {
+        // UPDATE na tabela 'fracoes'
+        const { error: updateError } = await supabase
+          .from('fracoes')
+          .update({
+            fracao_nome: fracaoNome.trim(),
+            piso: piso.trim(),
+            permilagem: valorPermilagem,
+            tipologia: tipologia.trim(),
+            tipo_access: tipoAcesso,
+            tem_garagem_spot: garagem,
+            tem_arrecadacao_box: arrecadacao
+          })
+          .eq('id_fracao', editingFracaoId);
+
+        if (updateError) {
+          alert(`Erro ao atualizar fração no Supabase: ${updateError.message}`);
+          return;
+        }
+
+        // Regra 2: Depois de gravar, atualizar a lista com select('*')
+        const { data: fracoesAtualizadas, error: readError } = await supabase
+          .from('fracoes')
+          .select('*');
+
+        if (readError) {
+          console.warn("[Supabase] Aviso ao ler fracoes:", readError.message);
+        }
+
+        const updatedList = fracoes.map(f => f.id_fracao === editingFracaoId ? updatedFracao : f);
+        onUpdateFracoes(updatedList);
+        await saveFracaoToSupabase(updatedFracao);
+
+        cancelarEdicaoFracao();
+        alert(`✅ Fração ${updatedFracao.fracao_nome} atualizada com sucesso no Supabase!`);
+        return;
+      } catch (err: any) {
+        alert(`Erro na ligação com o Supabase: ${err?.message || "Erro desconhecido"}`);
+        return;
+      }
+    }
+
+    // Criar Nova Fração
     const nova: Fracao = {
       id_fracao: "frac-" + Date.now(),
       id_predio: predio.id_predio,
       fracao_nome: fracaoNome.trim(),
       piso: piso.trim(),
-      permilagem: calculatedPermilagem,
-      tipologia,
+      permilagem: valorPermilagem,
+      tipologia: tipologia.trim(),
       tipo_access: tipoAcesso,
       tem_garagem_spot: garagem,
       tem_arrecadacao_box: arrecadacao,
-      is_arrendada: arrendada,
-      administrador_interno: adminInterno,
-      notificacao_preferencial: notificacao,
-      proprietario: hasProprietario ? {
-        nome: propNome.trim(),
-        nif: propNif.trim() || "999999990",
-        email: propEmail.trim(),
-        tlm: propTlm.trim() || "—",
-        iban: propIban.trim() || "",
-        titular_conta: propTitular.trim() || propNome.trim(),
-        entidade_bancaria: propBanco.trim() || "",
-        morada_alternativa: arrendada ? propMoradaAlt || null : null,
-        foto: propFoto
-      } : null,
-      proprietarios_adicionais: proprietariosAdicionais,
-      inquilino: arrendada && inqNome.trim() ? {
-        nome: inqNome.trim(),
-        email: inqEmail.trim(),
-        tlm: inqTlm.trim(),
-        nif: inqNif.trim(),
-        foto: inqFoto
-      } : null
+      is_arrendada: false,
+      administrador_interno: "Não",
+      notificacao_preferencial: "Digital (E-mail e Mensagens Push)",
+      proprietario: null,
+      proprietarios_adicionais: [],
+      inquilino: null
     };
 
-    onAddFracao(nova);
+    try {
+      // INSERT na tabela 'fracoes'
+      const { error: insertError } = await supabase
+        .from('fracoes')
+        .insert([{
+          id_fracao: nova.id_fracao,
+          id_predio: nova.id_predio,
+          fracao_nome: nova.fracao_nome,
+          piso: nova.piso,
+          permilagem: nova.permilagem,
+          tipologia: nova.tipologia,
+          tipo_access: nova.tipo_access,
+          tem_garagem_spot: nova.tem_garagem_spot,
+          tem_arrecadacao_box: nova.tem_arrecadacao_box,
+          is_arrendada: nova.is_arrendada,
+          administrador_interno: nova.administrador_interno,
+          notificacao_preferencial: nova.notificacao_preferencial,
+          proprietario: nova.proprietario,
+          proprietarios_adicionais: nova.proprietarios_adicionais,
+          inquilino: nova.inquilino
+        }]);
 
-    // Auto-send welcome email if proprietor has email
-    if (nova.proprietario?.email) {
-      const tempPass = "Cnd-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-      localStorage.setItem(`provisional_access_${nova.proprietario.email.toLowerCase()}`, "true");
-      try {
-        generateCondominoPwaManualPDF(nova.proprietario.nome, predio.nome, tempPass);
-      } catch (err) {
-        console.warn("Manual PWA PDF generation:", err);
+      if (insertError) {
+        alert(`Erro ao gravar fração no Supabase: ${insertError.message}`);
+        return;
       }
-      alert(`✅ Fração ${nova.fracao_nome} registada com sucesso!\n\n📧 E-MAIL DE BOAS-VINDAS ENVIADO AUTOMATICAMENTE:\n• Destinatário: ${nova.proprietario.nome} (${nova.proprietario.email})\n• Password Provisória: ${tempPass}\n• Anexo PDF: Manual da PWA Condómino\n• Primeiro Acesso: Ao entrar, o condómino será direcionado para alterar a password.`);
-    } else {
-      alert(`✅ Nova Fração ${nova.fracao_nome} (${nova.piso}) registada com sucesso no condomínio!`);
-    }
 
-    setFracaoNome(""); setPiso(""); setPermilagem(""); setTipologia("Residencial"); setTipoAcesso("Acesso Comum pelas Escadas");
-    setGaragem(false); setArrecadacao(false); setArrendada(false); setAdminInterno("Não"); setNotificacao("Digital (E-mail e Mensagens Push)");
-    setPropNome(""); setPropNif(""); setPropEmail(""); setPropTlm(""); setPropIban(""); setPropTitular(""); setPropBanco(""); setPropMoradaAlt(""); setPropFoto(null);
-    setInqNome(""); setInqEmail(""); setInqTlm(""); setInqNif(""); setInqFoto(null);
-    setCoNome(""); setCoNif(""); setCoEmail(""); setCoTlm(""); setCoFoto(null);
-    setProprietariosAdicionais([]);
+      // Regra 2: Depois de gravar, atualizar a lista com select('*')
+      const { data: fracoesAtualizadas, error: readError } = await supabase
+        .from('fracoes')
+        .select('*');
+
+      if (readError) {
+        console.warn("[Supabase] Aviso ao ler fracoes:", readError.message);
+      }
+
+      onAddFracao(nova);
+      await saveFracaoToSupabase(nova);
+      setJustCreatedFracao(nova);
+      setSelectedFracaoId(nova.id_fracao);
+
+      // Limpar campos de fração
+      setFracaoNome("");
+      setPiso("");
+      setPermilagem("");
+      setTipologia("T2");
+      setTipoAcesso("Acesso Comum pelas Escadas");
+      setGaragem(false);
+      setArrecadacao(false);
+    } catch (err: any) {
+      alert(`Erro na ligação com o Supabase: ${err?.message || "Erro desconhecido"}`);
+    }
   };
 
-  // Sub-menu 2: Editar / Gravar Dados do Proprietário da Fração Selecionada
-  const submeterEditarProprietario = (e: React.FormEvent) => {
+  // Sub-menu 2: Registar / Gravar Dados do Proprietário (Totalmente Independente)
+  const submeterEditarProprietario = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loggedUser.role !== 'ADMIN' && loggedUser.role !== 'EMPRESA_GESTORA') {
       return alert("Apenas administradores podem atualizar proprietários!");
     }
-    if (!selectedFracaoId) {
-      alert("Por favor, selecione uma fração para associar/editar os proprietários.");
+    if (!propNome.trim()) {
+      alert("O campo Nome Completo do Proprietário é obrigatório.");
       return;
     }
-    if (!propNome.trim() || !propEmail.trim() || !propNif.trim()) {
-      alert("Preencha os campos obrigatórios (*) do Proprietário: Nome, NIF e E-mail.");
+    if (!propNif.trim()) {
+      alert("O campo NIF Fiscal do Proprietário é obrigatório.");
+      return;
+    }
+    if (!propEmail.trim()) {
+      alert("O campo E-mail do Proprietário é obrigatório.");
+      return;
+    }
+    if (!propTlm.trim()) {
+      alert("O campo Telemóvel do Proprietário é obrigatório.");
+      return;
+    }
+    if (!adminInterno) {
+      alert("Indique se é o Administrador Interno (campo obrigatório).");
+      return;
+    }
+    if (!notificacao) {
+      alert("Indique como quer ser notificado (campo obrigatório).");
       return;
     }
 
-    const targetFracao = predioFracoes.find(f => f.id_fracao === selectedFracaoId);
-    if (!targetFracao) return;
-
-    const isNewEmail = targetFracao.proprietario?.email !== propEmail.trim();
-
-    const updatedFracao: Fracao = {
-      ...targetFracao,
-      is_arrendada: arrendada,
+    const novoProprietarioObj: Proprietario = {
+      nome: propNome.trim(),
+      nif: propNif.trim(),
+      email: propEmail.trim(),
+      tlm: propTlm.trim(),
+      iban: propIban.trim() || "",
+      titular_conta: propTitular.trim() || propNome.trim(),
+      entidade_bancaria: propBanco.trim() || "",
+      morada_alternativa: arrendada ? propMoradaAlt || null : null,
+      foto: propFoto,
       administrador_interno: adminInterno,
-      notificacao_preferencial: notificacao,
-      proprietario: {
-        nome: propNome.trim(),
-        nif: propNif.trim(),
-        email: propEmail.trim(),
-        tlm: propTlm.trim() || "—",
-        iban: propIban.trim() || "",
-        titular_conta: propTitular.trim() || propNome.trim(),
-        entidade_bancaria: propBanco.trim() || "",
-        morada_alternativa: arrendada ? propMoradaAlt || null : null,
-        foto: propFoto
-      },
-      proprietarios_adicionais: proprietariosAdicionais,
-      inquilino: arrendada && inqNome.trim() ? {
-        nome: inqNome.trim(),
-        email: inqEmail.trim(),
-        tlm: inqTlm.trim(),
-        nif: inqNif.trim(),
-        foto: inqFoto
-      } : null
+      notificacao_preferencial: notificacao
     };
 
-    const updatedList = fracoes.map(f => f.id_fracao === selectedFracaoId ? updatedFracao : f);
-    onUpdateFracoes(updatedList);
+    try {
+      const propPayload = {
+        id_proprietario: "prop-" + (novoProprietarioObj.nif || Date.now()),
+        id_predio: predio.id_predio,
+        id_fracao: selectedFracaoId || null,
+        nome: novoProprietarioObj.nome,
+        nif: novoProprietarioObj.nif,
+        email: novoProprietarioObj.email,
+        tlm: novoProprietarioObj.tlm,
+        iban: novoProprietarioObj.iban,
+        titular_conta: novoProprietarioObj.titular_conta,
+        entidade_bancaria: novoProprietarioObj.entidade_bancaria,
+        morada_alternativa: novoProprietarioObj.morada_alternativa,
+        foto: novoProprietarioObj.foto,
+        administrador_interno: novoProprietarioObj.administrador_interno,
+        notificacao_preferencial: novoProprietarioObj.notificacao_preferencial
+      };
 
-    if (isNewEmail || !targetFracao.proprietario) {
-      const tempPass = "Cnd-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-      localStorage.setItem(`provisional_access_${propEmail.trim().toLowerCase()}`, "true");
-      try {
-        generateCondominoPwaManualPDF(propNome.trim(), predio.nome, tempPass);
-      } catch (err) {}
-      alert(`✅ Dados do proprietário atualizados com sucesso na Fração ${targetFracao.fracao_nome}!\n\n📧 E-MAIL DE BOAS-VINDAS ENVIADO COM CREDENCIAIS PROVISÓRIAS:\n• E-mail: ${propEmail.trim()}\n• Password Provisória: ${tempPass}\n• No primeiro acesso, o menu de segurança será aberto obrigatoriamente para troca de senha.`);
-    } else {
-      alert(`✅ Dados do proprietário da Fração ${targetFracao.fracao_nome} (${propNome.trim()}) gravados com sucesso!`);
+      // Tenta atualizar ou inserir na tabela 'proprietarios'
+      const { error: upsertPropError } = await supabase
+        .from('proprietarios')
+        .upsert(propPayload);
+
+      if (upsertPropError) {
+        console.warn("[Supabase] Aviso ao gravar na tabela proprietarios:", upsertPropError.message);
+      }
+
+      // Se houver fração selecionada, atualiza a fração no Supabase
+      if (selectedFracaoId) {
+        const targetFracao = predioFracoes.find(f => f.id_fracao === selectedFracaoId);
+        if (targetFracao) {
+          const isNewEmail = targetFracao.proprietario?.email !== propEmail.trim();
+
+          const { error: updateFracError } = await supabase
+            .from('fracoes')
+            .update({
+              proprietario: novoProprietarioObj,
+              administrador_interno: adminInterno,
+              notificacao_preferencial: notificacao,
+              is_arrendada: arrendada
+            })
+            .eq('id_fracao', selectedFracaoId);
+
+          if (updateFracError) {
+            alert(`Erro ao atualizar proprietário da fração no Supabase: ${updateFracError.message}`);
+            return;
+          }
+
+          // Regra 2: Depois de gravar, atualizar a lista com select('*')
+          const { data: fracoesAtualizadas } = await supabase.from('fracoes').select('*');
+          const { data: proprietariosAtualizados } = await supabase.from('proprietarios').select('*');
+
+          const updatedFracao: Fracao = {
+            ...targetFracao,
+            is_arrendada: arrendada,
+            administrador_interno: adminInterno,
+            notificacao_preferencial: notificacao,
+            proprietario: novoProprietarioObj,
+            proprietarios_adicionais: proprietariosAdicionais,
+            inquilino: arrendada && inqNome.trim() ? {
+              nome: inqNome.trim(),
+              email: inqEmail.trim(),
+              tlm: inqTlm.trim(),
+              nif: inqNif.trim(),
+              foto: inqFoto
+            } : null
+          };
+
+          const updatedList = fracoes.map(f => f.id_fracao === selectedFracaoId ? updatedFracao : f);
+          onUpdateFracoes(updatedList);
+          await saveFracaoToSupabase(updatedFracao);
+          await saveProprietarioToSupabase(novoProprietarioObj, selectedFracaoId);
+
+          if (isNewEmail || !targetFracao.proprietario) {
+            const tempPass = "Cnd-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+            localStorage.setItem(`provisional_access_${propEmail.trim().toLowerCase()}`, "true");
+            try {
+              generateCondominoPwaManualPDF(propNome.trim(), predio.nome, tempPass);
+            } catch (err) {}
+            alert(`✅ Proprietário associado com sucesso à Fração ${targetFracao.fracao_nome} no Supabase!\n\n📧 E-MAIL DE BOAS-VINDAS ENVIADO:\n• E-mail: ${propEmail.trim()}\n• Password Provisória: ${tempPass}\n• No primeiro acesso, o condómino poderá definir a sua password.`);
+          } else {
+            alert(`✅ Dados do proprietário da Fração ${targetFracao.fracao_nome} (${propNome.trim()}) gravados com sucesso no Supabase!`);
+          }
+
+          limparFormProprietario();
+          return;
+        }
+      }
+
+      // Regra 2: Depois de gravar, atualizar a lista com select('*')
+      const { data: proprietariosAtualizados } = await supabase.from('proprietarios').select('*');
+
+      setUnassignedProprietarios(prev => {
+        const filtered = prev.filter(p => (p.nif || p.nome) !== (novoProprietarioObj.nif || novoProprietarioObj.nome));
+        return [...filtered, novoProprietarioObj];
+      });
+      await saveProprietarioToSupabase(novoProprietarioObj);
+
+      alert(`✅ Proprietário ${novoProprietarioObj.nome} guardado com sucesso no Supabase! Poderá associá-lo a uma fração a qualquer momento.`);
+      limparFormProprietario();
+    } catch (err: any) {
+      alert(`Erro na ligação com o Supabase: ${err?.message || "Erro desconhecido"}`);
     }
   };
 
@@ -707,454 +1118,1049 @@ export function GestaoFracoes({
         </div>
       </div>
 
-      {/* SUB-MENU 1: CADASTRAR FRAÇÃO */}
+      {/* Navegação entre Sub-Módulos de Frações & Proprietários */}
+      <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center gap-1.5 no-print">
+        <button
+          type="button"
+          onClick={() => setCurrentSubTab("fracoes_nova")}
+          className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            currentSubTab === "fracoes_nova"
+              ? "bg-emerald-600 text-white shadow-sm"
+              : "bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60"
+          }`}
+        >
+          <i className="fa-solid fa-hotel text-xs"></i>
+          <span>1. Frações Autónomas</span>
+          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-black ${
+            currentSubTab === "fracoes_nova" ? "bg-emerald-700 text-white" : "bg-slate-200 text-slate-700"
+          }`}>
+            {predioFracoes.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCurrentSubTab("fracoes_proprietario")}
+          className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            currentSubTab === "fracoes_proprietario"
+              ? "bg-emerald-600 text-white shadow-sm"
+              : "bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60"
+          }`}
+        >
+          <i className="fa-solid fa-user-check text-xs"></i>
+          <span>2. Proprietários</span>
+          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-black ${
+            currentSubTab === "fracoes_proprietario" ? "bg-emerald-700 text-white" : "bg-slate-200 text-slate-700"
+          }`}>
+            {todosProprietarios.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCurrentSubTab("fracoes_perfis")}
+          className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            currentSubTab === "fracoes_perfis"
+              ? "bg-emerald-600 text-white shadow-sm"
+              : "bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60"
+          }`}
+        >
+          <i className="fa-solid fa-id-card text-xs"></i>
+          <span>3. Perfis & Fichas</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCurrentSubTab("residentes_inquilinos")}
+          className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            currentSubTab === "residentes_inquilinos"
+              ? "bg-emerald-600 text-white shadow-sm"
+              : "bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60"
+          }`}
+        >
+          <i className="fa-solid fa-users-rectangle text-xs"></i>
+          <span>4. Residentes & Inquilinos</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCurrentSubTab("permilagens_auto")}
+          className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            currentSubTab === "permilagens_auto"
+              ? "bg-emerald-600 text-white shadow-sm"
+              : "bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60"
+          }`}
+        >
+          <i className="fa-solid fa-calculator text-xs"></i>
+          <span>5. Cálculo Permilagens</span>
+        </button>
+      </div>
+
+      {/* SUB-MENU 1: CADASTRAR / EDITAR FRAÇÃO */}
       {currentSubTab === "fracoes_nova" && (loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA') && (
-        <form onSubmit={submeterNovaFracao} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6 no-print">
-          <h3 className="text-sm font-bold text-slate-800 flex items-center space-x-2">
-            <span className="p-1 bg-emerald-50 text-emerald-600 rounded">
-              <i className="fa-solid fa-hotel text-xs"></i>
-            </span>
-            <span>Registar Nova Fração Autónoma</span>
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-500 mb-1">Fração *</label>
-              <input type="text" value={fracaoNome} onChange={e => setFracaoNome(e.target.value)} placeholder="Ex: K, A, D" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
-            </div>
-            <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-500 mb-1">Piso / Designação *</label>
-              <input type="text" value={piso} onChange={e => setPiso(e.target.value)} placeholder="Ex: 3º Esq, R/C Loja" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
-            </div>
-            <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-500 mb-1">Permilagem (‰) (Opcional - Auto se vazio)</label>
-              <input type="number" min="1" max="1000" value={permilagem} onChange={e => setPermilagem(e.target.value)} placeholder={`Auto (${1000 - totalPermilagem > 0 ? 1000 - totalPermilagem : 100}‰ restando)`} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
-            </div>
-            <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-500 mb-1">Tipologia *</label>
-              <select value={tipologia} onChange={e => setTipologia(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white">
-                <option value="Residencial">Residencial</option>
-                <option value="Loja Comercial">Loja Comercial</option>
-                <option value="Arrecadação Autónoma">Arrecadação Autónoma</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-500 mb-1">Tipo de Acesso (Critério Isenção) *</label>
-              <select value={tipoAcesso} onChange={e => setTipoAcesso(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white">
-                <option value="Acesso Comum pelas Escadas">Acesso pelas Escadas / Elevadores comuns</option>
-                <option value="Acesso Direto pelo Exterior sem Escadas">Acesso pelo Exterior (Isento Escadas/Limpezas/Elevadores)</option>
-              </select>
-            </div>
-            <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-500 mb-1">É o Administrador Interno? *</label>
-              <select value={adminInterno} onChange={e => setAdminInterno(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white">
-                <option value="Não">Não</option>
-                <option value="Sim">Sim</option>
-              </select>
-            </div>
-            <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-500 mb-1">Como quer ser Notificado? *</label>
-              <select value={notificacao} onChange={e => setNotificacao(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white">
-                <option value="Digital (E-mail e Mensagens Push)">Digital (E-mail e Mensagens Push)</option>
-                <option value="Correio Postal (Físico)">Correio Postal (Físico)</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Recolha de Assinatura Digital do Administrador */}
-          {adminInterno === "Sim" && (
-            <div className="p-4 bg-slate-50 border-2 border-emerald-200 rounded-xl space-y-3 animate-fadeIn">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <i className="fa-solid fa-signature text-emerald-600 text-sm"></i>
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
-                    Recolha de Assinatura Digital do Administrador (para uso em todos os documentos)
-                  </h4>
-                </div>
-                <span className="text-[10px] text-slate-500 italic">
-                  Recolha possível via sistema (desenho) ou upload de ficheiro/PDF
+        <div className="space-y-6">
+          {/* Banner de Sucesso pós-criação com navegação direta para Proprietário */}
+          {justCreatedFracao && (
+            <div className="bg-emerald-50 border-2 border-emerald-300 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fadeIn">
+              <div className="flex items-center gap-3">
+                <span className="p-2 bg-emerald-600 text-white rounded-lg flex items-center justify-center font-bold">
+                  <i className="fa-solid fa-check"></i>
                 </span>
+                <div>
+                  <h4 className="text-sm font-bold text-emerald-900">
+                    Fração {justCreatedFracao.fracao_nome} ({justCreatedFracao.piso}) registada com sucesso!
+                  </h4>
+                  <p className="text-xs text-emerald-700">
+                    Deseja associar agora o Proprietário a esta fração?
+                  </p>
+                </div>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Pad de Desenho Directo */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block">
-                    1. Assinar no Ecrã (Mouse / Touch)
-                  </label>
-                  <div className="border border-slate-300 rounded-lg overflow-hidden bg-white relative">
-                    <canvas
-                      ref={adminCanvasRef}
-                      width={320}
-                      height={120}
-                      className="w-full h-[120px] bg-slate-50 block cursor-crosshair touch-none"
-                      onMouseDown={startDrawingAdmin}
-                      onMouseMove={drawAdmin}
-                      onMouseUp={stopDrawingAdmin}
-                      onMouseLeave={stopDrawingAdmin}
-                      onTouchStart={startDrawingAdmin}
-                      onTouchMove={drawAdmin}
-                      onTouchEnd={stopDrawingAdmin}
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={clearAdminCanvas}
-                      className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-2.5 py-1 text-[10px] rounded cursor-pointer"
-                    >
-                      Limpar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={saveAdminCanvasSignature}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1 text-[10px] rounded-lg cursor-pointer transition-all flex items-center gap-1 shadow-xs"
-                    >
-                      <i className="fa-solid fa-floppy-disk"></i>
-                      <span>Gravar Assinatura Desenhada</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Upload de Imagem ou PDF */}
-                <div className="space-y-2 flex flex-col justify-between">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
-                      2. Ou Carregar Ficheiro de Assinatura / PDF
-                    </label>
-                    <input
-                      type="file"
-                      ref={adminSigFileRef}
-                      accept="image/*,.pdf"
-                      onChange={handleAdminSignatureFileUpload}
-                      className="hidden"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => adminSigFileRef.current?.click()}
-                      className="w-full border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-white p-3 rounded-lg text-center cursor-pointer transition-all space-y-1"
-                    >
-                      <i className="fa-solid fa-file-arrow-up text-emerald-600 text-lg"></i>
-                      <p className="text-xs font-bold text-slate-700">Carregar Imagem ou PDF de Assinatura</p>
-                      <p className="text-[9.5px] text-slate-400">Suporta PNG, JPG, WEBP e PDF</p>
-                    </button>
-                  </div>
-
-                  {adminSignatureSaved && (
-                    <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <i className="fa-solid fa-circle-check text-emerald-600 text-sm"></i>
-                        <span className="text-[10px] font-bold text-emerald-800">Assinatura Ativa Guardada</span>
-                      </div>
-                      {adminSignatureSaved.startsWith("data:image") && (
-                        <img src={adminSignatureSaved} alt="Assinatura Administrador" className="h-8 max-w-[120px] object-contain border border-emerald-200 bg-white rounded p-0.5" />
-                      )}
-                    </div>
-                  )}
-                </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedFracaoId(justCreatedFracao.id_fracao);
+                    limparFormProprietario();
+                    setCurrentSubTab("fracoes_proprietario");
+                    setJustCreatedFracao(null);
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition-all flex items-center gap-2 shadow-sm cursor-pointer whitespace-nowrap"
+                >
+                  <i className="fa-solid fa-user-plus"></i>
+                  <span>Adicionar Proprietário a esta Fração</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setJustCreatedFracao(null)}
+                  className="text-slate-500 hover:text-slate-700 px-2 py-1 text-xs cursor-pointer"
+                >
+                  Fechar
+                </button>
               </div>
             </div>
           )}
 
-          <button 
-            type="submit" 
-            className="border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 active:scale-95 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-md hover:shadow-lg active:ring-2 active:ring-emerald-400 select-none"
-          >
-            <img src="/estados-acoes/12-adicionar.png" alt="Gravar" className="h-4 w-4 object-contain" />
-            <span>Gravar</span>
-          </button>
-        </form>
-      )}
-
-      {/* SUB-MENU 2: CADASTRAR PROPRIETÁRIO */}
-      {currentSubTab === "fracoes_proprietario" && (loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA') && (
-        <form onSubmit={submeterEditarProprietario} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6 no-print">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-bold text-slate-800 flex items-center space-x-2">
-              <span className="p-1 bg-emerald-50 text-emerald-600 rounded">
-                <i className="fa-solid fa-user-check text-xs"></i>
-              </span>
-              <span>Registar Proprietário, Coproprietários & Inquilino</span>
-            </h3>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs text-slate-500 font-semibold">Associar à Fração:</span>
-              <select 
-                value={selectedFracaoId || ""} 
-                onChange={e => setSelectedFracaoId(e.target.value)}
-                className="border border-slate-200 bg-slate-50 px-3 py-1 text-xs rounded-lg font-bold text-slate-700 focus:outline-emerald-500"
-              >
-                {predioFracoes.map(f => (
-                  <option key={f.id_fracao} value={f.id_fracao}>
-                    Fração {f.fracao_nome} ({f.piso}) {f.proprietario ? `- ${f.proprietario.nome}` : "(Sem Proprietário)"}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Ficha do Proprietário */}
-          <div className="pt-2 space-y-4">
-            <div className="flex items-center space-x-3">
-              <span className="p-1.5 bg-emerald-50 text-emerald-600 rounded"><i className="fa-solid fa-user-check"></i></span>
-              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Identificação do Proprietário Principal</h4>
+          {/* Formulário de Fração */}
+          <form onSubmit={submeterNovaFracao} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6 no-print">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center space-x-2">
+                <span className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
+                  <i className="fa-solid fa-hotel text-xs"></i>
+                </span>
+                <span>{editingFracaoId ? `Editar Fração: ${fracaoNome || "..."}` : "Registar Nova Fração Autónoma"}</span>
+              </h3>
+              {editingFracaoId && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full font-bold">
+                    Modo Edição Ativo
+                  </span>
+                  <button
+                    type="button"
+                    onClick={cancelarEdicaoFracao}
+                    className="text-xs text-slate-500 hover:text-slate-700 font-semibold underline cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="flex flex-col">
-                <label className="text-xs font-semibold text-slate-500 mb-1">Nome Completo *</label>
-                <input type="text" value={propNome} onChange={e => setPropNome(e.target.value)} placeholder="Ex: José Carlos Alves Guerra" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+                <label className="text-xs font-bold text-slate-700 mb-1">Fração *</label>
+                <input 
+                  type="text" 
+                  value={fracaoNome} 
+                  onChange={e => setFracaoNome(e.target.value)} 
+                  placeholder="Ex: A, B, 1º Dto, Loja 1" 
+                  className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-bold text-slate-800 bg-white" 
+                  required
+                />
               </div>
               <div className="flex flex-col">
-                <label className="text-xs font-semibold text-slate-500 mb-1">NIF Fiscal *</label>
-                <input type="text" value={propNif} onChange={e => setPropNif(e.target.value)} placeholder="Ex: 221230475" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
+                <label className="text-xs font-bold text-slate-700 mb-1">Piso / Designação *</label>
+                <input 
+                  type="text" 
+                  value={piso} 
+                  onChange={e => setPiso(e.target.value)} 
+                  placeholder="Ex: 1º Andar Direito, R/C" 
+                  className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white" 
+                  required
+                />
               </div>
               <div className="flex flex-col">
-                <label className="text-xs font-semibold text-slate-500 mb-1">E-mail *</label>
-                <input type="email" value={propEmail} onChange={e => setPropEmail(e.target.value)} placeholder="Ex: jose@email.com" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
+                <label className="text-xs font-bold text-slate-700 mb-1">Tipologia *</label>
+                <select 
+                  value={tipologia} 
+                  onChange={e => setTipologia(e.target.value)} 
+                  className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white font-medium text-slate-700"
+                  required
+                >
+                  <option value="T0">T0</option>
+                  <option value="T1">T1</option>
+                  <option value="T2">T2</option>
+                  <option value="T3">T3</option>
+                  <option value="T4">T4</option>
+                  <option value="T5">T5</option>
+                  <option value="T6+">T6+</option>
+                  <option value="Loja Comercial">Loja Comercial</option>
+                  <option value="Garagem / Box">Garagem / Box</option>
+                  <option value="Arrecadação Autónoma">Arrecadação Autónoma</option>
+                  <option value="Escritório / Serviços">Escritório / Serviços</option>
+                  <option value="Outro">Outro</option>
+                </select>
               </div>
               <div className="flex flex-col">
-                <label className="text-xs font-semibold text-slate-500 mb-1">Telemóvel *</label>
-                <input type="text" value={propTlm} onChange={e => setPropTlm(e.target.value)} placeholder="Ex: 912345678" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
+                <label className="text-xs font-bold text-slate-700 mb-1">Permilagem / M2 (‰) *</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  max="1000" 
+                  value={permilagem} 
+                  onChange={e => setPermilagem(e.target.value)} 
+                  placeholder="Ex: 125" 
+                  className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono font-bold text-slate-800 bg-white" 
+                  required
+                />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex flex-col">
-                <label className="text-xs font-semibold text-slate-500 mb-1">IBAN de Origem</label>
-                <input type="text" value={propIban} onChange={e => setPropIban(e.target.value)} placeholder="PT50..." className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
+                <label className="text-xs font-semibold text-slate-600 mb-1">Tipo de Acesso (Critério de Isenção)</label>
+                <select 
+                  value={tipoAcesso} 
+                  onChange={e => setTipoAcesso(e.target.value)} 
+                  className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white"
+                >
+                  <option value="Acesso Comum pelas Escadas">Acesso pelas Escadas / Elevadores comuns</option>
+                  <option value="Acesso Direto pelo Exterior sem Escadas">Acesso Direto pelo Exterior (Isento Escadas/Elevadores)</option>
+                </select>
               </div>
-              <div className="flex flex-col">
-                <label className="text-xs font-semibold text-slate-500 mb-1">Titular da Conta Bancária</label>
-                <input type="text" value={propTitular} onChange={e => setPropTitular(e.target.value)} placeholder="Nome do titular" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+              <div className="flex items-center gap-6 pt-5">
+                <label className="flex items-center space-x-2 text-xs font-semibold text-slate-700 cursor-pointer select-none">
+                  <input 
+                    type="checkbox" 
+                    checked={garagem} 
+                    onChange={e => setGaragem(e.target.checked)} 
+                    className="h-4 w-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500" 
+                  />
+                  <span>Lugar de Garagem / Estacionamento</span>
+                </label>
+                <label className="flex items-center space-x-2 text-xs font-semibold text-slate-700 cursor-pointer select-none">
+                  <input 
+                    type="checkbox" 
+                    checked={arrecadacao} 
+                    onChange={e => setArrecadacao(e.target.checked)} 
+                    className="h-4 w-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500" 
+                  />
+                  <span>Arrecadação / Box</span>
+                </label>
               </div>
-              <div className="flex flex-col">
-                <label className="text-xs font-semibold text-slate-500 mb-1">Entidade Bancária</label>
-                <input type="text" value={propBanco} onChange={e => setPropBanco(e.target.value)} placeholder="Ex: BPI, CGD, ActivoBank" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button 
+                type="submit" 
+                className="border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 active:scale-95 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-md hover:shadow-lg active:ring-2 active:ring-emerald-400 select-none"
+              >
+                <img src="/estados-acoes/12-adicionar.png" alt="Guardar" className="h-4 w-4 object-contain" />
+                <span>{editingFracaoId ? "Guardar Alterações da Fração" : "Guardar Fração"}</span>
+              </button>
+
+              {editingFracaoId && (
+                <button
+                  type="button"
+                  onClick={cancelarEdicaoFracao}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Cancelar Edição
+                </button>
+              )}
+            </div>
+          </form>
+
+          {/* TABELA DE FRAÇÕES REGISTADAS APÓS REGISTO */}
+          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                  <i className="fa-solid fa-table-list text-emerald-600"></i>
+                  <span>Frações Registadas no Edifício ({predioFracoes.length})</span>
+                </h3>
+                <p className="text-xs text-slate-500">Lista completa de frações autónomas e respetivas permilagens</p>
               </div>
-              <div className="flex flex-col">
-                <label className="text-xs font-semibold text-slate-500 mb-1">Fotografia de Perfil</label>
-                <div className="flex items-center space-x-2">
-                  <button type="button" onClick={() => {
-                    const numProprietariosComFoto = (propFoto ? 1 : 0) + proprietariosAdicionais.filter(p => p.foto).length;
-                    if (numProprietariosComFoto >= 2 && !propFoto) {
-                      alert("Limite atingido! Máximo de 2 proprietários com fotografia por fração.");
-                      return;
-                    }
-                    propFileRef.current?.click();
-                  }} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 flex items-center space-x-1.5 cursor-pointer">
-                    <i className="fa-solid fa-camera"></i>
-                    <span>Carregar Foto</span>
-                  </button>
-                  <input ref={propFileRef} type="file" accept="image/*" onChange={(e) => {
-                    const numProprietariosComFoto = (propFoto ? 1 : 0) + proprietariosAdicionais.filter(p => p.foto).length;
-                    if (numProprietariosComFoto >= 2 && !propFoto) {
-                      alert("Limite atingido! Máximo de 2 proprietários com fotografia por fração.");
-                      return;
-                    }
-                    processarFotoWebP(e, setPropFoto);
-                  }} className="hidden" />
-                  {propFoto && (
-                    <div className="relative">
-                      <img src={propFoto} className="h-9 w-9 rounded-full object-cover border border-slate-300" referrerPolicy="no-referrer" />
-                      <button type="button" onClick={() => setPropFoto(null)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 text-[8px] hover:bg-red-600"><i className="fa-solid fa-xmark"></i></button>
-                    </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-lg border ${
+                  totalPermilagem === 1000 
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                    : "bg-amber-50 text-amber-700 border-amber-200"
+                }`}>
+                  Total Permilagem: {totalPermilagem}‰ / 1000‰
+                </span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                    <th className="py-2.5 px-3">Fração</th>
+                    <th className="py-2.5 px-3">Piso / Descrição</th>
+                    <th className="py-2.5 px-3">Tipologia</th>
+                    <th className="py-2.5 px-3 text-right">Permilagem / M2</th>
+                    <th className="py-2.5 px-3">Proprietário Principal</th>
+                    <th className="py-2.5 px-3 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {predioFracoes.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-slate-400">
+                        Nenhuma fração registada ainda neste condomínio. Utilize o formulário acima para registar a primeira fração.
+                      </td>
+                    </tr>
+                  ) : (
+                    predioFracoes.map((f) => (
+                      <tr key={f.id_fracao} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-2.5 px-3 font-bold text-slate-800">
+                          <span className="bg-slate-100 px-2 py-1 rounded text-slate-800 font-mono">
+                            Fração {f.fracao_nome}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-600">{f.piso}</td>
+                        <td className="py-2.5 px-3">
+                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-semibold text-[11px]">
+                            {f.tipologia || "T2"}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-700">
+                          {f.permilagem}‰
+                        </td>
+                        <td className="py-2.5 px-3">
+                          {f.proprietario ? (
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-slate-800">{f.proprietario.nome}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  carregarProprietarioParaEdicao(f.proprietario!, f.id_fracao);
+                                }}
+                                className="text-[11px] text-emerald-600 hover:text-emerald-800 font-bold underline cursor-pointer"
+                              >
+                                (Ver/Editar)
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold">
+                                Sem Proprietário
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedFracaoId(f.id_fracao);
+                                  limparFormProprietario();
+                                  setCurrentSubTab("fracoes_proprietario");
+                                }}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 rounded text-[10px] cursor-pointer transition-all shadow-xs flex items-center gap-1"
+                                title="Associar Proprietário a esta Fração"
+                              >
+                                <i className="fa-solid fa-user-plus text-[9px]"></i>
+                                <span>Associar Proprietário</span>
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleEditarFracao(f)}
+                              className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer"
+                              title="Editar Fração"
+                            >
+                              <i className="fa-solid fa-pen-to-square text-emerald-600"></i>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleEliminarFracao(f.id_fracao, f.fracao_nome)}
+                              className="bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-600 p-1.5 rounded-lg text-xs transition-colors cursor-pointer"
+                              title="Eliminar Fração"
+                            >
+                              <i className="fa-solid fa-trash-can"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
                   )}
-                </div>
-              </div>
+                </tbody>
+              </table>
             </div>
           </div>
+        </div>
+      )}
 
-          {/* Co-proprietários */}
-          <div className="border-t border-slate-100 pt-4 space-y-4">
-            <div className="flex items-center space-x-3">
-              <span className="p-1.5 bg-indigo-50 text-indigo-600 rounded"><i className="fa-solid fa-users text-[#1A1A1A]"></i></span>
-              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Coproprietários Adicionais</h4>
-            </div>
-
-            {proprietariosAdicionais.length > 0 && (
-              <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-2">
-                <p className="text-[10px] font-bold text-slate-600">Coproprietários adicionados a esta fração:</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {proprietariosAdicionais.map((co, idx) => (
-                    <div key={idx} className="flex items-center justify-between bg-white p-2 rounded border border-slate-200">
-                      <div className="flex items-center space-x-2">
-                        {co.foto ? (
-                          <img src={co.foto} className="h-7 w-7 rounded-full object-cover border border-slate-300" referrerPolicy="no-referrer" />
-                        ) : (
-                          <div className="h-7 w-7 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-xs font-bold">{co.nome.slice(0,2).toUpperCase()}</div>
-                        )}
-                        <div>
-                          <p className="text-xs font-bold text-slate-800">{co.nome}</p>
-                          <p className="text-[9px] text-slate-500 font-mono">NIF: {co.nif} | {co.email}</p>
-                        </div>
-                      </div>
-                      <button 
-                        type="button" 
-                        onClick={() => setProprietariosAdicionais(prev => prev.filter((_, i) => i !== idx))} 
-                        className="text-red-500 hover:text-red-700 p-1 text-xs cursor-pointer"
-                        title="Remover Coproprietário"
-                      >
-                        <i className="fa-solid fa-trash-can"></i>
-                      </button>
-                    </div>
-                  ))}
+      {/* SUB-MENU 2: CADASTRAR / EDITAR PROPRIETÁRIO */}
+      {currentSubTab === "fracoes_proprietario" && (loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA') && (
+        <div className="space-y-6">
+          <form onSubmit={submeterEditarProprietario} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6 no-print">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <span className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
+                  <i className="fa-solid fa-user-check text-xs"></i>
+                </span>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">
+                    {editingOwnerKey ? `Editar Proprietário: ${propNome || "..."}` : "Registar / Editar Proprietário"}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    O formulário de proprietário é independente. Pode registar livremente e associar a qualquer fração.
+                  </p>
                 </div>
               </div>
-            )}
 
-            <div className="bg-indigo-50/30 p-4 rounded-xl border border-indigo-100/50 space-y-3">
-              <span className="text-[10px] font-bold text-indigo-800 uppercase block tracking-wider">Novo Coproprietário</span>
+              <div className="flex flex-wrap items-center gap-2">
+                {editingOwnerKey && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full font-bold">
+                      Modo Edição Ativo
+                    </span>
+                    <button
+                      type="button"
+                      onClick={limparFormProprietario}
+                      className="text-xs text-slate-500 hover:text-slate-700 font-semibold underline cursor-pointer"
+                    >
+                      Limpar / Novo
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                  <span className="text-xs text-slate-600 font-bold whitespace-nowrap">Associar à Fração:</span>
+                  <select 
+                    value={selectedFracaoId || ""} 
+                    onChange={e => {
+                      const newFracaoId = e.target.value;
+                      setSelectedFracaoId(newFracaoId);
+                      // Se a fração selecionada já tiver proprietário e o formulário estiver vazio, pergunta se quer carregar
+                      if (newFracaoId) {
+                        const targetFracao = predioFracoes.find(f => f.id_fracao === newFracaoId);
+                        if (targetFracao?.proprietario && !propNome.trim()) {
+                          carregarProprietarioParaEdicao(targetFracao.proprietario, newFracaoId);
+                        }
+                      }
+                    }}
+                    className="border border-slate-300 bg-white px-3 py-1 text-xs rounded-md font-bold text-slate-700 focus:outline-emerald-500 max-w-[220px]"
+                  >
+                    <option value="">-- Sem Fração (Registo Geral) --</option>
+                    {predioFracoes.map(f => (
+                      <option key={f.id_fracao} value={f.id_fracao}>
+                        Fração {f.fracao_nome} ({f.piso}) {f.proprietario ? `- ${f.proprietario.nome}` : "(Sem Proprietário)"}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentSubTab("fracoes_nova")}
+                    className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold px-2.5 py-1 rounded transition-colors cursor-pointer whitespace-nowrap"
+                    title="Abrir ecrã de frações"
+                  >
+                    <i className="fa-solid fa-hotel mr-1 text-emerald-600"></i>
+                    <span>Ver Frações</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Ficha do Proprietário Principal */}
+            <div className="pt-2 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <span className="p-1 bg-emerald-50 text-emerald-600 rounded"><i className="fa-solid fa-user-check text-xs"></i></span>
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Identificação do Proprietário Principal</h4>
+                </div>
+                {selectedFracaoId && (
+                  <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">
+                    Ligado a: {predioFracoes.find(f => f.id_fracao === selectedFracaoId)?.fracao_nome || selectedFracaoId}
+                  </span>
+                )}
+              </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Nome Completo</label>
-                  <input type="text" value={coNome} onChange={e => setCoNome(e.target.value)} placeholder="Ex: Ana Maria Guerra" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500" />
+                  <label className="text-xs font-bold text-slate-700 mb-1">Nome Completo *</label>
+                  <input 
+                    type="text" 
+                    value={propNome} 
+                    onChange={e => setPropNome(e.target.value)} 
+                    placeholder="Ex: José Carlos Alves Guerra" 
+                    className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white font-medium text-slate-800" 
+                    required
+                  />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">NIF Fiscal</label>
-                  <input type="text" value={coNif} onChange={e => setCoNif(e.target.value)} placeholder="Ex: 234567890" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono" />
+                  <label className="text-xs font-bold text-slate-700 mb-1">NIF Fiscal *</label>
+                  <input 
+                    type="text" 
+                    value={propNif} 
+                    onChange={e => setPropNif(e.target.value)} 
+                    placeholder="Ex: 221230475" 
+                    className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono bg-white font-medium text-slate-800" 
+                    required
+                  />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">E-mail</label>
-                  <input type="email" value={coEmail} onChange={e => setCoEmail(e.target.value)} placeholder="Ex: ana@email.com" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono" />
+                  <label className="text-xs font-bold text-slate-700 mb-1">E-mail *</label>
+                  <input 
+                    type="email" 
+                    value={propEmail} 
+                    onChange={e => setPropEmail(e.target.value)} 
+                    placeholder="Ex: jose@email.com" 
+                    className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono bg-white font-medium text-slate-800" 
+                    required
+                  />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Telemóvel</label>
-                  <input type="text" value={coTlm} onChange={e => setCoTlm(e.target.value)} placeholder="Ex: 919888777" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono" />
+                  <label className="text-xs font-bold text-slate-700 mb-1">Telemóvel *</label>
+                  <input 
+                    type="text" 
+                    value={propTlm} 
+                    onChange={e => setPropTlm(e.target.value)} 
+                    placeholder="Ex: 912345678" 
+                    className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono bg-white font-medium text-slate-800" 
+                    required
+                  />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              {/* Campos Obrigatórios Migrados: Administrador Interno & Notificação */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-emerald-50/40 p-4 rounded-xl border border-emerald-100">
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Fotografia do Coproprietário</label>
-                  <div className="flex items-center space-x-2">
-                    <button type="button" onClick={() => {
-                      const numProprietariosComFoto = (propFoto ? 1 : 0) + proprietariosAdicionais.filter(p => p.foto).length;
-                      if (numProprietariosComFoto >= 2) {
-                        alert("Limite atingido! Máximo de 2 proprietários com fotografia por fração.");
-                        return;
-                      }
-                      coFileRef.current?.click();
-                    }} className="bg-white hover:bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 flex items-center space-x-1.5 cursor-pointer">
-                      <i className="fa-solid fa-camera"></i>
-                      <span>Carregar Foto (webp)</span>
-                    </button>
-                    <input ref={coFileRef} type="file" accept="image/*" onChange={(e) => {
-                      const numProprietariosComFoto = (propFoto ? 1 : 0) + proprietariosAdicionais.filter(p => p.foto).length;
-                      if (numProprietariosComFoto >= 2) {
-                        alert("Limite atingido! Máximo de 2 proprietários com fotografia por fração.");
-                        return;
-                      }
-                      processarFotoWebP(e, setCoFoto);
-                    }} className="hidden" />
-                    {coFoto && (
-                      <div className="relative">
-                        <img src={coFoto} className="h-9 w-9 rounded-full object-cover border border-slate-300" referrerPolicy="no-referrer" />
-                        <button type="button" onClick={() => setCoFoto(null)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 text-[8px] hover:bg-red-600"><i className="fa-solid fa-xmark"></i></button>
-                      </div>
-                    )}
-                  </div>
+                  <label className="text-xs font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+                    <i className="fa-solid fa-user-shield text-emerald-600"></i>
+                    <span>É o Administrador Interno? *</span>
+                  </label>
+                  <select 
+                    value={adminInterno} 
+                    onChange={e => setAdminInterno(e.target.value)} 
+                    className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white font-semibold text-slate-800"
+                    required
+                  >
+                    <option value="Não">Não (Condómino Normal)</option>
+                    <option value="Sim">Sim (Administrador Interno do Condomínio)</option>
+                  </select>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Indica se este condómino exerce funções de administração interna no prédio.
+                  </p>
                 </div>
 
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    if (!coNome.trim()) {
-                      alert("Insira pelo menos o nome do coproprietário.");
-                      return;
-                    }
-                    const numProprietariosComFoto = (propFoto ? 1 : 0) + proprietariosAdicionais.filter(p => p.foto).length + (coFoto ? 1 : 0);
-                    if (numProprietariosComFoto > 2) {
-                      alert("Limite atingido! Máximo de 2 proprietários com fotografia por fração.");
-                      return;
-                    }
-                    setProprietariosAdicionais(prev => [...prev, {
-                      nome: coNome,
-                      nif: coNif,
-                      email: coEmail,
-                      tlm: coTlm,
-                      foto: coFoto
-                    }]);
-                    // Clear inputs
-                    setCoNome(""); setCoNif(""); setCoEmail(""); setCoTlm(""); setCoFoto(null);
-                  }}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors cursor-pointer"
-                >
-                  <i className="fa-solid fa-plus mr-1"></i> Adicionar Coproprietário
-                </button>
+                <div className="flex flex-col">
+                  <label className="text-xs font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+                    <i className="fa-solid fa-bell text-emerald-600"></i>
+                    <span>Como quer ser Notificado? *</span>
+                  </label>
+                  <select 
+                    value={notificacao} 
+                    onChange={e => setNotificacao(e.target.value)} 
+                    className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white font-semibold text-slate-800"
+                    required
+                  >
+                    <option value="Digital (E-mail e Mensagens Push)">Digital (E-mail e Mensagens Push)</option>
+                    <option value="Correio Postal (Físico)">Correio Postal (Físico)</option>
+                  </select>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Método legal para envio de convocatórias, atas e avisos de pagamento.
+                  </p>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* Arrendamento & Inquilino */}
-          <div className="border-t border-slate-100 pt-4 space-y-4">
-            <label className="flex items-center space-x-3 text-sm font-semibold text-slate-700 cursor-pointer select-none">
-              <input type="checkbox" checked={arrendada} onChange={e => setArrendada(e.target.checked)} className="h-4 w-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500" />
-              <span className="font-bold text-slate-800">A fração está Arrendada? (Abre registo de Inquilino)</span>
-            </label>
-
-            {arrendada && (
-              <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200 animate-fadeIn">
-                <div className="flex items-center space-x-2">
-                  <span className="text-violet-600"><i className="fa-solid fa-house-user"></i></span>
-                  <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Identificação do Inquilino</h4>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="flex flex-col col-span-2">
-                    <label className="text-xs font-semibold text-slate-500 mb-1">Nome Completo do Inquilino</label>
-                    <input type="text" value={inqNome} onChange={e => setInqNome(e.target.value)} placeholder="Ex: Ricardo Inquilino" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
-                  </div>
-                  <div className="flex flex-col">
-                    <label className="text-xs font-semibold text-slate-500 mb-1">E-mail</label>
-                    <input type="email" value={inqEmail} onChange={e => setInqEmail(e.target.value)} placeholder="ricardo@email.com" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
-                  </div>
-                  <div className="flex flex-col">
-                    <label className="text-xs font-semibold text-slate-500 mb-1">Telemóvel</label>
-                    <input type="text" value={inqTlm} onChange={e => setInqTlm(e.target.value)} placeholder="929887766" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                  <div className="flex flex-col">
-                    <label className="text-xs font-semibold text-slate-500 mb-1">NIF Fiscal Inquilino</label>
-                    <input type="text" value={inqNif} onChange={e => setInqNif(e.target.value)} placeholder="Contribuinte" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
-                  </div>
-                  <div className="flex flex-col col-span-2">
-                    <label className="text-xs font-semibold text-slate-500 mb-1">Morada de Residência Alternativa do Proprietário (Obrigatório se Arrendado)</label>
-                    <input type="text" value={propMoradaAlt} onChange={e => setPropMoradaAlt(e.target.value)} placeholder="Morada onde o proprietário vive" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
-                  </div>
-                  <div className="flex flex-col">
-                    <label className="text-xs font-semibold text-slate-500 mb-1">Fotografia do Inquilino</label>
+              {/* Recolha de Assinatura Digital do Administrador (quando adminInterno === 'Sim') */}
+              {adminInterno === "Sim" && (
+                <div className="p-4 bg-slate-50 border-2 border-emerald-300 rounded-xl space-y-3 animate-fadeIn">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <button type="button" onClick={() => inqFileRef.current?.click()} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 flex items-center space-x-1.5 cursor-pointer">
-                        <i className="fa-solid fa-camera"></i>
-                        <span>Carregar Foto</span>
-                      </button>
-                      <input ref={inqFileRef} type="file" accept="image/*" onChange={(e) => processarFotoWebP(e, setInqFoto)} className="hidden" />
-                      {inqFoto && (
-                        <div className="relative">
-                          <img src={inqFoto} className="h-9 w-9 rounded-full object-cover border border-slate-300" referrerPolicy="no-referrer" />
-                          <button type="button" onClick={() => setInqFoto(null)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 text-[8px] hover:bg-red-600"><i className="fa-solid fa-xmark"></i></button>
+                      <i className="fa-solid fa-signature text-emerald-600 text-sm"></i>
+                      <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                        Recolha de Assinatura Digital do Administrador (para uso nos documentos oficiais)
+                      </h4>
+                    </div>
+                    <span className="text-[10px] text-slate-500 italic">
+                      Desenho no ecrã ou carregamento de imagem/PDF
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Pad de Desenho Directo */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-600 uppercase block">
+                        1. Assinar no Ecrã (Mouse / Touch)
+                      </label>
+                      <div className="border border-slate-300 rounded-lg overflow-hidden bg-white relative">
+                        <canvas
+                          ref={adminCanvasRef}
+                          width={320}
+                          height={120}
+                          className="w-full h-[120px] bg-slate-50 block cursor-crosshair touch-none"
+                          onMouseDown={startDrawingAdmin}
+                          onMouseMove={drawAdmin}
+                          onMouseUp={stopDrawingAdmin}
+                          onMouseLeave={stopDrawingAdmin}
+                          onTouchStart={startDrawingAdmin}
+                          onTouchMove={drawAdmin}
+                          onTouchEnd={stopDrawingAdmin}
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={clearAdminCanvas}
+                          className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-2.5 py-1 text-[10px] rounded cursor-pointer"
+                        >
+                          Limpar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={saveAdminCanvasSignature}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1 text-[10px] rounded-lg cursor-pointer transition-all flex items-center gap-1 shadow-xs"
+                        >
+                          <i className="fa-solid fa-floppy-disk"></i>
+                          <span>Gravar Assinatura Desenhada</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Upload de Imagem ou PDF */}
+                    <div className="space-y-2 flex flex-col justify-between">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">
+                          2. Ou Carregar Ficheiro de Assinatura / PDF
+                        </label>
+                        <input
+                          type="file"
+                          ref={adminSigFileRef}
+                          accept="image/*,.pdf"
+                          onChange={handleAdminSignatureFileUpload}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => adminSigFileRef.current?.click()}
+                          className="w-full border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-white p-3 rounded-lg text-center cursor-pointer transition-all space-y-1"
+                        >
+                          <i className="fa-solid fa-file-arrow-up text-emerald-600 text-lg"></i>
+                          <p className="text-xs font-bold text-slate-700">Carregar Imagem ou PDF de Assinatura</p>
+                          <p className="text-[9.5px] text-slate-400">Suporta PNG, JPG, WEBP e PDF</p>
+                        </button>
+                      </div>
+
+                      {adminSignatureSaved && (
+                        <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <i className="fa-solid fa-circle-check text-emerald-600 text-sm"></i>
+                            <span className="text-[10px] font-bold text-emerald-800">Assinatura Ativa Guardada</span>
+                          </div>
+                          {adminSignatureSaved.startsWith("data:image") && (
+                            <img src={adminSignatureSaved} alt="Assinatura Administrador" className="h-8 max-w-[120px] object-contain border border-emerald-200 bg-white rounded p-0.5" />
+                          )}
                         </div>
                       )}
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
 
-          <button 
-            type="submit" 
-            className="border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 active:scale-95 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-md hover:shadow-lg active:ring-2 active:ring-emerald-400 select-none"
-          >
-            <img src="/estados-acoes/12-adicionar.png" alt="Gravar" className="h-4 w-4 object-contain" />
-            <span>Gravar</span>
-          </button>
-        </form>
+              {/* Informação Bancária e Fotografia */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="flex flex-col">
+                  <label className="text-xs font-semibold text-slate-600 mb-1">IBAN de Origem</label>
+                  <input type="text" value={propIban} onChange={e => setPropIban(e.target.value)} placeholder="PT50..." className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono bg-white" />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Titular da Conta Bancária</label>
+                  <input type="text" value={propTitular} onChange={e => setPropTitular(e.target.value)} placeholder="Nome do titular" className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white" />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Entidade Bancária</label>
+                  <input type="text" value={propBanco} onChange={e => setPropBanco(e.target.value)} placeholder="Ex: BPI, CGD, ActivoBank" className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white" />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Fotografia de Perfil</label>
+                  <div className="flex items-center space-x-2">
+                    <button type="button" onClick={() => {
+                      const numProprietariosComFoto = (propFoto ? 1 : 0) + proprietariosAdicionais.filter(p => p.foto).length;
+                      if (numProprietariosComFoto >= 2 && !propFoto) {
+                        alert("Limite atingido! Máximo de 2 proprietários com fotografia por fração.");
+                        return;
+                      }
+                      propFileRef.current?.click();
+                    }} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-300 flex items-center space-x-1.5 cursor-pointer">
+                      <i className="fa-solid fa-camera"></i>
+                      <span>Carregar Foto</span>
+                    </button>
+                    <input ref={propFileRef} type="file" accept="image/*" onChange={(e) => {
+                      const numProprietariosComFoto = (propFoto ? 1 : 0) + proprietariosAdicionais.filter(p => p.foto).length;
+                      if (numProprietariosComFoto >= 2 && !propFoto) {
+                        alert("Limite atingido! Máximo de 2 proprietários com fotografia por fração.");
+                        return;
+                      }
+                      processarFotoWebP(e, setPropFoto);
+                    }} className="hidden" />
+                    {propFoto && (
+                      <div className="relative">
+                        <img src={propFoto} className="h-9 w-9 rounded-full object-cover border border-slate-300" referrerPolicy="no-referrer" />
+                        <button type="button" onClick={() => setPropFoto(null)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 text-[8px] hover:bg-red-600"><i className="fa-solid fa-xmark"></i></button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Co-proprietários */}
+            <div className="border-t border-slate-100 pt-4 space-y-4">
+              <div className="flex items-center space-x-3">
+                <span className="p-1.5 bg-indigo-50 text-indigo-600 rounded"><i className="fa-solid fa-users text-[#1A1A1A]"></i></span>
+                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Coproprietários Adicionais</h4>
+              </div>
+
+              {proprietariosAdicionais.length > 0 && (
+                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-2">
+                  <p className="text-[10px] font-bold text-slate-600">Coproprietários adicionados a esta fração:</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {proprietariosAdicionais.map((co, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-white p-2 rounded border border-slate-200">
+                        <div className="flex items-center space-x-2">
+                          {co.foto ? (
+                            <img src={co.foto} className="h-7 w-7 rounded-full object-cover border border-slate-300" referrerPolicy="no-referrer" />
+                          ) : (
+                            <div className="h-7 w-7 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-xs font-bold">{co.nome.slice(0,2).toUpperCase()}</div>
+                          )}
+                          <div>
+                            <p className="text-xs font-bold text-slate-800">{co.nome}</p>
+                            <p className="text-[9px] text-slate-500 font-mono">NIF: {co.nif} | {co.email}</p>
+                          </div>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => setProprietariosAdicionais(prev => prev.filter((_, i) => i !== idx))} 
+                          className="text-red-500 hover:text-red-700 p-1 text-xs cursor-pointer"
+                          title="Remover Coproprietário"
+                        >
+                          <i className="fa-solid fa-trash-can"></i>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-indigo-50/30 p-4 rounded-xl border border-indigo-100/50 space-y-3">
+                <span className="text-[10px] font-bold text-indigo-800 uppercase block tracking-wider">Novo Coproprietário</span>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="flex flex-col">
+                    <label className="text-xs font-semibold text-slate-500 mb-1">Nome Completo</label>
+                    <input type="text" value={coNome} onChange={e => setCoNome(e.target.value)} placeholder="Ex: Ana Maria Guerra" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500" />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-semibold text-slate-500 mb-1">NIF Fiscal</label>
+                    <input type="text" value={coNif} onChange={e => setCoNif(e.target.value)} placeholder="Ex: 234567890" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono" />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-semibold text-slate-500 mb-1">E-mail</label>
+                    <input type="email" value={coEmail} onChange={e => setCoEmail(e.target.value)} placeholder="Ex: ana@email.com" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono" />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-semibold text-slate-500 mb-1">Telemóvel</label>
+                    <input type="text" value={coTlm} onChange={e => setCoTlm(e.target.value)} placeholder="Ex: 919888777" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <label className="text-xs font-semibold text-slate-500 mb-1">Fotografia do Coproprietário</label>
+                    <div className="flex items-center space-x-2">
+                      <button type="button" onClick={() => {
+                        const numProprietariosComFoto = (propFoto ? 1 : 0) + proprietariosAdicionais.filter(p => p.foto).length;
+                        if (numProprietariosComFoto >= 2) {
+                          alert("Limite atingido! Máximo de 2 proprietários com fotografia por fração.");
+                          return;
+                        }
+                        coFileRef.current?.click();
+                      }} className="bg-white hover:bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 flex items-center space-x-1.5 cursor-pointer">
+                        <i className="fa-solid fa-camera"></i>
+                        <span>Carregar Foto (webp)</span>
+                      </button>
+                      <input ref={coFileRef} type="file" accept="image/*" onChange={(e) => {
+                        const numProprietariosComFoto = (propFoto ? 1 : 0) + proprietariosAdicionais.filter(p => p.foto).length;
+                        if (numProprietariosComFoto >= 2) {
+                          alert("Limite atingido! Máximo de 2 proprietários com fotografia por fração.");
+                          return;
+                        }
+                        processarFotoWebP(e, setCoFoto);
+                      }} className="hidden" />
+                      {coFoto && (
+                        <div className="relative">
+                          <img src={coFoto} className="h-9 w-9 rounded-full object-cover border border-slate-300" referrerPolicy="no-referrer" />
+                          <button type="button" onClick={() => setCoFoto(null)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 text-[8px] hover:bg-red-600"><i className="fa-solid fa-xmark"></i></button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      if (!coNome.trim()) {
+                        alert("Insira pelo menos o nome do coproprietário.");
+                        return;
+                      }
+                      const numProprietariosComFoto = (propFoto ? 1 : 0) + proprietariosAdicionais.filter(p => p.foto).length + (coFoto ? 1 : 0);
+                      if (numProprietariosComFoto > 2) {
+                        alert("Limite atingido! Máximo de 2 proprietários com fotografia por fração.");
+                        return;
+                      }
+                      setProprietariosAdicionais(prev => [...prev, {
+                        nome: coNome,
+                        nif: coNif,
+                        email: coEmail,
+                        tlm: coTlm,
+                        foto: coFoto
+                      }]);
+                      // Clear inputs
+                      setCoNome(""); setCoNif(""); setCoEmail(""); setCoTlm(""); setCoFoto(null);
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <i className="fa-solid fa-plus mr-1"></i> Adicionar Coproprietário
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Arrendamento & Inquilino */}
+            <div className="border-t border-slate-100 pt-4 space-y-4">
+              <label className="flex items-center space-x-3 text-sm font-semibold text-slate-700 cursor-pointer select-none">
+                <input type="checkbox" checked={arrendada} onChange={e => setArrendada(e.target.checked)} className="h-4 w-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500" />
+                <span className="font-bold text-slate-800">A fração está Arrendada? (Abre registo de Inquilino)</span>
+              </label>
+
+              {arrendada && (
+                <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200 animate-fadeIn">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-violet-600"><i className="fa-solid fa-house-user"></i></span>
+                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Identificação do Inquilino</h4>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="flex flex-col col-span-2">
+                      <label className="text-xs font-semibold text-slate-500 mb-1">Nome Completo do Inquilino</label>
+                      <input type="text" value={inqNome} onChange={e => setInqNome(e.target.value)} placeholder="Ex: Ricardo Inquilino" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="text-xs font-semibold text-slate-500 mb-1">E-mail</label>
+                      <input type="email" value={inqEmail} onChange={e => setInqEmail(e.target.value)} placeholder="ricardo@email.com" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="text-xs font-semibold text-slate-500 mb-1">Telemóvel</label>
+                      <input type="text" value={inqTlm} onChange={e => setInqTlm(e.target.value)} placeholder="929887766" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div className="flex flex-col">
+                      <label className="text-xs font-semibold text-slate-500 mb-1">NIF Fiscal Inquilino</label>
+                      <input type="text" value={inqNif} onChange={e => setInqNif(e.target.value)} placeholder="Contribuinte" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
+                    </div>
+                    <div className="flex flex-col col-span-2">
+                      <label className="text-xs font-semibold text-slate-500 mb-1">Morada de Residência Alternativa do Proprietário (Obrigatório se Arrendado)</label>
+                      <input type="text" value={propMoradaAlt} onChange={e => setPropMoradaAlt(e.target.value)} placeholder="Morada onde o proprietário vive" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="text-xs font-semibold text-slate-500 mb-1">Fotografia do Inquilino</label>
+                      <div className="flex items-center space-x-2">
+                        <button type="button" onClick={() => inqFileRef.current?.click()} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 flex items-center space-x-1.5 cursor-pointer">
+                          <i className="fa-solid fa-camera"></i>
+                          <span>Carregar Foto</span>
+                        </button>
+                        <input ref={inqFileRef} type="file" accept="image/*" onChange={(e) => processarFotoWebP(e, setInqFoto)} className="hidden" />
+                        {inqFoto && (
+                          <div className="relative">
+                            <img src={inqFoto} className="h-9 w-9 rounded-full object-cover border border-slate-300" referrerPolicy="no-referrer" />
+                            <button type="button" onClick={() => setInqFoto(null)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 text-[8px] hover:bg-red-600"><i className="fa-solid fa-xmark"></i></button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button 
+                type="submit" 
+                className="border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 active:scale-95 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-md hover:shadow-lg active:ring-2 active:ring-emerald-400 select-none"
+              >
+                <img src="/estados-acoes/12-adicionar.png" alt="Guardar" className="h-4 w-4 object-contain" />
+                <span>{editingOwnerKey ? "Guardar Alterações do Proprietário" : "Guardar Proprietário"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={limparFormProprietario}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Limpar Campos / Novo
+              </button>
+            </div>
+          </form>
+
+          {/* TABELA DE PROPRIETÁRIOS REGISTADOS (Substitui os cartões antigos) */}
+          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                  <i className="fa-solid fa-users text-emerald-600"></i>
+                  <span>Proprietários Registados ({todosProprietarios.length})</span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Lista tabular completa de condóminos, administradores internos e contactos
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={limparFormProprietario}
+                  className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <i className="fa-solid fa-user-plus text-xs"></i>
+                  <span>Novo Proprietário</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                    <th className="py-2.5 px-3">Proprietário</th>
+                    <th className="py-2.5 px-3">NIF Fiscal</th>
+                    <th className="py-2.5 px-3">E-mail</th>
+                    <th className="py-2.5 px-3">Telemóvel</th>
+                    <th className="py-2.5 px-3 text-center">Admin Interno</th>
+                    <th className="py-2.5 px-3">Notificação</th>
+                    <th className="py-2.5 px-3">Fração Associada</th>
+                    <th className="py-2.5 px-3 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {todosProprietarios.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-slate-400">
+                        Nenhum proprietário registado ainda. Preencha o formulário acima para registar o primeiro condómino.
+                      </td>
+                    </tr>
+                  ) : (
+                    todosProprietarios.map((prop, idx) => (
+                      <tr key={prop.nif || `${prop.nome}-${idx}`} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-2.5 px-3 font-semibold text-slate-800">
+                          <div className="flex items-center gap-2.5">
+                            {prop.foto ? (
+                              <img 
+                                src={prop.foto} 
+                                alt={prop.nome} 
+                                className="h-7 w-7 rounded-full object-cover border border-slate-200" 
+                                referrerPolicy="no-referrer" 
+                              />
+                            ) : (
+                              <div className="h-7 w-7 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-[10px]">
+                                {prop.nome.slice(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                            <div>
+                              <div className="font-bold text-slate-900">{prop.nome}</div>
+                              {prop.iban && (
+                                <div className="text-[10px] text-slate-400 font-mono">
+                                  IBAN: {prop.iban.slice(0, 8)}...
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono font-medium text-slate-700">
+                          {prop.nif || "-"}
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-600 font-mono text-[11px]">
+                          {prop.email || "-"}
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-600 font-mono text-[11px]">
+                          {prop.tlm || "-"}
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          {prop.administrador_interno === "Sim" ? (
+                            <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-2 py-0.5 rounded-full text-[10px] inline-flex items-center gap-1">
+                              <i className="fa-solid fa-shield-halved text-[9px]"></i>
+                              <span>Sim</span>
+                            </span>
+                          ) : (
+                            <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[10px]">
+                              Não
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                            prop.notificacao_preferencial?.includes("Digital")
+                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              : "bg-amber-50 text-amber-700 border-amber-200"
+                          }`}>
+                            {prop.notificacao_preferencial?.includes("Digital") ? "Digital" : "Correio Postal"}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          {prop.fracao_nome ? (
+                            <span className="bg-slate-100 text-slate-800 border border-slate-200 px-2 py-0.5 rounded font-bold text-[11px]">
+                              {prop.fracao_nome}
+                            </span>
+                          ) : (
+                            <span className="bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-semibold">
+                              Não Associado
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                carregarProprietarioParaEdicao(prop, prop.id_fracao);
+                              }}
+                              className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer"
+                              title="Editar Proprietário"
+                            >
+                              <i className="fa-solid fa-user-pen text-emerald-600"></i>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleEliminarProprietario(prop)}
+                              className="bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-600 p-1.5 rounded-lg text-xs transition-colors cursor-pointer"
+                              title="Eliminar Proprietário"
+                            >
+                              <i className="fa-solid fa-trash-can"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* SUB-MENU 4: GESTÃO DE RESIDENTES & INQUILINOS (TASK 12) */}
@@ -1940,7 +2946,25 @@ export function GestaoFracoes({
                           <p className="text-[10px] text-slate-400 font-mono">{f.proprietario.iban ? `${f.proprietario.entidade_bancaria}` : "Sem Banco"}</p>
                         </div>
                       </div>
-                    ) : <span className="text-slate-400">Vago</span>}
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded text-[10px] font-bold">Sem Proprietário</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedFracaoId(f.id_fracao);
+                            limparFormProprietario();
+                            setCurrentSubTab("fracoes_proprietario");
+                          }}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-0.5 rounded text-[10px] cursor-pointer transition-all shadow-xs flex items-center gap-1"
+                          title="Associar Proprietário a esta Fração"
+                        >
+                          <i className="fa-solid fa-user-plus text-[9px]"></i>
+                          <span>Associar</span>
+                        </button>
+                      </div>
+                    )}
                   </td>
                   <td className="p-3">
                     {f.is_arrendada && f.inquilino ? (

@@ -69,7 +69,7 @@ const terminarSessaoIcon = "/estados-acoes/16-terminar-sessao.png";
 
 export default function App() {
   const [predios, setPredios] = useState<Predio[]>(initialPredios);
-  const [activePredioId, setActivePredioId] = useState("predio-1");
+  const [activePredioId, setActivePredioId] = useState("");
   const [contas, setContas] = useState<Conta[]>(initialContas);
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>(initialFornecedores);
   const [fracoes, setFracoes] = useState<Fracao[]>(initialFracoes);
@@ -79,31 +79,8 @@ export default function App() {
   const [documentos, setDocumentos] = useState<Documento[]>(initialDocumentos);
   const [ocorrencias, setOcorrencias] = useState<Ocorrencia[]>(initialOcorrencias);
 
-  // Reservation states
-  const [reservas, setReservas] = useState<Reserva[]>([
-    {
-      id_reserva: "res-1",
-      id_predio: "predio-1",
-      id_fracao: "frac-1",
-      area_comum: "Ginásio",
-      data: "18-07-2026",
-      hora_inicio: "08:00",
-      hora_fim: "09:30",
-      responsavel: "Carlos Administrador",
-      num_pessoas: 2
-    },
-    {
-      id_reserva: "res-2",
-      id_predio: "predio-1",
-      id_fracao: "frac-2",
-      area_comum: "Spa",
-      data: "18-07-2026",
-      hora_inicio: "10:00",
-      hora_fim: "12:00",
-      responsavel: "Ana Silva",
-      num_pessoas: 3
-    }
-  ]);
+  // Reservation states (Base limpa para início de produção)
+  const [reservas, setReservas] = useState<Reserva[]>([]);
 
   const [capacidades, setCapacidades] = useState<CapacidadeLimite[]>([
     { area_comum: "Ginásio", limite: 5 },
@@ -205,6 +182,7 @@ export default function App() {
   const [openMenuComunicacoes, setOpenMenuComunicacoes] = useState(false);
   const [openMenuConsultoriaIA, setOpenMenuConsultoriaIA] = useState(false);
   const [openMenuFornecedores, setOpenMenuFornecedores] = useState(false);
+  const [openMenuConfiguracoesIA, setOpenMenuConfiguracoesIA] = useState(false);
   const [fornecedoresTab, setFornecedoresTab] = useState<"fornecedores" | "contratos">("fornecedores");
   const [iaInitialTab, setIaInitialTab] = useState<"juridico" | "fundo_reserva" | "orcamentos" | "orcamento_anual_ia" | "cerebro_ia" | "comunicacoes_adenda" | undefined>(undefined); 
   const [viewMode, setViewMode] = useState<"BROWSER" | "PWA">("BROWSER");
@@ -246,6 +224,27 @@ export default function App() {
       window.removeEventListener("hashchange", handleLocationChange);
     };
   }, []);
+
+  // Sincronização automática para manter aberto o menu Registo de Prédios quando uma das suas secções está ativa
+  useEffect(() => {
+    if (["predios", "predios_cadastro", "predios_chaves", "predios_regras"].includes(activeSection)) {
+      setOpenMenuPredios(true);
+    }
+  }, [activeSection]);
+
+  // Sincronização automática para manter aberto o menu Área Financeira quando uma das suas secções está ativa
+  useEffect(() => {
+    if (["movimentos", "financeiro_recibos", "financeiro_relatorios", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "saldos_iniciais"].includes(activeSection)) {
+      setOpenMenuFinanceiro(true);
+    }
+  }, [activeSection]);
+
+  // Sincronização automática para manter aberto o menu Configurações IA & E-mail quando uma das suas secções está ativa
+  useEffect(() => {
+    if (["configuracoes_gerais", "configuracoes_templates", "configuracoes_ia", "configuracoes_notificacoes", "configuracoes_logs", "configuracoes_exportacao"].includes(activeSection)) {
+      setOpenMenuConfiguracoesIA(true);
+    }
+  }, [activeSection]);
 
   // Helper function to switch sections and auto-close mobile sidebar drawer
   const selectSection = (section: string) => {
@@ -601,13 +600,23 @@ export default function App() {
           )}
           
           <div className={`flex items-center gap-1.5 ${sidebarCollapsed ? "w-full justify-center" : "ml-auto"}`}>
-            {/* Botão Desktop para recolher/expandir coluna central/lateral com símbolo explícito */}
+            {/* Botão Desktop para recolher/expandir coluna central com simbologia associada */}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="hidden lg:flex items-center justify-center w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 transition-all cursor-pointer shrink-0 shadow-md hover:scale-105 active:scale-95"
-              title={sidebarCollapsed ? "Expandir Coluna Central" : "Recolher Coluna Central"}
+              className="hidden lg:flex items-center justify-center w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 transition-all cursor-pointer shrink-0 shadow-md hover:scale-105 active:scale-95 group"
+              title={sidebarCollapsed ? "Estender / Expandir Coluna Central" : "Encolher / Recolher Coluna Central"}
             >
-              <i className={`fa-solid ${sidebarCollapsed ? "fa-angles-right" : "fa-angles-left"} text-sm text-emerald-400 font-bold`}></i>
+              <img 
+                src={sidebarCollapsed ? "/estados-acoes/07-avancar.png" : "/estados-acoes/08-voltar.png"} 
+                alt={sidebarCollapsed ? "Estender Coluna Central" : "Encolher Coluna Central"} 
+                className="w-4 h-4 object-contain group-hover:scale-110 transition-transform" 
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const nextSibling = e.currentTarget.nextElementSibling as HTMLElement;
+                  if (nextSibling) nextSibling.style.display = 'block';
+                }}
+              />
+              <i className={`fa-solid ${sidebarCollapsed ? "fa-angles-right" : "fa-angles-left"} text-sm text-emerald-400 font-bold hidden`}></i>
             </button>
 
             {/* Mobile Close Drawer */}
@@ -707,6 +716,7 @@ export default function App() {
             {openMenuPredios && (
               <div className={`pl-6 space-y-1 border-l-2 border-emerald-500/40 ml-3.5 my-1 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
                 <button
+                  id="submenu-predios-registos"
                   onClick={() => {
                     setActiveSection("predios_cadastro");
                     setViewMode("BROWSER");
@@ -724,6 +734,7 @@ export default function App() {
 
                 {["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role) && (
                   <button
+                    id="submenu-predios-chaves"
                     onClick={() => {
                       setActiveSection("predios_chaves");
                       setViewMode("BROWSER");
@@ -741,6 +752,7 @@ export default function App() {
                 )}
 
                 <button
+                  id="submenu-predios-regras"
                   onClick={() => {
                     setActiveSection("predios_regras");
                     setViewMode("BROWSER");
@@ -1007,14 +1019,14 @@ export default function App() {
               id="sidebar-item-financeiro"
               onClick={() => {
                 setOpenMenuFinanceiro(!openMenuFinanceiro);
-                if (!["movimentos", "financeiro_recibos", "financeiro_relatorios", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra"].includes(activeSection)) {
-                  setActiveSection("movimentos");
+                if (!["movimentos", "financeiro_recibos", "financeiro_relatorios", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos"].includes(activeSection)) {
+                  setActiveSection("configuracao_arranque");
                 }
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                ["movimentos", "financeiro_recibos", "financeiro_relatorios", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra"].includes(activeSection) 
+                ["movimentos", "financeiro_recibos", "financeiro_relatorios", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos"].includes(activeSection) 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
                   : "text-slate-400 hover:text-white hover:bg-slate-800/30"
               }`}
@@ -1028,6 +1040,30 @@ export default function App() {
 
             {openMenuFinanceiro && (
               <div className="pl-6 space-y-1 border-l-2 border-emerald-500/40 ml-3.5 my-1">
+                {/* Sub-menu Arranque & Saldos Iniciais (Na Área Financeira) */}
+                {["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role) && (
+                  <button
+                    id="submenu-financeiro-arranque"
+                    onClick={() => {
+                      setActiveSection("configuracao_arranque");
+                      setViewMode("BROWSER");
+                      setIaInitialTab(undefined);
+                    }}
+                    className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                      activeSection === "configuracao_arranque" || activeSection === "predios_arranque" || activeSection === "arranque_saldos" || activeSection === "saldos_iniciais"
+                        ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
+                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <i className="fa-solid fa-sliders text-emerald-400 text-xs shrink-0"></i>
+                      <span className="truncate">Arranque & Saldos Iniciais</span>
+                    </div>
+                    <span className="bg-emerald-500/20 text-emerald-300 text-[9px] font-black rounded px-1.5 py-0.5 border border-emerald-400/30 shrink-0">
+                      Transição
+                    </span>
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setActiveSection("financeiro_recibos");
@@ -1690,32 +1726,7 @@ export default function App() {
             </span>
           </button>
 
-          {/* 13. Arranque & Saldos Iniciais */}
-          {["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role) && (
-            <button 
-              id="sidebar-item-arranque-saldos"
-              onClick={() => {
-                setActiveSection("configuracao_arranque");
-                setViewMode("BROWSER");
-                setIaInitialTab(undefined);
-              }}
-              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                activeSection === "configuracao_arranque"
-                  ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/30"
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <i className="fa-solid fa-sliders w-5 text-center text-emerald-400 text-sm"></i>
-                <span>Arranque & Saldos</span>
-              </div>
-              <span className="bg-emerald-500/20 text-emerald-300 text-[9px] font-black rounded-md px-1.5 py-0.5 border border-emerald-400/30">
-                Transição
-              </span>
-            </button>
-          )}
-
-          {/* 14. Arquivo */}
+          {/* Arquivo */}
           <button 
             id="sidebar-item-arquivo"
             onClick={() => {
@@ -1759,30 +1770,180 @@ export default function App() {
             </button>
           )}
 
-          {/* Configurações IA & E-mail */}
+          {/* Configurações IA & E-mail (Acordeão Oficial CondoManager) */}
           {["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role) && (
-            <button 
-              id="sidebar-item-config-ia"
-              onClick={() => {
-                setActiveSection("configuracoes_ia");
-                setViewMode("BROWSER");
-                setIaInitialTab(undefined);
-              }}
-              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                activeSection === "configuracoes_ia" || activeSection === "configuracoes_gerais"
-                  ? "bg-purple-600 text-white font-extrabold shadow-sm border border-purple-500" 
-                  : "text-purple-400 hover:text-white hover:bg-slate-800/30"
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <img src="/modulos/82-automacao.png" alt="Configurações IA" className="w-5 h-5 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                <i className="fa-solid fa-envelope-circle-check w-5 text-center text-purple-400 text-sm"></i>
-                <span>Configurações IA & E-mail</span>
-              </div>
-              <span className="bg-purple-500/20 text-purple-300 text-[9px] font-black rounded-md px-1.5 py-0.5 border border-purple-400/30">
-                Ativo
-              </span>
-            </button>
+            <div className="space-y-1">
+              <button 
+                id="sidebar-item-config-ia"
+                onClick={() => {
+                  setOpenMenuConfiguracoesIA(!openMenuConfiguracoesIA);
+                  if (!["configuracoes_gerais", "configuracoes_templates", "configuracoes_ia", "configuracoes_notificacoes", "configuracoes_logs", "configuracoes_exportacao"].includes(activeSection)) {
+                    setActiveSection("configuracoes_gerais");
+                  }
+                  setViewMode("BROWSER");
+                  setIaInitialTab(undefined);
+                }}
+                className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                  ["configuracoes_gerais", "configuracoes_templates", "configuracoes_ia", "configuracoes_notificacoes", "configuracoes_logs", "configuracoes_exportacao"].includes(activeSection)
+                    ? "bg-purple-700 text-white font-extrabold shadow-sm border border-purple-500" 
+                    : "text-purple-300 hover:text-white hover:bg-slate-800/30"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 truncate">
+                  <img src="/modulos/82-automacao.png" alt="Configurações IA" className="w-5 h-5 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  <i className="fa-solid fa-envelope-circle-check w-5 text-center text-purple-400 text-sm"></i>
+                  <span className={`${sidebarCollapsed ? "lg:hidden" : ""} truncate`}>Configurações IA & E-mail</span>
+                </div>
+                <div className={`flex items-center gap-1.5 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
+                  <span className="bg-purple-500/20 text-purple-300 text-[9px] font-black rounded px-1.5 py-0.5 border border-purple-400/30 shrink-0">
+                    6 Módulos
+                  </span>
+                  <i className={`fa-solid fa-chevron-down text-[10px] transition-transform ${openMenuConfiguracoesIA ? "rotate-180" : ""}`}></i>
+                </div>
+              </button>
+
+              {openMenuConfiguracoesIA && (
+                <div className={`pl-6 space-y-1 border-l-2 border-purple-500/40 ml-3.5 my-1 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
+                  {/* 1. Parâmetros Gerais */}
+                  <button
+                    id="submenu-config-gerais"
+                    onClick={() => {
+                      setActiveSection("configuracoes_gerais");
+                      setViewMode("BROWSER");
+                      setIaInitialTab(undefined);
+                    }}
+                    className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                      activeSection === "configuracoes_gerais"
+                        ? "bg-purple-500/25 text-purple-200 font-bold border-l-2 border-purple-400 pl-2.5" 
+                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <img src="/modulos/03-regras-do-predio.png" alt="Gerais" className="w-4 h-4 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      <span className="truncate">Parâmetros Gerais</span>
+                    </div>
+                    <span className="bg-purple-500/20 text-purple-300 text-[8px] font-bold rounded px-1 py-0.5 border border-purple-400/30 shrink-0">
+                      Cadastral
+                    </span>
+                  </button>
+
+                  {/* 2. Modelos de E-mail */}
+                  <button
+                    id="submenu-config-templates"
+                    onClick={() => {
+                      setActiveSection("configuracoes_templates");
+                      setViewMode("BROWSER");
+                      setIaInitialTab(undefined);
+                    }}
+                    className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                      activeSection === "configuracoes_templates"
+                        ? "bg-purple-500/25 text-purple-200 font-bold border-l-2 border-purple-400 pl-2.5" 
+                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <img src="/modulos/22-documento-geral.png" alt="Templates" className="w-4 h-4 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      <span className="truncate">Modelos de E-mail</span>
+                    </div>
+                    <span className="bg-purple-500/20 text-purple-300 text-[8px] font-bold rounded px-1 py-0.5 border border-purple-400/30 shrink-0">
+                      Oficiais
+                    </span>
+                  </button>
+
+                  {/* 3. Assistente IA & Motor */}
+                  <button
+                    id="submenu-config-ia"
+                    onClick={() => {
+                      setActiveSection("configuracoes_ia");
+                      setViewMode("BROWSER");
+                      setIaInitialTab(undefined);
+                    }}
+                    className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                      activeSection === "configuracoes_ia"
+                        ? "bg-purple-500/25 text-purple-200 font-bold border-l-2 border-purple-400 pl-2.5" 
+                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <img src="/modulos/87-ia-ativa.png" alt="IA" className="w-4 h-4 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      <span className="truncate">Assistente IA & Motor</span>
+                    </div>
+                    <span className="bg-emerald-500/20 text-emerald-300 text-[8px] font-bold rounded px-1 py-0.5 border border-emerald-400/30 shrink-0">
+                      Motor Ativo
+                    </span>
+                  </button>
+
+                  {/* 4. Notificações & Canais */}
+                  <button
+                    id="submenu-config-notificacoes"
+                    onClick={() => {
+                      setActiveSection("configuracoes_notificacoes");
+                      setViewMode("BROWSER");
+                      setIaInitialTab(undefined);
+                    }}
+                    className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                      activeSection === "configuracoes_notificacoes"
+                        ? "bg-purple-500/25 text-purple-200 font-bold border-l-2 border-purple-400 pl-2.5" 
+                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <img src="/modulos/20-notificacoes-condomino-2.png" alt="Notificações" className="w-4 h-4 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      <span className="truncate">Notificações & Canais</span>
+                    </div>
+                    <span className="bg-blue-500/20 text-blue-300 text-[8px] font-bold rounded px-1 py-0.5 border border-blue-400/30 shrink-0">
+                      Canais
+                    </span>
+                  </button>
+
+                  {/* 5. Log de Sistema */}
+                  <button
+                    id="submenu-config-logs"
+                    onClick={() => {
+                      setActiveSection("configuracoes_logs");
+                      setViewMode("BROWSER");
+                      setIaInitialTab(undefined);
+                    }}
+                    className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                      activeSection === "configuracoes_logs"
+                        ? "bg-purple-500/25 text-purple-200 font-bold border-l-2 border-purple-400 pl-2.5" 
+                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <img src="/modulos/86-logs.png" alt="Logs" className="w-4 h-4 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      <span className="truncate">Log de Sistema</span>
+                    </div>
+                    <span className="bg-amber-500/20 text-amber-300 text-[8px] font-bold rounded px-1 py-0.5 border border-amber-400/30 shrink-0">
+                      Auditoria
+                    </span>
+                  </button>
+
+                  {/* 6. Exportação & Backups */}
+                  <button
+                    id="submenu-config-exportacao"
+                    onClick={() => {
+                      setActiveSection("configuracoes_exportacao");
+                      setViewMode("BROWSER");
+                      setIaInitialTab(undefined);
+                    }}
+                    className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                      activeSection === "configuracoes_exportacao"
+                        ? "bg-purple-500/25 text-purple-200 font-bold border-l-2 border-purple-400 pl-2.5" 
+                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <img src="/modulos/26-exportacao.png" alt="Exportação" className="w-4 h-4 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      <span className="truncate">Exportação & Backups</span>
+                    </div>
+                    <span className="bg-teal-500/20 text-teal-300 text-[8px] font-bold rounded px-1 py-0.5 border border-teal-400/30 shrink-0">
+                      Segurança
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           {/* 14. Segurança & Credenciais (Último lugar da coluna central/sidebar) */}
@@ -1908,9 +2069,12 @@ export default function App() {
                 {activeSection === "portal_orcamentos" && "Portal de Orçamentos de Fornecedores"}
                 {activeSection === "dashboard_kpis" && "Dashboard de KPIs do Prédio"}
                 {activeSection === "multi_condominio" && "Portal Multi-Condomínio Integrado"}
-                {activeSection === "configuracoes_gerais" && "Configurações Gerais do Condomínio"}
-                {activeSection === "configuracoes_ia" && "Configurações do Assistente IA e E-mail"}
-                {activeSection === "configuracoes_notificacoes" && "Configurações de Notificações Push & E-mail"}
+                {activeSection === "configuracoes_gerais" && "Configurações Gerais do Edifício"}
+                {activeSection === "configuracoes_templates" && "Modelos Oficiais de E-mail & Notificações"}
+                {activeSection === "configuracoes_ia" && "Configurações do Assistente IA e Autoresponder"}
+                {activeSection === "configuracoes_notificacoes" && "Configurações de Notificações & Canais"}
+                {activeSection === "configuracoes_logs" && "Registo de Atividade & Log de Sistema"}
+                {activeSection === "configuracoes_exportacao" && "Exportação Global de Dados & Backups"}
                 {activeSection === "inventario_tecnico" && "Inventário Técnico e Arquitetura do Prédio"}
                 {activeSection === "manutencao_ocorrencias" && "Ocorrências & Avarias Reportadas"}
                 {activeSection === "manutencao_agenda" && "Agenda de Manutenção & Vistorias"}
@@ -1999,14 +2163,21 @@ export default function App() {
               {activeSection === "painel" && (
                 <PainelControlo 
                   predio={predioAtivo} 
+                  predios={predios}
                   contas={contas} 
                   fracoes={fracoes} 
                   movements={movements} 
                   avisos={avisos}
-                  ocorrenciasCount={ocorrencias.filter(o => o.id_predio === predioAtivo.id_predio).length}
-                  reservasCount={reservas.filter(r => r.id_predio === predioAtivo.id_predio).length}
-                  mensagensCount={2}
-                  notificacoesCount={6}
+                  documentosCount={predioAtivo?.id_predio && predioAtivo.id_predio !== "predio-temp" ? documentos.filter(d => d.id_predio === predioAtivo.id_predio).length : 0}
+                  fornecedoresCount={predioAtivo?.id_predio && predioAtivo.id_predio !== "predio-temp" ? fornecedores.filter(f => f.id_predio === predioAtivo.id_predio).length : 0}
+                  obrasCount={0}
+                  limpezasCount={0}
+                  alertasJuridicosCount={0}
+                  sondagensCount={0}
+                  ocorrenciasCount={predioAtivo?.id_predio && predioAtivo.id_predio !== "predio-temp" ? ocorrencias.filter(o => o.id_predio === predioAtivo.id_predio).length : 0}
+                  reservasCount={predioAtivo?.id_predio && predioAtivo.id_predio !== "predio-temp" ? reservas.filter(r => r.id_predio === predioAtivo.id_predio).length : 0}
+                  mensagensCount={0}
+                  notificacoesCount={0}
                   onSelectSection={selectSection}
                 />
               )}
@@ -2296,20 +2467,28 @@ export default function App() {
             />
           )}
 
-          {["configuracoes_gerais", "configuracoes_ia", "configuracoes_notificacoes"].includes(activeSection) && (
+          {["configuracoes_gerais", "configuracoes_templates", "configuracoes_ia", "configuracoes_notificacoes", "configuracoes_logs", "configuracoes_exportacao"].includes(activeSection) && (
             <ConfiguracoesAdministracao 
               predio={predioAtivo}
+              predios={predios}
               loggedUser={loggedUser}
               documentos={documentos}
               movimentos={movements}
               fracoes={fracoes}
               activeSubSection={
+                activeSection === "configuracoes_templates" ? "templates" :
                 activeSection === "configuracoes_ia" ? "ia" :
-                activeSection === "configuracoes_notificacoes" ? "notificacoes" : "gerais"
+                activeSection === "configuracoes_notificacoes" ? "notificacoes" :
+                activeSection === "configuracoes_logs" ? "logs" :
+                activeSection === "configuracoes_exportacao" ? "exportacao" :
+                "gerais"
               }
               setActiveSubSection={(sub) => {
-                if (sub === "ia") setActiveSection("configuracoes_ia");
+                if (sub === "templates") setActiveSection("configuracoes_templates");
+                else if (sub === "ia") setActiveSection("configuracoes_ia");
                 else if (sub === "notificacoes") setActiveSection("configuracoes_notificacoes");
+                else if (sub === "logs") setActiveSection("configuracoes_logs");
+                else if (sub === "exportacao") setActiveSection("configuracoes_exportacao");
                 else setActiveSection("configuracoes_gerais");
               }}
               onUpdatePredio={handleUpdatePredio}

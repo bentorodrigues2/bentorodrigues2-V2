@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Predio, LoggedUser, ChaveItem } from "../types";
 import { cpLookup } from "../data";
 import { gerarPdfEtiquetasChaves } from "../utils";
+import { supabase } from '@/lib/supabaseClient';
 
 interface GestaoPrediosProps {
   predios: Predio[];
@@ -202,6 +203,54 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Load predios from Supabase on mount
+  useEffect(() => {
+    const carregarPrediosSupabase = async () => {
+      try {
+        const { data, error } = await supabase.from('predios').select('*');
+        if (error) {
+          console.warn("[Supabase] Erro ao ler predios:", error.message);
+        } else if (data && data.length > 0) {
+          data.forEach((p: any) => {
+            const mappedPredio: Predio = {
+              id_predio: p.id_predio,
+              nome: p.nome || null,
+              morada_linha1: p.morada_linha1 || "",
+              morada_linha2: p.morada_linha2 || null,
+              num_porta: p.num_porta || "",
+              letra_porta: p.letra_porta || null,
+              codigo_postal: p.codigo_postal || "",
+              localidade: p.localidade || "",
+              nif: p.nif || "",
+              email: p.email || null,
+              autoresponder_ativo: p.autoresponder_ativo ?? true,
+              foto: p.foto || null,
+              patrimonio: p.patrimonio || {
+                tem_elevador: false,
+                num_elevadores: 0,
+                tem_garagem: false,
+                tem_piscina: false,
+                tem_sala_comum: false,
+                tem_arrecadacoes_comuns: false,
+                tem_jardins: false,
+                tem_churrasqueira: false,
+                tem_terraco: false,
+                tem_ginasio: false,
+                tem_spa: false,
+              }
+            };
+            if (!predios.some(existing => existing.id_predio === mappedPredio.id_predio)) {
+              onAddPredio(mappedPredio);
+            }
+          });
+        }
+      } catch (err: any) {
+        console.warn("[Supabase] Exceção ao ler predios:", err?.message);
+      }
+    };
+    carregarPrediosSupabase();
+  }, []);
+
   // When selectedPredioId changes, load building data into form
   useEffect(() => {
     if (selectedPredioId) {
@@ -301,7 +350,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
     reader.readAsDataURL(file);
   };
 
-  const submeterForm = (e: React.FormEvent) => {
+  const submeterForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loggedUser.role !== 'ADMIN') {
       alert("Apenas administradores podem gerir o cadastro de prédios!");
@@ -344,8 +393,45 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
         foto,
         patrimonio: patrimonioObj
       };
-      onUpdatePredio(updated);
-      alert("Cadastro do prédio atualizado com sucesso!");
+
+      try {
+        const { error: updateError } = await supabase
+          .from('predios')
+          .update({
+            nome: updated.nome,
+            morada_linha1: updated.morada_linha1,
+            morada_linha2: updated.morada_linha2,
+            num_porta: updated.num_porta,
+            letra_porta: updated.letra_porta,
+            codigo_postal: updated.codigo_postal,
+            localidade: updated.localidade,
+            nif: updated.nif,
+            email: updated.email,
+            autoresponder_ativo: updated.autoresponder_ativo,
+            foto: updated.foto,
+            patrimonio: updated.patrimonio
+          })
+          .eq('id_predio', selectedPredioId);
+
+        if (updateError) {
+          alert(`Erro ao atualizar prédio no Supabase: ${updateError.message}`);
+          return;
+        }
+
+        // Regra 2: Depois de gravar, atualizar a lista com select('*')
+        const { data: prediosAtualizados, error: readError } = await supabase
+          .from('predios')
+          .select('*');
+
+        if (readError) {
+          console.warn("[Supabase] Aviso ao ler predios:", readError.message);
+        }
+
+        onUpdatePredio(updated);
+        alert("✅ Cadastro do prédio atualizado com sucesso no Supabase!");
+      } catch (err: any) {
+        alert(`Erro na ligação com o Supabase: ${err?.message || "Erro desconhecido"}`);
+      }
     } else {
       // Creating new building
       const novo: Predio = {
@@ -363,13 +449,50 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
         foto,
         patrimonio: patrimonioObj
       };
-      onAddPredio(novo);
-      setSelectedPredioId(novo.id_predio);
-      alert("Novo prédio cadastrado com sucesso!");
+
+      try {
+        const { error: insertError } = await supabase
+          .from('predios')
+          .insert([{
+            id_predio: novo.id_predio,
+            nome: novo.nome,
+            morada_linha1: novo.morada_linha1,
+            morada_linha2: novo.morada_linha2,
+            num_porta: novo.num_porta,
+            letra_porta: novo.letra_porta,
+            codigo_postal: novo.codigo_postal,
+            localidade: novo.localidade,
+            nif: novo.nif,
+            email: novo.email,
+            autoresponder_ativo: novo.autoresponder_ativo,
+            foto: novo.foto,
+            patrimonio: novo.patrimonio
+          }]);
+
+        if (insertError) {
+          alert(`Erro ao gravar prédio no Supabase: ${insertError.message}`);
+          return;
+        }
+
+        // Regra 2: Depois de gravar, atualizar a lista com select('*')
+        const { data: prediosAtualizados, error: readError } = await supabase
+          .from('predios')
+          .select('*');
+
+        if (readError) {
+          console.warn("[Supabase] Aviso ao ler predios:", readError.message);
+        }
+
+        onAddPredio(novo);
+        setSelectedPredioId(novo.id_predio);
+        alert("✅ Novo prédio guardado com sucesso no Supabase!");
+      } catch (err: any) {
+        alert(`Erro na ligação com o Supabase: ${err?.message || "Erro desconhecido"}`);
+      }
     }
   };
 
-  const handleRemoverPredio = (idPredio: string) => {
+  const handleRemoverPredio = async (idPredio: string) => {
     if (loggedUser.role !== 'ADMIN') {
       alert("Apenas administradores podem remover prédios!");
       return;
@@ -377,10 +500,34 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
     const target = predios.find(p => p.id_predio === idPredio);
     const nameStr = target?.nome || `${target?.morada_linha1}, Nº ${target?.num_porta}`;
     if (confirm(`Tem a certeza de que deseja remover o prédio "${nameStr}" do cadastro?`)) {
-      if (onDeletePredio) {
-        onDeletePredio(idPredio);
+      try {
+        const { error: deleteError } = await supabase
+          .from('predios')
+          .delete()
+          .eq('id_predio', idPredio);
+
+        if (deleteError) {
+          alert(`Erro ao remover prédio no Supabase: ${deleteError.message}`);
+          return;
+        }
+
+        // Regra 2: Depois de eliminar, atualizar a lista com select('*')
+        const { data: prediosRestantes, error: readError } = await supabase
+          .from('predios')
+          .select('*');
+
+        if (readError) {
+          console.warn("[Supabase] Aviso ao ler predios:", readError.message);
+        }
+
+        if (onDeletePredio) {
+          onDeletePredio(idPredio);
+        }
+        limparFormulario();
+        alert("✅ Prédio removido com sucesso do Supabase!");
+      } catch (err: any) {
+        alert(`Erro na ligação com o Supabase: ${err?.message || "Erro desconhecido"}`);
       }
-      limparFormulario();
     }
   };
 
@@ -1442,14 +1589,14 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
           <button
             type="submit"
             className="border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 active:scale-95 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all cursor-pointer shadow-md hover:shadow-lg active:ring-2 active:ring-emerald-400 select-none flex items-center gap-2"
-            title="Gravar dados do prédio no sistema Condomanager AI"
+            title="Guardar dados do prédio no sistema"
           >
             <img 
               src="/estados-acoes/12-adicionar.png" 
-              alt="Gravar" 
+              alt="Guardar" 
               className="h-5 w-5 object-contain" 
             />
-            <span>Gravar</span>
+            <span>Guardar</span>
           </button>
         </div>
       </form>

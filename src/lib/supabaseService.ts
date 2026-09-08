@@ -1,7 +1,8 @@
-import { supabase } from "./supabase";
+import { supabase } from '@/lib/supabaseClient';
 import { 
   Predio, 
   Fracao, 
+  Proprietario,
   Conta, 
   Fornecedor, 
   Movimento, 
@@ -155,9 +156,74 @@ export async function saveFracaoToSupabase(fracao: Fracao): Promise<boolean> {
       tipologia: fracao.tipologia,
       proprietario: fracao.proprietario,
       inquilino: fracao.inquilino,
-      administrador_interno: fracao.administrador_interno
+      administrador_interno: fracao.administrador_interno,
+      notificacao_preferencial: fracao.notificacao_preferencial
     });
     return !error;
+  } catch (err) {
+    return false;
+  }
+}
+
+export async function deleteFracaoFromSupabase(idFracao: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("fracoes").delete().eq("id_fracao", idFracao);
+    return !error;
+  } catch (err) {
+    return false;
+  }
+}
+
+export async function saveProprietarioToSupabase(proprietario: Proprietario, idFracao?: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    // If associated with a fraction, update fraction's owner
+    if (idFracao) {
+      await supabase.from("fracoes").update({ 
+        proprietario: proprietario,
+        administrador_interno: proprietario.administrador_interno || "Não",
+        notificacao_preferencial: proprietario.notificacao_preferencial || "Digital (E-mail e Mensagens Push)"
+      }).eq("id_fracao", idFracao);
+    }
+    // Also try saving to proprietarios table if present
+    try {
+      await supabase.from("proprietarios").upsert({
+        id_proprietario: proprietario.id_proprietario || proprietario.nif,
+        id_predio: proprietario.id_predio,
+        id_fracao: idFracao || proprietario.id_fracao,
+        nome: proprietario.nome,
+        nif: proprietario.nif,
+        email: proprietario.email,
+        tlm: proprietario.tlm,
+        iban: proprietario.iban,
+        administrador_interno: proprietario.administrador_interno,
+        notificacao_preferencial: proprietario.notificacao_preferencial
+      });
+    } catch {
+      // Table may not exist yet, which is safe
+    }
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+export async function deleteProprietarioFromSupabase(identifier: string, idFracao?: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    if (idFracao) {
+      await supabase.from("fracoes").update({ 
+        proprietario: null,
+        administrador_interno: "Não"
+      }).eq("id_fracao", idFracao);
+    }
+    try {
+      await supabase.from("proprietarios").delete().or(`id_proprietario.eq.${identifier},nif.eq.${identifier},email.eq.${identifier}`);
+    } catch {
+      // Table may not exist
+    }
+    return true;
   } catch (err) {
     return false;
   }

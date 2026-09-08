@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Predio, Conta, Fracao, Movimento, Aviso } from "../types";
 import { exportToXLS } from "../utils";
 import { 
@@ -6,14 +6,21 @@ import {
   Wallet, Truck, MessageSquare, Brain, Sparkles, 
   AlertTriangle, BarChart2
 } from "lucide-react";
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 
 interface PainelControloProps {
   predio: Predio;
+  predios?: Predio[];
   contas: Conta[];
   fracoes: Fracao[];
   movements: Movimento[];
   avisos: Aviso[];
+  documentosCount?: number;
+  fornecedoresCount?: number;
+  obrasCount?: number;
+  limpezasCount?: number;
+  alertasJuridicosCount?: number;
+  sondagensCount?: number;
   ocorrenciasCount?: number;
   reservasCount?: number;
   mensagensCount?: number;
@@ -23,14 +30,21 @@ interface PainelControloProps {
 
 export function PainelControlo({ 
   predio, 
+  predios = [],
   contas, 
   fracoes, 
   movements, 
   avisos,
-  ocorrenciasCount = 2,
-  reservasCount = 1,
-  mensagensCount = 2,
-  notificacoesCount = 4,
+  documentosCount = 0,
+  fornecedoresCount = 0,
+  obrasCount = 0,
+  limpezasCount = 0,
+  alertasJuridicosCount = 0,
+  sondagensCount = 0,
+  ocorrenciasCount = 0,
+  reservasCount = 0,
+  mensagensCount = 0,
+  notificacoesCount = 0,
   onSelectSection
 }: PainelControloProps) {
 
@@ -38,6 +52,9 @@ export function PainelControlo({
   const predioFracoes = fracoes.filter(f => f.id_predio === predio?.id_predio);
   const predioMovements = movements.filter(m => m.id_predio === predio?.id_predio);
   const predioAvisos = avisos.filter(a => a.id_predio === predio?.id_predio);
+
+  // Dynamic buildings count (0 if empty or provisional temporary placeholder)
+  const totalPrediosReais = predios.filter(p => p.id_predio && p.id_predio !== "predio-temp").length;
 
   // Calculate dynamic stats
   const totalFundoReserva = predioMovements
@@ -47,16 +64,47 @@ export function PainelControlo({
   const totalSaldoCaixa = predioMovements
     .reduce((acc, curr) => acc + (curr.tipo === "Receita" || curr.tipo === "RECEITA" ? curr.valor : -curr.valor), 0);
 
-  // Mock data for Recharts Chart
-  const chartData = [
-    { name: "Jan", Receitas: 1200, Despesas: 900 },
-    { name: "Fev", Receitas: 1400, Despesas: 1100 },
-    { name: "Mar", Receitas: 1200, Despesas: 1300 },
-    { name: "Abr", Receitas: 1800, Despesas: 950 },
-    { name: "Mai", Receitas: 1900, Despesas: 1500 },
-    { name: "Jun", Receitas: 1500, Despesas: 1200 },
-    { name: "Jul", Receitas: 2400, Despesas: 1700 }
-  ];
+  // Gráfico inicial dinâmico gerado conforme os saldos vs despesas reais do prédio (a zero se sem movimentos)
+  const chartData = useMemo(() => {
+    const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    const baseMeses = meses.slice(0, 7).map((mesNome, index) => ({
+      name: mesNome,
+      mesIndex: index,
+      Receitas: 0,
+      Despesas: 0,
+      Saldo: 0
+    }));
+
+    if (!predioMovements || predioMovements.length === 0) {
+      return baseMeses;
+    }
+
+    predioMovements.forEach(m => {
+      const dataRaw = m.data || (m as any).data_movimento;
+      if (!dataRaw) return;
+      const dataObj = new Date(dataRaw);
+      if (isNaN(dataObj.getTime())) return;
+
+      const mesIdx = dataObj.getMonth();
+      if (mesIdx >= 0 && mesIdx < 7) {
+        const val = Number(m.valor) || 0;
+        const tipoNorm = String(m.tipo || "").toUpperCase();
+        if (tipoNorm === "RECEITA" || tipoNorm === "ENTRADA" || tipoNorm === "QUOTA") {
+          baseMeses[mesIdx].Receitas += val;
+        } else if (tipoNorm === "DESPESA" || tipoNorm === "SAIDA") {
+          baseMeses[mesIdx].Despesas += val;
+        }
+      }
+    });
+
+    let acumulado = 0;
+    baseMeses.forEach(item => {
+      acumulado += (item.Receitas - item.Despesas);
+      item.Saldo = acumulado;
+    });
+
+    return baseMeses;
+  }, [predioMovements]);
 
   return (
     <div className="space-y-6">
@@ -68,19 +116,84 @@ export function PainelControlo({
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
           {[
-            { name: "Prédios Ativos", val: "1 Edifício", icon: "/modulos/01-predio.png", section: "predios" },
-            { name: "Condóminos", val: `${predioFracoes.length} Frações`, icon: "/modulos/07-fracao.png", section: "fracoes" },
-            { name: "Inquilinos", val: `${predioFracoes.filter(f => f.is_arrendada).length} Ativos`, icon: "/modulos/12-inquilino.png", section: "fracoes_perfis" },
-            { name: "Intervenções", val: `${ocorrenciasCount} Registadas`, icon: "/modulos/28-intervencao.png", section: "manutencao_intervencoes" },
-            { name: "Obras Gerais", val: "1 Ativa", icon: "/modulos/41-obra.png", section: "manutencao_extraordinarias" },
-            { name: "Escala Limpeza", val: "3 Áreas", icon: "/modulos/50-limpeza.png", section: "vistorias_limpezas" },
-            { name: "Documentos IA", val: "4 Arquivados", icon: "/modulos/27-arquivo-automatico.png", section: "documentos" },
-            { name: "Cobranças", val: `${predioAvisos.filter(a => a.estado === 'Pendente').length} Pendentes`, icon: "/modulos/60-nota-de-cobranca.png", section: "financeiro_relatorios" },
-            { name: "Alertas Jurídicos", val: "1 Ativo", icon: "/modulos/23-contrato.png", section: "contencioso_juridico" },
-            { name: "Contratos Fornecedores", val: "2 Ativos", icon: "/modulos/67-fornecedor.png", section: "fornecedores" },
-            { name: "Sondagens IA", val: "1 Ativa", icon: "/modulos/76-sondagem.png", section: "comunicacao_sondagens" },
-            { name: "Fundo Reserva", val: `${totalFundoReserva.toLocaleString("pt-PT")} €`, icon: "/modulos/64-saldo.png", section: "financeiro_extratos" },
-            { name: "Saldo em Caixa", val: `${totalSaldoCaixa.toLocaleString("pt-PT")} €`, icon: "/modulos/57-quota.png", section: "movimentos" }
+            { 
+              name: "Prédios Ativos", 
+              val: totalPrediosReais === 1 ? "1 Edifício" : `${totalPrediosReais} Edifícios`, 
+              icon: "/modulos/01-predio.png", 
+              section: "predios" 
+            },
+            { 
+              name: "Condóminos", 
+              val: `${predioFracoes.length} Frações`, 
+              icon: "/modulos/07-fracao.png", 
+              section: "fracoes" 
+            },
+            { 
+              name: "Inquilinos", 
+              val: `${predioFracoes.filter(f => f.is_arrendada).length} Ativos`, 
+              icon: "/modulos/12-inquilino.png", 
+              section: "fracoes_perfis" 
+            },
+            { 
+              name: "Intervenções", 
+              val: `${ocorrenciasCount} Registadas`, 
+              icon: "/modulos/28-intervencao.png", 
+              section: "manutencao_intervencoes" 
+            },
+            { 
+              name: "Obras Gerais", 
+              val: obrasCount === 1 ? "1 Ativa" : `${obrasCount} Ativas`, 
+              icon: "/modulos/41-obra.png", 
+              section: "manutencao_extraordinarias" 
+            },
+            { 
+              name: "Escala Limpeza", 
+              val: limpezasCount === 1 ? "1 Área" : `${limpezasCount} Áreas`, 
+              icon: "/modulos/50-limpeza.png", 
+              section: "vistorias_limpezas" 
+            },
+            { 
+              name: "Documentos IA", 
+              val: `${documentosCount} Arquivados`, 
+              icon: "/modulos/27-arquivo-automatico.png", 
+              section: "documentos" 
+            },
+            { 
+              name: "Cobranças", 
+              val: `${predioAvisos.filter(a => a.estado === 'Pendente').length} Pendentes`, 
+              icon: "/modulos/60-nota-de-cobranca.png", 
+              section: "financeiro_relatorios" 
+            },
+            { 
+              name: "Alertas Jurídicos", 
+              val: alertasJuridicosCount === 1 ? "1 Ativo" : `${alertasJuridicosCount} Ativos`, 
+              icon: "/modulos/23-contrato.png", 
+              section: "contencioso_juridico" 
+            },
+            { 
+              name: "Contratos Fornecedores", 
+              val: fornecedoresCount === 1 ? "1 Ativo" : `${fornecedoresCount} Ativos`, 
+              icon: "/modulos/67-fornecedor.png", 
+              section: "fornecedores" 
+            },
+            { 
+              name: "Sondagens IA", 
+              val: sondagensCount === 1 ? "1 Ativa" : `${sondagensCount} Ativas`, 
+              icon: "/modulos/76-sondagem.png", 
+              section: "comunicacao_sondagens" 
+            },
+            { 
+              name: "Fundo Reserva", 
+              val: `${totalFundoReserva.toLocaleString("pt-PT")} €`, 
+              icon: "/modulos/64-saldo.png", 
+              section: "financeiro_extratos" 
+            },
+            { 
+              name: "Saldo em Caixa", 
+              val: `${totalSaldoCaixa.toLocaleString("pt-PT")} €`, 
+              icon: "/modulos/57-quota.png", 
+              section: "movimentos" 
+            }
           ].map((ind, idx) => (
             <button
               key={idx}
@@ -145,32 +258,50 @@ export function PainelControlo({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Chart */}
         <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-xs space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
             <div>
-              <h3 className="text-sm font-bold text-slate-800">Transparência Orçamental e Fluxo de Caixa</h3>
-              <p className="text-xs text-slate-400">Receitas de quotas vs. despesas de manutenção no ano corrente.</p>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-800">Transparência Orçamental e Fluxo de Caixa</h3>
+                {predioMovements.length === 0 ? (
+                  <span className="text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">
+                    Base a Zero (Sem Movimentos)
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    {predioMovements.length} Movimento{predioMovements.length > 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-400">
+                {predioMovements.length === 0
+                  ? "O gráfico inicia a zero e reflete automaticamente os saldos e despesas reais lançados no prédio."
+                  : "Receitas de quotas vs. despesas de manutenção calculadas conforme os saldos do prédio."}
+              </p>
             </div>
-            <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">Ano 2026</span>
+            <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded border border-slate-200 self-start sm:self-auto">
+              Ano {new Date().getFullYear()}
+            </span>
           </div>
-          <div className="h-48 text-xs font-bold">
+          <div className="h-52 text-xs font-bold">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRec" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/>
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                   </linearGradient>
                   <linearGradient id="colorDes" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2}/>
+                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.25}/>
                     <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Area type="monotone" dataKey="Receitas" stroke="#10b981" fillOpacity={1} fill="url(#colorRec)" strokeWidth={2} />
-                <Area type="monotone" dataKey="Despesas" stroke="#ef4444" fillOpacity={1} fill="url(#colorDes)" strokeWidth={2} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" stroke="#94a3b8" />
+                <YAxis stroke="#94a3b8" tickFormatter={(v) => `${v}€`} />
+                <Tooltip formatter={(value: any) => [`${Number(value).toLocaleString("pt-PT")} €`, ""]} />
+                <Legend />
+                <Area type="monotone" name="Receitas" dataKey="Receitas" stroke="#10b981" fillOpacity={1} fill="url(#colorRec)" strokeWidth={2} />
+                <Area type="monotone" name="Despesas" dataKey="Despesas" stroke="#ef4444" fillOpacity={1} fill="url(#colorDes)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           </div>

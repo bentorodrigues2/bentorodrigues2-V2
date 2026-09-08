@@ -187,13 +187,13 @@ Powered by CondoManager AI`
   },
   {
     id: "recuperacao_password",
-    category: "V. SISTEMA (apenas os essenciais)",
+    category: "VI. SISTEMA & ACESSOS",
     number: 10,
     title: "Recuperação de Password",
     subject: "Recuperação de Acesso – Condomínio",
     body: `Olá [Nome],
 
-Foi solicitado um pedido de recuperação de acesso. Clique AQUI para definir uma nova password.
+Foi solicitado um pedido de recuperação de acesso à plataforma CondoManager. Clique AQUI para definir uma nova password.
 
 Com os meus cumprimentos, O Administrador do Condomínio
 
@@ -201,34 +201,225 @@ Powered by CondoManager AI`
   },
   {
     id: "confirmacao_conta",
-    category: "V. SISTEMA (apenas os essenciais)",
+    category: "VI. SISTEMA & ACESSOS",
     number: 11,
     title: "Confirmação de Conta",
     subject: "Confirmação de Conta – Condomínio",
     body: `Olá [Nome],
 
-A sua conta foi criada com sucesso. Pode aceder à sua área pessoal AQUI.
+A sua conta de acesso ao condomínio foi criada com sucesso. Pode aceder à sua área pessoal AQUI.
 
 Com os meus cumprimentos, O Administrador do Condomínio
+
+Powered by CondoManager AI`
+  },
+  {
+    id: "ata_assembleia",
+    category: "IV. ASSEMBLEIAS",
+    number: 12,
+    title: "Envio de Ata da Assembleia",
+    subject: "Ata da Assembleia Geral de Condóminos – [Local]",
+    body: `Olá [Nome],
+
+Informamos que se encontra disponível a Ata da Assembleia Geral de Condóminos realizada em [Data].
+
+Pode consultar a ata oficial assinada e a folha de presenças AQUI.
+
+Com os meus cumprimentos, [Assinatura Digital] O Administrador do Condomínio
+
+Powered by CondoManager AI`
+  },
+  {
+    id: "aviso_obras",
+    category: "V. MANUTENÇÃO & OBRAS",
+    number: 13,
+    title: "Aviso de Obras e Intervenções",
+    subject: "Aviso de Início de Obras no Edifício – [Local]",
+    body: `Olá [Nome],
+
+Informamos todos os condóminos que terão início obras de beneficiação/manutenção no edifício:
+
+• Intervenção: [Lista]
+• Data prevista de início: [Data]
+• Período estimado de trabalhos: [Horário]
+
+Agradecemos desde já a melhor compreensão para eventuais constrangimentos temporários.
+
+Com os meus cumprimentos, [Assinatura Digital] O Administrador do Condomínio
+
+Powered by CondoManager AI`
+  },
+  {
+    id: "lembrete_quota",
+    category: "I. FINANÇAS",
+    number: 14,
+    title: "Lembrete de Pagamento de Quota",
+    subject: "Lembrete de Quota a Vencer – Fração [Fração]",
+    body: `Olá [Nome],
+
+Vimos por este meio lembrar que a quota da Fração [Fração] no valor de [Valor] atinge o seu termo de pagamento em [Data].
+
+Dados para liquidação: [Método]
+
+Pode descarregar o documento ou pagar por referência AQUI.
+
+Com os meus cumprimentos, [Assinatura Digital] O Administrador do Condomínio
+
+Powered by CondoManager AI`
+  },
+  {
+    id: "relatorio_vistoria",
+    category: "V. MANUTENÇÃO & OBRAS",
+    number: 15,
+    title: "Relatório de Vistoria Periódica",
+    subject: "Relatório de Vistoria Técnica – [Local]",
+    body: `Olá [Nome],
+
+Foi concluída a vistoria técnica periódica às partes comuns do edifício. O relatório de engenharia encontra-se disponível no arquivo digital.
+
+Pode aceder ao dossier de vistoria e registo fotográfico AQUI.
+
+Com os meus cumprimentos, [Assinatura Digital] O Administrador do Condomínio
+
+Powered by CondoManager AI`
+  },
+  {
+    id: "comunicado_ocorrencia",
+    category: "V. MANUTENÇÃO & OBRAS",
+    number: 16,
+    title: "Comunicação de Ocorrência Técnica",
+    subject: "Registo de Ocorrência Técnica em Curso – Condomínio",
+    body: `Olá [Nome],
+
+Acusamos a receção da ocorrência reportada referente a [Espaço]. A equipa de piquete e manutenção já foi mobilizada para resolução técnica.
+
+Pode acompanhar o estado da intervenção em tempo real AQUI.
+
+Com os meus cumprimentos, [Assinatura Digital] O Administrador do Condomínio
+
+Powered by CondoManager AI`
+  },
+  {
+    id: "resolucao_ocorrencia",
+    category: "V. MANUTENÇÃO & OBRAS",
+    number: 17,
+    title: "Encerramento de Ocorrência",
+    subject: "Resolução e Encerramento de Ocorrência – [Local]",
+    body: `Olá [Nome],
+
+Informamos que a intervenção técnica na ocorrência registada foi concluída com sucesso.
+
+Detalhes da resolução: [Motivo]
+
+O auto de encerramento da equipa técnica está disponível AQUI.
+
+Com os meus cumprimentos, [Assinatura Digital] O Administrador do Condomínio
+
+Powered by CondoManager AI`
+  },
+  {
+    id: "corte_servicos",
+    category: "V. MANUTENÇÃO & OBRAS",
+    number: 18,
+    title: "Interrupção Temporária de Serviços",
+    subject: "Aviso Urgente: Interrupção Temporária de Serviços – [Local]",
+    body: `Olá [Nome],
+
+Informamos que por motivos de manutenção inadiável, haverá uma interrupção temporária de serviços comuns:
+
+• Serviço afetado: [Espaço]
+• Data: [Data] • Período: [Horário]
+
+Pode consultar o comunicado oficial AQUI.
+
+Com os meus cumprimentos, [Assinatura Digital] O Administrador do Condomínio
+
+Powered by CondoManager AI`
+  },
+  {
+    id: "quota_extraordinaria",
+    category: "I. FINANÇAS",
+    number: 19,
+    title: "Aviso de Quota Extraordinária",
+    subject: "Aviso de Quota Extraordinária aprovada em Assembleia",
+    body: `Olá [Nome],
+
+Em cumprimento da deliberação tomada na Assembleia de Condóminos, informamos da emissão da Quota Extraordinária referente à Fração [Fração].
+
+• Valor: [Valor] • Data limite: [Data] • Pagamento: [Método]
+
+O documento oficial encontra-se disponível AQUI.
+
+Com os meus cumprimentos, [Assinatura Digital] O Administrador do Condomínio
+
+Powered by CondoManager AI`
+  },
+  {
+    id: "atualizacao_regulamento",
+    category: "II. DOCUMENTOS OFICIAIS",
+    number: 20,
+    title: "Atualização de Regulamento",
+    subject: "Publicação do Regulamento Interno do Condomínio",
+    body: `Olá [Nome],
+
+Informamos que se encontra disponível para consulta o Regulamento Interno atualizado do condomínio.
+
+Pode consultar a versão integral em vigor AQUI.
+
+Com os meus cumprimentos, [Assinatura Digital] O Administrador do Condomínio
+
+Powered by CondoManager AI`
+  },
+  {
+    id: "boas_vindas_condomino",
+    category: "VI. SISTEMA & ACESSOS",
+    number: 21,
+    title: "Boas-Vindas ao Condomínio",
+    subject: "Boas-Vindas ao Condomínio [Local] – Credenciais de Acesso",
+    body: `Olá [Nome],
+
+A Administração dá-lhe as boas-vindas ao edifício [Local]. 
+
+A sua fração [Fração] encontra-se registada no portal CondoManager AI. Pode aceder à plataforma online e instalar a aplicação móvel PWA AQUI.
+
+Com os meus cumprimentos, [Assinatura Digital] O Administrador do Condomínio
+
+Powered by CondoManager AI`
+  },
+  {
+    id: "alerta_seguranca",
+    category: "VI. SISTEMA & ACESSOS",
+    number: 22,
+    title: "Alerta de Segurança e Gestão de Chaves",
+    subject: "Comunicado de Segurança e Claviculário – [Local]",
+    body: `Olá [Nome],
+
+Vimos por este meio reforçar os procedimentos de segurança nos acessos ao condomínio e gestão das chaves das áreas técnicas e comuns.
+
+Pode consultar o protocolo de segurança AQUI.
+
+Com os meus cumprimentos, [Assinatura Digital] O Administrador do Condomínio
 
 Powered by CondoManager AI`
   }
 ];
 
-interface ConfiguracoesAdministracaoProps {
-  predio: Predio;
+export interface ConfiguracoesAdministracaoProps {
+  predio?: Predio;
+  predios?: Predio[];
   onUpdatePredio?: (updated: Predio) => void;
   loggedUser: LoggedUser;
   documentos: Documento[];
   movimentos: Movimento[];
   fracoes: Fracao[];
-  activeSubSection: "gerais" | "ia" | "notificacoes" | "logs" | "exportacao";
+  activeSubSection: "gerais" | "ia" | "templates" | "notificacoes" | "auditoria" | "logs" | "exportacao";
   setActiveSubSection: (sub: any) => void;
   onAddDocumento?: (novoDoc: Documento) => void;
 }
 
 export function ConfiguracoesAdministracao({
   predio,
+  predios = [],
   onUpdatePredio,
   loggedUser,
   documentos,
@@ -239,33 +430,47 @@ export function ConfiguracoesAdministracao({
   onAddDocumento
 }: ConfiguracoesAdministracaoProps) {
   
+  const predioId = predio?.id_predio || "default_predio";
+  const predioNome = predio?.nome || "Condomínio";
+
   // State for general settings
-  const [nomePredio, setNomePredio] = useState(predio.nome || "");
-  const [morada, setMorada] = useState(predio.morada_linha1 || "");
-  const [numPorta, setNumPorta] = useState(predio.num_porta || "");
-  const [localidade, setLocalidade] = useState(predio.localidade || "");
-  const [nif, setNif] = useState(predio.nif || "");
+  const [nomePredio, setNomePredio] = useState(predio?.nome || "");
+  const [morada, setMorada] = useState(predio?.morada_linha1 || "");
+  const [numPorta, setNumPorta] = useState(predio?.num_porta || "");
+  const [localidade, setLocalidade] = useState(predio?.localidade || "");
+  const [nif, setNif] = useState(predio?.nif || "");
+
+  // Update fields when predio prop changes
+  useEffect(() => {
+    if (predio) {
+      setNomePredio(predio.nome || "");
+      setMorada(predio.morada_linha1 || "");
+      setNumPorta(predio.num_porta || "");
+      setLocalidade(predio.localidade || "");
+      setNif(predio.nif || "");
+    }
+  }, [predio]);
 
   // State for AI configuration (email)
   const [adminEmail, setAdminEmail] = useState(() => {
-    return localStorage.getItem(`admin_email_ia_${predio.id_predio}`) || "CPSN_RuaBentoRodrigues8@gmail.com";
+    return localStorage.getItem(`admin_email_ia_${predioId}`) || "CPSN_RuaBentoRodrigues8@gmail.com";
   });
   const [emailError, setEmailError] = useState<string | null>(null);
   const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
 
   // Sincronizador de Caixa de Entrada & Autoresponder
   const [syncEmailActive, setSyncEmailActive] = useState<boolean>(() => {
-    const saved = localStorage.getItem(`sync_email_active_${predio.id_predio}`);
+    const saved = localStorage.getItem(`sync_email_active_${predioId}`);
     return saved !== null ? saved === "true" : true;
   });
 
   const [autoresponderMode, setAutoresponderMode] = useState<"confirmacao_previa" | "totalmente_autonomo">(() => {
-    const saved = localStorage.getItem(`autoresponder_mode_${predio.id_predio}`);
+    const saved = localStorage.getItem(`autoresponder_mode_${predioId}`);
     return (saved as any) || "confirmacao_previa";
   });
 
   const [syncInterval, setSyncInterval] = useState<string>(() => {
-    return localStorage.getItem(`sync_interval_${predio.id_predio}`) || "5";
+    return localStorage.getItem(`sync_interval_${predioId}`) || "5";
   });
 
   const [autoArchiveActive, setAutoArchiveActive] = useState(true);
@@ -274,7 +479,7 @@ export function ConfiguracoesAdministracao({
 
   const [isSyncingNow, setIsSyncingNow] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState(() => {
-    return localStorage.getItem(`last_sync_time_${predio.id_predio}`) || "Hoje às " + new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+    return localStorage.getItem(`last_sync_time_${predioId}`) || "Hoje às " + new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
   });
 
   const [simulationState, setSimulationState] = useState<{
@@ -295,7 +500,7 @@ export function ConfiguracoesAdministracao({
 
   // Activity logs state (limpo para testes com Supabase)
   const [logs, setLogs] = useState<AuditLogEntry[]>(() => {
-    const saved = localStorage.getItem(`system_activity_logs_${predio.id_predio}`);
+    const saved = localStorage.getItem(`system_activity_logs_${predioId}`);
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { }
     }
@@ -305,12 +510,9 @@ export function ConfiguracoesAdministracao({
   const [logSearch, setLogSearch] = useState("");
   const [logFilter, setLogFilter] = useState<string>("Todas");
 
-  // Sub-tabs for Configurações de IA & Email
-  const [iaActiveSubTab, setIaActiveSubTab] = useState<"modelos" | "config">("modelos");
-
   // Email Templates State with Persistence
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>(() => {
-    const saved = localStorage.getItem(`condomanager_email_templates_${predio.id_predio}`);
+    const saved = localStorage.getItem(`condomanager_email_templates_${predioId}`);
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -327,7 +529,7 @@ export function ConfiguracoesAdministracao({
   const activeTemplate = emailTemplates.find(t => t.id === selectedTemplateId) || emailTemplates[0];
   const [editedSubject, setEditedSubject] = useState(activeTemplate?.subject || "");
   const [editedBody, setEditedBody] = useState(activeTemplate?.body || "");
-  const [previewFractionId, setPreviewFractionId] = useState(fracoes[0]?.id_fracao || "fr-1");
+  const [previewFractionId, setPreviewFractionId] = useState(fracoes?.[0]?.id_fracao || "fr-1");
 
   // Update editor values when selected template changes
   useEffect(() => {
@@ -346,7 +548,7 @@ export function ConfiguracoesAdministracao({
       return t;
     });
     setEmailTemplates(updated);
-    localStorage.setItem(`condomanager_email_templates_${predio.id_predio}`, JSON.stringify(updated));
+    localStorage.setItem(`condomanager_email_templates_${predioId}`, JSON.stringify(updated));
     addLog("Configuração", "Atualização de Modelo de Email", `Modelo editado: ${activeTemplate?.title}`);
     alert(`Modelo de e-mail "${activeTemplate?.title}" atualizado com sucesso!`);
   };
@@ -364,7 +566,7 @@ export function ConfiguracoesAdministracao({
         return t;
       });
       setEmailTemplates(updated);
-      localStorage.setItem(`condomanager_email_templates_${predio.id_predio}`, JSON.stringify(updated));
+      localStorage.setItem(`condomanager_email_templates_${predioId}`, JSON.stringify(updated));
       addLog("Configuração", "Restauro de Modelo de Email", `Modelo restaurado: ${activeTemplate?.title}`);
       alert(`Modelo "${activeTemplate?.title}" restaurado para o padrão oficial!`);
     }
@@ -372,9 +574,9 @@ export function ConfiguracoesAdministracao({
 
   // Method to simulate send
   const handleSimulateSend = () => {
-    const fraction = fracoes.find(f => f.id_fracao === previewFractionId) || fracoes[0];
-    const targetName = fraction ? fraction.proprietario.nome : "Condómino";
-    const targetEmail = fraction ? fraction.proprietario.email : "condomino@email.com";
+    const fraction = fracoes?.find(f => f.id_fracao === previewFractionId) || fracoes?.[0];
+    const targetName = fraction?.proprietario?.nome || "Condómino";
+    const targetEmail = fraction?.proprietario?.email || "condomino@email.com";
     
     addLog("IA", `Simulação de Envio de Email`, `Enviado "${activeTemplate?.title}" para ${targetName} (${targetEmail})`);
     triggerSendReaction("email", `E-mail para ${targetName} (${targetEmail})`);
@@ -382,8 +584,8 @@ export function ConfiguracoesAdministracao({
 
   // Save logs to localStorage on change
   useEffect(() => {
-    localStorage.setItem(`system_activity_logs_${predio.id_predio}`, JSON.stringify(logs));
-  }, [logs, predio.id_predio]);
+    localStorage.setItem(`system_activity_logs_${predioId}`, JSON.stringify(logs));
+  }, [logs, predioId]);
 
   // Method to insert logs
   const addLog = (seccao: AuditLogEntry["seccao"], descricao: string, detalhes?: string) => {
@@ -392,32 +594,32 @@ export function ConfiguracoesAdministracao({
       timestamp: new Date().toISOString().replace("T", " ").substring(0, 19),
       seccao,
       descricao,
-      usuario: loggedUser.nome,
+      usuario: loggedUser?.nome || "Administrador",
       detalhes
     };
     setLogs(prev => [newEntry, ...prev]);
   };
 
   const getTemplatePreview = (subject: string, body: string, fractionId: string) => {
-    const fraction = (fracoes.find(f => f.id_fracao === fractionId) || fracoes[0]) as any;
+    const fraction = (fracoes?.find(f => f.id_fracao === fractionId) || fracoes?.[0]) as any;
     
-    let renderedSubject = subject;
-    let renderedBody = body;
+    let renderedSubject = subject || "";
+    let renderedBody = body || "";
     
     // Replace standard placeholders
     const replacements: Record<string, string> = {
       "\\[Nome\\]": fraction?.proprietario?.nome || "Condómino",
-      "\\[Fração\\]": fraction?.fracao_nome || "A",
+      "\\[Fração\\]": fraction?.fracao_nome || "Fração A",
       "\\[Valor\\]": "54,20 €",
-      "\\[Data\\]": "19/07/2026",
+      "\\[Data\\]": new Date().toLocaleDateString('pt-PT'),
       "\\[Método\\]": "Multibanco (Entidade: 21800, Referência: 123 456 789)",
       "\\[X\\]": "3 meses",
       "\\[Espaço\\]": "Sala de Condomínio",
       "\\[Horário\\]": "14:00 - 18:00",
       "\\[Extras selecionados\\]": "Limpeza extra (15,00 €)",
       "\\[Lista\\]": "• Limpeza e manutenção\n• Pintura do hall",
-      "\\[Motivo\\]": "Cancelamento solicitado pelo condómino por motivos imprevistos.",
-      "\\[Local\\]": `Morada do Prédio (${predio.morada_linha1}, Nº ${predio.num_porta || ""}, ${predio.localidade})`,
+      "\\[Motivo\\]": "Conclusão de trabalho técnico programado.",
+      "\\[Local\\]": `Morada do Prédio (${predio?.morada_linha1 || "Rua do Condomínio"}, Nº ${predio?.num_porta || "1"}, ${predio?.localidade || "Lisboa"})`,
       "\\[Assinatura Digital\\]": "🔒 Assinado Digitalmente por CondoManager Admin Key",
       "AQUI": "👉 [CLIQUE AQUI PARA ACEDER]"
     };
@@ -428,7 +630,11 @@ export function ConfiguracoesAdministracao({
       renderedBody = renderedBody.replace(regex, val);
     });
     
-    return { subject: renderedSubject, body: renderedBody, recipient: fraction.proprietario || { nome: "Condómino", email: "condomino@email.com" } };
+    return { 
+      subject: renderedSubject, 
+      body: renderedBody, 
+      recipient: fraction?.proprietario || { nome: "Condómino", email: "condomino@email.com" } 
+    };
   };
 
   // Validate IA Administration Email according to strict rules in DOCUMENTO D
@@ -466,20 +672,20 @@ export function ConfiguracoesAdministracao({
     }
 
     // If validations pass
-    localStorage.setItem(`admin_email_ia_${predio.id_predio}`, adminEmail);
+    localStorage.setItem(`admin_email_ia_${predioId}`, adminEmail);
     setEmailSuccess("Email da Administração para integração de IA configurado e homologado com sucesso!");
     addLog("Configuração", "Atualização do email de integração com a IA", `Novo email oficial registado: ${adminEmail}`);
   };
 
   const handleToggleSyncEmail = (active: boolean) => {
     setSyncEmailActive(active);
-    localStorage.setItem(`sync_email_active_${predio.id_predio}`, String(active));
+    localStorage.setItem(`sync_email_active_${predioId}`, String(active));
     addLog("IA", "Sincronizador de Caixa de Entrada", active ? "Sincronização de e-mails ativada." : "Sincronização de e-mails pausada.");
   };
 
   const handleSelectAutoresponderMode = (mode: "confirmacao_previa" | "totalmente_autonomo") => {
     setAutoresponderMode(mode);
-    localStorage.setItem(`autoresponder_mode_${predio.id_predio}`, mode);
+    localStorage.setItem(`autoresponder_mode_${predioId}`, mode);
     addLog("IA", "Modo Auto-Responder", `Configurado para: ${mode === "confirmacao_previa" ? "Confirmação Prévia pelo Administrador" : "Totalmente Autónomo"}`);
   };
 
@@ -488,7 +694,7 @@ export function ConfiguracoesAdministracao({
     setTimeout(() => {
       const nowStr = "Hoje às " + new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
       setLastSyncTime(nowStr);
-      localStorage.setItem(`last_sync_time_${predio.id_predio}`, nowStr);
+      localStorage.setItem(`last_sync_time_${predioId}`, nowStr);
       setIsSyncingNow(false);
       addLog("IA", "Varredura da Caixa de Entrada", "Caixa de correio sincronizada com sucesso. 0 pendências críticas.");
       alert("✅ Sincronização concluída! A caixa de entrada está em dia e a IA está a monitorizar novas faturas e comprovativos.");
@@ -501,11 +707,11 @@ export function ConfiguracoesAdministracao({
       setSimulationState({
         status: "recognized",
         docName: "Comprovativo_Transf_Quota_Setembro.pdf",
-        fracao: fracoes[0]?.id_fracao || "Fração A",
+        fracao: fracoes?.[0]?.id_fracao || "Fração A",
         valor: 45.00,
-        condomino: fracoes[0]?.proprietario?.nome || "Maria Silva"
+        condomino: fracoes?.[0]?.proprietario?.nome || "Maria Silva"
       });
-      addLog("IA", "Leitura de Comprovativo por E-mail", `Documento recebido para a fração ${fracoes[0]?.id_fracao || "A"}: 45,00 €. Aguarda confirmação.`);
+      addLog("IA", "Leitura de Comprovativo por E-mail", `Documento recebido para a fração ${fracoes?.[0]?.id_fracao || "A"}: 45,00 €. Aguarda confirmação.`);
     }, 1200);
   };
 
@@ -513,7 +719,7 @@ export function ConfiguracoesAdministracao({
     if (onAddDocumento && simulationState.docName) {
       onAddDocumento({
         id_doc: `doc-recibo-${Date.now()}`,
-        id_predio: predio.id_predio,
+        id_predio: predioId,
         nome: `Recibo de Quota - ${simulationState.fracao}`,
         tipo: "PDF",
         tamanho: "124 KB",
@@ -566,7 +772,7 @@ export function ConfiguracoesAdministracao({
 
     const jsonStr = JSON.stringify(backupData, null, 2);
     const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8;" });
-    downloadBlob(blob, `CondoManager_Backup_${type}_${predio.id_predio}_${Date.now()}.json`);
+    downloadBlob(blob, `CondoManager_Backup_${type}_${predioId}_${Date.now()}.json`);
     addLog("Exportação", `Exportação de Backup (${type.toUpperCase()})`, `Ficheiros exportados: ${filter || "Todos"}`);
   };
 
@@ -594,7 +800,7 @@ export function ConfiguracoesAdministracao({
       <body>
         <div class="header-box">
           <h1 style="margin:0 0 8px 0;">🛡️ CONDOMANAGER AI - MANUAL DE PERFIS, MENUS & CAPACIDADES</h1>
-          <p style="margin:0;"><strong>Prédio:</strong> ${predio.nome} | <strong>Data de Emissão:</strong> ${new Date().toLocaleDateString('pt-PT')} | <strong>Versão:</strong> Platform 2026.1 (Web Browser & PWA)</p>
+          <p style="margin:0;"><strong>Prédio:</strong> ${predioNome} | <strong>Data de Emissão:</strong> ${new Date().toLocaleDateString('pt-PT')} | <strong>Versão:</strong> Platform 2026.1 (Web Browser & PWA)</p>
         </div>
 
         <h2>1. ESTRUTURA DE MENUS E SUB-MENUS (COLUNA CENTRAL WEBSITE & PWA)</h2>
@@ -736,7 +942,7 @@ export function ConfiguracoesAdministracao({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Manual_Perfis_e_Menus_CondoManager_${predio.nome.replace(/\s+/g, '_')}.doc`;
+      a.download = `Manual_Perfis_e_Menus_CondoManager_${predioNome.replace(/\s+/g, '_')}.doc`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -755,7 +961,7 @@ export function ConfiguracoesAdministracao({
 
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(13);
-        pdf.text(`Manual de Perfis, Menus e Capacidades - ${predio.nome}`, 14, y);
+        pdf.text(`Manual de Perfis, Menus e Capacidades - ${predioNome}`, 14, y);
         y += 8;
 
         pdf.setFont("helvetica", "bold");
@@ -827,7 +1033,7 @@ export function ConfiguracoesAdministracao({
         pdf.setTextColor(4, 120, 87);
         pdf.text("CONDOMANAGER AI - REGISTO CERTIFICADO E AUTENTICADO EM PDF", 105, y, { align: "center" });
 
-        pdf.save(`Manual_Perfis_e_Menus_CondoManager_${predio.nome.replace(/\s+/g, '_')}_Oficial.pdf`);
+        pdf.save(`Manual_Perfis_e_Menus_CondoManager_${predioNome.replace(/\s+/g, '_')}_Oficial.pdf`);
       } catch (err) {
         console.error("Erro ao gerar PDF:", err);
       }
@@ -836,73 +1042,30 @@ export function ConfiguracoesAdministracao({
 
   return (
     <div className="space-y-6 text-slate-850 dark:text-slate-100 animate-fadeIn">
-      
-      {/* Tab Navigation header */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-1.5 overflow-x-auto pb-px">
-        <button
-          onClick={() => setActiveSubSection("gerais")}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeSubSection === "gerais" 
-              ? "border-emerald-500 text-emerald-600 dark:text-emerald-400" 
-              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-          }`}
-        >
-          <Settings className="h-4 w-4" />
-          <span>Configurações Gerais</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubSection("ia")}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeSubSection === "ia" 
-              ? "border-emerald-500 text-emerald-600 dark:text-emerald-400" 
-              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-          }`}
-        >
-          <Mail className="h-4 w-4" />
-          <span>Configurações de IA & Email</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubSection("notificacoes")}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeSubSection === "notificacoes" 
-              ? "border-emerald-500 text-emerald-600 dark:text-emerald-400" 
-              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-          }`}
-        >
-          <Bell className="h-4 w-4" />
-          <span>Notificações</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubSection("logs")}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeSubSection === "logs" 
-              ? "border-emerald-500 text-emerald-600 dark:text-emerald-400" 
-              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-          }`}
-        >
-          <ListTodo className="h-4 w-4" />
-          <span>Log de Sistema</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubSection("exportacao")}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeSubSection === "exportacao" 
-              ? "border-emerald-500 text-emerald-600 dark:text-emerald-400" 
-              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-          }`}
-        >
-          <FileDown className="h-4 w-4" />
-          <span>Exportação & Backup</span>
-        </button>
-      </div>
 
       {/* ---------------- 1. CONFIGURAÇÕES GERAIS ---------------- */}
       {activeSubSection === "gerais" && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+        <div className="space-y-6">
+          {/* Banner CondoManager Oficial */}
+          <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-950 border border-emerald-500/30 p-5 rounded-2xl shadow-lg text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                <Settings className="h-6 w-6 text-emerald-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-black uppercase tracking-wider text-white">Parâmetros Gerais do Edifício</h3>
+                  <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Homologado</span>
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">Definições cadastrais, morada oficial, NIF e especificações de património comum do condomínio.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
           {/* Banner de Acesso Direto ao Manual de Perfis, Menus e Capacidades */}
           <div className="bg-emerald-500/10 dark:bg-emerald-950/40 p-4 rounded-xl border border-emerald-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
@@ -1002,16 +1165,16 @@ export function ConfiguracoesAdministracao({
                 <button
                   type="button"
                   onClick={() => {
-                    if (confirm(`Tem a certeza que deseja eliminar o prédio "${predio.nome}" do sistema?`)) {
+                    if (confirm(`Tem a certeza que deseja eliminar o prédio "${predioNome}" do sistema?`)) {
                       const stored = localStorage.getItem("condo_predios");
                       if (stored) {
                         try {
                           const list = JSON.parse(stored);
-                          const updated = list.filter((p: any) => p.id_predio !== predio.id_predio);
+                          const updated = list.filter((p: any) => p.id_predio !== predioId);
                           localStorage.setItem("condo_predios", JSON.stringify(updated));
                         } catch (err) {}
                       }
-                      alert(`O prédio "${predio.nome}" foi removido com sucesso.`);
+                      alert(`O prédio "${predioNome}" foi removido com sucesso.`);
                       window.location.reload();
                     }
                   }}
@@ -1034,82 +1197,53 @@ export function ConfiguracoesAdministracao({
             </div>
           </form>
         </div>
+      </div>
       )}
 
-      {/* ---------------- 2. CONFIGURAÇÕES DE IA & EMAIL (LAYOUT CONDIO-MANAGER OFICIAL) ---------------- */}
-      {activeSubSection === "ia" && (
+      {/* ---------------- 2. MODELOS DE E-MAIL OFICIAIS (LAYOUT CONDOMANAGER OFICIAL) ---------------- */}
+      {activeSubSection === "templates" && (
         <div className="space-y-6">
           {/* Header Banner Oficial CondoManager */}
-          <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm text-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-950 border border-emerald-500/30 p-5 rounded-2xl shadow-lg text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                <Sparkles className="h-6 w-6 text-emerald-400" />
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                <FileText className="h-6 w-6 text-emerald-400" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-black uppercase tracking-wider text-white">Central de IA & Automatização de E-mails</h3>
+                  <h3 className="text-sm font-black uppercase tracking-wider text-white">Modelos Oficiais de Notificação & E-mail</h3>
                   <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>Ativo</span>
+                    <span>22 Templates Homologados</span>
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">Gestão de modelos de e-mail oficiais com preenchimento dinâmico, caixa postal inteligente e integração do assistente IA.</p>
+                <p className="text-xs text-slate-400 mt-0.5">Biblioteca oficial de modelos com variáveis dinâmicas, editor de texto com validação e simulador de envio com pré-visualização em tempo real.</p>
               </div>
             </div>
           </div>
 
           <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+            <div className="bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 p-4 rounded-xl text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+              <p className="font-bold text-emerald-700 dark:text-emerald-400 mb-1">📢 Homologação de Modelos — Versão Oficial CondoManager AI</p>
+              Os 22 modelos de e-mail abaixo cumprem rigorosamente os regulamentos de notificação do condomínio. Pode personalizar o assunto e o corpo de texto, mantendo as chaves dinâmicas entre parênteses retos (ex: <code className="bg-emerald-100 dark:bg-slate-900 px-1 py-0.5 rounded text-emerald-600 dark:text-emerald-400 font-mono text-[10px]">[Nome]</code>, <code className="bg-emerald-100 dark:bg-slate-900 px-1 py-0.5 rounded text-emerald-600 dark:text-emerald-400 font-mono text-[10px]">[Fração]</code>) para preenchimento dinâmico.
+            </div>
 
-          {/* Sub-tabs switch */}
-          <div className="flex border-b border-slate-200 dark:border-slate-800 gap-1 pb-px no-print">
-            <button
-              onClick={() => setIaActiveSubTab("modelos")}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold rounded-t-lg transition-all border-b-2 cursor-pointer ${
-                iaActiveSubTab === "modelos"
-                  ? "border-emerald-500 bg-emerald-50/40 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
-                  : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50/20"
-              }`}
-            >
-              <FileText className="h-4 w-4" />
-              <span>Modelos de E-mail Oficiais (11 Templates)</span>
-            </button>
-            <button
-              onClick={() => setIaActiveSubTab("config")}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold rounded-t-lg transition-all border-b-2 cursor-pointer ${
-                iaActiveSubTab === "config"
-                  ? "border-emerald-500 bg-emerald-50/40 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
-                  : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50/20"
-              }`}
-            >
-              <Settings className="h-4 w-4" />
-              <span>Caixa de Entrada & Integração IA</span>
-            </button>
-          </div>
-
-          {/* SUB-TAB 1: MODELOS DE EMAIL OFICIAIS */}
-          {iaActiveSubTab === "modelos" && (
-            <div className="space-y-6 animate-fadeIn">
-              <div className="bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 p-4 rounded-xl text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-                <p className="font-bold text-emerald-700 dark:text-emerald-400 mb-1">📢 Homologação de Modelos — Versão Oficial CondoManager AI</p>
-                Os 11 modelos de e-mail abaixo cumprem rigorosamente os regulamentos de notificação do condomínio. Pode personalizar o assunto e o corpo de texto, mantendo as chaves dinâmicas entre parênteses retos (ex: <code className="bg-emerald-100 dark:bg-slate-900 px-1 py-0.5 rounded text-emerald-600 dark:text-emerald-400 font-mono text-[10px]">[Nome]</code>, <code className="bg-emerald-100 dark:bg-slate-900 px-1 py-0.5 rounded text-emerald-600 dark:text-emerald-400 font-mono text-[10px]">[Fração]</code>) para preenchimento dinâmico.
-              </div>
-
-              {/* Filter Categorias */}
-              <div className="flex gap-1.5 overflow-x-auto pb-1 no-print">
-                {["All", "I. FINANÇAS", "II. DOCUMENTOS OFICIAIS", "III. ESPAÇOS COMUNS", "IV. ASSEMBLEIAS", "V. SISTEMA"].map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategoryFilter(cat)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors ${
-                      selectedCategoryFilter === cat
-                        ? "bg-emerald-600 text-white shadow-xs"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-750"
-                    }`}
-                  >
-                    {cat === "All" ? "Todos os Modelos" : cat.replace(" (apenas os essenciais)", "")}
-                  </button>
-                ))}
-              </div>
+            {/* Filter Categorias */}
+            <div className="flex gap-1.5 overflow-x-auto pb-1 no-print">
+              {["All", "I. FINANÇAS", "II. DOCUMENTOS OFICIAIS", "III. ESPAÇOS COMUNS", "IV. ASSEMBLEIAS", "V. SISTEMA"].map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategoryFilter(cat)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors ${
+                    selectedCategoryFilter === cat
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-750"
+                  }`}
+                >
+                  {cat === "All" ? "Todos os Modelos" : cat.replace(" (apenas os essenciais)", "")}
+                </button>
+              ))}
+            </div>
 
               {/* Grid layout */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -1291,11 +1425,33 @@ export function ConfiguracoesAdministracao({
                 </div>
               </div>
             </div>
-          )}
+          </div>
+      )}
 
-          {/* SUB-TAB 2: ORIGINAL EMAIL CONFIGURATION & AUTORESPONDER */}
-          {iaActiveSubTab === "config" && (
-            <div className="space-y-6 max-w-4xl animate-fadeIn">
+      {/* ---------------- 3. ASSISTENTE IA & MOTOR DE RESPOSTA (LAYOUT CONDOMANAGER OFICIAL) ---------------- */}
+      {activeSubSection === "ia" && (
+        <div className="space-y-6">
+          {/* Header Banner Oficial CondoManager */}
+          <div className="bg-gradient-to-r from-purple-950 via-slate-900 to-slate-950 border border-purple-500/30 p-5 rounded-2xl shadow-lg text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center shrink-0">
+                <Sparkles className="h-6 w-6 text-purple-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-black uppercase tracking-wider text-white">Assistente IA & Motor de Resposta Automática</h3>
+                  <span className="bg-purple-500/20 text-purple-400 border border-purple-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse"></span>
+                    <span>Motor Ativo</span>
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">Configuração do assistente inteligente, sincronização de correio eletrónico e processamento autónomo de comprovativos.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+            <div className="space-y-6 max-w-4xl">
               
               {/* 1. PAINEL DE CONTROLO DO AUTO-RESPONDER & SINCRONIZADOR */}
               <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm text-slate-100 space-y-4">
@@ -1355,7 +1511,7 @@ export function ConfiguracoesAdministracao({
                       value={syncInterval}
                       onChange={(e) => {
                         setSyncInterval(e.target.value);
-                        localStorage.setItem(`sync_interval_${predio.id_predio}`, e.target.value);
+                        localStorage.setItem(`sync_interval_${predioId}`, e.target.value);
                       }}
                       className="text-xs bg-slate-900 border border-slate-700 rounded px-2 py-1 font-bold text-slate-200"
                     >
@@ -1571,14 +1727,33 @@ export function ConfiguracoesAdministracao({
                 </div>
               </form>
             </div>
-          )}
           </div>
         </div>
       )}
 
-      {/* ---------------- 3. NOTIFICAÇÕES ---------------- */}
+      {/* ---------------- 4. NOTIFICAÇÕES (LAYOUT CONDOMANAGER OFICIAL) ---------------- */}
       {activeSubSection === "notificacoes" && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+        <div className="space-y-6">
+          {/* Header Banner Oficial CondoManager */}
+          <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-slate-950 border border-blue-500/30 p-5 rounded-2xl shadow-lg text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center shrink-0">
+                <Bell className="h-6 w-6 text-blue-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-black uppercase tracking-wider text-white">Canais de Notificação & Alertas</h3>
+                  <span className="bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+                    <span>Multicanal Ativo</span>
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">Defina quais eventos despoletam alertas push, e-mails ou SMS aos condóminos, técnicos e órgãos de administração.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
           <div>
             <h3 className="text-sm font-black uppercase tracking-wider text-slate-400">Configuração de Alertas e Notificações</h3>
             <p className="text-xs text-slate-500">Defina quais eventos despoletam alertas push e e-mails aos condóminos e técnicos.</p>
@@ -1682,23 +1857,44 @@ export function ConfiguracoesAdministracao({
             </div>
           </div>
         </div>
+      </div>
       )}
 
-      {/* ---------------- 4. LOG DE SISTEMA (REGISTO DE ATIVIDADE) ---------------- */}
+      {/* ---------------- 5. LOG DE SISTEMA (REGISTO DE ATIVIDADE) ---------------- */}
       {activeSubSection === "logs" && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-          <div className="flex justify-between items-start flex-wrap gap-4">
-            <div>
-              <h3 className="text-sm font-black uppercase tracking-wider text-slate-400">Log de Sistema (Registo Integral de Atividade)</h3>
-              <p className="text-xs text-slate-500">Histórico detalhado e inalterável de auditoria contínua, alterações e intervenções da IA.</p>
+        <div className="space-y-6">
+          {/* Header Banner Oficial CondoManager */}
+          <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-slate-950 border border-amber-500/30 p-5 rounded-2xl shadow-lg text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0">
+                <FileText className="h-6 w-6 text-amber-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-black uppercase tracking-wider text-white">Log de Sistema & Registo de Auditoria</h3>
+                  <span className="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span>Auditoria Inalterável</span>
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">Histórico detalhado e cronológico de alterações, acessos e operações efetuadas pelos utilizadores e automatismos.</p>
+              </div>
             </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex justify-between items-start flex-wrap gap-4">
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-wider text-slate-400">Log de Sistema (Registo Integral de Atividade)</h3>
+                <p className="text-xs text-slate-500">Histórico detalhado e inalterável de auditoria contínua, alterações e intervenções da IA.</p>
+              </div>
 
             <button
               onClick={() => {
                 const clearOk = confirm("Tem a certeza que deseja limpar o registo de logs simulados de auditoria local?");
                 if (clearOk) {
                   setLogs([]);
-                  localStorage.removeItem(`system_activity_logs_${predio.id_predio}`);
+                  localStorage.removeItem(`system_activity_logs_${predioId}`);
                 }
               }}
               className="text-[10px] text-red-500 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 px-2.5 py-1.5 rounded-lg border border-red-200 font-bold cursor-pointer"
@@ -1794,11 +1990,32 @@ export function ConfiguracoesAdministracao({
             </table>
           </div>
         </div>
+      </div>
       )}
 
-      {/* ---------------- 5. EXPORTAÇÃO & BACKUP ---------------- */}
+      {/* ---------------- 6. EXPORTAÇÃO & BACKUP (LAYOUT CONDOMANAGER OFICIAL) ---------------- */}
       {activeSubSection === "exportacao" && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+        <div className="space-y-6">
+          {/* Header Banner Oficial CondoManager */}
+          <div className="bg-gradient-to-r from-teal-950 via-slate-900 to-slate-950 border border-teal-500/30 p-5 rounded-2xl shadow-lg text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center shrink-0">
+                <Database className="h-6 w-6 text-teal-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-black uppercase tracking-wider text-white">Exportação de Dados & Cópias de Segurança</h3>
+                  <span className="bg-teal-500/20 text-teal-400 border border-teal-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse"></span>
+                    <span>Backup Total (.ZIP / JSON)</span>
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">Efetue cópias de segurança instantâneas, descarregue o dossier integral em ZIP e exporte manuais em PDF e DOC.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
           <div>
             <h3 className="text-sm font-black uppercase tracking-wider text-slate-400">Exportação e Backups de Segurança</h3>
             <p className="text-xs text-slate-500">Efetue cópias de segurança instantâneas, parciais ou automáticas e garanta a custódia total dos seus dados.</p>
@@ -1924,6 +2141,7 @@ export function ConfiguracoesAdministracao({
 
           </div>
         </div>
+      </div>
       )}
 
     </div>

@@ -133,33 +133,33 @@ export function DashboardKPIs({
   const cleaningEfficiencyScore = 94.5; // Custom KPI based on checklist completion
 
   // 5. CHARTS DATA PREPARATION
-  // Chart A: Monthly Cashflow (Simulated based on actual data with fallback)
-  const monthlyCashflowData = [
-    { name: "Jan 26", Receitas: 1100, Despesas: 850 },
-    { name: "Fev 26", Receitas: 1250, Despesas: 900 },
-    { name: "Mar 26", Receitas: 1200, Despesas: 1100 },
-    { name: "Abr 26", Receitas: 1400, Despesas: 750 },
-    { name: "Mai 26", Receitas: 1350, Despesas: 950 },
-    { name: "Jun 26", Receitas: 1550, Despesas: 1200 },
-    { name: "Jul 26", Receitas: Math.round(totalRevenues / 6), Despesas: Math.round(totalExpenses / 6) }
-  ];
+  // Chart A: Monthly Cashflow (Gerado estritamente a partir dos movimentos reais do prédio, iniciando a zero)
+  const mesesCurto = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul"];
+  const monthlyCashflowData = mesesCurto.map((mes, idx) => {
+    let rec = 0;
+    let desp = 0;
+    predioMovimentos.forEach(m => {
+      const dataRaw = m.data || (m as any).data_movimento;
+      if (!dataRaw) return;
+      const d = new Date(dataRaw);
+      if (!isNaN(d.getTime()) && d.getMonth() === idx) {
+        const val = Number(m.valor) || 0;
+        const tipo = String(m.tipo || "").toUpperCase();
+        if (tipo === "RECEITA" || tipo === "ENTRADA" || tipo === "QUOTA") rec += val;
+        else if (tipo === "DESPESA" || tipo === "SAIDA") desp += val;
+      }
+    });
+    return { name: `${mes} 26`, Receitas: rec, Despesas: desp };
+  });
 
-  // Chart B: Expenses Breakdown by Category (aggregated dynamically from movements)
+  // Chart B: Expenses Breakdown by Category (aggregated dynamically from movements, zero when empty)
   const categoriesMap: { [cat: string]: number } = {};
   predioMovimentos
-    .filter(m => m.tipo === "Despesa")
+    .filter(m => String(m.tipo || "").toUpperCase() === "DESPESA" || String(m.tipo || "").toUpperCase() === "SAIDA")
     .forEach(m => {
-      categoriesMap[m.categoria] = (categoriesMap[m.categoria] || 0) + m.valor;
+      const cat = m.categoria || "Outras Despesas";
+      categoriesMap[cat] = (categoriesMap[cat] || 0) + (Number(m.valor) || 0);
     });
-
-  // Default values if no despesas movements exist yet
-  if (Object.keys(categoriesMap).length === 0) {
-    categoriesMap["Manutenção Elevadores"] = 450;
-    categoriesMap["Eletricidade Comum"] = 280;
-    categoriesMap["Limpeza de Escadas"] = 350;
-    categoriesMap["Seguro Multirisco"] = 620;
-    categoriesMap["Outras Despesas"] = 150;
-  }
 
   const expenseBreakdownData = Object.entries(categoriesMap).map(([category, value]) => ({
     name: category,
@@ -168,14 +168,22 @@ export function DashboardKPIs({
 
   const COLORS_PIE = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6"];
 
-  // Chart C: Debt Overdue vs Recovered Over Time (cumulative)
-  const debtHistoryData = [
-    { name: "Mar 26", DividaEmitida: 1200, DividaRecuperada: 950 },
-    { name: "Abr 26", DividaEmitida: 1500, DividaRecuperada: 1150 },
-    { name: "Mai 26", DividaEmitida: 1800, DividaRecuperada: 1400 },
-    { name: "Jun 26", DividaEmitida: 2100, DividaRecuperada: 1750 },
-    { name: "Jul 26", DividaEmitida: Math.round(totalOutstandingDebt + totalPaidRevenues), DividaRecuperada: Math.round(totalPaidRevenues) }
-  ];
+  // Chart C: Debt Overdue vs Recovered Over Time (cumulative, strictly from actual avisos)
+  const debtHistoryData = mesesCurto.slice(2).map((mes, idx) => {
+    const mesIdx = idx + 2; // Mar a Jul
+    let emitida = 0;
+    let recuperada = 0;
+    predioAvisos.forEach(a => {
+      const d = new Date(a.vencimento);
+      if (!isNaN(d.getTime()) && d.getMonth() <= mesIdx) {
+        emitida += (Number(a.valor) || 0);
+        if (a.estado === "Liquidado") {
+          recuperada += (Number(a.valor) || 0);
+        }
+      }
+    });
+    return { name: `${mes} 26`, DividaEmitida: emitida, DividaRecuperada: recuperada };
+  });
 
   return (
     <div className="space-y-6">
