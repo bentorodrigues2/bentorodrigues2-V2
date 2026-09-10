@@ -1,43 +1,34 @@
-// fix deploy
-
-export function gerarHtmlFinal(categoria, mensagem, nome) {
-  const imagens = {
-    documentos: "/public/marcas/16-documentos-relatorios.png",
-    quotas: "/public/modulos/57-quota.png",
-    ruido: "/public/modulos/01-predio.png",
-    avaria: "/public/modulos/71-email-de-avarias.png",
-    assembleia: "/public/modulos/01-predio.png",
-    seguro: "/public/modulos/15-documentos-da-fracao.png",
-    informacao: "/public/modulos/15-documentos-da-fracao.png",
-    urgencia: "/public/modulos/01-predio.png",
-    inquilino: "/public/modulos/11-proprietario.png",
-    coproprietario: "/public/modulos/11-proprietario.png",
-    proprietario: "/public/modulos/11-proprietario.png",
-  };
+export function gerarHtmlFinal(nome) {
 
   return `
     <div style="max-width:650px;margin:0 auto;font-family:Arial, sans-serif;">
-      
+
+      <!-- Logotipo ao centro -->
       <div style="text-align:center;margin-bottom:25px;">
-        <img src="/public/marca/20-Logotipo Horizontal com fundo.png"
+        <img src="https://bentorodrigues2.vercel.app/email/20-Logotipo-Horizontal-com-fundo.png"
              alt="CondoManager AI"
              style="width:260px;opacity:0.95;" />
       </div>
 
       <p>Olá ${nome},</p>
 
-      <p>${mensagem}</p>
+      <p>Agradecemos o seu contacto.</p>
 
+      <!-- Imagem por baixo do texto -->
       <div style="text-align:center;margin:25px 0;">
-        <img src="${imagens[categoria]}" style="width:100%;max-width:650px;border-radius:8px;" />
+        <img src="https://bentorodrigues2.vercel.app/email/20-email-opt.webp"
+             alt="Email recebido"
+             style="width:100%;max-width:650px;border-radius:8px;" />
       </div>
 
-      <p>Caso necessite de documentação adicional, poderá solicitar através da aplicação móvel ou enviando email para bentorodrigues2@gmail.com.</p>
+      <p>Caso necessite de esclarecimentos adicionais poderá solicitar através da aplicação móvel enviando mensagem direta para a administração.</p>
 
       <p>
         Com os meus cumprimentos,<br/>
-        José Carlos Guerra<br/>
-        Administração do Condomínio
+        A administração do condomínio<br/>
+        <strong>José Carlos Guerra</strong><br/>
+        📞 +351 919 943 465<br/>
+        ✉️ bentorodrgues2@gmail.com
       </p>
 
     </div>
