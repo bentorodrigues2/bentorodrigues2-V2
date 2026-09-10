@@ -1,13 +1,11 @@
-import { ,  } from "next";
 import { supabase } from "@/lib/supabaseClient";
-import { resend } from "@/lib/resend";
 import { gerarHtmlFinal } from "@/services/lib/htmlEmail";
 
 // -----------------------------
 // 1. Classificador via AI Studio Router
 // -----------------------------
 async function classificarCategoria(texto) {
-  const resposta = await fetch(process.env.AI_STUDIO_CLASSIFICADOR_URL!, {
+  const resposta = await fetch(process.env.AI_STUDIO_CLASSIFICADOR_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -17,7 +15,7 @@ async function classificarCategoria(texto) {
   });
 
   const data = await resposta.json();
-  return data.categoria;
+  return data?.categoria || null;
 }
 
 // -----------------------------
@@ -30,7 +28,7 @@ async function obterContextoDaFracao(email) {
     .eq("email", email)
     .single();
 
-  return data;
+  return data || null;
 }
 
 // -----------------------------
@@ -42,7 +40,7 @@ async function obterAnexosDaFracao(id_predio) {
     .select("nome, url_foto")
     .eq("id_predio", id_predio);
 
-  if (error) {
+  if (error || !data) {
     console.error("Erro ao obter anexos:", error);
     return [];
   }
@@ -56,7 +54,7 @@ async function obterAnexosDaFracao(id_predio) {
 // -----------------------------
 // 4. HANDLER PRINCIPAL
 // -----------------------------
-export default async function handler(req: , res: ) {
+export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Método não permitido" });
@@ -90,7 +88,7 @@ export default async function handler(req: , res: ) {
     const contexto = await obterContextoDaFracao(from);
 
     // 4. Enviar para o AI Studio Router
-    const aiRes = await fetch(process.env.AI_STUDIO_URL!, {
+    const aiRes = await fetch(process.env.AI_STUDIO_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -127,7 +125,7 @@ export default async function handler(req: , res: ) {
 
     // 6. Anexos automáticos
     let anexos = [];
-    if (aiData.acao === "anexar_documentos") {
+    if (aiData.acao === "anexar_documentos" && contexto?.id_predio) {
       anexos = await obterAnexosDaFracao(contexto.id_predio);
     }
 
@@ -157,7 +155,10 @@ export default async function handler(req: , res: ) {
 
   } catch (err) {
     console.error("Erro no ai-studio-inbound:", err);
-    return res.status(500).json({ error: "Erro no ai-studio-inbound", detail: err.message });
+    return res.status(500).json({
+      error: "Erro no ai-studio-inbound",
+      detail: err?.message || String(err),
+    });
   }
 }
-
+S

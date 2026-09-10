@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default async function handler(req, res) {
-  // Health check (evita crash ao abrir no navegador)
+  // Health check
   if (req.method === "GET") {
     return res.status(200).json({
       status: "online",
@@ -27,6 +27,7 @@ export default async function handler(req, res) {
 
     const email = req.body.email || {};
     const documentos = req.body.documentos || [];
+
     const textoPrincipal =
       req.body.texto ||
       email.bodyText ||
@@ -56,17 +57,17 @@ Devolve a análise em formato JSON com:
     "resumo": "Descrição do movimento"
   }
 }
-`;
+`.trim();
 
-    // Conteúdos: texto + anexos inlineData
-    const contents[] = [
-  {
-    role: "user",
-    parts: [{ text: prompt }]
-  }
-];
+    // Construção correta do array contents
+    const contents = [
+      {
+        role: "user",
+        parts: [{ text: prompt }]
+      }
+    ];
 
-
+    // Adicionar anexos
     if (Array.isArray(documentos)) {
       for (const doc of documentos) {
         if (doc.base64 && doc.mimeType) {
@@ -81,8 +82,8 @@ Devolve a análise em formato JSON com:
     }
 
     // Executar Gemini
-    const result = await model.generateContent(contents);
-    const textoIA = result.response.text();
+    const result = await model.generateContent({ contents });
+    const textoIA = result?.response?.text() || "";
 
     // Extrair JSON da resposta
     let dadosJson = {};
@@ -101,7 +102,7 @@ Devolve a análise em formato JSON com:
   } catch (e) {
     console.error("Erro no processamento da IA:", e);
     return res.status(500).json({
-      erro: e.message || "Erro desconhecido ao invocar o modelo Gemini"
+      erro: e?.message || "Erro desconhecido ao invocar o modelo Gemini"
     });
   }
 }

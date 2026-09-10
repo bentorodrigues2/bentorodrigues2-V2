@@ -1,69 +1,79 @@
-import { createClient } from "@supabase/supabase-js";
+import { google } from "googleapis";
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ erro: "Método não permitido" });
-  }
-
-  const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE
-  );
-
-  const { email, documentos, aiResult, resendStatus } = req.body;
-
   try {
-    // 1) Guardar email
-    const { data: emailRow, error: emailErr } = await supabase
-      .from("emails_recebidos")
-      .insert({
-        message_id: email.messageId,
-        from_email: email.from,
-        to_email: email.to,
-        subject: email.subject,
-        date: email.date,
-        body_text: email.bodyText,
-        body_html: email.bodyHtml,
-        estado_autoresponder: resendStatus,
-        resposta_enviada: resendStatus === "SUCCESS",
-        predio_id: process.env.PREDIO_ID || "predio-1"
-      })
-      .select()
-      .single();
+    // 1. Autenticação Gmail API
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GMAIL_CLIENT_ID,
+      process.env.GMAIL_CLIENT_SECRET,
+      "https://developers.google.com/oauthplayground"
+    );
 
-    if (emailErr) throw emailErr;
-
-    // 2) Guardar anexos
-    for (const doc of documentos || []) {
-      await supabase.from("emails_anexos").insert({
-        email_id: emailRow.id,
-        nome: doc.nome,
-        mime_type: doc.mimeType,
-        base64: doc.base64
-      });
-    }
-
-    // 3) Guardar resultado da IA
-    if (aiResult) {
-      await supabase.from("ia_resultados").insert({
-        email_id: emailRow.id,
-        tipo_documento: aiResult.tipoDocumento || null,
-        valor: aiResult.valor || null,
-        entidade: aiResult.entidade || null,
-        instrucoes: aiResult.instrucoesAutoresponder || aiResult
-      });
-    }
-
-    // 4) Guardar log
-    await supabase.from("emails_logs").insert({
-      email_id: emailRow.id,
-      log: JSON.stringify(req.body)
+    oauth2Client.setCredentials({
+      refresh_token: process.env.GMAIL_REFRESH_TOKEN,
     });
 
-    return res.status(200).json({ sucesso: true, emailId: emailRow.id });
-  } catch (e) {
-    console.error("Erro no endpoint:", e);
-    return res.status(500).json({ erro: e.message });
+    const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+    // 2. Buscar emails não lidos
+    const list = await gmail.users.messages.list({
+      userId: "me",
+      q: "is:unread",
+      maxResults: 10,
+    });
+
+    const messages = list.data.messages || [];
+
+    for (const msg of messages) {
+      const full = await gmail.users.messages.get({
+        userId: "me",
+        id: msg.id,
+      });
+
+      const payload = full.data.payload || {};
+      const headers = payload.headers || [];
+
+      const from = headers.find(h => h.name === "From")?.value || "";
+      const subject = headers.find(h => h.name === "Subject")?.value || "";
+
+      // 3. Extrair corpo do email
+      let body = "";
+      if (payload.parts) {
+        const part = payload.parts.find(p => p.mimeType === "text/plain");
+        if (part?.body?.data) {
+          body = Buffer.from(part.body.data, "base64").toString("utf8");
+        }
+      }
+
+      // 4. Enviar para o AI Studio
+      await fetch(`${process.env.API_BASE_URL}/api/ai-studio-inbound`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from,
+          subject,
+          body,
+          attachments: [],
+        }),
+      });
+
+      // 5. Marcar como lido
+      await gmail.users.messages.modify({
+        userId: "me",
+        id: msg.id,
+        requestBody: {
+          removeLabelIds: ["UNREAD"],
+        },
+      });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      processed: messages.length,
+    });
+  } catch (err) {
+    console.error("Erro no gmail-reader:", err);
+    return res.status(500).json({ error: "Erro no gmail-reader" });
   }
 }
 
