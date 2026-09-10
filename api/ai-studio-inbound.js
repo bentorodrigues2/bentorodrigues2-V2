@@ -137,7 +137,7 @@ export default async function handler(req, res) {
         Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "noreply@bentorodrigues.pt",
+       from: "Condomínio <administracao@condomanagerai.com>"
         to: from,
         subject: aiData.subject || subject,
         html: htmlFinal,
