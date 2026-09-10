@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { Vercel, Vercel } from '@vercel/node';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
 
@@ -11,21 +11,21 @@ const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-type Documento = {
-  nome: string;
-  mimeType: string;
-  base64: string;
+// type Documento = {
+  nome;
+  mimeType;
+  base64;
 };
 
-type Payload = {
+// type Payload = {
   email: {
-    from: string;
-    to: string;
-    subject: string;
+    from;
+    to;
+    subject;
   };
-  predioId: string;
+  predioId;
   documentos: Documento[];
-  secret?: string;
+  secret?;
 };
 
 async function reconhecerDocumento(doc: Documento) {
@@ -51,7 +51,7 @@ async function reconhecerDocumento(doc: Documento) {
   return res.response.text();
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: Vercel, res: Vercel) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -98,8 +98,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       documentosReconhecidos: resultados,
       email: body.email,
     });
-  } catch (e: any) {
+  } catch (e) {
     console.error('Erro em /api/reconhecer-documentos:', e);
     return res.status(500).json({ error: 'Erro interno no reconhecimento' });
   }
 }
+

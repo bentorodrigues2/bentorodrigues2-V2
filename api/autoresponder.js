@@ -1,28 +1,28 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { Vercel, Vercel } from '@vercel/node';
 import { Resend } from 'resend';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY!;
 const CONDOMANAGER_API_SECRET = process.env.CONDOMANAGER_API_SECRET!;
 const resend = new Resend(RESEND_API_KEY);
 
-type Reconhecimento = {
-  nome: string;
-  mimeType: string;
-  resultado: string;
+// type Reconhecimento = {
+  nome;
+  mimeType;
+  resultado;
 };
 
-type Payload = {
+// type Payload = {
   email: {
-    from: string;
-    to: string;
-    subject: string;
+    from;
+    to;
+    subject;
   };
-  predioId: string;
+  predioId;
   documentosReconhecidos: Reconhecimento[];
-  secret?: string;
+  secret?;
 };
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: Vercel, res: Vercel) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -50,8 +50,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     return res.status(200).json({ success: true });
-  } catch (e: any) {
+  } catch (e) {
     console.error('Erro em /api/autoresponder:', e);
     return res.status(500).json({ error: 'Erro interno no autoresponder' });
   }
 }
+

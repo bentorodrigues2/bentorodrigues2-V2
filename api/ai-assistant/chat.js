@@ -1,7 +1,7 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { Vercel, Vercel } from "@vercel/node";
 import { GoogleGenAI } from "@google/genai";
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: Vercel, res: Vercel) {
   if (req.method === "GET") {
     return res.status(200).json({ status: "online", endpoint: "ai-assistant/chat" });
   }
@@ -38,11 +38,11 @@ Diretrizes:
    [/DOCUMENTO_OFICIAL]
 3. Responde de forma cordial, rigorosa e em português de Portugal (pt-PT).`;
 
-    const formattedContents: any[] = [];
+    const formattedContents[] = [];
     if (Array.isArray(messages)) {
       for (const msg of messages) {
         const role = msg.role === "model" ? "model" : "user";
-        const parts: any[] = [];
+        const parts[] = [];
 
         if (msg.images && Array.isArray(msg.images)) {
           for (const img of msg.images) {
@@ -80,7 +80,7 @@ Diretrizes:
 
     const candidateModels = ["gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-flash-latest"];
     let replyText = "";
-    let lastErr: any = null;
+    let lastErr = null;
 
     for (const modelName of candidateModels) {
       for (let attempt = 1; attempt <= 2; attempt++) {
@@ -94,7 +94,7 @@ Diretrizes:
             replyText = response.text;
             break;
           }
-        } catch (err: any) {
+        } catch (err) {
           lastErr = err;
           const errMsg = String(err?.message || err);
           if ((errMsg.includes("503") || errMsg.includes("high demand")) && attempt === 1) {
@@ -112,8 +112,9 @@ Diretrizes:
     }
 
     return res.status(200).json({ reply: replyText });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Erro na API ai-assistant/chat:", err);
     return res.status(500).json({ error: err.message || "Erro ao comunicar com o Gemini." });
   }
 }
+
