@@ -5,7 +5,7 @@ export function gerarHtmlFinal(nome) {
 
       <!-- Logotipo ao centro -->
       <div style="text-align:center;margin-bottom:25px;">
-        <img src="https://bentorodrigues2.vercel.app/email/20-Logotipo-Horizontal-com-fundo.png"
+        <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp"
              alt="CondoManager AI"
              style="width:260px;opacity:0.95;" />
       </div>
