@@ -1,39 +1,24 @@
-// /api/ai-studio-router.ts
+export default async function handler(req, res) {
+  const MODEL_URL = process.env.AI_STUDIO_MODEL_URL;
+  const MODEL_API_KEY = process.env.AI_STUDIO_API_KEY;
 
-import { ,  } from "next";
-
-const MODEL_URL = process.env.AI_STUDIO_MODEL_URL!;
-const MODEL_API_KEY = process.env.AI_STUDIO_API_KEY!;
-
-// Tipos de dados que o inbound te envia
-// type InboundEmailPayload = {
-  from;      // email do remetente
-  subject;   // assunto original
-  text;      // corpo do email em texto simples
-};
-
-// type AiStudio = {
-  subject | null;
-  message | null;
-};
-
-export default async function handler(req: , res: ) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método não permitido" });
   }
 
   if (!MODEL_URL || !MODEL_API_KEY) {
-    return res.status(500).json({ error: "AI Studio não configurado (MODEL_URL ou API_KEY em falta)" });
+    return res.status(500).json({
+      error: "AI Studio não configurado (MODEL_URL ou API_KEY em falta)"
+    });
   }
 
-  const payload = req.body as InboundEmailPayload;
+  const payload = req.body;
 
   if (!payload || !payload.from || !payload.subject || !payload.text) {
     return res.status(400).json({ error: "Payload inválido para o AI Studio" });
   }
 
   try {
-    // Construir a prompt dinâmica com base no email recebido
     const prompt = `
 Tu és o motor de resposta automática do condomínio.
 Recebes o assunto, o corpo e o remetente de um email e devolves apenas JSON, nunca HTML.
@@ -79,21 +64,20 @@ Dados do email recebido:
 ${payload.text}
     `.trim();
 
-    // Chamada ao modelo Gemini via AI Studio
     const aiRes = await fetch(MODEL_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${MODEL_API_KEY}`,
+        "Authorization": `Bearer ${MODEL_API_KEY}`
       },
       body: JSON.stringify({
         contents: [
           {
             role: "user",
-            parts: [{ text: prompt }],
-          },
-        ],
-      }),
+            parts: [{ text: prompt }]
+          }
+        ]
+      })
     });
 
     if (!aiRes.ok) {
@@ -101,32 +85,31 @@ ${payload.text}
       return res.status(500).json({
         error: "Falha na chamada ao modelo Gemini",
         status: aiRes.status,
-        body: text,
+        body: text
       });
     }
 
-    // Aqui assumimos que o AI Studio já está configurado para devolver JSON no formato:
-    // { "subject": "...", "message": "..." }
-    const aiJson = (await aiRes.json()) as AiStudio;
+    const aiJson = await aiRes.json();
 
-    // Validação mínima
-    if (typeof aiJson !== "object" || !("subject" in aiJson) || !("message" in aiJson)) {
+    if (
+      typeof aiJson !== "object" ||
+      !("subject" in aiJson) ||
+      !("message" in aiJson)
+    ) {
       return res.status(500).json({
         error: "Resposta do AI Studio inválida (sem subject/message)",
-        raw: aiJson,
+        raw: aiJson
       });
     }
 
-    // Devolver JSON limpo para o inbound montar o HTML com imagem
     return res.status(200).json({
       subject: aiJson.subject,
-      message: aiJson.message,
+      message: aiJson.message
     });
   } catch (err) {
     return res.status(500).json({
       error: "Erro no ai-studio-router",
-      detail: err?.message ?? String(err),
+      detail: err?.message || String(err)
     });
   }
 }
-
