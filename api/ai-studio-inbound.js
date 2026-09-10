@@ -117,11 +117,13 @@ export default async function handler(req, res) {
     }
 
     // 5. HTML final
-    const htmlFinal = gerarHtmlFinal(
-      categoria,
-      aiData.message,
-      contexto?.nome || "Condómino"
-    );
+const nomeRemetente =
+  contexto?.nome ||
+  from?.split("@")[0] ||
+  "Condómino";
+
+const htmlFinal = gerarHtmlFinal(nomeRemetente);
+
 
     // 6. Anexos automáticos
     let anexos = [];

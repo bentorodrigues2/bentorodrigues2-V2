@@ -7,10 +7,10 @@ export function gerarHtmlFinal(nome) {
       <div style="text-align:center;margin-bottom:25px;">
         <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp"
              alt="CondoManager AI"
-             style="width:260px;opacity:0.95;" />
+             style="width:220px;opacity:0.95;" />
       </div>
 
-      <p>Olá ${nome},</p>
+      <p>Olá ${nome || "Condómino"},</p>
 
       <p>Agradecemos o seu contacto.</p>
 
@@ -18,7 +18,7 @@ export function gerarHtmlFinal(nome) {
       <div style="text-align:center;margin:25px 0;">
         <img src="https://bentorodrigues2.vercel.app/email/20-email-opt.webp"
              alt="Email recebido"
-             style="width:100%;max-width:650px;border-radius:8px;" />
+             style="width:85%;max-width:480px;border-radius:8px;" />
       </div>
 
       <p>Caso necessite de esclarecimentos adicionais poderá solicitar através da aplicação móvel enviando mensagem direta para a administração.</p>
@@ -28,7 +28,9 @@ export function gerarHtmlFinal(nome) {
         A administração do condomínio<br/>
         <strong>José Carlos Guerra</strong><br/>
         📞 +351 919 943 465<br/>
-        ✉️ bentorodrgues2@gmail.com
+        <span style="color:#0a8a0a; font-weight:bold;">
+          ✉️ bentorodrgues2@gmail.com
+        </span>
       </p>
 
     </div>
