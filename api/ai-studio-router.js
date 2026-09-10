@@ -34,28 +34,6 @@ Se o remetente for fornecedor, sistema automático ou endereço não humano, dev
   "message": null
 }
 
-Considera como fornecedores ou emails automáticos:
-- emails que contenham: noreply, no-reply, do-not-reply, donotreply, automated, mailer-daemon, postmaster
-- newsletters, campanhas, marketing, promoções
-- domínios de fornecedores conhecidos (EDP, GALP, Vodafone, MEO, NOS, seguradoras, empresas de manutenção)
-
-Analisa o email recebido e identifica:
-- tema (quotas, ruído, avarias, assembleias, documentos, pedidos gerais)
-- urgência
-- tom do remetente
-- intenção (informar, reclamar, pedir ajuda, solicitar documentos)
-
-Estilo da resposta:
-- profissional, cordial, clara, objetiva
-- sem HTML, sem imagens, sem markdown, sem emojis
-
-Estrutura do campo "message":
-1. Agradecimento pela mensagem
-2. Confirmação de receção
-3. Resposta contextual ao tema identificado
-4. Informação adicional relevante (se aplicável)
-5. Encerramento cordial
-
 Dados do email recebido:
 - Remetente: ${payload.from}
 - Assunto: ${payload.subject}
@@ -70,7 +48,11 @@ ${payload.text}
         "Authorization": `Bearer ${GROQ_API_KEY}`
       },
       body: JSON.stringify({
-      model: "openai/gpt-oss-20b",
+        model: "openai/gpt-oss-20b",
+
+        // 🔥 CORREÇÃO OBRIGATÓRIA
+        response_format: { type: "json_object" },
+
         messages: [
           {
             role: "user",
@@ -93,6 +75,14 @@ ${payload.text}
     const aiJson = await aiRes.json();
     const raw = aiJson?.choices?.[0]?.message?.content;
 
+    // 🔥 CORREÇÃO: proteger resposta vazia ou inválida
+    if (!raw || typeof raw !== "string") {
+      return res.status(500).json({
+        error: "Groq devolveu resposta vazia ou inválida",
+        raw
+      });
+    }
+
     let parsed;
     try {
       parsed = JSON.parse(raw);
@@ -107,6 +97,7 @@ ${payload.text}
       subject: parsed.subject,
       message: parsed.message
     });
+
   } catch (err) {
     return res.status(500).json({
       error: "Erro no groq-router",
