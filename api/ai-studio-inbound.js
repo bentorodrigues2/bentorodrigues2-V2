@@ -1,8 +1,8 @@
 import { supabase } from "../services/lib/supabaseClient.js";
-import { gerarHtmlFinal } from "../services/lib/htmlemail.js";
+import { gerarHtmlFinal } from "../lib/htmlemail.js";
 
 // -----------------------------
-// 1. Classificador via AI Studio Router
+// 1. Classificador via AI Studio Router (agora Groq)
 // -----------------------------
 async function classificarCategoria(texto) {
   const resposta = await fetch(process.env.AI_STUDIO_CLASSIFICADOR_URL, {
@@ -87,7 +87,7 @@ export default async function handler(req, res) {
     // 3. Obter contexto da fração
     const contexto = await obterContextoDaFracao(from);
 
-    // 4. Enviar para o AI Studio Router
+    // 4. Enviar para o Router (agora Groq)
     const aiRes = await fetch(process.env.AI_STUDIO_URL, {
       method: "POST",
       headers: {
