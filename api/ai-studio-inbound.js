@@ -1,5 +1,5 @@
-import { supabase } from "@/lib/supabaseClient";
-import { gerarHtmlFinal } from "@/services/lib/htmlEmail";
+import { supabase } from "../lib/supabaseClient.js";
+import { gerarHtmlFinal } from "../services/lib/htmlEmail.js";
 
 // -----------------------------
 // 1. Classificador via AI Studio Router
@@ -161,4 +161,3 @@ export default async function handler(req, res) {
     });
   }
 }
-S
