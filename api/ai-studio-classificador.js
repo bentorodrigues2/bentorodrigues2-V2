@@ -2,7 +2,7 @@ export default async function handler(req, res) {
   try {
     const { texto } = req.body;
 
-    const resposta = await fetch(process.env.AI_STUDI_MODEL_URL, {
+    const resposta = await fetch(process.env.AI_STUDIO_MODEL_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
