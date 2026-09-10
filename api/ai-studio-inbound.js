@@ -1,5 +1,5 @@
 import { supabase } from "../services/lib/supabaseClient.js";
-import { gerarHtmlFinal } from "../lib/htmlemail.js";
+import { gerarHtmlFinal } from "../services/lib/htmlemail.js";
 
 // -----------------------------
 // 1. Classificador via AI Studio Router (agora Groq)
