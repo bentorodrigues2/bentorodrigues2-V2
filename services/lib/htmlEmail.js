@@ -1,3 +1,5 @@
+// fix deploy
+
 export function gerarHtmlFinal(categoria, mensagem, nome) {
   const imagens = {
     documentos: "/public/marcas/16-documentos-relatorios.png",
