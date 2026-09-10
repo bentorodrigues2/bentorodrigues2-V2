@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "../src/lib/supabaseclient.js";
 
 const FORNECEDOR_PATTERNS = [
   "noreply",
