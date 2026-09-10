@@ -1,5 +1,5 @@
-import { supabase } from "../lib/supabaseClient.js";
-import { gerarHtmlFinal } from "../services/lib/htmlEmail.js";
+import { supabase } from "../src/lib/supabaseclient.js";
+import { gerarHtmlFinal } from "../services/lib/htmlemail.js";
 
 // -----------------------------
 // 1. Classificador via AI Studio Router
