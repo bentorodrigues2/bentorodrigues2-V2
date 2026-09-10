@@ -1,21 +1,20 @@
 export default async function handler(req, res) {
-  const MODEL_URL = process.env.AI_STUDIO_MODEL_URL;
-  const MODEL_API_KEY = process.env.AI_STUDIO_API_KEY;
+  const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método não permitido" });
   }
 
-  if (!MODEL_URL || !MODEL_API_KEY) {
+  if (!GROQ_API_KEY) {
     return res.status(500).json({
-      error: "AI Studio não configurado (MODEL_URL ou API_KEY em falta)"
+      error: "Groq não configurado (API_KEY em falta)"
     });
   }
 
   const payload = req.body;
 
   if (!payload || !payload.from || !payload.subject || !payload.text) {
-    return res.status(400).json({ error: "Payload inválido para o AI Studio" });
+    return res.status(400).json({ error: "Payload inválido para o Groq" });
   }
 
   try {
@@ -64,51 +63,53 @@ Dados do email recebido:
 ${payload.text}
     `.trim();
 
-    const aiRes = await fetch(MODEL_URL, {
+    const aiRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${MODEL_API_KEY}`
+        "Authorization": `Bearer ${GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        contents: [
+        model: "llama-3.1-70b-versatile",
+        messages: [
           {
             role: "user",
-            parts: [{ text: prompt }]
+            content: prompt
           }
-        ]
+        ],
+        temperature: 0.2
       })
     });
 
     if (!aiRes.ok) {
       const text = await aiRes.text().catch(() => "");
       return res.status(500).json({
-        error: "Falha na chamada ao modelo Gemini",
+        error: "Falha na chamada ao modelo Groq",
         status: aiRes.status,
         body: text
       });
     }
 
     const aiJson = await aiRes.json();
+    const raw = aiJson?.choices?.[0]?.message?.content;
 
-    if (
-      typeof aiJson !== "object" ||
-      !("subject" in aiJson) ||
-      !("message" in aiJson)
-    ) {
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
       return res.status(500).json({
-        error: "Resposta do AI Studio inválida (sem subject/message)",
-        raw: aiJson
+        error: "Resposta do Groq inválida (não é JSON)",
+        raw
       });
     }
 
     return res.status(200).json({
-      subject: aiJson.subject,
-      message: aiJson.message
+      subject: parsed.subject,
+      message: parsed.message
     });
   } catch (err) {
     return res.status(500).json({
-      error: "Erro no ai-studio-router",
+      error: "Erro no groq-router",
       detail: err?.message || String(err)
     });
   }
