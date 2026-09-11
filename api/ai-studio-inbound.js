@@ -2,7 +2,7 @@ import { supabase } from "../services/lib/supabaseClient.js";
 import { gerarHtmlFinal } from "../services/lib/htmlemail.js";
 
 // -----------------------------
-// 1. Classificador via AI Studio Classificador (continua igual)
+// 1. Classificador via AI Studio Classificador
 // -----------------------------
 async function classificarCategoria(texto) {
   const resposta = await fetch(process.env.AI_STUDIO_CLASSIFICADOR_URL, {
@@ -82,12 +82,12 @@ export default async function handler(req, res) {
     }
 
     // 2. Classificar categoria
-    const categoria = await classificarCategoria(body);
+    const categoriaClassificada = await classificarCategoria(body);
 
     // 3. Obter contexto da fração
     const contexto = await obterContextoDaFracao(from);
 
-    // 4. Enviar para o Router (AGORA O NOVO ENDPOINT)
+    // 4. Enviar para o Router (AI Studio Router)
     const aiRes = await fetch(process.env.AI_STUDIO_URL, {
       method: "POST",
       headers: {
@@ -100,7 +100,7 @@ export default async function handler(req, res) {
           subject,
           bodyText: body,
         },
-        categoria,
+        categoria: categoriaClassificada,
         contexto,
       }),
     });
@@ -113,26 +113,30 @@ export default async function handler(req, res) {
 
     const aiData = await aiRes.json();
 
+    // 5. Verificar subject/message
     if (!aiData.subject || !aiData.message) {
       console.log("AI Router devolveu subject/message nulos → ignorado.");
       return res.status(200).json({ ok: true, autoresponder: false });
     }
 
-    // 5. HTML final
+    // 6. Categoria final (Groq tem prioridade)
+    const categoriaFinal = aiData.categoria || categoriaClassificada;
+
+    // 7. HTML final
     const nomeRemetente =
       contexto?.nome ||
       from?.split("@")[0] ||
       "Condómino";
 
-    const htmlFinal = gerarHtmlFinal(nomeRemetente);
+    const htmlFinal = gerarHtmlFinal(nomeRemetente, aiData.message);
 
-    // 6. Anexos automáticos
+    // 8. Anexos automáticos
     let anexos = [];
     if (aiData.acao === "anexar_documentos" && contexto?.id_predio) {
       anexos = await obterAnexosDaFracao(contexto.id_predio);
     }
 
-    // 7. Enviar email via Resend
+    // 9. Enviar email via Resend
     const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -144,7 +148,7 @@ export default async function handler(req, res) {
         to: from,
         subject: aiData.subject || subject,
         html: htmlFinal,
-        attachments: anexos,
+        attachments: anexos
       }),
     });
 
