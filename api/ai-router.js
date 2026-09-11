@@ -224,3 +224,4 @@ return res.status(200).json({
   categoria: fallback.categoria,
   source: "regras_condominio_fallback"
 });
+}
