@@ -2,7 +2,7 @@ import { supabase } from "../services/lib/supabaseClient.js";
 import { gerarHtmlFinal } from "../services/lib/htmlemail.js";
 
 // -----------------------------
-// 1. Classificador via AI Studio Router (agora Groq)
+// 1. Classificador via AI Studio Classificador (continua igual)
 // -----------------------------
 async function classificarCategoria(texto) {
   const resposta = await fetch(process.env.AI_STUDIO_CLASSIFICADOR_URL, {
@@ -87,7 +87,7 @@ export default async function handler(req, res) {
     // 3. Obter contexto da fração
     const contexto = await obterContextoDaFracao(from);
 
-    // 4. Enviar para o Router (agora Groq)
+    // 4. Enviar para o Router (AGORA O NOVO ENDPOINT)
     const aiRes = await fetch(process.env.AI_STUDIO_URL, {
       method: "POST",
       headers: {
@@ -95,9 +95,11 @@ export default async function handler(req, res) {
         Authorization: `Bearer ${process.env.AI_STUDIO_API_KEY}`,
       },
       body: JSON.stringify({
-        from,
-        subject,
-        text: body,
+        email: {
+          from,
+          subject,
+          bodyText: body,
+        },
         categoria,
         contexto,
       }),
@@ -112,7 +114,7 @@ export default async function handler(req, res) {
     const aiData = await aiRes.json();
 
     if (!aiData.subject || !aiData.message) {
-      console.log("AI Studio devolveu subject/message nulos → ignorado.");
+      console.log("AI Router devolveu subject/message nulos → ignorado.");
       return res.status(200).json({ ok: true, autoresponder: false });
     }
 
