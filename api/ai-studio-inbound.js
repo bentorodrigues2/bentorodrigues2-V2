@@ -1,5 +1,5 @@
 import { supabase } from "../services/lib/supabaseClient.js";
-import { gerarHtmlFinal } from "../services/lib/htmlemail.js";
+import { gerarHtmlAutoresponder, gerarHtmlResposta } from "../services/lib/htmlemail.js";
 
 // -----------------------------
 // 1. Classificador via AI Studio Classificador
@@ -122,21 +122,22 @@ export default async function handler(req, res) {
     // 6. Categoria final (Groq tem prioridade)
     const categoriaFinal = aiData.categoria || categoriaClassificada;
 
-    // 7. HTML final — AGORA INCLUI A MENSAGEM DO GROQ
+    // 7. Nome do remetente
     const nomeRemetente =
       contexto?.nome ||
       from?.split("@")[0] ||
       "Condómino";
 
-    const htmlFinal = gerarHtmlFinal(nomeRemetente, aiData.message);
+    // 8. HTML da resposta institucional (AI Router)
+    const htmlFinal = gerarHtmlResposta(nomeRemetente, aiData.message);
 
-    // 8. Anexos automáticos
+    // 9. Anexos automáticos
     let anexos = [];
     if (aiData.acao === "anexar_documentos" && contexto?.id_predio) {
       anexos = await obterAnexosDaFracao(contexto.id_predio);
     }
 
-    // 9. Enviar email via Resend
+    // 10. Enviar email via Resend (resposta institucional)
     const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
