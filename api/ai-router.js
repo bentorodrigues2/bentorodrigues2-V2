@@ -192,24 +192,35 @@ Devolve SEMPRE estritamente um JSON no formato:
 `.trim();
 
   // Tentar Groq
-  const respostaGroq = await gerarComGroq(promptGroq);
+const respostaGroq = await gerarComGroq(promptGroq);
 
-  if (respostaGroq && respostaGroq.subject && respostaGroq.message) {
-    return res.status(200).json({
-      subject: respostaGroq.subject,
-      message: respostaGroq.message,
-      categoria: respostaGroq.categoria || categoriaFinal,
-      source: "groq_ai"
-    });
-  }
+// Log da resposta do Groq (mesmo que venha null)
+console.log("AI Router - Resposta Groq:", respostaGroq);
 
-  // Fallback
-  const fallback = gerarRespostaFallback(categoriaFinal, sub, contexto);
+if (respostaGroq && respostaGroq.subject && respostaGroq.message) {
+  console.log("AI Router - Enviando resposta Groq:", {
+    subject: respostaGroq.subject,
+    message: respostaGroq.message,
+    categoria: respostaGroq.categoria || categoriaFinal
+  });
 
   return res.status(200).json({
-    subject: fallback.subject,
-    message: fallback.message,
-    categoria: fallback.categoria,
-    source: "regras_condominio_fallback"
+    subject: respostaGroq.subject,
+    message: respostaGroq.message,
+    categoria: respostaGroq.categoria || categoriaFinal,
+    source: "groq_ai"
   });
 }
+
+// Fallback
+const fallback = gerarRespostaFallback(categoriaFinal, sub, contexto);
+
+// Log do fallback
+console.log("AI Router - Fallback:", fallback);
+
+return res.status(200).json({
+  subject: fallback.subject,
+  message: fallback.message,
+  categoria: fallback.categoria,
+  source: "regras_condominio_fallback"
+});
