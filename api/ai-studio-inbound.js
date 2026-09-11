@@ -78,7 +78,7 @@ export default async function handler(req, res) {
 
     if (bloqueados.some((b) => remetente.includes(b))) {
       console.log("Email ignorado (fornecedor/noreply):", from);
-      return res.status(200).json({ ok: true, ignored: true });
+      return res.status(200).json({ ok: true, autoresponder: false });
     }
 
     // 2. Classificar categoria
@@ -113,17 +113,16 @@ export default async function handler(req, res) {
 
     if (!aiData.subject || !aiData.message) {
       console.log("AI Studio devolveu subject/message nulos → ignorado.");
-      return res.status(200).json({ ok: true, ignored: true });
+      return res.status(200).json({ ok: true, autoresponder: false });
     }
 
     // 5. HTML final
-const nomeRemetente =
-  contexto?.nome ||
-  from?.split("@")[0] ||
-  "Condómino";
+    const nomeRemetente =
+      contexto?.nome ||
+      from?.split("@")[0] ||
+      "Condómino";
 
-const htmlFinal = gerarHtmlFinal(nomeRemetente);
-
+    const htmlFinal = gerarHtmlFinal(nomeRemetente);
 
     // 6. Anexos automáticos
     let anexos = [];
@@ -139,7 +138,7 @@ const htmlFinal = gerarHtmlFinal(nomeRemetente);
         Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-       from: "Condomínio <administracao@condomanagerai.com>",
+        from: "Condomínio <administracao@condomanagerai.com>",
         to: from,
         subject: aiData.subject || subject,
         html: htmlFinal,
