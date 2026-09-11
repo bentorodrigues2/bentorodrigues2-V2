@@ -122,7 +122,7 @@ export default async function handler(req, res) {
     // 6. Categoria final (Groq tem prioridade)
     const categoriaFinal = aiData.categoria || categoriaClassificada;
 
-    // 7. HTML final
+    // 7. HTML final — AGORA INCLUI A MENSAGEM DO GROQ
     const nomeRemetente =
       contexto?.nome ||
       from?.split("@")[0] ||
