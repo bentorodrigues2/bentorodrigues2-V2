@@ -113,32 +113,51 @@ export default async function handler(req, res) {
 
     const aiData = await aiRes.json();
 
-    // 5. Verificar subject/message
-    if (!aiData.subject || !aiData.message) {
-      console.log("AI Router devolveu subject/message nulos → ignorado.");
-      return res.status(200).json({ ok: true, autoresponder: false });
-    }
-
-    // 6. Categoria final (Groq tem prioridade)
-    const categoriaFinal = aiData.categoria || categoriaClassificada;
-
-    // 7. Nome do remetente
+    // 5. Nome do remetente
     const nomeRemetente =
       contexto?.nome ||
       from?.split("@")[0] ||
       "Condómino";
 
-    // 8. HTML da resposta institucional (AI Router)
+    //
+    // 6. PRIMEIRO EMAIL → AUTORESPONDER
+    //
+    const htmlAutoresponder = gerarHtmlAutoresponder(nomeRemetente);
+
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from: "Condomínio <administracao@condomanagerai.com>",
+        to: from,
+        subject: "Recebemos o seu contacto",
+        html: htmlAutoresponder
+      }),
+    });
+
+    //
+    // 7. SEGUNDO EMAIL → RESPOSTA INSTITUCIONAL (AI ROUTER)
+    //
+
+    // Se o AI Router falhar, não envia o institucional
+    if (!aiData.subject || !aiData.message) {
+      console.log("AI Router devolveu subject/message nulos → só autoresponder enviado.");
+      return res.status(200).json({ ok: true, autoresponder: true });
+    }
+
     const htmlFinal = gerarHtmlResposta(nomeRemetente, aiData.message);
 
-    // 9. Anexos automáticos
+    // 8. Anexos automáticos
     let anexos = [];
     if (aiData.acao === "anexar_documentos" && contexto?.id_predio) {
       anexos = await obterAnexosDaFracao(contexto.id_predio);
     }
 
-    // 10. Enviar email via Resend (resposta institucional)
-    const resendRes = await fetch("https://api.resend.com/emails", {
+    // 9. Enviar email institucional via Resend
+    await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -152,12 +171,6 @@ export default async function handler(req, res) {
         attachments: anexos
       }),
     });
-
-    if (!resendRes.ok) {
-      const errText = await resendRes.text().catch(() => "");
-      console.error("Erro no envio via Resend:", errText);
-      return res.status(500).json({ error: "Erro no envio via Resend" });
-    }
 
     return res.status(200).json({ ok: true });
 
