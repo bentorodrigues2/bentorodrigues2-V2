@@ -31,68 +31,10 @@ export function VotacaoAssembleiaVirtual({ predio, fracoes, reuniao, loggedUser,
   const predioFracoes = fracoes.filter(f => f.id_predio === predio.id_predio);
   const totalPermilagemPredio = predioFracoes.reduce((acc, f) => acc + f.permilagem, 0) || 1000;
 
-  // Default motions for the meeting
-  const [pontos, setPontos] = useState<PontoVotacaoAssembleia[]>([
-    {
-      id_ponto: "ponto-1",
-      id_reuniao: reuniao?.id_reuniao || "reu-1",
-      ordem: 1,
-      titulo: "Apreciação e Votação do Relatório e Contas do Exercício Transato",
-      descricao: "Aprovação das contas de receitas e despesas apresentadas pela administração relativamente ao ano anterior.",
-      tipo_maioria: "MAIORIA_SIMPLES",
-      estado: "CONCLUIDA",
-      votos: predioFracoes.map((f, i) => ({
-        id_fracao: f.id_fracao,
-        fracao_nome: f.fracao_nome,
-        proprietario: f.proprietario.nome,
-        permilagem: f.permilagem,
-        voto: i === predioFracoes.length - 1 ? "ABSTENCAO" : "FAVOR",
-        data_hora: "2026-05-15 18:35:10",
-        canal: i % 2 === 0 ? "PWA_ONLINE" : "PRESENCIAL"
-      })),
-      total_favor_permilagem: 0,
-      total_contra_permilagem: 0,
-      total_abstencao_permilagem: 0,
-      aprovado: true,
-      deliberacao_texto: "Submetido a votação, o relatório e contas foi APROVADO por maioria representativa dos condóminos presentes."
-    },
-    {
-      id_ponto: "ponto-2",
-      id_reuniao: reuniao?.id_reuniao || "reu-1",
-      ordem: 2,
-      titulo: "Aprovação do Orçamento Ordinário e Fixação do Valor das Quotas para 2026",
-      descricao: "Aprovação do mapa orçamental, manutenção de serviços essenciais e fixação das quotas mensais com 10% FCR.",
-      tipo_maioria: "MAIORIA_SIMPLES",
-      estado: "EM_VOTACAO",
-      votos: predioFracoes.map((f, i) => ({
-        id_fracao: f.id_fracao,
-        fracao_nome: f.fracao_nome,
-        proprietario: f.proprietario.nome,
-        permilagem: f.permilagem,
-        voto: i < 3 ? "FAVOR" : i === 3 ? "CONTRA" : "ABSTENCAO",
-        data_hora: "2026-05-15 18:48:22",
-        canal: "PWA_ONLINE"
-      })),
-      total_favor_permilagem: 0,
-      total_contra_permilagem: 0,
-      total_abstencao_permilagem: 0
-    },
-    {
-      id_ponto: "ponto-3",
-      id_reuniao: reuniao?.id_reuniao || "reu-1",
-      ordem: 3,
-      titulo: "Execução de Obras Extraordinárias de Pintura e Isolamento Térmico das Fachadas",
-      descricao: "Adjudicação da empreitada de reabilitação e impermeabilização com recurso a quota extraordinária em 6 prestações.",
-      tipo_maioria: "MAIORIA_QUALIFICADA_2_3",
-      estado: "ABERTA",
-      votos: [],
-      total_favor_permilagem: 0,
-      total_contra_permilagem: 0,
-      total_abstencao_permilagem: 0
-    }
-  ]);
+  // Points / Motions for the meeting
+  const [pontos, setPontos] = useState<PontoVotacaoAssembleia[]>([]);
 
-  const [pontoAtivoId, setPontoAtivoId] = useState<string>("ponto-2");
+  const [pontoAtivoId, setPontoAtivoId] = useState<string>("");
   const [novoPontoTitulo, setNovoPontoTitulo] = useState("");
   const [novoPontoDesc, setNovoPontoDesc] = useState("");
   const [novoPontoMaioria, setNovoPontoMaioria] = useState<"MAIORIA_SIMPLES" | "MAIORIA_QUALIFICADA_2_3" | "UNANIMIDADE">("MAIORIA_SIMPLES");
@@ -101,7 +43,8 @@ export function VotacaoAssembleiaVirtual({ predio, fracoes, reuniao, loggedUser,
   const pontoAtivo = pontos.find(p => p.id_ponto === pontoAtivoId) || pontos[0];
 
   // Calculate vote totals for the active motion
-  const calcularTotais = (ponto: PontoVotacaoAssembleia) => {
+  const calcularTotais = (ponto?: PontoVotacaoAssembleia) => {
+    if (!ponto) return { favor: 0, contra: 0, abstencao: 0, totalVotado: 0, aprovado: false };
     let favor = 0;
     let contra = 0;
     let abstencao = 0;
@@ -326,39 +269,61 @@ export function VotacaoAssembleiaVirtual({ predio, fracoes, reuniao, loggedUser,
         </div>
       </div>
 
-      {/* Motions Navigation Bar */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {pontos.map((p) => {
-          const isSelected = p.id_ponto === pontoAtivo.id_ponto;
-          const { aprovado: ap } = calcularTotais(p);
+      {/* Motions Navigation Bar or Empty State */}
+      {pontos.length === 0 || !pontoAtivo ? (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center space-y-4 shadow-xs">
+          <div className="w-14 h-14 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center mx-auto border border-indigo-200 dark:border-indigo-800">
+            <Vote className="h-7 w-7" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-slate-800 dark:text-white">Nenhum ponto de deliberação adicionado</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+              Adicione os pontos da Ordem de Trabalhos da reunião para abrir votações eletrónicas aos condóminos e apurar automaticamente as maiorias legais (simples, 2/3 ou unanimidade).
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowNovoPontoModal(true)}
+            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm inline-flex items-center gap-2 cursor-pointer"
+          >
+            <PlusCircle className="h-4 w-4" />
+            <span>Adicionar Primeiro Ponto</span>
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {pontos.map((p) => {
+              const isSelected = p.id_ponto === pontoAtivo.id_ponto;
+              const { aprovado: ap } = calcularTotais(p);
 
-          return (
-            <button
-              key={p.id_ponto}
-              type="button"
-              onClick={() => setPontoAtivoId(p.id_ponto)}
-              className={`px-4 py-3 rounded-2xl border text-left shrink-0 transition-all cursor-pointer min-w-[240px] max-w-[300px] ${
-                isSelected 
-                  ? "bg-indigo-600 text-white border-indigo-600 shadow-md" 
-                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:border-indigo-400"
-              }`}
-            >
-              <div className="flex items-center justify-between text-[10px] font-bold uppercase mb-1">
-                <span>Ponto {p.ordem}</span>
-                <span className={`px-2 py-0.5 rounded-full text-[9px] ${
-                  isSelected ? "bg-white/20 text-white" : p.estado === "EM_VOTACAO" ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                }`}>
-                  {p.estado === "EM_VOTACAO" ? "A Votar Agora" : p.estado === "CONCLUIDA" ? (ap ? "Aprovado" : "Rejeitado") : "Agendado"}
-                </span>
-              </div>
-              <h4 className="font-bold text-xs line-clamp-1">{p.titulo}</h4>
-            </button>
-          );
-        })}
-      </div>
+              return (
+                <button
+                  key={p.id_ponto}
+                  type="button"
+                  onClick={() => setPontoAtivoId(p.id_ponto)}
+                  className={`px-4 py-3 rounded-2xl border text-left shrink-0 transition-all cursor-pointer min-w-[240px] max-w-[300px] ${
+                    isSelected 
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-md" 
+                      : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:border-indigo-400"
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-[10px] font-bold uppercase mb-1">
+                    <span>Ponto {p.ordem}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] ${
+                      isSelected ? "bg-white/20 text-white" : p.estado === "EM_VOTACAO" ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                    }`}>
+                      {p.estado === "EM_VOTACAO" ? "A Votar Agora" : p.estado === "CONCLUIDA" ? (ap ? "Aprovado" : "Rejeitado") : "Agendado"}
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-xs line-clamp-1">{p.titulo}</h4>
+                </button>
+              );
+            })}
+          </div>
 
-      {/* Active Motion Live Workspace */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-6 space-y-6">
+          {/* Active Motion Live Workspace */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-6 space-y-6">
         {/* Header & Controls */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
           <div className="space-y-1">
@@ -522,6 +487,8 @@ export function VotacaoAssembleiaVirtual({ predio, fracoes, reuniao, loggedUser,
           </div>
         </div>
       </div>
+    </>
+  )}
 
       {/* New Motion Modal */}
       {showNovoPontoModal && (

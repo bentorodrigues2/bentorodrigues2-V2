@@ -2935,11 +2935,6 @@ export function gerarCartaoAniversarioCondominoPDF(
     doc.setTextColor(71, 85, 105);
     doc.text(`A Administração do ${predioNome}`, 105, 123.5, { align: "center" });
 
-    // Rodapé sutil institucional
-    doc.setFontSize(6.5);
-    doc.setTextColor(148, 163, 184);
-    doc.text("CondoManager AI • Gestão e Proximidade Comunitária", 105, 133, { align: "center" });
-
     // Download do postal
     const blob = doc.output("blob");
     downloadBlob(blob, `Cartao_Aniversario_Condomino.pdf`);

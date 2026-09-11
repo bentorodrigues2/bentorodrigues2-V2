@@ -5,7 +5,10 @@ import dotenv from "dotenv";
 import {
   processAIChat,
   generateWithFallback,
-  AIChatPayload
+  AIChatPayload,
+  processAutoresponderEmail,
+  classifyEmailCategory,
+  generateCategoryResponse
 } from "./server/geminiService";
 
 dotenv.config();
@@ -265,6 +268,116 @@ Devolve JSON com formato:
     } catch (err: any) {
       console.error("[/api/reconhecer-recibo] Erro:", err);
       return res.status(500).json({ error: err.message || "Erro ao reconhecer comprovativo." });
+    }
+  });
+
+  // 10. Motor de Resposta Automática (Autoresponder) do Condomínio
+  app.post("/api/autoresponder", async (req, res) => {
+    try {
+      const payload = req.body;
+      const result = await processAutoresponderEmail(payload);
+      return res.json(result);
+    } catch (err: any) {
+      console.error("[/api/autoresponder] Erro:", err);
+      return res.status(500).json({
+        error: err.message || "Erro no motor de resposta automática.",
+        subject: null,
+        message: null,
+        categoria: "ignorar"
+      });
+    }
+  });
+
+  // 11. Classificador Oficial de Temas de Emails (Devolve estritamente { "categoria": "..." })
+  app.post("/api/classificador", async (req, res) => {
+    try {
+      const payload = req.body;
+      const result = await classifyEmailCategory(payload);
+      return res.json(result);
+    } catch (err: any) {
+      console.error("[/api/classificador] Erro:", err);
+      return res.status(500).json({
+        categoria: "outro",
+        error: err.message || "Erro ao classificar tema do email."
+      });
+    }
+  });
+
+  // 12. Módulo Oficial de Resposta por Categoria (System Prompt de Regras Inteligentes)
+  // Devolve estritamente { "subject": "...", "message": "...", "categoria": "..." }
+  app.post("/api/resposta-categoria", async (req, res) => {
+    try {
+      const payload = req.body;
+      const result = await generateCategoryResponse(payload);
+      return res.json(result);
+    } catch (err: any) {
+      console.error("[/api/resposta-categoria] Erro:", err);
+      return res.status(500).json({
+        subject: null,
+        message: null,
+        categoria: "ignorar",
+        error: err.message || "Erro ao gerar resposta por categoria."
+      });
+    }
+  });
+
+  // 13. AI Studio Router (Compatibilidade com Vercel & Automações Externas de Autoresponder)
+  app.get("/api/ai-studio-router", (req, res) => {
+    const hasKey = Boolean(process.env.GEMINI_API_KEY);
+    return res.json({
+      status: "online",
+      router: "AI Studio Router (Bento Rodrigues Condomínios)",
+      geminiKeyConfigurada: hasKey,
+      instrucoes: hasKey
+        ? "Endpoint pronto para chamadas POST de autoresponder e categorização."
+        : "AVISO: Configure GEMINI_API_KEY nas variáveis de ambiente."
+    });
+  });
+
+  app.post("/api/ai-studio-router", async (req, res) => {
+    try {
+      const body = req.body || {};
+      const email = body.email || {};
+      const contexto = body.contexto || {};
+      let categoria = body.categoria;
+
+      // 1. Se categoria não foi enviada, classificar primeiro
+      if (!categoria) {
+        const classif = await classifyEmailCategory({
+          from: email.from || "",
+          subject: email.subject || "",
+          bodyText: email.bodyText || ""
+        });
+        categoria = classif.categoria;
+      }
+
+      // 2. Gerar resposta por categoria (já possui fallback interno resiliente)
+      const result = await generateCategoryResponse({
+        categoria,
+        email,
+        contexto
+      });
+
+      return res.json(result);
+    } catch (err: any) {
+      const errStr = String(err?.message || err);
+      const isBlocked = errStr.includes("API_KEY_SERVICE_BLOCKED") || errStr.includes("UNAUTHENTICATED") || errStr.includes("401");
+
+      console.warn("[/api/ai-studio-router] Erro no Gemini, acionando resposta institucional de contingência:", errStr);
+      
+      // Resposta resiliente que NUNCA quebra a automação com 500
+      return res.status(200).json({
+        subject: req.body?.email?.subject ? `Re: ${req.body.email.subject}` : "Comunicação ao Condomínio",
+        message: "Estimado(a) condómino(a), acusamos a receção do seu email. A administração do condomínio registou a sua comunicação e procederá ao respetivo tratamento com a brevidade possível.",
+        categoria: req.body?.categoria || "outro",
+        source: "fallback_contingencia",
+        diagnostico: {
+          aviso: isBlocked
+            ? "GEMINI_API_KEY com restrições na Google Cloud Console (API_KEY_SERVICE_BLOCKED)."
+            : "Falha na chamada Gemini, resposta gerada pelo motor institucional de regras.",
+          detalhe: errStr
+        }
+      });
     }
   });
 

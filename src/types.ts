@@ -42,6 +42,9 @@ export interface Predio {
   email?: string | null; // E-mail oficial do prédio/condomínio (pré-definido para Autoresponder e IA)
   email_condominio?: string | null;
   autoresponder_ativo?: boolean;
+  pisos?: number;
+  elevadores?: number;
+  garagens?: number;
 }
 
 export interface Conta {
@@ -102,6 +105,7 @@ export interface Inquilino {
   email: string;
   tlm: string;
   nif: string;
+  data_nascimento?: string;
   foto?: string | null;
 }
 

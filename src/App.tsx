@@ -40,6 +40,7 @@ import { EnviosProgramados } from "./components/EnviosProgramados";
 import { CentralDocumentosMinutas } from "./components/CentralDocumentosMinutas";
 import { ConfiguracaoArranqueSaldos } from "./components/ConfiguracaoArranqueSaldos";
 import { AgendaManutencao } from "./components/AgendaManutencao";
+import { CalculoQuotas } from "./components/CalculoQuotas";
 import { GestaoSinistrosSeguros } from "./components/GestaoSinistrosSeguros";
 import { MuralDigitalReservas } from "./components/MuralDigitalReservas";
 import { SecurityAuditModal } from "./components/SecurityAuditModal";
@@ -1064,6 +1065,28 @@ export default function App() {
                     </span>
                   </button>
                 )}
+                {/* Sub-menu Cálculo de Quotas */}
+                <button
+                  id="submenu-financeiro-calculo-quotas"
+                  onClick={() => {
+                    setActiveSection("calculo_quotas");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                    activeSection === "calculo_quotas" 
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <img src="/modulos/62-calculadora.png" alt="Cálculo de Quotas" className="w-4 h-4 object-contain shrink-0" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                    <span className="truncate">Cálculo de Quotas</span>
+                  </div>
+                  <span className="bg-emerald-500/20 text-emerald-300 text-[9px] font-bold rounded px-1.5 py-0.5 border border-emerald-400/30 shrink-0">
+                    Contas
+                  </span>
+                </button>
                 <button
                   onClick={() => {
                     setActiveSection("financeiro_recibos");
@@ -1219,10 +1242,10 @@ export default function App() {
             )}
           </div>
 
-          {/* 7. Vistorias & Intervenções (Accordion) */}
+          {/* 7. Manutenção (Accordion) */}
           <div className="space-y-1">
             <button 
-              id="sidebar-item-vistorias-intervencoes"
+              id="sidebar-item-manutencao"
               onClick={() => {
                 setOpenMenuVistoriasIntervencoes(!openMenuVistoriasIntervencoes);
                 if (!["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "manutencao_agenda", "manutencao_extraordinarias"].includes(activeSection)) {
@@ -1238,8 +1261,8 @@ export default function App() {
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <img src="/modulos/28-intervencao.png" alt="Vistorias & Intervenções" className="w-5 h-5 object-contain shrink-0" />
-                <span>Vistorias & Intervenções</span>
+                <img src="/modulos/28-intervencao.png" alt="Manutenção" className="w-5 h-5 object-contain shrink-0" />
+                <span>Manutenção</span>
               </div>
               <i className={`fa-solid fa-chevron-down text-[10px] transition-transform ${openMenuVistoriasIntervencoes ? "rotate-180" : ""}`}></i>
             </button>
@@ -1777,53 +1800,53 @@ export default function App() {
                 id="sidebar-item-config-ia"
                 onClick={() => {
                   setOpenMenuConfiguracoesIA(!openMenuConfiguracoesIA);
-                  if (!["configuracoes_gerais", "configuracoes_templates", "configuracoes_ia", "configuracoes_notificacoes", "configuracoes_logs", "configuracoes_exportacao"].includes(activeSection)) {
-                    setActiveSection("configuracoes_gerais");
+                  if (!["configuracoes_ia", "configuracoes_templates", "configuracoes_notificacoes", "configuracoes_logs", "configuracoes_exportacao"].includes(activeSection)) {
+                    setActiveSection("configuracoes_ia");
                   }
                   setViewMode("BROWSER");
                   setIaInitialTab(undefined);
                 }}
                 className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                   ["configuracoes_gerais", "configuracoes_templates", "configuracoes_ia", "configuracoes_notificacoes", "configuracoes_logs", "configuracoes_exportacao"].includes(activeSection)
-                    ? "bg-purple-700 text-white font-extrabold shadow-sm border border-purple-500" 
-                    : "text-purple-300 hover:text-white hover:bg-slate-800/30"
+                    ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
+                    : "text-emerald-300 hover:text-white hover:bg-slate-800/30"
                 }`}
               >
                 <div className="flex items-center gap-2.5 truncate">
                   <img src="/modulos/82-automacao.png" alt="Configurações IA" className="w-5 h-5 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                  <i className="fa-solid fa-envelope-circle-check w-5 text-center text-purple-400 text-sm"></i>
+                  <i className="fa-solid fa-envelope-circle-check w-5 text-center text-emerald-400 text-sm"></i>
                   <span className={`${sidebarCollapsed ? "lg:hidden" : ""} truncate`}>Configurações IA & E-mail</span>
                 </div>
                 <div className={`flex items-center gap-1.5 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
-                  <span className="bg-purple-500/20 text-purple-300 text-[9px] font-black rounded px-1.5 py-0.5 border border-purple-400/30 shrink-0">
-                    6 Módulos
+                  <span className="bg-emerald-500/20 text-emerald-300 text-[9px] font-black rounded px-1.5 py-0.5 border border-emerald-400/30 shrink-0">
+                    5 Módulos
                   </span>
                   <i className={`fa-solid fa-chevron-down text-[10px] transition-transform ${openMenuConfiguracoesIA ? "rotate-180" : ""}`}></i>
                 </div>
               </button>
 
               {openMenuConfiguracoesIA && (
-                <div className={`pl-6 space-y-1 border-l-2 border-purple-500/40 ml-3.5 my-1 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
-                  {/* 1. Parâmetros Gerais */}
+                <div className={`pl-6 space-y-1 border-l-2 border-emerald-500/40 ml-3.5 my-1 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
+                  {/* 1. Assistente IA & Motor */}
                   <button
-                    id="submenu-config-gerais"
+                    id="submenu-config-ia"
                     onClick={() => {
-                      setActiveSection("configuracoes_gerais");
+                      setActiveSection("configuracoes_ia");
                       setViewMode("BROWSER");
                       setIaInitialTab(undefined);
                     }}
                     className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
-                      activeSection === "configuracoes_gerais"
-                        ? "bg-purple-500/25 text-purple-200 font-bold border-l-2 border-purple-400 pl-2.5" 
+                      activeSection === "configuracoes_ia"
+                        ? "bg-emerald-500/25 text-emerald-200 font-bold border-l-2 border-emerald-400 pl-2.5" 
                         : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
-                      <img src="/modulos/03-regras-do-predio.png" alt="Gerais" className="w-4 h-4 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                      <span className="truncate">Parâmetros Gerais</span>
+                      <img src="/modulos/87-ia-ativa.png" alt="IA" className="w-4 h-4 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      <span className="truncate">Assistente IA & Motor</span>
                     </div>
-                    <span className="bg-purple-500/20 text-purple-300 text-[8px] font-bold rounded px-1 py-0.5 border border-purple-400/30 shrink-0">
-                      Cadastral
+                    <span className="bg-emerald-500/20 text-emerald-300 text-[8px] font-bold rounded px-1 py-0.5 border border-emerald-400/30 shrink-0">
+                      Motor Ativo
                     </span>
                   </button>
 
@@ -1837,7 +1860,7 @@ export default function App() {
                     }}
                     className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                       activeSection === "configuracoes_templates"
-                        ? "bg-purple-500/25 text-purple-200 font-bold border-l-2 border-purple-400 pl-2.5" 
+                        ? "bg-emerald-500/25 text-emerald-200 font-bold border-l-2 border-emerald-400 pl-2.5" 
                         : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                     }`}
                   >
@@ -1845,35 +1868,12 @@ export default function App() {
                       <img src="/modulos/22-documento-geral.png" alt="Templates" className="w-4 h-4 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                       <span className="truncate">Modelos de E-mail</span>
                     </div>
-                    <span className="bg-purple-500/20 text-purple-300 text-[8px] font-bold rounded px-1 py-0.5 border border-purple-400/30 shrink-0">
+                    <span className="bg-emerald-500/20 text-emerald-300 text-[8px] font-bold rounded px-1 py-0.5 border border-emerald-400/30 shrink-0">
                       Oficiais
                     </span>
                   </button>
 
-                  {/* 3. Assistente IA & Motor */}
-                  <button
-                    id="submenu-config-ia"
-                    onClick={() => {
-                      setActiveSection("configuracoes_ia");
-                      setViewMode("BROWSER");
-                      setIaInitialTab(undefined);
-                    }}
-                    className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
-                      activeSection === "configuracoes_ia"
-                        ? "bg-purple-500/25 text-purple-200 font-bold border-l-2 border-purple-400 pl-2.5" 
-                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <img src="/modulos/87-ia-ativa.png" alt="IA" className="w-4 h-4 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                      <span className="truncate">Assistente IA & Motor</span>
-                    </div>
-                    <span className="bg-emerald-500/20 text-emerald-300 text-[8px] font-bold rounded px-1 py-0.5 border border-emerald-400/30 shrink-0">
-                      Motor Ativo
-                    </span>
-                  </button>
-
-                  {/* 4. Notificações & Canais */}
+                  {/* 3. Notificações & Canais */}
                   <button
                     id="submenu-config-notificacoes"
                     onClick={() => {
@@ -1883,7 +1883,7 @@ export default function App() {
                     }}
                     className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                       activeSection === "configuracoes_notificacoes"
-                        ? "bg-purple-500/25 text-purple-200 font-bold border-l-2 border-purple-400 pl-2.5" 
+                        ? "bg-emerald-500/25 text-emerald-200 font-bold border-l-2 border-emerald-400 pl-2.5" 
                         : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                     }`}
                   >
@@ -1896,7 +1896,7 @@ export default function App() {
                     </span>
                   </button>
 
-                  {/* 5. Log de Sistema */}
+                  {/* 4. Log de Sistema */}
                   <button
                     id="submenu-config-logs"
                     onClick={() => {
@@ -1906,7 +1906,7 @@ export default function App() {
                     }}
                     className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                       activeSection === "configuracoes_logs"
-                        ? "bg-purple-500/25 text-purple-200 font-bold border-l-2 border-purple-400 pl-2.5" 
+                        ? "bg-emerald-500/25 text-emerald-200 font-bold border-l-2 border-emerald-400 pl-2.5" 
                         : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                     }`}
                   >
@@ -1919,7 +1919,7 @@ export default function App() {
                     </span>
                   </button>
 
-                  {/* 6. Exportação & Backups */}
+                  {/* 5. Exportação & Backups */}
                   <button
                     id="submenu-config-exportacao"
                     onClick={() => {
@@ -1929,7 +1929,7 @@ export default function App() {
                     }}
                     className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                       activeSection === "configuracoes_exportacao"
-                        ? "bg-purple-500/25 text-purple-200 font-bold border-l-2 border-purple-400 pl-2.5" 
+                        ? "bg-emerald-500/25 text-emerald-200 font-bold border-l-2 border-emerald-400 pl-2.5" 
                         : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                     }`}
                   >
@@ -2039,6 +2039,7 @@ export default function App() {
                 {(activeSection === "fracoes" || activeSection === "fracoes_nova" || activeSection === "fracoes_proprietario" || activeSection === "fracoes_perfis") && "Gestão de Frações, Proprietários & Perfis"}
                 {activeSection === "fornecedores" && "Fichas de Fornecedores"}
                 {activeSection === "contas" && "Contas Bancárias do Condomínio"}
+                {activeSection === "calculo_quotas" && "Cálculo e Emissão de Quotas (Interligadas com Contas Bancárias)"}
                 {activeSection === "emissao" && "Emissão de Avisos e Orçamentos"}
                 {activeSection === "movimentos" && "Registo de Movimentos Financeiros"}
                 {activeSection === "financeiro_recibos" && "Emissão de Recibos Manuais (100% Editável)"}
@@ -2051,7 +2052,7 @@ export default function App() {
                 {activeSection === "reservas" && "Agenda & Reservas de Espaços Comuns"}
                 {(activeSection === "documentos" || activeSection === "arquivo") && "Arquivo Digital (Anos & Temas)"}
                 {activeSection === "ocorrencias" && "Gestão de Ocorrências e Avarias"}
-                {(activeSection === "vistorias_limpezas" || activeSection === "limpezas_vistorias") && "Limpezas & Vistorias Técnicas"}
+                {(activeSection === "vistorias_limpezas" || activeSection === "limpezas_vistorias") && "Manutenção • Vistorias & Higienização"}
                 {activeSection === "ia_avancada" && "Central de Inteligência Artificial Avançada"}
                 {activeSection === "ia_importacao" && "Assistente de Importação Global por IA (PDF/XLS)"}
                 {activeSection === "contencioso_juridico" && "Resumo de Contencioso & Prazos Legais"}
@@ -2223,6 +2224,17 @@ export default function App() {
               onAddConta={handleAddConta}
               onSetPrincipalConta={handleSetPrincipalConta}
               onDeleteConta={(id) => setContas(contas.filter(c => c.id_conta !== id))}
+              loggedUser={loggedUser}
+            />
+          )}
+
+          {activeSection === "calculo_quotas" && (
+            <CalculoQuotas
+              predio={predioAtivo}
+              fracoes={fracoes}
+              contas={contas}
+              avisos={avisos}
+              setAvisos={setAvisos}
               loggedUser={loggedUser}
             />
           )}

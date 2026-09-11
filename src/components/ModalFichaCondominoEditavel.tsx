@@ -30,16 +30,18 @@ export function ModalFichaCondominoEditavel({
     prop_nif: fracaoAtual?.proprietario?.nif || "",
     prop_tlm: fracaoAtual?.proprietario?.tlm || "",
     prop_email: fracaoAtual?.proprietario?.email || "",
+    prop_data_nascimento: fracaoAtual?.proprietario?.data_nascimento || "",
     prop_iban: fracaoAtual?.proprietario?.iban || "",
     prop_titular: fracaoAtual?.proprietario?.nome || "",
     prop_banco: (fracaoAtual?.proprietario as any)?.banco || fracaoAtual?.proprietario?.entidade_bancaria || "",
     prop_morada_alt: "",
 
     // Co-Proprietário
-    coprop_nome: "",
-    coprop_nif: "",
-    coprop_email: "",
-    coprop_tlm: "",
+    coprop_nome: fracaoAtual?.proprietarios_adicionais?.[0]?.nome || "",
+    coprop_nif: fracaoAtual?.proprietarios_adicionais?.[0]?.nif || "",
+    coprop_email: fracaoAtual?.proprietarios_adicionais?.[0]?.email || "",
+    coprop_tlm: fracaoAtual?.proprietarios_adicionais?.[0]?.tlm || "",
+    coprop_data_nascimento: fracaoAtual?.proprietarios_adicionais?.[0]?.data_nascimento || "",
 
     // Arrendamento / Inquilino
     is_arrendada: fracaoAtual?.is_arrendada ? "SIM" : "NAO",
@@ -47,6 +49,7 @@ export function ModalFichaCondominoEditavel({
     inq_nif: fracaoAtual?.inquilino?.nif || "",
     inq_email: fracaoAtual?.inquilino?.email || "",
     inq_tlm: fracaoAtual?.inquilino?.tlm || "",
+    inq_data_nascimento: fracaoAtual?.inquilino?.data_nascimento || "",
 
     // RGPD e Assinatura
     rgpd_consentimento: true,
@@ -66,12 +69,19 @@ export function ModalFichaCondominoEditavel({
         prop_nif: fracaoAtual.proprietario?.nif || "",
         prop_tlm: fracaoAtual.proprietario?.tlm || "",
         prop_email: fracaoAtual.proprietario?.email || "",
+        prop_data_nascimento: fracaoAtual.proprietario?.data_nascimento || "",
         prop_iban: fracaoAtual.proprietario?.iban || "",
+        coprop_nome: fracaoAtual.proprietarios_adicionais?.[0]?.nome || "",
+        coprop_nif: fracaoAtual.proprietarios_adicionais?.[0]?.nif || "",
+        coprop_email: fracaoAtual.proprietarios_adicionais?.[0]?.email || "",
+        coprop_tlm: fracaoAtual.proprietarios_adicionais?.[0]?.tlm || "",
+        coprop_data_nascimento: fracaoAtual.proprietarios_adicionais?.[0]?.data_nascimento || "",
         is_arrendada: fracaoAtual.is_arrendada ? "SIM" : "NAO",
         inq_nome: fracaoAtual.inquilino?.nome || "",
         inq_nif: fracaoAtual.inquilino?.nif || "",
         inq_email: fracaoAtual.inquilino?.email || "",
         inq_tlm: fracaoAtual.inquilino?.tlm || "",
+        inq_data_nascimento: fracaoAtual.inquilino?.data_nascimento || "",
         assinatura_nome: fracaoAtual.proprietario?.nome || ""
       }));
     }
@@ -197,13 +207,23 @@ export function ModalFichaCondominoEditavel({
           nif: formData.prop_nif,
           email: formData.prop_email,
           tlm: formData.prop_tlm,
+          data_nascimento: formData.prop_data_nascimento || undefined,
           iban: formData.prop_iban
         },
+        proprietarios_adicionais: formData.coprop_nome ? [{
+          nome: formData.coprop_nome,
+          nif: formData.coprop_nif,
+          email: formData.coprop_email,
+          tlm: formData.coprop_tlm,
+          data_nascimento: formData.coprop_data_nascimento || undefined,
+          foto: null
+        }] : fracaoAtual?.proprietarios_adicionais || [],
         inquilino: formData.is_arrendada === "SIM" ? {
           nome: formData.inq_nome,
           nif: formData.inq_nif,
           email: formData.inq_email,
-          tlm: formData.inq_tlm
+          tlm: formData.inq_tlm,
+          data_nascimento: formData.inq_data_nascimento || undefined
         } : null
       });
       alert("✅ Ficha atualizada e gravada com sucesso na fração!");
@@ -333,13 +353,22 @@ export function ModalFichaCondominoEditavel({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">E-mail Oficial *</label>
                 <input
                   type="email"
                   value={formData.prop_email}
                   onChange={e => handleChange("prop_email", e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-semibold text-slate-800 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Data de Nascimento (Aniversário)</label>
+                <input
+                  type="date"
+                  value={formData.prop_data_nascimento}
+                  onChange={e => handleChange("prop_data_nascimento", e.target.value)}
                   className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-semibold text-slate-800 dark:text-white"
                 />
               </div>
@@ -361,7 +390,7 @@ export function ModalFichaCondominoEditavel({
               <i className="fa-solid fa-users text-xs"></i>
               <span>3. Co-Proprietários Adicionais (Se aplicável)</span>
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nome do Co-Proprietário</label>
                 <input
@@ -402,6 +431,15 @@ export function ModalFichaCondominoEditavel({
                   className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 dark:text-white"
                 />
               </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Data de Nascimento</label>
+                <input
+                  type="date"
+                  value={formData.coprop_data_nascimento}
+                  onChange={e => handleChange("coprop_data_nascimento", e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 dark:text-white"
+                />
+              </div>
             </div>
           </div>
 
@@ -436,7 +474,7 @@ export function ModalFichaCondominoEditavel({
             </div>
 
             {formData.is_arrendada === "SIM" && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">NIF do Inquilino</label>
                   <input
@@ -461,6 +499,15 @@ export function ModalFichaCondominoEditavel({
                     type="text"
                     value={formData.inq_tlm}
                     onChange={e => handleChange("inq_tlm", e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Data de Nascimento</label>
+                  <input
+                    type="date"
+                    value={formData.inq_data_nascimento}
+                    onChange={e => handleChange("inq_data_nascimento", e.target.value)}
                     className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 dark:text-white"
                   />
                 </div>

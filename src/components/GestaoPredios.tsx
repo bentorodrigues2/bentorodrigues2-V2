@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Predio, LoggedUser, ChaveItem } from "../types";
 import { cpLookup } from "../data";
 import { gerarPdfEtiquetasChaves } from "../utils";
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 
 interface GestaoPrediosProps {
   predios: Predio[];
@@ -206,6 +206,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
   // Load predios from Supabase on mount
   useEffect(() => {
     const carregarPrediosSupabase = async () => {
+      if (!isSupabaseConfigured) return;
       try {
         const { data, error } = await supabase.from('predios').select('*');
         if (error) {

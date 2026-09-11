@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { Download } from "lucide-react";
 import { Predio, Fornecedor, LoggedUser } from "../types";
-import { exportToXLS, generateSupplierPwaManualPDF, gerarPdfRegistoFornecedorHomologado } from "../utils";
+import { exportToXLS, generateSupplierPwaManualPDF, gerarPdfRegistoFornecedorHomologado, gerarCartaoAniversarioCondominoPDF } from "../utils";
 
 interface GestaoFornecedoresProps {
   predio: Predio;
@@ -619,56 +620,104 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
                   </button>
                 </div>
                 <div className="p-6 space-y-4 max-h-[85vh] overflow-y-auto relative">
-                  <div className="border border-purple-100 bg-purple-50/40 rounded-xl p-5 text-xs text-purple-950 space-y-4 relative overflow-hidden">
-                    {/* Background Watermark */}
-                    <img 
-                      src="/marca/19-marca-dagua-logo-cinza-claro.png" 
-                      alt="Watermark" 
-                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 object-contain opacity-10 pointer-events-none" 
-                    />
+                  {/* Header do E-mail */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1 font-mono text-slate-700">
+                    <p><strong>De:</strong> {(predio as any).email_administracao || (predio as any).email || "administracao@estreladabarra.pt"}</p>
+                    <p><strong>Para:</strong> {birthdayModalFornecedor.email_contacto || birthdayModalFornecedor.contacto || "fornecedor@empresa.pt"}</p>
+                    <p><strong>Assunto:</strong> 🎉 Parabéns pelo seu Aniversário, {birthdayModalFornecedor.nome}! - Os votos do seu Condomínio</p>
+                    <p className="text-[10px] text-slate-500 font-sans mt-1">
+                      <strong>Anexo:</strong> Cartao_Aniversario_Parceiro.pdf (Postal Oficial A5)
+                    </p>
+                  </div>
 
-                    {/* Central Top Logo Header */}
-                    <div className="text-center pb-2 border-b border-purple-200/80">
-                      <img 
-                        src="/marca/20-Logotipo Horizontal com fundo.png" 
-                        alt="CondoManager AI" 
-                        className="h-10 mx-auto object-contain drop-shadow-xs" 
-                      />
-                      <p className="text-[9px] font-bold text-purple-900 uppercase tracking-widest mt-1">Comunicação Oficial de Aniversário</p>
-                    </div>
+                  {/* POSTAL OFICIAL DE ANIVERSÁRIO */}
+                  <div className="w-full bg-white border-2 border-slate-800 shadow-lg p-2.5 relative">
+                    <div className="border border-sky-600 p-6 relative text-center space-y-4 bg-white">
+                      {/* 4 Pontos de Canto Decorativos */}
+                      <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-sky-600 rounded-full"></div>
+                      <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-sky-600 rounded-full"></div>
+                      <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-sky-600 rounded-full"></div>
+                      <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-sky-600 rounded-full"></div>
 
-                    <div className="space-y-1 text-slate-700 font-sans">
-                      <p><strong>De:</strong> {(predio as any).email_administracao || (predio as any).email || "administracao@condomanager.pt"}</p>
-                      <p><strong>Para:</strong> {birthdayModalFornecedor.email_contacto || birthdayModalFornecedor.contacto || "fornecedor@empresa.pt"}</p>
-                      <p><strong>Assunto:</strong> 🎂 Parabéns pelo seu Aniversário, {birthdayModalFornecedor.nome}! 🎉</p>
-                    </div>
-                    <hr className="border-purple-200/80" />
+                      {/* Topo: Nome do Edifício */}
+                      <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+                        {predio.nome ? predio.nome.toUpperCase() : "EDIFÍCIO ESTRELA DA BARRA"}
+                      </h4>
 
-                    <div className="space-y-3 text-slate-700 font-sans leading-relaxed relative z-10">
-                      <p>Estimado(a) parceiro(a) e fornecedor(a) <strong>{birthdayModalFornecedor.nome}</strong>,</p>
-                      <p>Em nome da Administração do seu condomínio, desejamos-lhe um excelente dia de aniversário, repleto de felicidade, saúde e harmonia!</p>
-                      
-                      <div className="pt-3 border-t border-purple-200/80 space-y-1 font-sans">
-                        <p className="text-slate-700 text-xs">Com os meus cumprimentos,</p>
-                        <div className="flex items-center gap-2 pt-1">
-                          <span className="bg-purple-100 text-purple-900 text-[9px] font-mono font-bold px-2 py-0.5 rounded border border-purple-300 inline-flex items-center gap-1">
-                            <i className="fa-solid fa-shield-halved text-purple-700"></i> [Assinatura Digital Validada]
-                          </span>
-                        </div>
-                        <p className="text-slate-900 text-xs font-bold mt-1">José Carlos Guerra</p>
-                        <p className="text-slate-600 text-[11px]">Administrador do Condominio</p>
+                      {/* Divisória com Ponto Central */}
+                      <div className="relative flex items-center justify-center max-w-xs mx-auto">
+                        <div className="w-full border-t border-sky-600"></div>
+                        <div className="w-2 h-2 bg-sky-600 rounded-full mx-2 shrink-0"></div>
+                        <div className="w-full border-t border-sky-600"></div>
+                      </div>
+
+                      {/* Título Principal */}
+                      <div className="space-y-1">
+                        <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                          FELIZ ANIVERSÁRIO!
+                        </h3>
+                        <p className="text-[11px] text-slate-600">
+                          Votos sinceros de sucesso, saúde e prosperidade
+                        </p>
+                      </div>
+
+                      {/* Caixa de Destinatário */}
+                      <div className="inline-block px-6 py-2 bg-sky-50 border border-sky-600 rounded-lg text-sm font-bold text-slate-900 shadow-xs">
+                        Exmo.(a) Sr.(a) / Parceiro(a) {birthdayModalFornecedor.nome},
+                      </div>
+
+                      {/* Mensagem de Votos e Cordialidade */}
+                      <div className="text-xs text-slate-800 space-y-2 max-w-md mx-auto leading-relaxed">
+                        <p>
+                          A Administração e a equipa do <strong>{predio.nome || "Condomínio Edifício Estrela da Barra"}</strong> têm o enorme gosto de lhe desejar um Feliz Aniversário, com muita saúde, alegria e realizações pessoais e profissionais.
+                        </p>
+                        <p>
+                          Agradecemos a dedicação e a excelente parceria no cuidado e valorização do nosso condomínio.
+                        </p>
+                      </div>
+
+                      {/* Destaque Parabéns */}
+                      <div className="text-sm font-bold text-sky-600 pt-1">
+                        Parabéns pelo seu dia! 🎂🥂
+                      </div>
+
+                      {/* Badge Selo Decorativo */}
+                      <div className="inline-block px-3 py-1 bg-slate-100 border border-sky-200 rounded text-[9px] font-bold text-sky-600 uppercase tracking-widest">
+                        PARCERIA DE CONFIANÇA & EXCELÊNCIA
+                      </div>
+
+                      {/* Despedida e Assinatura */}
+                      <div className="pt-2 space-y-0.5 text-center">
+                        <p className="text-[11px] text-slate-500">Com as mais calorosas saudações,</p>
+                        <p className="text-xs font-bold text-slate-900">José Carlos Guerra</p>
+                        <p className="text-[11px] text-slate-600">A Administração do {predio.nome || "Edifício Estrela da Barra"}</p>
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      setBirthdayModalFornecedor(null);
-                      alert("E-mail de aniversário enviado e entregue com sucesso!");
-                    }}
-                    className="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors cursor-pointer shadow-md text-center"
-                  >
-                    Confirmar Envio Automático Simulador
-                  </button>
+
+                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        gerarCartaoAniversarioCondominoPDF(birthdayModalFornecedor.nome, predio.nome, "José Carlos Guerra");
+                      }}
+                      className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+                    >
+                      <Download className="h-4 w-4 text-sky-400" />
+                      <span>Descarregar Postal PDF (A5)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBirthdayModalFornecedor(null);
+                        alert("E-mail de aniversário com postal anexado simulado com sucesso!");
+                      }}
+                      className="flex-1 bg-sky-600 hover:bg-sky-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+                    >
+                      <i className="fa-solid fa-paper-plane"></i>
+                      <span>Confirmar Envio Simulador</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

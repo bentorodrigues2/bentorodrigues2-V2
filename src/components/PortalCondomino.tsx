@@ -20,11 +20,12 @@ import {
   AlertTriangle,
   Cake,
   Mail,
-  Upload
+  Upload,
+  Download
 } from "lucide-react";
 import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento } from "../types";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
-import { generateCondominoPwaManualPDF } from "../utils";
+import { generateCondominoPwaManualPDF, gerarCartaoAniversarioCondominoPDF } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { playVoiceNoteSimulation } from "../lib/soundService";
 
@@ -98,20 +99,7 @@ export function PortalCondomino({
   const [biometricsEnabled, setBiometricsEnabled] = useState<boolean>(true);
 
   // Local State representing PWA messages, payment proofs, and credentials
-  const [mensagens, setMensagens] = useState<MensagemAdministracao[]>([
-    {
-      id: "msg-1",
-      id_fracao: "frac-1",
-      nome_remetente: "Ana Silva (Fração A)",
-      assunto: "Avaria no Elevador Principal",
-      mensagem: "Olá, o elevador principal está a fazer um ruído estranho desde ontem à noite. Podem verificar por favor?",
-      data: "14-07-2026 18:30",
-      anexoWebP: null,
-      estado: "Respondida",
-      respostaAdmin: "Obrigado pelo aviso, Ana. Já agendámos uma vistoria de urgência com a OTIS para amanhã de manhã.",
-      dataResposta: "14-07-2026 19:15",
-    },
-  ]);
+  const [mensagens, setMensagens] = useState<MensagemAdministracao[]>([]);
 
   const [comprovativos, setComprovativos] = useState<ComprovativoSubmetido[]>([
     {
@@ -1413,8 +1401,14 @@ export function PortalCondomino({
             </h3>
 
             <div className="space-y-4">
-              {mensagens.map((msg) => (
-                <div key={msg.id} className="border border-slate-100 rounded-xl p-4 bg-slate-50/40 space-y-3">
+              {mensagens.length === 0 ? (
+                <div className="text-center text-slate-400 py-8 px-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
+                  <i className="fa-solid fa-inbox text-2xl mb-2 text-slate-300 block"></i>
+                  Nenhuma mensagem submetida pelos condóminos até ao momento.
+                </div>
+              ) : (
+                mensagens.map((msg) => (
+                  <div key={msg.id} className="border border-slate-100 rounded-xl p-4 bg-slate-50/40 space-y-3">
                   <div className="flex justify-between items-start">
                     <div>
                       <span className="font-bold text-slate-800 text-xs">Assunto: {msg.assunto}</span>
@@ -1469,7 +1463,7 @@ export function PortalCondomino({
                     </div>
                   )}
                 </div>
-              ))}
+              )))}
             </div>
           </div>
         </div>
@@ -1552,7 +1546,18 @@ export function PortalCondomino({
                     </span>
                   </div>
 
-                  {mensagens.map((msg) => {
+                  {mensagens.length === 0 ? (
+                    <div className="text-center py-12 px-4 space-y-2">
+                      <div className="w-12 h-12 mx-auto rounded-full bg-emerald-100/80 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                        <i className="fa-regular fa-comment-dots text-xl"></i>
+                      </div>
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Nenhuma mensagem trocada até ao momento</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+                        Escreva abaixo uma mensagem ou grave uma nota de voz para contactar diretamente a administração do condomínio.
+                      </p>
+                    </div>
+                  ) : (
+                    mensagens.map((msg) => {
                     const isUser = msg.nome_remetente.includes(loggedUser.nome) || msg.id_fracao === "frac-1";
                     return (
                       <React.Fragment key={msg.id}>
@@ -1636,7 +1641,7 @@ export function PortalCondomino({
                         )}
                       </React.Fragment>
                     );
-                  })}
+                  }))}
                 </div>
 
                 {/* Previews of attached Photo, Document or Audio Note */}
@@ -2049,57 +2054,105 @@ export function PortalCondomino({
               </button>
             </div>
             <div className="p-6 space-y-4 max-h-[85vh] overflow-y-auto relative">
-              <div className="border border-purple-100 bg-purple-50/40 rounded-xl p-5 text-xs text-purple-950 space-y-4 relative overflow-hidden">
-                {/* Background Watermark */}
-                <img 
-                  src="/marca/19-marca-dagua-logo-cinza-claro.png" 
-                  alt="Watermark" 
-                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 object-contain opacity-10 pointer-events-none" 
-                />
+              {/* Envelope / Header do E-mail */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1 font-mono text-slate-700">
+                <p><strong>De:</strong> {(predio as any).email_administracao || (predio as any).email || "administracao@estreladabarra.pt"}</p>
+                <p><strong>Para:</strong> {loggedUser.email || "condomino@estreladabarra.pt"}</p>
+                <p><strong>Assunto:</strong> 🎉 Feliz Aniversário, {loggedUser.nome}! - Os votos do seu Condomínio</p>
+                <p className="text-[10px] text-slate-500 font-sans mt-1">
+                  <strong>Anexo:</strong> Cartao_Aniversario_Condomino.pdf (Postal Oficial A5)
+                </p>
+              </div>
 
-                {/* Central Top Logo Header */}
-                <div className="text-center pb-2 border-b border-purple-200/80">
-                  <img 
-                    src="/marca/20-Logotipo Horizontal com fundo.png" 
-                    alt="CondoManager AI" 
-                    className="h-10 mx-auto object-contain drop-shadow-xs" 
-                  />
-                  <p className="text-[9px] font-bold text-purple-900 uppercase tracking-widest mt-1">Comunicação Oficial de Aniversário</p>
-                </div>
+              {/* POSTAL OFICIAL DE ANIVERSÁRIO (Conforme Postal Definido) */}
+              <div className="w-full bg-white border-2 border-slate-800 shadow-lg p-2.5 relative">
+                <div className="border border-sky-600 p-6 relative text-center space-y-4 bg-white">
+                  {/* 4 Pontos de Canto Decorativos */}
+                  <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-sky-600 rounded-full"></div>
+                  <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-sky-600 rounded-full"></div>
+                  <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-sky-600 rounded-full"></div>
+                  <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-sky-600 rounded-full"></div>
 
-                <div className="space-y-1 text-slate-700 font-sans">
-                  <p><strong>De:</strong> {(predio as any).email_administracao || (predio as any).email || "administracao@condomanager.pt"}</p>
-                  <p><strong>Para:</strong> {loggedUser.email}</p>
-                  <p><strong>Assunto:</strong> 🎂 Parabéns pelo seu Aniversário, {loggedUser.nome}! 🎉</p>
-                </div>
-                <hr className="border-purple-200/80" />
+                  {/* Topo: Nome do Edifício */}
+                  <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+                    {predio.nome ? predio.nome.toUpperCase() : "EDIFÍCIO ESTRELA DA BARRA"}
+                  </h4>
 
-                <div className="space-y-3 text-slate-700 font-sans leading-relaxed relative z-10">
-                  <p>Estimado(a) condómino(a) <strong>{loggedUser.nome}</strong>,</p>
-                  <p>Em nome da Administração do seu condomínio, desejamos-lhe um excelente dia de aniversário, repleto de felicidade, saúde e harmonia!</p>
-                  
-                  <div className="pt-3 border-t border-purple-200/80 space-y-1 font-sans">
-                    <p className="text-slate-700 text-xs">Com os meus cumprimentos,</p>
-                    <div className="flex items-center gap-2 pt-1">
-                      <span className="bg-purple-100 text-purple-900 text-[9px] font-mono font-bold px-2 py-0.5 rounded border border-purple-300 inline-flex items-center gap-1">
-                        <i className="fa-solid fa-shield-halved text-purple-700"></i> [Assinatura Digital Validada]
-                      </span>
-                    </div>
-                    <p className="text-slate-900 text-xs font-bold mt-1">José Carlos Guerra</p>
-                    <p className="text-slate-600 text-[11px]">Administrador do Condominio</p>
+                  {/* Divisória com Ponto Central */}
+                  <div className="relative flex items-center justify-center max-w-xs mx-auto">
+                    <div className="w-full border-t border-sky-600"></div>
+                    <div className="w-2 h-2 bg-sky-600 rounded-full mx-2 shrink-0"></div>
+                    <div className="w-full border-t border-sky-600"></div>
+                  </div>
+
+                  {/* Título Principal */}
+                  <div className="space-y-1">
+                    <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                      FELIZ ANIVERSÁRIO!
+                    </h3>
+                    <p className="text-[11px] text-slate-600">
+                      Hoje é um dia de celebração muito especial para a nossa comunidade
+                    </p>
+                  </div>
+
+                  {/* Caixa de Destinatário */}
+                  <div className="inline-block px-6 py-2 bg-sky-50 border border-sky-600 rounded-lg text-sm font-bold text-slate-900 shadow-xs">
+                    Exmo.(a) Sr.(a) {loggedUser.nome},
+                  </div>
+
+                  {/* Mensagem de Votos e Cordialidade */}
+                  <div className="text-xs text-slate-800 space-y-2 max-w-md mx-auto leading-relaxed">
+                    <p>
+                      A Administração e a equipa do <strong>{predio.nome || "Condomínio Edifício Estrela da Barra"}</strong> têm o enorme gosto de lhe desejar um Feliz Aniversário, com muita saúde, alegria e realizações pessoais junto de quem mais estima.
+                    </p>
+                    <p>
+                      Agradecemos o seu contributo diário para a harmonia e bom convívio no nosso edifício.
+                    </p>
+                  </div>
+
+                  {/* Destaque Parabéns */}
+                  <div className="text-sm font-bold text-sky-600 pt-1">
+                    Parabéns pelo seu dia! 🎂🥂
+                  </div>
+
+                  {/* Badge Selo Decorativo */}
+                  <div className="inline-block px-3 py-1 bg-slate-100 border border-sky-200 rounded text-[9px] font-bold text-sky-600 uppercase tracking-widest">
+                    VOTOS DE FELICIDADES & HARMONIA
+                  </div>
+
+                  {/* Despedida e Assinatura */}
+                  <div className="pt-2 space-y-0.5 text-center">
+                    <p className="text-[11px] text-slate-500">Com as mais calorosas saudações,</p>
+                    <p className="text-xs font-bold text-slate-900">José Carlos Guerra</p>
+                    <p className="text-[11px] text-slate-600">A Administração do {predio.nome || "Edifício Estrela da Barra"}</p>
                   </div>
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  const targetName = loggedUser.nome;
-                  setBirthdayModalOpen(false);
-                  triggerSendReaction("email", `E-mail de Aniversário para ${targetName}`);
-                }}
-                className="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors cursor-pointer shadow-md text-center"
-              >
-                Confirmar Envio Automático Simulador
-              </button>
+
+              <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    gerarCartaoAniversarioCondominoPDF(loggedUser.nome, predio.nome, "José Carlos Guerra");
+                  }}
+                  className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+                >
+                  <Download className="h-4 w-4 text-sky-400" />
+                  <span>Descarregar Postal PDF (A5)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetName = loggedUser.nome;
+                    setBirthdayModalOpen(false);
+                    triggerSendReaction("email", `E-mail de Aniversário enviado para ${targetName}`);
+                  }}
+                  className="flex-1 bg-sky-600 hover:bg-sky-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+                >
+                  <i className="fa-solid fa-paper-plane"></i>
+                  <span>Confirmar Envio Simulador</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

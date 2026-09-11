@@ -65,7 +65,10 @@ export async function fetchPrediosFromSupabase(): Promise<Predio[] | null> {
         tem_spa: false,
       },
       foto: row.foto || null,
-      iban: row.iban || null
+      iban: row.iban || null,
+      email: row.email || null,
+      email_condominio: row.email_condominio || row.email || null,
+      autoresponder_ativo: row.autoresponder_ativo ?? true
     }));
   } catch (err) {
     console.warn("[Supabase] Exception fetching predios:", err);
@@ -87,7 +90,11 @@ export async function savePredioToSupabase(predio: Predio): Promise<boolean> {
       localidade: predio.localidade,
       nif: predio.nif,
       patrimonio: predio.patrimonio,
-      iban: predio.iban
+      iban: predio.iban,
+      email: predio.email,
+      email_condominio: predio.email_condominio || predio.email,
+      autoresponder_ativo: predio.autoresponder_ativo ?? true,
+      foto: predio.foto
     });
     if (error) console.warn("[Supabase] Save predio error:", error.message);
     return !error;
@@ -154,10 +161,19 @@ export async function saveFracaoToSupabase(fracao: Fracao): Promise<boolean> {
       piso: fracao.piso,
       permilagem: fracao.permilagem,
       tipologia: fracao.tipologia,
+      tipo_access: fracao.tipo_access,
+      tem_garagem_spot: fracao.tem_garagem_spot,
+      tem_arrecadacao_box: fracao.tem_arrecadacao_box,
+      is_arrendada: fracao.is_arrendada,
       proprietario: fracao.proprietario,
+      proprietarios_adicionais: fracao.proprietarios_adicionais || [],
       inquilino: fracao.inquilino,
       administrador_interno: fracao.administrador_interno,
-      notificacao_preferencial: fracao.notificacao_preferencial
+      notificacao_preferencial: fracao.notificacao_preferencial,
+      seguradora: fracao.seguradora,
+      apolice_num: fracao.apolice_num,
+      apolice_validade: fracao.apolice_validade,
+      apolice_doc: fracao.apolice_doc
     });
     return !error;
   } catch (err) {
@@ -224,6 +240,70 @@ export async function deleteProprietarioFromSupabase(identifier: string, idFraca
       // Table may not exist
     }
     return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+// ============================================================================
+// CONTAS BANCÁRIAS DO PRÉDIO / CONDOMÍNIO
+// ============================================================================
+
+export async function fetchContasFromSupabase(idPredio?: string): Promise<Conta[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    let query = supabase.from("contas").select("*");
+    if (idPredio) query = query.eq("id_predio", idPredio);
+    const { data, error } = await query;
+    if (error || !data || data.length === 0) return null;
+
+    return data.map((row: any) => ({
+      id_conta: row.id_conta,
+      id_predio: row.id_predio,
+      banco: row.banco,
+      iban: row.iban,
+      tipo: row.tipo || "Ordem (Gestão Corrente)",
+      saldo: Number(row.saldo) || 0,
+      balcao: row.balcao || "",
+      morada_balcao: row.morada_balcao || "",
+      contacto_banco: row.contacto_banco || "",
+      gestor_contas: row.gestor_contas || "",
+      email_gestor: row.email_gestor || undefined,
+      is_principal: Boolean(row.is_principal)
+    }));
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function saveContaToSupabase(conta: Conta): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("contas").upsert({
+      id_conta: conta.id_conta,
+      id_predio: conta.id_predio,
+      banco: conta.banco,
+      iban: conta.iban,
+      tipo: conta.tipo,
+      saldo: conta.saldo,
+      balcao: conta.balcao || null,
+      morada_balcao: conta.morada_balcao || null,
+      contacto_banco: conta.contacto_banco || null,
+      gestor_contas: conta.gestor_contas || null,
+      email_gestor: conta.email_gestor || null,
+      is_principal: Boolean(conta.is_principal)
+    });
+    return !error;
+  } catch (err) {
+    return false;
+  }
+}
+
+export async function deleteContaFromSupabase(idConta: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("contas").delete().eq("id_conta", idConta);
+    return !error;
   } catch (err) {
     return false;
   }

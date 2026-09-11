@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Pencil, Trash2, Plus } from "lucide-react";
 import { Predio, Fracao, LoggedUser, Aviso, Proprietario } from "../types";
 import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCondominoVaziaPDF, downloadFichaCondominoPreenchidaPDF, downloadListaCondominosPDF, generateCondominoPwaManualPDF } from "../utils";
 import { ModalFichaCondominoEditavel } from "./ModalFichaCondominoEditavel";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import { saveFracaoToSupabase, deleteFracaoFromSupabase, saveProprietarioToSupabase, deleteProprietarioFromSupabase } from "../lib/supabaseService";
 
 interface GestaoFracoesProps {
@@ -45,6 +46,7 @@ export function GestaoFracoes({
   const [propNif, setPropNif] = useState("");
   const [propEmail, setPropEmail] = useState("");
   const [propTlm, setPropTlm] = useState("");
+  const [propDataNascimento, setPropDataNascimento] = useState("");
   const [propIban, setPropIban] = useState("");
   const [propTitular, setPropTitular] = useState("");
   const [propBanco, setPropBanco] = useState("");
@@ -56,6 +58,7 @@ export function GestaoFracoes({
   const [coNif, setCoNif] = useState("");
   const [coEmail, setCoEmail] = useState("");
   const [coTlm, setCoTlm] = useState("");
+  const [coDataNascimento, setCoDataNascimento] = useState("");
   const [coFoto, setCoFoto] = useState<string | null>(null);
   const coFileRef = React.useRef<HTMLInputElement>(null);
   
@@ -64,6 +67,7 @@ export function GestaoFracoes({
     nif: string;
     email: string;
     tlm: string;
+    data_nascimento?: string;
     foto: string | null;
   }[]>([]);
 
@@ -72,6 +76,7 @@ export function GestaoFracoes({
   const [inqEmail, setInqEmail] = useState("");
   const [inqTlm, setInqTlm] = useState("");
   const [inqNif, setInqNif] = useState("");
+  const [inqDataNascimento, setInqDataNascimento] = useState("");
   const [inqFoto, setInqFoto] = useState<string | null>(null);
 
   const [adminInterno, setAdminInterno] = useState("Não");
@@ -328,6 +333,7 @@ export function GestaoFracoes({
   useEffect(() => {
     let isMounted = true;
     const carregarDadosSupabase = async () => {
+      if (!isSupabaseConfigured) return;
       try {
         const { data: fracoesData, error: errFracoes } = await supabase
           .from('fracoes')
@@ -396,6 +402,7 @@ export function GestaoFracoes({
     setPropNif(prop.nif || "");
     setPropEmail(prop.email || "");
     setPropTlm(prop.tlm || "");
+    setPropDataNascimento(prop.data_nascimento || "");
     setPropIban(prop.iban || "");
     setPropTitular(prop.titular_conta || prop.nome || "");
     setPropBanco(prop.entidade_bancaria || "");
@@ -404,10 +411,41 @@ export function GestaoFracoes({
     setAdminInterno(prop.administrador_interno || "Não");
     setNotificacao(prop.notificacao_preferencial || "Digital (E-mail e Mensagens Push)");
     
-    if (fracaoId) {
-      setSelectedFracaoId(fracaoId);
-    } else if (prop.id_fracao) {
-      setSelectedFracaoId(prop.id_fracao);
+    const targetFracId = fracaoId || prop.id_fracao;
+    if (targetFracId) {
+      setSelectedFracaoId(targetFracId);
+      const targetFracao = predioFracoes.find(f => f.id_fracao === targetFracId);
+      if (targetFracao) {
+        if (targetFracao.proprietarios_adicionais && targetFracao.proprietarios_adicionais.length > 0) {
+          setProprietariosAdicionais(targetFracao.proprietarios_adicionais.map(p => ({
+            nome: p.nome || "",
+            nif: p.nif || "",
+            email: p.email || "",
+            tlm: p.tlm || "",
+            data_nascimento: p.data_nascimento || "",
+            foto: p.foto || null
+          })));
+        } else {
+          setProprietariosAdicionais([]);
+        }
+        if (targetFracao.inquilino) {
+          setArrendada(true);
+          setInqNome(targetFracao.inquilino.nome || "");
+          setInqEmail(targetFracao.inquilino.email || "");
+          setInqTlm(targetFracao.inquilino.tlm || "");
+          setInqNif(targetFracao.inquilino.nif || "");
+          setInqDataNascimento(targetFracao.inquilino.data_nascimento || "");
+          setInqFoto(targetFracao.inquilino.foto || null);
+        } else {
+          setArrendada(false);
+          setInqNome("");
+          setInqEmail("");
+          setInqTlm("");
+          setInqNif("");
+          setInqDataNascimento("");
+          setInqFoto(null);
+        }
+      }
     }
 
     setEditingOwnerKey(prop.nif || prop.nome);
@@ -420,6 +458,7 @@ export function GestaoFracoes({
     setPropNif("");
     setPropEmail("");
     setPropTlm("");
+    setPropDataNascimento("");
     setPropIban("");
     setPropTitular("");
     setPropBanco("");
@@ -431,6 +470,7 @@ export function GestaoFracoes({
     setCoNif("");
     setCoEmail("");
     setCoTlm("");
+    setCoDataNascimento("");
     setCoFoto(null);
     setProprietariosAdicionais([]);
     setArrendada(false);
@@ -438,6 +478,7 @@ export function GestaoFracoes({
     setInqEmail("");
     setInqTlm("");
     setInqNif("");
+    setInqDataNascimento("");
     setInqFoto(null);
     setEditingOwnerKey(null);
   };
@@ -792,6 +833,7 @@ export function GestaoFracoes({
       nif: propNif.trim(),
       email: propEmail.trim(),
       tlm: propTlm.trim(),
+      data_nascimento: propDataNascimento.trim() || undefined,
       iban: propIban.trim() || "",
       titular_conta: propTitular.trim() || propNome.trim(),
       entidade_bancaria: propBanco.trim() || "",
@@ -810,6 +852,7 @@ export function GestaoFracoes({
         nif: novoProprietarioObj.nif,
         email: novoProprietarioObj.email,
         tlm: novoProprietarioObj.tlm,
+        data_nascimento: novoProprietarioObj.data_nascimento || null,
         iban: novoProprietarioObj.iban,
         titular_conta: novoProprietarioObj.titular_conta,
         entidade_bancaria: novoProprietarioObj.entidade_bancaria,
@@ -838,6 +881,15 @@ export function GestaoFracoes({
             .from('fracoes')
             .update({
               proprietario: novoProprietarioObj,
+              proprietarios_adicionais: proprietariosAdicionais,
+              inquilino: arrendada && inqNome.trim() ? {
+                nome: inqNome.trim(),
+                email: inqEmail.trim(),
+                tlm: inqTlm.trim(),
+                nif: inqNif.trim(),
+                data_nascimento: inqDataNascimento.trim() || undefined,
+                foto: inqFoto
+              } : null,
               administrador_interno: adminInterno,
               notificacao_preferencial: notificacao,
               is_arrendada: arrendada
@@ -865,6 +917,7 @@ export function GestaoFracoes({
               email: inqEmail.trim(),
               tlm: inqTlm.trim(),
               nif: inqNif.trim(),
+              data_nascimento: inqDataNascimento.trim() || undefined,
               foto: inqFoto
             } : null
           };
@@ -1241,7 +1294,7 @@ export function GestaoFracoes({
           )}
 
           {/* Formulário de Fração */}
-          <form onSubmit={submeterNovaFracao} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6 no-print">
+          <form id="form-registo-fracao" onSubmit={submeterNovaFracao} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6 no-print">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold text-slate-800 flex items-center space-x-2">
                 <span className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
@@ -1391,6 +1444,20 @@ export function GestaoFracoes({
                 <p className="text-xs text-slate-500">Lista completa de frações autónomas e respetivas permilagens</p>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    cancelarEdicaoFracao();
+                    setCurrentSubTab("fracoes_nova");
+                    const el = document.getElementById("form-registo-fracao");
+                    if (el) el.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                  title="Registar uma nova fração"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Adicionar Fração</span>
+                </button>
                 <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-lg border ${
                   totalPermilagem === 1000 
                     ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
@@ -1477,18 +1544,20 @@ export function GestaoFracoes({
                             <button
                               type="button"
                               onClick={() => handleEditarFracao(f)}
-                              className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer"
+                              className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-emerald-200 flex items-center gap-1 shadow-xs"
                               title="Editar Fração"
                             >
-                              <i className="fa-solid fa-pen-to-square text-emerald-600"></i>
+                              <Pencil className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <span className="font-semibold text-[10px]">Editar</span>
                             </button>
                             <button
                               type="button"
                               onClick={() => handleEliminarFracao(f.id_fracao, f.fracao_nome)}
-                              className="bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-600 p-1.5 rounded-lg text-xs transition-colors cursor-pointer"
+                              className="bg-red-50 hover:bg-red-100 text-red-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-red-200 flex items-center gap-1 shadow-xs"
                               title="Eliminar Fração"
                             >
-                              <i className="fa-solid fa-trash-can"></i>
+                              <Trash2 className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                              <span className="font-semibold text-[10px]">Eliminar</span>
                             </button>
                           </div>
                         </td>
@@ -1589,7 +1658,7 @@ export function GestaoFracoes({
                 )}
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div className="flex flex-col">
                   <label className="text-xs font-bold text-slate-700 mb-1">Nome Completo *</label>
                   <input 
@@ -1633,6 +1702,19 @@ export function GestaoFracoes({
                     className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono bg-white font-medium text-slate-800" 
                     required
                   />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
+                    <i className="fa-solid fa-cake-candles text-amber-500 text-xs"></i>
+                    <span>Data de Nascimento</span>
+                  </label>
+                  <input 
+                    type="date" 
+                    value={propDataNascimento} 
+                    onChange={e => setPropDataNascimento(e.target.value)} 
+                    className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white font-medium text-slate-800" 
+                  />
+                  <span className="text-[10px] text-slate-400 mt-0.5">Para cartão de aniversário</span>
                 </div>
               </div>
 
@@ -1840,7 +1922,10 @@ export function GestaoFracoes({
                           )}
                           <div>
                             <p className="text-xs font-bold text-slate-800">{co.nome}</p>
-                            <p className="text-[9px] text-slate-500 font-mono">NIF: {co.nif} | {co.email}</p>
+                            <p className="text-[9px] text-slate-500 font-mono">
+                              NIF: {co.nif} | {co.email}
+                              {co.data_nascimento && ` • 🎂 ${co.data_nascimento}`}
+                            </p>
                           </div>
                         </div>
                         <button 
@@ -1859,7 +1944,7 @@ export function GestaoFracoes({
 
               <div className="bg-indigo-50/30 p-4 rounded-xl border border-indigo-100/50 space-y-3">
                 <span className="text-[10px] font-bold text-indigo-800 uppercase block tracking-wider">Novo Coproprietário</span>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   <div className="flex flex-col">
                     <label className="text-xs font-semibold text-slate-500 mb-1">Nome Completo</label>
                     <input type="text" value={coNome} onChange={e => setCoNome(e.target.value)} placeholder="Ex: Ana Maria Guerra" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500" />
@@ -1875,6 +1960,13 @@ export function GestaoFracoes({
                   <div className="flex flex-col">
                     <label className="text-xs font-semibold text-slate-500 mb-1">Telemóvel</label>
                     <input type="text" value={coTlm} onChange={e => setCoTlm(e.target.value)} placeholder="Ex: 919888777" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono" />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
+                      <i className="fa-solid fa-cake-candles text-indigo-500 text-xs"></i>
+                      <span>Data de Nascimento</span>
+                    </label>
+                    <input type="date" value={coDataNascimento} onChange={e => setCoDataNascimento(e.target.value)} className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500" />
                   </div>
                 </div>
 
@@ -1927,10 +2019,11 @@ export function GestaoFracoes({
                         nif: coNif,
                         email: coEmail,
                         tlm: coTlm,
+                        data_nascimento: coDataNascimento || undefined,
                         foto: coFoto
                       }]);
                       // Clear inputs
-                      setCoNome(""); setCoNif(""); setCoEmail(""); setCoTlm(""); setCoFoto(null);
+                      setCoNome(""); setCoNif(""); setCoEmail(""); setCoTlm(""); setCoDataNascimento(""); setCoFoto(null);
                     }}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors cursor-pointer"
                   >
@@ -1954,10 +2047,14 @@ export function GestaoFracoes({
                     <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Identificação do Inquilino</h4>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="flex flex-col col-span-2">
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="flex flex-col">
                       <label className="text-xs font-semibold text-slate-500 mb-1">Nome Completo do Inquilino</label>
                       <input type="text" value={inqNome} onChange={e => setInqNome(e.target.value)} placeholder="Ex: Ricardo Inquilino" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="text-xs font-semibold text-slate-500 mb-1">NIF Fiscal Inquilino</label>
+                      <input type="text" value={inqNif} onChange={e => setInqNif(e.target.value)} placeholder="Contribuinte" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
                     </div>
                     <div className="flex flex-col">
                       <label className="text-xs font-semibold text-slate-500 mb-1">E-mail</label>
@@ -1967,14 +2064,17 @@ export function GestaoFracoes({
                       <label className="text-xs font-semibold text-slate-500 mb-1">Telemóvel</label>
                       <input type="text" value={inqTlm} onChange={e => setInqTlm(e.target.value)} placeholder="929887766" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
                     </div>
+                    <div className="flex flex-col">
+                      <label className="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
+                        <i className="fa-solid fa-cake-candles text-amber-500 text-xs"></i>
+                        <span>Data de Nascimento</span>
+                      </label>
+                      <input type="date" value={inqDataNascimento} onChange={e => setInqDataNascimento(e.target.value)} className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                    <div className="flex flex-col">
-                      <label className="text-xs font-semibold text-slate-500 mb-1">NIF Fiscal Inquilino</label>
-                      <input type="text" value={inqNif} onChange={e => setInqNif(e.target.value)} placeholder="Contribuinte" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
-                    </div>
-                    <div className="flex flex-col col-span-2">
+                    <div className="flex flex-col col-span-3">
                       <label className="text-xs font-semibold text-slate-500 mb-1">Morada de Residência Alternativa do Proprietário (Obrigatório se Arrendado)</label>
                       <input type="text" value={propMoradaAlt} onChange={e => setPropMoradaAlt(e.target.value)} placeholder="Morada onde o proprietário vive" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
                     </div>
@@ -2138,18 +2238,20 @@ export function GestaoFracoes({
                               onClick={() => {
                                 carregarProprietarioParaEdicao(prop, prop.id_fracao);
                               }}
-                              className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer"
+                              className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-emerald-200 flex items-center gap-1 shadow-xs"
                               title="Editar Proprietário"
                             >
-                              <i className="fa-solid fa-user-pen text-emerald-600"></i>
+                              <Pencil className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <span className="font-semibold text-[10px]">Editar</span>
                             </button>
                             <button
                               type="button"
                               onClick={() => handleEliminarProprietario(prop)}
-                              className="bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-600 p-1.5 rounded-lg text-xs transition-colors cursor-pointer"
+                              className="bg-red-50 hover:bg-red-100 text-red-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-red-200 flex items-center gap-1 shadow-xs"
                               title="Eliminar Proprietário"
                             >
-                              <i className="fa-solid fa-trash-can"></i>
+                              <Trash2 className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                              <span className="font-semibold text-[10px]">Eliminar</span>
                             </button>
                           </div>
                         </td>
@@ -2492,109 +2594,18 @@ export function GestaoFracoes({
         </div>
       </div>
 
-      {/* CALCULADORA DE QUOTAS PROPORCIONAIS E EXTRAORDINÁRIAS */}
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-5 no-print">
-        <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-          <div className="flex items-center space-x-2.5">
-            <span className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
-              <i className="fa-solid fa-hand-holding-dollar text-sm"></i>
-            </span>
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">Calculadora e Emissão de Quotas Proporcionais</h3>
-              <p className="text-[10px] text-slate-400">Gere e simule orçamentos de quotas ordinárias e extraordinárias baseadas estritamente na permilagem.</p>
-            </div>
+      {/* REDIRECIONAMENTO PARA O MÓDULO OFICIAL DE CÁLCULO DE QUOTAS */}
+      <div className="bg-gradient-to-r from-emerald-50 to-indigo-50 p-5 rounded-xl border border-emerald-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 no-print">
+        <div className="flex items-center space-x-3">
+          <div className="p-2.5 bg-emerald-600 text-white rounded-xl shadow-xs">
+            <i className="fa-solid fa-calculator text-base"></i>
           </div>
-          {totalPermilagem === 1000 && setAvisos && (
-            <button
-              onClick={emitirQuotasDoCalculador}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-xs transition-colors flex items-center space-x-1"
-            >
-              <i className="fa-solid fa-file-invoice-dollar"></i>
-              <span>Emitir Quotas em Lote (Avisos)</span>
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <div className="flex flex-col">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Orçamento Ordinário Mensal (€)</label>
-            <input 
-              type="number"
-              value={orcamentoRegular}
-              onChange={e => setOrcamentoRegular(e.target.value)}
-              className="border border-slate-200 bg-white px-3 py-1.5 text-xs rounded-lg font-mono"
-            />
+          <div>
+            <h4 className="text-sm font-bold text-slate-800">Cálculo e Emissão de Quotas do Condomínio</h4>
+            <p className="text-xs text-slate-600 mt-0.5">
+              A calculadora de quotas ordinárias e extraordinárias agora está interligada com as contas bancárias no menu <strong className="text-emerald-700">Área Financeira → Cálculo de Quotas</strong>.
+            </p>
           </div>
-          <div className="flex flex-col">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Prazo Quota Ordinária</label>
-            <input 
-              type="date"
-              value={dataLimiteRegular}
-              onChange={e => setDataLimiteRegular(e.target.value)}
-              className="border border-slate-200 bg-white px-3 py-1.5 text-xs rounded-lg"
-            />
-          </div>
-          <div className="flex flex-col">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Orçamento Extraordinário Total (€)</label>
-            <input 
-              type="number"
-              value={orcamentoExtra}
-              onChange={e => setOrcamentoExtra(e.target.value)}
-              className="border border-slate-200 bg-white px-3 py-1.5 text-xs rounded-lg font-mono"
-            />
-          </div>
-          <div className="flex flex-col">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Prazo Quota Extraordinária</label>
-            <input 
-              type="date"
-              value={dataLimiteExtra}
-              onChange={e => setDataLimiteExtra(e.target.value)}
-              className="border border-slate-200 bg-white px-3 py-1.5 text-xs rounded-lg"
-            />
-          </div>
-          <div className="flex flex-col col-span-1 md:col-span-4 mt-2">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Finalidade / Descrição das Obras Extraordinárias</label>
-            <input 
-              type="text"
-              value={descricaoExtra}
-              onChange={e => setDescricaoExtra(e.target.value)}
-              placeholder="Ex: Pintura externa do prédio e impermeabilização"
-              className="border border-slate-200 bg-white px-3 py-1.5 text-xs rounded-lg font-medium"
-            />
-          </div>
-        </div>
-
-        {/* Breakdown simulator */}
-        <div className="overflow-x-auto border border-slate-150 rounded-lg">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
-                <th className="p-2.5">Fração / Condómino</th>
-                <th className="p-2.5 text-center">Permilagem</th>
-                <th className="p-2.5 text-right">Cota Ordinária (Regular)</th>
-                <th className="p-2.5 text-right">Cota Extraordinária (Fundo)</th>
-                <th className="p-2.5 text-right font-black">Mensalidade Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {predioFracoes.map(f => {
-                const regShare = (Number(orcamentoRegular) || 0) * (f.permilagem / 1000);
-                const extShare = (Number(orcamentoExtra) || 0) * (f.permilagem / 1000);
-                return (
-                  <tr key={f.id_fracao} className="border-b border-slate-100 hover:bg-slate-50/50">
-                    <td className="p-2.5">
-                      <span className="font-bold text-slate-800">Fração {f.fracao_nome}</span>
-                      <span className="text-[10px] text-slate-400 block">{f.proprietario?.nome || "Vago"}</span>
-                    </td>
-                    <td className="p-2.5 text-center font-mono font-bold text-slate-600">{f.permilagem}‰</td>
-                    <td className="p-2.5 text-right font-mono font-semibold text-slate-700">{regShare.toFixed(2)}€</td>
-                    <td className="p-2.5 text-right font-mono font-semibold text-slate-700">{extShare.toFixed(2)}€</td>
-                    <td className="p-2.5 text-right font-mono font-black text-indigo-700 bg-indigo-50/30">{(regShare + extShare).toFixed(2)}€</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
         </div>
       </div>
 

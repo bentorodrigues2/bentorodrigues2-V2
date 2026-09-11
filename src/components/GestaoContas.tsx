@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Predio, Conta, LoggedUser } from "../types";
+import { saveContaToSupabase, deleteContaFromSupabase } from "../lib/supabaseService";
 
 interface GestaoContasProps {
   predio: Predio;
@@ -24,13 +25,13 @@ export function GestaoContas({ predio, contas, onAddConta, onSetPrincipalConta, 
 
   const predioContas = contas.filter(c => c.id_predio === predio.id_predio);
 
-  const submeterForm = (e: React.FormEvent) => {
+  const submeterForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loggedUser.role !== 'ADMIN') return alert("Apenas administradores podem registar contas bancárias!");
     if (!banco || !iban || !saldo) return alert("Preencha todos os campos obrigatórios (*)");
 
     const nova: Conta = {
-      id_conta: "cta-" + (contas.length + 1),
+      id_conta: "cta-" + Date.now(),
       id_predio: predio.id_predio,
       banco,
       iban,
@@ -44,6 +45,7 @@ export function GestaoContas({ predio, contas, onAddConta, onSetPrincipalConta, 
       is_principal: isPrincipal
     };
     onAddConta(nova);
+    await saveContaToSupabase(nova);
     setBanco(""); setIban(""); setTipo("Ordem (Gestão Corrente)"); setSaldo(""); setBalcao(""); setMoradaBalcao(""); setContactoBanco(""); setGestorContas(""); setEmailGestor(""); setIsPrincipal(false);
   };
 
@@ -159,9 +161,10 @@ export function GestaoContas({ predio, contas, onAddConta, onSetPrincipalConta, 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                 <button 
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     if (confirm(`Tem a certeza de que deseja eliminar a conta bancária "${c.banco}"?`)) {
                       onDeleteConta?.(c.id_conta);
+                      await deleteContaFromSupabase(c.id_conta);
                     }
                   }}
                   className="text-[11px] text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5 font-bold transition-all flex items-center gap-1 cursor-pointer"

@@ -1613,83 +1613,81 @@ A Administração do Condomínio`
 
               {/* CORPO DO E-MAIL: NO CASO DO ANIVERSÁRIO, O POSTAL VISUAL É O PRÓPRIO CORPO DO EMAIL */}
               {activeEmailTemplate.id === "aniversario_condomino" ? (
-                <div className="relative overflow-hidden rounded-2xl border border-amber-300 dark:border-amber-700/60 p-6 sm:p-9 bg-gradient-to-b from-amber-50/40 via-white to-sky-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-100 shadow-lg ring-1 ring-amber-400/20">
-                  <img 
-                    src={BIRTHDAY_WATERMARK_BASE64}
-                    alt="Marca de água Bolo e Vela de Aniversário"
-                    className="absolute inset-0 w-full h-full object-cover pointer-events-none opacity-20 mix-blend-multiply dark:opacity-10"
-                    referrerPolicy="no-referrer"
-                  />
-                  
-                  <div className="relative z-10 text-center space-y-4 max-w-xl mx-auto">
-                    {/* Cabeçalho do Prédio */}
-                    <div className="space-y-1">
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100/80 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 rounded-full text-[10px] font-bold text-amber-900 dark:text-amber-200 uppercase tracking-widest">
-                        <Sparkles className="h-3 w-3 text-amber-600 dark:text-amber-400" />
-                        <span>Dia Especial de Celebração</span>
-                      </div>
-                      <h4 className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-white uppercase tracking-wider">
-                        {predio.nome || "Condomínio Edifício Estrela da Barra"}
+                <div className="bg-slate-50 dark:bg-slate-950 p-4 sm:p-6 rounded-2xl flex flex-col items-center">
+                  {/* Postal com Moldura Dupla Oficial do Anexo */}
+                  <div className="w-full max-w-xl bg-white border-2 border-slate-850 shadow-xl p-2.5 relative">
+                    <div className="border border-sky-600 p-6 sm:p-8 relative text-center space-y-4">
+                      {/* 4 Pontos de Canto Decorativos Oficiais */}
+                      <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-sky-600 rounded-full"></div>
+                      <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-sky-600 rounded-full"></div>
+                      <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-sky-600 rounded-full"></div>
+                      <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-sky-600 rounded-full"></div>
+
+                      {/* Topo: Nome do Edifício */}
+                      <h4 className="text-sm sm:text-base font-bold text-slate-900 uppercase tracking-wider">
+                        {predio.nome ? predio.nome.toUpperCase() : "EDIFÍCIO ESTRELA DA BARRA"}
                       </h4>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-                        Rua Bento Rodrigues, 2 • Fração A (1.º Dto)
-                      </p>
-                    </div>
 
-                    <div className="w-16 h-0.5 bg-gradient-to-r from-amber-400 to-sky-500 mx-auto rounded-full"></div>
+                      {/* Divisória com Ponto Central */}
+                      <div className="relative flex items-center justify-center max-w-xs mx-auto">
+                        <div className="w-full border-t border-sky-600"></div>
+                        <div className="w-2 h-2 bg-sky-600 rounded-full mx-2 shrink-0"></div>
+                        <div className="w-full border-t border-sky-600"></div>
+                      </div>
 
-                    {/* Título Principal */}
-                    <div className="space-y-1">
-                      <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                        🎉 Feliz Aniversário! 🎂
-                      </h3>
-                      <p className="text-xs sm:text-sm font-semibold text-amber-700 dark:text-amber-400">
-                        Um dia feliz, especial e inesquecível para si
-                      </p>
-                    </div>
+                      {/* Título Principal */}
+                      <div className="space-y-1">
+                        <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                          FELIZ ANIVERSÁRIO!
+                        </h3>
+                        <p className="text-[11px] sm:text-xs text-slate-600">
+                          Hoje é um dia de celebração muito especial para a nossa comunidade
+                        </p>
+                      </div>
 
-                    {/* Saudação Personalizada */}
-                    <div className="inline-block px-5 py-2 bg-white/90 dark:bg-slate-800/90 border border-amber-200 dark:border-amber-700/50 rounded-xl text-sm font-extrabold text-slate-900 dark:text-white shadow-xs">
-                      Estimada Ana Silva,
-                    </div>
+                      {/* Caixa de Destinatário */}
+                      <div className="inline-block px-8 py-2.5 bg-sky-50 border border-sky-600 rounded-lg text-sm sm:text-base font-bold text-slate-900 shadow-xs">
+                        Exmo.(a) Sr.(a) {testEmailRecipient.split("@")[0] ? "Ana Silva" : "Ana Silva"},
+                      </div>
 
-                    {/* Mensagem Calorosa e Intimista */}
-                    <div className="text-xs sm:text-[13px] text-slate-700 dark:text-slate-200 space-y-3 leading-relaxed pt-1 font-normal">
-                      <p>
-                        Hoje é um dia verdadeiramente especial para si e para toda a nossa comunidade de vizinhos!
-                      </p>
-                      <p>
-                        A Administração e os vizinhos do <strong>{predio.nome || "Condomínio Edifício Estrela da Barra"}</strong> têm a enorme alegria de lhe desejar um <strong>Feliz Aniversário</strong>, com muita saúde, tranquilidade, sorrisos e realizações pessoais e familiares.
-                      </p>
-                      <p className="text-slate-600 dark:text-slate-300 italic text-[11px] sm:text-xs">
-                        &ldquo;Agradecemos calorosamente a sua presença, dedicação e contributo diário para o bom ambiente, harmonia e espírito de união no nosso edifício. É um verdadeiro privilégio tê-lo(a) connosco nesta nossa casa comum!&rdquo;
-                      </p>
-                    </div>
+                      {/* Mensagem de Votos e Cordialidade */}
+                      <div className="text-xs sm:text-sm text-slate-800 space-y-2.5 max-w-lg mx-auto leading-relaxed">
+                        <p>
+                          A Administração e a equipa do <strong>{predio.nome || "Condomínio Edifício Estrela da Barra"}</strong> têm o enorme gosto de lhe desejar um Feliz Aniversário, com muita saúde, alegria e realizações pessoais junto de quem mais estima.
+                        </p>
+                        <p>
+                          Agradecemos o seu contributo diário para a harmonia e bom convívio no nosso edifício.
+                        </p>
+                      </div>
 
-                    <div className="text-xs font-black text-amber-600 dark:text-amber-400 pt-1">
-                      Parabéns pelo seu dia e votos de muitas felicidades! 🥂✨
-                    </div>
+                      {/* Destaque Parabéns */}
+                      <div className="text-sm sm:text-base font-bold text-sky-600 pt-1">
+                        Parabéns pelo seu dia!
+                      </div>
 
-                    {/* Assinatura de Vizinhança */}
-                    <div className="pt-3 border-t border-slate-200/80 dark:border-slate-850 flex flex-col items-center text-center">
-                      <p className="text-xs font-bold text-slate-900 dark:text-white">
-                        José Carlos Guerra • Administrador do Condomínio
-                      </p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                        Em representação da Administração e de toda a Comunidade do Edifício
-                      </p>
-                    </div>
+                      {/* Badge Selo Decorativo */}
+                      <div className="inline-block px-4 py-1 bg-slate-100 border border-sky-200 rounded text-[10px] font-bold text-sky-600 uppercase tracking-widest">
+                        VOTOS DE FELICIDADES & HARMONIA
+                      </div>
 
-                    {/* Ação de Descarregar Postal */}
-                    <div className="pt-2 flex justify-center">
-                      <button
-                        onClick={() => handleDescarregarAnexoEmail("aniversario_condomino")}
-                        className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-amber-600 dark:hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center space-x-2 cursor-pointer hover:scale-105"
-                      >
-                        <Download className="h-4 w-4" />
-                        <span>Guardar Postal de Recordação (PDF A5 Oficial)</span>
-                      </button>
+                      {/* Despedida e Assinatura */}
+                      <div className="pt-2 space-y-1 text-center">
+                        <p className="text-xs text-slate-500">Com as mais calorosas saudações,</p>
+                        <p className="text-xs sm:text-sm font-bold text-slate-900">José Carlos Guerra</p>
+                        <p className="text-xs text-slate-600">A Administração do {predio.nome || "Edifício Estrela da Barra"}</p>
+                      </div>
                     </div>
+                  </div>
+
+                  {/* Ação de Descarregar Postal PDF */}
+                  <div className="pt-4 flex justify-center">
+                    <button
+                      onClick={() => handleDescarregarAnexoEmail("aniversario_condomino")}
+                      className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center space-x-2 cursor-pointer hover:scale-105"
+                    >
+                      <Download className="h-4 w-4" />
+                      <span>Descarregar Postal Oficial (PDF A5)</span>
+                    </button>
                   </div>
                 </div>
               ) : (

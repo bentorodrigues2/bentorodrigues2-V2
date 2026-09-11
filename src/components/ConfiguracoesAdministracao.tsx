@@ -5,7 +5,8 @@ import { downloadBlob, exportToXLS, addPdfHeaderWithLogo } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { 
   Settings, Mail, Shield, Bell, ListTodo, FileDown, CheckCircle, 
-  AlertTriangle, Play, RefreshCw, FileText, Check, Database, Sparkles, Trash2, ArrowRight
+  AlertTriangle, Play, RefreshCw, FileText, Check, Database, Sparkles, Trash2, ArrowRight,
+  Bot, ShieldCheck, Send, FileCode, Loader2
 } from "lucide-react";
 
 interface AuditLogEntry {
@@ -490,6 +491,28 @@ export function ConfiguracoesAdministracao({
     condomino?: string;
   }>({ status: "idle" });
 
+  // Estados do Motor Oficial de Resposta Automática (Autoresponder)
+  const [testAutoSender, setTestAutoSender] = useState("carlos.silva@gmail.com");
+  const [testAutoSubject, setTestAutoSubject] = useState("Comprovativo de pagamento - Quota de Setembro Fração 2º Dto");
+  const [testAutoBody, setTestAutoBody] = useState("Boa tarde. Em anexo envio o comprovativo de transferência bancária referente à quota deste mês da fração 2º Dto. Agradeço envio do recibo oficial logo que possível. Com os melhores cumprimentos, Carlos Silva.");
+  const [autoresponderLoading, setAutoresponderLoading] = useState(false);
+  const [autoresponderResult, setAutoresponderResult] = useState<{
+    subject: string | null;
+    message: string | null;
+    categoria: string;
+    filtrado?: boolean;
+    motivoFiltro?: string;
+  } | null>(null);
+  const [classificadorLoading, setClassificadorLoading] = useState(false);
+  const [classificadorResult, setClassificadorResult] = useState<{ categoria: string } | null>(null);
+  const [regrasCategoriaLoading, setRegrasCategoriaLoading] = useState(false);
+  const [regrasCategoriaResult, setRegrasCategoriaResult] = useState<{
+    subject: string | null;
+    message: string | null;
+    categoria: string;
+  } | null>(null);
+  const [selectedCatTest, setSelectedCatTest] = useState<string>("quotas");
+
   // States for notifications
   const [notifOcorrencia, setNotifOcorrencia] = useState(true);
   const [notifFinanceiro, setNotifFinanceiro] = useState(true);
@@ -713,6 +736,266 @@ export function ConfiguracoesAdministracao({
       });
       addLog("IA", "Leitura de Comprovativo por E-mail", `Documento recebido para a fração ${fracoes?.[0]?.id_fracao || "A"}: 45,00 €. Aguarda confirmação.`);
     }, 1200);
+  };
+
+  const handleRunAutoresponderTest = async (senderOverride?: string, subjectOverride?: string, bodyOverride?: string) => {
+    const s = senderOverride !== undefined ? senderOverride : testAutoSender;
+    const sub = subjectOverride !== undefined ? subjectOverride : testAutoSubject;
+    const b = bodyOverride !== undefined ? bodyOverride : testAutoBody;
+
+    setAutoresponderLoading(true);
+    setAutoresponderResult(null);
+
+    // Verificação instantânea de regras de filtragem
+    const senderClean = (s || "").toLowerCase().trim();
+    const automaticKeywords = [
+      "noreply", "no-reply", "do-not-reply", "donotreply",
+      "automated", "mailer-daemon", "postmaster", "bounce",
+      "newsletter", "news@", "marketing", "campanhas", "promocoes", "promo@"
+    ];
+    const supplierDomains = [
+      "edp.pt", "edp.com", "galp.pt", "galp.com", "vodafone.pt", "meo.pt", "nos.pt",
+      "nowo.pt", "digi.pt", "iberdrola.pt", "iberdrola.es", "tkelevadores.com", "tke.com",
+      "thyssenkrupp.com", "schindler.com", "otis.com", "kone.com", "fidelidade.pt",
+      "tranquilidade.pt", "allianz.pt", "zurich.com", "generali.pt", "ageas.pt", "mapfre.pt"
+    ];
+
+    const isAutoKw = automaticKeywords.some(kw => senderClean.includes(kw));
+    const isSupplier = supplierDomains.some(dom => senderClean.endsWith(`@${dom}`) || senderClean.includes(`@${dom}`) || senderClean.includes(`.${dom}`));
+
+    if (isAutoKw || isSupplier) {
+      setTimeout(() => {
+        setAutoresponderResult({
+          subject: null,
+          message: null,
+          categoria: "ignorar",
+          filtrado: true,
+          motivoFiltro: isAutoKw
+            ? "Regra de Filtragem Ativada: Remetente identificado como sistema automático / noreply. Resposta bloqueada: { \"subject\": null, \"message\": null, \"categoria\": \"ignorar\" }."
+            : "Regra de Filtragem Ativada: Remetente identificado como fornecedor conhecido / entidade externa. Resposta bloqueada: { \"subject\": null, \"message\": null, \"categoria\": \"ignorar\" }."
+        });
+        setAutoresponderLoading(false);
+      }, 350);
+      return;
+    }
+
+    // Contexto enriquecido a partir dos dados do condomínio
+    const matchingFracao = fracoes?.find(f => 
+      (f.proprietario?.email && f.proprietario.email.toLowerCase() === senderClean) ||
+      (f.inquilino?.email && f.inquilino.email.toLowerCase() === senderClean) ||
+      (f.proprietarios_adicionais?.some((co: any) => co.email && co.email.toLowerCase() === senderClean))
+    );
+
+    const isOwner = matchingFracao?.proprietario?.email && matchingFracao.proprietario.email.toLowerCase() === senderClean;
+    const isTenant = matchingFracao?.inquilino?.email && matchingFracao.inquilino.email.toLowerCase() === senderClean;
+    const isCoproprietario = matchingFracao?.proprietarios_adicionais?.some((co: any) => co.email && co.email.toLowerCase() === senderClean);
+    const tipoRemetente = isTenant ? "inquilino" : isCoproprietario ? "coproprietario" : "proprietario";
+
+    const contexto = {
+      proprietario: matchingFracao?.proprietario || { nome: "Carlos Silva", email: s, nif: "123456789" },
+      fracao: matchingFracao ? {
+        fracao_nome: matchingFracao.fracao_nome,
+        piso: matchingFracao.piso,
+        permilagem: matchingFracao.permilagem,
+        tipologia: matchingFracao.tipologia
+      } : { fracao_nome: "Fração K", piso: "2º Dto", permilagem: 65, tipologia: "T3" },
+      predio: predio ? {
+        nome: predio.nome,
+        morada: predio.morada_linha1,
+        localidade: predio.localidade,
+        nif: predio.nif,
+        iban: predio.iban
+      } : { nome: predioNome },
+      quotas: {
+        valor_mensal: 55.00,
+        estado: "Em dia",
+        ultimo_mes_pago: "Setembro"
+      },
+      seguros: matchingFracao?.seguradora ? {
+        seguradora: matchingFracao.seguradora,
+        apolice_num: matchingFracao.apolice_num,
+        validade: matchingFracao.apolice_validade
+      } : {
+        seguradora: "Fidelidade Multirriscos Edifício",
+        apolice_num: "AP-992144-COND",
+        validade: "2027-12-31"
+      },
+      tipoRemetente
+    };
+
+    try {
+      const resp = await fetch("/api/autoresponder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: {
+            from: s,
+            subject: sub,
+            bodyText: b
+          },
+          contexto,
+          sender: s,
+          subject: sub,
+          body: b,
+          predioNome
+        })
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        setAutoresponderResult(data);
+      } else {
+        throw new Error("Erro no servidor de resposta.");
+      }
+    } catch {
+      // Fallback algorítmico rigoroso em conformidade com as regras
+      const text = (sub + " " + b).toLowerCase();
+      let genSubject = `Re: ${sub || "Contacto com o Condomínio"}`;
+      let genMsg = "";
+      let genCategoria = "outro";
+
+      if (text.includes("quota") || text.includes("pagamento") || text.includes("comprovativo") || text.includes("transferencia")) {
+        genCategoria = "quotas";
+        genSubject = `Re: ${sub || "Comprovativo de Pagamento"}`;
+        genMsg = "Agradecemos o envio da sua mensagem e do comprovativo de pagamento. Confirmamos a sua receção e informamos que o documento será conferido pela administração do condomínio na reconciliação bancária corrente. Logo que validado, o recibo oficial ser-lhe-á disponibilizado. Com os melhores cumprimentos, A Administração do Condomínio.";
+      } else if (text.includes("avaria") || text.includes("elevador") || text.includes("luz") || text.includes("porta") || text.includes("portão")) {
+        genCategoria = "avaria";
+        genSubject = `Re: ${sub || "Registo de Avaria"}`;
+        genMsg = "Agradecemos a sua comunicação e confirmamos a receção do reporte de avaria. A ocorrência foi registada com prioridade e será reportada de imediato ao fornecedor responsável pela manutenção técnica do edifício para intervenção no local. Com os melhores cumprimentos, A Administração do Condomínio.";
+      } else if (text.includes("ruído") || text.includes("barulho") || text.includes("conflito") || text.includes("vizinho")) {
+        genCategoria = "ruido";
+        genSubject = `Re: ${sub || "Comunicação sobre Ruído"}`;
+        genMsg = "Agradecemos o seu contacto e confirmamos a receção da sua exposição. A situação descrita será analisada com a devida reserva pela administração do condomínio e tratada em conformidade com o regulamento interno do edifício e a legislação geral aplicável. Com os melhores cumprimentos, A Administração do Condomínio.";
+      } else if (text.includes("ata") || text.includes("assembleia") || text.includes("convocatoria")) {
+        genCategoria = "assembleia";
+        genSubject = `Re: ${sub || "Assembleia Geral de Condóminos"}`;
+        genMsg = "Agradecemos o seu contacto sobre a assembleia de condóminos. Informamos que a respetiva convocatória e documentação preparatória serão remetidas por correio eletrónico dentro dos prazos legais aplicáveis. Com os melhores cumprimentos, A Administração do Condomínio.";
+      } else if (text.includes("documento") || text.includes("seguro") || text.includes("declaracao")) {
+        genCategoria = text.includes("seguro") ? "seguro" : "documentos";
+        genSubject = `Re: ${sub || "Documentação do Condomínio"}`;
+        genMsg = "Agradecemos o seu contacto e acusamos a receção do seu pedido de documentação. Os documentos solicitados encontram-se arquivados no registo digital do condomínio e serão disponibilizados no cumprimento dos prazos e procedimentos em vigor. Com os melhores cumprimentos, A Administração do Condomínio.";
+      } else {
+        genCategoria = "informacao";
+        genSubject = `Re: ${sub || "Contacto Geral"}`;
+        genMsg = "Agradecemos a sua mensagem e confirmamos a sua receção. A sua questão foi devidamente encaminhada para a administração do condomínio para análise e daremos o respetivo seguimento no mais curto prazo possível. Com os melhores cumprimentos, A Administração do Condomínio.";
+      }
+
+      setAutoresponderResult({
+        subject: genSubject,
+        message: genMsg,
+        categoria: genCategoria,
+        filtrado: false
+      });
+    } finally {
+      setAutoresponderLoading(false);
+    }
+  };
+
+  const handleRunClassificadorTest = async (senderOverride?: string, subjectOverride?: string, bodyOverride?: string) => {
+    const s = senderOverride !== undefined ? senderOverride : testAutoSender;
+    const sub = subjectOverride !== undefined ? subjectOverride : testAutoSubject;
+    const b = bodyOverride !== undefined ? bodyOverride : testAutoBody;
+
+    setClassificadorLoading(true);
+    setClassificadorResult(null);
+
+    try {
+      const resp = await fetch("/api/classificador", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: {
+            from: s,
+            subject: sub,
+            bodyText: b
+          }
+        })
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        setClassificadorResult({ categoria: data.categoria || "outro" });
+      } else {
+        throw new Error("Erro no classificador");
+      }
+    } catch {
+      // Fallback local caso o endpoint falhe
+      const text = (sub + " " + b).toLowerCase();
+      let cat = "outro";
+      if (text.includes("urgente") || text.includes("emergencia") || text.includes("emergência")) cat = "urgente";
+      else if (text.includes("quota") || text.includes("pagamento") || text.includes("comprovativo")) cat = "quotas";
+      else if (text.includes("ruido") || text.includes("ruído") || text.includes("barulho")) cat = "ruido";
+      else if (text.includes("avaria") || text.includes("elevador") || text.includes("porta") || text.includes("infiltração")) cat = "avaria";
+      else if (text.includes("assembleia") || text.includes("reuniao") || text.includes("ata")) cat = "assembleia";
+      else if (text.includes("documento") || text.includes("certidao") || text.includes("declaracao")) cat = "documentos";
+      else if (text.includes("seguro") || text.includes("apolice")) cat = "seguro";
+      else if (text.includes("inquilino") || text.includes("arrendamento")) cat = "inquilino";
+      else if (text.includes("coproprietario") || text.includes("coproprietário")) cat = "coproprietario";
+      else if (text.includes("administracao") || text.includes("gestor")) cat = "administracao";
+      else if (text.includes("predio") || text.includes("condominio") || text.includes("regulamento")) cat = "condominio";
+      else if (text.includes("duvida") || text.includes("informacao") || text.includes("esclarecimento")) cat = "informacao";
+      setClassificadorResult({ categoria: cat });
+    } finally {
+      setClassificadorLoading(false);
+    }
+  };
+
+  const handleRunRegrasCategoriaTest = async (
+    categoriaOverride?: string,
+    emailOverride?: { from?: string; subject?: string; bodyText?: string },
+    contextoOverride?: any
+  ) => {
+    const cat = categoriaOverride || selectedCatTest || "quotas";
+    const email = emailOverride || {
+      from: testAutoSender,
+      subject: testAutoSubject,
+      bodyText: testAutoBody
+    };
+    const contexto = contextoOverride || {
+      proprietario: { nome: "João Silva", email: testAutoSender },
+      fracao: { letra: "2º Dto", permilagem: 85 },
+      predio: { nome: predioNome || "Edifício Bento Rodrigues", iban: "PT50 0033 0000 12345678901 02", email: "administracao@condomanager.pt" },
+      quotas: cat === "quotas" ? { valor: 45.5, em_atraso: false, meses_atraso: 0 } : null,
+      seguros: cat === "seguro" || cat === "documentos" ? { seguradora: "Fidelidade Multirriscos", apolice: "MR-8834921-X", validade: "31/12/2026" } : null
+    };
+
+    setRegrasCategoriaLoading(true);
+    setRegrasCategoriaResult(null);
+
+    try {
+      const resp = await fetch("/api/resposta-categoria", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          categoria: cat,
+          email,
+          contexto
+        })
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        setRegrasCategoriaResult({
+          subject: data.subject,
+          message: data.message,
+          categoria: data.categoria
+        });
+      } else {
+        throw new Error("Erro na API");
+      }
+    } catch {
+      if (cat === "fornecedor" || cat === "ignorar") {
+        setRegrasCategoriaResult({ subject: null, message: null, categoria: "ignorar" });
+      } else {
+        setRegrasCategoriaResult({
+          subject: `Re: ${email.subject || "Comunicação ao Condomínio"}`,
+          message: `Estimado(a) condómino(a), acusamos a receção da sua comunicação sobre o tema "${cat}". Os serviços administrativos do condomínio registaram o assunto para o devido tratamento nos termos das regras vigentes.`,
+          categoria: cat
+        });
+      }
+    } finally {
+      setRegrasCategoriaLoading(false);
+    }
   };
 
   const handleConfirmSimulation = () => {
@@ -1727,6 +2010,847 @@ export function ConfiguracoesAdministracao({
                 </div>
               </form>
             </div>
+          </div>
+
+          {/* 3. MOTOR OFICIAL DE RESPOSTA AUTOMÁTICA (AUTORESPONDER DO CONDOMÍNIO) */}
+          <div className="bg-white dark:bg-slate-900 border border-emerald-500/30 rounded-2xl p-6 shadow-sm space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-150 dark:border-slate-800 pb-5">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <Bot className="h-5 w-5 text-emerald-500" />
+                    Motor Oficial de Resposta Automática (Autoresponder)
+                  </h3>
+                  <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                    JSON Puro {`{ "subject", "message" }`}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Interpretação e resposta automática de e-mails em conformidade estrita com as 7 regras operacionais do condomínio.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs">
+                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-1.5">
+                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                  Filtragem Ativa: EDP, Galp, MEO, TKE, Noreply
+                </span>
+              </div>
+            </div>
+
+            {/* Regras Operacionais em Vigor */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-3.5 bg-emerald-50/40 dark:bg-emerald-950/20 rounded-xl border border-emerald-200/60 dark:border-emerald-900/40 space-y-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">
+                  1. Formato & Limpeza
+                </span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Devolve estritamente JSON. Nunca devolve HTML, imagens, markdown ou emojis. O servidor monta o layout HTML oficial.
+                </p>
+              </div>
+
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 block">
+                  2. Regra de Filtragem (Não Responder)
+                </span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Fornecedores conhecidos ou remetentes noreply / automáticos devolvem <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded text-slate-900 dark:text-white font-mono">{`{"subject": null, "message": null}`}</code>.
+                </p>
+              </div>
+
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 block">
+                  3. Tom & Estrutura
+                </span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Tom profissional e cordial em português de Portugal. Confirmação de receção, resposta contextual ao tema e encerramento educado.
+                </p>
+              </div>
+            </div>
+
+            {/* Testador Interativo */}
+            <div className="bg-slate-50 dark:bg-slate-950 p-5 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Sparkles className="h-4 w-4 text-emerald-500" />
+                  Simulador e Testador em Tempo Real do Autoresponder:
+                </h4>
+                <div className="text-[11px] text-slate-400">
+                  Carregue um cenário rápido ou digite um e-mail para testar a resposta JSON.
+                </div>
+              </div>
+
+              {/* Botões de Cenários Rápidos */}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTestAutoSender("condomino.2a@gmail.com");
+                    setTestAutoSubject("Comprovativo de transferência - Quota de Outubro Fração 2º A");
+                    setTestAutoBody("Boa tarde. Venho por este meio anexar o comprovativo da liquidação da quota deste mês referente à fração 2º A. Solicito envio do respetivo recibo. Com os melhores cumprimentos, Maria Santos.");
+                    handleRunAutoresponderTest(
+                      "condomino.2a@gmail.com",
+                      "Comprovativo de transferência - Quota de Outubro Fração 2º A",
+                      "Boa tarde. Venho por este meio anexar o comprovativo da liquidação da quota deste mês referente à fração 2º A. Solicito envio do respetivo recibo. Com os melhores cumprimentos, Maria Santos."
+                    );
+                  }}
+                  className="px-2.5 py-1 bg-white dark:bg-slate-900 hover:border-emerald-500 text-slate-700 dark:text-slate-300 text-[11px] font-bold rounded-lg border border-slate-200 dark:border-slate-800 transition-all cursor-pointer shadow-2xs"
+                >
+                  💳 Quota / Pagamento
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTestAutoSender("joao.morador@hotmail.com");
+                    setTestAutoSubject("Elevador da direita avariado no piso 4");
+                    setTestAutoBody("Bom dia sr. administrador. O elevador da direita ficou parado no quarto andar e não responde às chamadas. Podem verificar a avaria com urgência? Obrigado.");
+                    handleRunAutoresponderTest(
+                      "joao.morador@hotmail.com",
+                      "Elevador da direita avariado no piso 4",
+                      "Bom dia sr. administrador. O elevador da direita ficou parado no quarto andar e não responde às chamadas. Podem verificar a avaria com urgência? Obrigado."
+                    );
+                  }}
+                  className="px-2.5 py-1 bg-white dark:bg-slate-900 hover:border-emerald-500 text-slate-700 dark:text-slate-300 text-[11px] font-bold rounded-lg border border-slate-200 dark:border-slate-800 transition-all cursor-pointer shadow-2xs"
+                >
+                  ⚠️ Avaria Elevador
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTestAutoSender("ana.moradora@gmail.com");
+                    setTestAutoSubject("Barulho excessivo e obras no 3º Esq fora de horas");
+                    setTestAutoBody("Boa noite. Venho reportar que estão a decorrer obras ruidosas na fração 3º Esq além das 22h, impedindo o descanso dos vizinhos. Agradeço que a administração intervenha.");
+                    handleRunAutoresponderTest(
+                      "ana.moradora@gmail.com",
+                      "Barulho excessivo e obras no 3º Esq fora de horas",
+                      "Boa noite. Venho reportar que estão a decorrer obras ruidosas na fração 3º Esq além das 22h, impedindo o descanso dos vizinhos. Agradeço que a administração intervenha."
+                    );
+                  }}
+                  className="px-2.5 py-1 bg-white dark:bg-slate-900 hover:border-emerald-500 text-slate-700 dark:text-slate-300 text-[11px] font-bold rounded-lg border border-slate-200 dark:border-slate-800 transition-all cursor-pointer shadow-2xs"
+                >
+                  📢 Ruído / Regulamento
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTestAutoSender("pedro.condomino@gmail.com");
+                    setTestAutoSubject("Data da próxima Assembleia Geral Ordinária");
+                    setTestAutoBody("Bom dia. Gostaria de saber quando está prevista a realização da próxima assembleia geral de condóminos e se os pontos da ordem de trabalhos já foram fechados.");
+                    handleRunAutoresponderTest(
+                      "pedro.condomino@gmail.com",
+                      "Data da próxima Assembleia Geral Ordinária",
+                      "Bom dia. Gostaria de saber quando está prevista a realização da próxima assembleia geral de condóminos e se os pontos da ordem de trabalhos já foram fechados."
+                    );
+                  }}
+                  className="px-2.5 py-1 bg-white dark:bg-slate-900 hover:border-emerald-500 text-slate-700 dark:text-slate-300 text-[11px] font-bold rounded-lg border border-slate-200 dark:border-slate-800 transition-all cursor-pointer shadow-2xs"
+                >
+                  📅 Assembleia
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTestAutoSender("mariana.proprietaria@gmail.com");
+                    setTestAutoSubject("Pedido de cópia da última ata e regulamento do condomínio");
+                    setTestAutoBody("Exmos. Senhores, venho por este meio solicitar o envio da ata da última reunião de condomínio e do regulamento interno em vigor para efeitos de atualização cadastral.");
+                    handleRunAutoresponderTest(
+                      "mariana.proprietaria@gmail.com",
+                      "Pedido de cópia da última ata e regulamento do condomínio",
+                      "Exmos. Senhores, venho por este meio solicitar o envio da ata da última reunião de condomínio e do regulamento interno em vigor para efeitos de atualização cadastral."
+                    );
+                  }}
+                  className="px-2.5 py-1 bg-white dark:bg-slate-900 hover:border-emerald-500 text-slate-700 dark:text-slate-300 text-[11px] font-bold rounded-lg border border-slate-200 dark:border-slate-800 transition-all cursor-pointer shadow-2xs"
+                >
+                  📄 Documentos
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTestAutoSender("inquilino.1dto@gmail.com");
+                    setTestAutoSubject("Substituição de fechadura da porta de entrada do edifício");
+                    setTestAutoBody("Boa tarde. Sou o inquilino da fração 1º Dto. A fechadura principal do prédio parece estar com folga. Gostaria de saber se a administração pode intervir.");
+                    handleRunAutoresponderTest(
+                      "inquilino.1dto@gmail.com",
+                      "Substituição de fechadura da porta de entrada do edifício",
+                      "Boa tarde. Sou o inquilino da fração 1º Dto. A fechadura principal do prédio parece estar com folga. Gostaria de saber se a administração pode intervir."
+                    );
+                  }}
+                  className="px-2.5 py-1 bg-white dark:bg-slate-900 hover:border-emerald-500 text-slate-700 dark:text-slate-300 text-[11px] font-bold rounded-lg border border-slate-200 dark:border-slate-800 transition-all cursor-pointer shadow-2xs"
+                >
+                  👤 Inquilino
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTestAutoSender("faturação@edp.pt");
+                    setTestAutoSubject("Fatura Eletrónica EDP Comercial Nº 98327423");
+                    setTestAutoBody("Exmo. Cliente, encontra-se disponível a fatura mensal referente ao fornecimento de eletricidade nas partes comuns.");
+                    handleRunAutoresponderTest(
+                      "faturação@edp.pt",
+                      "Fatura Eletrónica EDP Comercial Nº 98327423",
+                      "Exmo. Cliente, encontra-se disponível a fatura mensal referente ao fornecimento de eletricidade nas partes comuns."
+                    );
+                  }}
+                  className="px-2.5 py-1 bg-red-50 dark:bg-red-950/20 hover:border-red-500 text-red-700 dark:text-red-300 text-[11px] font-bold rounded-lg border border-red-200 dark:border-red-900/40 transition-all cursor-pointer shadow-2xs"
+                >
+                  🚫 Fornecedor EDP (Filtragem)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTestAutoSender("noreply@tkelevadores.com");
+                    setTestAutoSubject("Relatório Mensal de Manutenção Preventiva TKE");
+                    setTestAutoBody("Este é um e-mail gerado automaticamente pelo sistema de assistência técnica da TKE Elevadores.");
+                    handleRunAutoresponderTest(
+                      "noreply@tkelevadores.com",
+                      "Relatório Mensal de Manutenção Preventiva TKE",
+                      "Este é um e-mail gerado automaticamente pelo sistema de assistência técnica da TKE Elevadores."
+                    );
+                  }}
+                  className="px-2.5 py-1 bg-red-50 dark:bg-red-950/20 hover:border-red-500 text-red-700 dark:text-red-300 text-[11px] font-bold rounded-lg border border-red-200 dark:border-red-900/40 transition-all cursor-pointer shadow-2xs"
+                >
+                  🚫 Bot / Noreply (Filtragem)
+                </button>
+              </div>
+
+              {/* Formulário de Teste Manual */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                <div className="space-y-1">
+                  <label className="block text-[10px] uppercase font-bold text-slate-400">
+                    Remetente do E-mail Recebido
+                  </label>
+                  <input
+                    type="text"
+                    value={testAutoSender}
+                    onChange={(e) => setTestAutoSender(e.target.value)}
+                    placeholder="ex: condomino@gmail.com ou noreply@edp.pt"
+                    className="w-full border p-2 rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs font-mono font-medium focus:border-emerald-500 outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] uppercase font-bold text-slate-400">
+                    Assunto do E-mail
+                  </label>
+                  <input
+                    type="text"
+                    value={testAutoSubject}
+                    onChange={(e) => setTestAutoSubject(e.target.value)}
+                    placeholder="Assunto da mensagem"
+                    className="w-full border p-2 rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs font-medium focus:border-emerald-500 outline-none"
+                  />
+                </div>
+
+                <div className="col-span-1 md:col-span-2 space-y-1">
+                  <label className="block text-[10px] uppercase font-bold text-slate-400">
+                    Corpo da Mensagem (Texto Recebido)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={testAutoBody}
+                    onChange={(e) => setTestAutoBody(e.target.value)}
+                    placeholder="Escreva ou cole aqui a mensagem de teste..."
+                    className="w-full border p-2.5 rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs font-medium focus:border-emerald-500 outline-none resize-none leading-relaxed"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[11px] text-slate-400">
+                  O motor analisa o tema, tom, urgência e aplica filtros em tempo real.
+                </span>
+                <button
+                  type="button"
+                  disabled={autoresponderLoading}
+                  onClick={() => handleRunAutoresponderTest()}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {autoresponderLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>A Processar Motor IA...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" />
+                      <span>Testar Resposta Automática</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Painel com o Resultado Estrito em JSON */}
+              {autoresponderResult && (
+                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <FileCode className="h-4 w-4 text-emerald-500" />
+                      Saída Oficial do Motor (JSON Puro):
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full border border-indigo-500/30">
+                        categoria: "{autoresponderResult.categoria || "outro"}"
+                      </span>
+                      {autoresponderResult.categoria === "ignorar" || (autoresponderResult.subject === null && autoresponderResult.message === null) ? (
+                        <span className="bg-red-500/10 text-red-600 dark:text-red-400 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-red-500/30">
+                          IGNORAR (NÃO RESPONDER)
+                        </span>
+                      ) : (
+                        <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                          RESPOSTA APROVADA
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {autoresponderResult.motivoFiltro && (
+                    <div className="p-2.5 bg-red-50 dark:bg-red-950/20 rounded-xl border border-red-200 dark:border-red-900/40 text-[11px] text-red-700 dark:text-red-300 font-medium flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-red-500" />
+                      <span>{autoresponderResult.motivoFiltro}</span>
+                    </div>
+                  )}
+
+                  <div className="bg-slate-900 text-emerald-400 font-mono text-xs p-4 rounded-xl border border-slate-800 overflow-x-auto shadow-inner">
+                    <pre className="whitespace-pre-wrap">
+                      {JSON.stringify(
+                        {
+                          subject: autoresponderResult.subject,
+                          message: autoresponderResult.message,
+                          categoria: autoresponderResult.categoria || "outro"
+                        },
+                        null,
+                        2
+                      )}
+                    </pre>
+                  </div>
+
+                  {autoresponderResult.message && (
+                    <div className="p-3.5 bg-emerald-50/40 dark:bg-emerald-950/20 rounded-xl border border-emerald-200 dark:border-emerald-900/40 space-y-1">
+                      <span className="text-[10px] uppercase font-black tracking-wider text-emerald-700 dark:text-emerald-400 block">
+                        Texto Limpo Montado para o Condómino (Sem HTML / Emojis):
+                      </span>
+                      <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-sans">
+                        {autoresponderResult.message}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* CARD ESPECÍFICO: AI STUDIO — CLASSIFICADOR DE TEMAS (SYSTEM PROMPT) */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+                    AI Studio — Classificador de Temas
+                    <span className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-mono px-2 py-0.5 rounded-full border border-indigo-500/20">
+                      POST /api/classificador
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    System Prompt oficial: analisa o JSON do e-mail recebido e devolve estritamente <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{`{ "categoria": "..." }`}</code>.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Presets para todas as 14 Categorias do System Prompt */}
+            <div className="space-y-2">
+              <label className="block text-[10px] uppercase font-black tracking-wider text-slate-400">
+                Testar Diretamente as 14 Categorias do System Prompt:
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  {
+                    cat: "quotas",
+                    label: "Quotas",
+                    from: "condomino.2dto@gmail.com",
+                    sub: "Comprovativo de transferência - Quota de Setembro",
+                    body: "Boa tarde. Segue o comprovativo da quota deste mês da fração 2º Dto."
+                  },
+                  {
+                    cat: "ruido",
+                    label: "Ruído",
+                    from: "morador.3esq@gmail.com",
+                    sub: "Barulho excessivo e festas no 4º andar",
+                    body: "Gostaria de reportar música muito alta e barulho constante após as 23h na noite passada."
+                  },
+                  {
+                    cat: "avaria",
+                    label: "Avaria",
+                    from: "residente.1dt@gmail.com",
+                    sub: "Elevador com avaria e lâmpada apagada",
+                    body: "O elevador principal encontra-se parado no piso 0 com luz avariada e porta encravada."
+                  },
+                  {
+                    cat: "assembleia",
+                    label: "Assembleia",
+                    from: "condomino.5a@gmail.com",
+                    sub: "Convocatória e ata da assembleia geral",
+                    body: "Gostaria de saber a data da próxima reunião de assembleia e consultar a votação da ata anterior."
+                  },
+                  {
+                    cat: "documentos",
+                    label: "Documentos",
+                    from: "proprietario.rc@gmail.com",
+                    sub: "Pedido de certidão e cópia do regulamento",
+                    body: "Solicito envio de declaração de não dívida e cópia do regulamento do condomínio para efeitos de escritura."
+                  },
+                  {
+                    cat: "informacao",
+                    label: "Informação",
+                    from: "vizinho@gmail.com",
+                    sub: "Dúvida geral e esclarecimento",
+                    body: "Tenho uma pergunta geral sobre os horários autorizados para colocação do lixo nos contentores."
+                  },
+                  {
+                    cat: "administracao",
+                    label: "Administração",
+                    from: "condomino@gmail.com",
+                    sub: "Contacto do gestor da administração",
+                    body: "Preciso do contacto telefónico direto do gestor responsável pela administração do nosso prédio."
+                  },
+                  {
+                    cat: "condominio",
+                    label: "Condomínio",
+                    from: "morador@gmail.com",
+                    sub: "Regras do prédio e uso de partes comuns",
+                    body: "Gostaria de confirmar quais as regras em vigor no nosso condomínio sobre a utilização do terraço comum."
+                  },
+                  {
+                    cat: "seguro",
+                    label: "Seguro",
+                    from: "fracao3b@gmail.com",
+                    sub: "Participação de sinistro e apólice do seguro",
+                    body: "Houve infiltração de água na sala. Solicito o número da apólice do seguro multirriscos do condomínio para participar o sinistro."
+                  },
+                  {
+                    cat: "inquilino",
+                    label: "Inquilino",
+                    from: "inquilino.1dto@gmail.com",
+                    sub: "Contrato de arrendamento da fração",
+                    body: "Sou o inquilino da fração 1º Dto pelo contrato de arrendamento em vigor e venho comunicar uma dúvida."
+                  },
+                  {
+                    cat: "coproprietario",
+                    label: "Coproprietário",
+                    from: "segundo.dono@gmail.com",
+                    sub: "Registo de coproprietário da fração 4º Esq",
+                    body: "Sou o segundo proprietário e coproprietário da fração 4º Esq e pretendo que o meu e-mail seja incluído nas comunicações."
+                  },
+                  {
+                    cat: "urgente",
+                    label: "Urgente",
+                    from: "residente@gmail.com",
+                    sub: "URGENTE: Emergência de fuga de água na coluna montante",
+                    body: "Existe risco de inundação imediato e perigo de atingir os quadros elétricos da escada. Requer intervenção imediatamente!"
+                  },
+                  {
+                    cat: "fornecedor",
+                    label: "Fornecedor (EDP)",
+                    from: "faturacao@edp.pt",
+                    sub: "Fatura Mensal EDP Comercial",
+                    body: "Encontra-se disponível a fatura eletrónica para liquidação do consumo elétrico das partes comuns."
+                  },
+                  {
+                    cat: "outro",
+                    label: "Outro",
+                    from: "amigo@gmail.com",
+                    sub: "Felicitações aos vizinhos",
+                    body: "Apenas para desejar a todos um ótimo final de semana e felicitar pelo asseio do jardim."
+                  }
+                ].map(preset => (
+                  <button
+                    key={preset.cat}
+                    type="button"
+                    onClick={() => {
+                      setTestAutoSender(preset.from);
+                      setTestAutoSubject(preset.sub);
+                      setTestAutoBody(preset.body);
+                      handleRunClassificadorTest(preset.from, preset.sub, preset.body);
+                    }}
+                    className="px-2.5 py-1 bg-slate-50 dark:bg-slate-800/80 hover:border-indigo-500 text-slate-700 dark:text-slate-300 text-[11px] font-medium rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Ação e Saída Estrita */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => handleRunClassificadorTest()}
+                disabled={classificadorLoading}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-60"
+              >
+                {classificadorLoading ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>A Classificar Tema...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    <span>Executar Classificador (/api/classificador)</span>
+                  </>
+                )}
+              </button>
+
+              {classificadorResult && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500">Resultado:</span>
+                  <span className="bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-mono text-xs font-black px-3 py-1 rounded-full border border-indigo-500/30">
+                    categoria: "{classificadorResult.categoria}"
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {classificadorResult && (
+              <div className="bg-slate-900 text-emerald-400 font-mono text-xs p-4 rounded-xl border border-slate-800 overflow-x-auto shadow-inner">
+                <pre className="whitespace-pre-wrap">
+                  {JSON.stringify(
+                    {
+                      categoria: classificadorResult.categoria
+                    },
+                    null,
+                    2
+                  )}
+                </pre>
+              </div>
+            )}
+          </div>
+
+          {/* CARD ESPECÍFICO: AI STUDIO — REGRAS INTELIGENTES POR CATEGORIA (SYSTEM PROMPT) */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                  <Bot className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+                    AI Studio — Módulo de Resposta por Categoria
+                    <span className="bg-purple-500/10 text-purple-600 dark:text-purple-400 text-[10px] font-mono px-2 py-0.5 rounded-full border border-purple-500/20">
+                      POST /api/resposta-categoria
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    System Prompt oficial: gera resposta institucional com base na categoria identificada e no contexto (proprietário, fração, prédio, quotas, seguros).
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Presets Inteligentes de Teste das Regras */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-[10px] uppercase font-black tracking-wider text-slate-400">
+                  Cenários de Teste das Regras Inteligentes (Contexto + Categoria):
+                </label>
+                <span className="text-[10px] text-slate-400">Clique para preencher e testar instantaneamente</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  {
+                    label: "Quotas (Com Contexto)",
+                    cat: "quotas",
+                    from: "condomino@gmail.com",
+                    sub: "Comprovativo de Quotas",
+                    body: "Boa tarde, remeto comprovativo da transferência da quota de setembro.",
+                    contexto: {
+                      proprietario: { nome: "António Silveira" },
+                      fracao: { letra: "2º Dto" },
+                      predio: { nome: predioNome || "Edifício Bento Rodrigues", iban: "PT50 0033 0000 12345678901 02" },
+                      quotas: { valor: 65.0, em_atraso: true, meses_atraso: "Setembro" }
+                    }
+                  },
+                  {
+                    label: "Quotas (Sem Contexto)",
+                    cat: "quotas",
+                    from: "condomino.novo@gmail.com",
+                    sub: "Valor da quota",
+                    body: "Olá, gostaria de saber quanto tenho de pagar este mês.",
+                    contexto: {
+                      proprietario: { nome: "Manuel Soares" },
+                      fracao: { letra: "1º Esq" },
+                      predio: { nome: predioNome || "Edifício Bento Rodrigues", iban: "PT50 0033 0000 12345678901 02" },
+                      quotas: null
+                    }
+                  },
+                  {
+                    label: "Ruído (Regras de Silêncio)",
+                    cat: "ruido",
+                    from: "morador.3e@gmail.com",
+                    sub: "Música alta após as 23h",
+                    body: "Venho reportar festas e barulho constante pela noite dentro no piso 4.",
+                    contexto: {
+                      proprietario: { nome: "Carla Mendes" },
+                      fracao: { letra: "3º Esq" },
+                      predio: { nome: predioNome || "Edifício Bento Rodrigues" }
+                    }
+                  },
+                  {
+                    label: "Avaria (Procedimentos & Técnico)",
+                    cat: "avaria",
+                    from: "residente.4d@gmail.com",
+                    sub: "Elevador com avaria",
+                    body: "O elevador de serviço está parado entre o piso 1 e 2 sem iluminação.",
+                    contexto: {
+                      proprietario: { nome: "Pedro Lima" },
+                      fracao: { letra: "4º Dto" },
+                      predio: { nome: predioNome || "Edifício Bento Rodrigues" }
+                    }
+                  },
+                  {
+                    label: "Assembleia (Marcada)",
+                    cat: "assembleia",
+                    from: "condomino@gmail.com",
+                    sub: "Data da reunião geral",
+                    body: "Quando é a próxima assembleia de condóminos?",
+                    contexto: {
+                      proprietario: { nome: "Sofia Ribeiro" },
+                      predio: {
+                        nome: predioNome || "Edifício Bento Rodrigues",
+                        assembleia_marcada: true,
+                        assembleia_data: "25 de Outubro de 2026",
+                        assembleia_hora: "20:30",
+                        assembleia_local: "Hall de entrada principal"
+                      }
+                    }
+                  },
+                  {
+                    label: "Assembleia (Não Marcada)",
+                    cat: "assembleia",
+                    from: "condomino@gmail.com",
+                    sub: "Assembleia deste ano",
+                    body: "Já têm data prevista para a reunião anual?",
+                    contexto: {
+                      proprietario: { nome: "Duarte Faria" },
+                      predio: { nome: predioNome || "Edifício Bento Rodrigues", assembleia_marcada: false }
+                    }
+                  },
+                  {
+                    label: "Seguro (Com Apólice)",
+                    cat: "seguro",
+                    from: "condomino.2e@gmail.com",
+                    sub: "Dados do seguro para sinistro",
+                    body: "Tive uma fuga na canalização e o perito pediu a apólice do prédio.",
+                    contexto: {
+                      proprietario: { nome: "Inês Carvalho" },
+                      fracao: { letra: "2º Esq" },
+                      predio: { nome: predioNome || "Edifício Bento Rodrigues" },
+                      seguros: { seguradora: "Fidelidade Companhia de Seguros", apolice: "MR-992144-C", validade: "31/12/2026" }
+                    }
+                  },
+                  {
+                    label: "Seguro (Sem Registo)",
+                    cat: "seguro",
+                    from: "morador@gmail.com",
+                    sub: "Seguro da fração",
+                    body: "Podem enviar o seguro arquivado da minha fração?",
+                    contexto: {
+                      proprietario: { nome: "Tiago Matos" },
+                      fracao: { letra: "R/C Dto" },
+                      predio: { nome: predioNome || "Edifício Bento Rodrigues" },
+                      seguros: null
+                    }
+                  },
+                  {
+                    label: "Inquilino (Depende Proprietário)",
+                    cat: "inquilino",
+                    from: "inquilino.3a@gmail.com",
+                    sub: "Instalação de ar condicionado na fachada",
+                    body: "Sou arrendatário da fração 3º A e gostaria de colocar ar condicionado exterior.",
+                    contexto: {
+                      proprietario: { nome: "Senhorio Registado" },
+                      fracao: { letra: "3º A" },
+                      predio: { nome: predioNome || "Edifício Bento Rodrigues" }
+                    }
+                  },
+                  {
+                    label: "Coproprietário",
+                    cat: "coproprietario",
+                    from: "segundo.prop@gmail.com",
+                    sub: "Comunicação de coproprietário",
+                    body: "Sou segundo proprietário da fração e pretendo adicionar o meu contacto.",
+                    contexto: {
+                      proprietario: { nome: "Ana Paula Silva (Coproprietária)" },
+                      fracao: { letra: "5º Dto" },
+                      predio: { nome: predioNome || "Edifício Bento Rodrigues" }
+                    }
+                  },
+                  {
+                    label: "Urgente (Segurança Imediata)",
+                    cat: "urgente",
+                    from: "morador@gmail.com",
+                    sub: "URGENTE: Inundação na garagem",
+                    body: "A água está a subir rapidamente na cave dos carros junto aos quadros elétricos!",
+                    contexto: {
+                      proprietario: { nome: "Rui Fernandes" },
+                      fracao: { letra: "Piso -1" },
+                      predio: { nome: predioNome || "Edifício Bento Rodrigues" }
+                    }
+                  },
+                  {
+                    label: "Fornecedor (Ignorar / Null)",
+                    cat: "fornecedor",
+                    from: "faturacao@edp.pt",
+                    sub: "Fatura Eletrónica EDP",
+                    body: "Encontra-se disponível a fatura eletrónica para pagamento.",
+                    contexto: {}
+                  },
+                  {
+                    label: "Administração",
+                    cat: "administracao",
+                    from: "condomino@gmail.com",
+                    sub: "Contacto do gestor",
+                    body: "Gostaria de agendar uma reunião com o gestor do nosso condomínio.",
+                    contexto: {
+                      predio: { nome: predioNome || "Edifício Bento Rodrigues", email: "administracao@condomanager.pt" }
+                    }
+                  },
+                  {
+                    label: "Condomínio / Regras",
+                    cat: "condominio",
+                    from: "vizinho@gmail.com",
+                    sub: "Uso do terraço comum",
+                    body: "Quais são as regras para estender roupa no terraço da cobertura?",
+                    contexto: {
+                      predio: { nome: predioNome || "Edifício Bento Rodrigues" }
+                    }
+                  }
+                ].map(preset => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCatTest(preset.cat);
+                      setTestAutoSender(preset.from);
+                      setTestAutoSubject(preset.sub);
+                      setTestAutoBody(preset.body);
+                      handleRunRegrasCategoriaTest(preset.cat, { from: preset.from, subject: preset.sub, bodyText: preset.body }, preset.contexto);
+                    }}
+                    className="px-2.5 py-1 bg-slate-50 dark:bg-slate-800/80 hover:border-purple-500 text-slate-700 dark:text-slate-300 text-[11px] font-medium rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Configuração Manual Rápida */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2">
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">
+                  Categoria Identificada:
+                </label>
+                <select
+                  value={selectedCatTest}
+                  onChange={(e) => setSelectedCatTest(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 text-xs border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-purple-600 dark:text-purple-400"
+                >
+                  <option value="quotas">quotas</option>
+                  <option value="ruido">ruido</option>
+                  <option value="avaria">avaria</option>
+                  <option value="assembleia">assembleia</option>
+                  <option value="documentos">documentos</option>
+                  <option value="informacao">informacao</option>
+                  <option value="administracao">administracao</option>
+                  <option value="condominio">condominio</option>
+                  <option value="seguro">seguro</option>
+                  <option value="inquilino">inquilino</option>
+                  <option value="coproprietario">coproprietario</option>
+                  <option value="urgente">urgente</option>
+                  <option value="fornecedor">fornecedor (ignorar)</option>
+                  <option value="outro">outro</option>
+                </select>
+              </div>
+              <div className="sm:col-span-3 flex items-end">
+                <button
+                  type="button"
+                  onClick={() => handleRunRegrasCategoriaTest()}
+                  disabled={regrasCategoriaLoading}
+                  className="w-full sm:w-auto px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                >
+                  {regrasCategoriaLoading ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      <span>A Gerar Resposta Inteligente...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      <span>Gerar Resposta (/api/resposta-categoria)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Resultado do Módulo de Resposta por Categoria */}
+            {regrasCategoriaResult && (
+              <div className="space-y-3 pt-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 font-semibold">Categoria Aplicada:</span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-700 dark:text-purple-300 font-mono font-bold text-[11px] border border-purple-500/20">
+                      {regrasCategoriaResult.categoria}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 font-semibold">Assunto:</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                      {regrasCategoriaResult.subject || <span className="text-slate-400 italic">null (ignorado)</span>}
+                    </span>
+                  </div>
+                </div>
+
+                {regrasCategoriaResult.message && (
+                  <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                      Mensagem Institucional Gerada:
+                    </label>
+                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                      {regrasCategoriaResult.message}
+                    </p>
+                  </div>
+                )}
+
+                {/* Bloco JSON Estrito */}
+                <div className="bg-slate-950 text-emerald-400 font-mono text-xs p-4 rounded-xl border border-slate-800 overflow-x-auto shadow-inner">
+                  <div className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2">
+                    Saída Estrita JSON (Módulo Resposta por Categoria)
+                  </div>
+                  <pre className="whitespace-pre-wrap">
+                    {JSON.stringify(
+                      {
+                        subject: regrasCategoriaResult.subject,
+                        message: regrasCategoriaResult.message,
+                        categoria: regrasCategoriaResult.categoria
+                      },
+                      null,
+                      2
+                    )}
+                  </pre>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

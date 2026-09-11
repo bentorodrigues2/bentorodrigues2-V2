@@ -55,26 +55,7 @@ export function GestaoComunicacoes({
     urgencia: "normal" | "urgente";
     anexos: string[];
     estado: string;
-  }>>([
-    {
-      id: "com_1",
-      titulo: "Limpeza das Garagens e Substituição de Lâmpadas",
-      mensagem: "Informamos todos os condóminos que no dia 20 de Agosto realizar-se-á a limpeza profunda do piso -1 das garagens.",
-      data_envio: "14/08/2026",
-      urgencia: "urgente",
-      anexos: ["Aviso_Garagens.pdf"],
-      estado: "enviado",
-    },
-    {
-      id: "com_2",
-      titulo: "Convocatória para Assembleia Geral Ordinária",
-      mensagem: "Ficam convocados os Senhores Condóminos para reunir em Assembleia Geral no próximo dia 28 de Agosto pelas 20:30h.",
-      data_envio: "10/08/2026",
-      urgencia: "normal",
-      anexos: ["Convocatoria_AGO_2026.pdf"],
-      estado: "enviado",
-    },
-  ]);
+  }>>([]);
 
   const [comunicadoTitulo, setComunicadoTitulo] = useState("");
   const [comunicadoMensagem, setComunicadoMensagem] = useState("");
@@ -101,35 +82,9 @@ export function GestaoComunicacoes({
   };
 
   // 2. CHAT / INBOX STATE
-  const [conversas, setConversas] = useState<ConversaItem[]>([
-    {
-      id: "conv-1",
-      fracaoId: "frac-1",
-      fracaoNome: "Fração A - 1º Dto",
-      proprietario: "Ana Silva",
-      assunto: "Avaria no Elevador Principal e Ruído Estranho",
-      ultima_atualizacao: "14/08/2026",
-      estado: "pendente",
-      mensagens: [
-        { autor: "condomino", texto: "Olá, o elevador principal está a fazer um ruído estranho desde ontem à noite. Podem verificar?", data: "14/08/2026 18:30" }
-      ],
-    },
-    {
-      id: "conv-2",
-      fracaoId: "frac-2",
-      fracaoNome: "Fração B - 2º Esq",
-      proprietario: "Carlos Mendes",
-      assunto: "Pedido de Recibo de Quotas e Esclarecimento de Saldo",
-      ultima_atualizacao: "12/08/2026",
-      estado: "arquivada",
-      mensagens: [
-        { autor: "condomino", texto: "Boa tarde, podiam enviar o recibo da quota de Julho?", data: "12/08/2026 10:15" },
-        { autor: "administracao", texto: "Boa tarde Carlos, o recibo já foi enviado por e-mail e está disponível no seu portal.", data: "12/08/2026 11:00" }
-      ],
-    },
-  ]);
+  const [conversas, setConversas] = useState<ConversaItem[]>([]);
 
-  const [selectedConversaId, setSelectedConversaId] = useState<string>("conv-1");
+  const [selectedConversaId, setSelectedConversaId] = useState<string>("");
   const [respostaTexto, setRespostaTexto] = useState("");
 
   const handleSendResposta = (e: React.FormEvent) => {
@@ -156,17 +111,15 @@ export function GestaoComunicacoes({
   };
 
   // 3. SONDAGENS STATE
-  const [sondagensList, setSondagensList] = useState([
-    {
-      id: "sond_1",
-      pergunta: "Aprovação de Instalação de Painéis Solares na Cobertura",
-      opcoes: ["A Favor", "Contra", "Abstenção"],
-      votos: { "A Favor": 12, "Contra": 3, "Abstenção": 1 },
-      estado: "ativa",
-      criada: "01/08/2026",
-      fecho: "Em 10 dias",
-    },
-  ]);
+  const [sondagensList, setSondagensList] = useState<Array<{
+    id: string;
+    pergunta: string;
+    opcoes: string[];
+    votos: Record<string, number>;
+    estado: string;
+    criada: string;
+    fecho: string;
+  }>>([]);
 
   const [sondagemPergunta, setSondagemPergunta] = useState("");
   const [sondagemOpcao1, setSondagemOpcao1] = useState("A Favor");
@@ -196,16 +149,14 @@ export function GestaoComunicacoes({
   };
 
   // 4. QUESTIONÁRIOS STATE
-  const [questionariosList, setQuestionariosList] = useState([
-    {
-      id: "quest_1",
-      titulo: "Inquérito de Satisfação da Empresa de Limpeza",
-      descricao: "Avaliação do serviço de limpeza das áreas comuns no 1º Semestre.",
-      respostasCount: 14,
-      criado: "05/08/2026",
-      estado: "ativo",
-    },
-  ]);
+  const [questionariosList, setQuestionariosList] = useState<Array<{
+    id: string;
+    titulo: string;
+    descricao: string;
+    respostasCount: number;
+    criado: string;
+    estado: string;
+  }>>([]);
 
   const [questTitulo, setQuestTitulo] = useState("");
   const [questDesc, setQuestDesc] = useState("");
@@ -320,21 +271,28 @@ export function GestaoComunicacoes({
             <div className="lg:col-span-7 space-y-4">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">Histórico de Comunicados Enviados</h4>
               <div className="space-y-3">
-                {comunicadosList.map(item => (
-                  <div key={item.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                    <div className="flex justify-between items-start gap-2">
-                      <span className="font-bold text-xs text-slate-900">{item.titulo}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.urgencia === "urgente" ? "bg-red-100 text-red-700 border border-red-200" : "bg-emerald-100 text-emerald-800 border border-emerald-200"}`}>
-                        {item.urgencia === "urgente" ? "🚨 Urgente" : "Informativo"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-600 leading-relaxed">{item.mensagem}</p>
-                    <div className="flex justify-between items-center text-[10px] text-slate-400 pt-1 border-t border-slate-200/60">
-                      <span>Data: {item.data_envio}</span>
-                      <span className="text-emerald-600 font-bold">✓ Enviado a todas as frações</span>
-                    </div>
+                {comunicadosList.length === 0 ? (
+                  <div className="text-center text-slate-400 py-10 px-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
+                    <i className="fa-solid fa-bullhorn text-2xl mb-2 text-slate-300 block"></i>
+                    Nenhum comunicado enviado até ao momento. Utilize o formulário para disparar um comunicado para todos os condóminos.
                   </div>
-                ))}
+                ) : (
+                  comunicadosList.map(item => (
+                    <div key={item.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="font-bold text-xs text-slate-900">{item.titulo}</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.urgencia === "urgente" ? "bg-red-100 text-red-700 border border-red-200" : "bg-emerald-100 text-emerald-800 border border-emerald-200"}`}>
+                          {item.urgencia === "urgente" ? "🚨 Urgente" : "Informativo"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 leading-relaxed">{item.mensagem}</p>
+                      <div className="flex justify-between items-center text-[10px] text-slate-400 pt-1 border-t border-slate-200/60">
+                        <span>Data: {item.data_envio}</span>
+                        <span className="text-emerald-600 font-bold">✓ Enviado a todas as frações</span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -346,26 +304,33 @@ export function GestaoComunicacoes({
             <div className="lg:col-span-4 space-y-3 border-r border-slate-200 pr-0 lg:pr-4">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 mb-2">Mensagens Recebidas</h4>
               <div className="space-y-2">
-                {conversas.map(c => (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedConversaId(c.id)}
-                    className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer space-y-1 ${
-                      selectedConversaId === c.id
-                        ? "bg-emerald-50 border-emerald-300 ring-2 ring-emerald-400/20"
-                        : "bg-slate-50 border-slate-200 hover:bg-slate-100"
-                    }`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-xs text-slate-900 truncate">{c.proprietario}</span>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${c.estado === "pendente" ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-600"}`}>
-                        {c.estado === "pendente" ? "Pendente" : "Arquivada"}
-                      </span>
-                    </div>
-                    <div className="text-[11px] font-semibold text-emerald-800 truncate">{c.fracaoNome}</div>
-                    <div className="text-[10px] text-slate-500 truncate">{c.assunto}</div>
-                  </button>
-                ))}
+                {conversas.length === 0 ? (
+                  <div className="text-center text-slate-400 py-8 px-2 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
+                    <i className="fa-regular fa-comments text-2xl mb-1 text-slate-300 block"></i>
+                    Nenhuma mensagem recebida na caixa de entrada.
+                  </div>
+                ) : (
+                  conversas.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelectedConversaId(c.id)}
+                      className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer space-y-1 ${
+                        selectedConversaId === c.id
+                          ? "bg-emerald-50 border-emerald-300 ring-2 ring-emerald-400/20"
+                          : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-xs text-slate-900 truncate">{c.proprietario}</span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${c.estado === "pendente" ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-600"}`}>
+                          {c.estado === "pendente" ? "Pendente" : "Arquivada"}
+                        </span>
+                      </div>
+                      <div className="text-[11px] font-semibold text-emerald-800 truncate">{c.fracaoNome}</div>
+                      <div className="text-[10px] text-slate-500 truncate">{c.assunto}</div>
+                    </button>
+                  ))
+                )}
               </div>
             </div>
 
@@ -411,7 +376,10 @@ export function GestaoComunicacoes({
                   </form>
                 </div>
               ) : (
-                <div className="text-center text-slate-400 py-12 text-xs">Selecione uma mensagem para visualizar os detalhes.</div>
+                <div className="text-center text-slate-400 py-16 text-xs bg-slate-50 border border-dashed border-slate-200 rounded-xl">
+                  <i className="fa-solid fa-inbox text-3xl mb-2 text-slate-300 block"></i>
+                  Nenhuma mensagem selecionada ou recebida.
+                </div>
               )}
             </div>
           </div>
@@ -472,33 +440,40 @@ export function GestaoComunicacoes({
             <div className="lg:col-span-7 space-y-4">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">Sondagens Ativas e Resultados</h4>
               <div className="space-y-4">
-                {sondagensList.map(s => (
-                  <div key={s.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
-                    <div className="flex justify-between items-start gap-2">
-                      <span className="font-bold text-xs text-slate-900">{s.pergunta}</span>
-                      <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
-                        Ativa ({s.fecho})
-                      </span>
-                    </div>
-
-                    <div className="space-y-2 pt-1">
-                      {Object.entries(s.votos).map(([op, v]) => {
-                        const count = Number(v) || 0;
-                        return (
-                          <div key={op} className="space-y-1">
-                            <div className="flex justify-between text-[11px] font-semibold text-slate-700">
-                              <span>{op}</span>
-                              <span>{count} Votos</span>
-                            </div>
-                            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                              <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(count * 8, 100)}%` }}></div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                {sondagensList.length === 0 ? (
+                  <div className="text-center text-slate-400 py-10 px-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
+                    <i className="fa-solid fa-square-poll-horizontal text-2xl mb-2 text-slate-300 block"></i>
+                    Nenhuma sondagem ou votação ativa no momento. Utilize o formulário para criar uma nova sondagem para os condóminos.
                   </div>
-                ))}
+                ) : (
+                  sondagensList.map(s => (
+                    <div key={s.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="font-bold text-xs text-slate-900">{s.pergunta}</span>
+                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
+                          Ativa ({s.fecho})
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 pt-1">
+                        {Object.entries(s.votos).map(([op, v]) => {
+                          const count = Number(v) || 0;
+                          return (
+                            <div key={op} className="space-y-1">
+                              <div className="flex justify-between text-[11px] font-semibold text-slate-700">
+                                <span>{op}</span>
+                                <span>{count} Votos</span>
+                              </div>
+                              <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                                <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(count * 8, 100)}%` }}></div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -547,21 +522,28 @@ export function GestaoComunicacoes({
             <div className="lg:col-span-7 space-y-4">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">Inquéritos em Andamento</h4>
               <div className="space-y-3">
-                {questionariosList.map(q => (
-                  <div key={q.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                    <div className="flex justify-between items-start">
-                      <span className="font-bold text-xs text-slate-900">{q.titulo}</span>
-                      <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
-                        Ativo
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-600">{q.descricao}</p>
-                    <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-200">
-                      <span>Criado em: {q.criado}</span>
-                      <span className="font-bold text-emerald-700">{q.respostasCount} Respostas Recebidas</span>
-                    </div>
+                {questionariosList.length === 0 ? (
+                  <div className="text-center text-slate-400 py-10 px-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
+                    <i className="fa-solid fa-clipboard-question text-2xl mb-2 text-slate-300 block"></i>
+                    Nenhum inquérito ou questionário criado até ao momento. Utilize o formulário para lançar um inquérito de auscultação aos condóminos.
                   </div>
-                ))}
+                ) : (
+                  questionariosList.map(q => (
+                    <div key={q.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                      <div className="flex justify-between items-start">
+                        <span className="font-bold text-xs text-slate-900">{q.titulo}</span>
+                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
+                          Ativo
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600">{q.descricao}</p>
+                      <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-200">
+                        <span>Criado em: {q.criado}</span>
+                        <span className="font-bold text-emerald-700">{q.respostasCount} Respostas Recebidas</span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
