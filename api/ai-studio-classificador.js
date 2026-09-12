@@ -1,3 +1,4 @@
+export const config = { runtime: "edge" };
 export default async function handler(req, res) {
   try {
     const { texto } = req.body;
@@ -22,3 +23,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Erro no classificador" });
   }
 }
+

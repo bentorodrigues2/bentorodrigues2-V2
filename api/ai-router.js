@@ -1,3 +1,4 @@
+export const config = { runtime: "edge" };
 export default async function handler(req, res) {
   const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
@@ -151,3 +152,4 @@ Devolve SEMPRE estritamente um JSON no formato:
     source: "fallback"
   });
 }
+

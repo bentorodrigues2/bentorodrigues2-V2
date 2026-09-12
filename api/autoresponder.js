@@ -1,3 +1,4 @@
+export const config = { runtime: "edge" };
 import { Resend } from "resend";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -39,3 +40,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Erro interno no autoresponder" });
   }
 }
+

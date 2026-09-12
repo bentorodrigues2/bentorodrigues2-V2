@@ -1,3 +1,4 @@
+export const config = { runtime: "edge" };
 import { supabase } from "../src/lib/supabaseclient.js";
 
 const FORNECEDOR_PATTERNS = [
@@ -101,3 +102,4 @@ export default async function handler(req, res) {
     });
   }
 }
+

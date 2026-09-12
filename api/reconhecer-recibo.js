@@ -1,3 +1,4 @@
+export const config = { runtime: "edge" };
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default async function handler(req, res) {
@@ -106,3 +107,4 @@ Devolve a análise em formato JSON com:
     });
   }
 }
+

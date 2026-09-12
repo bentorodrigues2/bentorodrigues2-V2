@@ -1,4 +1,5 @@
-ï»¿import { createClient } from '@supabase/supabase-js';
+export const config = { runtime: "edge" };
+import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
@@ -69,9 +70,9 @@ export default async function handler(req, res) {
       .select()
       .single();
 
-    // 5) Enviar email ao condÃ³mino
+    // 5) Enviar email ao condómino
     await resend.emails.send({
-      from: 'CondomÃ­nio <no-reply@condominio.pt>',
+      from: 'Condomínio <no-reply@condominio.pt>',
       to: dados.proprietarios.email,
       subject: recibo.subject,
       html: recibo.message,
@@ -94,3 +95,4 @@ export default async function handler(req, res) {
     res.status(500).json({ error: e.message });
   }
 }
+

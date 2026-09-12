@@ -1,3 +1,4 @@
+export const config = { runtime: "edge" };
 import { google } from "googleapis";
 
 export default async function handler(req, res) {
@@ -78,3 +79,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Erro no gmail-reader" });
   }
 }
+

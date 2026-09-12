@@ -1,9 +1,10 @@
-ï»¿import { supabase } from "../services/lib/supabaseClient.js";
+export const config = { runtime: "edge" };
+import { supabase } from "../services/lib/supabaseClient.js";
 
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
-      return res.status(405).json({ error: "MÃ©todo nÃ£o permitido" });
+      return res.status(405).json({ error: "Método não permitido" });
     }
 
     const {
@@ -18,17 +19,17 @@ export default async function handler(req, res) {
     } = req.body || {};
 
     if (!fracao || !valor || !dataDocumento || !comprovativoUrl) {
-      return res.status(400).json({ error: "Dados incompletos para lanÃ§amento de pagamento." });
+      return res.status(400).json({ error: "Dados incompletos para lançamento de pagamento." });
     }
 
-    // 1) ReferÃªncia individual (opcional)
+    // 1) Referência individual (opcional)
     const referencia =
       contexto?.referencia ||
       contexto?.proprietario?.referencia ||
       contexto?.proprietario?.perfil_bancario?.referencia ||
       null;
 
-    // 2) Perfil bancÃ¡rio (opcional)
+    // 2) Perfil bancário (opcional)
     const perfilBancario = contexto?.proprietario?.perfil_bancario || null;
 
     // 3) Inserir na tabela pagamentos
@@ -50,8 +51,8 @@ export default async function handler(req, res) {
       .single();
 
     if (error) {
-      console.error("Erro ao lanÃ§ar pagamento:", error);
-      return res.status(500).json({ error: "Erro ao lanÃ§ar pagamento." });
+      console.error("Erro ao lançar pagamento:", error);
+      return res.status(500).json({ error: "Erro ao lançar pagamento." });
     }
 
     return res.status(200).json({
@@ -67,3 +68,4 @@ export default async function handler(req, res) {
     });
   }
 }
+

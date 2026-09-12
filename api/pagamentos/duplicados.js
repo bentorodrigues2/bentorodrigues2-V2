@@ -1,4 +1,5 @@
-﻿import { supabase } from "../../services/lib/supabaseClient.js";
+export const config = { runtime: "edge" };
+import { supabase } from "../../services/lib/supabaseClient.js";
 
 export default async function handler(req, res) {
   try {
@@ -23,3 +24,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
+

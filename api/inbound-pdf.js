@@ -1,15 +1,16 @@
-Ôªøimport { supabase } from "../services/lib/supabaseClient.js";
+export const config = { runtime: "edge" };
+import { supabase } from "../services/lib/supabaseClient.js";
 
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
-      return res.status(405).json({ error: "M√©todo n√£o permitido" });
+      return res.status(405).json({ error: "MÈtodo n„o permitido" });
     }
 
     const { pdfUrl, base64Pdf, origem } = req.body || {};
 
     if (!pdfUrl && !base64Pdf) {
-      return res.status(400).json({ error: "PDF n√£o fornecido." });
+      return res.status(400).json({ error: "PDF n„o fornecido." });
     }
 
     // 1) Enviar PDF para o AI Studio
@@ -31,14 +32,14 @@ export default async function handler(req, res) {
     const fracao = aiData?.id_fracao || aiData?.fracao;
     const valor = aiData?.valor || aiData?.valorTotal;
 
-    // 2) Obter fra√ß√£o
+    // 2) Obter fraÁ„o
     const { data: fracaoRow } = await supabase
       .from("fracoes")
       .select("id_fracao")
       .eq("id_fracao", fracao)
       .single();
 
-    // 3) Obter propriet√°rio
+    // 3) Obter propriet·rio
     const { data: proprietarioRow } = await supabase
       .from("proprietarios")
       .select("id_proprietario, referencia")
@@ -73,3 +74,4 @@ export default async function handler(req, res) {
     });
   }
 }
+

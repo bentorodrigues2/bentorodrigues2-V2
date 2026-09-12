@@ -1,3 +1,4 @@
+export const config = { runtime: "edge" };
 import { google } from "googleapis";
 
 export default function handler(req, res) {
@@ -24,3 +25,4 @@ export default function handler(req, res) {
     });
   }
 }
+

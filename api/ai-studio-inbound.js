@@ -1,3 +1,4 @@
+export const config = { runtime: "edge" };
 import { supabase } from "../services/lib/supabaseClient.js";
 import { gerarHtmlAutoresponder, gerarHtmlResposta } from "../services/lib/htmlemail.js";
 
@@ -278,3 +279,4 @@ export default async function handler(req, res) {
     });
   }
 }
+
