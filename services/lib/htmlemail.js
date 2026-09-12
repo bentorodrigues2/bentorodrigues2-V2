@@ -1,5 +1,5 @@
 //
-// 1) HTML DO AUTORESPONDER
+// HTML DO AUTORESPONDER
 // (email automático “Obrigado pelo seu contacto”)
 //
 
@@ -11,15 +11,15 @@ export function gerarHtmlAutoresponder(nome) {
       <!-- Logotipo ao centro -->
       <div style="text-align:center;margin-bottom:25px;">
         <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp"
-             alt="CondoManager AI"
-             style="width:220px;opacity:0.95;" />
+             alt="Condomínio"
+             style="width:240px;opacity:0.95;" />
       </div>
 
       <p>Olá ${nome || "Condómino"},</p>
 
-      <p>Agradecemos o seu contacto.</p>
+      <p>Agradecemos o seu contacto. A administração irá analisar a sua mensagem e responder com brevidade.</p>
 
-      <!-- Imagem por baixo do texto -->
+      <!-- Imagem ilustrativa -->
       <div style="text-align:center;margin:25px 0;">
         <img src="https://bentorodrigues2.vercel.app/email/20-email-opt.webp"
              alt="Email recebido"
@@ -27,8 +27,10 @@ export function gerarHtmlAutoresponder(nome) {
       </div>
 
       <p>
-        Caso necessite de alguma informação urgente poderá solicitar através da aplicação móvel enviando mensagem direta para a administração.
+        Caso necessite de alguma informação urgente poderá utilizar a aplicação móvel e enviar mensagem direta para a administração.
       </p>
+
+      <br>
 
       <p>
         Com os meus cumprimentos,<br/>
@@ -47,8 +49,8 @@ export function gerarHtmlAutoresponder(nome) {
 
 
 //
-// 2) HTML DA RESPOSTA INSTITUCIONAL (AI ROUTER / GROQ)
-// (email formal com a resposta gerada pela IA)
+// HTML DA RESPOSTA INSTITUCIONAL (AI ROUTER / GROQ)
+// (email com a resposta gerada pela IA)
 //
 
 export function gerarHtmlResposta(nome, mensagem) {
@@ -59,18 +61,20 @@ export function gerarHtmlResposta(nome, mensagem) {
       <!-- Logotipo ao centro -->
       <div style="text-align:center;margin-bottom:25px;">
         <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp"
-             alt="CondoManager AI"
+             alt="Condomínio"
              style="width:240px;opacity:0.95;" />
       </div>
 
       <p>Olá ${nome || "Condómino"},</p>
 
       <!-- Mensagem institucional do AI Router -->
-      <p style="line-height:1.5;font-size:15px;">
+      <p style="line-height:1.6;font-size:15px;">
         ${mensagem.replace(/\n/g, "<br>")}
       </p>
 
-      <p style="margin-top:30px;">
+      <br>
+
+      <p>
         Com os meus cumprimentos,<br/>
         A administração do condomínio<br/>
         <strong>José Carlos Guerra</strong><br/>

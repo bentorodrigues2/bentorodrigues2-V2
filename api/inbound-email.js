@@ -1,4 +1,4 @@
-import { supabase } from "../services/lib/supabaseClient.js";
+﻿import { supabase } from "../services/lib/supabaseClient.js";
 import { gerarHtmlAutoresponder, gerarHtmlResposta } from "../services/lib/htmlemail.js";
 
 // -----------------------------
