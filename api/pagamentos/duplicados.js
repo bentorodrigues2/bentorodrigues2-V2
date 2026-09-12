@@ -1,4 +1,3 @@
-export const config = { runtime: "edge" };
 import { supabase } from "../../services/lib/supabaseClient.js";
 
 export default async function handler(req, res) {
@@ -12,16 +11,15 @@ export default async function handler(req, res) {
     const mapa = {};
 
     data.forEach(p => {
-      const key = ${p.id_fracao}-;
+      const key = `${p.id_fracao}-${p.valor}`;
       if (!mapa[key]) mapa[key] = [];
       mapa[key].push(p);
     });
 
-    const resultado = Object.values(mapa).filter(x => x.length > 1);
+    const duplicados = Object.values(mapa).filter(x => x.length > 1);
 
-    return res.status(200).json({ ok: true, duplicados: resultado });
+    return res.status(200).json({ ok: true, duplicados });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 }
-
