@@ -2,35 +2,23 @@ export default async function handler(req, res) {
   const { acao } = req.query;
 
   try {
-    //
-    // 1. INBOUND (ai-studio-inbound.js)
-    //
     if (acao === "inbound") {
-      const mod = await import("./ai-studio-inbound.js");
+      const mod = await import("../api_handlers_backup/ai-studio-inbound.js");
       return mod.default(req, res);
     }
 
-    //
-    // 2. CLASSIFICADOR (ai-studio-classificador.js)
-    //
     if (acao === "classificar") {
-      const mod = await import("./ai-studio-classificador.js");
+      const mod = await import("../api_handlers_backup/ai-studio-classificador.js");
       return mod.default(req, res);
     }
 
-    //
-    // 3. ROUTER (ai-router.js)
-    //
     if (acao === "router") {
-      const mod = await import("./ai-router.js");
+      const mod = await import("../api_handlers_backup/ai-router.js");
       return mod.default(req, res);
     }
 
-    //
-    // 4. CHAT (ai-assistant/chat.js)
-    //
     if (acao === "chat") {
-      const mod = await import("./ai-assistant/chat.js");
+      const mod = await import("../api_handlers_backup/chat.js");
       return mod.default(req, res);
     }
 

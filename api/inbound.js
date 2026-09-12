@@ -3,12 +3,12 @@ export default async function handler(req, res) {
 
   try {
     if (tipo === "email") {
-      const mod = await import("./inbound-email.js");
+      const mod = await import("../api_handlers_backup/inbound-email.js");
       return mod.default(req, res);
     }
 
     if (tipo === "pdf") {
-      const mod = await import("./inbound-pdf.js");
+      const mod = await import("../api_handlers_backup/inbound-pdf.js");
       return mod.default(req, res);
     }
 

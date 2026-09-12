@@ -3,12 +3,12 @@ export default async function handler(req, res) {
 
   try {
     if (acao === "lancar") {
-      const mod = await import("./lancar-pagamento.js");
+      const mod = await import("../api_handlers_backup/lancar-pagamento.js");
       return mod.default(req, res);
     }
 
     if (acao === "confirmar") {
-      const mod = await import("./confirmar-pagamento.js");
+      const mod = await import("../api_handlers_backup/confirmar-pagamento.js");
       return mod.default(req, res);
     }
 

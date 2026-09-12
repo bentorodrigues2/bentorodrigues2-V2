@@ -3,17 +3,17 @@ export default async function handler(req, res) {
 
   try {
     if (acao === "url") {
-      const mod = await import("./oauth-url.js");
+      const mod = await import("../api_handlers_backup/oauth-url.js");
       return mod.default(req, res);
     }
 
     if (acao === "callback") {
-      const mod = await import("./oauth-callback.js");
+      const mod = await import("../api_handlers_backup/oauth-callback.js");
       return mod.default(req, res);
     }
 
     if (acao === "autoresponder") {
-      const mod = await import("./autoresponder-email.js");
+      const mod = await import("../api_handlers_backup/autoresponder-email.js");
       return mod.default(req, res);
     }
 
