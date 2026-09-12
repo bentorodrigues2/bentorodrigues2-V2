@@ -1,32 +1,22 @@
-
 import { supabase } from "../services/lib/supabaseClient.js";
 import { gerarHtmlAutoresponder, gerarHtmlResposta } from "../services/lib/htmlemail.js";
 
 // -----------------------------
-// 1. Classificador via AI Studio Classificador
+// 1. Classificador LOCAL (sem AI Studio)
 // -----------------------------
 async function classificarCategoria(texto) {
   try {
-    const resposta = await fetch(process.env.AI_STUDIO_CLASSIFICADOR_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.AI_STUDIO_API_KEY}`,
-      },
-      body: JSON.stringify({ texto }),
-    });
+    const lower = texto.toLowerCase();
 
-    if (!resposta.ok) {
-      const errText = await resposta.text().catch(() => "");
-      console.error("Classificador AI Studio falhou:", errText);
-      return null;
-    }
+    if (lower.includes("ata") || lower.includes("assembleia")) return "assembleia";
+    if (lower.includes("quota") || lower.includes("pagamento")) return "pagamentos";
+    if (lower.includes("ruído") || lower.includes("barulho")) return "ruido";
+    if (lower.includes("avaria") || lower.includes("reparação")) return "avarias";
 
-    const data = await resposta.json();
-    return data?.categoria || null;
+    return "geral";
   } catch (e) {
     console.error("Erro no classificarCategoria:", e);
-    return null;
+    return "geral";
   }
 }
 
@@ -37,7 +27,7 @@ async function obterContextoDaFracao(email) {
   try {
     const { data, error } = await supabase
       .from("fracoes")
-      .select("*")
+      .select("id_fracao, id_predio, fracao_nome, email, contacto")
       .eq("email", email)
       .single();
 
@@ -54,7 +44,49 @@ async function obterContextoDaFracao(email) {
 }
 
 // -----------------------------
-// 3. Anexos automáticos (tabela documentos)
+// 3. Router LOCAL (sem AI Studio)
+// -----------------------------
+async function routerLocal(categoria, contexto) {
+  let subject = "";
+  let message = "";
+
+  switch (categoria) {
+    case "assembleia":
+      subject = "Re: Pedido de ata da assembleia";
+      message = `Olá,\n\nSegue a ata solicitada referente à assembleia.\n\nCumprimentos,\nAdministração`;
+      break;
+
+    case "pagamentos":
+      subject = "Re: Informação sobre quotas/pagamentos";
+      message = `Olá,\n\nRelativamente ao seu pedido, aqui está a informação sobre quotas.\n\nCumprimentos,\nAdministração`;
+      break;
+
+    case "ruido":
+      subject = "Re: Situação de ruído";
+      message = `Olá,\n\nA situação de ruído foi registada e será analisada.\n\nCumprimentos,\nAdministração`;
+      break;
+
+    case "avarias":
+      subject = "Re: Avaria reportada";
+      message = `Olá,\n\nA avaria foi registada. A administração irá proceder conforme necessário.\n\nCumprimentos,\nAdministração`;
+      break;
+
+    default:
+      subject = "Re: Pedido recebido";
+      message = `Olá,\n\nO seu pedido foi recebido e será tratado.\n\nCumprimentos,\nAdministração`;
+      break;
+  }
+
+  return {
+    subject,
+    message,
+    email_destino: contexto?.email || null,
+    contacto_destino: contexto?.contacto || null,
+  };
+}
+
+// -----------------------------
+// 4. Anexos automáticos (tabela documentos)
 // -----------------------------
 async function obterAnexosDaFracao(id_predio) {
   try {
@@ -79,31 +111,7 @@ async function obterAnexosDaFracao(id_predio) {
 }
 
 // -----------------------------
-// 4. OPÇÃO B — Lançamento pendente de comprovativos
-// -----------------------------
-async function lancarComprovativoPendente(aiData, contexto, comprovativoUrl) {
-  try {
-    if (aiData?.categoria !== "COMPROVATIVO_QUOTA") return;
-
-    await fetch(process.env.LANCAR_PAGAMENTO_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        estado: "pendente",
-        fracao: contexto?.fracao || contexto?.id_fracao || null,
-        valor: aiData?.dadosExtraidos?.valorTotal || null,
-        dataDocumento: aiData?.dadosExtraidos?.dataDocumento || null,
-        entidade: aiData?.dadosExtraidos?.entidade || null,
-        comprovativoUrl,
-      }),
-    });
-  } catch (e) {
-    console.error("Erro ao lançar comprovativo pendente:", e);
-  }
-}
-
-// -----------------------------
-// 5. HANDLER PRINCIPAL
+// 5. HANDLER PRINCIPAL (SEM AI STUDIO)
 // -----------------------------
 export default async function handler(req, res) {
   try {
@@ -114,7 +122,7 @@ export default async function handler(req, res) {
     const { from, subject, body } = req.body || {};
 
     if (!from || !subject) {
-      console.error("Payload inválido (sem from ou subject):", req.body);
+      console.error("Payload inválido:", req.body);
       return res.status(400).json({ error: "Payload inválido" });
     }
 
@@ -136,50 +144,28 @@ export default async function handler(req, res) {
     ];
 
     if (bloqueados.some((b) => remetente.includes(b))) {
-      console.log("Email ignorado (fornecedor/noreply):", from);
+      console.log("Email ignorado:", from);
       return res.status(200).json({ ok: true, autoresponder: false });
     }
 
-    // 2. Classificar categoria
+    // 2. Classificar categoria LOCAL
     const categoriaClassificada = await classificarCategoria(textoEmail);
     console.log("Categoria classificada:", categoriaClassificada);
 
     // 3. Obter contexto da fração
     const contexto = await obterContextoDaFracao(from);
-    console.log("Contexto da fração:", contexto?.id_predio || null);
+    console.log("Contexto da fração:", contexto);
 
-    // 4. Enviar para o Router (AI Studio Router)
-    const aiRes = await fetch(process.env.AI_STUDIO_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.AI_STUDIO_API_KEY}`,
-      },
-      body: JSON.stringify({
-        email: { from, subject, bodyText: textoEmail },
-        categoria: categoriaClassificada,
-        contexto,
-      }),
-    });
-
-    if (!aiRes.ok) {
-      const errText = await aiRes.text().catch(() => "");
-      console.error("Erro no router AI Studio:", errText);
-      return res.status(500).json({ error: "Erro no router AI Studio" });
-    }
-
-    const aiData = await aiRes.json();
-    console.log("AI Router - Resposta:", aiData);
+    // 4. Router LOCAL
+    const routerData = await routerLocal(categoriaClassificada, contexto);
 
     // 5. Nome do remetente
     const nomeRemetente =
-      contexto?.nome ||
+      contexto?.fracao_nome ||
       from?.split("@")[0] ||
       "Condómino";
 
-    //
     // 6. AUTORESPONDER
-    //
     const htmlAutoresponder = gerarHtmlAutoresponder(nomeRemetente);
 
     try {
@@ -198,57 +184,19 @@ export default async function handler(req, res) {
       });
       console.log("Autoresponder enviado para:", from);
     } catch (e) {
-      console.error("Erro ao enviar autoresponder via Resend:", e);
+      console.error("Erro ao enviar autoresponder:", e);
     }
 
-    //
     // 7. RESPOSTA INSTITUCIONAL
-    //
-    if (!aiData.subject || !aiData.message) {
-      console.log("AI Router devolveu subject/message nulos → só autoresponder enviado.");
-      return res.status(200).json({ ok: true, autoresponder: true });
-    }
+    const htmlFinal = gerarHtmlResposta(nomeRemetente, routerData.message);
 
-    const htmlFinal = gerarHtmlResposta(nomeRemetente, aiData.message);
-
-    //
-    // 8. ANEXOS DO AI STUDIO (PDFs, documentos, recibos, etc.)
-    //
     let anexos = [];
 
-    // 8.1 — Ficheiro único (ex: recibo PDF)
-    if (aiData.ficheiro?.url) {
-      anexos.push({
-        filename: aiData.ficheiro.filename || "documento.pdf",
-        path: aiData.ficheiro.url,
-      });
-    }
-
-    // 8.2 — Lista de documentos
-    if (Array.isArray(aiData.documentos)) {
-      aiData.documentos.forEach((doc) => {
-        anexos.push({
-          filename: doc.filename || "documento.pdf",
-          path: doc.url,
-        });
-      });
-    }
-
-    // 8.3 — Documentos automáticos da fração
-    if (aiData.acao === "anexar_documentos" && contexto?.id_predio) {
+    if (contexto?.id_predio) {
       const docsPredio = await obterAnexosDaFracao(contexto.id_predio);
       anexos.push(...docsPredio);
     }
 
-    //
-    // 9. OPÇÃO B — Lançamento pendente de comprovativos
-    //
-    const comprovativoUrl = anexos?.[0]?.path || null;
-    await lancarComprovativoPendente(aiData, contexto, comprovativoUrl);
-
-    //
-    // 10. Enviar email institucional via Resend
-    //
     try {
       await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -259,14 +207,14 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           from: "Condomínio <administracao@condomanagerai.com>",
           to: from,
-          subject: aiData.subject || subject,
+          subject: routerData.subject || subject,
           html: htmlFinal,
           attachments: anexos,
         }),
       });
       console.log("Email institucional enviado para:", from);
     } catch (e) {
-      console.error("Erro ao enviar email institucional via Resend:", e);
+      console.error("Erro ao enviar email institucional:", e);
     }
 
     return res.status(200).json({ ok: true });
@@ -279,5 +227,3 @@ export default async function handler(req, res) {
     });
   }
 }
-
-
