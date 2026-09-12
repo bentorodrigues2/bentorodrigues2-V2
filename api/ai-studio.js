@@ -1,7 +1,9 @@
 export default async function handler(req, res) {
-  const { acao } = req.query;
-
   try {
+    // Parsing moderno WHATWG (elimina DEP0169)
+    const fullUrl = new URL(req.url, `https://${req.headers.host}`);
+    const acao = fullUrl.searchParams.get("acao");
+
     if (acao === "inbound") {
       const mod = await import("../api_handlers_backup/ai-studio-inbound.js");
       return mod.default(req, res);
