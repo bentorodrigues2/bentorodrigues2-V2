@@ -6,23 +6,15 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: "Método não permitido" });
     }
 
-    const { email, subject, anexos, texto_extraido } = req.body || {};
+    const { email, subject, anexos } = req.body || {};
 
     if (!email || !anexos || !Array.isArray(anexos) || anexos.length === 0) {
       console.error("Payload multimodal inválido:", req.body);
       return res.status(400).json({ error: "Payload multimodal inválido" });
     }
 
-    if (!texto_extraido || texto_extraido.trim().length === 0) {
-      console.error("Sem texto extraído dos anexos:", req.body);
-      return res.status(400).json({ error: "Sem texto extraído dos anexos" });
-    }
-
     const prompt = `
-      Analisa o seguinte texto extraído de documentos (faturas, recibos, comprovativos, extratos):
-
-      "${texto_extraido}"
-
+      Analisa os documentos anexos (comprovativos, faturas, recibos, extratos).
       Extrai:
       - entidade (quem emitiu)
       - valor total
@@ -31,34 +23,53 @@ export default async function handler(req, res) {
       - tipo de documento (fatura, recibo, transferência, extrato, etc.)
       - categoria contabilística
       - sugestão de lançamento contabilístico (contas débito/crédito)
-
       Responde em JSON estrito.
     `;
 
-    const respostaAI = await fetch(process.env.AI_STUDIO_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.AI_STUDIO_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-oss-20b",
-        messages: [
-          { role: "system", content: "És um contabilista especializado em leitura de documentos." },
-          { role: "user", content: prompt }
-        ]
-      })
-    });
+    const parts = [
+      { text: prompt },
+      ...anexos.map((ax) => ({
+        inlineData: {
+          mimeType: ax.mimeType,
+          data: ax.base64,
+        },
+      })),
+    ];
+
+    const respostaAI = await fetch(
+      `${process.env.AI_STUDIO_ENDPOINT}?key=${process.env.AI_STUDIO_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts,
+            },
+          ],
+        }),
+      }
+    );
 
     if (!respostaAI.ok) {
       const txt = await respostaAI.text();
-      console.error("Erro ao chamar AI Studio multimodal:", txt);
-      return res.status(500).json({ error: "Erro no AI Studio multimodal" });
+      console.error("Erro ao chamar Gemini multimodal:", txt);
+      return res.status(500).json({ error: "Erro no Gemini multimodal" });
     }
 
     const resultado = await respostaAI.json();
 
-    const parsed = JSON.parse(resultado.choices[0].message.content);
+    const content =
+      resultado?.candidates?.[0]?.content?.parts?.find((p) => p.text)?.text ||
+      "{}";
+
+    let parsed;
+    try {
+      parsed = JSON.parse(content);
+    } catch (e) {
+      console.error("Falha a fazer JSON.parse ao conteúdo do Gemini:", content);
+      return res.status(500).json({ error: "Resposta do Gemini não é JSON válido" });
+    }
 
     const { data: movimento, error: movErr } = await supabase
       .from("movimentos")
@@ -104,11 +115,10 @@ export default async function handler(req, res) {
       movimento,
       analise: parsed,
     });
-
   } catch (err) {
-    console.error("Erro no ai-studio-multimodal:", err);
+    console.error("Erro no multimodal:", err);
     return res.status(500).json({
-      error: "Erro no ai-studio-multimodal",
+      error: "Erro no multimodal",
       detail: err?.message || String(err),
     });
   }

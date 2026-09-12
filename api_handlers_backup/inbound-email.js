@@ -37,44 +37,7 @@ async function obterContextoDaFracao(email) {
 }
 
 // -----------------------------
-// 3. Router LOCAL
-// -----------------------------
-async function routerLocal(categoria, contexto) {
-  let subject = "";
-  let message = "";
-
-  switch (categoria) {
-    case "assembleia":
-      subject = "Re: Pedido de ata da assembleia";
-      message = `Olá,\n\nSegue a ata solicitada referente à assembleia.\n\nCumprimentos,\nAdministração`;
-      break;
-
-    case "pagamentos":
-      subject = "Re: Informação sobre quotas/pagamentos";
-      message = `Olá,\n\nRelativamente ao seu pedido, aqui está a informação sobre quotas.\n\nCumprimentos,\nAdministração`;
-      break;
-
-    case "ruido":
-      subject = "Re: Situação de ruído";
-      message = `Olá,\n\nA situação de ruído foi registada e será analisada.\n\nCumprimentos,\nAdministração`;
-      break;
-
-    case "avarias":
-      subject = "Re: Avaria reportada";
-      message = `Olá,\n\nA avaria foi registada. A administração irá proceder conforme necessário.\n\nCumprimentos,\nAdministração`;
-      break;
-
-    default:
-      subject = "Re: Pedido recebido";
-      message = `Olá,\n\nO seu pedido foi recebido e será tratado.\n\nCumprimentos,\nAdministração`;
-      break;
-  }
-
-  return { subject, message };
-}
-
-// -----------------------------
-// 4. HANDLER PRINCIPAL
+// 3. HANDLER PRINCIPAL
 // -----------------------------
 export default async function handler(req, res) {
   try {
@@ -98,16 +61,12 @@ export default async function handler(req, res) {
     // CLASSIFICAÇÃO
     const categoria = await classificarCategoria(textoEmail);
 
-    // ROUTER LOCAL
-    const routerData = await routerLocal(categoria, contexto);
-
-    // NOME
+    // AUTORESPONDER IMEDIATO
     const nomeRemetente =
       contexto?.fracao_nome ||
       emailLimpo.split("@")[0] ||
       "Condómino";
 
-    // AUTORESPONDER
     const htmlAutoresponder = gerarHtmlAutoresponder(nomeRemetente);
 
     await fetch("https://api.resend.com/emails", {
@@ -124,7 +83,24 @@ export default async function handler(req, res) {
       }),
     });
 
-    // RESPOSTA INSTITUCIONAL
+    // -----------------------------
+    // 4. CHAMAR ROUTER INTELIGENTE
+    // -----------------------------
+    const routerResp = await fetch(
+      "https://bentorodrigues2.vercel.app/api/ai-studio?acao=router",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          categoria,
+          id_fracao: contexto?.id_fracao || null
+        })
+      }
+    );
+
+    const routerData = await routerResp.json();
+
+    // RESPOSTA FINAL INTELIGENTE
     const htmlFinal = gerarHtmlResposta(nomeRemetente, routerData.message);
 
     await fetch("https://api.resend.com/emails", {
