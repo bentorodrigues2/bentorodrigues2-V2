@@ -1,9 +1,7 @@
-
 import { google } from "googleapis";
 
 export default async function handler(req, res) {
   try {
-    // 1. Autenticação Gmail API
     const oauth2Client = new google.auth.OAuth2(
       process.env.GMAIL_CLIENT_ID,
       process.env.GMAIL_CLIENT_SECRET,
@@ -16,7 +14,7 @@ export default async function handler(req, res) {
 
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-    // 2. Buscar emails não lidos
+    // Buscar emails não lidos
     const list = await gmail.users.messages.list({
       userId: "me",
       q: "is:unread",
@@ -24,6 +22,7 @@ export default async function handler(req, res) {
     });
 
     const messages = list?.data?.messages || [];
+    const emails = [];
 
     for (const msg of messages) {
       const full = await gmail.users.messages.get({
@@ -37,9 +36,8 @@ export default async function handler(req, res) {
       const from = headers.find(h => h.name === "From")?.value || "";
       const subject = headers.find(h => h.name === "Subject")?.value || "";
 
-      // 3. Extrair corpo do email
+      // Corpo do email
       let body = "";
-
       if (payload.parts) {
         const part = payload.parts.find(p => p.mimeType === "text/plain");
         if (part?.body?.data) {
@@ -47,19 +45,35 @@ export default async function handler(req, res) {
         }
       }
 
-      // 4. Enviar para o AI Studio Inbound
-      await fetch(`${process.env.API_BASE_URL}/api/ai-studio?acao=inbound`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from,
-          subject,
-          body,
-          attachments: []
-        })
+      // Extrair anexos
+      const anexos = [];
+
+      if (payload.parts) {
+        for (const part of payload.parts) {
+          if (part.filename && part.body?.attachmentId) {
+            const attachment = await gmail.users.messages.attachments.get({
+              userId: "me",
+              messageId: msg.id,
+              id: part.body.attachmentId
+            });
+
+            anexos.push({
+              filename: part.filename,
+              mimeType: part.mimeType,
+              base64: attachment.data.data
+            });
+          }
+        }
+      }
+
+      emails.push({
+        from,
+        subject,
+        body,
+        anexos
       });
 
-      // 5. Marcar como lido
+      // Marcar como lido
       await gmail.users.messages.modify({
         userId: "me",
         id: msg.id,
@@ -71,7 +85,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       ok: true,
-      processed: messages.length
+      emails
     });
 
   } catch (err) {
@@ -79,7 +93,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Erro no gmail-reader" });
   }
 }
-
-
-
-
