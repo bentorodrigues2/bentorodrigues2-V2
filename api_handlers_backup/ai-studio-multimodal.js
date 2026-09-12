@@ -30,15 +30,15 @@ export default async function handler(req, res) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.AI_STUDIO_API_KEY}`,
+        "Authorization": `Bearer ${process.env.AI_STUDIO_API_KEY}`
       },
       body: JSON.stringify({
-        model: "multimodal-contabilistico",
-        prompt,
-        email,
-        subject,
-        anexos, // [{ filename, mimeType, base64 }]
-      }),
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: prompt },
+          { role: "user", content: "Analisa estes anexos." }
+        ]
+      })
     });
 
     if (!respostaAI.ok) {
