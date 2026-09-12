@@ -31,7 +31,7 @@ async function classificarCategoria(texto) {
 }
 
 // -----------------------------
-// 2. Contexto da fração (Supabase)
+// 2. Contexto da fracao (Supabase)
 // -----------------------------
 async function obterContextoDaFracao(email) {
   try {
@@ -42,7 +42,7 @@ async function obterContextoDaFracao(email) {
       .single();
 
     if (error) {
-      console.error("Erro ao obter contexto da fração:", error);
+      console.error("Erro ao obter contexto da fraï¿½ï¿½o:", error);
       return null;
     }
 
@@ -54,7 +54,7 @@ async function obterContextoDaFracao(email) {
 }
 
 // -----------------------------
-// 3. Anexos automáticos (tabela documentos)
+// 3. Anexos automaticos (tabela documentos)
 // -----------------------------
 async function obterAnexosDaFracao(id_predio) {
   try {
@@ -79,7 +79,7 @@ async function obterAnexosDaFracao(id_predio) {
 }
 
 // -----------------------------
-// 4. OPÇÃO B — Lançamento pendente de comprovativos
+// 4. OPCAO B ï¿½ Lanï¿½amento pendente de comprovativos
 // -----------------------------
 async function lancarComprovativoPendente(aiData, contexto, comprovativoUrl) {
   try {
@@ -98,7 +98,7 @@ async function lancarComprovativoPendente(aiData, contexto, comprovativoUrl) {
       }),
     });
   } catch (e) {
-    console.error("Erro ao lançar comprovativo pendente:", e);
+    console.error("Erro ao lanï¿½ar comprovativo pendente:", e);
   }
 }
 
@@ -108,20 +108,20 @@ async function lancarComprovativoPendente(aiData, contexto, comprovativoUrl) {
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
-      return res.status(405).json({ error: "Método não permitido" });
+      return res.status(405).json({ error: "Mï¿½todo nï¿½o permitido" });
     }
 
     const { from, subject, body } = req.body || {};
 
     if (!from || !subject) {
-      console.error("Payload inválido (sem from ou subject):", req.body);
-      return res.status(400).json({ error: "Payload inválido" });
+      console.error("Payload invï¿½lido (sem from ou subject):", req.body);
+      return res.status(400).json({ error: "Payload invï¿½lido" });
     }
 
     const textoEmail =
       body && String(body).trim().length > 0
         ? body
-        : "(sem texto — email contém apenas anexos ou conteúdo não textual)";
+        : "(sem texto ï¿½ email contï¿½m apenas anexos ou conteï¿½do nï¿½o textual)";
 
     console.log("Inbound recebido:", { from, subject });
 
@@ -144,9 +144,9 @@ export default async function handler(req, res) {
     const categoriaClassificada = await classificarCategoria(textoEmail);
     console.log("Categoria classificada:", categoriaClassificada);
 
-    // 3. Obter contexto da fração
+    // 3. Obter contexto da fraï¿½ï¿½o
     const contexto = await obterContextoDaFracao(from);
-    console.log("Contexto da fração:", contexto?.id_predio || null);
+    console.log("Contexto da fraï¿½ï¿½o:", contexto?.id_predio || null);
 
     // 4. Enviar para o Router (AI Studio Router)
     const aiRes = await fetch(process.env.AI_STUDIO_URL, {
@@ -175,7 +175,7 @@ export default async function handler(req, res) {
     const nomeRemetente =
       contexto?.nome ||
       from?.split("@")[0] ||
-      "Condómino";
+      "Condï¿½mino";
 
     //
     // 6. AUTORESPONDER
@@ -190,7 +190,7 @@ export default async function handler(req, res) {
           Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
         },
         body: JSON.stringify({
-          from: "Condomínio <administracao@condomanagerai.com>",
+          from: "Condomï¿½nio <administracao@condomanagerai.com>",
           to: from,
           subject: "Recebemos o seu contacto",
           html: htmlAutoresponder,
@@ -205,7 +205,7 @@ export default async function handler(req, res) {
     // 7. RESPOSTA INSTITUCIONAL
     //
     if (!aiData.subject || !aiData.message) {
-      console.log("AI Router devolveu subject/message nulos ? só autoresponder enviado.");
+      console.log("AI Router devolveu subject/message nulos ? sï¿½ autoresponder enviado.");
       return res.status(200).json({ ok: true, autoresponder: true });
     }
 
@@ -216,7 +216,7 @@ export default async function handler(req, res) {
     //
     let anexos = [];
 
-    // 8.1 — Ficheiro único (ex: recibo PDF)
+    // 8.1 ï¿½ Ficheiro ï¿½nico (ex: recibo PDF)
     if (aiData.ficheiro?.url) {
       anexos.push({
         filename: aiData.ficheiro.filename || "documento.pdf",
@@ -224,7 +224,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // 8.2 — Lista de documentos
+    // 8.2 ï¿½ Lista de documentos
     if (Array.isArray(aiData.documentos)) {
       aiData.documentos.forEach((doc) => {
         anexos.push({
@@ -234,14 +234,14 @@ export default async function handler(req, res) {
       });
     }
 
-    // 8.3 — Documentos automáticos da fração
+    // 8.3 ï¿½ Documentos automï¿½ticos da fraï¿½ï¿½o
     if (aiData.acao === "anexar_documentos" && contexto?.id_predio) {
       const docsPredio = await obterAnexosDaFracao(contexto.id_predio);
       anexos.push(...docsPredio);
     }
 
     //
-    // 9. OPÇÃO B — Lançamento pendente de comprovativos
+    // 9. OPï¿½ï¿½O B ï¿½ Lanï¿½amento pendente de comprovativos
     //
     const comprovativoUrl = anexos?.[0]?.path || null;
     await lancarComprovativoPendente(aiData, contexto, comprovativoUrl);
@@ -257,7 +257,7 @@ export default async function handler(req, res) {
           Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
         },
         body: JSON.stringify({
-          from: "Condomínio <administracao@condomanagerai.com>",
+          from: "Condomï¿½nio <administracao@condomanagerai.com>",
           to: from,
           subject: aiData.subject || subject,
           html: htmlFinal,

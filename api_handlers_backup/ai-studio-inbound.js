@@ -2,7 +2,7 @@ import { supabase } from "../services/lib/supabaseClient.js";
 import { gerarHtmlAutoresponder, gerarHtmlResposta } from "../services/lib/htmlemail.js";
 
 // -----------------------------
-// 1. Classificador LOCAL (sem AI Studio)
+// 1. Classificador LOCAL
 // -----------------------------
 async function classificarCategoria(texto) {
   try {
@@ -44,7 +44,7 @@ async function obterContextoDaFracao(email) {
 }
 
 // -----------------------------
-// 3. Router LOCAL (sem AI Studio)
+// 3. Router LOCAL
 // -----------------------------
 async function routerLocal(categoria, contexto) {
   let subject = "";
@@ -111,7 +111,7 @@ async function obterAnexosDaFracao(id_predio) {
 }
 
 // -----------------------------
-// 5. HANDLER PRINCIPAL (SEM AI STUDIO)
+// 5. HANDLER PRINCIPAL
 // -----------------------------
 export default async function handler(req, res) {
   try {
@@ -152,20 +152,27 @@ export default async function handler(req, res) {
     const categoriaClassificada = await classificarCategoria(textoEmail);
     console.log("Categoria classificada:", categoriaClassificada);
 
-    // 3. Obter contexto da fração
-    const contexto = await obterContextoDaFracao(from);
+    // 3. LIMPAR EMAIL DO REMETENTE
+    const emailLimpo = from
+      .replace(/"/g, "")
+      .replace(/.*</, "")
+      .replace(/>.*/, "")
+      .trim();
+
+    // 4. Obter contexto da fração
+    const contexto = await obterContextoDaFracao(emailLimpo);
     console.log("Contexto da fração:", contexto);
 
-    // 4. Router LOCAL
+    // 5. Router LOCAL
     const routerData = await routerLocal(categoriaClassificada, contexto);
 
-    // 5. Nome do remetente
+    // 6. Nome do remetente
     const nomeRemetente =
       contexto?.fracao_nome ||
-      from?.split("@")[0] ||
+      emailLimpo.split("@")[0] ||
       "Condómino";
 
-    // 6. AUTORESPONDER
+    // 7. AUTORESPONDER
     const htmlAutoresponder = gerarHtmlAutoresponder(nomeRemetente);
 
     try {
@@ -177,17 +184,17 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           from: "Condomínio <administracao@condomanagerai.com>",
-          to: from,
+          to: emailLimpo,
           subject: "Recebemos o seu contacto",
           html: htmlAutoresponder,
         }),
       });
-      console.log("Autoresponder enviado para:", from);
+      console.log("Autoresponder enviado para:", emailLimpo);
     } catch (e) {
       console.error("Erro ao enviar autoresponder:", e);
     }
 
-    // 7. RESPOSTA INSTITUCIONAL
+    // 8. RESPOSTA INSTITUCIONAL
     const htmlFinal = gerarHtmlResposta(nomeRemetente, routerData.message);
 
     let anexos = [];
@@ -206,13 +213,13 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           from: "Condomínio <administracao@condomanagerai.com>",
-          to: from,
+          to: emailLimpo,
           subject: routerData.subject || subject,
           html: htmlFinal,
           attachments: anexos,
         }),
       });
-      console.log("Email institucional enviado para:", from);
+      console.log("Email institucional enviado para:", emailLimpo);
     } catch (e) {
       console.error("Erro ao enviar email institucional:", e);
     }
