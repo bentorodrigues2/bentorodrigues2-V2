@@ -6,15 +6,23 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: "Método não permitido" });
     }
 
-    const { email, subject, anexos } = req.body || {};
+    const { email, subject, anexos, texto_extraido } = req.body || {};
 
     if (!email || !anexos || !Array.isArray(anexos) || anexos.length === 0) {
       console.error("Payload multimodal inválido:", req.body);
       return res.status(400).json({ error: "Payload multimodal inválido" });
     }
 
+    if (!texto_extraido || texto_extraido.trim().length === 0) {
+      console.error("Sem texto extraído dos anexos:", req.body);
+      return res.status(400).json({ error: "Sem texto extraído dos anexos" });
+    }
+
     const prompt = `
-      Analisa os documentos anexos (comprovativos, faturas, recibos, extratos).
+      Analisa o seguinte texto extraído de documentos (faturas, recibos, comprovativos, extratos):
+
+      "${texto_extraido}"
+
       Extrai:
       - entidade (quem emitiu)
       - valor total
@@ -23,6 +31,7 @@ export default async function handler(req, res) {
       - tipo de documento (fatura, recibo, transferência, extrato, etc.)
       - categoria contabilística
       - sugestão de lançamento contabilístico (contas débito/crédito)
+
       Responde em JSON estrito.
     `;
 
@@ -33,10 +42,10 @@ export default async function handler(req, res) {
         "Authorization": `Bearer ${process.env.AI_STUDIO_API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-oss-20b",
         messages: [
-          { role: "system", content: prompt },
-          { role: "user", content: "Analisa estes anexos." }
+          { role: "system", content: "És um contabilista especializado em leitura de documentos." },
+          { role: "user", content: prompt }
         ]
       })
     });
@@ -49,21 +58,23 @@ export default async function handler(req, res) {
 
     const resultado = await respostaAI.json();
 
+    const parsed = JSON.parse(resultado.choices[0].message.content);
+
     const { data: movimento, error: movErr } = await supabase
       .from("movimentos")
       .insert({
         email,
         subject,
-        entidade: resultado.entidade,
-        valor: resultado.valor,
-        data_documento: resultado.data,
-        referencia: resultado.referencia,
-        tipo_documento: resultado.tipo_documento,
-        categoria: resultado.categoria,
-        lancamento_debito: resultado.lancamento?.debito || null,
-        lancamento_credito: resultado.lancamento?.credito || null,
-        lancamento_descricao: resultado.lancamento?.descricao || null,
-        raw_json: resultado,
+        entidade: parsed.entidade,
+        valor: parsed.valor,
+        data_documento: parsed.data,
+        referencia: parsed.referencia,
+        tipo_documento: parsed.tipo_documento,
+        categoria: parsed.categoria,
+        lancamento_debito: parsed.lancamento?.debito || null,
+        lancamento_credito: parsed.lancamento?.credito || null,
+        lancamento_descricao: parsed.lancamento?.descricao || null,
+        raw_json: parsed,
       })
       .select()
       .single();
@@ -91,7 +102,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       movimento,
-      analise: resultado,
+      analise: parsed,
     });
 
   } catch (err) {
