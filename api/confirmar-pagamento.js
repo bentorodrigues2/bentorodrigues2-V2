@@ -1,4 +1,4 @@
-export const config = { runtime: "edge" };
+
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
@@ -95,4 +95,5 @@ export default async function handler(req, res) {
     res.status(500).json({ error: e.message });
   }
 }
+
 

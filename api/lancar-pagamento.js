@@ -1,4 +1,4 @@
-export const config = { runtime: "edge" };
+
 import { supabase } from "../services/lib/supabaseClient.js";
 
 export default async function handler(req, res) {
@@ -68,4 +68,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
 
