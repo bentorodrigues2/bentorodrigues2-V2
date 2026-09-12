@@ -17,14 +17,9 @@ export default async function handler(req, res) {
       return mod.default(req, res);
     }
 
-    if (acao === "chat") {
-      const mod = await import("../api_handlers_backup/chat.js");
-      return mod.default(req, res);
-    }
-
     return res.status(400).json({
       ok: false,
-      error: "Ação inválida. Use inbound | classificar | router | chat"
+      error: "Ação inválida"
     });
 
   } catch (err) {

@@ -47,7 +47,7 @@ export default async function handler(req, res) {
       }
 
       // 4. Enviar para o AI Studio
-      await fetch(`${process.env.API_BASE_URL}/api/ai-studio-inbound`, {
+      await fetch(`${process.env.API_BASE_URL}/api/ai-studio?acao=inbound`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -77,6 +77,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Erro no gmail-reader" });
   }
 }
+
 
 
 
