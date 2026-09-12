@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Pencil, Trash2, Plus } from "lucide-react";
 import { Predio, Fracao, LoggedUser, Aviso, Proprietario } from "../types";
-import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCondominoVaziaPDF, downloadFichaCondominoPreenchidaPDF, downloadListaCondominosPDF, generateCondominoPwaManualPDF } from "../utils";
+import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCondominoVaziaPDF, downloadFichaCondominoPreenchidaPDF, downloadListaCondominosPDF, generateCondominoPwaManualPDF, gerarReferenciaBR23E } from "../utils";
 import { ModalFichaCondominoEditavel } from "./ModalFichaCondominoEditavel";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
@@ -725,6 +725,7 @@ export function GestaoFracoes({
     }
 
     // Criar Nova Fração
+    const refBR23E = gerarReferenciaBR23E(fracaoNome.trim(), "frac-" + Date.now());
     const nova: Fracao = {
       id_fracao: "frac-" + Date.now(),
       id_predio: predio.id_predio,
@@ -738,6 +739,7 @@ export function GestaoFracoes({
       is_arrendada: false,
       administrador_interno: "Não",
       notificacao_preferencial: "Digital (E-mail e Mensagens Push)",
+      referencia_br23e: refBR23E,
       proprietario: null,
       proprietarios_adicionais: [],
       inquilino: null
@@ -760,6 +762,7 @@ export function GestaoFracoes({
           is_arrendada: nova.is_arrendada,
           administrador_interno: nova.administrador_interno,
           notificacao_preferencial: nova.notificacao_preferencial,
+          referencia_br23e: nova.referencia_br23e,
           proprietario: nova.proprietario,
           proprietarios_adicionais: nova.proprietarios_adicionais,
           inquilino: nova.inquilino
@@ -828,6 +831,9 @@ export function GestaoFracoes({
       return;
     }
 
+    const targetFracao = selectedFracaoId ? predioFracoes.find(f => f.id_fracao === selectedFracaoId) : null;
+    const refBR23E = targetFracao?.referencia_br23e || targetFracao?.proprietario?.referencia_br23e || gerarReferenciaBR23E(targetFracao?.fracao_nome || propNome.trim(), selectedFracaoId);
+
     const novoProprietarioObj: Proprietario = {
       nome: propNome.trim(),
       nif: propNif.trim(),
@@ -840,7 +846,8 @@ export function GestaoFracoes({
       morada_alternativa: arrendada ? propMoradaAlt || null : null,
       foto: propFoto,
       administrador_interno: adminInterno,
-      notificacao_preferencial: notificacao
+      notificacao_preferencial: notificacao,
+      referencia_br23e: refBR23E
     };
 
     try {
@@ -859,7 +866,8 @@ export function GestaoFracoes({
         morada_alternativa: novoProprietarioObj.morada_alternativa,
         foto: novoProprietarioObj.foto,
         administrador_interno: novoProprietarioObj.administrador_interno,
-        notificacao_preferencial: novoProprietarioObj.notificacao_preferencial
+        notificacao_preferencial: novoProprietarioObj.notificacao_preferencial,
+        referencia_br23e: refBR23E
       };
 
       // Tenta atualizar ou inserir na tabela 'proprietarios'
@@ -873,13 +881,13 @@ export function GestaoFracoes({
 
       // Se houver fração selecionada, atualiza a fração no Supabase
       if (selectedFracaoId) {
-        const targetFracao = predioFracoes.find(f => f.id_fracao === selectedFracaoId);
         if (targetFracao) {
           const isNewEmail = targetFracao.proprietario?.email !== propEmail.trim();
 
           const { error: updateFracError } = await supabase
             .from('fracoes')
             .update({
+              referencia_br23e: refBR23E,
               proprietario: novoProprietarioObj,
               proprietarios_adicionais: proprietariosAdicionais,
               inquilino: arrendada && inqNome.trim() ? {
@@ -1855,7 +1863,30 @@ export function GestaoFracoes({
               )}
 
               {/* Informação Bancária e Fotografia */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                {/* Referência BR23E - Conciliação de Dados (Exclusivo do Perfil Bancário, Não Editável) */}
+                <div className="flex flex-col bg-emerald-50/50 dark:bg-emerald-950/20 p-2.5 rounded-lg border border-emerald-200/80 dark:border-emerald-800/60">
+                  <label className="text-xs font-bold text-emerald-900 dark:text-emerald-300 mb-1 flex items-center justify-between">
+                    <span>Referência BR23E</span>
+                    <span className="text-[9px] bg-emerald-200/80 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-200 px-1.5 py-0.2 rounded font-bold">Auto</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    readOnly 
+                    disabled 
+                    value={
+                      selectedFracaoId 
+                        ? (predioFracoes.find(f => f.id_fracao === selectedFracaoId)?.referencia_br23e || 
+                           predioFracoes.find(f => f.id_fracao === selectedFracaoId)?.proprietario?.referencia_br23e || 
+                           gerarReferenciaBR23E(predioFracoes.find(f => f.id_fracao === selectedFracaoId)?.fracao_nome, selectedFracaoId))
+                        : "Aguardando Fração"
+                    } 
+                    title="Referência bancária BR23E gerada e guardada automaticamente pelo sistema para conciliação (não editável)"
+                    className="w-full border border-emerald-300 dark:border-emerald-700 px-2.5 py-1.5 text-xs rounded font-mono font-bold text-emerald-800 dark:text-emerald-300 bg-white dark:bg-slate-900 cursor-not-allowed select-all" 
+                  />
+                  <span className="text-[9px] text-emerald-700/80 dark:text-emerald-400 mt-1 font-medium">Conciliação automática</span>
+                </div>
+
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-slate-600 mb-1">IBAN de Origem</label>
                   <input type="text" value={propIban} onChange={e => setPropIban(e.target.value)} placeholder="PT50..." className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono bg-white" />
@@ -2677,6 +2708,19 @@ export function GestaoFracoes({
                         <span className="text-[10px] uppercase font-semibold text-slate-400 block">Telemóvel / Telefone</span>
                         <a href={`tel:${selectedFracao.proprietario.tlm}`} className="text-slate-700 hover:underline font-mono font-semibold">{selectedFracao.proprietario.tlm || "Sem Telefone"}</a>
                       </div>
+                      <div className="col-span-2 border-t border-slate-100 dark:border-slate-800 pt-2.5 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] uppercase font-bold text-emerald-800 dark:text-emerald-300 block">Referência BR23E (Conciliação Bancária)</span>
+                          <span className="text-[9px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold">Gerada pelo Sistema • Não Editável</span>
+                        </div>
+                        <div className="bg-emerald-50/70 dark:bg-emerald-950/40 p-2 rounded-lg border border-emerald-200/80 dark:border-emerald-800/80 flex items-center justify-between">
+                          <span className="font-mono font-black text-emerald-800 dark:text-emerald-300 text-xs tracking-wider select-all">
+                            {selectedFracao.referencia_br23e || selectedFracao.proprietario.referencia_br23e || gerarReferenciaBR23E(selectedFracao.fracao_nome, selectedFracao.id_fracao)}
+                          </span>
+                          <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">Exclusivo Perfil Bancário</span>
+                        </div>
+                      </div>
+
                       <div className="col-span-2 border-t border-slate-100 pt-2">
                         <span className="text-[10px] uppercase font-semibold text-slate-400 block">IBAN de Cobrança / Reembolsos</span>
                         <span className="font-mono font-semibold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 block mt-0.5 text-[11px] select-all">{selectedFracao.proprietario.iban || "IBAN Não Disponibilizado"}</span>
@@ -2829,7 +2873,7 @@ export function GestaoFracoes({
                           className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] px-2.5 py-1 rounded transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
                         >
                           <i className="fa-solid fa-paper-plane text-[9px]"></i>
-                          <span>Simular E-mail Pedido de Apólice</span>
+                          <span>Enviar E-mail Pedido de Apólice</span>
                         </button>
                       )}
                     </div>

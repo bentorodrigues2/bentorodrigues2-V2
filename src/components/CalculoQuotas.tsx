@@ -49,8 +49,8 @@ export function CalculoQuotas({
     [predioFracoes]
   );
 
-  // Estados dos Orçamentos
-  const [orcamentoRegular, setOrcamentoRegular] = useState<string>("1200");
+  // Estados dos Orçamentos (Base limpa sem dados de simulação)
+  const [orcamentoRegular, setOrcamentoRegular] = useState<string>("");
   const [dataLimiteRegular, setDataLimiteRegular] = useState<string>(() => {
     const d = new Date();
     d.setDate(8);
@@ -58,20 +58,18 @@ export function CalculoQuotas({
     return d.toISOString().split("T")[0];
   });
   const [contaOrdinariaId, setContaOrdinariaId] = useState<string>(() => {
-    const ord = predioContas.find((c) => c.tipo === "Ordem" || c.tipo === "DO");
+    const ord = predioContas.find((c) => c.tipo === "Ordem" || c.tipo === "DO" || c.is_principal);
     return ord ? ord.id_conta : predioContas[0]?.id_conta || "";
   });
 
-  const [orcamentoExtra, setOrcamentoExtra] = useState<string>("5000");
-  const [numPrestacoesExtra, setNumPrestacoesExtra] = useState<number>(5);
+  const [orcamentoExtra, setOrcamentoExtra] = useState<string>("");
+  const [numPrestacoesExtra, setNumPrestacoesExtra] = useState<number>(1);
   const [dataLimiteExtra, setDataLimiteExtra] = useState<string>(() => {
     const d = new Date();
     d.setMonth(d.getMonth() + 2);
     return d.toISOString().split("T")[0];
   });
-  const [descricaoExtra, setDescricaoExtra] = useState<string>(
-    "Obras Urgentes de Manutenção e Impermeabilização da Cobertura"
-  );
+  const [descricaoExtra, setDescricaoExtra] = useState<string>("");
   const [contaExtraId, setContaExtraId] = useState<string>(() => {
     const fcr = predioContas.find(
       (c) => c.tipo === "Poupanca" || c.tipo === "Fundo de Reserva" || c.descricao?.toLowerCase().includes("reserva")
@@ -567,7 +565,7 @@ export function CalculoQuotas({
 
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-              Total Mensal: {((Number(orcamentoRegular) || 0) + extraPorMesTotal).toFixed(2)} €
+              Total Mensal: {predioFracoes.length === 0 ? "0.00" : ((Number(orcamentoRegular) || 0) + extraPorMesTotal).toFixed(2)} €
             </span>
           </div>
         </div>

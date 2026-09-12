@@ -1,4 +1,4 @@
-import { Shield } from "lucide-react";
+import { Shield, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { ActionIcon } from "./components/ActionIcon";
 import { LoggedUser, Predio, Conta, Fornecedor, Fracao, Aviso, Movimento, Reuniao, Documento, Ocorrencia, Reserva, CapacidadeLimite } from "./types";
@@ -604,20 +604,14 @@ export default function App() {
             {/* Botão Desktop para recolher/expandir coluna central com simbologia associada */}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="hidden lg:flex items-center justify-center w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 transition-all cursor-pointer shrink-0 shadow-md hover:scale-105 active:scale-95 group"
-              title={sidebarCollapsed ? "Estender / Expandir Coluna Central" : "Encolher / Recolher Coluna Central"}
+              className="flex items-center justify-center w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 transition-all cursor-pointer shrink-0 shadow-md hover:scale-105 active:scale-95 group"
+              title={sidebarCollapsed ? "Expandir Menu de Operações (Coluna Central)" : "Recolher Menu de Operações (Coluna Central)"}
             >
-              <img 
-                src={sidebarCollapsed ? "/estados-acoes/07-avancar.png" : "/estados-acoes/08-voltar.png"} 
-                alt={sidebarCollapsed ? "Estender Coluna Central" : "Encolher Coluna Central"} 
-                className="w-4 h-4 object-contain group-hover:scale-110 transition-transform" 
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                  const nextSibling = e.currentTarget.nextElementSibling as HTMLElement;
-                  if (nextSibling) nextSibling.style.display = 'block';
-                }}
-              />
-              <i className={`fa-solid ${sidebarCollapsed ? "fa-angles-right" : "fa-angles-left"} text-sm text-emerald-400 font-bold hidden`}></i>
+              {sidebarCollapsed ? (
+                <PanelLeftOpen className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+              ) : (
+                <PanelLeftClose className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+              )}
             </button>
 
             {/* Mobile Close Drawer */}
@@ -2032,6 +2026,25 @@ export default function App() {
               <span className="hidden sm:inline">Menu</span>
             </button>
 
+            {/* Botão Desktop para expandir/recolher coluna central no topo */}
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="hidden lg:flex items-center justify-center h-8 px-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-emerald-400 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shrink-0 shadow-xs gap-1.5 text-xs font-bold"
+              title={sidebarCollapsed ? "Expandir Menu de Operações (Coluna Central)" : "Recolher Menu de Operações (Coluna Central)"}
+            >
+              {sidebarCollapsed ? (
+                <>
+                  <PanelLeftOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Expandir Menu</span>
+                </>
+              ) : (
+                <>
+                  <PanelLeftClose className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Recolher Menu</span>
+                </>
+              )}
+            </button>
+
             <div className="overflow-hidden">
               <h2 className={`text-xs sm:text-base md:text-xl font-bold transition-colors duration-300 truncate ${theme === "dark" ? "text-white" : "text-slate-800"}`}>
                 {activeSection === "painel" && "Painel de Controlo"}
@@ -2257,6 +2270,9 @@ export default function App() {
               contas={contas} 
               movements={movements} 
               setMovements={setMovements}
+              fracoes={fracoes}
+              avisos={avisos}
+              setAvisos={setAvisos}
               loggedUser={loggedUser}
             />
           )}

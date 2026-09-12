@@ -120,6 +120,22 @@ export const SUPABASE_TABLES_SCHEMA: SupabaseTableConfig[] = [
       { name: "data_previsao", type: "timestamptz", nullable: false },
       { name: "estado_validacao", type: "text", nullable: false } // Sugerido / Aprovado Manual / Revertido
     ]
+  },
+  {
+    tableName: "gestao_chaves",
+    description: "Controlo e gestão de chaves do edifício, claviculário, entregas e devoluções",
+    rlsEnabled: true,
+    columns: [
+      { name: "id_chave", type: "uuid", nullable: false, isPrimaryKey: true },
+      { name: "id_predio", type: "uuid", nullable: false, references: "predios(id_predio)" },
+      { name: "local", type: "text", nullable: false },
+      { name: "responsavel", type: "text", nullable: true },
+      { name: "status", type: "text", nullable: false }, // 'disponivel' / 'entregue' / 'devolvida' / 'perdida'
+      { name: "data_entrega", type: "timestamptz", nullable: true },
+      { name: "data_devolucao", type: "timestamptz", nullable: true },
+      { name: "created_at", type: "timestamptz", nullable: false },
+      { name: "updated_at", type: "timestamptz", nullable: false }
+    ]
   }
 ];
 

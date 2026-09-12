@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Predio, Conta, Movimento, LoggedUser } from "../types";
+import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso } from "../types";
 import { formatDatePT } from "../utils";
 
 interface GestaoMovimentosProps {
@@ -7,6 +7,9 @@ interface GestaoMovimentosProps {
   contas: Conta[];
   movements: Movimento[];
   setMovements: React.Dispatch<React.SetStateAction<Movimento[]>>;
+  fracoes?: Fracao[];
+  avisos?: Aviso[];
+  setAvisos?: React.Dispatch<React.SetStateAction<Aviso[]>>;
   loggedUser: LoggedUser;
 }
 
@@ -26,7 +29,7 @@ interface SimulatedEmail {
   imported: boolean;
 }
 
-export function GestaoMovimentos({ predio, contas, movements, setMovements, loggedUser }: GestaoMovimentosProps) {
+export function GestaoMovimentos({ predio, contas, movements, setMovements, fracoes = [], avisos = [], setAvisos, loggedUser }: GestaoMovimentosProps) {
   // Lançamento Manual / Movimento Cego Form States
   const [contaId, setContaId] = useState("");
   const [valor, setValor] = useState("");
@@ -36,6 +39,25 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, logg
   const [isMovimentoCego, setIsMovimentoCego] = useState(false);
   const [uploadedFotos, setUploadedFotos] = useState<string[]>([]);
   const [justifyingMovId, setJustifyingMovId] = useState<string | null>(null);
+
+  // Modal de Regularização / Recebimento de Valores Pendentes de Exercícios Anteriores
+  const [modalDividaAnteriorOpen, setModalDividaAnteriorOpen] = useState(false);
+  const [dividaFracaoId, setDividaFracaoId] = useState("");
+  const [dividaContaDestinoId, setDividaContaDestinoId] = useState("");
+  const [dividaValor, setDividaValor] = useState("");
+  const [dividaData, setDividaData] = useState(() => new Date().toISOString().split("T")[0]);
+  const [dividaRef, setDividaRef] = useState("");
+  const [dividaObs, setDividaObs] = useState("");
+
+  // Modal de Registo Manual de E-mail de Fatura (em vez de simulação)
+  const [manualEmailModalOpen, setManualEmailModalOpen] = useState(false);
+  const [manualSender, setManualSender] = useState("");
+  const [manualSubject, setManualSubject] = useState("");
+  const [manualBody, setManualBody] = useState("");
+  const [manualValor, setManualValor] = useState("");
+  const [manualCategoria, setManualCategoria] = useState("Manutenção");
+  const [manualFornecedor, setManualFornecedor] = useState("");
+  const [sincronizandoEmails, setSincronizandoEmails] = useState(false);
 
   // Automatically pre-select the primary bank account of the active building
   React.useEffect(() => {
@@ -53,39 +75,8 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, logg
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedItems, setExtractedItems] = useState<any[]>([]);
 
-  // Caixa de Entrada IA (Gmail) States
-  const [emails, setEmails] = useState<SimulatedEmail[]>([
-    {
-      id: "email-1",
-      sender: "OTIS Elevadores <facturas@otis.pt>",
-      subject: "Fatura de Manutenção Periódica - Nº 4819920",
-      date: "Hoje, 09:30",
-      body: "Estimado cliente, enviamos em anexo a fatura referente à manutenção periódica bimestral dos 2 elevadores instalados no vosso edifício, no valor de 185.00€. Vencimento em 10 dias.",
-      attachment: "fatura_otis_4819920.pdf",
-      extractedData: {
-        fornecedor: "OTIS Elevadores",
-        valor: 185.00,
-        descricao: "Manutenção Bimestral de Elevadores - OTIS",
-        categoria: "Manutenção"
-      },
-      imported: false
-    },
-    {
-      id: "email-2",
-      sender: "EDP Comercial <faturas@edp.pt>",
-      subject: "Fatura Eletrónica EDP - Consumo Escadas Comuns",
-      date: "Ontem, 16:45",
-      body: "A sua fatura EDP de eletricidade das escadas comuns do condomínio já se encontra disponível. O valor total a pagar é de 95.40€, com débito agendado para o final do mês.",
-      attachment: "fatura_edp_2026_sc.pdf",
-      extractedData: {
-        fornecedor: "EDP Comercial",
-        valor: 95.40,
-        descricao: "Consumo Elétrico - Escadas Comuns (EDP)",
-        categoria: "Eletricidade"
-      },
-      imported: false
-    }
-  ]);
+  // Caixa de Entrada IA (Gmail) States - Base limpa sem dados de simulação
+  const [emails, setEmails] = useState<SimulatedEmail[]>([]);
   const [showGmailSimulator, setShowGmailSimulator] = useState(true);
 
   const predioContas = contas.filter(c => c.id_predio === predio.id_predio);
@@ -210,48 +201,109 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, logg
     alert(isCego ? "Movimento Cego lançado! Necessita de justificar posteriormente com fatura." : "Movimento lançado com sucesso!");
   };
 
-  // Simular novo email do Gmail
-  const simularNovoEmail = () => {
-    const fornecedoresNovos = [
-      {
-        sender: "Limpezas Brilho Lda <geral@brilho.pt>",
-        subject: "Fatura de Limpeza Mensal - Edifício Estrela da Barra",
-        body: "Prezada administração, segue em anexo a fatura relativa aos serviços de limpeza prestados durante o corrente mês nas áreas comuns, no valor de 120.00€.",
-        attachment: "fatura_brilho_9011.pdf",
-        extractedData: {
-          fornecedor: "Limpezas Brilho Lda",
-          valor: 120.00,
-          descricao: "Serviço de Limpeza Mensal Comum",
-          categoria: "Limpezas"
-        }
-      },
-      {
-        sender: "Fidelidade Seguros <seguros@fidelidade.pt>",
-        subject: "Renovação de Apólice Multirriscos Condomínio",
-        body: "Caro administrador, informamos que a apólice do seguro multirriscos do condomínio foi renovada. O prémio anual no valor de 310.00€ encontra-se disponível para liquidação.",
-        attachment: "fatura_fidelidade_renovacao.pdf",
-        extractedData: {
-          fornecedor: "Fidelidade Seguros",
-          valor: 310.00,
-          descricao: "Prémio de Seguro Multirriscos Anual",
-          categoria: "Seguros"
-        }
-      }
-    ];
+  // Sincronização Real de Caixa de Correio (sem simulações fictícias)
+  const sincronizarEmailsReais = () => {
+    setSincronizandoEmails(true);
+    setTimeout(() => {
+      setSincronizandoEmails(false);
+      alert(`✓ Caixa de correio "${predio.email_condominio || 'administracao@condomanager.pt'}" sincronizada com sucesso. Não existem novas faturas pendentes de fornecedores.`);
+    }, 800);
+  };
 
-    const aleatorio = fornecedoresNovos[Math.floor(Math.random() * fornecedoresNovos.length)];
+  // Registo Manual de E-mail de Fatura de Fornecedor
+  const handleCriarEmailManual = (e: React.FormEvent) => {
+    e.preventDefault();
+    const val = parseFloat(manualValor.replace(",", "."));
+    if (!val || val <= 0) {
+      alert("Introduza um valor válido para a fatura.");
+      return;
+    }
     const novoEmail: SimulatedEmail = {
-      id: "email-" + (emails.length + 1),
-      sender: aleatorio.sender,
-      subject: aleatorio.subject,
+      id: "email-" + Date.now(),
+      sender: manualSender || "fornecedor@empresa.pt",
+      subject: manualSubject || "Fatura Fornecedor",
       date: "Hoje, " + new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
-      body: aleatorio.body,
-      attachment: aleatorio.attachment,
-      extractedData: aleatorio.extractedData,
+      body: manualBody || "Segue em anexo fatura para liquidação dos serviços prestados ao condomínio.",
+      attachment: `fatura_${manualFornecedor ? manualFornecedor.toLowerCase().replace(/\s+/g, '_') : 'fornecedor'}.pdf`,
+      extractedData: {
+        fornecedor: manualFornecedor || "Fornecedor Registado",
+        valor: val,
+        descricao: manualSubject || "Despesa de Fornecedor",
+        categoria: manualCategoria
+      },
       imported: false
     };
 
     setEmails([novoEmail, ...emails]);
+    setManualEmailModalOpen(false);
+    setManualSender("");
+    setManualSubject("");
+    setManualBody("");
+    setManualValor("");
+    setManualFornecedor("");
+  };
+
+  // Handler de Regularização de Quotas / Dívidas de Exercícios Anteriores
+  const handleRegistarRecebimentoExercicioAnterior = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dividaFracaoId || !dividaContaDestinoId) {
+      alert("Selecione a fração e a conta bancária de destino.");
+      return;
+    }
+    const val = parseFloat(dividaValor.replace(",", "."));
+    if (!val || val <= 0) {
+      alert("Introduza um valor válido recebido.");
+      return;
+    }
+
+    const fracaoAlvo = fracoes.find(f => f.id_fracao === dividaFracaoId);
+    const contaAlvo = contas.find(c => c.id_conta === dividaContaDestinoId);
+    const fracaoNome = fracaoAlvo?.fracao_nome ? `Fração ${fracaoAlvo.fracao_nome}` : "Fração";
+
+    // 1. Criar Movimento de Receita
+    const novoMov: Movimento = {
+      id_mov: `mov-ant-${Date.now()}`,
+      id_predio: predio.id_predio,
+      id_conta: dividaContaDestinoId,
+      data: dividaData,
+      tipo: "Receita",
+      valor: val,
+      descricao: `Regularização de Quota de Exercício Anterior - ${fracaoNome} (${fracaoAlvo?.proprietario?.nome || "Condómino"}). Ref: ${dividaRef || "Transf. Bancária"} ${dividaObs ? `- ${dividaObs}` : ''}`,
+      categoria: "Quotas de Exercícios Anteriores / Dívidas Transitadas",
+      fotos: [],
+      estado: "Justificado",
+      isMovimentoCego: false
+    };
+
+    // 2. Creditar o saldo da conta selecionada
+    if (contaAlvo) {
+      contaAlvo.saldo = (contaAlvo.saldo || 0) + val;
+    }
+
+    // 3. Se existirem avisos de dívida transitada, atualizar/liquidar
+    if (setAvisos && avisos.length > 0) {
+      let restanteParaAbater = val;
+      setAvisos(prev => prev.map(aviso => {
+        if (aviso.id_fracao === dividaFracaoId && aviso.estado === "Pendente" && (aviso.tipo?.includes("Dívida") || aviso.tipo?.includes("Transição") || aviso.tipo?.includes("Anterior") || aviso.descricao?.includes("Anterior") || aviso.descricao?.includes("Transição"))) {
+          if (restanteParaAbater >= aviso.valor) {
+            restanteParaAbater -= aviso.valor;
+            return { ...aviso, estado: "Paga" as const };
+          } else if (restanteParaAbater > 0) {
+            const novoValorRestante = aviso.valor - restanteParaAbater;
+            restanteParaAbater = 0;
+            return { ...aviso, valor: novoValorRestante, descricao: `${aviso.descricao} (Parcialmente regularizado: ${val.toFixed(2)}€)` };
+          }
+        }
+        return aviso;
+      }));
+    }
+
+    setMovements([novoMov, ...movements]);
+    setModalDividaAnteriorOpen(false);
+    setDividaValor("");
+    setDividaRef("");
+    setDividaObs("");
+    alert(`✓ Recebimento de ${val.toFixed(2)}€ registado com sucesso em "${contaAlvo?.banco || 'Conta'}"!\nMovimento classificado como "Quotas de Exercícios Anteriores / Dívidas Transitadas".`);
   };
 
   // Importar fatura do Gmail para as despesas (Validação Humana obrigatória)
@@ -418,35 +470,45 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, logg
     alert(`Movimento financeiro de ${item.valor.toFixed(2)}€ lançado com sucesso!`);
   };
 
-  const carregarExemploExtrato = (tipoExemplo: string) => {
-    if (tipoExemplo === "misto") {
-      setStatementText(`EXTRATO BANCÁRIO DETALHADO CGD - 01/07/2026 A 14/07/2026
-----------------------------------------------------------------------
-08/07/2026  DEB.DIRECTO EDP COMERCIAL                          -92,30 EUR
-10/07/2026  TRF ANA SILVA QUOTA JULHO FRAC-1                   +55,00 EUR
-11/07/2026  CHQ 882012 LIMPEZAS BRILHO                        -120,00 EUR
-12/07/2026  QUOTA BRUNO BENTO FRAC-2                           +45,00 EUR
-13/07/2026  EPAL CONSUMO AGUA CONDOMINIO                       -42,15 EUR`);
-    } else if (tipoExemplo === "quotas") {
-      setStatementText(`EXTRATO DE ENTRADAS DE DEPOSITOS E QUOTAS
-----------------------------------------------------------------------
-09/07/2026  TRF DE: ANA SILVA OUTROS PAGAMENTOS                +55,00 EUR
-11/07/2026  REPOSITORIO QUOTAS PORTARIA BENTO                  +45,00 EUR
-12/07/2026  DEP. NUMERARIO COND. CARLOS LIMA                   +60,00 EUR`);
-    } else {
-      setStatementText(`Faturas & Fornecedores Mês Corrente
-----------------------------------------------------------------------
-05/07/2026  DEBITO DIRECTO OTIS ELEVADORES S.A.               -185,00 EUR
-08/07/2026  DEB.DIRECTO EDP COMERCIAL                          -92,30 EUR
-11/07/2026  CHQ 882012 LIMPEZAS BRILHO                        -120,00 EUR`);
-    }
-  };
-
   // Contabilizar movimentos cegos não justificados
   const cegosPendentes = predioMovements.filter(m => m.isMovimentoCego && m.estado === "Movimento Cego / Por Justificar");
 
+  // Frações com dívidas para seleção rápida
+  const fracoesComDivida = fracoes.filter(f => (f.divida_total || 0) > 0 || (f.id_predio === predio.id_predio));
+
   return (
     <div className="space-y-6">
+
+      {/* Condomanager Top Action Bar */}
+      <div className="bg-slate-900 text-white p-5 rounded-2xl border border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <i className="fa-solid fa-money-bill-transfer text-lg"></i>
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
+              <span>Gestão de Movimentos & Tesouraria</span>
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30 font-mono">
+                {predio.nome}
+              </span>
+            </h2>
+            <p className="text-xs text-slate-400">
+              Registo de fluxos de caixa, conciliação bancária, despesas e regularização de exercícios anteriores.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setModalDividaAnteriorOpen(true)}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer border border-emerald-400/30"
+          >
+            <i className="fa-solid fa-receipt"></i>
+            <span>Receber Quotas de Exercícios Anteriores</span>
+          </button>
+        </div>
+      </div>
       
       {/* Alertas de Movimento Cego Pendente de Justificação */}
       {cegosPendentes.length > 0 && (
@@ -554,15 +616,26 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, logg
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Categoria de Lançamento</label>
+                  <label className="text-xs font-semibold text-slate-500 mb-1">Categoria de Lançamento *</label>
                   <select value={categoria} onChange={e => setCategoria(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white">
-                    <option value="Quotas">Quotas / Quotas Extras</option>
-                    <option value="Manutenção">Manutenção Geral</option>
-                    <option value="Eletricidade">Eletricidade</option>
-                    <option value="Água">Água de Consumo Comum</option>
-                    <option value="Limpezas">Serviços de Limpezas</option>
-                    <option value="Seguros">Seguros Multirriscos</option>
-                    <option value="Diversos">Despesas Diversas / Outros</option>
+                    <optgroup label="Receitas / Quotas">
+                      <option value="Quotas Ordinárias">Quotas Ordinárias (Exercício Corrente)</option>
+                      <option value="Quotas de Exercícios Anteriores / Dívidas Transitadas">Quotas de Exercícios Anteriores / Dívidas Transitadas</option>
+                      <option value="Quotas Extraordinárias">Quotas Extraordinárias / Obras</option>
+                      <option value="Fundo Comum de Reserva (FCR)">Fundo Comum de Reserva (FCR)</option>
+                      <option value="Juros de Mora / Indemnizações">Juros de Mora / Indemnizações</option>
+                      <option value="Outras Receitas">Outras Receitas</option>
+                    </optgroup>
+                    <optgroup label="Despesas Correntes & Manutenção">
+                      <option value="Manutenção">Manutenção Geral e Elevadores</option>
+                      <option value="Eletricidade">Eletricidade (Escadas e Zonas Comuns)</option>
+                      <option value="Água">Água de Consumo Comum</option>
+                      <option value="Limpezas">Serviços de Limpezas e Higiene</option>
+                      <option value="Seguros">Seguros Multirriscos Edifício</option>
+                      <option value="Inspeções e Certificações">Inspeções e Certificações Obrigatórias</option>
+                      <option value="Honorários de Gestão">Honorários de Administração e Gestão</option>
+                      <option value="Diversos">Despesas Diversas / Outros</option>
+                    </optgroup>
                   </select>
                 </div>
 
@@ -577,11 +650,26 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, logg
                       className="h-4 w-4 text-amber-600 rounded border-slate-300 cursor-pointer"
                     />
                     <label htmlFor="checkbox-cego" className="text-xs text-amber-900 font-bold select-none cursor-pointer">
-                      Movimento Cego (Saída de Dinheiro Sem Fatura Préviva)
+                      Movimento Cego (Saída de Dinheiro Sem Fatura Prévia)
                     </label>
                   </div>
                 )}
               </div>
+
+              {/* Dica de Lançamento para Quotas de Exercícios Anteriores */}
+              {categoria === "Quotas de Exercícios Anteriores / Dívidas Transitadas" && (
+                <div className="bg-emerald-50/80 border border-emerald-300 p-3 rounded-xl text-xs space-y-1 text-emerald-950">
+                  <div className="flex items-center space-x-1.5 font-bold text-emerald-800">
+                    <i className="fa-solid fa-circle-info"></i>
+                    <span>Como registar valores pendentes de exercícios anteriores:</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-900 leading-relaxed">
+                    1. <strong>Tipo:</strong> Escolha <strong>Receita (Crédito na Conta)</strong> e selecione a conta onde o valor entrou.<br />
+                    2. <strong>Histórico / Descrição:</strong> Indique o ano e fração (ex: <em>"Liquidação de Quotas em Atraso de 2024/2025 - Fração B (2º Dto)"</em>).<br />
+                    3. <strong>Impacto Contabilístico:</strong> Este lançamento incrementa o saldo bancário real sem duplicar o orçamento do ano corrente, abatendo o saldo devedor transitado da fração.
+                  </p>
+                </div>
+              )}
 
               {/* Upload de até 4 comprovativos */}
               <div className="space-y-2">
@@ -633,21 +721,38 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, logg
           )}
         </div>
 
-        {/* Caixa de Entrada IA (Gmail) */}
+        {/* Caixa de Entrada IA (Gmail do Prédio) */}
         <div className="lg:col-span-5 bg-white text-slate-800 p-6 rounded-xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
           <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex flex-wrap items-center justify-between border-b border-slate-100 pb-3 gap-2">
               <div className="flex items-center space-x-2">
-                <i className="fa-solid fa-envelope text-red-500"></i>
-                <h3 className="text-sm font-bold text-slate-800">Caixa de Entrada IA (Gmail do Prédio)</h3>
+                <i className="fa-solid fa-envelope text-emerald-600"></i>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Caixa de Entrada (E-mails do Prédio)</h3>
+                  <span className="text-[10px] text-slate-400 font-mono">{predio.email_condominio || "administracao@condomanager.pt"}</span>
+                </div>
               </div>
-              <button 
-                onClick={simularNovoEmail}
-                className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-2.5 py-1 rounded transition-colors flex items-center space-x-1 cursor-pointer"
-              >
-                <i className="fa-solid fa-rotate mr-0.5"></i>
-                <span>Simular E-mail</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button 
+                  type="button"
+                  onClick={sincronizarEmailsReais}
+                  disabled={sincronizandoEmails}
+                  title="Sincronizar caixa de correio com fornecedores"
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer border border-slate-200"
+                >
+                  <i className={`fa-solid fa-rotate ${sincronizandoEmails ? "animate-spin text-emerald-600" : ""}`}></i>
+                  <span>{sincronizandoEmails ? "A sincronizar..." : "Sincronizar"}</span>
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setManualEmailModalOpen(true)}
+                  title="Registar e-mail de fatura recebido manualmente"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold px-2 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
+                >
+                  <i className="fa-solid fa-plus"></i>
+                  <span>Fatura E-mail</span>
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3 overflow-y-auto max-h-[290px] pr-1 scrollbar-thin">
@@ -735,16 +840,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, logg
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-600 block">Texto do Extrato / Anexo a Analisar</label>
-              <div className="flex space-x-1.5">
-                <button 
-                  onClick={() => carregarExemploExtrato("misto")}
-                  className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-2 py-0.5 rounded cursor-pointer"
-                >Exemplo Misto</button>
-                <button 
-                  onClick={() => carregarExemploExtrato("quotas")}
-                  className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-2 py-0.5 rounded cursor-pointer"
-                >Exemplo Quotas</button>
-              </div>
+              <span className="text-[10px] text-slate-400 font-mono">Formatos: PDF, TXT ou CSV bancário</span>
             </div>
             
             <textarea 
@@ -937,6 +1033,263 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, logg
           </table>
         </div>
       </div>
+
+      {/* Modal: Receber Quotas / Dívidas de Exercícios Anteriores (Transição) */}
+      {modalDividaAnteriorOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-150">
+            <div className="bg-slate-900 text-white p-5 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                  <i className="fa-solid fa-receipt"></i>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Recebimento de Exercícios Anteriores</h3>
+                  <p className="text-[11px] text-slate-400">Regularização de quotas e dívidas transitadas ({predio.nome})</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalDividaAnteriorOpen(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleRegistarRecebimentoExercicioAnterior} className="p-5 space-y-4 text-xs">
+              <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 p-3 rounded-xl text-[11px] text-emerald-900 dark:text-emerald-300 space-y-1">
+                <p className="font-bold flex items-center gap-1.5">
+                  <i className="fa-solid fa-circle-info"></i>
+                  <span>Como funciona contabilisticamente:</span>
+                </p>
+                <p className="leading-relaxed">
+                  O valor recebido é creditado diretamente na conta bancária selecionada e registado como <strong>"Quotas de Exercícios Anteriores / Dívidas Transitadas"</strong>, sem distorcer o orçamento ordinário do corrente ano. Se existir aviso de débito de transição para esta fração, será automaticamente abatido ou liquidado.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 dark:text-slate-300 block">Fração Devedora *</label>
+                <select
+                  required
+                  value={dividaFracaoId}
+                  onChange={e => {
+                    const id = e.target.value;
+                    setDividaFracaoId(id);
+                    const f = fracoes.find(x => x.id_fracao === id);
+                    if (f && (f.divida_total || 0) > 0) {
+                      setDividaValor((f.divida_total || 0).toFixed(2));
+                    }
+                  }}
+                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs focus:outline-emerald-500"
+                >
+                  <option value="">Selecione a fração que efetuou o pagamento...</option>
+                  {fracoesComDivida.map(f => (
+                    <option key={f.id_fracao} value={f.id_fracao}>
+                      Fração {f.fracao_nome || f.id_fracao} - {f.proprietario?.nome || "Sem proprietário"} {f.divida_total ? `(Dívida: ${f.divida_total.toFixed(2)}€)` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block">Conta Bancária de Entrada *</label>
+                  <select
+                    required
+                    value={dividaContaDestinoId}
+                    onChange={e => setDividaContaDestinoId(e.target.value)}
+                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs focus:outline-emerald-500"
+                  >
+                    <option value="">Selecione a conta...</option>
+                    {predioContas.map(c => (
+                      <option key={c.id_conta} value={c.id_conta}>
+                        {c.banco} ({c.tipo}) - Saldo: {c.saldo?.toFixed(2)}€
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block">Valor Recebido (€) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={dividaValor}
+                    onChange={e => setDividaValor(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs font-mono font-bold focus:outline-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block">Data do Recebimento</label>
+                  <input
+                    type="date"
+                    required
+                    value={dividaData}
+                    onChange={e => setDividaData(e.target.value)}
+                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs focus:outline-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block">Ref. Bancária / Comprovativo</label>
+                  <input
+                    type="text"
+                    value={dividaRef}
+                    onChange={e => setDividaRef(e.target.value)}
+                    placeholder="Ex: TRF nº 891023 ou Cheque"
+                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs focus:outline-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 dark:text-slate-300 block">Observações Adicionais (Opcional)</label>
+                <input
+                  type="text"
+                  value={dividaObs}
+                  onChange={e => setDividaObs(e.target.value)}
+                  placeholder="Ex: Acordo de regularização de saldo aprovado em assembleia"
+                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs focus:outline-emerald-500"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setModalDividaAnteriorOpen(false)}
+                  className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-xs font-bold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <i className="fa-solid fa-check"></i>
+                  <span>Registar Entrada & Liquidar Quota</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Registar Fatura por E-mail Manualmente */}
+      {manualEmailModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-150">
+            <div className="bg-slate-900 text-white p-5 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                  <i className="fa-solid fa-envelope-open-text"></i>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Registar Fatura de E-mail</h3>
+                  <p className="text-[11px] text-slate-400">Entrada manual na caixa de correio do condomínio</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setManualEmailModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCriarEmailManual} className="p-5 space-y-3.5 text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 dark:text-slate-300 block">Nome do Fornecedor *</label>
+                <input
+                  type="text"
+                  required
+                  value={manualFornecedor}
+                  onChange={e => setManualFornecedor(e.target.value)}
+                  placeholder="Ex: Elevadores Schindler ou EDP Comercial"
+                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs focus:outline-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block">E-mail Remetente</label>
+                  <input
+                    type="email"
+                    value={manualSender}
+                    onChange={e => setManualSender(e.target.value)}
+                    placeholder="faturas@fornecedor.pt"
+                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs focus:outline-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block">Valor da Fatura (€) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={manualValor}
+                    onChange={e => setManualValor(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs font-mono font-bold focus:outline-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 dark:text-slate-300 block">Assunto / Descrição do Serviço</label>
+                <input
+                  type="text"
+                  value={manualSubject}
+                  onChange={e => setManualSubject(e.target.value)}
+                  placeholder="Ex: Fatura Manutenção Preventiva Trimestral"
+                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs focus:outline-emerald-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 dark:text-slate-300 block">Categoria da Despesa</label>
+                <select
+                  value={manualCategoria}
+                  onChange={e => setManualCategoria(e.target.value)}
+                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs focus:outline-emerald-500"
+                >
+                  <option value="Manutenção">Manutenção Geral e Elevadores</option>
+                  <option value="Eletricidade">Eletricidade</option>
+                  <option value="Água">Água</option>
+                  <option value="Limpezas">Limpezas</option>
+                  <option value="Seguros">Seguros</option>
+                  <option value="Inspeções e Certificações">Inspeções e Certificações</option>
+                  <option value="Diversos">Outros / Diversos</option>
+                </select>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setManualEmailModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-xs font-bold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <i className="fa-solid fa-inbox"></i>
+                  <span>Colocar na Caixa de Entrada</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

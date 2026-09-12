@@ -17,13 +17,17 @@ export interface ChaveItem {
   id_chave: string;
   id_predio: string;
   area_nome: string;
+  local?: string;
   codigo_chave: string;
   quantidade: number;
   no_claviculario: boolean;
+  status?: "disponivel" | "entregue" | "devolvida" | "perdida" | string;
+  responsavel?: string;
+  data_entrega?: string | null;
+  data_devolucao?: string | null;
   num_chaveiro?: string;
   local_sugerido?: string;
   observacoes?: string;
-  responsavel?: string;
 }
 
 export interface Predio {
@@ -98,6 +102,7 @@ export interface Proprietario {
   data_nascimento?: string;
   administrador_interno?: string;
   notificacao_preferencial?: string;
+  referencia_br23e?: string;
 }
 
 export interface Inquilino {
@@ -122,6 +127,7 @@ export interface Fracao {
   is_arrendada: boolean;
   administrador_interno: string;
   notificacao_preferencial: string;
+  referencia_br23e?: string;
   proprietario: Proprietario;
   proprietarios_adicionais?: Proprietario[];
   inquilino: Inquilino | null;
@@ -130,6 +136,8 @@ export interface Fracao {
   apolice_validade?: string;
   apolice_doc?: string;
   solicitacao_email_incendio?: boolean;
+  quota_mensal?: number;
+  divida_total?: number;
 }
 
 export interface Aviso {
@@ -537,6 +545,39 @@ export interface SinistroSeguro {
   fotos?: string[];
   relatorios_pdf?: string[];
   observacoes?: string;
+}
+
+// ----------------------------------------------------------------------------
+// SEGURO OBRIGATÓRIO DE FRAÇÕES (seguros_fracoes) & PARTES COMUNS (seguros_partes_comuns)
+// ----------------------------------------------------------------------------
+export interface SeguroFracao {
+  id: string; // UUID ou ID único
+  fracao_id: string;
+  seguradora: string;
+  apolice_numero: string;
+  apolice_validade: string; // YYYY-MM-DD
+  tipo_cobertura?: string; // 'Incêndio e Multirriscos', 'Incêndio Simples', etc.
+  capital_seguro?: number;
+  documento_url?: string;
+  estado_validacao: "Pendente" | "Valido" | "Expirado" | "Recusado";
+  criado_em?: string;
+  atualizado_em?: string;
+}
+
+export interface SeguroPartesComuns {
+  id: string; // UUID ou ID único
+  condominio_id: string;
+  seguradora: string;
+  apolice_numero: string;
+  apolice_validade: string; // YYYY-MM-DD
+  tomador_seguro?: string;
+  capital_seguro_edificio?: number;
+  franquia?: number;
+  contacto_mediador?: string;
+  documento_url?: string;
+  estado: "Ativo" | "Expirado" | "Cancelado";
+  criado_em?: string;
+  atualizado_em?: string;
 }
 
 // ----------------------------------------------------------------------------

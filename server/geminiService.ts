@@ -230,12 +230,20 @@ export interface AutoresponderOutput {
 }
 
 /**
- * Remove formatações proibidas: HTML, markdown e emojis.
+ * Remove formatações indesejadas de markdown/código, preservando a estrutura HTML oficial (com logotipo e assinaturas).
  */
 export function cleanAutoresponderText(text: string): string {
   if (!text) return "";
+  // Se for uma resposta em formato HTML (com logo <div>, <img> ou <br>), preservar a formatação HTML
+  if (text.includes("<div") || text.includes("<br") || text.includes("<img")) {
+    return text
+      .replace(/^```html\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+  }
   return text
-    .replace(/<[^>]*>/g, "") // remove tags HTML
+    .replace(/<[^>]*>/g, "") // remove tags HTML não autorizadas
     .replace(/[*_~`#\[\]]/g, "") // remove caracteres de markdown
     .replace(/[\u{1F600}-\u{1F64F}|\u{1F300}-\u{1F5FF}|\u{1F680}-\u{1F6FF}|\u{1F1E0}-\u{1F1FF}|\u{2600}-\u{26FF}|\u{2700}-\u{27BF}]/gu, "") // remove emojis
     .trim();
@@ -531,10 +539,467 @@ Se não houver resposta:
 }
 
 /**
- * AI STUDIO — CLASSIFICADOR DE TEMAS (SYSTEM PROMPT)
- * System Prompt oficial com regras estritas de identificação de tema.
+ * Logotipo oficial obrigatório no início de TODAS as mensagens do AI Studio Router.
  */
-export const CLASSIFICADOR_TEMAS_SYSTEM_PROMPT = `A tua função é identificar o tema principal de um email recebido pelo condomínio. 
+export const AI_STUDIO_ROUTER_LOGO_HTML = `<div style="text-align:center;margin-bottom:25px;">
+  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp"
+       alt="CondoManager AI"
+       style="width:240px;opacity:0.95;" />
+</div>`;
+
+/**
+ * Assinatura oficial da administração do condomínio.
+ */
+export const AI_STUDIO_ROUTER_SIGNATURE_HTML = `<br><br>
+Com os meus cumprimentos,
+<br>A administração do condomínio
+<br>José Carlos Guerra
+<br>📞 919 943 465
+<br>✉️ bentorodrgues2@gmail.com`;
+
+/**
+ * Monta o email completo em HTML com o logotipo no topo, saudação personalizada, corpo e assinatura.
+ */
+export function buildOfficialEmailMessage(corpo: string, nomeDestinatario?: string): string {
+  const nome = (nomeDestinatario && nomeDestinatario.trim()) ? nomeDestinatario.trim() : "${nome}";
+  return `${AI_STUDIO_ROUTER_LOGO_HTML}
+
+Exmo. Sr./Sra. ${nome},
+<br><br>
+${corpo}
+${AI_STUDIO_ROUTER_SIGNATURE_HTML}`;
+}
+
+export interface OfficialEmailRouterTemplate {
+  numero: number;
+  id: string;
+  categoriaLabel: string;
+  subject: string;
+  corpo: string;
+  exemploCompleto: string;
+}
+
+/**
+ * As 13 categorias oficiais com assuntos e textos validados.
+ */
+export const OFFICIAL_EMAIL_ROUTER_TEMPLATES: Record<string, OfficialEmailRouterTemplate> = {
+  ruido: {
+    numero: 1,
+    id: "ruido",
+    categoriaLabel: "Barulho / Ruído",
+    subject: "Registo de ocorrência de ruído",
+    corpo: `Registámos a sua comunicação referente a ruído proveniente de outra fração. A administração irá contactar os intervenientes e reforçar o cumprimento das regras de convivência previstas no Regulamento Interno.<br><br>Caso o ruído persista, agradecemos que nos informe para podermos atuar de forma mais célere.`,
+    exemploCompleto: buildOfficialEmailMessage(
+      `Registámos a sua comunicação referente a ruído proveniente de outra fração. A administração irá contactar os intervenientes e reforçar o cumprimento das regras de convivência previstas no Regulamento Interno.<br><br>Caso o ruído persista, agradecemos que nos informe para podermos atuar de forma mais célere.`
+    )
+  },
+  iluminacao: {
+    numero: 2,
+    id: "iluminacao",
+    categoriaLabel: "Lâmpadas avariadas / Iluminação",
+    subject: "Intervenção agendada — iluminação comum",
+    corpo: `Agradecemos o seu alerta sobre a lâmpada avariada. A administração já registou a ocorrência e irá solicitar a substituição ao técnico responsável.<br><br>Assim que a intervenção estiver concluída, enviaremos nova comunicação.`,
+    exemploCompleto: buildOfficialEmailMessage(
+      `Agradecemos o seu alerta sobre a lâmpada avariada. A administração já registou a ocorrência e irá solicitar a substituição ao técnico responsável.<br><br>Assim que a intervenção estiver concluída, enviaremos nova comunicação.`
+    )
+  },
+  infiltracoes: {
+    numero: 3,
+    id: "infiltracoes",
+    categoriaLabel: "Infiltrações / Humidades",
+    subject: "Registo de infiltração — encaminhamento técnico",
+    corpo: `Registámos a situação de infiltração descrita. A administração irá encaminhar o caso para avaliação técnica, de forma a identificar a origem e definir a intervenção necessária.<br><br>Entraremos em contacto assim que tivermos o relatório inicial.`,
+    exemploCompleto: buildOfficialEmailMessage(
+      `Registámos a situação de infiltração descrita. A administração irá encaminhar o caso para avaliação técnica, de forma a identificar a origem e definir a intervenção necessária.<br><br>Entraremos em contacto assim que tivermos o relatório inicial.`
+    )
+  },
+  portao: {
+    numero: 4,
+    id: "portao",
+    categoriaLabel: "Portão da garagem / Avarias mecânicas",
+    subject: "Avaria no portão — intervenção programada",
+    corpo: `Agradecemos o seu contacto. A avaria no portão da garagem foi registada e será encaminhada para o técnico habitual.<br><br>Informaremos assim que a deslocação estiver confirmada.`,
+    exemploCompleto: buildOfficialEmailMessage(
+      `Agradecemos o seu contacto. A avaria no portão da garagem foi registada e será encaminhada para o técnico habitual.<br><br>Informaremos assim que a deslocação estiver confirmada.`
+    )
+  },
+  elevador: {
+    numero: 5,
+    id: "elevador",
+    categoriaLabel: "Elevador (CORRIGIDO)",
+    subject: "Avaria no elevador — comunicação à manutenção",
+    corpo: `A administração agradece o alerta. A avaria do elevador vai ser comunicada à empresa de manutenção, que irá deslocar-se ao edifício com brevidade.<br><br>Partilharemos atualização assim que possível.`,
+    exemploCompleto: buildOfficialEmailMessage(
+      `A administração agradece o alerta. A avaria do elevador vai ser comunicada à empresa de manutenção, que irá deslocar-se ao edifício com brevidade.<br><br>Partilharemos atualização assim que possível.`
+    )
+  },
+  atas: {
+    numero: 6,
+    id: "atas",
+    categoriaLabel: "Pedidos de atas (CORRIGIDO)",
+    subject: "Envio da ata solicitada",
+    corpo: `Conforme solicitado, enviamos em anexo a ata da última assembleia.<br><br>Caso necessite de esclarecimentos adicionais estamos ao seu dispor. Relembramos que poderá consultar todas as atas e outros documentos no menu “Arquivo” da aplicação do condomínio.`,
+    exemploCompleto: buildOfficialEmailMessage(
+      `Conforme solicitado, enviamos em anexo a ata da última assembleia.<br><br>Caso necessite de esclarecimentos adicionais estamos ao seu dispor. Relembramos que poderá consultar todas as atas e outros documentos no menu “Arquivo” da aplicação do condomínio.`
+    )
+  },
+  documentos: {
+    numero: 7,
+    id: "documentos",
+    categoriaLabel: "Documentos (regulamento, seguro, contratos)",
+    subject: "Documentação solicitada",
+    corpo: `A documentação solicitada segue em anexo. Caso necessite de outros documentos ou versões atualizadas, poderá solicitar diretamente por esta via.`,
+    exemploCompleto: buildOfficialEmailMessage(
+      `A documentação solicitada segue em anexo. Caso necessite de outros documentos ou versões atualizadas, poderá solicitar diretamente por esta via.`
+    )
+  },
+  quotas: {
+    numero: 8,
+    id: "quotas",
+    categoriaLabel: "Recibos / Quotas / Pagamentos (CORRIGIDO)",
+    subject: "Envio de recibo / informação de quotas",
+    corpo: `Enviamos em anexo o recibo solicitado.<br><br>Se necessitar de histórico de pagamentos ou de informação sobre quotas em curso, poderá consultar a aplicação do condomínio.`,
+    exemploCompleto: buildOfficialEmailMessage(
+      `Enviamos em anexo o recibo solicitado.<br><br>Se necessitar de histórico de pagamentos ou de informação sobre quotas em curso, poderá consultar a aplicação do condomínio.`
+    )
+  },
+  reclamacoes: {
+    numero: 9,
+    id: "reclamacoes",
+    categoriaLabel: "Reclamações",
+    subject: "Registo de reclamação",
+    corpo: `Registámos a sua reclamação. A administração do condomínio está a analisar a situação com a devida atenção de forma a tomar as diligências cabíveis.<br><br>Entraremos em contacto logo que existam desenvolvimentos.`,
+    exemploCompleto: buildOfficialEmailMessage(
+      `Registámos a sua reclamação. A administração do condomínio está a analisar a situação com a devida atenção de forma a tomar as diligências cabíveis.<br><br>Entraremos em contacto logo que existam desenvolvimentos.`
+    )
+  },
+  sugestoes: {
+    numero: 10,
+    id: "sugestoes",
+    categoriaLabel: "Sugestões",
+    subject: "Agradecimento pela sugestão",
+    corpo: `Agradecemos a sua sugestão. Todas as propostas dos condóminos são fundamentais para a melhoria contínua da gestão do nosso edifício. A mesma será avaliada pela administração e, se pertinente, levada a discussão na próxima assembleia de condóminos.`,
+    exemploCompleto: buildOfficialEmailMessage(
+      `Agradecemos a sua sugestão. Todas as propostas dos condóminos são fundamentais para a melhoria contínua da gestão do nosso edifício. A mesma será avaliada pela administração e, se pertinente, levada a discussão na próxima assembleia de condóminos.`
+    )
+  },
+  reuniao: {
+    numero: 11,
+    id: "reuniao",
+    categoriaLabel: "Pedidos de reunião",
+    subject: "Pedido de reunião — confirmação",
+    corpo: `Registámos o seu pedido de reunião com a administração do condomínio. Entraremos em contacto brevemente para coordenar uma data e horário mutuamente convenientes.`,
+    exemploCompleto: buildOfficialEmailMessage(
+      `Registámos o seu pedido de reunião com a administração do condomínio. Entraremos em contacto brevemente para coordenar uma data e horário mutuamente convenientes.`
+    )
+  },
+  limpeza: {
+    numero: 12,
+    id: "limpeza",
+    categoriaLabel: "Limpeza",
+    subject: "Registo de ocorrência — limpeza",
+    corpo: `Agradecemos o seu alerta referente à limpeza das partes comuns. A ocorrência foi registada e encaminhada de imediato para a equipa responsável pelo serviço de limpeza do edifício.`,
+    exemploCompleto: buildOfficialEmailMessage(
+      `Agradecemos o seu alerta referente à limpeza das partes comuns. A ocorrência foi registada e encaminhada de imediato para a equipa responsável pelo serviço de limpeza do edifício.`
+    )
+  },
+  vizinhanca: {
+    numero: 13,
+    id: "vizinhanca",
+    categoriaLabel: "Problemas de vizinhança",
+    subject: "Registo de ocorrência entre vizinhos",
+    corpo: `Registámos a sua comunicação relativa a desacordo ou incómodo entre vizinhos. A administração irá abordar a situação com discrição e apelar ao bom senso e ao estrito cumprimento do Regulamento Interno do Condomínio.`,
+    exemploCompleto: buildOfficialEmailMessage(
+      `Registámos a sua comunicação relativa a desacordo ou incómodo entre vizinhos. A administração irá abordar a situação com discrição e apelar ao bom senso e ao estrito cumprimento do Regulamento Interno do Condomínio.`
+    )
+  }
+};
+
+/**
+ * PROMPT COMPLETO FORMATADO PRONTO A COPIAR PARA O GOOGLE AI STUDIO
+ */
+export const PROMPT_COMPLETO_AI_STUDIO = `⭐ LOGOTIPO PARA TODOS OS EMAILS (AI Studio Router)
+Cola isto no início de TODAS as mensagens:
+html
+<div style="text-align:center;margin-bottom:25px;">
+  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp"
+       alt="CondoManager AI"
+       style="width:240px;opacity:0.95;" />
+</div>
+
+⭐ PROMPT COMPLETO PARA COLAR NO AI STUDIO (TODAS AS CATEGORIAS)
+Organizado, limpo, pronto a colar.
+
+🟦 1. Barulho / Ruído
+subject: Registo de ocorrência de ruído
+message:
+html
+<div style="text-align:center;margin-bottom:25px;">
+  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+</div>
+
+Exmo. Sr./Sra. \${nome},
+<br><br>
+Registámos a sua comunicação referente a ruído proveniente de outra fração. A administração irá contactar os intervenientes e reforçar o cumprimento das regras de convivência previstas no Regulamento Interno.
+<br><br>
+Caso o ruído persista, agradecemos que nos informe para podermos atuar de forma mais célere.
+<br><br>
+Com os meus cumprimentos,
+<br>A administração do condomínio
+<br>José Carlos Guerra
+<br>📞 919 943 465
+<br>✉️ bentorodrgues2@gmail.com
+
+🟦 2. Lâmpadas avariadas / Iluminação
+subject: Intervenção agendada — iluminação comum
+message:
+html
+<div style="text-align:center;margin-bottom:25px;">
+  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+</div>
+
+Exmo. Sr./Sra. \${nome},
+<br><br>
+Agradecemos o seu alerta sobre a lâmpada avariada. A administração já registou a ocorrência e irá solicitar a substituição ao técnico responsável.
+<br><br>
+Assim que a intervenção estiver concluída, enviaremos nova comunicação.
+<br><br>
+Com os meus cumprimentos,
+<br>A administração do condomínio
+<br>José Carlos Guerra
+<br>📞 919 943 465
+<br>✉️ bentorodrgues2@gmail.com
+
+🟦 3. Infiltrações / Humidades
+subject: Registo de infiltração — encaminhamento técnico
+message:
+html
+<div style="text-align:center;margin-bottom:25px;">
+  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+</div>
+
+Exmo. Sr./Sra. \${nome},
+<br><br>
+Registámos a situação de infiltração descrita. A administração irá encaminhar o caso para avaliação técnica, de forma a identificar a origem e definir a intervenção necessária.
+<br><br>
+Entraremos em contacto assim que tivermos o relatório inicial.
+<br><br>
+Com os meus cumprimentos,
+<br>A administração do condomínio
+<br>José Carlos Guerra
+<br>📞 919 943 465
+<br>✉️ bentorodrgues2@gmail.com
+
+🟦 4. Portão da garagem / Avarias mecânicas
+subject: Avaria no portão — intervenção programada
+message:
+html
+<div style="text-align:center;margin-bottom:25px;">
+  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+</div>
+
+Exmo. Sr./Sra. \${nome},
+<br><br>
+Agradecemos o seu contacto. A avaria no portão da garagem foi registada e será encaminhada para o técnico habitual.
+<br><br>
+Informaremos assim que a deslocação estiver confirmada.
+<br><br>
+Com os meus cumprimentos,
+<br>A administração do condomínio
+<br>José Carlos Guerra
+<br>📞 919 943 465
+<br>✉️ bentorodrgues2@gmail.com
+
+🟦 5. Elevador (CORRIGIDO)
+subject: Avaria no elevador — comunicação à manutenção
+message:
+html
+<div style="text-align:center;margin-bottom:25px;">
+  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+</div>
+
+Exmo. Sr./Sra. \${nome},
+<br><br>
+A administração agradece o alerta. A avaria do elevador vai ser comunicada à empresa de manutenção, que irá deslocar-se ao edifício com brevidade.
+<br><br>
+Partilharemos atualização assim que possível.
+<br><br>
+Com os meus cumprimentos,
+<br>A administração do condomínio
+<br>José Carlos Guerra
+<br>📞 919 943 465
+<br>✉️ bentorodrgues2@gmail.com
+
+🟦 6. Pedidos de atas (CORRIGIDO)
+subject: Envio da ata solicitada
+message:
+html
+<div style="text-align:center;margin-bottom:25px;">
+  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+</div>
+
+Exmo. Sr./Sra. \${nome},
+<br><br>
+Conforme solicitado, enviamos em anexo a ata da última assembleia.
+<br><br>
+Caso necessite de esclarecimentos adicionais estamos ao seu dispor. Relembramos que poderá consultar todas as atas e outros documentos no menu “Arquivo” da aplicação do condomínio.
+<br><br>
+Com os meus cumprimentos,
+<br>A administração do condomínio
+<br>José Carlos Guerra
+<br>📞 919 943 465
+<br>✉️ bentorodrgues2@gmail.com
+
+🟦 7. Documentos (regulamento, seguro, contratos)
+subject: Documentação solicitada
+message:
+html
+<div style="text-align:center;margin-bottom:25px;">
+  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+</div>
+
+Exmo. Sr./Sra. \${nome},
+<br><br>
+A documentação solicitada segue em anexo. Caso necessite de outros documentos ou versões atualizadas, poderá solicitar diretamente por esta via.
+<br><br>
+Com os meus cumprimentos,
+<br>A administração do condomínio
+<br>José Carlos Guerra
+<br>📞 919 943 465
+<br>✉️ bentorodrgues2@gmail.com
+
+🟦 8. Recibos / Quotas / Pagamentos (CORRIGIDO)
+subject: Envio de recibo / informação de quotas
+message:
+html
+<div style="text-align:center;margin-bottom:25px;">
+  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+</div>
+
+Exmo. Sr./Sra. \${nome},
+<br><br>
+Enviamos em anexo o recibo solicitado.
+<br><br>
+Se necessitar de histórico de pagamentos ou de informação sobre quotas em curso, poderá consultar a aplicação do condomínio.
+<br><br>
+Com os meus cumprimentos,
+<br>A administração do condomínio
+<br>José Carlos Guerra
+<br>📞 919 943 465
+<br>✉️ bentorodrgues2@gmail.com
+
+🟦 9. Reclamações
+subject: Registo de reclamação
+message:
+html
+<div style="text-align:center;margin-bottom:25px;">
+  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+</div>
+
+Exmo. Sr./Sra. \${nome},
+<br><br>
+Registámos a sua reclamação. A administração do condomínio está a analisar a situação com a devida atenção de forma a tomar as diligências cabíveis.
+<br><br>
+Entraremos em contacto logo que existam desenvolvimentos.
+<br><br>
+Com os meus cumprimentos,
+<br>A administração do condomínio
+<br>José Carlos Guerra
+<br>📞 919 943 465
+<br>✉️ bentorodrgues2@gmail.com
+
+🟦 10. Sugestões
+subject: Agradecimento pela sugestão
+message:
+html
+<div style="text-align:center;margin-bottom:25px;">
+  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+</div>
+
+Exmo. Sr./Sra. \${nome},
+<br><br>
+Agradecemos a sua sugestão. Todas as propostas dos condóminos são fundamentais para a melhoria contínua da gestão do nosso edifício. A mesma será avaliada pela administração e, se pertinente, levada a discussão na próxima assembleia de condóminos.
+<br><br>
+Com os meus cumprimentos,
+<br>A administração do condomínio
+<br>José Carlos Guerra
+<br>📞 919 943 465
+<br>✉️ bentorodrgues2@gmail.com
+
+🟦 11. Pedidos de reunião
+subject: Pedido de reunião — confirmação
+message:
+html
+<div style="text-align:center;margin-bottom:25px;">
+  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+</div>
+
+Exmo. Sr./Sra. \${nome},
+<br><br>
+Registámos o seu pedido de reunião com a administração do condomínio. Entraremos em contacto brevemente para coordenar uma data e horário mutuamente convenientes.
+<br><br>
+Com os meus cumprimentos,
+<br>A administração do condomínio
+<br>José Carlos Guerra
+<br>📞 919 943 465
+<br>✉️ bentorodrgues2@gmail.com
+
+🟦 12. Limpeza
+subject: Registo de ocorrência — limpeza
+message:
+html
+<div style="text-align:center;margin-bottom:25px;">
+  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+</div>
+
+Exmo. Sr./Sra. \${nome},
+<br><br>
+Agradecemos o seu alerta referente à limpeza das partes comuns. A ocorrência foi registada e encaminhada de imediato para a equipa responsável pelo serviço de limpeza do edifício.
+<br><br>
+Com os meus cumprimentos,
+<br>A administração do condomínio
+<br>José Carlos Guerra
+<br>📞 919 943 465
+<br>✉️ bentorodrgues2@gmail.com
+
+🟦 13. Problemas de vizinhança
+subject: Registo de ocorrência entre vizinhos
+message:
+html
+<div style="text-align:center;margin-bottom:25px;">
+  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+</div>
+
+Exmo. Sr./Sra. \${nome},
+<br><br>
+Registámos a sua comunicação relativa a desacordo ou incómodo entre vizinhos. A administração irá abordar a situação com discrição e apelar ao bom senso e ao estrito cumprimento do Regulamento Interno do Condomínio.
+<br><br>
+Com os meus cumprimentos,
+<br>A administração do condomínio
+<br>José Carlos Guerra
+<br>📞 919 943 465
+<br>✉️ bentorodrgues2@gmail.com`;
+
+/**
+ * AI STUDIO — CLASSIFICADOR DE TEMAS (SYSTEM PROMPT)
+ * System Prompt oficial com regras estritas de identificação entre as 13 categorias oficiais.
+ */
+export const CLASSIFICADOR_TEMAS_SYSTEM_PROMPT = `A tua função é identificar o tema principal de um email recebido pelo condomínio entre as 13 categorias oficiais:
+1. "ruido" (Barulho / Ruído)
+2. "iluminacao" (Lâmpadas avariadas / Iluminação)
+3. "infiltracoes" (Infiltrações / Humidades)
+4. "portao" (Portão da garagem / Avarias mecânicas)
+5. "elevador" (Elevador)
+6. "atas" (Pedidos de atas)
+7. "documentos" (Documentos - regulamento, seguro, contratos)
+8. "quotas" (Recibos / Quotas / Pagamentos)
+9. "reclamacoes" (Reclamações)
+10. "sugestoes" (Sugestões)
+11. "reuniao" (Pedidos de reunião)
+12. "limpeza" (Limpeza)
+13. "vizinhanca" (Problemas de vizinhança)
+Outras: "fornecedor" (faturas ou noreply de empresas) ou "outro".
+
 Recebes o seguinte JSON:
 
 {
@@ -555,165 +1020,7 @@ NUNCA devolves texto fora do JSON.
 NUNCA escreves explicações.
 NUNCA escreves HTML.
 NUNCA escreves mensagens.
-
-Apenas devolves a categoria.
-
----
-
-# 1. CATEGORIAS POSSÍVEIS
-
-- "quotas"
-- "ruido"
-- "avaria"
-- "assembleia"
-- "documentos"
-- "informacao"
-- "administracao"
-- "condominio"
-- "seguro"
-- "inquilino"
-- "coproprietario"
-- "urgente"
-- "fornecedor"
-- "outro"
-
----
-
-# 2. REGRAS DE CLASSIFICAÇÃO
-
-## 2.1. QUOTAS
-Palavras-chave:
-- quota
-- pagamento
-- mensalidade
-- condominio em atraso
-- recibo
-- comprovativo
-- transferência
-
-## 2.2. RUÍDO
-Palavras-chave:
-- barulho
-- ruido
-- vizinho
-- festas
-- incomodo
-- perturbação
-- silêncio
-
-## 2.3. AVARIA
-Palavras-chave:
-- avaria
-- problema
-- elevador
-- porta
-- infiltração
-- água
-- luz
-- eletricidade
-- reparação
-
-## 2.4. ASSEMBLEIA
-Palavras-chave:
-- assembleia
-- reunião
-- ata
-- convocatória
-- votação
-
-## 2.5. DOCUMENTOS
-Palavras-chave:
-- documento
-- contrato
-- ata
-- regulamento
-- seguro
-- certidão
-- declaração
-
-## 2.6. INFORMAÇÃO
-Quando o email pede:
-- esclarecimento
-- informação geral
-- dúvida
-- pergunta sem tema específico
-
-## 2.7. ADMINISTRAÇÃO
-Palavras-chave:
-- administração
-- gestor
-- empresa
-- contacto da administração
-
-## 2.8. CONDOMÍNIO
-Palavras-chave:
-- prédio
-- condomínio
-- regras
-- regulamento
-
-## 2.9. SEGURO
-Palavras-chave:
-- apólice
-- seguradora
-- seguro
-- validade
-- sinistro
-
-## 2.10. INQUILINO
-Palavras-chave:
-- arrendamento
-- inquilino
-- contrato de arrendamento
-
-## 2.11. COPROPRIETÁRIO
-Palavras-chave:
-- coproprietário
-- comproprietário
-- segundo proprietário
-
-## 2.12. URGENTE
-Palavras-chave:
-- urgente
-- emergência
-- imediatamente
-- perigo
-- risco
-
-## 2.13. FORNECEDOR
-Se o email vier de:
-- empresas
-- newsletters
-- noreply
-- no-reply
-- mailer-daemon
-- postmaster
-- edp.pt
-- galp.com
-- vodafone.pt
-- meo.pt
-- nos.pt
-
-DEVOLVES:
-{
-  "categoria": "fornecedor"
-}
-
-## 2.14. OUTRO
-Se não encaixar em nenhuma categoria acima:
-{
-  "categoria": "outro"
-}
-
----
-
-# 3. FORMATO FINAL
-
-DEVOLVES SEMPRE:
-
-{
-  "categoria": "..."
-}`;
+Apenas devolves a categoria correspondente.`;
 
 export interface ClassifyEmailInput {
   email?: {
@@ -727,18 +1034,25 @@ export interface ClassifyEmailInput {
 }
 
 export type ClassificadorCategoria =
-  | "quotas"
   | "ruido"
+  | "iluminacao"
+  | "infiltracoes"
+  | "portao"
+  | "elevador"
+  | "atas"
+  | "documentos"
+  | "quotas"
+  | "reclamacoes"
+  | "sugestoes"
+  | "reuniao"
+  | "limpeza"
+  | "vizinhanca"
   | "avaria"
   | "assembleia"
-  | "documentos"
   | "informacao"
   | "administracao"
   | "condominio"
   | "seguro"
-  | "inquilino"
-  | "coproprietario"
-  | "urgente"
   | "fornecedor"
   | "outro";
 
@@ -747,8 +1061,29 @@ export interface ClassifyEmailOutput {
 }
 
 /**
+ * Normaliza qualquer chave ou sinónimo para uma das 13 categorias oficiais.
+ */
+export function normalizeCategoryKey(rawCat: string): string {
+  const c = (rawCat || "").toLowerCase().trim();
+  if (c === "ruido" || c === "barulho" || c.includes("ruído")) return "ruido";
+  if (c === "iluminacao" || c === "lampada" || c === "lampadas" || c.includes("iluminaç") || c.includes("lâmpada")) return "iluminacao";
+  if (c === "infiltracoes" || c === "infiltracao" || c === "humidade" || c === "humidades" || c.includes("infiltraç")) return "infiltracoes";
+  if (c === "portao" || c.includes("portão") || c.includes("garagem")) return "portao";
+  if (c === "elevador" || c === "ascensor") return "elevador";
+  if (c === "atas" || c === "ata" || c.includes("pedidos_de_atas")) return "atas";
+  if (c === "documentos" || c === "documento" || c === "seguro" || c === "contratos") return "documentos";
+  if (c === "quotas" || c === "recibos" || c === "recibo" || c === "pagamento" || c === "pagamentos") return "quotas";
+  if (c === "reclamacoes" || c === "reclamacao" || c.includes("reclamaç") || c === "queixa") return "reclamacoes";
+  if (c === "sugestoes" || c === "sugestao" || c.includes("sugest")) return "sugestoes";
+  if (c === "reuniao" || c === "reunioes" || c.includes("reuniã")) return "reuniao";
+  if (c === "limpeza" || c === "lixo" || c === "sujidade") return "limpeza";
+  if (c === "vizinhanca" || c.includes("vizinhan") || c === "vizinho" || c === "vizinhos") return "vizinhanca";
+  if (c === "fornecedor" || c === "ignorar") return "fornecedor";
+  return c || "outro";
+}
+
+/**
  * Classificador Oficial de Temas de Emails do Condomínio.
- * Aplica o System Prompt estrito e devolve SEMPRE { "categoria": "..." }.
  */
 export async function classifyEmailCategory(input: ClassifyEmailInput): Promise<ClassifyEmailOutput> {
   const from = (input.email?.from || input.from || "").trim();
@@ -757,7 +1092,7 @@ export async function classifyEmailCategory(input: ClassifyEmailInput): Promise<
 
   const fromLower = from.toLowerCase();
 
-  // Verificação direta de regra 2.13 para fornecedor
+  // Verificação de fornecedores e noreply
   const supplierIndicators = [
     "noreply", "no-reply", "mailer-daemon", "postmaster",
     "edp.pt", "galp.com", "galp.pt", "vodafone.pt", "meo.pt", "nos.pt"
@@ -796,50 +1131,53 @@ export async function classifyEmailCategory(input: ClassifyEmailInput): Promise<
     }
 
     if (parsed && typeof parsed.categoria === "string") {
-      return { categoria: parsed.categoria.trim().toLowerCase() };
+      return { categoria: normalizeCategoryKey(parsed.categoria) };
     }
   } catch (err) {
     console.error("[classifyEmailCategory] Erro na chamada ao Gemini:", err);
   }
 
-  // Fallback heurístico em estrito alinhamento com a secção 2 do System Prompt
+  // Fallback heurístico inteligente para as 13 categorias
   const text = (subject + " " + bodyText).toLowerCase();
 
-  if (text.includes("urgente") || text.includes("emergência") || text.includes("emergencia") || text.includes("imediatamente") || text.includes("perigo") || text.includes("risco")) {
-    return { categoria: "urgente" };
-  }
-  if (text.includes("quota") || text.includes("pagamento") || text.includes("mensalidade") || text.includes("condominio em atraso") || text.includes("recibo") || text.includes("comprovativo") || text.includes("transferência") || text.includes("transferencia")) {
-    return { categoria: "quotas" };
-  }
-  if (text.includes("barulho") || text.includes("ruido") || text.includes("ruído") || text.includes("vizinho") || text.includes("festas") || text.includes("incomodo") || text.includes("incómodo") || text.includes("perturbação") || text.includes("perturbacao") || text.includes("silêncio") || text.includes("silencio")) {
+  if (text.includes("barulho") || text.includes("ruido") || text.includes("ruído") || text.includes("música") || text.includes("som alto") || text.includes("festa")) {
     return { categoria: "ruido" };
   }
-  if (text.includes("avaria") || text.includes("problema") || text.includes("elevador") || text.includes("porta") || text.includes("infiltração") || text.includes("infiltracao") || text.includes("água") || text.includes("agua") || text.includes("luz") || text.includes("eletricidade") || text.includes("reparação") || text.includes("reparacao")) {
-    return { categoria: "avaria" };
+  if (text.includes("lâmpada") || text.includes("lampada") || text.includes("luz") || text.includes("iluminação") || text.includes("iluminacao") || text.includes("fundida") || text.includes("escuro")) {
+    return { categoria: "iluminacao" };
   }
-  if (text.includes("assembleia") || text.includes("reunião") || text.includes("reuniao") || text.includes("convocatória") || text.includes("convocatoria") || text.includes("votação") || text.includes("votacao")) {
-    return { categoria: "assembleia" };
+  if (text.includes("infiltração") || text.includes("infiltracao") || text.includes("humidade") || text.includes("humidades") || text.includes("teto") || text.includes("mancha de água") || text.includes("pingo")) {
+    return { categoria: "infiltracoes" };
   }
-  if (text.includes("documento") || text.includes("contrato") || text.includes("ata") || text.includes("certidão") || text.includes("certidao") || text.includes("declaração") || text.includes("declaracao")) {
+  if (text.includes("portão") || text.includes("portao") || text.includes("garagem") || text.includes("comando") || text.includes("fecho do portão")) {
+    return { categoria: "portao" };
+  }
+  if (text.includes("elevador") || text.includes("ascensor") || text.includes("preso no elevador")) {
+    return { categoria: "elevador" };
+  }
+  if (text.includes("ata") || text.includes("atas") || text.includes("cópia da ata") || text.includes("envio de ata")) {
+    return { categoria: "atas" };
+  }
+  if (text.includes("recibo") || text.includes("recibos") || text.includes("quota") || text.includes("quotas") || text.includes("pagamento") || text.includes("transferência") || text.includes("transferencia") || text.includes("iban")) {
+    return { categoria: "quotas" };
+  }
+  if (text.includes("reclamação") || text.includes("reclamacao") || text.includes("queixa") || text.includes("protesto") || text.includes("descontentamento")) {
+    return { categoria: "reclamacoes" };
+  }
+  if (text.includes("sugestão") || text.includes("sugestao") || text.includes("ideia") || text.includes("proposta de melhoria")) {
+    return { categoria: "sugestoes" };
+  }
+  if (text.includes("reunião") || text.includes("reuniao") || text.includes("falar com a administração") || text.includes("pedido de reunião") || text.includes("agendamento")) {
+    return { categoria: "reuniao" };
+  }
+  if (text.includes("limpeza") || text.includes("sujo") || text.includes("sujidade") || text.includes("lixo") || text.includes("hall sujo") || text.includes("escadas sujas")) {
+    return { categoria: "limpeza" };
+  }
+  if (text.includes("vizinho") || text.includes("vizinhos") || text.includes("vizinhança") || text.includes("vizinhanca") || text.includes("conflito") || text.includes("desacordo")) {
+    return { categoria: "vizinhanca" };
+  }
+  if (text.includes("documento") || text.includes("regulamento") || text.includes("seguro") || text.includes("apólice") || text.includes("apolice") || text.includes("contrato") || text.includes("certidão")) {
     return { categoria: "documentos" };
-  }
-  if (text.includes("apólice") || text.includes("apolice") || text.includes("seguradora") || text.includes("seguro") || text.includes("validade") || text.includes("sinistro")) {
-    return { categoria: "seguro" };
-  }
-  if (text.includes("arrendamento") || text.includes("inquilino") || text.includes("contrato de arrendamento")) {
-    return { categoria: "inquilino" };
-  }
-  if (text.includes("coproprietário") || text.includes("coproprietario") || text.includes("comproprietário") || text.includes("comproprietario") || text.includes("segundo proprietário") || text.includes("segundo proprietario")) {
-    return { categoria: "coproprietario" };
-  }
-  if (text.includes("administração") || text.includes("administracao") || text.includes("gestor") || text.includes("empresa") || text.includes("contacto da administração") || text.includes("contacto da administracao")) {
-    return { categoria: "administracao" };
-  }
-  if (text.includes("prédio") || text.includes("predio") || text.includes("condomínio") || text.includes("condominio") || text.includes("regras") || text.includes("regulamento")) {
-    return { categoria: "condominio" };
-  }
-  if (text.includes("esclarecimento") || text.includes("informação") || text.includes("informacao") || text.includes("dúvida") || text.includes("duvida") || text.includes("pergunta")) {
-    return { categoria: "informacao" };
   }
 
   return { categoria: "outro" };
@@ -847,151 +1185,45 @@ export async function classifyEmailCategory(input: ClassifyEmailInput): Promise<
 
 /**
  * AI STUDIO — REGRAS INTELIGENTES POR CATEGORIA (SYSTEM PROMPT)
- * System Prompt do módulo de resposta por categoria.
+ * Instruções oficiais integrando o logotipo e as 13 categorias exatas.
  */
-export const REGRAS_INTELIGENTES_CATEGORIA_SYSTEM_PROMPT = `A tua função é gerar respostas profissionais e institucionais para emails recebidos pelo condomínio, com base na categoria identificada pelo classificador e no contexto fornecido pelo backend.
+export const REGRAS_INTELIGENTES_CATEGORIA_SYSTEM_PROMPT = `A tua função é gerar respostas profissionais e institucionais para emails recebidos pelo condomínio, com base no prompt oficial e nas 13 categorias estipuladas.
 
-Recebes:
+⭐ REGRA CRÍTICA DE LOGOTIPO:
+Todas as mensagens DEVEM começar obrigatoriamente pelo HTML:
+<div style="text-align:center;margin-bottom:25px;">
+  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+</div>
 
+⭐ REGRA CRÍTICA DE ASSINATURA:
+Todas as mensagens DEVEM terminar obrigatoriamente por:
+<br><br>
+Com os meus cumprimentos,
+<br>A administração do condomínio
+<br>José Carlos Guerra
+<br>📞 919 943 465
+<br>✉️ bentorodrgues2@gmail.com
+
+AS 13 CATEGORIAS OFICIAIS:
+1. "ruido": subject "Registo de ocorrência de ruído"
+2. "iluminacao": subject "Intervenção agendada — iluminação comum"
+3. "infiltracoes": subject "Registo de infiltração — encaminhamento técnico"
+4. "portao": subject "Avaria no portão — intervenção programada"
+5. "elevador": subject "Avaria no elevador — comunicação à manutenção"
+6. "atas": subject "Envio da ata solicitada"
+7. "documentos": subject "Documentação solicitada"
+8. "quotas": subject "Envio de recibo / informação de quotas"
+9. "reclamacoes": subject "Registo de reclamação"
+10. "sugestoes": subject "Agradecimento pela sugestão"
+11. "reuniao": subject "Pedido de reunião — confirmação"
+12. "limpeza": subject "Registo de ocorrência — limpeza"
+13. "vizinhanca": subject "Registo de ocorrência entre vizinhos"
+
+DEVOLVES SEMPRE EM JSON ESTRITO:
 {
-  "categoria": "...",
-  "email": {
-    "from": "...",
-    "subject": "...",
-    "bodyText": "..."
-  },
-  "contexto": {
-    "proprietario": {...},
-    "fracao": {...},
-    "predio": {...},
-    "quotas": {...},
-    "seguros": {...}
-  }
-}
-
-A tua saída é SEMPRE:
-
-{
-  "subject": "...",
-  "message": "...",
-  "categoria": "..."
-}
-
-NUNCA devolves HTML.
-NUNCA devolves anexos.
-NUNCA devolves imagens.
-NUNCA inventas dados que não estão no contexto.
-NUNCA escreves fora do JSON.
-
----
-
-# 1. REGRAS POR CATEGORIA
-
-## 1.1. QUOTAS
-Se existir contexto de quotas:
-- Indica valores, meses, estado (pago / em atraso).
-- Indica IBAN do prédio se existir.
-- Responde com clareza e tom institucional.
-
-Se NÃO existir contexto de quotas:
-- Indica que o condomínio está a atualizar o sistema.
-- Pede comprovativo ou esclarecimento.
-
-## 1.2. RUÍDO
-- Agradece o contacto.
-- Indica regras de silêncio do prédio (se existirem).
-- Indica que o condomínio irá comunicar ao responsável.
-- Mantém tom neutro e institucional.
-
-## 1.3. AVARIA
-- Pede detalhes (local, hora, tipo de avaria).
-- Indica procedimentos do condomínio.
-- Se existir empresa contratada, menciona.
-- Mantém tom profissional.
-
-## 1.4. ASSEMBLEIA
-Se existir assembleia marcada:
-- Indica data, hora e local.
-- Indica se existe ata disponível.
-
-Se NÃO existir:
-- Indica que será convocada conforme legislação.
-
-## 1.5. DOCUMENTOS
-- Indica como obter documentos (atas, regulamentos, seguros).
-- Se existir seguro no contexto, menciona apólice e validade.
-- Mantém tom formal.
-
-## 1.6. INFORMAÇÃO
-- Responde à dúvida de forma clara.
-- Se não houver dados suficientes, pede esclarecimento adicional.
-
-## 1.7. ADMINISTRAÇÃO
-- Indica contacto da administração (se existir no contexto).
-- Mantém tom institucional.
-
-## 1.8. CONDOMÍNIO
-- Responde sobre regras gerais.
-- Indica regulamento (se existir).
-- Mantém tom neutro.
-
-## 1.9. SEGURO
-Se existir seguro no contexto:
-- Indica seguradora, número de apólice e validade.
-
-Se NÃO existir:
-- Indica que o condomínio não tem registo de seguro para a fração.
-
-## 1.10. INQUILINO
-- Responde com cortesia.
-- Indica que certas decisões dependem do proprietário.
-- Mantém tom neutro.
-
-## 1.11. COPROPRIETÁRIO
-- Responde como proprietário.
-- Indica que é coproprietário quando relevante.
-
-## 1.12. URGENTE
-- Prioriza resposta imediata.
-- Pede detalhes.
-- Indica procedimentos de segurança.
-- Mantém tom firme e institucional.
-
-## 1.13. FORNECEDOR
-DEVOLVES:
-
-{
-  "subject": null,
-  "message": null,
-  "categoria": "ignorar"
-}
-
-## 1.14. OUTRO
-- Responde de forma geral.
-- Pede esclarecimento adicional.
-
----
-
-# 2. TOM E ESTILO
-
-- Profissional
-- Institucional
-- Claro
-- Sem HTML
-- Sem emojis
-- Sem anexos
-- Sem informalidade excessiva
-
----
-
-# 3. FORMATO FINAL
-
-DEVOLVES SEMPRE:
-
-{
-  "subject": "Assunto da resposta",
-  "message": "Texto da resposta",
-  "categoria": "categoria_recebida"
+  "subject": "Assunto da categoria",
+  "message": "Mensagem formatada em HTML com logo, Exmo. Sr./Sra. \${nome}, texto e assinatura",
+  "categoria": "categoria"
 }`;
 
 export interface CategoryResponseInput {
@@ -1016,14 +1248,14 @@ export interface CategoryResponseInput {
  * Gera respostas estritamente em conformidade com as regras por categoria e o contexto do condomínio.
  */
 export async function generateCategoryResponse(input: CategoryResponseInput): Promise<AutoresponderOutput> {
-  const cat = (input.categoria || "outro").toLowerCase().trim();
+  const normalizedCat = normalizeCategoryKey(input.categoria || "outro");
   const from = (input.email?.from || "").trim();
   const sub = (input.email?.subject || "").trim();
   const body = (input.email?.bodyText || "").trim();
   const contexto = input.contexto || {};
 
-  // 1. Regra 1.13: Fornecedor e emails automáticos devolvem categoria "ignorar"
-  if (cat === "fornecedor" || cat === "ignorar") {
+  // Fornecedor e emails automáticos devolvem categoria "ignorar"
+  if (normalizedCat === "fornecedor" || normalizedCat === "ignorar") {
     return {
       subject: null,
       message: null,
@@ -1048,158 +1280,56 @@ export async function generateCategoryResponse(input: CategoryResponseInput): Pr
     };
   }
 
-  // 2. Chamada ao Gemini com o System Prompt das Regras Inteligentes
-  const payload = JSON.stringify(
-    {
-      categoria: cat,
-      email: {
-        from,
-        subject: sub,
-        bodyText: body
-      },
-      contexto
-    },
-    null,
-    2
-  );
+  // Se corresponder exatamente a uma das 13 categorias oficiais, fornecer diretamente o modelo oficial com substituição de nome
+  const nome = (contexto.proprietario?.nome && String(contexto.proprietario.nome).trim())
+    ? String(contexto.proprietario.nome).trim()
+    : (from ? from.split("@")[0].replace(/[._-]/g, " ") : "Condómino(a)");
 
-  try {
-    const rawResponse = await generateWithFallback({
-      contents: [{ role: "user", parts: [{ text: payload }] }],
-      systemInstruction: REGRAS_INTELIGENTES_CATEGORIA_SYSTEM_PROMPT,
-      responseMimeType: "application/json"
-    });
-
-    let parsed: any = null;
-    try {
-      parsed = JSON.parse(rawResponse);
-    } catch {
-      const match = rawResponse.match(/\{[\s\S]*\}/);
-      if (match) {
-        parsed = JSON.parse(match[0]);
-      }
-    }
-
-    if (parsed) {
-      if (parsed.categoria === "ignorar" || (parsed.subject === null && parsed.message === null)) {
-        return {
-          subject: null,
-          message: null,
-          categoria: "ignorar"
-        };
-      }
-
-      const cleanMessage = cleanAutoresponderText(parsed.message || "");
-      return {
-        subject: parsed.subject ? String(parsed.subject).trim() : `Re: ${sub || "Comunicação Condomínio"}`,
-        message: cleanMessage,
-        categoria: parsed.categoria ? String(parsed.categoria).trim() : cat
-      };
-    }
-  } catch (err) {
-    console.error("[generateCategoryResponse] Erro no modelo:", err);
+  const template = OFFICIAL_EMAIL_ROUTER_TEMPLATES[normalizedCat];
+  if (template) {
+    const fullMessage = buildOfficialEmailMessage(template.corpo, nome);
+    return {
+      subject: template.subject,
+      message: fullMessage,
+      categoria: normalizedCat
+    };
   }
 
-  // 3. Fallback Heurístico estrito por categoria
-  return getFallbackCategoryResponse(cat, sub, body, contexto);
+  // Fallback geral com logotipo e assinatura
+  return getFallbackCategoryResponse(normalizedCat, sub, body, contexto);
 }
 
 /**
  * Fallback heurístico em estrito alinhamento com a secção 1 do System Prompt.
  */
-function getFallbackCategoryResponse(cat: string, sub: string, body: string, contexto: any): AutoresponderOutput {
-  const nomeProp = contexto.proprietario?.nome ? `Exmo(a). Senhor(a) ${contexto.proprietario.nome}` : "Estimado(a) Condómino(a)";
-  const fracaoDesc = contexto.fracao?.letra ? ` referente à fração ${contexto.fracao.letra}` : "";
-  const ibanPredio = contexto.predio?.iban ? ` Para pagamentos, poderá utilizar o IBAN do condomínio: ${contexto.predio.iban}.` : "";
+export function getFallbackCategoryResponse(cat: string, sub: string, body: string, contexto: any): AutoresponderOutput {
+  const normalizedCat = normalizeCategoryKey(cat);
+  const nomeProp = contexto.proprietario?.nome ? String(contexto.proprietario.nome).trim() : "Condómino(a)";
 
-  let subject = `Re: ${sub || "Comunicação ao Condomínio"}`;
-  let message = "";
-
-  switch (cat) {
-    case "quotas":
-      if (contexto.quotas) {
-        const estado = contexto.quotas.em_atraso ? `em atraso (${contexto.quotas.meses_atraso || "meses pendentes"}) no valor de €${contexto.quotas.valor_atraso || contexto.quotas.valor || "0,00"}` : `regularizadas (quota mensal: €${contexto.quotas.valor || "0,00"})`;
-        message = `${nomeProp}, acusamos a receção do seu contacto. Informamos que as quotas da sua fração encontram-se ${estado}.${ibanPredio} Agradecemos o envio do respetivo comprovativo de transferência bancária para conciliação.`;
-      } else {
-        message = `${nomeProp}, informamos que o condomínio se encontra de momento a atualizar os registos no sistema. Agradecemos o envio do respetivo comprovativo de pagamento ou esclarecimento adicional para conferência das contas${fracaoDesc}.${ibanPredio}`;
-      }
-      break;
-
-    case "ruido":
-      message = `${nomeProp}, agradecemos o seu contacto. Informamos que a sua comunicação relativa a ruído nas partes comuns ou frações vizinhas foi registada. O condomínio irá comunicar com o responsável em estrito cumprimento das regras de silêncio e do regulamento do edifício.`;
-      break;
-
-    case "avaria":
-      message = `${nomeProp}, acusamos a receção do reporte de avaria. Solicitamos, se possível, a indicação de detalhes adicionais (local exato, hora e tipologia do problema) para acionamento imediato. Informamos que os procedimentos do condomínio foram despoletados e o técnico de manutenção contratado será notificado para intervenção.`;
-      break;
-
-    case "assembleia":
-      if (contexto.predio?.assembleia_marcada) {
-        message = `${nomeProp}, informamos que a próxima assembleia geral encontra-se agendada para o dia ${contexto.predio.assembleia_data || "a anunciar"}, às ${contexto.predio.assembleia_hora || "20:30"} no local ${contexto.predio.assembleia_local || "sala de reuniões do condomínio"}. A ata da última assembleia encontra-se igualmente disponível para consulta.`;
-      } else {
-        message = `${nomeProp}, informamos que a assembleia geral ordinária será convocada dentro dos prazos estipulados pela legislação aplicável, acompanhada da respetiva ordem de trabalhos e convocatória formal.`;
-      }
-      break;
-
-    case "documentos":
-      if (contexto.seguros?.apolice) {
-        message = `${nomeProp}, acusamos o seu pedido de documentação. Os documentos oficiais (atas e regulamento) encontram-se arquivados e disponíveis na pasta do condomínio. Mais informamos que o seguro multirriscos do condomínio tem a apólice nº ${contexto.seguros.apolice} (${contexto.seguros.seguradora || "Seguradora"}) com validade até ${contexto.seguros.validade || "em vigor"}.`;
-      } else {
-        message = `${nomeProp}, acusamos a receção do seu pedido de documentos (atas, regulamento ou declarações). O mesmo será emitido pelos serviços administrativos do condomínio nos prazos e procedimentos habituais.`;
-      }
-      break;
-
-    case "informacao":
-      message = `${nomeProp}, acusamos a receção da sua questão e agradecemos o contacto. A sua dúvida foi registada pelos serviços do condomínio. Caso necessite de elementos mais específicos, solicitamos o envio de esclarecimento adicional.`;
-      break;
-
-    case "administracao":
-      const contactoAdmin = contexto.predio?.email || contexto.predio?.email_condominio || "administracao@condomanager.pt";
-      message = `${nomeProp}, agradecemos o seu contacto dirigido à administração do condomínio. Para qualquer questão operacional ou agendamento direto com o gestor do edifício, poderá contactar através do correio eletrónico ${contactoAdmin}.`;
-      break;
-
-    case "condominio":
-      message = `${nomeProp}, acusamos a receção da sua comunicação referente às regras do edifício. O uso das partes comuns e a convivência no prédio regem-se pelas normas estabelecidas no Regulamento Interno do Condomínio.`;
-      break;
-
-    case "seguro":
-      if (contexto.seguros?.apolice) {
-        message = `${nomeProp}, relativamente ao seguro do condomínio, informamos que a apólice referente ao edifício é a nº ${contexto.seguros.apolice}, contratada junto da ${contexto.seguros.seguradora || "Seguradora Oficial"}, com validade até ${contexto.seguros.validade || "em vigor"}.`;
-      } else {
-        message = `${nomeProp}, informamos que, de momento, o condomínio não dispõe de registo de apólice de seguro individual arquivada para a respetiva fração no sistema. Caso se trate de sinistro que afete partes comuns, solicitamos o envio de dados complementares.`;
-      }
-      break;
-
-    case "inquilino":
-      message = `Estimado(a) residente, acusamos a receção da sua mensagem e agradecemos o contacto. Tomámos nota da situação transmitida e esclarecemos com cortesia que determinadas decisões e alterações sobre a fração dependem de comunicação e anuência direta do respetivo proprietário.`;
-      break;
-
-    case "coproprietario":
-      message = `${nomeProp}, acusamos a receção do seu contacto na qualidade de coproprietário da fração. Procedemos ao registo da sua comunicação na ficha da fração com a administração do condomínio.`;
-      break;
-
-    case "urgente":
-      message = `${nomeProp}, acusamos a receção com prioridade máxima da sua comunicação urgente. Por motivos de segurança, a ocorrência foi encaminhada de imediato. Solicitamos o envio urgente de detalhes da localização no edifício e, em caso de perigo iminente (fuga de água ou gás), solicitamos o fecho preventivo das respetivas torneiras de corte de segurança.`;
-      break;
-
-    case "fornecedor":
-    case "ignorar":
-      return {
-        subject: null,
-        message: null,
-        categoria: "ignorar"
-      };
-
-    default:
-      message = `${nomeProp}, acusamos a receção da sua comunicação. A mesma foi registada e encaminhada para apreciação dos serviços de gestão do condomínio. Caso necessário, solicitamos esclarecimento adicional.`;
-      break;
+  const template = OFFICIAL_EMAIL_ROUTER_TEMPLATES[normalizedCat];
+  if (template) {
+    return {
+      subject: template.subject,
+      message: buildOfficialEmailMessage(template.corpo, nomeProp),
+      categoria: normalizedCat
+    };
   }
 
+  if (normalizedCat === "fornecedor" || normalizedCat === "ignorar") {
+    return {
+      subject: null,
+      message: null,
+      categoria: "ignorar"
+    };
+  }
+
+  const corpoDefault = `Acusamos a receção da sua comunicação. A administração do condomínio registou o seu contacto e procederá à devida apreciação com a máxima brevidade.<br><br>Caso sejam necessários esclarecimentos complementares, entraremos em contacto.`;
   return {
-    subject,
-    message,
-    categoria: cat
+    subject: `Re: ${sub || "Comunicação ao Condomínio"}`,
+    message: buildOfficialEmailMessage(corpoDefault, nomeProp),
+    categoria: normalizedCat || "outro"
   };
 }
+
 
 

@@ -143,66 +143,21 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
   const [incFoto, setIncFoto] = useState("");
   const incFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Equipamentos de Segurança & SCIE State with LocalStorage Persistence
+  // Equipamentos de Segurança & SCIE State with LocalStorage Persistence - Base limpa sem dados de simulação
   const [equipamentosSCIE, setEquipamentosSCIE] = useState<EquipamentoSegurancaSCIE[]>(() => {
     const local = localStorage.getItem(`condo_scie_${predio.id_predio}`);
     if (local) {
       try {
-        return JSON.parse(local);
+        const parsed = JSON.parse(local);
+        if (Array.isArray(parsed)) {
+          // Filtrar quaisquer dados de simulação legados
+          return parsed.filter((item: any) => !item.id?.startsWith("scie-"));
+        }
       } catch (e) {
         // fallback
       }
     }
-    return [
-      {
-        id: "scie-1",
-        id_predio: predio.id_predio,
-        tipo: "Extintor",
-        localizacao: "Hall de Entrada - Piso 0",
-        quantidade: 1,
-        especificacao: "Extintor Pó Químico ABC 6Kg (Eficácia 27A/144B)",
-        dataUltimaRevisao: "2025-05-10",
-        dataValidade: "2026-05-10",
-        empresaCertificada: "PrevençãoTotal Seguranças Lda.",
-        observacoes: "Manómetro na faixa verde, lacre intacto e suporte fixado a 1.20m."
-      },
-      {
-        id: "scie-2",
-        id_predio: predio.id_predio,
-        tipo: "Extintor",
-        localizacao: "Garagem - Piso -1 (Quadro Elétrico)",
-        quantidade: 1,
-        especificacao: "Extintor Dióxido de Carbono CO2 5Kg (Eficácia 89B)",
-        dataUltimaRevisao: "2025-04-15",
-        dataValidade: "2026-04-15",
-        empresaCertificada: "PrevençãoTotal Seguranças Lda.",
-        observacoes: "Indicado para proteção de quadros elétricos de potência."
-      },
-      {
-        id: "scie-3",
-        id_predio: predio.id_predio,
-        tipo: "Boca de Incêndio / Carretel",
-        localizacao: `Patamar de Escadas - Todos os Pisos (Piso 0 a Piso ${predio.pisos || 3})`,
-        quantidade: predio.pisos || 3,
-        especificacao: "Carretel Semirrígido DN25 de 25m c/ Agulheta Triplo Efeito",
-        dataUltimaRevisao: "2025-09-20",
-        dataValidade: "2026-09-20",
-        empresaCertificada: "HidroFogo Equipamentos Técnicos",
-        observacoes: "Pressão de serviço verificada no manómetro de teste (3.5 bar)."
-      },
-      {
-        id: "scie-4",
-        id_predio: predio.id_predio,
-        tipo: "Central de Deteção & Alarme",
-        localizacao: "Hall Principal & Zonas Comuns",
-        quantidade: 1,
-        especificacao: "Central Convencional 4 Zonas c/ Botoneiras de Quebra-Vidro e Sirenes",
-        dataUltimaRevisao: "2025-11-05",
-        dataValidade: "2026-11-05",
-        empresaCertificada: "Sistemas Alarme & Deteção Lda.",
-        observacoes: "Baterias de backup substituídas na última intervenção."
-      }
-    ];
+    return [];
   });
 
   useEffect(() => {
@@ -455,88 +410,11 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
     resetScieForm();
   };
 
-  // Historical Mock Data (pre-populated)
-  const [vistorias, setVistorias] = useState<Vistoria[]>([
-    {
-      id_vistoria: "vist-1",
-      id_predio: "predio-1",
-      data: "2026-07-10",
-      tecnico: "Eng. Rui Melo (Inspetor Técnico)",
-      local: "Garagem - Piso -1",
-      anomalia: "Fissura estrutural de tração com ligeira infiltração de humidade ativa na junta de dilatação.",
-      gravidade: "Alta",
-      fotos: [
-        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='150' viewBox='0 0 200 150'><rect width='100%' height='100%' fill='%23fee2e2'/><text x='50%' y='50%' font-family='sans-serif' font-size='12' fill='%23991b1b' dominant-baseline='middle' text-anchor='middle'>Infiltração Junta Dilatação</text></svg>"
-      ],
-      estado: "Identificada",
-      custo_previsto: 1450,
-      periodicidade: "Bienal",
-      impacto_orcamento: "Médio",
-      alerta_automatico: true
-    },
-    {
-      id_vistoria: "vist-2",
-      id_predio: "predio-1",
-      data: "2026-07-08",
-      tecnico: "Eng. Rui Melo (Inspetor Técnico)",
-      local: "Cobertura / Telhado",
-      anomalia: "Obstrução de caleira de escoamento de águas pluviais por acumulação de folhagem e detritos.",
-      gravidade: "Média",
-      fotos: [
-        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='150' viewBox='0 0 200 150'><rect width='100%' height='100%' fill='%23fef3c7'/><text x='50%' y='50%' font-family='sans-serif' font-size='12' fill='%2392400e' dominant-baseline='middle' text-anchor='middle'>Caleira Obstruída</text></svg>"
-      ],
-      estado: "Em Resolução",
-      custo_previsto: 380,
-      periodicidade: "Semestral",
-      impacto_orcamento: "Baixo",
-      alerta_automatico: true
-    },
-    {
-      id_vistoria: "vist-3",
-      id_predio: "predio-1",
-      data: "2026-06-15",
-      tecnico: "António Costa (Técnico Elevadores)",
-      local: "Cabine Elevador Principal",
-      anomalia: "Lâmpada indicadora de piso fundida e ligeiro ruído de atrito no fecho mecânico de portas.",
-      gravidade: "Baixa",
-      fotos: [],
-      estado: "Resolvida",
-      custo_previsto: 45,
-      periodicidade: "Pontual",
-      impacto_orcamento: "Baixo",
-      alerta_automatico: false
-    }
-  ]);
+  // Vistorias State - Base limpa sem dados de simulação
+  const [vistorias, setVistorias] = useState<Vistoria[]>([]);
 
-  const [limpezas, setLimpezas] = useState<Limpeza[]>([
-    {
-      id_limpeza: "limp-1",
-      id_predio: "predio-1",
-      data: "14-07-2026",
-      hora: "08:30",
-      executor: "Limpezas Estrela Lda. (Maria Silva)",
-      areas: ["Átrio de Entrada", "Elevador", "Escadaria Central", "Corredores de Frações"],
-      observacoes: "Higienização completa dos corrimãos com álcool, aspiração do átrio e desinfeção da cabine do elevador."
-    },
-    {
-      id_limpeza: "limp-2",
-      id_predio: "predio-1",
-      data: "10-07-2026",
-      hora: "14:00",
-      executor: "Limpezas Estrela Lda. (Maria Silva)",
-      areas: ["Átrio de Entrada", "Elevador", "Garagem - Entrada", "Contentores Lixo"],
-      observacoes: "Lavagem do chão da garagem junto ao portão e lavagem profunda dos contentores de resíduos sólidos."
-    },
-    {
-      id_limpeza: "limp-3",
-      id_predio: "predio-1",
-      data: "07-07-2026",
-      hora: "09:00",
-      executor: "Limpezas Estrela Lda. (Joana Ramos)",
-      areas: ["Átrio de Entrada", "Elevador", "Escadaria Central"],
-      observacoes: "Serviço semanal padrão concluído sem qualquer ocorrência reportada nas áreas comuns."
-    }
-  ]);
+  // Limpezas State - Base limpa sem dados de simulação
+  const [limpezas, setLimpezas] = useState<Limpeza[]>([]);
 
   // Vistorias Form State
   const [vData, setVData] = useState("");

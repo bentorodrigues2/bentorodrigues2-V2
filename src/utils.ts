@@ -3364,6 +3364,24 @@ export function gerarParticipacaoSinistroPDF(
   }
 }
 
+/**
+ * Geração Automática da Referência BR23E para Conciliação Bancária
+ * Regra: Gerada de forma unívoca a partir da fração/condómino, não editável pelo utilizador,
+ * destinada exclusivamente ao Perfil Bancário do Condómino / Perfil da Fração.
+ */
+export function gerarReferenciaBR23E(fracaoNome?: string, idFracao?: string): string {
+  if (!fracaoNome && !idFracao) return "BR23E-FR-01";
+  const base = (fracaoNome || idFracao || "FR")
+    .toString()
+    .trim()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove acentos
+    .replace(/[^A-Z0-9]/g, ""); // Apenas letras e números
+    
+  return `BR23E-FR-${base || "01"}`;
+}
+
 export * from './utils/registerServiceWorker';
 export * from './utils/requestPermission';
 export * from './utils/subscribeUser';

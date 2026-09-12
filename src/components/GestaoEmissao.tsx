@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Predio, Fracao, Aviso, LoggedUser, Documento } from "../types";
-import { formatDatePT, generateAndDownloadPdf, formatQuotaReceiptNumber, downloadReceiptPDF } from "../utils";
+import { formatDatePT, generateAndDownloadPdf, formatQuotaReceiptNumber, downloadReceiptPDF, gerarReferenciaBR23E } from "../utils";
 
 interface GestaoEmissaoProps {
   predio: Predio;
@@ -22,7 +22,6 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
   
   // Customization states for the generated document
   const [customIban, setCustomIban] = useState(predio.iban || "PT50 0033 0000 12345678901 23");
-  const [customRefBR23E, setCustomRefBR23E] = useState("");
   const [customDataLimite, setCustomDataLimite] = useState("");
   const [customDataPagamento, setCustomDataPagamento] = useState("");
   const [customQuotaMensal, setCustomQuotaMensal] = useState<number>(0);
@@ -33,6 +32,9 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
 
   const predioFracoes = fracoes.filter(f => f.id_predio === predio.id_predio);
   const predioAvisos = avisos.filter(a => a.id_predio === predio.id_predio);
+
+  const selectedFracaoObj = selectedAviso ? fracoes.find(f => f.id_fracao === selectedAviso.id_fracao) : null;
+  const referenciaBR23EOficial = selectedFracaoObj?.referencia_br23e || selectedFracaoObj?.proprietario?.referencia_br23e || (selectedFracaoObj ? gerarReferenciaBR23E(selectedFracaoObj.fracao_nome, selectedFracaoObj.id_fracao) : "BR23E-FR-01");
 
   const gerarOrcamentoMensal = (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,15 +117,13 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
     const frac = fracoes.find(f => f.id_fracao === aviso.id_fracao);
     const codPostal = predio.codigo_postal;
     
-    // Auto-generate some credentials
+    // Auto-generate receipt number
     const hash = aviso.id_aviso.toUpperCase();
-    const refCalculada = `BR23E-${hash}`;
     const nRec = formatQuotaReceiptNumber(hash.replace("AV-", ""));
 
     setSelectedAviso(aviso);
     setDocType(tipoInicial);
     setCustomIban(predio.iban || "PT50 0033 0000 12345678901 23");
-    setCustomRefBR23E(refCalculada);
     setCustomDataLimite(aviso.vencimento);
     setCustomDataPagamento(aviso.data);
     
@@ -160,33 +160,35 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
     const avisoHash = selectedAviso.id_aviso.toUpperCase().replace("AV-", "");
     const isExtra = selectedAviso.tipo.includes("Extra");
 
+    const fallbackRecNum = formatQuotaReceiptNumber(Math.floor(1000 + Math.random() * 9000));
+    const recNumStr = customNrecibo || fallbackRecNum;
+    const dtPag = customDataPagamento || selectedAviso.data || new Date().toISOString().split("T")[0];
+
     downloadReceiptPDF({
-      reciboNum: customNrecibo || "REC-2026-00124",
-      dataPagamento: customDataPagamento || selectedAviso.data,
-      movimentoQuotaMensal: `MOV-2026-QM-${avisoHash}`,
-      movimentoFundoReserva: `MOV-2026-FR-${avisoHash}`,
-      movimentoQuotaExtra: `MOV-2026-QE-${avisoHash}`,
+      reciboNum: recNumStr,
+      dataPagamento: dtPag,
+      movimentoQuotaMensal: `MOV-${new Date().getFullYear()}-QM-${avisoHash}`,
+      movimentoFundoReserva: `MOV-${new Date().getFullYear()}-FR-${avisoHash}`,
+      movimentoQuotaExtra: `MOV-${new Date().getFullYear()}-QE-${avisoHash}`,
       buildingName: predio?.nome || "Condomínio",
       buildingAddress: `${predio?.morada_linha1 || ""} ${predio?.num_porta || ""}, ${predio?.localidade || ""}`,
-      buildingNif: predio?.nif || "500000000",
+      buildingNif: predio?.nif || "—",
       proprietarioNome: customCondomino || frac?.proprietario?.nome || "Condómino Registado",
-      proprietarioNif: frac?.proprietario?.nif || "200000000",
-      fracaoIdent: `Fração ${frac?.fracao_nome || "A"} (${frac?.piso || "Piso 1"})`,
-      referenciaFracao: customRefBR23E || `BR2-${frac?.fracao_nome || "FRA"}`,
+      proprietarioNif: frac?.proprietario?.nif || "—",
+      fracaoIdent: `Fração ${frac?.fracao_nome || frac?.id_fracao || "A"} (${frac?.piso || "Piso 1"})`,
+      referenciaFracao: referenciaBR23EOficial,
       metodoPagamento: "Transferência Bancária",
       quotaMensalVal: isExtra ? 0 : customQuotaMensal,
       fundoReservaVal: isExtra ? 0 : Number((customQuotaMensal * 0.10).toFixed(2)),
       quotaExtraVal: isExtra ? customQuotaExtra || selectedAviso.valor : 0,
       isQuotaExtra: isExtra,
       descricaoQuota: customDescritivo,
-      adminNome: "José Carlos Guerra (Administrador)",
+      adminNome: loggedUser.nome ? `${loggedUser.nome} (Administração)` : "Administração do Condomínio",
       adminSignatureBase64: localStorage.getItem("admin_signature_digital") || undefined
     });
 
     if (setDocumentos) {
-      const recNumStr = customNrecibo || "REC-2026-00124";
       const subFolder = isExtra ? "Recibos Quotas extra" : "Recibos";
-      const dtPag = customDataPagamento || selectedAviso.data || "2026-08-14";
       const docAno = dtPag.substring(0, 4);
 
       setDocumentos(prev => [
@@ -223,7 +225,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
           `${docType === "RECIBO" ? "RECIBO" : "AVISO DE COBRANÇA DE QUOTA"} - Fração ${selectedAviso.fracao_nome}`,
           [
             { heading: "Discriminação da Liquidação", content: `Aviso nº: ${selectedAviso.id_aviso}\nFração: ${selectedAviso.fracao_nome}\nValor: ${selectedAviso.valor.toFixed(2)} €\nPeríodo: ${selectedAviso.mes_referencia || "Quotas do Condomínio"}\nEstado: ${selectedAviso.pago ? "LIQUIDADO / QUITADO" : "PENDENTE DE PAGAMENTO"}` },
-            { heading: "Dados para Pagamento (Transferência Bancária)", content: `IBAN do Condomínio: ${customIban || predio.iban || "PT50 0033 0000 12345678901 02"}\nReferência Obrigatória no Descritivo (IA): ${customRefBR23E || `BR2-${selectedAviso.fracao_nome}`}` }
+            { heading: "Dados para Pagamento (Transferência Bancária)", content: `IBAN do Condomínio: ${customIban || predio.iban || "PT50 0033 0000 12345678901 02"}\nReferência Obrigatória no Descritivo (IA): ${referenciaBR23EOficial}` }
           ],
           `${docType}_${selectedAviso.fracao_nome}_${selectedAviso.id_aviso}.pdf`,
           [{ label: "Edifício", value: predio.nome }, { label: "Data de Emissão", value: formatDatePT(selectedAviso.data_emissao) }]
@@ -598,16 +600,6 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Referência BR23E</label>
-                  <input
-                    type="text"
-                    value={customRefBR23E}
-                    onChange={e => setCustomRefBR23E(e.target.value)}
-                    className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-900 text-xs px-2.5 py-1.5 rounded-lg focus:outline-indigo-500 dark:text-white font-mono"
-                  />
-                </div>
-
                 {docType === "RECIBO" ? (
                   <div className="grid grid-cols-1 gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
                     <div className="space-y-1">
@@ -872,8 +864,8 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
                         <span className="font-mono font-bold text-slate-800 text-[10px] block mt-0.5 select-all">{customIban}</span>
                       </div>
                       <div>
-                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block">b) Depósito ou Identificação BR23E:</span>
-                        <span className="font-mono font-bold text-slate-800 text-[10px] block mt-0.5 select-all">{customRefBR23E}</span>
+                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block">b) Depósito ou Identificação BR23E (Perfil Bancário da Fração):</span>
+                        <span className="font-mono font-bold text-emerald-800 text-[10px] block mt-0.5 select-all">{referenciaBR23EOficial}</span>
                       </div>
                     </div>
                   )}

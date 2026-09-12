@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Predio, Fracao, LoggedUser, MuralAviso, ReservaEspacoComum } from "../types";
 import { 
   Megaphone, 
@@ -14,7 +14,9 @@ import {
   Flame, 
   Users, 
   PartyPopper, 
-  FileCheck2 
+  FileCheck2,
+  Bell,
+  Trash2
 } from "lucide-react";
 import { triggerSendReaction } from "./SendingReactionModal";
 
@@ -33,69 +35,35 @@ export function MuralDigitalReservas({
   const [activeTab, setActiveTab] = useState<"mural" | "reservas">("mural");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  // Mural Notices State
-  const [avisosMural, setAvisosMural] = useState<MuralAviso[]>([
-    {
-      id_aviso_mural: "av-mural-01",
-      id_predio: predio.id_predio,
-      titulo: "Limpeza Anual das Condutas de Exaustão & Chaminés",
-      conteudo: "Informam-se todos os condóminos que no próximo dia 10 de Outubro terá lugar a intervenção técnica para limpeza das chaminés e condutas de fumo. Agradecemos a máxima cooperação facultando o acesso se necessário.",
-      autor: "Administração do Condomínio",
-      tipo: "OBRAS",
-      data_publicacao: "2026-08-20",
-      fixado_topo: true,
-      reacoes_gostos: 6
-    },
-    {
-      id_aviso_mural: "av-mural-02",
-      id_predio: predio.id_predio,
-      titulo: "Horário de Silêncio e Cuidados na Utilização dos Elevadores",
-      conteudo: "Relembramos as disposições do Regulamento Interno do Edifício relativas ao período de descanso (entre as 22h00 e as 08h00) e o cuidado no transporte de cargas pesadas nos elevadores.",
-      autor: "Administração do Condomínio",
-      tipo: "INFORMATIVO",
-      data_publicacao: "2026-08-15",
-      fixado_topo: false,
-      reacoes_gostos: 9
+  // Mural Notices State - Base limpa sem dados de simulação, com persistência local
+  const [avisosMural, setAvisosMural] = useState<MuralAviso[]>(() => {
+    try {
+      const saved = localStorage.getItem(`condo_mural_${predio.id_predio}`);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // fallback
     }
-  ]);
+    return [];
+  });
 
-  // Space Reservations State
-  const [reservas, setReservas] = useState<ReservaEspacoComum[]>([
-    {
-      id_reserva: "res-01",
-      id_predio: predio.id_predio,
-      id_fracao: predioFracoes[0]?.id_fracao || "f-1",
-      fracao_nome: predioFracoes[0]?.fracao_nome || "R/C Esq",
-      solicitante_nome: predioFracoes[0]?.proprietario?.nome || "Ana Silva",
-      espaco: "SALAO_CONDOMINIO",
-      data_evento: "2026-09-05",
-      hora_inicio: "15:00",
-      hora_fim: "19:30",
-      finalidade: "Festa de Aniversário Infantil",
-      num_pessoas_estimado: 14,
-      caucao_paga: true,
-      valor_caucao: 50.00,
-      termo_responsabilidade_aceite: true,
-      estado: "CONFIRMADA"
-    },
-    {
-      id_reserva: "res-02",
-      id_predio: predio.id_predio,
-      id_fracao: predioFracoes[1]?.id_fracao || "f-2",
-      fracao_nome: predioFracoes[1]?.fracao_nome || "1º Dto",
-      solicitante_nome: predioFracoes[1]?.proprietario?.nome || "Carlos Santos",
-      espaco: "CHURRASQUEIRA",
-      data_evento: "2026-09-12",
-      hora_inicio: "12:30",
-      hora_fim: "16:00",
-      finalidade: "Almoço Familiar no Terraço Comum",
-      num_pessoas_estimado: 8,
-      caucao_paga: false,
-      valor_caucao: 30.00,
-      termo_responsabilidade_aceite: true,
-      estado: "PENDENTE_APROVACAO"
+  // Space Reservations State - Base limpa sem dados de simulação, com persistência local
+  const [reservas, setReservas] = useState<ReservaEspacoComum[]>(() => {
+    try {
+      const saved = localStorage.getItem(`condo_reservas_${predio.id_predio}`);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // fallback
     }
-  ]);
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem(`condo_mural_${predio.id_predio}`, JSON.stringify(avisosMural));
+  }, [avisosMural, predio.id_predio]);
+
+  useEffect(() => {
+    localStorage.setItem(`condo_reservas_${predio.id_predio}`, JSON.stringify(reservas));
+  }, [reservas, predio.id_predio]);
 
   // New notice form modal
   const [novoAvisoModalOpen, setNovoAvisoModalOpen] = useState(false);
@@ -108,11 +76,11 @@ export function MuralDigitalReservas({
   const [novaReservaModalOpen, setNovaReservaModalOpen] = useState(false);
   const [resFracaoId, setResFracaoId] = useState(predioFracoes[0]?.id_fracao || "");
   const [resEspaco, setResEspaco] = useState<ReservaEspacoComum["espaco"]>("SALAO_CONDOMINIO");
-  const [resData, setResData] = useState("2026-09-20");
-  const [resHoraInicio, setResHoraInicio] = useState("15:00");
-  const [resHoraFim, setResHoraFim] = useState("19:00");
+  const [resData, setResData] = useState(() => new Date().toISOString().split("T")[0]);
+  const [resHoraInicio, setResHoraInicio] = useState("10:00");
+  const [resHoraFim, setResHoraFim] = useState("18:00");
   const [resFinalidade, setResFinalidade] = useState("");
-  const [resPessoas, setResPessoas] = useState(10);
+  const [resPessoas, setResPessoas] = useState(1);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -249,54 +217,80 @@ export function MuralDigitalReservas({
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {avisosMural.map(aviso => (
-              <div 
-                key={aviso.id_aviso_mural}
-                className={`p-5 rounded-3xl border transition-all space-y-3 relative shadow-sm ${
-                  aviso.fixado_topo 
-                    ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/80 ring-1 ring-emerald-500/20" 
-                    : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-                }`}
-              >
-                {aviso.fixado_topo && (
-                  <div className="absolute top-4 right-4 flex items-center gap-1 text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-md">
-                    <Pin className="h-3 w-3 fill-emerald-600" />
-                    <span>Fixado</span>
-                  </div>
-                )}
-
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 font-mono">
-                    <span>{aviso.data_publicacao}</span>
-                    <span>•</span>
-                    <span className="text-emerald-600 font-sans uppercase tracking-wider">{aviso.tipo}</span>
-                  </div>
-                  <h4 className="font-black text-base text-slate-900 dark:text-white leading-snug pr-16">
-                    {aviso.titulo}
-                  </h4>
-                </div>
-
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  {aviso.conteudo}
-                </p>
-
-                <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
-                  <span className="text-[11px] text-slate-400">Por: <strong>{aviso.autor}</strong></span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAvisosMural(prev => prev.map(a => a.id_aviso_mural === aviso.id_aviso_mural ? { ...a, reacoes_gostos: a.reacoes_gostos + 1 } : a));
-                    }}
-                    className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-red-500 transition-colors cursor-pointer bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700"
-                  >
-                    <Heart className="h-3.5 w-3.5 text-red-500" />
-                    <span className="font-mono font-bold">{aviso.reacoes_gostos}</span>
-                  </button>
-                </div>
+          {avisosMural.length === 0 ? (
+            <div className="text-center py-12 px-4 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <Bell className="h-6 w-6" />
               </div>
-            ))}
-          </div>
+              <h4 className="text-sm font-bold text-slate-800 dark:text-white">Mural Digital Vazio</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                Não existem comunicados afixados no mural deste condomínio. Clique em &quot;Publicar Novo Comunicado&quot; para partilhar avisos, regras ou intervenções com os condóminos.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {avisosMural.map(aviso => (
+                <div 
+                  key={aviso.id_aviso_mural}
+                  className={`p-5 rounded-3xl border transition-all space-y-3 relative shadow-sm ${
+                    aviso.fixado_topo 
+                      ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/80 ring-1 ring-emerald-500/20" 
+                      : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                  }`}
+                >
+                  {aviso.fixado_topo && (
+                    <div className="absolute top-4 right-4 flex items-center gap-1 text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-md">
+                      <Pin className="h-3 w-3 fill-emerald-600" />
+                      <span>Fixado</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 font-mono">
+                      <span>{aviso.data_publicacao}</span>
+                      <span>•</span>
+                      <span className="text-emerald-600 font-sans uppercase tracking-wider">{aviso.tipo}</span>
+                    </div>
+                    <h4 className="font-black text-base text-slate-900 dark:text-white leading-snug pr-16">
+                      {aviso.titulo}
+                    </h4>
+                  </div>
+
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {aviso.conteudo}
+                  </p>
+
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+                    <span className="text-[11px] text-slate-400">Por: <strong>{aviso.autor}</strong></span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAvisosMural(prev => prev.map(a => a.id_aviso_mural === aviso.id_aviso_mural ? { ...a, reacoes_gostos: a.reacoes_gostos + 1 } : a));
+                        }}
+                        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-red-500 transition-colors cursor-pointer bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700"
+                      >
+                        <Heart className="h-3.5 w-3.5 text-red-500" />
+                        <span className="font-mono font-bold">{aviso.reacoes_gostos}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm("Deseja eliminar este comunicado do mural?")) {
+                            setAvisosMural(prev => prev.filter(a => a.id_aviso_mural !== aviso.id_aviso_mural));
+                          }
+                        }}
+                        title="Eliminar comunicado"
+                        className="p-1 text-slate-400 hover:text-red-600 transition-colors cursor-pointer rounded-md"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -322,67 +316,97 @@ export function MuralDigitalReservas({
             </button>
           </div>
 
-          <div className="space-y-3">
-            {reservas.map(reserva => (
-              <div 
-                key={reserva.id_reserva}
-                className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded-xl">
-                      {reserva.espaco === "SALAO_CONDOMINIO" ? <PartyPopper className="h-5 w-5" /> : <Flame className="h-5 w-5" />}
+          {reservas.length === 0 ? (
+            <div className="text-center py-12 px-4 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <CalendarCheck className="h-6 w-6" />
+              </div>
+              <h4 className="text-sm font-bold text-slate-800 dark:text-white">Sem Reservas Agendadas</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                Não existem reservas ativas de espaços comuns. Clique em &quot;Nova Reserva&quot; para registar um agendamento do Salão de Festas, Churrasqueira ou Terraço.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {reservas.map(reserva => (
+                <div 
+                  key={reserva.id_reserva}
+                  className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded-xl">
+                        {reserva.espaco === "SALAO_CONDOMINIO" ? <PartyPopper className="h-5 w-5" /> : <Flame className="h-5 w-5" />}
+                      </div>
+                      <div>
+                        <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                          {reserva.espaco.replace(/_/g, " ")} • Fração {reserva.fracao_nome} ({reserva.solicitante_nome})
+                        </h4>
+                        <span className="text-xs text-slate-400 font-mono">
+                          Data: {reserva.data_evento} • Horário: {reserva.hora_inicio} às {reserva.hora_fim}
+                        </span>
+                      </div>
+                    </div>
+
+                    <span className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider ${
+                      reserva.estado === "CONFIRMADA" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" :
+                      "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                    }`}>
+                      {reserva.estado === "CONFIRMADA" ? "✓ Confirmada" : "⏳ Pendente Aprovação"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-950 p-3.5 rounded-2xl text-xs font-mono">
+                    <div>
+                      <span className="text-slate-400 text-[10px] block font-sans">Finalidade do Evento</span>
+                      <strong className="text-slate-800 dark:text-slate-200">{reserva.finalidade}</strong>
                     </div>
                     <div>
-                      <h4 className="font-black text-sm text-slate-900 dark:text-white">
-                        {reserva.espaco.replace(/_/g, " ")} • Fração {reserva.fracao_nome} ({reserva.solicitante_nome})
-                      </h4>
-                      <span className="text-xs text-slate-400 font-mono">
-                        Data: {reserva.data_evento} • Horário: {reserva.hora_inicio} às {reserva.hora_fim}
-                      </span>
+                      <span className="text-slate-400 text-[10px] block font-sans">Lotação Prevista</span>
+                      <span className="text-slate-700 dark:text-slate-300">{reserva.num_pessoas_estimado} Pessoas</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 text-[10px] block font-sans">Caução de Limpeza</span>
+                      <strong className={reserva.caucao_paga ? "text-emerald-600 font-bold" : "text-amber-600 font-bold"}>
+                        {reserva.valor_caucao?.toFixed(2) || "50.00"} € ({reserva.caucao_paga ? "Paga" : "Pendente"})
+                      </strong>
                     </div>
                   </div>
 
-                  <span className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider ${
-                    reserva.estado === "CONFIRMADA" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" :
-                    "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                  }`}>
-                    {reserva.estado === "CONFIRMADA" ? "✓ Confirmada" : "⏳ Pendente Aprovação"}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-950 p-3.5 rounded-2xl text-xs font-mono">
-                  <div>
-                    <span className="text-slate-400 text-[10px] block font-sans">Finalidade do Evento</span>
-                    <strong className="text-slate-800 dark:text-slate-200">{reserva.finalidade}</strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-[10px] block font-sans">Lotação Prevista</span>
-                    <span className="text-slate-700 dark:text-slate-300">{reserva.num_pessoas_estimado} Pessoas</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-[10px] block font-sans">Caução de Limpeza</span>
-                    <strong className={reserva.caucao_paga ? "text-emerald-600 font-bold" : "text-amber-600 font-bold"}>
-                      {reserva.valor_caucao?.toFixed(2) || "50.00"} € ({reserva.caucao_paga ? "Paga" : "Pendente"})
-                    </strong>
-                  </div>
-                </div>
-
-                {reserva.estado === "PENDENTE_APROVACAO" && (
-                  <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                    {reserva.estado === "PENDENTE_APROVACAO" ? (
+                      <button
+                        type="button"
+                        onClick={() => handleAprovarReserva(reserva.id_reserva)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        <span>Aprovar Reserva & Registar Caução</span>
+                      </button>
+                    ) : (
+                      <div className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        <span>Espaço Reservado e Confirmado</span>
+                      </div>
+                    )}
                     <button
                       type="button"
-                      onClick={() => handleAprovarReserva(reserva.id_reserva)}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
+                      onClick={() => {
+                        if (confirm("Deseja cancelar e remover esta reserva?")) {
+                          setReservas(prev => prev.filter(r => r.id_reserva !== reserva.id_reserva));
+                        }
+                      }}
+                      title="Cancelar Reserva"
+                      className="p-1.5 text-slate-400 hover:text-red-600 transition-colors cursor-pointer rounded-lg flex items-center gap-1 text-xs"
                     >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      <span>Aprovar Reserva & Registar Caução</span>
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Cancelar</span>
                     </button>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

@@ -20,7 +20,9 @@ import {
   TrendingUp,
   ShieldCheck,
   DollarSign,
-  Layers
+  Layers,
+  Landmark,
+  Hammer
 } from "lucide-react";
 import { triggerSendReaction } from "./SendingReactionModal";
 
@@ -35,6 +37,18 @@ interface ConfiguracaoArranqueSaldosProps {
   setAvisos: React.Dispatch<React.SetStateAction<Aviso[]>>;
   loggedUser: LoggedUser;
   onConcluir?: () => void;
+}
+
+export interface ContaArranqueItem {
+  id_conta: string;
+  nome: string;
+  banco: string;
+  iban: string;
+  tipo: string;
+  categoriaConta: "ORDEM" | "POUPANCA" | "INTERVENCOES" | "CAIXA";
+  saldo: number;
+  finalidade?: string;
+  is_principal?: boolean;
 }
 
 export interface SaldoInicialFracao {
@@ -54,7 +68,8 @@ export interface MovimentoHistoricoTransitor {
   categoria: string;
   tipo: "RECEITA" | "DESPESA";
   valor: number;
-  conta: "ORDEM" | "POUPANCA" | "CAIXA";
+  id_conta: string;
+  nome_conta?: string;
 }
 
 export function ConfiguracaoArranqueSaldos({
@@ -71,13 +86,119 @@ export function ConfiguracaoArranqueSaldos({
 }: ConfiguracaoArranqueSaldosProps) {
   const [currentStep, setCurrentStep] = useState<number>(1);
 
-  // --- PASSO 1: DATA E SALDOS BANCÁRIOS DE ABERTURA ---
+  // --- PASSO 1: DATA E SALDOS BANCÁRIOS DE ABERTURA (MÚLTIPLAS CONTAS & INTERVENÇÕES) ---
   const [dataAbertura, setDataAbertura] = useState<string>("2026-08-01");
-  const [saldoOrdem, setSaldoOrdem] = useState<string>("0.00");
-  const [saldoPoupanca, setSaldoPoupanca] = useState<string>("0.00");
-  const [saldoCaixa, setSaldoCaixa] = useState<string>("0.00");
-  const [bancoNome, setBancoNome] = useState<string>("Millennium BCP");
-  const [ibanAbertura, setIbanAbertura] = useState<string>(predio.iban || "PT50 0033 0000 1234 5678 9012 3");
+
+  // Lista dinâmica de contas de arranque
+  const [contasArranque, setContasArranque] = useState<ContaArranqueItem[]>(() => {
+    const existing = contas.filter(c => c.id_predio === predio.id_predio);
+    if (existing.length > 0) {
+      return existing.map(c => {
+        let cat: "ORDEM" | "POUPANCA" | "INTERVENCOES" | "CAIXA" = "ORDEM";
+        const t = (c.tipo || "").toLowerCase();
+        if (t.includes("reserva")) cat = "POUPANCA";
+        else if (t.includes("interven") || t.includes("obra")) cat = "INTERVENCOES";
+        else if (t.includes("caixa")) cat = "CAIXA";
+
+        return {
+          id_conta: c.id_conta,
+          nome: c.tipo || "Conta Bancária",
+          banco: c.banco || "Banco",
+          iban: c.iban || predio.iban || "PT50 0000 0000 0000 0000 0000 0",
+          tipo: c.tipo || "Conta à Ordem",
+          categoriaConta: cat,
+          saldo: c.saldo || 0,
+          finalidade: cat === "INTERVENCOES" ? "Conta afeta a obras e intervenções" : undefined,
+          is_principal: c.is_principal ?? false
+        };
+      });
+    }
+
+    return [
+      {
+        id_conta: "conta-ordem-" + predio.id_predio,
+        nome: "Conta à Ordem Principal",
+        banco: "Millennium BCP",
+        iban: predio.iban || "PT50 0033 0000 1234 5678 9012 3",
+        tipo: "Conta à Ordem",
+        categoriaConta: "ORDEM",
+        saldo: 0,
+        finalidade: "Gestão corrente e despesas ordinárias do condomínio",
+        is_principal: true
+      },
+      {
+        id_conta: "conta-poupanca-" + predio.id_predio,
+        nome: "Fundo Comum de Reserva (FCR)",
+        banco: "Millennium BCP",
+        iban: (predio.iban || "PT50 0033 0000 1234 5678 9012 3").replace("0000", "9999"),
+        tipo: "Fundo Comum de Reserva",
+        categoriaConta: "POUPANCA",
+        saldo: 0,
+        finalidade: "Fundo legal de reserva (Artigo 4º DL 268/94)",
+        is_principal: false
+      },
+      {
+        id_conta: "conta-intervencoes-" + predio.id_predio,
+        nome: "Conta Poupança Intervenções / Obras",
+        banco: "Millennium BCP",
+        iban: (predio.iban || "PT50 0033 0000 1234 5678 9012 3").replace("1234", "8888"),
+        tipo: "Conta Intervenções & Obras",
+        categoriaConta: "INTERVENCOES",
+        saldo: 0,
+        finalidade: "Conta afeta exclusivamente a obras de conservação e intervenções específicas",
+        is_principal: false
+      },
+      {
+        id_conta: "conta-caixa-" + predio.id_predio,
+        nome: "Caixa de Numerário (Físico)",
+        banco: "Tesouraria Física",
+        iban: "CAIXA-NUMERARIO",
+        tipo: "Caixa de Numerário",
+        categoriaConta: "CAIXA",
+        saldo: 0,
+        finalidade: "Pequeno caixa em dinheiro sob custódia da administração",
+        is_principal: false
+      }
+    ];
+  });
+
+  // Atualizar campo de uma conta
+  const handleUpdateContaArranque = (id_conta: string, fields: Partial<ContaArranqueItem>) => {
+    setContasArranque(prev => prev.map(c => {
+      if (c.id_conta === id_conta) {
+        return { ...c, ...fields };
+      }
+      return c;
+    }));
+  };
+
+  // Adicionar nova conta bancária ou de intervenção
+  const handleAddNovaConta = (categoria: "INTERVENCOES" | "ORDEM" | "POUPANCA" | "CAIXA") => {
+    const timestamp = Date.now();
+    const isIntervencao = categoria === "INTERVENCOES";
+    const nova: ContaArranqueItem = {
+      id_conta: `conta-${categoria.toLowerCase()}-${timestamp}`,
+      nome: isIntervencao ? "Conta Intervenções Fachada / Telhado" : categoria === "POUPANCA" ? "Depósito a Prazo / Poupança" : "Conta Adicional Ordem",
+      banco: "Millennium BCP",
+      iban: (predio.iban || "PT50 0033 0000 1234 5678 9012 3").replace("1234", String(timestamp).slice(-4)),
+      tipo: isIntervencao ? "Conta Intervenções & Obras" : categoria === "POUPANCA" ? "Conta Poupança" : "Conta à Ordem",
+      categoriaConta: categoria,
+      saldo: 0,
+      finalidade: isIntervencao ? "Conta dedicada a intervenção estrutural específica no edifício" : "Conta de apoio financeiro",
+      is_principal: false
+    };
+    setContasArranque(prev => [...prev, nova]);
+  };
+
+  // Remover conta (exceto a principal)
+  const handleRemoveConta = (id_conta: string) => {
+    const conta = contasArranque.find(c => c.id_conta === id_conta);
+    if (conta?.is_principal) {
+      alert("A conta à ordem principal não pode ser removida.");
+      return;
+    }
+    setContasArranque(prev => prev.filter(c => c.id_conta !== id_conta));
+  };
 
   // --- PASSO 2: SALDOS INICIAIS POR FRAÇÃO (DÍVIDAS ANTERIORES) ---
   const predioFracoes = useMemo(() => fracoes.filter(f => f.id_predio === predio.id_predio), [fracoes, predio.id_predio]);
@@ -120,10 +241,12 @@ export function ConfiguracaoArranqueSaldos({
   const [novoHistTipo, setNovoHistTipo] = useState<"RECEITA" | "DESPESA">("DESPESA");
   const [novoHistValor, setNovoHistValor] = useState("");
   const [novoHistData, setNovoHistData] = useState("2026-07-15");
+  const [novoHistContaId, setNovoHistContaId] = useState<string>(contasArranque[0]?.id_conta || "");
 
   const handleAddMovimentoHistorico = (e: React.FormEvent) => {
     e.preventDefault();
     if (!novoHistDesc || !novoHistValor) return alert("Preencha descrição e valor.");
+    const targetConta = contasArranque.find(c => c.id_conta === novoHistContaId) || contasArranque[0];
     const novo: MovimentoHistoricoTransitor = {
       id: "hist-" + (movimentosHistoricos.length + 1),
       data: novoHistData,
@@ -131,7 +254,8 @@ export function ConfiguracaoArranqueSaldos({
       categoria: novoHistCat,
       tipo: novoHistTipo,
       valor: parseFloat(novoHistValor) || 0,
-      conta: "ORDEM"
+      id_conta: targetConta ? targetConta.id_conta : "conta-ordem-" + predio.id_predio,
+      nome_conta: targetConta ? targetConta.nome : "Conta à Ordem"
     };
     setMovimentosHistoricos([novo, ...movimentosHistoricos]);
     setNovoHistDesc("");
@@ -142,7 +266,35 @@ export function ConfiguracaoArranqueSaldos({
     setMovimentosHistoricos(prev => prev.filter(m => m.id !== id));
   };
 
-  // --- TOTAIS CALCULADOS ---
+  // --- TOTAIS E CONTADORES CALCULADOS DINAMICAMENTE ---
+  const totalBancosCaixa = useMemo(() => {
+    return contasArranque.reduce((acc, curr) => acc + (Number(curr.saldo) || 0), 0);
+  }, [contasArranque]);
+
+  const totalOrdem = useMemo(() => {
+    return contasArranque
+      .filter(c => c.categoriaConta === "ORDEM")
+      .reduce((acc, curr) => acc + (Number(curr.saldo) || 0), 0);
+  }, [contasArranque]);
+
+  const totalReserva = useMemo(() => {
+    return contasArranque
+      .filter(c => c.categoriaConta === "POUPANCA")
+      .reduce((acc, curr) => acc + (Number(curr.saldo) || 0), 0);
+  }, [contasArranque]);
+
+  const totalIntervencoes = useMemo(() => {
+    return contasArranque
+      .filter(c => c.categoriaConta === "INTERVENCOES")
+      .reduce((acc, curr) => acc + (Number(curr.saldo) || 0), 0);
+  }, [contasArranque]);
+
+  const totalCaixa = useMemo(() => {
+    return contasArranque
+      .filter(c => c.categoriaConta === "CAIXA")
+      .reduce((acc, curr) => acc + (Number(curr.saldo) || 0), 0);
+  }, [contasArranque]);
+
   const totalDividasReceber = useMemo(() => {
     return saldosFracoes
       .filter(s => s.tipo_saldo === "DIVIDA")
@@ -155,45 +307,24 @@ export function ConfiguracaoArranqueSaldos({
       .reduce((acc, curr) => acc + curr.valor_saldo, 0);
   }, [saldosFracoes]);
 
-  const totalBancosCaixa = useMemo(() => {
-    const ord = parseFloat(saldoOrdem) || 0;
-    const poup = parseFloat(saldoPoupanca) || 0;
-    const cx = parseFloat(saldoCaixa) || 0;
-    return ord + poup + cx;
-  }, [saldoOrdem, saldoPoupanca, saldoCaixa]);
-
   const ativoLiquidoAbertura = useMemo(() => {
     return (totalBancosCaixa + totalDividasReceber) - totalCreditosFracoes;
   }, [totalBancosCaixa, totalDividasReceber, totalCreditosFracoes]);
 
   // --- FINALIZAR E GRAVAR NA PLATAFORMA ---
   const handleGravarConfiguracaoArranque = () => {
-    triggerSendReaction("email", "A inicializar contas bancárias, dívidas e histórico de transição...");
+    triggerSendReaction("email", "A inicializar todas as contas bancárias, saldos de intervenção e mapa de arranque...");
 
-    // 1. Atualizar ou Criar Contas Bancárias
-    const contaOrdemId = "conta-ordem-" + predio.id_predio;
-    const contaPoupancaId = "conta-poupanca-" + predio.id_predio;
-
-    const novasContas: Conta[] = [
-      {
-        id_conta: contaOrdemId,
-        id_predio: predio.id_predio,
-        banco: bancoNome,
-        iban: ibanAbertura,
-        tipo: "Conta à Ordem",
-        saldo: parseFloat(saldoOrdem) || 0,
-        is_principal: true
-      },
-      {
-        id_conta: contaPoupancaId,
-        id_predio: predio.id_predio,
-        banco: bancoNome,
-        iban: ibanAbertura.replace("0000", "9999"),
-        tipo: "Fundo Comum de Reserva",
-        saldo: parseFloat(saldoPoupanca) || 0,
-        is_principal: false
-      }
-    ];
+    // 1. Criar ou Atualizar todas as contas configuradas
+    const novasContas: Conta[] = contasArranque.map(ca => ({
+      id_conta: ca.id_conta,
+      id_predio: predio.id_predio,
+      banco: ca.banco,
+      iban: ca.iban,
+      tipo: ca.tipo,
+      saldo: Number(ca.saldo) || 0,
+      is_principal: ca.is_principal ?? false
+    }));
 
     setContas(novasContas);
 
@@ -219,36 +350,28 @@ export function ConfiguracaoArranqueSaldos({
       setAvisos(prev => [...novosAvisos, ...prev]);
     }
 
-    // 3. Criar Movimentos de Abertura de Saldo
-    const novosMovs: Movimento[] = [
-      {
-        id_mov: "mov-abertura-ordem-" + Date.now(),
-        id_predio: predio.id_predio,
-        id_conta: contaOrdemId,
-        data: dataAbertura,
-        tipo: "RECEITA",
-        valor: parseFloat(saldoOrdem) || 0,
-        descricao: "Saldo Inicial de Abertura / Transição - Conta à Ordem",
-        categoria: "Saldo de Abertura"
-      },
-      {
-        id_mov: "mov-abertura-poupanca-" + (Date.now() + 1),
-        id_predio: predio.id_predio,
-        id_conta: contaPoupancaId,
-        data: dataAbertura,
-        tipo: "RECEITA",
-        valor: parseFloat(saldoPoupanca) || 0,
-        descricao: "Saldo Inicial de Abertura / Transição - Fundo Comum de Reserva",
-        categoria: "Fundo de Reserva"
-      }
-    ];
+    // 3. Criar Movimentos de Abertura de Saldo para cada conta
+    const novosMovs: Movimento[] = contasArranque.map((ca, idx) => ({
+      id_mov: `mov-abertura-${ca.id_conta}-${Date.now() + idx}`,
+      id_predio: predio.id_predio,
+      id_conta: ca.id_conta,
+      data: dataAbertura,
+      tipo: "RECEITA",
+      valor: Number(ca.saldo) || 0,
+      descricao: `Saldo Inicial de Abertura / Transição - ${ca.nome}`,
+      categoria: ca.categoriaConta === "POUPANCA" 
+        ? "Fundo de Reserva" 
+        : ca.categoriaConta === "INTERVENCOES"
+        ? "Quotas Extraordinárias / Intervenções"
+        : "Saldo de Abertura"
+    }));
 
     // Inserir os movimentos históricos configurados
     movimentosHistoricos.forEach((mh, i) => {
       novosMovs.push({
-        id_mov: "mov-hist-" + (Date.now() + 2 + i),
+        id_mov: "mov-hist-" + (Date.now() + 100 + i),
         id_predio: predio.id_predio,
-        id_conta: contaOrdemId,
+        id_conta: mh.id_conta || contasArranque[0]?.id_conta,
         data: mh.data,
         tipo: mh.tipo,
         valor: mh.valor,
@@ -260,7 +383,7 @@ export function ConfiguracaoArranqueSaldos({
     setMovements(prev => [...novosMovs, ...prev]);
 
     setTimeout(() => {
-      triggerSendReaction("email", "✅ Arranque Inicial do Condomínio configurado e ativado com sucesso!");
+      triggerSendReaction("email", "✅ Arranque Inicial e Contas (incluindo Contas de Intervenção) configuradas com sucesso!");
       if (onConcluir) onConcluir();
     }, 800);
   };
@@ -335,123 +458,240 @@ export function ConfiguracaoArranqueSaldos({
       </div>
 
       {/* ========================================================================= */}
-      {/* PASSO 1: DATA DE TRANSIÇÃO E SALDOS BANCÁRIOS */}
+      {/* PASSO 1: DATA DE TRANSIÇÃO E SALDOS BANCÁRIOS (MULTI-CONTA & INTERVENÇÕES) */}
       {/* ========================================================================= */}
       {currentStep === 1 && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
             <div>
-              <h2 className="text-sm sm:text-base font-extrabold text-slate-800 dark:text-white uppercase tracking-wider">
+              <h2 className="text-sm sm:text-base font-extrabold text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-emerald-500" />
                 Passo 1: Data de Início & Saldos Iniciais das Contas
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Introduza os montantes reais que transitam da administração anterior ou do extrato bancário oficial.
+                Configure todas as contas bancárias (Conta à Ordem, Fundo de Reserva, Contas específicas de Intervenção/Obras e Caixa). Pode adicionar tantas contas quantas as existentes no condomínio.
               </p>
             </div>
-            <span className="text-xs font-bold px-3 py-1 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-lg border border-amber-300 dark:border-amber-800">
-              Ponto Zero de Tesouraria
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold px-3 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-lg border border-emerald-300 dark:border-emerald-800">
+                {contasArranque.length} Contas Ativas
+              </span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* DATA GERAL DE ARRANQUE */}
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">
-                Data de Abertura / Transição
+                Data Oficial de Abertura / Transição
               </label>
               <input
                 type="date"
                 value={dataAbertura}
                 onChange={(e) => setDataAbertura(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-bold"
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold text-slate-900 dark:text-white"
               />
+              <span className="text-[10px] text-slate-400 mt-0.5 block">Data do extrato de transição ou início de mandato.</span>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">
-                Instituição Bancária
-              </label>
-              <input
-                type="text"
-                value={bancoNome}
-                onChange={(e) => setBancoNome(e.target.value)}
-                placeholder="Ex: Millennium BCP, CGD, Santander"
-                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-bold"
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">
-                IBAN Oficial da Conta do Condomínio
-              </label>
-              <input
-                type="text"
-                value={ibanAbertura}
-                onChange={(e) => setIbanAbertura(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-mono font-bold text-indigo-600 dark:text-indigo-400"
-              />
+            <div className="sm:col-span-2 flex flex-col justify-center">
+              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">
+                Regras de Gestão Multi-Conta CondoManager
+              </span>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                As contas abertas para intervenções ou obras ficam segregadas no balancete e são debitadas exclusivamente para as respetivas despesas de reparação. Os contadores abaixo adaptam-se em tempo real a todas as contas adicionadas.
+              </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-            <div className="p-4 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/50 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-indigo-900 dark:text-indigo-300 uppercase">1. Conta à Ordem</span>
-                <Wallet className="h-4 w-4 text-indigo-500" />
-              </div>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400">Saldo disponível para gestão corrente e despesas ordinárias.</p>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  value={saldoOrdem}
-                  onChange={(e) => setSaldoOrdem(e.target.value)}
-                  className="w-full pl-3 pr-8 py-2.5 text-sm font-black text-indigo-700 dark:text-indigo-300 rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 font-mono"
-                />
-                <span className="absolute right-3 top-2.5 text-xs font-bold text-indigo-500">€</span>
+          {/* CONTADORES DE SALDOS ADAPTATIVOS */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block">Total Bancos & Caixa</span>
+              <span className="text-base font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5 block">
+                {totalBancosCaixa.toFixed(2)} €
+              </span>
+              <span className="text-[9.5px] text-slate-500 mt-0.5 block">{contasArranque.length} contas somadas</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40">
+              <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 uppercase block">Conta(s) à Ordem</span>
+              <span className="text-base font-black text-indigo-700 dark:text-indigo-300 font-mono mt-0.5 block">
+                {totalOrdem.toFixed(2)} €
+              </span>
+              <span className="text-[9.5px] text-slate-500 mt-0.5 block">Gestão corrente</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40">
+              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase block">Fundo de Reserva</span>
+              <span className="text-base font-black text-emerald-700 dark:text-emerald-300 font-mono mt-0.5 block">
+                {totalReserva.toFixed(2)} €
+              </span>
+              <span className="text-[9.5px] text-slate-500 mt-0.5 block">FCR legal (Art. 4º)</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40">
+              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase block">Intervenções & Obras</span>
+              <span className="text-base font-black text-amber-700 dark:text-amber-300 font-mono mt-0.5 block">
+                {totalIntervencoes.toFixed(2)} €
+              </span>
+              <span className="text-[9.5px] text-slate-500 mt-0.5 block">Contas de intervenção</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block">Caixa de Numerário</span>
+              <span className="text-base font-black text-slate-700 dark:text-slate-200 font-mono mt-0.5 block">
+                {totalCaixa.toFixed(2)} €
+              </span>
+              <span className="text-[9.5px] text-slate-500 mt-0.5 block">Dinheiro físico</span>
+            </div>
+          </div>
+
+          {/* LISTA EDITÁVEL DE TODAS AS CONTAS DO CONDOMÍNIO */}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Landmark className="h-4 w-4 text-emerald-500" />
+                Discriminação de Contas Bancárias & de Intervenção
+              </h3>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleAddNovaConta("INTERVENCOES")}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700/50 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>+ Conta Intervenções / Obras</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleAddNovaConta("ORDEM")}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700/50 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>+ Outra Conta Bancária</span>
+                </button>
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase">2. Fundo de Reserva</span>
-                <ShieldCheck className="h-4 w-4 text-emerald-500" />
-              </div>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400">Saldo em conta poupança legal (mínimo 10% do orçamento).</p>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  value={saldoPoupanca}
-                  onChange={(e) => setSaldoPoupanca(e.target.value)}
-                  className="w-full pl-3 pr-8 py-2.5 text-sm font-black text-emerald-700 dark:text-emerald-300 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-900 font-mono"
-                />
-                <span className="absolute right-3 top-2.5 text-xs font-bold text-emerald-500">€</span>
-              </div>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {contasArranque.map((conta) => {
+                const isIntervencao = conta.categoriaConta === "INTERVENCOES";
+                const isPoupanca = conta.categoriaConta === "POUPANCA";
+                const isCaixa = conta.categoriaConta === "CAIXA";
 
-            <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-900 dark:text-amber-300 uppercase">3. Caixa de Numerário</span>
-                <DollarSign className="h-4 w-4 text-amber-500" />
-              </div>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400">Valores em dinheiro físico na posse da administração.</p>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  value={saldoCaixa}
-                  onChange={(e) => setSaldoCaixa(e.target.value)}
-                  className="w-full pl-3 pr-8 py-2.5 text-sm font-black text-amber-700 dark:text-amber-300 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 font-mono"
-                />
-                <span className="absolute right-3 top-2.5 text-xs font-bold text-amber-500">€</span>
-              </div>
+                return (
+                  <div 
+                    key={conta.id_conta}
+                    className={`p-4 rounded-2xl border transition-all ${
+                      isIntervencao
+                        ? "bg-amber-50/40 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800/60"
+                        : isPoupanca
+                        ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/60"
+                        : isCaixa
+                        ? "bg-slate-50 dark:bg-slate-950/80 border-slate-200 dark:border-slate-800"
+                        : "bg-indigo-50/40 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800/60"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`p-2 rounded-xl text-xs font-bold ${
+                          isIntervencao
+                            ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                            : isPoupanca
+                            ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                            : isCaixa
+                            ? "bg-slate-500/20 text-slate-700 dark:text-slate-300"
+                            : "bg-indigo-500/20 text-indigo-700 dark:text-indigo-300"
+                        }`}>
+                          {isIntervencao ? <Hammer className="h-4 w-4" /> : isPoupanca ? <ShieldCheck className="h-4 w-4" /> : isCaixa ? <DollarSign className="h-4 w-4" /> : <Wallet className="h-4 w-4" />}
+                        </span>
+                        <div>
+                          <input
+                            type="text"
+                            value={conta.nome}
+                            onChange={(e) => handleUpdateContaArranque(conta.id_conta, { nome: e.target.value })}
+                            className="text-xs font-black text-slate-800 dark:text-white bg-transparent border-b border-transparent hover:border-slate-400 focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 rounded px-1 py-0.5 w-full"
+                          />
+                          <span className="text-[10px] text-slate-400 block px-1">
+                            {conta.is_principal ? "Conta Principal à Ordem" : isIntervencao ? "Conta Afeta a Obras / Intervenções" : conta.tipo}
+                          </span>
+                        </div>
+                      </div>
+
+                      {!conta.is_principal && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveConta(conta.id_conta)}
+                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
+                          title="Eliminar esta conta"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Banco / Entidade</label>
+                        <input
+                          type="text"
+                          value={conta.banco}
+                          onChange={(e) => handleUpdateContaArranque(conta.id_conta, { banco: e.target.value })}
+                          className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-medium"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Saldo de Abertura (€)</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={conta.saldo || ""}
+                            onChange={(e) => handleUpdateContaArranque(conta.id_conta, { saldo: parseFloat(e.target.value) || 0 })}
+                            placeholder="0.00"
+                            className="w-full pl-2.5 pr-6 py-1.5 text-xs font-black font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                          />
+                          <span className="absolute right-2.5 top-1.5 text-xs font-bold text-slate-400">€</span>
+                        </div>
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">IBAN / Identificador de Conta</label>
+                        <input
+                          type="text"
+                          value={conta.iban}
+                          onChange={(e) => handleUpdateContaArranque(conta.id_conta, { iban: e.target.value })}
+                          className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-[11px]"
+                        />
+                      </div>
+
+                      {conta.finalidade !== undefined && (
+                        <div className="sm:col-span-2">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Finalidade / Obra Específica</label>
+                          <input
+                            type="text"
+                            value={conta.finalidade}
+                            onChange={(e) => handleUpdateContaArranque(conta.id_conta, { finalidade: e.target.value })}
+                            placeholder="Ex: Intervenção na fachada norte, substituição da caldeira..."
+                            className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
           <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
             <button
               onClick={() => setCurrentStep(2)}
-              className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs transition-all flex items-center space-x-2 shadow-md cursor-pointer hover:scale-105"
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition-all flex items-center space-x-2 shadow-md cursor-pointer hover:scale-105"
             >
               <span>Avançar para Passo 2 (Dívidas por Fração)</span>
               <ArrowRight className="h-4 w-4" />
@@ -582,7 +822,7 @@ export function ConfiguracaoArranqueSaldos({
 
             <button
               onClick={() => setCurrentStep(3)}
-              className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs transition-all flex items-center space-x-2 shadow-md cursor-pointer hover:scale-105"
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition-all flex items-center space-x-2 shadow-md cursor-pointer hover:scale-105"
             >
               <span>Avançar para Passo 3 (Movimentos Anteriores)</span>
               <ArrowRight className="h-4 w-4" />
@@ -602,17 +842,17 @@ export function ConfiguracaoArranqueSaldos({
                 Passo 3: Movimentos Anteriores & Execução do Ano Corrente
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Adicione despesas ou receitas passadas dos últimos meses para que os balancetes anuais fiquem 100% completos.
+                Adicione despesas ou receitas passadas e selecione a respetiva conta (Ordem, Reserva ou Conta de Intervenção) para que os balancetes fiquem 100% integrados.
               </p>
             </div>
 
-            <span className="text-xs font-bold px-3 py-1 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-lg border border-indigo-200 dark:border-indigo-800">
+            <span className="text-xs font-bold px-3 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-lg border border-emerald-200 dark:border-emerald-800">
               {movimentosHistoricos.length} Movimentos Registados
             </span>
           </div>
 
           {/* FORMULÁRIO DE ADIÇÃO RÁPIDA */}
-          <form onSubmit={handleAddMovimentoHistorico} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-5 gap-3">
+          <form onSubmit={handleAddMovimentoHistorico} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-6 gap-3">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Data</label>
               <input
@@ -626,14 +866,26 @@ export function ConfiguracaoArranqueSaldos({
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Descrição do Movimento</label>
               <input
                 type="text"
-                placeholder="Ex: Seguro Multirriscos Edifício, Água SMAS"
+                placeholder="Ex: Seguro Multirriscos, Água SMAS, Obras Fachada"
                 value={novoHistDesc}
                 onChange={(e) => setNovoHistDesc(e.target.value)}
                 className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tipo & Categoria</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Conta Afetada</label>
+              <select
+                value={novoHistContaId}
+                onChange={(e) => setNovoHistContaId(e.target.value)}
+                className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold"
+              >
+                {contasArranque.map(c => (
+                  <option key={c.id_conta} value={c.id_conta}>{c.nome}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tipo</label>
               <select
                 value={novoHistTipo}
                 onChange={(e) => setNovoHistTipo(e.target.value as any)}
@@ -657,7 +909,7 @@ export function ConfiguracaoArranqueSaldos({
               </div>
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer"
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -671,6 +923,7 @@ export function ConfiguracaoArranqueSaldos({
                 <tr className="bg-slate-50 dark:bg-slate-950/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 uppercase text-[10px] font-extrabold">
                   <th className="p-2.5">Data</th>
                   <th className="p-2.5">Descrição</th>
+                  <th className="p-2.5">Conta</th>
                   <th className="p-2.5">Categoria</th>
                   <th className="p-2.5">Tipo</th>
                   <th className="p-2.5 text-right">Valor</th>
@@ -682,6 +935,7 @@ export function ConfiguracaoArranqueSaldos({
                   <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                     <td className="p-2.5 font-mono text-[11px] text-slate-500">{m.data}</td>
                     <td className="p-2.5 font-bold text-slate-800 dark:text-white">{m.descricao}</td>
+                    <td className="p-2.5 text-slate-600 dark:text-slate-300 font-medium">{m.nome_conta || "Conta Geral"}</td>
                     <td className="p-2.5 text-slate-500">{m.categoria}</td>
                     <td className="p-2.5">
                       <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full ${
@@ -721,7 +975,7 @@ export function ConfiguracaoArranqueSaldos({
 
             <button
               onClick={() => setCurrentStep(4)}
-              className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs transition-all flex items-center space-x-2 shadow-md cursor-pointer hover:scale-105"
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition-all flex items-center space-x-2 shadow-md cursor-pointer hover:scale-105"
             >
               <span>Avançar para Balanço & Conclusão</span>
               <ArrowRight className="h-4 w-4" />
@@ -741,7 +995,7 @@ export function ConfiguracaoArranqueSaldos({
                 Passo 4: Resumo Consolidado do Balanço de Abertura
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Reveja todos os valores antes de ativar a gestão do condomínio no sistema.
+                Reveja todos os valores das {contasArranque.length} contas configuradas antes de ativar a gestão do condomínio no sistema.
               </p>
             </div>
             <span className="text-xs font-bold px-3 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-lg border border-emerald-300 dark:border-emerald-800">
@@ -751,11 +1005,11 @@ export function ConfiguracaoArranqueSaldos({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">Saldo Total Bancos / Caixa</span>
-              <span className="text-lg font-black text-indigo-600 dark:text-indigo-400 font-mono mt-1 block">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block">Saldo Total em Bancos / Caixa</span>
+              <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono mt-1 block">
                 {totalBancosCaixa.toFixed(2)} €
               </span>
-              <span className="text-[9.5px] text-slate-500 mt-1 block">Ordem ({saldoOrdem}€) + Reserva ({saldoPoupanca}€)</span>
+              <span className="text-[9.5px] text-slate-500 mt-1 block">{contasArranque.length} contas discriminadas</span>
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
@@ -787,13 +1041,34 @@ export function ConfiguracaoArranqueSaldos({
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800/40 text-xs text-slate-700 dark:text-slate-300 space-y-2">
-            <h4 className="font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
+          {/* DISCRIMINAÇÃO DETALHADA DAS CONTAS NO RESUMO */}
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800">
+            <h4 className="text-xs font-bold text-slate-800 dark:text-white uppercase mb-2 flex items-center gap-2">
+              <Landmark className="h-4 w-4 text-emerald-500" />
+              Contas que serão integradas na Tesouraria:
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+              {contasArranque.map(c => (
+                <div key={c.id_conta} className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <div className="min-w-0 pr-2">
+                    <span className="font-bold text-slate-900 dark:text-white block truncate">{c.nome}</span>
+                    <span className="text-[10px] text-slate-400 block truncate">{c.banco} • {c.tipo}</span>
+                  </div>
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs shrink-0">
+                    {Number(c.saldo).toFixed(2)} €
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-xs text-slate-700 dark:text-slate-300 space-y-2">
+            <h4 className="font-bold text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
               <CheckCircle2 className="h-4 w-4 text-emerald-500" />
               O que acontecerá ao gravar:
             </h4>
             <ul className="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-400 text-[11px]">
-              <li>As contas <strong>Conta à Ordem</strong> ({saldoOrdem} €) e <strong>Fundo Comum de Reserva</strong> ({saldoPoupanca} €) serão atualizadas com os saldos exatos.</li>
+              <li>Todas as <strong>{contasArranque.length} contas bancárias e de intervenção</strong> serão criadas e disponibilizadas para movimentos, transferências e lançamentos de receitas e despesas.</li>
               <li>Serão criados automaticamente os <strong>Avisos de Cobrança / Dívida de Transição</strong> para as frações devedoras no módulo Financeiro & Contencioso.</li>
               <li>Os {movimentosHistoricos.length} movimentos anteriores ficarão disponíveis em balancetes, extratos e relatórios de auditoria.</li>
             </ul>

@@ -832,7 +832,7 @@ A Administração do Condomínio`
               {activeTab === "minutas_oficiais" ? (
                 <>
                   <Mail className="h-4 w-4" />
-                  <span>Ver Simulador de E-mails ({emailTemplates.length})</span>
+                  <span>Ver Modelos de E-mails ({emailTemplates.length})</span>
                 </>
               ) : (
                 <>
@@ -867,7 +867,7 @@ A Administração do Condomínio`
             }`}
           >
             <Mail className="h-4 w-4 text-emerald-400" />
-            <span>2. Simulador de Todos os E-mails & Anexos ({emailTemplates.length} Templates)</span>
+            <span>2. Centro de E-mails & Notificações Oficiais ({emailTemplates.length} Modelos)</span>
           </button>
         </div>
       </div>

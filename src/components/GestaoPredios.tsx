@@ -3,6 +3,13 @@ import { Predio, LoggedUser, ChaveItem } from "../types";
 import { cpLookup } from "../data";
 import { gerarPdfEtiquetasChaves } from "../utils";
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
+import { SQL_GESTAO_CHAVES_SUPABASE } from "../data/emailRouterTemplates";
+import { 
+  fetchChavesFromSupabase, 
+  saveSingleChaveToSupabase, 
+  saveChavesToSupabase, 
+  deleteChaveFromSupabase 
+} from "../lib/supabaseService";
 
 interface GestaoPrediosProps {
   predios: Predio[];
@@ -51,38 +58,61 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
   // Status de Aprovação das Regras & Estatutos em Assembleia
   const [regumentoAprovado, setRegumentoAprovado] = useState(true);
 
-  // Módulo de Gestão de Chaves do Prédio
+  // Módulo de Gestão de Chaves do Prédio (Iniciam por selecionar e contadores a 0)
   const [chaves, setChaves] = useState<ChaveItem[]>(() => [
-    { id_chave: "chv-1", id_predio: "predio-1", area_nome: "Caixa de correio Adm.", codigo_chave: "BR2PP 001", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 3, no_claviculario: true, observacoes: "Chave mestre da caixa de correio da Administração" },
-    { id_chave: "chv-2", id_predio: "predio-1", area_nome: "Porta Principal", codigo_chave: "BR2PP 002", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 12, no_claviculario: true, observacoes: "Porta principal de entrada do edifício" },
-    { id_chave: "chv-3", id_predio: "predio-1", area_nome: "Arrecadação Comum", codigo_chave: "BR2PP 003", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 2, no_claviculario: true, observacoes: "Arrecadação de material de limpeza e manutenção" },
-    { id_chave: "chv-4", id_predio: "predio-1", area_nome: "Arrecadação Escadas", codigo_chave: "BR2PP 004", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 2, no_claviculario: true, observacoes: "Arrecadação sob as escadas do rés-do-chão" },
-    { id_chave: "chv-5", id_predio: "predio-1", area_nome: "Elevadores", codigo_chave: "BR2PP 005", num_chaveiro: "2", local_sugerido: "Edifício Estrela da Barra", quantidade: 4, no_claviculario: true, observacoes: "Chaves de serviço e emergência dos elevadores" },
-    { id_chave: "chv-6", id_predio: "predio-1", area_nome: "Sótão", codigo_chave: "BR2PP 006", num_chaveiro: "2", local_sugerido: "Edifício Estrela da Barra", quantidade: 2, no_claviculario: true, observacoes: "Acesso à zona técnica do sótão" },
-    { id_chave: "chv-7", id_predio: "predio-1", area_nome: "Vitrine", codigo_chave: "BR2PP 007", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 2, no_claviculario: true, observacoes: "Vitrine de avisos do hall de entrada" },
-    { id_chave: "chv-8", id_predio: "predio-1", area_nome: "Casa Bomba de Água", codigo_chave: "BR2PP 008", num_chaveiro: "2", local_sugerido: "Edifício Estrela da Barra", quantidade: 2, no_claviculario: true, observacoes: "Central de bombagem de água do edifício" },
-    { id_chave: "chv-9", id_predio: "predio-1", area_nome: "Garagem", codigo_chave: "BR2PP 009", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 6, no_claviculario: true, observacoes: "Portão pedonal e comandos da garagem" },
-    { id_chave: "chv-10", id_predio: "predio-1", area_nome: "Ginásio", codigo_chave: "BR2PP 010", num_chaveiro: "3", local_sugerido: "Edifício Estrela da Barra", quantidade: 2, no_claviculario: true, observacoes: "Porta de acesso ao ginásio do condomínio" },
-    { id_chave: "chv-11", id_predio: "predio-1", area_nome: "SPA", codigo_chave: "BR2PP 011", num_chaveiro: "3", local_sugerido: "Edifício Estrela da Barra", quantidade: 2, no_claviculario: true, observacoes: "Acesso à zona de SPA e sauna" },
-    { id_chave: "chv-12", id_predio: "predio-1", area_nome: "Casa de Máquinas Piscina", codigo_chave: "BR2PP 012", num_chaveiro: "3", local_sugerido: "Edifício Estrela da Barra", quantidade: 2, no_claviculario: true, observacoes: "Casa de máquinas de filtragem da piscina" },
-    { id_chave: "chv-13", id_predio: "predio-1", area_nome: "WC Piscina", codigo_chave: "BR2PP 013", num_chaveiro: "3", local_sugerido: "Edifício Estrela da Barra", quantidade: 3, no_claviculario: true, observacoes: "Instalações sanitárias do balneário da piscina" },
-    { id_chave: "chv-14", id_predio: "predio-1", area_nome: "Quadro Elétrico Geral", codigo_chave: "BR2PP 014", num_chaveiro: "2", local_sugerido: "Edifício Estrela da Barra", quantidade: 2, no_claviculario: true, observacoes: "Quadro de colunas e contador geral de eletricidade" },
-    { id_chave: "chv-15", id_predio: "predio-1", area_nome: "Central de Deteção de Incêndio", codigo_chave: "BR2PP 015", num_chaveiro: "2", local_sugerido: "Edifício Estrela da Barra", quantidade: 2, no_claviculario: true, observacoes: "Painel central do sistema de segurança contra incêndios" },
-    { id_chave: "chv-16", id_predio: "predio-1", area_nome: "Coletor de Resíduos / Lixo", codigo_chave: "BR2PP 016", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 4, no_claviculario: true, observacoes: "Compartimento estanque de contentores de lixo" },
-    { id_chave: "chv-17", id_predio: "predio-1", area_nome: "Acesso ao Telhado / Cobertura", codigo_chave: "BR2PP 017", num_chaveiro: "2", local_sugerido: "Edifício Estrela da Barra", quantidade: 2, no_claviculario: true, observacoes: "Alçapão / porta de acesso à cobertura superior" }
+    { id_chave: "chv-1", id_predio: "predio-1", area_nome: "Caixa de correio Adm.", codigo_chave: "BR2PP 001", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Chave mestre da caixa de correio da Administração" },
+    { id_chave: "chv-2", id_predio: "predio-1", area_nome: "Porta Principal", codigo_chave: "BR2PP 002", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Porta principal de entrada do edifício" },
+    { id_chave: "chv-3", id_predio: "predio-1", area_nome: "Arrecadação Comum", codigo_chave: "BR2PP 003", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Arrecadação de material de limpeza e manutenção" },
+    { id_chave: "chv-4", id_predio: "predio-1", area_nome: "Arrecadação Escadas", codigo_chave: "BR2PP 004", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Arrecadação sob as escadas do rés-do-chão" },
+    { id_chave: "chv-5", id_predio: "predio-1", area_nome: "Elevadores", codigo_chave: "BR2PP 005", num_chaveiro: "2", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Chaves de serviço e emergência dos elevadores" },
+    { id_chave: "chv-6", id_predio: "predio-1", area_nome: "Sótão", codigo_chave: "BR2PP 006", num_chaveiro: "2", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Acesso à zona técnica do sótão" },
+    { id_chave: "chv-7", id_predio: "predio-1", area_nome: "Vitrine", codigo_chave: "BR2PP 007", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Vitrine de avisos do hall de entrada" },
+    { id_chave: "chv-8", id_predio: "predio-1", area_nome: "Casa Bomba de Água", codigo_chave: "BR2PP 008", num_chaveiro: "2", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Central de bombagem de água do edifício" },
+    { id_chave: "chv-9", id_predio: "predio-1", area_nome: "Garagem", codigo_chave: "BR2PP 009", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Portão pedonal e comandos da garagem" },
+    { id_chave: "chv-10", id_predio: "predio-1", area_nome: "Ginásio", codigo_chave: "BR2PP 010", num_chaveiro: "3", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Porta de acesso ao ginásio do condomínio" },
+    { id_chave: "chv-11", id_predio: "predio-1", area_nome: "SPA", codigo_chave: "BR2PP 011", num_chaveiro: "3", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Acesso à zona de SPA e sauna" },
+    { id_chave: "chv-12", id_predio: "predio-1", area_nome: "Casa de Máquinas Piscina", codigo_chave: "BR2PP 012", num_chaveiro: "3", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Casa de máquinas de filtragem da piscina" },
+    { id_chave: "chv-13", id_predio: "predio-1", area_nome: "WC Piscina", codigo_chave: "BR2PP 013", num_chaveiro: "3", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Instalações sanitárias do balneário da piscina" },
+    { id_chave: "chv-14", id_predio: "predio-1", area_nome: "Quadro Elétrico Geral", codigo_chave: "BR2PP 014", num_chaveiro: "2", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Quadro de colunas e contador geral de eletricidade" },
+    { id_chave: "chv-15", id_predio: "predio-1", area_nome: "Central de Deteção de Incêndio", codigo_chave: "BR2PP 015", num_chaveiro: "2", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Painel central do sistema de segurança contra incêndios" },
+    { id_chave: "chv-16", id_predio: "predio-1", area_nome: "Coletor de Resíduos / Lixo", codigo_chave: "BR2PP 016", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Compartimento estanque de contentores de lixo" },
+    { id_chave: "chv-17", id_predio: "predio-1", area_nome: "Acesso ao Telhado / Cobertura", codigo_chave: "BR2PP 017", num_chaveiro: "2", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Alçapão / porta de acesso à cobertura superior" }
   ]);
+
+  // Prédio selecionado
+  const [selectedPredioId, setSelectedPredioId] = useState<string | null>(predios[0]?.id_predio || null);
 
   // Nova chave form
   const [novaAreaChave, setNovaAreaChave] = useState("");
   const [novoCodigoChave, setNovoCodigoChave] = useState("");
   const [novoNumChaveiro, setNovoNumChaveiro] = useState("1");
   const [novoLocalSugerido, setNovoLocalSugerido] = useState("");
-  const [novaQtdChave, setNovaQtdChave] = useState(2);
+  const [novaQtdChave, setNovaQtdChave] = useState(0);
+  const [novoResponsavel, setNovoResponsavel] = useState("");
+  const [novoStatus, setNovoStatus] = useState<string>("disponivel");
 
   // Chaveiro Principal (Master Keychain) State
   const [numChaveiroMaster, setNumChaveiroMaster] = useState("1");
   const [codigoConjuntoCustom, setCodigoConjuntoCustom] = useState("");
   const [identificacaoConjuntoCustom, setIdentificacaoConjuntoCustom] = useState("");
+  const [salvandoChavesSupabase, setSalvandoChavesSupabase] = useState(false);
+
+  // Carregar chaves do Supabase quando o prédio selecionado muda
+  useEffect(() => {
+    let cancelado = false;
+    const carregarChaves = async () => {
+      const predioIdParaCarregar = selectedPredioId || predios[0]?.id_predio;
+      if (!predioIdParaCarregar) return;
+
+      const chavesCarregadas = await fetchChavesFromSupabase(predioIdParaCarregar);
+      if (!cancelado && chavesCarregadas && chavesCarregadas.length > 0) {
+        setChaves(chavesCarregadas);
+      }
+    };
+
+    carregarChaves();
+    return () => { cancelado = true; };
+  }, [selectedPredioId, predios]);
 
   // Regras do Prédio (Regulamento Automático) State
   const [regras, setRegras] = useState(() => {
@@ -176,7 +206,6 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
   };
 
   // Form states
-  const [selectedPredioId, setSelectedPredioId] = useState<string | null>(predios[0]?.id_predio || null);
   const [nome, setNome] = useState("");
   const [moradaLinha1, setMoradaLinha1] = useState("");
   const [moradaLinha2, setMoradaLinha2] = useState("");
@@ -614,6 +643,26 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  disabled={salvandoChavesSupabase}
+                  onClick={async () => {
+                    setSalvandoChavesSupabase(true);
+                    const res = await saveChavesToSupabase(chaves);
+                    setSalvandoChavesSupabase(false);
+                    if (res.success) {
+                      alert(`✓ ${res.count} chave(s) guardada(s) e sincronizada(s) com a base de dados Supabase com sucesso!`);
+                    } else {
+                      alert(`Nota: As alterações estão salvas localmente no navegador (${res.error || "Supabase offline"}).`);
+                    }
+                  }}
+                  className="bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs transition-all shadow-sm flex items-center space-x-1.5 cursor-pointer shrink-0 border border-slate-700 disabled:opacity-50"
+                  title="Guardar e sincronizar todas as chaves no Supabase"
+                >
+                  <i className={`fa-solid ${salvandoChavesSupabase ? "fa-spinner fa-spin" : "fa-cloud-arrow-up text-emerald-400"}`}></i>
+                  <span>{salvandoChavesSupabase ? "A guardar..." : "Guardar Chaves"}</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => {
                     const masterCode = codigoConjuntoCustom || `${prefixoCodigoIniciais}-CHV-01`;
                     const masterIdent = identificacaoConjuntoCustom || `Conjunto Geral de Chaves - ${predioAtivo?.nome || "Edifício"}`;
@@ -683,15 +732,25 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                   Registo de chaveiro, numeração codificada por iniciais do prédio ({prefixoCodigoIniciais} XXX), atreladas ao local e prontas para impressão de etiquetas (3cm x 1.5cm).
                 </p>
               </div>
+
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+                  Selecionadas: <strong className="text-emerald-700 dark:text-emerald-400 font-mono">{chaves.filter(c => c.no_claviculario).length}</strong> / {chaves.length}
+                </span>
+                <span className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  Qtd Total: <strong className="text-slate-900 dark:text-white font-mono">{chaves.reduce((acc, c) => acc + (Number(c.quantidade) || 0), 0)}</strong>
+                </span>
+              </div>
             </div>
 
             {/* Form de Adicionar Nova Chave */}
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
               <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block flex items-center gap-2">
                 <i className="fa-solid fa-plus-circle text-emerald-600"></i>
-                Adicionar Nova Chave ao Chaveiro
+                Adicionar Nova Chave ao Chaveiro / Claviculário
               </span>
-              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-6 gap-3">
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Local / Prédio Sugerido</label>
                   <select
@@ -714,20 +773,34 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                     type="text"
                     value={novaAreaChave}
                     onChange={e => setNovaAreaChave(e.target.value)}
-                    placeholder="Ex: Porta Principal, Arrecadação Comum..."
+                    placeholder="Ex: Porta Principal, Quadro Elétrico..."
                     className="w-full border border-slate-200 p-2 text-xs rounded-lg bg-white"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Nº do Chaveiro *</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Responsável / Posse</label>
                   <input
                     type="text"
-                    value={novoNumChaveiro}
-                    onChange={e => setNovoNumChaveiro(e.target.value)}
-                    placeholder="Ex: Chaveiro #1"
-                    className="w-full border border-slate-200 p-2 text-xs rounded-lg bg-white font-mono"
+                    value={novoResponsavel}
+                    onChange={e => setNovoResponsavel(e.target.value)}
+                    placeholder="Ex: Administração, Técnico Elevador..."
+                    className="w-full border border-slate-200 p-2 text-xs rounded-lg bg-white"
                   />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Estado / Status</label>
+                  <select
+                    value={novoStatus}
+                    onChange={e => setNovoStatus(e.target.value)}
+                    className="w-full border border-slate-200 p-2 text-xs rounded-lg bg-white font-medium text-slate-800"
+                  >
+                    <option value="disponivel">Disponível (Claviculário)</option>
+                    <option value="entregue">Entregue (Em Posse)</option>
+                    <option value="devolvida">Devolvida</option>
+                    <option value="perdida">Perdida</option>
+                  </select>
                 </div>
 
                 <div>
@@ -753,23 +826,33 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                     />
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         if (!novaAreaChave.trim()) return alert("Insira o nome do local/porta para a chave!");
                         const codigoAuto = novoCodigoChave.trim() || `${prefixoCodigoIniciais} ${String(chaves.length + 1).padStart(3, '0')}`;
                         const localAuto = novoLocalSugerido || predioAtivo?.nome || "Edifício Principal";
+                        const isDisponivel = novoStatus === "disponivel";
                         const nova: ChaveItem = {
                           id_chave: "chv-" + Date.now(),
-                          id_predio: selectedPredioId || "predio-1",
+                          id_predio: selectedPredioId || predioAtivo?.id_predio || "predio-1",
                           area_nome: novaAreaChave,
+                          local: novaAreaChave,
                           codigo_chave: codigoAuto,
                           num_chaveiro: novoNumChaveiro || "1",
                           local_sugerido: localAuto,
                           quantidade: novaQtdChave || 1,
-                          no_claviculario: true,
+                          no_claviculario: isDisponivel,
+                          status: novoStatus,
+                          responsavel: novoResponsavel.trim() || undefined,
+                          data_entrega: !isDisponivel ? new Date().toISOString().split("T")[0] : null,
                           observacoes: "Adicionada manualmente"
                         };
-                        setChaves([...chaves, nova]);
+                        setChaves(prev => [...prev, nova]);
+                        // Persistir no Supabase se ativo
+                        saveSingleChaveToSupabase(nova).catch(() => {});
+
                         setNovaAreaChave("");
+                        setNovoResponsavel("");
+                        setNovoStatus("disponivel");
                         setNovoCodigoChave("");
                         setNovoNumChaveiro("1");
                         setNovaQtdChave(2);
@@ -789,13 +872,32 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] border-b border-slate-200">
                   <tr>
-                    <th className="p-3 text-center w-12">Posse</th>
-                    <th className="p-3">Local / Porta / Utilização</th>
-                    <th className="p-3">Edifício / Local Sugerido</th>
-                    <th className="p-3 w-32">Nº Chaveiro</th>
-                    <th className="p-3 w-36">Código / Numeração</th>
-                    <th className="p-3 w-24 text-center">Qtd. Chaves</th>
-                    <th className="p-3">Observações / Detalhes</th>
+                    <th className="p-3 text-center w-12" title="Selecionar / Desmarcar todas as chaves">
+                      <div className="flex items-center justify-center">
+                        <input
+                          type="checkbox"
+                          checked={chaves.length > 0 && chaves.every(c => c.no_claviculario)}
+                          onChange={(e) => {
+                            const checkAll = e.target.checked;
+                            const updated = chaves.map(c => ({
+                              ...c,
+                              no_claviculario: checkAll,
+                              status: checkAll ? (c.status || "disponivel") : "entregue"
+                            }));
+                            setChaves(updated);
+                          }}
+                          className="h-4 w-4 text-emerald-600 rounded border-slate-300 cursor-pointer"
+                          title="Selecionar / Desmarcar todas as chaves"
+                        />
+                      </div>
+                    </th>
+                    <th className="p-3">Local / Porta</th>
+                    <th className="p-3">Responsável</th>
+                    <th className="p-3 w-28">Status</th>
+                    <th className="p-3 w-28">Entrega</th>
+                    <th className="p-3 w-28">Devolução</th>
+                    <th className="p-3 w-32">Código</th>
+                    <th className="p-3 w-20 text-center">Qtd</th>
                     <th className="p-3 text-center w-16">Ações</th>
                   </tr>
                 </thead>
@@ -807,49 +909,96 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                           type="checkbox"
                           checked={chave.no_claviculario}
                           onChange={(e) => {
-                            const updated = chaves.map(c => c.id_chave === chave.id_chave ? { ...c, no_claviculario: e.target.checked } : c);
+                            const isChecked = e.target.checked;
+                            const updated = chaves.map(c => c.id_chave === chave.id_chave ? { 
+                              ...c, 
+                              no_claviculario: isChecked,
+                              status: isChecked ? "disponivel" : (c.status === "disponivel" ? "entregue" : c.status)
+                            } : c);
                             setChaves(updated);
+                            const current = updated.find(c => c.id_chave === chave.id_chave);
+                            if (current) saveSingleChaveToSupabase(current).catch(() => {});
                           }}
                           className="h-4 w-4 text-emerald-600 rounded border-slate-300 cursor-pointer"
+                          title={chave.no_claviculario ? "No Claviculário (Disponível)" : "Entregue a Responsável"}
                         />
                       </td>
                       <td className="p-3 font-bold text-slate-800">
                         <input
                           type="text"
-                          value={chave.area_nome}
+                          value={chave.area_nome || chave.local || ""}
                           onChange={(e) => {
-                            const updated = chaves.map(c => c.id_chave === chave.id_chave ? { ...c, area_nome: e.target.value } : c);
+                            const updated = chaves.map(c => c.id_chave === chave.id_chave ? { ...c, area_nome: e.target.value, local: e.target.value } : c);
                             setChaves(updated);
                           }}
                           className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-emerald-500 font-bold text-slate-800 text-xs py-0.5"
                         />
                       </td>
-                      <td className="p-3 text-slate-600">
-                        <select
-                          value={chave.local_sugerido || predioAtivo?.nome || ""}
-                          onChange={(e) => {
-                            const updated = chaves.map(c => c.id_chave === chave.id_chave ? { ...c, local_sugerido: e.target.value } : c);
-                            setChaves(updated);
-                          }}
-                          className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-emerald-500 text-xs py-0.5 text-slate-700 font-medium"
-                        >
-                          {predios.map(p => (
-                            <option key={p.id_predio} value={p.nome || `${p.morada_linha1}, Nº ${p.num_porta}`}>
-                              {p.nome || `${p.morada_linha1}, Nº ${p.num_porta}`}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="p-3 font-mono text-slate-700">
+                      <td className="p-3 text-slate-700">
                         <input
                           type="text"
-                          value={chave.num_chaveiro || ""}
+                          value={chave.responsavel || ""}
                           onChange={(e) => {
-                            const updated = chaves.map(c => c.id_chave === chave.id_chave ? { ...c, num_chaveiro: e.target.value } : c);
+                            const updated = chaves.map(c => c.id_chave === chave.id_chave ? { ...c, responsavel: e.target.value } : c);
                             setChaves(updated);
                           }}
-                          placeholder="Ex: 1"
-                          className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-emerald-500 font-mono text-xs py-0.5 text-slate-700"
+                          placeholder="Quem levantou a chave..."
+                          className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-emerald-500 text-xs py-0.5 text-slate-700"
+                        />
+                      </td>
+                      <td className="p-3">
+                        <select
+                          value={chave.status || (chave.no_claviculario ? "disponivel" : "entregue")}
+                          onChange={(e) => {
+                            const newStatus = e.target.value;
+                            const isDisp = newStatus === "disponivel";
+                            const updated = chaves.map(c => c.id_chave === chave.id_chave ? { 
+                              ...c, 
+                              status: newStatus,
+                              no_claviculario: isDisp,
+                              data_entrega: !isDisp && !c.data_entrega ? new Date().toISOString().split("T")[0] : c.data_entrega,
+                              data_devolucao: newStatus === "devolvida" && !c.data_devolucao ? new Date().toISOString().split("T")[0] : c.data_devolucao
+                            } : c);
+                            setChaves(updated);
+                            const current = updated.find(c => c.id_chave === chave.id_chave);
+                            if (current) saveSingleChaveToSupabase(current).catch(() => {});
+                          }}
+                          className={`text-[11px] font-bold px-2 py-1 rounded-md border ${
+                            (chave.status === "disponivel" || chave.no_claviculario)
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : chave.status === "entregue"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : chave.status === "perdida"
+                              ? "bg-rose-50 text-rose-700 border-rose-200"
+                              : "bg-blue-50 text-blue-700 border-blue-200"
+                          }`}
+                        >
+                          <option value="disponivel">Disponível</option>
+                          <option value="entregue">Entregue</option>
+                          <option value="devolvida">Devolvida</option>
+                          <option value="perdida">Perdida</option>
+                        </select>
+                      </td>
+                      <td className="p-3 text-slate-600 font-mono text-[11px]">
+                        <input
+                          type="date"
+                          value={chave.data_entrega ? String(chave.data_entrega).split("T")[0] : ""}
+                          onChange={(e) => {
+                            const updated = chaves.map(c => c.id_chave === chave.id_chave ? { ...c, data_entrega: e.target.value || null } : c);
+                            setChaves(updated);
+                          }}
+                          className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-emerald-500 text-xs py-0.5"
+                        />
+                      </td>
+                      <td className="p-3 text-slate-600 font-mono text-[11px]">
+                        <input
+                          type="date"
+                          value={chave.data_devolucao ? String(chave.data_devolucao).split("T")[0] : ""}
+                          onChange={(e) => {
+                            const updated = chaves.map(c => c.id_chave === chave.id_chave ? { ...c, data_devolucao: e.target.value || null } : c);
+                            setChaves(updated);
+                          }}
+                          className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-emerald-500 text-xs py-0.5"
                         />
                       </td>
                       <td className="p-3 font-mono font-bold text-blue-900">
@@ -872,27 +1021,16 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                             const updated = chaves.map(c => c.id_chave === chave.id_chave ? { ...c, quantidade: Number(e.target.value) } : c);
                             setChaves(updated);
                           }}
-                          className="w-16 text-center bg-slate-50 border border-slate-200 rounded p-1 font-mono text-xs font-bold"
-                        />
-                      </td>
-                      <td className="p-3 text-slate-600">
-                        <input
-                          type="text"
-                          value={chave.observacoes || ""}
-                          onChange={(e) => {
-                            const updated = chaves.map(c => c.id_chave === chave.id_chave ? { ...c, observacoes: e.target.value } : c);
-                            setChaves(updated);
-                          }}
-                          placeholder="Notas opcionais..."
-                          className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-emerald-500 text-xs py-0.5 text-slate-600"
+                          className="w-12 text-center bg-slate-50 border border-slate-200 rounded p-1 font-mono text-xs font-bold"
                         />
                       </td>
                       <td className="p-3 text-center">
                         <button
                           type="button"
-                          onClick={() => {
-                            if (confirm(`Remover a chave "${chave.area_nome}" do registo?`)) {
-                              setChaves(chaves.filter(c => c.id_chave !== chave.id_chave));
+                          onClick={async () => {
+                            if (confirm(`Remover a chave "${chave.area_nome || chave.local}" do registo?`)) {
+                              setChaves(prev => prev.filter(c => c.id_chave !== chave.id_chave));
+                              deleteChaveFromSupabase(chave.id_chave).catch(() => {});
                             }
                           }}
                           className="text-red-500 hover:text-red-700 p-1 cursor-pointer"
@@ -1353,34 +1491,38 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
 
                         {/* Ações */}
                         <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end space-x-2">
+                          <div className="flex items-center justify-end space-x-1.5">
+                            {/* Botão Editar (Ícone Lápis) */}
                             <button
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedPredioId(p.id_predio);
                               }}
-                              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer flex items-center space-x-1 ${
+                              className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-xs ${
                                 isSelected
-                                  ? "bg-blue-600 text-white shadow-xs"
-                                  : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                                  ? "bg-blue-600 text-white ring-2 ring-blue-400"
+                                  : "bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border border-slate-200"
                               }`}
+                              title={isSelected ? "Prédio em edição ativa" : "Editar Prédio"}
+                              aria-label="Editar Prédio"
                             >
-                              <i className="fa-solid fa-pen-to-square"></i>
-                              <span>{isSelected ? "Em Edição" : "Editar"}</span>
+                              <i className="fa-solid fa-pencil text-xs"></i>
                             </button>
 
-                            {loggedUser.role === "ADMIN" && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemoverPredio(p.id_predio);
-                                }}
-                                className="px-2 py-1 rounded-md bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 hover:border-red-600 text-[11px] font-bold transition-all cursor-pointer"
-                                title="Remover Prédio"
-                              >
-                                <i className="fa-solid fa-trash-can"></i>
-                              </button>
-                            )}
+                            {/* Botão Eliminar (Ícone Lixo) */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoverPredio(p.id_predio);
+                              }}
+                              className="h-8 w-8 rounded-lg flex items-center justify-center bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 hover:border-red-600 transition-all shadow-xs cursor-pointer"
+                              title="Eliminar Prédio"
+                              aria-label="Eliminar Prédio"
+                            >
+                              <i className="fa-solid fa-trash-can text-xs"></i>
+                            </button>
                           </div>
                         </td>
                       </tr>

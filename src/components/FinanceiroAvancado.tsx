@@ -183,15 +183,20 @@ export function FinanceiroAvancado({
     predioFracoes.length > 0 ? predioFracoes[0].id_fracao : ""
   );
 
-  // --- MANUAL RECEIPT STATE (Recibos Manuais) ---
-  const [reciboNum, setReciboNum] = useState<string>(formatQuotaReceiptNumber(Math.floor(100 + Math.random() * 900)));
-  const [reciboData, setReciboData] = useState<string>("30-07-2026");
-  const [reciboQuotaMensal, setReciboQuotaMensal] = useState<string>("32.14");
-  const [reciboFundoReserva, setReciboFundoReserva] = useState<string>("3.21");
+  // --- MANUAL RECEIPT STATE (Recibos Manuais) - Base limpa sem valores fixos de simulação ---
+  const [reciboNum, setReciboNum] = useState<string>(() => formatQuotaReceiptNumber(Math.floor(1000 + Math.random() * 9000)));
+  const [reciboData, setReciboData] = useState<string>(() => new Date().toISOString().split("T")[0]);
+  const [reciboQuotaMensal, setReciboQuotaMensal] = useState<string>(() => {
+    if (predioFracoes.length > 0 && predioFracoes[0]?.quota_mensal) {
+      return Number(predioFracoes[0].quota_mensal).toFixed(2);
+    }
+    return "0.00";
+  });
+  const [reciboFundoReserva, setReciboFundoReserva] = useState<string>("0.00");
   const [reciboQuotaExtra, setReciboQuotaExtra] = useState<string>("0.00");
   const [reciboMetodo, setReciboMetodo] = useState<string>("Transferência Bancária");
-  const [reciboReferencia, setReciboReferencia] = useState<string>("Quota Ordinária de Julho 2026");
-  const [reciboObs, setReciboObs] = useState<string>("Valor liquidado dentro do prazo regulamentar, não sendo devedor do mês indicado.");
+  const [reciboReferencia, setReciboReferencia] = useState<string>("");
+  const [reciboObs, setReciboObs] = useState<string>("");
   const [reciboAssinatura, setReciboAssinatura] = useState<string>(`${loggedUser.nome} - Administrador do Condomínio`);
 
   const reciboValorTotal = useMemo(() => {

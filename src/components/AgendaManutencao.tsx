@@ -34,159 +34,8 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
   const [filterStatus, setFilterStatus] = useState<"TODOS" | "CONFORME" | "A_EXPIRAR" | "EXPIRADO_ALERTA">("TODOS");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  // Initial maintenance plan items according to Portuguese condominium legal regulations
-  const [itensManutencao, setItensManutencao] = useState<ItemPlanoManutencao[]>([
-    {
-      id_item: "manut-01",
-      id_predio: predio.id_predio,
-      tipo: "ELEVADORES_DGEG",
-      titulo: "Inspeção Periódica de Elevadores (DGEG / EMA)",
-      entidade_responsavel: "Schindler Portugal / DGEG Certificadora",
-      contacto_entidade: "217 800 900 • apoio@schindler.pt",
-      periodicidade_meses: 24, // Bienal para edifícios habitacionais com mais de 7 pisos ou 6 anos
-      base_legal_dgeg: "Decreto-Lei n.º 320/2002 & Portaria 1471/2004 (DGEG)",
-      ultima_inspecao_data: "2024-09-15",
-      proxima_inspecao_data: "2026-09-15",
-      dias_alerta_antecedencia: 45,
-      estado_conformidade: "A_EXPIRAR",
-      num_certificado_relatorio: "CERT-DGEG-2024/9912",
-      custo_estimado: 280.00,
-      historico_vistorias: [
-        {
-          id_vistoria: "vist-101",
-          data: "2024-09-15",
-          tecnico: "Eng. Rui Ferreira (DGEG Cert.)",
-          resultado: "APROVADO_SEM_DEFICIENCIAS",
-          observacoes: "Elevador 1 e 2 em perfeito estado de funcionamento mecânico e com freio de segurança aferido."
-        }
-      ]
-    },
-    {
-      id_item: "manut-02",
-      id_predio: predio.id_predio,
-      tipo: "LIMPEZA_CHAMINES_CONDUTAS",
-      titulo: "Limpeza e Desobstrução de Chaminés e Condutas de Fumo",
-      entidade_responsavel: "Limpa-Chaminés Nacional Lda.",
-      contacto_entidade: "912 345 678 • geral@limpachamines.pt",
-      periodicidade_meses: 12, // Anual recomendada / Regulamento Municipal
-      base_legal_dgeg: "Regulamento Geral de Edificações Urbanas (RGEU) & Proteção Civil",
-      ultima_inspecao_data: "2025-10-10",
-      proxima_inspecao_data: "2026-10-10",
-      dias_alerta_antecedencia: 30,
-      estado_conformidade: "CONFORME",
-      num_certificado_relatorio: "REL-LIMP-2025/441",
-      custo_estimado: 350.00,
-      historico_vistorias: [
-        {
-          id_vistoria: "vist-102",
-          data: "2025-10-10",
-          tecnico: "Mestre António Viana",
-          resultado: "APROVADO_SEM_DEFICIENCIAS",
-          observacoes: "Limpeza mecânica e aspiração de fuligem em todas as colunas das cozinhas e lareiras."
-        }
-      ]
-    },
-    {
-      id_item: "manut-03",
-      id_predio: predio.id_predio,
-      tipo: "RECARGA_EXTINTORES",
-      titulo: "Inspeção e Recarga Anual de Extintores & Carretéis (SCIE)",
-      entidade_responsavel: "FogoSegur Sistemas de Segurança Lda.",
-      contacto_entidade: "219 444 333 • tecnico@fogosegur.pt",
-      periodicidade_meses: 12, // Anual obrigatório NP 4413
-      base_legal_dgeg: "Regime Jurídico de SCIE (DL n.º 220/2008) & Norma Portuguesa NP 4413",
-      ultima_inspecao_data: "2025-07-20",
-      proxima_inspecao_data: "2026-07-20",
-      dias_alerta_antecedencia: 30,
-      estado_conformidade: "EXPIRADO_ALERTA",
-      num_certificado_relatorio: "SCIE-EXT-2025/1102",
-      custo_estimado: 145.00,
-      historico_vistorias: [
-        {
-          id_vistoria: "vist-103",
-          data: "2025-07-20",
-          tecnico: "Manuel Silva (Técnico Certificado ANPC)",
-          resultado: "APROVADO_SEM_DEFICIENCIAS",
-          observacoes: "Pesagem e recarga de 6 extintores ABC 6kg nos pisos e 2 extintores CO2 na casa das máquinas."
-        }
-      ]
-    },
-    {
-      id_item: "manut-04",
-      id_predio: predio.id_predio,
-      tipo: "INSPECAO_REDE_GAS",
-      titulo: "Inspeção Periódica da Rede Comum de Gás Natural (EIG)",
-      entidade_responsavel: "ISQ - Instituto de Soldadura e Qualidade",
-      contacto_entidade: "214 228 100 • info@isq.pt",
-      periodicidade_meses: 60, // 5 anos para edifícios multifamiliares
-      base_legal_dgeg: "Decreto-Lei n.º 11/2023 & Regulamentação DGEG para Instalações de Gás",
-      ultima_inspecao_data: "2023-05-18",
-      proxima_inspecao_data: "2028-05-18",
-      dias_alerta_antecedencia: 60,
-      estado_conformidade: "CONFORME",
-      num_certificado_relatorio: "ISQ-GAS-2023-88219",
-      custo_estimado: 420.00,
-      historico_vistorias: [
-        {
-          id_vistoria: "vist-104",
-          data: "2023-05-18",
-          tecnico: "Eng. Pedro Alentejano",
-          resultado: "APROVADO_SEM_DEFICIENCIAS",
-          observacoes: "Teste de estanquidade da coluna montante e válvulas de corte geral com 100% de conformidade."
-        }
-      ]
-    },
-    {
-      id_item: "manut-05",
-      id_predio: predio.id_predio,
-      tipo: "LIMPEZA_CISTERNA_BOMBAS",
-      titulo: "Desinfeção da Cisterna e Grupo de Bombas Hidropneumáticas",
-      entidade_responsavel: "HidroPura Serviços de Águas Lda.",
-      contacto_entidade: "212 900 120 • servicos@hidropura.pt",
-      periodicidade_meses: 12,
-      base_legal_dgeg: "Normas da ERSAR e Direção-Geral da Saúde (Controlo de Legionella e Higiene)",
-      ultima_inspecao_data: "2025-11-05",
-      proxima_inspecao_data: "2026-11-05",
-      dias_alerta_antecedencia: 30,
-      estado_conformidade: "CONFORME",
-      num_certificado_relatorio: "HP-CIST-2025-091",
-      custo_estimado: 290.00,
-      historico_vistorias: [
-        {
-          id_vistoria: "vist-105",
-          data: "2025-11-05",
-          tecnico: "Jorge Antunes",
-          resultado: "APROVADO_SEM_DEFICIENCIAS",
-          observacoes: "Esvaziamento, lavagem de paredes, hipercloração e verificação de pressóstatos das 2 bombas."
-        }
-      ]
-    },
-    {
-      id_item: "manut-06",
-      id_predio: predio.id_predio,
-      tipo: "PORTAO_GARAGEM_AUTOMATICO",
-      titulo: "Manutenção Preventiva do Portão Seccionado de Garagem",
-      entidade_responsavel: "Portas & Automatismos do Sul Lda.",
-      contacto_entidade: "961 888 777 • assistencia@portassul.pt",
-      periodicidade_meses: 6, // Semestral
-      base_legal_dgeg: "Norma Europeia EN 13241-1 (Segurança de Portões Mecanizados)",
-      ultima_inspecao_data: "2026-03-10",
-      proxima_inspecao_data: "2026-09-10",
-      dias_alerta_antecedencia: 20,
-      estado_conformidade: "A_EXPIRAR",
-      num_certificado_relatorio: "PAS-2026-03-311",
-      custo_estimado: 95.00,
-      historico_vistorias: [
-        {
-          id_vistoria: "vist-106",
-          data: "2026-03-10",
-          tecnico: "Marco Rocha",
-          resultado: "APROVADO_SEM_DEFICIENCIAS",
-          observacoes: "Lubrificação de guias, calibração das fotocélulas de segurança e substituição de mola de tração."
-        }
-      ]
-    }
-  ]);
+  // Maintenance plan items - Base limpa sem dados de simulação
+  const [itensManutencao, setItensManutencao] = useState<ItemPlanoManutencao[]>([]);
 
   // Modal / Form states for new inspection registration
   const [selectedItemForAction, setSelectedItemForAction] = useState<ItemPlanoManutencao | null>(null);
@@ -441,8 +290,19 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
           </div>
 
           {/* Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredItems.map(item => {
+          {filteredItems.length === 0 ? (
+            <div className="text-center py-12 px-4 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <ShieldCheck className="h-6 w-6" />
+              </div>
+              <h4 className="text-sm font-bold text-slate-800 dark:text-white">Sem Planos ou Vistorias Registadas</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                Não existem itens de inspeção obrigatória registados para este filtro no edifício. Utilize o botão &quot;Adicionar Manutenção&quot; ou configure os equipamentos técnicos (elevadores, extintores, condutas).
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredItems.map(item => {
               const isExpirado = item.estado_conformidade === "EXPIRADO_ALERTA";
               const isAExpirar = item.estado_conformidade === "A_EXPIRAR";
 
@@ -559,7 +419,8 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
                 </div>
               );
             })}
-          </div>
+            </div>
+          )}
         </div>
       )}
 

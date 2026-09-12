@@ -10,7 +10,11 @@ import {
   Reuniao, 
   Documento, 
   Ocorrencia, 
-  Reserva 
+  Reserva,
+  ChaveItem,
+  SeguroFracao,
+  SeguroPartesComuns,
+  SinistroSeguro
 } from "../types";
 
 /**
@@ -473,6 +477,126 @@ export async function fetchAllProfiles(): Promise<SupabaseUserProfile[]> {
 }
 
 // ============================================================================
+// GESTÃO DE CHAVES (CLAVICULÁRIO / CHAVEIRO)
+// ============================================================================
+
+export async function fetchChavesFromSupabase(idPredio?: string): Promise<ChaveItem[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    let query = supabase.from("gestao_chaves").select("*");
+    if (idPredio) {
+      query = query.eq("id_predio", idPredio);
+    }
+    const { data, error } = await query;
+    if (error) {
+      console.warn("[Supabase] Error fetching chaves:", error.message);
+      return null;
+    }
+    if (!data) return null;
+    return data.map((row: any) => ({
+      id_chave: row.id_chave,
+      id_predio: row.id_predio,
+      area_nome: row.area_nome || row.local || "",
+      local: row.local || row.local_sugerido || row.area_nome || "",
+      codigo_chave: row.codigo_chave || "",
+      quantidade: Number(row.quantidade) || 1,
+      no_claviculario: row.no_claviculario ?? (row.status !== "entregue"),
+      status: row.status || (row.no_claviculario === false ? "entregue" : "disponivel"),
+      num_chaveiro: row.num_chaveiro || "1",
+      local_sugerido: row.local_sugerido || row.local || "",
+      observacoes: row.observacoes || "",
+      responsavel: row.responsavel || "",
+      data_entrega: row.data_entrega || null,
+      data_devolucao: row.data_devolucao || null
+    }));
+  } catch (err) {
+    console.warn("[Supabase] Exception fetching chaves:", err);
+    return null;
+  }
+}
+
+export async function saveSingleChaveToSupabase(chave: ChaveItem): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("gestao_chaves").upsert({
+      id_chave: chave.id_chave,
+      id_predio: chave.id_predio,
+      area_nome: chave.area_nome,
+      local: chave.local || chave.local_sugerido || chave.area_nome,
+      codigo_chave: chave.codigo_chave,
+      quantidade: chave.quantidade,
+      no_claviculario: chave.no_claviculario,
+      status: chave.status || (chave.no_claviculario ? "disponivel" : "entregue"),
+      responsavel: chave.responsavel || null,
+      data_entrega: chave.data_entrega || null,
+      data_devolucao: chave.data_devolucao || null,
+      num_chaveiro: chave.num_chaveiro || "1",
+      local_sugerido: chave.local_sugerido || chave.local || null,
+      observacoes: chave.observacoes || null,
+      updated_at: new Date().toISOString()
+    });
+    if (error) {
+      console.warn("[Supabase] Save chave error:", error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn("[Supabase] Exception saving chave:", err);
+    return false;
+  }
+}
+
+export async function saveChavesToSupabase(chaves: ChaveItem[]): Promise<{ success: boolean; count: number; error?: string }> {
+  if (!isSupabaseConfigured()) {
+    return { success: false, count: 0, error: "Supabase não está configurado." };
+  }
+  try {
+    const payload = chaves.map(c => ({
+      id_chave: c.id_chave,
+      id_predio: c.id_predio,
+      area_nome: c.area_nome,
+      local: c.local || c.local_sugerido || c.area_nome,
+      codigo_chave: c.codigo_chave,
+      quantidade: c.quantidade || 1,
+      no_claviculario: c.no_claviculario ?? true,
+      status: c.status || (c.no_claviculario ? "disponivel" : "entregue"),
+      responsavel: c.responsavel || null,
+      data_entrega: c.data_entrega || null,
+      data_devolucao: c.data_devolucao || null,
+      num_chaveiro: c.num_chaveiro || "1",
+      local_sugerido: c.local_sugerido || c.local || null,
+      observacoes: c.observacoes || null,
+      updated_at: new Date().toISOString()
+    }));
+
+    const { error } = await supabase.from("gestao_chaves").upsert(payload);
+    if (error) {
+      console.warn("[Supabase] Batch save chaves error:", error.message);
+      return { success: false, count: 0, error: error.message };
+    }
+    return { success: true, count: payload.length };
+  } catch (err: any) {
+    console.warn("[Supabase] Exception batch saving chaves:", err);
+    return { success: false, count: 0, error: err?.message || String(err) };
+  }
+}
+
+export async function deleteChaveFromSupabase(idChave: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("gestao_chaves").delete().eq("id_chave", idChave);
+    if (error) {
+      console.warn("[Supabase] Delete chave error:", error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn("[Supabase] Exception deleting chave:", err);
+    return false;
+  }
+}
+
+// ============================================================================
 // SEED INICIAL DE DADOS PARA O SUPABASE
 // ============================================================================
 
@@ -508,5 +632,232 @@ export async function seedInitialDataToSupabase(
     return { success: true, message: "Dados iniciais sincronizados com sucesso no Supabase!" };
   } catch (err: any) {
     return { success: false, message: `Erro ao sincronizar: ${err?.message || err}` };
+  }
+}
+
+// ============================================================================
+// SEGUROS DE FRAÇÕES (seguros_fracoes)
+// ============================================================================
+
+export async function fetchSegurosFracoesFromSupabase(fracaoIds?: string[]): Promise<SeguroFracao[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    let query = supabase.from("seguros_fracoes").select("*");
+    if (fracaoIds && fracaoIds.length > 0) {
+      query = query.in("fracao_id", fracaoIds);
+    }
+    const { data, error } = await query;
+    if (error) {
+      console.warn("[Supabase] Tabela seguros_fracoes não disponível ou erro:", error.message);
+      return null;
+    }
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      fracao_id: row.fracao_id,
+      seguradora: row.seguradora,
+      apolice_numero: row.apolice_numero,
+      apolice_validade: row.apolice_validade,
+      tipo_cobertura: row.tipo_cobertura || "Incêndio e Multirriscos",
+      capital_seguro: Number(row.capital_seguro || 0),
+      documento_url: row.documento_url || "",
+      estado_validacao: row.estado_validacao || "Pendente",
+      criado_em: row.criado_em,
+      atualizado_em: row.atualizado_em
+    }));
+  } catch (err) {
+    console.warn("[Supabase] Falha ao carregar seguros_fracoes:", err);
+    return null;
+  }
+}
+
+export async function saveSeguroFracaoToSupabase(seguro: SeguroFracao): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: false, error: "Supabase não configurado" };
+  try {
+    const payload = {
+      id: seguro.id,
+      fracao_id: seguro.fracao_id,
+      seguradora: seguro.seguradora,
+      apolice_numero: seguro.apolice_numero,
+      apolice_validade: seguro.apolice_validade,
+      tipo_cobertura: seguro.tipo_cobertura || "Incêndio e Multirriscos",
+      capital_seguro: seguro.capital_seguro || 0,
+      documento_url: seguro.documento_url || null,
+      estado_validacao: seguro.estado_validacao,
+      atualizado_em: new Date().toISOString()
+    };
+    const { error } = await supabase.from("seguros_fracoes").upsert(payload);
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || String(err) };
+  }
+}
+
+export async function deleteSeguroFracaoFromSupabase(id: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("seguros_fracoes").delete().eq("id", id);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================================
+// SEGUROS DE PARTES COMUNS (seguros_partes_comuns)
+// ============================================================================
+
+export async function fetchSegurosPartesComunsFromSupabase(condominioId: string): Promise<SeguroPartesComuns[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const { data, error } = await supabase
+      .from("seguros_partes_comuns")
+      .select("*")
+      .eq("condominio_id", condominioId);
+    if (error) {
+      console.warn("[Supabase] Tabela seguros_partes_comuns não disponível:", error.message);
+      return null;
+    }
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      condominio_id: row.condominio_id,
+      seguradora: row.seguradora,
+      apolice_numero: row.apolice_numero,
+      apolice_validade: row.apolice_validade,
+      tomador_seguro: row.tomador_seguro || "Condomínio do Edifício",
+      capital_seguro_edificio: Number(row.capital_seguro_edificio || 0),
+      franquia: Number(row.franquia || 0),
+      contacto_mediador: row.contacto_mediador || "",
+      documento_url: row.documento_url || "",
+      estado: row.estado || "Ativo",
+      criado_em: row.criado_em,
+      atualizado_em: row.atualizado_em
+    }));
+  } catch (err) {
+    console.warn("[Supabase] Falha ao carregar seguros_partes_comuns:", err);
+    return null;
+  }
+}
+
+export async function saveSeguroPartesComunsToSupabase(seguro: SeguroPartesComuns): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: false, error: "Supabase não configurado" };
+  try {
+    const payload = {
+      id: seguro.id,
+      condominio_id: seguro.condominio_id,
+      seguradora: seguro.seguradora,
+      apolice_numero: seguro.apolice_numero,
+      apolice_validade: seguro.apolice_validade,
+      tomador_seguro: seguro.tomador_seguro,
+      capital_seguro_edificio: seguro.capital_seguro_edificio || 0,
+      franquia: seguro.franquia || 0,
+      contacto_mediador: seguro.contacto_mediador,
+      documento_url: seguro.documento_url || null,
+      estado: seguro.estado,
+      atualizado_em: new Date().toISOString()
+    };
+    const { error } = await supabase.from("seguros_partes_comuns").upsert(payload);
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || String(err) };
+  }
+}
+
+export async function deleteSeguroPartesComunsFromSupabase(id: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("seguros_partes_comuns").delete().eq("id", id);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================================
+// GESTÃO DE SINISTROS (sinistros)
+// ============================================================================
+
+export async function fetchSinistrosFromSupabase(idPredio: string): Promise<SinistroSeguro[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const { data, error } = await supabase
+      .from("sinistros")
+      .select("*")
+      .eq("id_predio", idPredio);
+    if (error) {
+      console.warn("[Supabase] Tabela sinistros não disponível:", error.message);
+      return null;
+    }
+    return (data || []).map((row: any) => ({
+      id_sinistro: row.id_sinistro || row.id,
+      id_predio: row.id_predio,
+      id_fracao: row.id_fracao,
+      fracao_nome: row.fracao_nome,
+      tipo_sinistro: row.tipo_sinistro,
+      data_ocorrencia: row.data_ocorrencia,
+      data_participacao: row.data_participacao,
+      seguradora: row.seguradora,
+      num_apolice: row.num_apolice,
+      num_processo_sinistro: row.num_processo_sinistro,
+      perito_nome: row.perito_nome,
+      perito_contacto: row.perito_contacto,
+      data_peritagem: row.data_peritagem,
+      descricao_danos: row.descricao_danos,
+      valor_estimado_danos: Number(row.valor_estimado_danos || 0),
+      valor_indemnizacao_aprovado: row.valor_indemnizacao_aprovado ? Number(row.valor_indemnizacao_aprovado) : undefined,
+      franquia_aplicavel: row.franquia_aplicavel ? Number(row.franquia_aplicavel) : undefined,
+      estado: row.estado,
+      fotos: row.fotos || [],
+      relatorios_pdf: row.relatorios_pdf || [],
+      observacoes: row.observacoes
+    }));
+  } catch (err) {
+    console.warn("[Supabase] Falha ao carregar sinistros:", err);
+    return null;
+  }
+}
+
+export async function saveSinistroToSupabase(sinistro: SinistroSeguro): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: false, error: "Supabase não configurado" };
+  try {
+    const payload = {
+      id_sinistro: sinistro.id_sinistro,
+      id_predio: sinistro.id_predio,
+      id_fracao: sinistro.id_fracao || null,
+      fracao_nome: sinistro.fracao_nome || null,
+      tipo_sinistro: sinistro.tipo_sinistro,
+      data_ocorrencia: sinistro.data_ocorrencia,
+      data_participacao: sinistro.data_participacao,
+      seguradora: sinistro.seguradora,
+      num_apolice: sinistro.num_apolice,
+      num_processo_sinistro: sinistro.num_processo_sinistro,
+      perito_nome: sinistro.perito_nome || null,
+      perito_contacto: sinistro.perito_contacto || null,
+      data_peritagem: sinistro.data_peritagem || null,
+      descricao_danos: sinistro.descricao_danos,
+      valor_estimado_danos: sinistro.valor_estimado_danos,
+      valor_indemnizacao_aprovado: sinistro.valor_indemnizacao_aprovado || null,
+      franquia_aplicavel: sinistro.franquia_aplicavel || null,
+      estado: sinistro.estado,
+      fotos: sinistro.fotos || [],
+      relatorios_pdf: sinistro.relatorios_pdf || [],
+      observacoes: sinistro.observacoes || null
+    };
+    const { error } = await supabase.from("sinistros").upsert(payload);
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || String(err) };
+  }
+}
+
+export async function deleteSinistroFromSupabase(idSinistro: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("sinistros").delete().eq("id_sinistro", idSinistro);
+    return !error;
+  } catch {
+    return false;
   }
 }
