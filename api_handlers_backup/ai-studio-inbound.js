@@ -166,8 +166,14 @@ export default async function handler(req, res) {
     // 5. Router LOCAL
     const routerData = await routerLocal(categoriaClassificada, contexto);
 
-    // 6. Nome do remetente
+    // 6. Nome REAL do remetente (corrigido)
+    const nomeReal = from
+      .replace(/"/g, "")
+      .replace(/<.*>/, "")
+      .trim();
+
     const nomeRemetente =
+      nomeReal ||
       contexto?.fracao_nome ||
       emailLimpo.split("@")[0] ||
       "Condómino";

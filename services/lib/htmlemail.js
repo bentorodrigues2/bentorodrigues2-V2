@@ -17,7 +17,7 @@ export function gerarHtmlAutoresponder(nome) {
 
       <p>Olá ${nome || "Condómino"},</p>
 
-      <p>Agradecemos o seu contacto. A administração irá analisar a sua mensagem e responder com brevidade.</p>
+      <p>Agradecemos o seu contacto.</p>
 
       <!-- Imagem ilustrativa -->
       <div style="text-align:center;margin:25px 0;">
@@ -34,6 +34,7 @@ export function gerarHtmlAutoresponder(nome) {
 
       <p>
         Com os meus cumprimentos,<br/>
+
         A administração do condomínio<br/>
         <strong>José Carlos Guerra</strong><br/>
         📞 +351 919 943 465<br/>
