@@ -12,7 +12,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "PDF não fornecido." });
     }
 
-    // 1) Enviar PDF ao Gemini 3.1 Flash Lite
+    // 1) Enviar PDF ao Gemini
     const respostaAI = await fetch(
       `${process.env.AI_STUDIO_ENDPOINT}?key=${process.env.AI_STUDIO_API_KEY}`,
       {
@@ -56,7 +56,6 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "JSON inválido do Gemini" });
     }
 
-    // 2) Validar dados essenciais
     const fracao = parsed?.referencia || null;
     const valor = parsed?.valor_total || null;
 
@@ -66,7 +65,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // 3) Obter fração real
+    // 2) Obter fração
     const { data: fracaoRow, error: errF } = await supabase
       .from("fracoes")
       .select("id_fracao, id_predio")
@@ -77,7 +76,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Fração não encontrada." });
     }
 
-    // 4) Obter proprietário
+    // 3) Obter proprietário
     const { data: proprietarioRow, error: errP } = await supabase
       .from("proprietarios")
       .select("id_proprietario, referencia")
@@ -88,23 +87,26 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Proprietário não encontrado." });
     }
 
-    // 5) Criar movimento financeiro (dashboard)
+    const dataDocumento = parsed.data_documento || parsed.data || null;
+    const tipoDocumento = parsed.tipo_documento || parsed.tipo || "Comprovativo de pagamento";
+    const categoriaContabilistica = parsed.categoria_contabilistica || "Quotas / Pagamentos";
+
+    // 4) Criar movimento financeiro
     const { data: movimento, error: movErr } = await supabase
       .from("movimentos")
       .insert({
         id_predio: fracaoRow.id_predio,
-        id_conta: null, // será preenchido pelo router financeiro
-        entidade: parsed.entidade,
-        valor: parsed.valor_total,
-        data_documento: parsed.data_documento,
-        referencia: parsed.referencia,
-        tipo_documento: parsed.tipo_documento,
-        categoria: parsed.categoria_contabilistica,
-        debito_conta: parsed.sugestao_lancamento?.debito?.conta || null,
-        debito_valor: parsed.sugestao_lancamento?.debito?.valor || null,
-        credito_conta: parsed.sugestao_lancamento?.credito?.conta || null,
-        credito_valor: parsed.sugestao_lancamento?.credito?.valor || null,
-        raw_json: parsed,
+        id_conta: null,
+        data: dataDocumento,
+        tipo: tipoDocumento,
+        categoria: categoriaContabilistica,
+        descricao: parsed.entidade || "Comprovativo de pagamento",
+        valor,
+        comprovativo_url: pdfUrl,
+        fracao_id: fracaoRow.id_fracao,
+        fornecedor_id: null,
+        forma_pagamento: null,
+        conciliado: false,
       })
       .select()
       .single();
@@ -114,7 +116,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Erro ao gravar movimento" });
     }
 
-    // 6) Criar pagamento pendente
+    // 5) Criar pagamento pendente
     const { data: pagamento, error: errPay } = await supabase
       .from("pagamentos")
       .insert({
@@ -131,13 +133,26 @@ export default async function handler(req, res) {
       .single();
 
     if (errPay) {
+      console.error("Erro ao criar pagamento:", errPay);
       return res.status(500).json({ error: "Erro ao criar pagamento." });
     }
+
+    // 6) LOG DE AUDITORIA
+    await supabase.from("ai_auditoria").insert({
+      origem: "inbound-pdf",
+      tipo_documento: tipoDocumento,
+      entidade: parsed.entidade,
+      referencia: parsed.referencia,
+      valor: parsed.valor_total,
+      id_movimento: movimento.id_movimento,
+      id_pagamento: pagamento.id,
+      raw_json: parsed,
+    });
 
     return res.status(200).json({
       ok: true,
       pagamento_id: pagamento.id,
-      movimento_id: movimento.id,
+      movimento_id: movimento.id_movimento,
       analise: parsed,
     });
 

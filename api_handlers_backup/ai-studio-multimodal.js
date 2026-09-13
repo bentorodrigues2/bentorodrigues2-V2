@@ -18,7 +18,7 @@ export default async function handler(req, res) {
       Extrai:
       - entidade (quem emitiu)
       - valor total
-      - data do documento
+      - data do documento (YYYY-MM-DD)
       - referência (nº fatura, nº recibo, etc.)
       - tipo de documento (fatura, recibo, transferência, extrato, etc.)
       - categoria contabilística
@@ -71,22 +71,27 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Resposta do Gemini não é JSON válido" });
     }
 
+    // Mapeamento para a tua tabela `movimentos`
+    const dataDocumento = parsed.data_documento || parsed.data || null;
+    const tipoDocumento = parsed.tipo_documento || parsed.tipo || null;
+    const categoriaContabilistica = parsed.categoria_contabilistica || parsed.categoria || null;
+
     const { data: movimento, error: movErr } = await supabase
       .from("movimentos")
       .insert({
-        email,
-        subject,
-        entidade: parsed.entidade,
+        // id_movimento é gerado por trigger/funcão ou manualmente noutro lado
+        id_predio: null, // se quiseres, depois ligamos isto à fração/predio
+        id_conta: null,
+        data: dataDocumento,
+        tipo: tipoDocumento,
+        categoria: categoriaContabilistica,
+        descricao: parsed.entidade || subject || "Movimento automático (multimodal)",
         valor: parsed.valor_total,
-        data_documento: parsed.data_documento,
-        referencia: parsed.referencia,
-        tipo_documento: parsed.tipo_documento,
-        categoria: parsed.categoria_contabilistica,
-        debito_conta: parsed.sugestao_lancamento?.debito?.conta || null,
-        debito_valor: parsed.sugestao_lancamento?.debito?.valor || null,
-        credito_conta: parsed.sugestao_lancamento?.credito?.conta || null,
-        credito_valor: parsed.sugestao_lancamento?.credito?.valor || null,
-        raw_json: parsed,
+        comprovativo_url: anexos[0]?.filename || null,
+        fracao_id: null,
+        fornecedor_id: null,
+        forma_pagamento: null,
+        conciliado: false,
       })
       .select()
       .single();
@@ -98,7 +103,7 @@ export default async function handler(req, res) {
 
     const anexosReg = anexos.map((ax) => ({
       email,
-      movimento_id: movimento.id,
+      movimento_id: movimento.id_movimento,
       filename: ax.filename,
       mime_type: ax.mimeType,
     }));
@@ -110,6 +115,18 @@ export default async function handler(req, res) {
     if (anexErr) {
       console.error("Erro ao gravar anexos_processados:", anexErr);
     }
+
+    // LOG DE AUDITORIA
+    await supabase.from("ai_auditoria").insert({
+      origem: "multimodal",
+      tipo_documento: tipoDocumento,
+      entidade: parsed.entidade,
+      referencia: parsed.referencia,
+      valor: parsed.valor_total,
+      id_movimento: movimento.id_movimento,
+      id_pagamento: null,
+      raw_json: parsed,
+    });
 
     return res.status(200).json({
       ok: true,
