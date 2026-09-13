@@ -1,53 +1,121 @@
-
 import { supabase } from "../services/lib/supabaseClient.js";
 
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
-      return res.status(405).json({ error: "M�todo n�o permitido" });
+      return res.status(405).json({ error: "Método não permitido" });
     }
 
     const { pdfUrl, base64Pdf, origem } = req.body || {};
 
     if (!pdfUrl && !base64Pdf) {
-      return res.status(400).json({ error: "PDF n�o fornecido." });
+      return res.status(400).json({ error: "PDF não fornecido." });
     }
 
-    // 1) Enviar PDF para o AI Studio
-    const aiRes = await fetch(process.env.AI_STUDIO_PDF_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.AI_STUDIO_API_KEY}`,
-      },
-      body: JSON.stringify({
-        pdfUrl,
-        base64Pdf,
-        origem: origem || "upload_pdf"
-      }),
-    });
+    // 1) Enviar PDF ao Gemini 3.1 Flash Lite
+    const respostaAI = await fetch(
+      `${process.env.AI_STUDIO_ENDPOINT}?key=${process.env.AI_STUDIO_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: "Extrai dados do comprovativo em JSON estrito." },
+                {
+                  inlineData: {
+                    mimeType: "application/pdf",
+                    data: base64Pdf,
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+      }
+    );
 
-    const aiData = await aiRes.json();
+    if (!respostaAI.ok) {
+      const txt = await respostaAI.text();
+      console.error("Erro no Gemini PDF:", txt);
+      return res.status(500).json({ error: "Erro ao processar PDF no Gemini" });
+    }
 
-    const fracao = aiData?.id_fracao || aiData?.fracao;
-    const valor = aiData?.valor || aiData?.valorTotal;
+    const resultado = await respostaAI.json();
 
-    // 2) Obter fra��o
-    const { data: fracaoRow } = await supabase
+    const content =
+      resultado?.candidates?.[0]?.content?.parts?.find((p) => p.text)?.text ||
+      "{}";
+
+    let parsed;
+    try {
+      parsed = typeof content === "string" ? JSON.parse(content) : content;
+    } catch (e) {
+      console.error("JSON inválido do Gemini:", content);
+      return res.status(500).json({ error: "JSON inválido do Gemini" });
+    }
+
+    // 2) Validar dados essenciais
+    const fracao = parsed?.referencia || null;
+    const valor = parsed?.valor_total || null;
+
+    if (!fracao || !valor) {
+      return res.status(400).json({
+        error: "Dados insuficientes no PDF (fração/valor).",
+      });
+    }
+
+    // 3) Obter fração real
+    const { data: fracaoRow, error: errF } = await supabase
       .from("fracoes")
-      .select("id_fracao")
-      .eq("id_fracao", fracao)
+      .select("id_fracao, id_predio")
+      .eq("fracao_nome", fracao)
       .single();
 
-    // 3) Obter propriet�rio
-    const { data: proprietarioRow } = await supabase
+    if (errF || !fracaoRow) {
+      return res.status(400).json({ error: "Fração não encontrada." });
+    }
+
+    // 4) Obter proprietário
+    const { data: proprietarioRow, error: errP } = await supabase
       .from("proprietarios")
       .select("id_proprietario, referencia")
       .eq("referencia", fracaoRow.id_fracao)
       .single();
 
-    // 4) Criar pagamento pendente
-    const { data: pagamento } = await supabase
+    if (errP || !proprietarioRow) {
+      return res.status(400).json({ error: "Proprietário não encontrado." });
+    }
+
+    // 5) Criar movimento financeiro (dashboard)
+    const { data: movimento, error: movErr } = await supabase
+      .from("movimentos")
+      .insert({
+        id_predio: fracaoRow.id_predio,
+        id_conta: null, // será preenchido pelo router financeiro
+        entidade: parsed.entidade,
+        valor: parsed.valor_total,
+        data_documento: parsed.data_documento,
+        referencia: parsed.referencia,
+        tipo_documento: parsed.tipo_documento,
+        categoria: parsed.categoria_contabilistica,
+        debito_conta: parsed.sugestao_lancamento?.debito?.conta || null,
+        debito_valor: parsed.sugestao_lancamento?.debito?.valor || null,
+        credito_conta: parsed.sugestao_lancamento?.credito?.conta || null,
+        credito_valor: parsed.sugestao_lancamento?.credito?.valor || null,
+        raw_json: parsed,
+      })
+      .select()
+      .single();
+
+    if (movErr) {
+      console.error("Erro ao gravar movimento:", movErr);
+      return res.status(500).json({ error: "Erro ao gravar movimento" });
+    }
+
+    // 6) Criar pagamento pendente
+    const { data: pagamento, error: errPay } = await supabase
       .from("pagamentos")
       .insert({
         estado: "pendente",
@@ -57,22 +125,27 @@ export default async function handler(req, res) {
         valor,
         descricao: "quota_mensal",
         comprovativo_url: pdfUrl,
-        criado_em: new Date().toISOString()
+        criado_em: new Date().toISOString(),
       })
       .select()
       .single();
 
+    if (errPay) {
+      return res.status(500).json({ error: "Erro ao criar pagamento." });
+    }
+
     return res.status(200).json({
       ok: true,
-      pagamento_id: pagamento.id
+      pagamento_id: pagamento.id,
+      movimento_id: movimento.id,
+      analise: parsed,
     });
 
   } catch (err) {
+    console.error("Erro no inbound-pdf:", err);
     return res.status(500).json({
       error: "Erro interno",
-      detail: err.message
+      detail: err?.message || String(err),
     });
   }
 }
-
-

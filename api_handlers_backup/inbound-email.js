@@ -2,16 +2,36 @@ import { supabase } from "../services/lib/supabaseClient.js";
 import { gerarHtmlAutoresponder, gerarHtmlResposta } from "../services/lib/htmlemail.js";
 
 // -----------------------------
-// 1. Classificador LOCAL
+// 1. Classificador LOCAL (versão final)
 // -----------------------------
 async function classificarCategoria(texto) {
   try {
     const lower = texto.toLowerCase();
 
-    if (lower.includes("ata") || lower.includes("assembleia")) return "assembleia";
-    if (lower.includes("quota") || lower.includes("pagamento")) return "pagamentos";
-    if (lower.includes("ruído") || lower.includes("barulho")) return "ruido";
-    if (lower.includes("avaria") || lower.includes("reparação")) return "avarias";
+    if (lower.includes("comprovativo") ||
+        lower.includes("transferência") ||
+        lower.includes("extrato") ||
+        lower.includes("recibo") ||
+        lower.includes("mbway"))
+      return "comprovativo";
+
+    if (lower.includes("fatura") || lower.includes("fornecedor"))
+      return "faturas";
+
+    if (lower.includes("orçamento") || lower.includes("proposta"))
+      return "orcamentos";
+
+    if (lower.includes("ata") || lower.includes("assembleia"))
+      return "assembleia";
+
+    if (lower.includes("quota") || lower.includes("pagamento"))
+      return "pagamentos";
+
+    if (lower.includes("ruído") || lower.includes("barulho"))
+      return "ruido";
+
+    if (lower.includes("avaria") || lower.includes("reparação"))
+      return "avarias";
 
     return "geral";
   } catch {
@@ -61,12 +81,13 @@ export default async function handler(req, res) {
     // CLASSIFICAÇÃO
     const categoria = await classificarCategoria(textoEmail);
 
-    // AUTORESPONDER IMEDIATO
+    // NOME SEGURO (nunca mais “1A”)
     const nomeRemetente =
-      contexto?.fracao_nome ||
+      contexto?.contacto ||
       emailLimpo.split("@")[0] ||
       "Condómino";
 
+    // AUTORESPONDER
     const htmlAutoresponder = gerarHtmlAutoresponder(nomeRemetente);
 
     await fetch("https://api.resend.com/emails", {
@@ -100,7 +121,7 @@ export default async function handler(req, res) {
 
     const routerData = await routerResp.json();
 
-    // RESPOSTA FINAL INTELIGENTE
+    // RESPOSTA FINAL (sem duplicar Olá e assinatura)
     const htmlFinal = gerarHtmlResposta(nomeRemetente, routerData.message);
 
     await fetch("https://api.resend.com/emails", {
