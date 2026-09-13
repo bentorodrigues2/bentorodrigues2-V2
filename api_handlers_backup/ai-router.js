@@ -7,9 +7,7 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-    // Garantir que req.body existe
     if (!req.body || typeof req.body !== "object") {
-      console.error("Router recebeu req.body undefined:", req.body);
       return res.status(400).json({
         error: "Body inválido. Esperado { categoria, id_fracao }"
       });
@@ -17,15 +15,11 @@ export default async function handler(req, res) {
 
     const { categoria, id_fracao } = req.body;
 
-    // Validar categoria
-    if (!categoria || typeof categoria !== "string") {
-      console.error("Categoria inválida:", categoria);
-      return res.status(400).json({ error: "Categoria em falta ou inválida" });
+    if (!categoria) {
+      return res.status(400).json({ error: "Categoria em falta" });
     }
 
-    // Validar id_fracao
     if (!id_fracao) {
-      console.error("id_fracao inválido:", id_fracao);
       return res.status(400).json({ error: "id_fracao em falta" });
     }
 
@@ -38,40 +32,71 @@ export default async function handler(req, res) {
 
     if (error) {
       console.error("Erro ao obter fração:", error);
-      return res.status(500).json({
-        error: "Erro ao obter dados da fração",
-        detalhe: error.message
-      });
+      return res.status(500).json({ error: "Erro ao obter dados da fração" });
     }
 
-    // Construção da resposta
     let subject = "";
     let message = "";
 
     switch (categoria) {
+
+      // ✔ Comprovativos / Extratos bancários
+      case "comprovativo":
+        subject = "Re: Comprovativo de pagamento recebido";
+        message =
+          `Acusamos a receção do comprovativo de pagamento.\n\n` +
+          `Após confirmação contabilística, será emitido e enviado o respetivo recibo.`;
+        break;
+
+      // ✔ Faturas de fornecedores
+      case "faturas":
+        subject = "Re: Fatura de fornecedor recebida";
+        message =
+          `Agradecemos o envio da fatura.\n\n` +
+          `Será validada e encaminhada para processamento contabilístico.`;
+        break;
+
+      // ✔ Orçamentos / Propostas
+      case "orcamentos":
+        subject = "Re: Orçamento recebido";
+        message =
+          `Agradecemos o envio do orçamento.\n\n` +
+          `A administração irá analisar a proposta e entrará em contacto caso sejam necessários esclarecimentos adicionais.`;
+        break;
+
+      // ✔ Assembleia / Ata
       case "assembleia":
         subject = "Re: Pedido de ata da assembleia";
-        message = `Olá,\n\nSegue a ata solicitada referente à assembleia.\n\nCumprimentos,\nAdministração`;
+        message =
+          `Segue a ata solicitada referente à assembleia.`;
         break;
 
+      // ✔ Quotas / Pagamentos
       case "pagamentos":
         subject = "Re: Informação sobre quotas/pagamentos";
-        message = `Olá,\n\nRelativamente ao seu pedido, aqui está a informação sobre quotas.\n\nCumprimentos,\nAdministração`;
+        message =
+          `Relativamente ao seu pedido, aqui está a informação sobre quotas.`;
         break;
 
+      // ✔ Ruído
       case "ruido":
         subject = "Re: Situação de ruído";
-        message = `Olá,\n\nA situação de ruído foi registada e será analisada.\n\nCumprimentos,\nAdministração`;
+        message =
+          `A situação de ruído foi registada e será analisada pela administração.`;
         break;
 
+      // ✔ Avarias
       case "avarias":
         subject = "Re: Avaria reportada";
-        message = `Olá,\n\nA avaria foi registada. A administração irá proceder conforme necessário.\n\nCumprimentos,\nAdministração`;
+        message =
+          `A avaria foi registada. A administração irá proceder conforme necessário.`;
         break;
 
+      // ✔ Geral
       default:
         subject = "Re: Pedido recebido";
-        message = `Olá,\n\nO seu pedido foi recebido e será tratado.\n\nCumprimentos,\nAdministração`;
+        message =
+          `O seu pedido foi recebido e será tratado pela administração.`;
         break;
     }
 
