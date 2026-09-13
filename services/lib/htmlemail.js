@@ -5,6 +5,9 @@
 
 export function gerarHtmlAutoresponder(nome) {
 
+  // Garantir que o nome nunca é undefined, null ou vazio
+  const nomeSeguro = String(nome || "Condómino");
+
   return `
     <div style="max-width:650px;margin:0 auto;font-family:Arial, sans-serif;">
 
@@ -15,7 +18,7 @@ export function gerarHtmlAutoresponder(nome) {
              style="width:240px;opacity:0.95;" />
       </div>
 
-      <p>Olá ${nome || "Condómino"},</p>
+      <p>Olá ${nomeSeguro},</p>
 
       <p>Agradecemos o seu contacto.</p>
 
@@ -34,7 +37,6 @@ export function gerarHtmlAutoresponder(nome) {
 
       <p>
         Com os meus cumprimentos,<br/>
-
         A administração do condomínio<br/>
         <strong>José Carlos Guerra</strong><br/>
         📞 +351 919 943 465<br/>
@@ -50,11 +52,14 @@ export function gerarHtmlAutoresponder(nome) {
 
 
 //
-// HTML DA RESPOSTA INSTITUCIONAL (AI ROUTER / GROQ)
-// (email com a resposta gerada pela IA)
+// HTML DA RESPOSTA INSTITUCIONAL (AI ROUTER / GEMINI)
 //
 
 export function gerarHtmlResposta(nome, mensagem) {
+
+  // Nome e mensagem sempre seguros
+  const nomeSeguro = String(nome || "Condómino");
+  const mensagemSegura = String(mensagem || "").replace(/\n/g, "<br>");
 
   return `
     <div style="max-width:650px;margin:0 auto;font-family:Arial, sans-serif;">
@@ -66,11 +71,11 @@ export function gerarHtmlResposta(nome, mensagem) {
              style="width:240px;opacity:0.95;" />
       </div>
 
-      <p>Olá ${nome || "Condómino"},</p>
+      <p>Olá ${nomeSeguro},</p>
 
       <!-- Mensagem institucional do AI Router -->
       <p style="line-height:1.6;font-size:15px;">
-        ${mensagem.replace(/\n/g, "<br>")}
+        ${mensagemSegura}
       </p>
 
       <br>
