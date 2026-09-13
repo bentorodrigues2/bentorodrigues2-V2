@@ -7,13 +7,25 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-    const { categoria, id_fracao } = req.body;
-
-    if (!categoria) {
-      return res.status(400).json({ error: "Categoria em falta" });
+    // Garantir que req.body existe
+    if (!req.body || typeof req.body !== "object") {
+      console.error("Router recebeu req.body undefined:", req.body);
+      return res.status(400).json({
+        error: "Body inválido. Esperado { categoria, id_fracao }"
+      });
     }
 
+    const { categoria, id_fracao } = req.body;
+
+    // Validar categoria
+    if (!categoria || typeof categoria !== "string") {
+      console.error("Categoria inválida:", categoria);
+      return res.status(400).json({ error: "Categoria em falta ou inválida" });
+    }
+
+    // Validar id_fracao
     if (!id_fracao) {
+      console.error("id_fracao inválido:", id_fracao);
       return res.status(400).json({ error: "id_fracao em falta" });
     }
 
@@ -26,7 +38,10 @@ export default async function handler(req, res) {
 
     if (error) {
       console.error("Erro ao obter fração:", error);
-      return res.status(500).json({ error: "Erro ao obter dados da fração" });
+      return res.status(500).json({
+        error: "Erro ao obter dados da fração",
+        detalhe: error.message
+      });
     }
 
     // Construção da resposta
@@ -69,6 +84,9 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error("Erro no router:", err);
-    return res.status(500).json({ error: "Erro no router" });
+    return res.status(500).json({
+      error: "Erro no router",
+      detalhe: err?.message || String(err)
+    });
   }
 }
