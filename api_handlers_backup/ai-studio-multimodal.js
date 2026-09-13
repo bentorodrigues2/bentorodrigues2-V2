@@ -65,7 +65,7 @@ export default async function handler(req, res) {
 
     let parsed;
     try {
-      parsed = JSON.parse(content);
+      parsed = typeof content === "string" ? JSON.parse(content) : content;
     } catch (e) {
       console.error("Falha a fazer JSON.parse ao conteúdo do Gemini:", content);
       return res.status(500).json({ error: "Resposta do Gemini não é JSON válido" });
@@ -77,14 +77,15 @@ export default async function handler(req, res) {
         email,
         subject,
         entidade: parsed.entidade,
-        valor: parsed.valor,
-        data_documento: parsed.data,
+        valor: parsed.valor_total,
+        data_documento: parsed.data_documento,
         referencia: parsed.referencia,
         tipo_documento: parsed.tipo_documento,
-        categoria: parsed.categoria,
-        lancamento_debito: parsed.lancamento?.debito || null,
-        lancamento_credito: parsed.lancamento?.credito || null,
-        lancamento_descricao: parsed.lancamento?.descricao || null,
+        categoria: parsed.categoria_contabilistica,
+        debito_conta: parsed.sugestao_lancamento?.debito?.conta || null,
+        debito_valor: parsed.sugestao_lancamento?.debito?.valor || null,
+        credito_conta: parsed.sugestao_lancamento?.credito?.conta || null,
+        credito_valor: parsed.sugestao_lancamento?.credito?.valor || null,
         raw_json: parsed,
       })
       .select()
