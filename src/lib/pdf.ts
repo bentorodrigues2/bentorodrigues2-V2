@@ -1,4 +1,4 @@
-﻿import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -7,16 +7,16 @@ export async function gerarPDF(conteudo: string) {
     model: "gemini-1.5-flash",
   });
 
-  const result = await model.generateContent({
+  const result: any = await model.generateContent({
     contents: [
       {
         role: "user",
         parts: [{ text: conteudo }]
       }
     ],
-    generationConfig: { mimeType: "application/pdf" }
+    generationConfig: { responseMimeType: "application/pdf" } as any
   });
 
-  const pdfData = result.response.candidates[0].content.parts[0].inlineData.data;
+  const pdfData = result.response?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || "";
   return Buffer.from(pdfData, "base64");
 }

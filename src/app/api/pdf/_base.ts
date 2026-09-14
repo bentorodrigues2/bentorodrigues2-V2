@@ -1,4 +1,4 @@
-﻿import { gerarPDF } from "@/lib/pdf";
+import { gerarPDF } from "@/lib/pdf";
 import { guardarNoArquivo } from "@/lib/arquivo";
 import { registarDocumento } from "@/lib/registarDocumento";
 import { enviarEmailPDF } from "@/lib/email";
@@ -41,7 +41,7 @@ export async function gerarDocumentoPDF({
   if (emailDestino) {
     await enviarEmailPDF({
       to: emailDestino,
-      assunto: Novo documento: ,
+      assunto: `Novo documento: ${tipo}`,
       mensagem: "<p>Segue em anexo o documento.</p>",
       pdfBuffer,
       nome: nomeFicheiro

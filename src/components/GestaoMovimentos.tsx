@@ -38,7 +38,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   const [descricao, setDescricao] = useState("");
   const [categoria, setCategoria] = useState("Manutenção");
   const [tipo, setTipo] = useState("Despesa");
-  const [isMovimentoCego, setIsMovimentoCego] = useState(false);
+  const [isCegoChecked, setIsCegoChecked] = useState(false);
   const [uploadedFotos, setUploadedFotos] = useState<string[]>([]);
   const [justifyingMovId, setJustifyingMovId] = useState<string | null>(null);
 
@@ -154,7 +154,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
               ...m,
               estado: "Justificado",
               fotos: [...(m.fotos || []), webpDataUrl],
-              isMovimentoCego: false
+              is_movimento_cego: false
             };
           }
           return m;
@@ -173,7 +173,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     if (loggedUser.role !== 'ADMIN') return alert("Apenas administradores podem lançar movimentos financeiros!");
     if (!contaId || !valor || !descricao || !categoria) return alert("Preencha todos os campos obrigatórios (*)");
 
-    const isCego = tipo === "Despesa" && isMovimentoCego;
+    const isCego = tipo === "Despesa" && isCegoChecked;
 
     const novo: Movimento = {
       id_mov: "mov-" + (movements.length + 1),
@@ -186,7 +186,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       categoria,
       fotos: uploadedFotos,
       estado: isCego ? "Movimento Cego / Por Justificar" : "Justificado",
-      isMovimentoCego: isCego
+      is_movimento_cego: isCego
     };
 
     const contaAlvo = contas.find(c => c.id_conta === contaId);
@@ -200,7 +200,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     setValor("");
     setDescricao("");
     setUploadedFotos([]);
-    setIsMovimentoCego(false);
+    setIsCegoChecked(false);
     alert(isCego ? "Movimento Cego lançado e guardado no Supabase! Necessita de justificar posteriormente com fatura." : "Movimento lançado e guardado no Supabase com sucesso!");
   };
 
@@ -275,7 +275,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       categoria: "Quotas de Exercícios Anteriores / Dívidas Transitadas",
       fotos: [],
       estado: "Justificado",
-      isMovimentoCego: false
+      is_movimento_cego: false
     };
 
     // 2. Creditar o saldo da conta selecionada
@@ -331,7 +331,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       categoria: email.extractedData.categoria,
       fotos: [], // No actual real photos but marked as documented
       estado: "Justificado",
-      isMovimentoCego: false
+      is_movimento_cego: false
     };
 
     const contaAlvo = contas.find(c => c.id_conta === targetContaId);
@@ -459,7 +459,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       categoria: item.categoria,
       fotos: [],
       estado: "Justificado",
-      isMovimentoCego: false
+      is_movimento_cego: false
     };
 
     const contaAlvo = contas.find(c => c.id_conta === selectedContaId);
@@ -474,7 +474,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   };
 
   // Contabilizar movimentos cegos não justificados
-  const cegosPendentes = predioMovements.filter(m => m.isMovimentoCego && m.estado === "Movimento Cego / Por Justificar");
+  const cegosPendentes = predioMovements.filter(m => m.is_movimento_cego && m.estado === "Movimento Cego / Por Justificar");
 
   // Frações com dívidas para seleção rápida
   const fracoesComDivida = fracoes.filter(f => (f.divida_total || 0) > 0 || (f.id_predio === predio.id_predio));
@@ -648,8 +648,8 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                     <input 
                       type="checkbox" 
                       id="checkbox-cego"
-                      checked={isMovimentoCego} 
-                      onChange={e => setIsMovimentoCego(e.target.checked)} 
+                      checked={isCegoChecked} 
+                      onChange={e => setIsCegoChecked(e.target.checked)} 
                       className="h-4 w-4 text-amber-600 rounded border-slate-300 cursor-pointer"
                     />
                     <label htmlFor="checkbox-cego" className="text-xs text-amber-900 font-bold select-none cursor-pointer">
@@ -970,7 +970,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
               ) : (
                 predioMovements.map(m => {
                   const cta = contas.find(c => c.id_conta === m.id_conta);
-                  const isCego = m.isMovimentoCego || m.estado === "Movimento Cego / Por Justificar";
+                  const isCego = m.is_movimento_cego || m.estado === "Movimento Cego / Por Justificar";
                   return (
                     <tr key={m.id_mov} className={`border-b border-slate-100 hover:bg-slate-50/50 ${isCego ? "bg-amber-50/30" : ""}`}>
                       <td className="p-3 font-mono-custom whitespace-nowrap">{formatDatePT(m.data)}</td>

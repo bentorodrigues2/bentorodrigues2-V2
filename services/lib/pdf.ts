@@ -7,7 +7,7 @@ export async function gerarPDF(conteudo: string) {
     model: "gemini-1.5-flash",
   });
 
-  const result = await model.generateContent({
+  const result: any = await model.generateContent({
     contents: [
       {
         role: "user",
@@ -19,10 +19,10 @@ export async function gerarPDF(conteudo: string) {
       }
     ],
     generationConfig: {
-      mimeType: "application/pdf"
-    }
+      responseMimeType: "application/pdf"
+    } as any
   });
 
-  const pdfData = result.response.candidates[0].content.parts[0].inlineData.data;
+  const pdfData = result.response?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || "";
   return Buffer.from(pdfData, "base64");
 }

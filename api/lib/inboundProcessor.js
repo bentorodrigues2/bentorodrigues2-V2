@@ -151,7 +151,7 @@ async function registarComprovativoPendente({ aiData, contexto, comprovativoUrl,
       console.warn("[inboundProcessor] Aviso ao inserir pagamento pendente:", errPag.message);
     }
 
-    // 2. Inserir em movimentos (estado: 'Movimento Cego / Por Justificar', isMovimentoCego: true, estado_conciliacao: 'PENDENTE')
+    // 2. Inserir em movimentos (estado: 'Movimento Cego / Por Justificar', is_movimento_cego: true, estado_conciliacao: 'PENDENTE')
     const { data: movimento, error: errMov } = await supabase
       .from("movimentos")
       .insert({
@@ -162,7 +162,7 @@ async function registarComprovativoPendente({ aiData, contexto, comprovativoUrl,
         categoria: "Quotas",
         data: dataExtraida,
         estado: "Movimento Cego / Por Justificar",
-        isMovimentoCego: true,
+        is_movimento_cego: true,
         estado_conciliacao: "PENDENTE",
         comprovativo_url: comprovativoUrl || null,
         origem: "email_inbound"
@@ -193,7 +193,7 @@ async function enviarEmailResend({ to, subject, html, attachments = [] }) {
 
   try {
     const payload = {
-      from: "Condomínio <administracao@condomanagerai.com>",
+      from: process.env.EMAIL_FROM_ADDRESS || "Condomínio <administracao@condominio.pt>",
       to: [to],
       subject,
       html

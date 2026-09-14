@@ -551,7 +551,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
                     </div>
 
                     <div className="space-y-1 text-slate-700 font-sans">
-                      <p><strong>De:</strong> {(predio as any).email_administracao || (predio as any).email || "administracao@condomanagerai.com"}</p>
+                      <p><strong>De:</strong> {(predio as any).email_administracao || (predio as any).email || "administracao@condominio.pt"}</p>
                       <p><strong>Para:</strong> {welcomeModalFornecedor.email_contacto || welcomeModalFornecedor.contacto || "fornecedor@empresa.pt"}</p>
                       <p><strong>Assunto:</strong> Registo de Fornecedor Homologado - Condomínio Edifício Estrela da Barra</p>
                     </div>
@@ -565,12 +565,12 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
                         <p>• <strong>Designação:</strong> Condomínio Edifício Estrela da Barra</p>
                         <p>• <strong>NIF:</strong> 900123456</p>
                         <p>• <strong>Morada de Faturação:</strong> Rua Bento Rodrigues</p>
-                        <p>• <strong>E-mail para Envio de Faturas/Recibos:</strong> {(predio as any).email_administracao || (predio as any).email || "administracao@condomanagerai.com"}</p>
+                        <p>• <strong>E-mail para Envio de Faturas/Recibos:</strong> {(predio as any).email_administracao || (predio as any).email || "administracao@condominio.pt"}</p>
                       </div>
 
                       <div className="bg-amber-50/90 border border-amber-200 p-3 rounded-lg text-[11px] text-slate-800 space-y-1">
                         <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1">Dados de Acesso:</p>
-                        <p>• <strong>Link:</strong> <span className="font-mono text-indigo-600">https://bentorodrigues2.condomanagerai.com</span></p>
+                        <p>• <strong>Link:</strong> <span className="font-mono text-indigo-600">https://bentorodrigues2.vercel.app</span></p>
                         <p>• <strong>Utilizador:</strong> <span className="font-mono">{welcomeModalFornecedor.email_contacto || welcomeModalFornecedor.contacto || "fornecedor@empresa.pt"}</span></p>
                         <p>• <strong>Password Provisória:</strong> <span className="font-mono font-bold text-amber-900">{welcomeModalFornecedor.pwa_password_provisoria || "Forn-82M4P9"}</span></p>
                         <p className="text-[10px] text-amber-700 italic mt-1">(Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no seu primeiro acesso.)</p>

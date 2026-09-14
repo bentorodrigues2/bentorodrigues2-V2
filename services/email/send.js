@@ -1,4 +1,4 @@
-﻿import { Resend } from 'resend';
+import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     const { to, subject, html } = req.body;
 
     const data = await resend.emails.send({
-      from: 'no-reply@condomanagerai.com',
+      from: process.env.EMAIL_FROM_ADDRESS || 'no-reply@condominio.pt',
       to,
       subject,
       html,

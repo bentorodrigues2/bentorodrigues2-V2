@@ -163,7 +163,7 @@ export interface Movimento {
   categoria: string;
   fotos?: string[];
   estado?: string;
-  isMovimentoCego?: boolean;
+  is_movimento_cego?: boolean;
   id_fracao?: string;
   metodo_pagamento?: string;
   referencia_recibo?: string;

@@ -1,4 +1,4 @@
-﻿import { supabase } from "./supabase";
+import { supabase } from "./supabase";
 
 export async function guardarNoArquivo({
   pdfBuffer,
@@ -10,7 +10,7 @@ export async function guardarNoArquivo({
   fluxo,
   nomeFicheiro
 }) {
-  const caminho = ${ano}//////;
+  const caminho = `${ano}/${tema}/${tipo}/${predio}/${fracao}/${fluxo}/${nomeFicheiro}`;
 
   const { data, error } = await supabase.storage
     .from("documentos")
