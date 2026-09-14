@@ -3102,14 +3102,14 @@ export function GestaoDocumentos({
                   type="email"
                   value={emailDestinatario}
                   onChange={e => setEmailDestinatario(e.target.value)}
-                  placeholder="ex: condomino@exemplo.com ou administracao@condominio.pt"
+                  placeholder="ex: condomino@exemplo.com ou administracao@condomanagerai.com"
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs font-semibold focus:outline-none focus:border-emerald-400"
                   required
                 />
                 <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                   <span className="text-[9px] text-slate-400">Atalhos rápidos:</span>
                   {[
-                    { label: "Administração", email: predio.email_condominio || "administracao@condominio.pt" },
+                    { label: "Administração", email: predio.email_condominio || "administracao@condomanagerai.com" },
                     { label: "Empresa Gestora", email: "gestao@condomanager.ai" },
                     { label: "jcafguerra@hotmail.com", email: "jcafguerra@hotmail.com" }
                   ].map(sug => (

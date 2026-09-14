@@ -2206,7 +2206,7 @@ export function PortalCondomino({
                 </div>
 
                 <div className="space-y-1 text-slate-700 font-sans">
-                  <p><strong>De:</strong> {(predio as any).email_administracao || (predio as any).email || "administracao@condominio.pt"}</p>
+                  <p><strong>De:</strong> {(predio as any).email_administracao || (predio as any).email || "administracao@condomanagerai.com"}</p>
                   <p><strong>Para:</strong> {welcomeMailModal.fracao.proprietario.email}</p>
                   <p><strong>Assunto:</strong> Boas Vindas e Acessos</p>
                 </div>

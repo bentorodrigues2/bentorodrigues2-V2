@@ -167,7 +167,7 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
         dataUpload: new Date().toISOString().replace("T", " ").substring(0, 16),
         status: "CONCLUIDO",
         confiancaIa: 97,
-        remetenteEmail: isComprovativo ? "morador@condominio.pt" : "contabilidade@fornecedor.pt",
+        remetenteEmail: isComprovativo ? "morador@condomanagerai.com" : "contabilidade@fornecedor.pt",
         dadosExtraidos: isComprovativo ? {
           fornecedorNome: "Condómino Titular",
           nif: "234567890",

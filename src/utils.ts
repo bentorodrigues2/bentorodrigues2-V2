@@ -1048,7 +1048,7 @@ export function gerarPdfRegistoFornecedorHomologado(
     const passwordProvisoria = fornecedor?.pwa_password_provisoria || "Forn-82M4P9";
     const nifPredio = predio?.nif || "900123456";
     const moradaFaturacao = predio?.morada_linha1 || "Rua Bento Rodrigues";
-    const emailFaturacao = (predio as any)?.email_administracao || (predio as any)?.email || "administracao@condominio.pt";
+    const emailFaturacao = (predio as any)?.email_administracao || (predio as any)?.email || "administracao@condomanagerai.com";
 
     // Header Background
     doc.setFillColor(15, 23, 42); // Slate-900
@@ -1699,7 +1699,7 @@ export function generateReceiptPDF(data: ReceiptPdfData): jsPDF {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(5.8);
     doc.setTextColor(71, 85, 105);
-    doc.text(`Envio de Comprovativos: Envie para ${data.buildingEmail || "administracao@condominio.pt"} ou submeta diretamente através da aplicação.`, 15, currentY + 11.2);
+    doc.text(`Envio de Comprovativos: Envie para ${data.buildingEmail || "administracao@condomanagerai.com"} ou submeta diretamente através da aplicação.`, 15, currentY + 11.2);
 
     currentY += 14;
   } else {
@@ -2025,7 +2025,7 @@ export function gerarPdfBoasVindasAdministrador(
     addPdfWatermark(doc);
 
     const nomeAdmin = adminInfo?.nome || "Administrador do Condomínio";
-    const emailAdmin = adminInfo?.email || "administracao@condominio.pt";
+    const emailAdmin = adminInfo?.email || "administracao@condomanagerai.com";
     const tlmAdmin = adminInfo?.tlm || "+351 919 943 465";
     const passProvisoria = adminInfo?.password_provisoria || "Admin#2026!";
 
@@ -2210,7 +2210,7 @@ export function gerarPdfBoasVindasGestor(
     addPdfWatermark(doc);
 
     const nomeGestor = gestor?.nome || "Gestor de Carteira";
-    const emailGestor = gestor?.email || "gestor@condominio.pt";
+    const emailGestor = gestor?.email || "gestor@condomanagerai.com";
     const tlmGestor = gestor?.tlm || "+351 919 943 465";
     const passProvisoria = gestor?.password_provisoria || "Gestor#2026!";
 

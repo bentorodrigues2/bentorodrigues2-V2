@@ -193,7 +193,7 @@ async function enviarEmailResend({ to, subject, html, attachments = [] }) {
 
   try {
     const payload = {
-      from: process.env.EMAIL_FROM_ADDRESS || "Condomínio <administracao@condominio.pt>",
+      from: process.env.EMAIL_FROM_ADDRESS || "Condomínio <administracao@condomanagerai.com>",
       to: [to],
       subject,
       html

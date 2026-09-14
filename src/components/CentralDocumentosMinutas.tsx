@@ -300,7 +300,7 @@ export function CentralDocumentosMinutas({
         gerarPdfBoasVindasAdministrador(
           {
             nome: loggedUser.nome || "Administrador do Condomínio",
-            email: testEmailRecipient.includes("@") ? testEmailRecipient : "administracao@condominio.pt",
+            email: testEmailRecipient.includes("@") ? testEmailRecipient : "administracao@condomanagerai.com",
             perfil: "ADMIN",
             tlm: "+351 919 943 465",
             password_provisoria: "Admin#2026!"
@@ -313,7 +313,7 @@ export function CentralDocumentosMinutas({
         gerarPdfBoasVindasGestor(
           {
             nome: "Gestor de Portfólio / Operacional",
-            email: testEmailRecipient.includes("@") ? testEmailRecipient : "gestor@condominio.pt",
+            email: testEmailRecipient.includes("@") ? testEmailRecipient : "gestor@condomanagerai.com",
             perfil: "GESTOR",
             tlm: "+351 919 943 465",
             password_provisoria: "Gestor#2026!"
@@ -426,7 +426,7 @@ export function CentralDocumentosMinutas({
       assunto: "Boas Vindas e Acessos",
       anexoSimulado: "Instrucoes_Site_e_PWA_Condomino.pdf (210 KB)",
       corpoTexto: 
-`De: ${(predio as any).email_administracao || (predio as any).email || "administracao@condominio.pt"}
+`De: ${(predio as any).email_administracao || (predio as any).email || "administracao@condomanagerai.com"}
 Para: ${fracoes[0]?.proprietario?.email || "(Email do condómino)"}
 Assunto: Boas Vindas e Acessos
 
@@ -462,8 +462,8 @@ O Administrador do Condomínio`
       assunto: "Nomeação & Ativação de Acesso à Gestão - Condomínio Edifício Estrela da Barra",
       anexoSimulado: "Instrucoes_Acesso_Perfil_Administrador.pdf (245 KB)",
       corpoTexto:
-`De: ${(predio as any).email_administracao || (predio as any).email || "administracao@condominio.pt"}
-Para: ${testEmailRecipient.includes("@") ? testEmailRecipient : "administracao@condominio.pt"}
+`De: ${(predio as any).email_administracao || (predio as any).email || "administracao@condomanagerai.com"}
+Para: ${testEmailRecipient.includes("@") ? testEmailRecipient : "administracao@condomanagerai.com"}
 Assunto: Nomeação & Ativação de Acesso à Gestão - Condomínio Edifício Estrela da Barra
 
 Exmo.(a) Sr.(a) Administrador do Condomínio,
@@ -483,7 +483,7 @@ Aceda à consola de administração em https://bentorodrigues2.vercel.app utiliz
 
 Dados de Acesso:
 Link: https://bentorodrigues2.vercel.app
-Utilizador: ${testEmailRecipient.includes("@") ? testEmailRecipient : "administracao@condominio.pt"}
+Utilizador: ${testEmailRecipient.includes("@") ? testEmailRecipient : "administracao@condomanagerai.com"}
 Password Provisória: Admin#2026!
 (Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no seu primeiro acesso.)
 
@@ -498,8 +498,8 @@ CondoManager AI - Central de Operações`
       assunto: "Nomeação & Ativação de Acesso à Gestão - Condomínio Edifício Estrela da Barra",
       anexoSimulado: "Instrucoes_Acesso_Perfil_Gestor.pdf (230 KB)",
       corpoTexto:
-`De: ${(predio as any).email_administracao || (predio as any).email || "administracao@condominio.pt"}
-Para: ${testEmailRecipient.includes("@") ? testEmailRecipient : "gestor@condominio.pt"}
+`De: ${(predio as any).email_administracao || (predio as any).email || "administracao@condomanagerai.com"}
+Para: ${testEmailRecipient.includes("@") ? testEmailRecipient : "gestor@condomanagerai.com"}
 Assunto: Nomeação & Ativação de Acesso à Gestão - Condomínio Edifício Estrela da Barra
 
 Exmo.(a) Sr.(a) Gestor(a) de Portfólio / Operacional,
@@ -518,7 +518,7 @@ Aceda à consola de administração em https://bentorodrigues2.vercel.app utiliz
 
 Dados de Acesso:
 Link: https://bentorodrigues2.vercel.app
-Utilizador: ${testEmailRecipient.includes("@") ? testEmailRecipient : "gestor@condominio.pt"}
+Utilizador: ${testEmailRecipient.includes("@") ? testEmailRecipient : "gestor@condomanagerai.com"}
 Password Provisória: Gestor#2026!
 (Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no seu primeiro acesso.)
 
@@ -533,7 +533,7 @@ CondoManager AI - Central de Operações`
       assunto: "Registo de Fornecedor Homologado - Condomínio Edifício Estrela da Barra",
       anexoSimulado: "Instrucoes_Acesso_Perfil_Fornecedor.pdf (215 KB)",
       corpoTexto:
-`De: ${(predio as any).email_administracao || (predio as any).email || "administracao@condominio.pt"}
+`De: ${(predio as any).email_administracao || (predio as any).email || "administracao@condomanagerai.com"}
 Para: ${testEmailRecipient.includes("@") ? testEmailRecipient : "fornecedor@empresa.pt"}
 Assunto: Registo de Fornecedor Homologado - Condomínio Edifício Estrela da Barra
 
@@ -545,7 +545,7 @@ Dados Fiscais para Faturação :
 • Designação: Condomínio Edifício Estrela da Barra
 • NIF: 900123456
 • Morada de Faturação: Rua Bento Rodrigues
-• E-mail para Envio de Faturas/Recibos: ${(predio as any).email_administracao || (predio as any).email || "administracao@condominio.pt"}
+• E-mail para Envio de Faturas/Recibos: ${(predio as any).email_administracao || (predio as any).email || "administracao@condomanagerai.com"}
 
 Dados de Acesso:
 Link: https://bentorodrigues2.vercel.app
@@ -567,7 +567,7 @@ O Administrador do Condominio`
       assunto: "🎉 Feliz Aniversário, Ana Silva! - Os votos do seu Condomínio",
       anexoSimulado: "Cartao_Aniversario_Condomino.pdf (185 KB)",
       corpoTexto:
-`De: ${(predio as any).email_administracao || (predio as any).email || "administracao@condominio.pt"}
+`De: ${(predio as any).email_administracao || (predio as any).email || "administracao@condomanagerai.com"}
 Para: ${testEmailRecipient.includes("@") ? testEmailRecipient : "ana.silva@email.pt"}
 Assunto: 🎉 Feliz Aniversário, Ana Silva! - Os votos do seu Condomínio
 
@@ -1408,7 +1408,7 @@ A Administração do Condomínio`
                     type="email"
                     value={testEmailRecipient}
                     onChange={(e) => setTestEmailRecipient(e.target.value)}
-                    placeholder="ex: admin@condominio.pt"
+                    placeholder="ex: admin@condomanagerai.com"
                     className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-bold"
                   />
                   <button
@@ -1528,7 +1528,7 @@ A Administração do Condomínio`
                   <div className="flex items-center">
                     <span className="w-16 font-bold text-slate-400 uppercase text-[10px]">De:</span>
                     <span className="font-bold text-slate-800 dark:text-white">
-                      Condomínio {predio.nome || "Edifício Estrela da Barra"} &lt;{(predio as any).email_administracao || (predio as any).email || "administracao@condominio.pt"}&gt;
+                      Condomínio {predio.nome || "Edifício Estrela da Barra"} &lt;{(predio as any).email_administracao || (predio as any).email || "administracao@condomanagerai.com"}&gt;
                     </span>
                   </div>
                   <div className="flex items-center">

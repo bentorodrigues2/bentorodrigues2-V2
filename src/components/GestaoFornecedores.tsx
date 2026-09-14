@@ -551,7 +551,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
                     </div>
 
                     <div className="space-y-1 text-slate-700 font-sans">
-                      <p><strong>De:</strong> {(predio as any).email_administracao || (predio as any).email || "administracao@condominio.pt"}</p>
+                      <p><strong>De:</strong> {(predio as any).email_administracao || (predio as any).email || "administracao@condomanagerai.com"}</p>
                       <p><strong>Para:</strong> {welcomeModalFornecedor.email_contacto || welcomeModalFornecedor.contacto || "fornecedor@empresa.pt"}</p>
                       <p><strong>Assunto:</strong> Registo de Fornecedor Homologado - Condomínio Edifício Estrela da Barra</p>
                     </div>
@@ -565,7 +565,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
                         <p>• <strong>Designação:</strong> Condomínio Edifício Estrela da Barra</p>
                         <p>• <strong>NIF:</strong> 900123456</p>
                         <p>• <strong>Morada de Faturação:</strong> Rua Bento Rodrigues</p>
-                        <p>• <strong>E-mail para Envio de Faturas/Recibos:</strong> {(predio as any).email_administracao || (predio as any).email || "administracao@condominio.pt"}</p>
+                        <p>• <strong>E-mail para Envio de Faturas/Recibos:</strong> {(predio as any).email_administracao || (predio as any).email || "administracao@condomanagerai.com"}</p>
                       </div>
 
                       <div className="bg-amber-50/90 border border-amber-200 p-3 rounded-lg text-[11px] text-slate-800 space-y-1">

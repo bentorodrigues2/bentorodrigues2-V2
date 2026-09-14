@@ -74,7 +74,7 @@ export default async function handler(req, res) {
 
     // 5) Enviar email ao condómino
     await resend.emails.send({
-      from: 'Condomínio <no-reply@condominio.pt>',
+      from: 'Condomínio <no-reply@condomanagerai.com>',
       to: dados.proprietarios.email,
       subject: recibo.subject,
       html: recibo.message,

@@ -3,7 +3,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function enviarEmailPDF({ to, assunto, mensagem, pdfBuffer, nome }) {
   await resend.emails.send({
-    from: process.env.EMAIL_FROM_ADDRESS || "Condomínio <noreply@condominio.pt>",
+    from: process.env.EMAIL_FROM_ADDRESS || "Condomínio <noreply@condomanagerai.com>",
     to,
     subject: assunto,
     html: mensagem,

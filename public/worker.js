@@ -266,7 +266,7 @@ async function markAsRead(messageId, accessToken) {
  * Envia o Autoresponder com a imagem 20-Email Enviado.png centrada no corpo e SEM MOLDURA PRETA POR TRÁS
  */
 async function enviarRespostaResend(assuntoOriginal, targetEmail, nomeDestinatario, env) {
-  const fromEmail = env.RESEND_FROM_EMAIL || "Condomínio <noreply@condominio.pt>";
+  const fromEmail = env.RESEND_FROM_EMAIL || "Condomínio <noreply@condomanagerai.com>";
   const cleanTo = extrairEmailLimpo(targetEmail);
   if (!cleanTo) return { sucesso: false, erro: "Destinatário inválido" };
 
