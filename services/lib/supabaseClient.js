@@ -1,1 +1,1 @@
-export { supabase, default } from "../../api/lib/supabaseServer.js";
+export { supabase, default } from "../../server/lib/supabaseServer.js";
