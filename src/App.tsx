@@ -478,6 +478,15 @@ export default function App() {
     setContas([...updatedContas, novaConta]);
   };
 
+  const handleUpdateConta = (contaAtualizada: Conta) => {
+    setContas(contas.map(c => {
+      if (contaAtualizada.is_principal && c.id_predio === contaAtualizada.id_predio && c.id_conta !== contaAtualizada.id_conta) {
+        return { ...c, is_principal: false };
+      }
+      return c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c;
+    }));
+  };
+
   const handleSetPrincipalConta = (idConta: string) => {
     setContas(contas.map(c => {
       if (c.id_predio === activePredioId) {
@@ -2235,6 +2244,7 @@ export default function App() {
               predio={predioAtivo} 
               contas={contas} 
               onAddConta={handleAddConta}
+              onUpdateConta={handleUpdateConta}
               onSetPrincipalConta={handleSetPrincipalConta}
               onDeleteConta={(id) => setContas(contas.filter(c => c.id_conta !== id))}
               loggedUser={loggedUser}
@@ -2404,6 +2414,8 @@ export default function App() {
               onAddReuniao={handleAddReuniao}
               setReunioes={setReunioes}
               loggedUser={loggedUser}
+              onAddDocumento={handleAddDocumento}
+              documentos={documentos}
             />
           )}
 

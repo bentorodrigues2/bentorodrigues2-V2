@@ -214,15 +214,43 @@ export function generateOfficialReceiptPDF(
   doc.setFontSize(7.5);
   doc.setTextColor(15, 23, 42);
   doc.text("PELA ADMINISTRAÇÃO DO CONDOMÍNIO", 112, y + 5);
-  doc.setFont("helvetica", "italic");
-  doc.setFontSize(8);
-  doc.setTextColor(4, 120, 87);
-  doc.text(`Assinado Digitalmente por: ${recibo.emitido_por}`, 112, y + 12);
+
+  const adminSig = (recibo as any).adminSignatureBase64 || 
+                   localStorage.getItem("admin_signature_digital") || 
+                   localStorage.getItem("assinatura_admin_base64") || 
+                   localStorage.getItem("admin_digital_signature");
+
+  const adminNome = (recibo as any).adminNome || recibo.emitido_por || "José Carlos Guerra (Administrador do Condomínio)";
+
+  if (adminSig && adminSig.startsWith("data:image")) {
+    try {
+      doc.addImage(adminSig, "PNG", 112, y + 7, 48, 12);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Assinado Digitalmente por: ${adminNome}`, 112, y + 21);
+    } catch (e) {
+      doc.setDrawColor(203, 213, 225);
+      doc.line(112, y + 15, 185, y + 15);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.5);
+      doc.setTextColor(30, 41, 59);
+      doc.text(adminNome, 112, y + 20);
+    }
+  } else {
+    // Em caso de ausência da assinatura digital colocar o nome do administrador
+    doc.setDrawColor(203, 213, 225);
+    doc.line(112, y + 15, 185, y + 15);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(30, 41, 59);
+    doc.text(adminNome, 112, y + 20);
+  }
+
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   doc.setTextColor(100, 116, 139);
-  doc.text(`Data/Hora: ${new Date().toLocaleString("pt-PT")}`, 112, y + 18);
-  doc.text("Documento Processado por Computador", 112, y + 23);
+  doc.text(`Data: ${new Date().toLocaleDateString("pt-PT")} • Documento Processado por Computador`, 112, y + 25);
 
   // Footer
   doc.setFont("helvetica", "bold");

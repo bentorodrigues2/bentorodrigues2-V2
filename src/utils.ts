@@ -1718,27 +1718,46 @@ export function generateReceiptPDF(data: ReceiptPdfData): jsPDF {
   doc.setTextColor(15, 23, 42);
   doc.text("A ADMINISTRAÇÃO DO CONDOMÍNIO", 130, currentY + 6);
 
-  const adminSig = data.adminSignatureBase64 || localStorage.getItem("admin_signature_digital");
+  // Assinatura digital do gestor ou em caso de ausência colocar o nome do administrador
+  const adminSig = data.adminSignatureBase64 || 
+                   localStorage.getItem("admin_signature_digital") || 
+                   localStorage.getItem("assinatura_admin_base64") || 
+                   localStorage.getItem("admin_digital_signature");
+
+  const adminNameDisplay = data.adminNome || 
+                           localStorage.getItem("admin_nome_gestor") || 
+                           "José Carlos Guerra (Administrador do Condomínio)";
+
   if (adminSig && adminSig.startsWith("data:image")) {
     try {
-      doc.addImage(adminSig, "PNG", 132, currentY + 8, 48, 12);
+      doc.addImage(adminSig, "PNG", 130, currentY + 7, 50, 12);
+      // Rótulo discreto com nome do titular da assinatura digital
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Assinado Digitalmente: ${adminNameDisplay}`, 130, currentY + 20.5);
     } catch (e) {
-      console.warn("Could not render digital signature image:", e);
+      console.warn("Could not render digital signature image, using text name fallback:", e);
+      doc.setDrawColor(203, 213, 225);
+      doc.line(130, currentY + 16, 192, currentY + 16);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.2);
+      doc.setTextColor(30, 41, 59);
+      doc.text(adminNameDisplay, 130, currentY + 20.5);
     }
   } else {
+    // Em caso de ausência de assinatura digital: traço formal e nome do administrador
     doc.setDrawColor(203, 213, 225);
     doc.line(130, currentY + 16, 192, currentY + 16);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.2);
+    doc.setTextColor(30, 41, 59);
+    doc.text(adminNameDisplay, 130, currentY + 20.5);
   }
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.8);
-  doc.setTextColor(71, 85, 105);
-  const adminNameDisplay = data.adminNome || "Carlos Administrador - Administrador do Condomínio";
-  doc.text(adminNameDisplay, 130, currentY + 21);
 
   doc.setFontSize(6);
   doc.setTextColor(148, 163, 184);
-  doc.text(`Emitido via CondoManager AI • Documento nº ${data.reciboNum} • Autenticidade Digital Garantida`, 12, currentY + 21);
+  doc.text(`Documento nº ${data.reciboNum} • Autenticidade e Quitação Digital Garantida`, 12, currentY + 21);
 
   return doc;
 }

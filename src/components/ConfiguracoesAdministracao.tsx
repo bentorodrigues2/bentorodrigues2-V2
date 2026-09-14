@@ -182,9 +182,10 @@ Data: [Data] Local: [Local] Ordem de trabalhos: [Lista]
 
 A convocatória oficial encontra-se disponível AQUI.
 
-Com os meus cumprimentos, [Assinatura Digital] O Administrador do Condomínio
+Com os meus cumprimentos,
 
-Powered by CondoManager AI`
+[Assinatura Digital]
+ O Administrador do Condomínio`
   },
   {
     id: "recuperacao_password",

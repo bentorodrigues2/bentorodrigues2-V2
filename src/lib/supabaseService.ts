@@ -373,7 +373,7 @@ export async function uploadDocumentoToStorage(file: File, path: string): Promis
   if (!isSupabaseConfigured()) return null;
   try {
     const { data, error } = await supabase.storage
-      .from("condo_documentos")
+      .from("documentos")
       .upload(path, file, { upsert: true });
 
     if (error) {
@@ -382,7 +382,7 @@ export async function uploadDocumentoToStorage(file: File, path: string): Promis
     }
 
     const { data: publicData } = supabase.storage
-      .from("condo_documentos")
+      .from("documentos")
       .getPublicUrl(data.path);
 
     return publicData.publicUrl;
@@ -499,9 +499,9 @@ export async function fetchChavesFromSupabase(idPredio?: string): Promise<ChaveI
       area_nome: row.area_nome || row.local || "",
       local: row.local || row.local_sugerido || row.area_nome || "",
       codigo_chave: row.codigo_chave || "",
-      quantidade: Number(row.quantidade) || 1,
-      no_claviculario: row.no_claviculario ?? (row.status !== "entregue"),
-      status: row.status || (row.no_claviculario === false ? "entregue" : "disponivel"),
+      quantidade: row.quantidade !== undefined && row.quantidade !== null ? Number(row.quantidade) : 0,
+      no_claviculario: Boolean(row.no_claviculario),
+      status: row.status || (row.no_claviculario ? "disponivel" : "entregue"),
       num_chaveiro: row.num_chaveiro || "1",
       local_sugerido: row.local_sugerido || row.local || "",
       observacoes: row.observacoes || "",
@@ -861,3 +861,159 @@ export async function deleteSinistroFromSupabase(idSinistro: string): Promise<bo
     return false;
   }
 }
+
+// ============================================================================
+// GESTÃO DE FORNECEDORES & CONTRATOS
+// ============================================================================
+export async function saveFornecedorToSupabase(forn: any): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("fornecedores").upsert({
+      id_fornecedor: forn.id_fornecedor,
+      id_predio: forn.id_predio,
+      nome: forn.nome,
+      nif: forn.nif,
+      iban: forn.iban || null,
+      categoria: forn.categoria,
+      morada: forn.morada || null,
+      contacto: forn.contacto || null,
+      pessoa_contacto: forn.pessoa_contacto || null,
+      telemovel_direto: forn.telemovel_direto || null,
+      email_contacto: forn.email_contacto || null,
+      data_nascimento: forn.data_nascimento || null,
+      perfis_pwa: forn.perfis_pwa || null,
+      pwa_acesso_enviado: forn.pwa_acesso_enviado || false,
+      pwa_password_provisoria: forn.pwa_password_provisoria || null
+    });
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteFornecedorFromSupabase(idFornecedor: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("fornecedores").delete().eq("id_fornecedor", idFornecedor);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function saveContratoToSupabase(contrato: any): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("contratos").upsert({
+      id_contrato: contrato.id_contrato,
+      id_predio: contrato.id_predio,
+      id_fornecedor: contrato.id_fornecedor,
+      servico: contrato.servico,
+      custo_mensal: contrato.custo_mensal,
+      custo_anual: contrato.custo_anual,
+      renovacao_automatica: contrato.renovacao_automatica,
+      data_fim: contrato.data_fim,
+      alerta_renovacao: contrato.alerta_renovacao,
+      sla_resposta: contrato.sla_resposta || null,
+      penalizacao_atraso: contrato.penalizacao_atraso || null,
+      indexacao_preco: contrato.indexacao_preco || null,
+      documento_nome: contrato.documento_nome || null
+    });
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================================
+// GESTÃO DE REUNIÕES & ASSEMBLEIAS
+// ============================================================================
+export async function saveReuniaoToSupabase(reuniao: any): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("reunioes").upsert({
+      id_reuniao: reuniao.id_reuniao,
+      id_predio: reuniao.id_predio,
+      tema: reuniao.tema,
+      data: reuniao.data,
+      hora: reuniao.hora,
+      ordens_trabalho: reuniao.ordens_trabalho,
+      local: reuniao.local || null,
+      estado: reuniao.estado || "Agendada",
+      ata_conteudo: reuniao.ata_conteudo || null,
+      tipo: reuniao.tipo || "Ordinária"
+    });
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================================
+// GESTÃO DE OCORRÊNCIAS
+// ============================================================================
+export async function saveOcorrenciaToSupabase(ocorrencia: any): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("ocorrencias").upsert({
+      id_ocorrencia: ocorrencia.id_ocorrencia,
+      id_predio: ocorrencia.id_predio,
+      id_fracao: ocorrencia.id_fracao || null,
+      titulo: ocorrencia.titulo,
+      descricao: ocorrencia.descricao,
+      tipo: ocorrencia.tipo || "Geral",
+      gravidade: ocorrencia.gravidade || "Média",
+      estado: ocorrencia.estado || "Pendente",
+      data_abertura: ocorrencia.data_abertura || new Date().toISOString()
+    });
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================================
+// CONFIGURAÇÃO DE QUOTAS & AVISOS
+// ============================================================================
+export async function saveConfiguracaoQuotasToSupabase(config: any): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("configuracao_quotas_predio").upsert({
+      id_predio: config.id_predio,
+      ano_exercicio: config.ano_exercicio || new Date().getFullYear(),
+      orcamento_regular: config.orcamento_regular || 0,
+      data_limite_regular: config.data_limite_regular || null,
+      id_conta_ordinaria: config.id_conta_ordinaria || null,
+      orcamento_extra: config.orcamento_extra || 0,
+      num_prestacoes_extra: config.num_prestacoes_extra || 1,
+      descricao_extra: config.descricao_extra || null,
+      data_limite_extra: config.data_limite_extra || null,
+      id_conta_extraordinaria: config.id_conta_extraordinaria || null
+    });
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function saveAvisosToSupabase(novosAvisos: any[]): Promise<boolean> {
+  if (!isSupabaseConfigured() || !novosAvisos.length) return false;
+  try {
+    const payload = novosAvisos.map(a => ({
+      id_aviso: a.id_aviso,
+      id_predio: a.id_predio,
+      id_fracao: a.id_fracao,
+      tipo: a.tipo,
+      data: a.data,
+      vencimento: a.vencimento,
+      descricao: a.descricao,
+      valor: a.valor,
+      estado: a.estado || "Pendente"
+    }));
+    const { error } = await supabase.from("avisos").upsert(payload);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+

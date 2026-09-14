@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { jsPDF } from "jspdf";
-import { Predio, Fracao, Reuniao, LoggedUser, ReuniaoAssinatura } from "../types";
+import { Predio, Fracao, Reuniao, LoggedUser, ReuniaoAssinatura, Documento } from "../types";
 import { 
   formatDatePT, 
   formatDateISO, 
@@ -23,9 +23,11 @@ interface GestaoAssembleiasProps {
   onAddReuniao: (novaReuniao: Reuniao) => void;
   setReunioes: React.Dispatch<React.SetStateAction<Reuniao[]>>;
   loggedUser: LoggedUser;
+  onAddDocumento?: (novoDoc: Documento) => void;
+  documentos?: Documento[];
 }
 
-export function GestaoAssembleias({ predio, fracoes, reunioes, onAddReuniao, setReunioes, loggedUser }: GestaoAssembleiasProps) {
+export function GestaoAssembleias({ predio, fracoes, reunioes, onAddReuniao, setReunioes, loggedUser, onAddDocumento, documentos }: GestaoAssembleiasProps) {
   // Form state
   const [tema, setTema] = useState("");
   const [data, setData] = useState("");
@@ -50,6 +52,7 @@ export function GestaoAssembleias({ predio, fracoes, reunioes, onAddReuniao, set
   const [notasAta, setNotasAta] = useState("");
   const [ataTexto, setAtaTexto] = useState("");
   const [loadingAta, setLoadingAta] = useState(false);
+  const [loadingHumanize, setLoadingHumanize] = useState(false);
 
   // Digital Signature Canvas Refs & States
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -57,7 +60,6 @@ export function GestaoAssembleias({ predio, fracoes, reunioes, onAddReuniao, set
   const [signerNome, setSignerNome] = useState("");
   const [signerFracao, setSignerFracao] = useState("Administrador");
   const [presidenteMesa, setPresidenteMesa] = useState("José Carlos Guerra (Administrador)");
-  const [secretarioMesa, setSecretarioMesa] = useState("Secretário Designado da Mesa");
   const [localReuniao, setLocalReuniao] = useState("");
 
   const predioReunioes = reunioes.filter(r => r.id_predio === predio.id_predio);
@@ -78,6 +80,132 @@ export function GestaoAssembleias({ predio, fracoes, reunioes, onAddReuniao, set
   };
 
   const horaSegunda = hora ? somarMinutos(hora, 30) : "";
+
+  // Motor analítico e humano para redação de convocatórias
+  const gerarConvocatoriaHumanizadaLocal = (
+    temaVal: string, 
+    dataVal: string, 
+    horaVal: string, 
+    ordensVal: string, 
+    localVal: string, 
+    isVidVal: boolean, 
+    platVal: string, 
+    linkVal: string
+  ): string => {
+    const hSeg = somarMinutos(horaVal, 30);
+    const dataFmt = formatDatePT(dataVal);
+    const predioNome = predio?.nome || "Condomínio";
+    const predioMorada = `${predio?.morada_linha1 || ""}${predio?.num_porta ? `, Nº ${predio.num_porta}` : ""}, ${predio?.localidade || ""}`;
+
+    // Análise e enquadramento analítico dos pontos da ordem de trabalhos
+    const linhas = ordensVal.split("\n").filter(l => l.trim().length > 0);
+    const pontosAnaliticos = linhas.map((linha) => {
+      const lower = linha.toLowerCase();
+      let analise = "";
+      if (lower.includes("conta") || lower.includes("relatório") || lower.includes("balancete")) {
+        analise = "\n   ↳ Enquadramento: Análise rigorosa da gestão financeira transata, assegurando total transparência na aplicação dos fundos comuns.";
+      } else if (lower.includes("orçamento") || lower.includes("quota")) {
+        analise = "\n   ↳ Enquadramento: Previsão de despesas para manutenção contínua, limpeza e conservação, prevenindo derrapagens ou quotas imprevistas.";
+      } else if (lower.includes("obra") || lower.includes("conservação") || lower.includes("reparação") || lower.includes("fachada") || lower.includes("telhado") || lower.includes("elevador")) {
+        analise = "\n   ↳ Enquadramento: Intervenção prioritária para salvaguardar a segurança, estanquidade e valorização patrimonial do edifício.";
+      } else if (lower.includes("eleição") || lower.includes("administrador") || lower.includes("mandato")) {
+        analise = "\n   ↳ Enquadramento: Continuidade e representatividade da administração na defesa do interesse comum dos condóminos.";
+      } else if (lower.includes("regulamento") || lower.includes("partes comuns") || lower.includes("ruído") || lower.includes("animal")) {
+        analise = "\n   ↳ Enquadramento: Atualização de regras de convivência para promover a tranquilidade e a harmonia entre todos os moradores.";
+      }
+      return `${linha}${analise}`;
+    }).join("\n\n");
+
+    const videoInfo = isVidVal 
+      ? `\n🎥 Modalidade Mista / Vídeo-Conferência (${platVal}):\n• Acesso direto: ${linkVal || "Disponibilizado na aplicação"}\n• Quem assistir por vídeo-conferência poderá votar e subscrever a folha de presenças digitalmente.\n`
+      : "";
+
+    return `Assunto: Convocatória da Assembleia Geral de Condóminos – ${predioNome}
+
+Estimados(as) Vizinhos(as) e Condóminos,
+
+Esperamos que este contacto vos encontre bem.
+
+O cuidado, a segurança e a valorização contínua do nosso edifício dependem da participação e do contributo de cada um de nós. Pelo presente meio, convocamos todos os condóminos para a próxima Assembleia Geral de Condóminos:
+
+📅 Data: ${dataFmt}
+⏰ 1ª Convocatória: ${horaVal} horas (quórum legal de pelo menos metade do valor do prédio)
+⏰ 2ª Convocatória: ${hSeg} horas (nos termos do Código Civil, deliberando com o quórum presente)
+📍 Local: ${localVal || predioMorada}${videoInfo}
+
+📋 Ordem de Trabalhos & Análise Prévia das Deliberações:
+${pontosAnaliticos || ordensVal}
+
+🤝 Facilidade de Participação & Procurações:
+• A vossa presença presencial ou online é essencial para decisões verdadeiramente participadas.
+• Caso não vos seja possível estar presentes, podem emitir uma Procuração simples a favor de outro condómino de confiança ou utilizar o Portal do Condómino / PWA.
+• Sondagem de Presenças: Agradecemos que assinalem com brevidade se contam estar presentes (Vem / Não vem) através da aplicação ou em resposta a este aviso, permitindo antecipar o quórum.
+
+Estamos à vossa inteira disposição para qualquer esclarecimento prévio ou consulta de documentos de suporte.
+
+Com os meus cumprimentos,
+
+[Assinatura Digital]
+ O Administrador do Condomínio`;
+  };
+
+  // Redigir Convocatória Humana & Analítica via Gemini AI ou motor local inteligente
+  const redigirConvocatoriaHumanizadaComIA = async () => {
+    if (!data || !hora || !ordensTrabalho) {
+      alert("Por favor indique pelo menos a Data, a Hora e a Ordem de Trabalhos para a IA poder redigir a convocatória analítica.");
+      return;
+    }
+
+    setLoadingHumanize(true);
+    const hSeg = somarMinutos(hora, 30);
+    const localStr = localReuniao.trim() ? localReuniao : `Sala Comum / Morada do Prédio (${predio?.morada_linha1 || ""}, Nº ${predio?.num_porta || ""})`;
+
+    try {
+      const resp = await fetch("/api/humanize-convocatoria", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tema: tema || "Assembleia Geral de Condóminos",
+          data: formatDatePT(data),
+          hora,
+          horaSegunda: hSeg,
+          local: localStr,
+          ordensTrabalho,
+          isVideoconferencia,
+          plataformaVideo,
+          linkVideo,
+          predio,
+          loggedUser
+        })
+      });
+
+      if (resp.ok) {
+        const json = await resp.json();
+        if (json.text) {
+          setEmailConvocatoria(json.text);
+          alert("✨ Convocatória redigida com sucesso pela Inteligência Artificial com capacidade analítica e tom humano!");
+          return;
+        }
+      }
+      throw new Error("Fallback local acionado");
+    } catch {
+      // Fallback local analítico e humano
+      const texto = gerarConvocatoriaHumanizadaLocal(
+        tema || "Assembleia Geral de Condóminos",
+        data,
+        hora,
+        ordensTrabalho,
+        localStr,
+        isVideoconferencia,
+        plataformaVideo,
+        linkVideo
+      );
+      setEmailConvocatoria(texto);
+      alert("✨ Convocatória formulada com capacidade analítica e tom caloroso e humano!");
+    } finally {
+      setLoadingHumanize(false);
+    }
+  };
 
   // Helper AI assistant to formulate convocation draft
   const elaborarComIA = () => {
@@ -189,37 +317,112 @@ export function GestaoAssembleias({ predio, fracoes, reunioes, onAddReuniao, set
       nova.folha_presencas = defaultPresences;
 
       onAddReuniao(nova);
-      alert("Assembleia agendada com sucesso com Segunda Convocatória e Sondagem Automática de Presenças!");
+
+      // Auto-arquivar Convocatória Oficial no Arquivo Digital (Pasta 'Atas & Convocatórias')
+      if (onAddDocumento) {
+        const anoStr = data ? data.split("-")[0] : new Date().getFullYear().toString();
+        const docConvocatoria: Documento = {
+          id_doc: `doc-convocatoria-${nova.id_reuniao}`,
+          id_predio: predio.id_predio,
+          nome: `Convocatória_${tema.replace(/[^a-zA-Z0-9À-ÿ]/g, "_")}_${formatDatePT(data)}.pdf`,
+          tipo: "Convocatória Oficial (PDF)",
+          data_upload: new Date().toLocaleDateString("pt-PT"),
+          tamanho: "320 KB",
+          categoria: "Oficial",
+          tema: "Atas & Convocatórias",
+          ano: anoStr,
+          sub_pasta: `Assembleias ${anoStr}`,
+          descricao: `Convocatória oficial da Assembleia Geral de Condóminos agendada para ${formatDatePT(data)} às ${hora}.`,
+          visibilidade: "Público",
+          autor: loggedUser.nome || "Administração do Condomínio",
+          arquivado: true
+        };
+        onAddDocumento(docConvocatoria);
+      }
+
+      alert("Assembleia agendada com sucesso com Segunda Convocatória e arquivada automaticamente no Arquivo Digital!");
     }
 
-    const hSegunda = somarMinutos(hora, 30);
-    const videoSection = isVideoconferencia ? `\n\n🎥 ACESSO POR VÍDEO-CONFERÊNCIA (${plataformaVideo}):\nLink de Acesso Direto: ${linkFinal}\nNota Obrigatória: Quem assistir por vídeo-conferência deve assinar digitalmente e assinalar presença online.` : "";
     const localStr = localReuniao.trim() ? localReuniao : `Sala Comum / Morada do Prédio (${predio?.morada_linha1 || ""}, Nº ${predio?.num_porta || ""})`;
 
-    const textoConvocatoria = `Assunto: Convocatória – Assembleia de Condóminos (${isVideoconferencia ? "Presencial / Vídeo-Conferência" : "Presencial"})
-
-Olá [Nome],
-
-A assembleia de condóminos foi agendada.
-
-1ª Convocatória: ${formatDatePT(data)} às ${hora} horas
-2ª Convocatória (Código Civil): ${formatDatePT(data)} às ${hSegunda} horas
-Local da Reunião: ${localStr}${videoSection}
-
-Ordem de trabalhos: 
-${ordensTrabalho}
-
-Sondagem de Presenças (WhatsApp/PWA):
-Pergunta: Convocatória de reunião dia ${formatDatePT(data)} vem/não vem
-
-A convocatória oficial e votações encontram-se disponíveis na aplicação PWA / Portal.
-
-Com os meus cumprimentos,
-[Assinatura Digital] O Administrador do Condomínio
-Powered by CondoManager AI`;
+    const textoConvocatoria = gerarConvocatoriaHumanizadaLocal(
+      tema,
+      data,
+      hora,
+      ordensTrabalho,
+      localStr,
+      isVideoconferencia,
+      plataformaVideo,
+      linkFinal
+    );
 
     setEmailConvocatoria(textoConvocatoria);
     setTema(""); setData(""); setHora(""); setOrdensTrabalho(""); setLinkVideo(""); setLocalReuniao("");
+  };
+
+  // Funções de Arquivamento Manual/Direto no Arquivo Digital
+  const handleArquivarConvocatoria = (r: Reuniao) => {
+    if (!onAddDocumento) {
+      alert("Aviso: Módulo de Arquivo Digital não configurado para ligação direta.");
+      return;
+    }
+    const anoStr = r.data ? (r.data.includes("/") ? r.data.split("/")[2] : r.data.split("-")[0]) : new Date().getFullYear().toString();
+    const docId = `doc-convocatoria-${r.id_reuniao}`;
+    const jaExiste = documentos?.some(d => d.id_doc === docId || (d.id_predio === predio.id_predio && d.nome.includes(r.tema) && d.tipo.includes("Convocatória")));
+    if (jaExiste) {
+      alert(`Esta Convocatória já se encontra arquivada no Arquivo Digital (Pasta 'Atas & Convocatórias' > 'Assembleias ${anoStr}')!`);
+      return;
+    }
+    const docConvocatoria: Documento = {
+      id_doc: docId,
+      id_predio: predio.id_predio,
+      nome: `Convocatória_${r.tema.replace(/[^a-zA-Z0-9À-ÿ]/g, "_")}_${r.data.replace(/\//g, "-")}.pdf`,
+      tipo: "Convocatória Oficial (PDF)",
+      data_upload: new Date().toLocaleDateString("pt-PT"),
+      tamanho: "320 KB",
+      categoria: "Oficial",
+      tema: "Atas & Convocatórias",
+      ano: anoStr,
+      sub_pasta: `Assembleias ${anoStr}`,
+      descricao: `Convocatória oficial emitida para a assembleia '${r.tema}' de ${r.data} às ${r.hora}.`,
+      visibilidade: "Público",
+      autor: loggedUser.nome || "Administração do Condomínio",
+      arquivado: true
+    };
+    onAddDocumento(docConvocatoria);
+    alert(`📁 Convocatória arquivada com sucesso no Arquivo Digital!\nPasta: 'Atas & Convocatórias' > 'Assembleias ${anoStr}'`);
+  };
+
+  const handleArquivarAta = (r: Reuniao) => {
+    if (!onAddDocumento) {
+      alert("Aviso: Módulo de Arquivo Digital não configurado para ligação direta.");
+      return;
+    }
+    const anoStr = r.data ? (r.data.includes("/") ? r.data.split("/")[2] : r.data.split("-")[0]) : new Date().getFullYear().toString();
+    const docId = `doc-ata-${r.id_reuniao}`;
+    const jaExiste = documentos?.some(d => d.id_doc === docId || (d.id_predio === predio.id_predio && d.nome.includes(r.tema) && d.tipo.includes("Ata")));
+    if (jaExiste) {
+      alert(`Esta Ata já se encontra arquivada no Arquivo Digital (Pasta 'Atas & Convocatórias' > 'Assembleias ${anoStr}')!`);
+      return;
+    }
+    const docAta: Documento = {
+      id_doc: docId,
+      id_predio: predio.id_predio,
+      nome: `Ata_${r.tema.replace(/[^a-zA-Z0-9À-ÿ]/g, "_")}_${r.data.replace(/\//g, "-")}.pdf`,
+      tipo: "Ata Oficial Certificada (PDF)",
+      data_upload: new Date().toLocaleDateString("pt-PT"),
+      tamanho: "480 KB",
+      categoria: "Oficial",
+      tema: "Atas & Convocatórias",
+      ano: anoStr,
+      sub_pasta: `Assembleias ${anoStr}`,
+      descricao: `Ata da Assembleia Geral de Condóminos referente a '${r.tema}' realizada em ${r.data}. Registada e arquivada nos termos legais.`,
+      visibilidade: "Público",
+      autor: loggedUser.nome || "Administrador do Condomínio",
+      arquivado: true
+    };
+    onAddDocumento(docAta);
+    alert(`📁 Ata arquivada com sucesso no Arquivo Digital!\nPasta: 'Atas & Convocatórias' > 'Assembleias ${anoStr}'`);
   };
 
   const iniciarEdicao = (r: Reuniao) => {
@@ -383,8 +586,7 @@ Powered by CondoManager AI`;
           ausentes: ausentesFormatados,
           quorum: activeQuorum,
           quorumAusente: quorumAusente,
-          presidenteMesa: presidenteMesa || loggedUser.nome,
-          secretarioMesa: secretarioMesa || "Secretário da Mesa"
+          presidenteMesa: presidenteMesa || loggedUser.nome
         })
       });
 
@@ -426,8 +628,7 @@ Powered by CondoManager AI`;
         `Aos ${dataEscrito}, pelas ${activeMeeting.hora} horas, reuniu a Assembleia Geral de Condóminos do edifício acima identificado, ` +
         `tendo a reunião tido lugar em: ${localFinal}.\n\n` +
         `II. MESA DA ASSEMBLEIA:\n` +
-        `Assumiu a Presidência da Mesa o Administrador do Condomínio, ${presidenteMesa || loggedUser.nome}, ` +
-        `tendo sido designado para Secretário da Mesa ${secretarioMesa || "um condómino presente"}, o qual lavrou a presente ata.\n\n` +
+        `Assumiu a Presidência da Mesa o Administrador do Condomínio, ${presidenteMesa || loggedUser.nome}, o qual conduziu os trabalhos e lavrou a presente ata nos termos da lei.\n\n` +
         `III. QUÓRUM CONSTITUTIVO E CONVOCATÓRIA (Art. 1432.º do Código Civil):\n` +
         `Efetuada a conferência das presenças através da respetiva Folha de Presenças regulamentar, verificou-se que se encontravam presentes e representados condóminos correspondentes a ${activeQuorum}‰ (milésimas) do capital total do condomínio, encontrando-se ausentes ${quorumAusente}‰.\n` +
         `${hasFirstConvocatoriaQuorum 
@@ -445,10 +646,9 @@ Powered by CondoManager AI`;
         `Passando-se de seguida à discussão ponto por ponto da Ordem de Trabalhos, registaram-se as seguintes deliberações e o resultado exato de cada votação:\n\n` +
         `${notasAta || "Ponto 1: Apreciação e aprovação do relatório de contas do exercício transato. Submetido a votação, foi APROVADO POR UNANIMIDADE com 100% dos votos presentes (" + activeQuorum + "‰ a favor, 0‰ contra e 0‰ abstenções).\n\nPonto 2: Orçamento previsional e fixação de quotas para o ano corrente. Deliberou-se aprovar o mapa orçamental, ficando fixadas as quotas ordinárias mensais com vencimento até ao dia 8 de cada mês, constituindo a presente ata TÍTULO EXECUTIVO nos termos do Art. 6.º do Decreto-Lei n.º 268/94."}\n\n` +
         `VII. ENCERRAMENTO E CLÁUSULA DE ASSINATURA E SUBSCRIÇÃO (Art. 1.º, n.º 2 e 3, DL 268/94):\n` +
-        `Nada mais havendo a tratar, o Presidente deu por encerrada a assembleia, da qual se lavrou a presente ata que, lida em voz alta e achada conforme por todos os presentes, vai ser devidamente assinada por quem presidiu à mesa, pelo secretário e subscrita por todos os condóminos presentes e representados, quer por via manuscrita quer através de validação digital eletrónica regulamentar.\n\n` +
+        `Nada mais havendo a tratar, o Presidente deu por encerrada a assembleia, da qual se lavrou a presente ata que, lida em voz alta e achada conforme por todos os presentes, vai ser devidamente assinada por quem presidiu à mesa e subscrita por todos os condóminos presentes e representados, quer por via manuscrita quer através de validação digital eletrónica regulamentar.\n\n` +
         `Feito e lavrado em ${predio.localidade || "local do condomínio"}, aos ${dataEscrito}.\n\n` +
         `O Presidente da Mesa: ___________________________________________ (${presidenteMesa || loggedUser.nome})\n\n` +
-        `O Secretário da Mesa: ___________________________________________ (${secretarioMesa || "Secretário da Mesa"})\n\n` +
         `SUBSCRIÇÃO DOS CONDÓMINOS PRESENTES E REPRESENTADOS:\n` +
         `(Conforme assinaturas apostas na folha anexa de validação e subscrição de ata)`;
 
@@ -468,13 +668,40 @@ Powered by CondoManager AI`;
           ...r,
           ata: ataTexto,
           notas_ata: notesToText(),
-          estado: "Realizada"
+          estado: "Realizada" as const
         };
       }
       return r;
     });
     setReunioes(updated);
-    alert("Ata final e estado da assembleia guardados com sucesso no cadastro histórico!");
+
+    // Auto-arquivar Ata Oficial no Arquivo Digital
+    if (onAddDocumento) {
+      const anoStr = activeMeeting.data ? (activeMeeting.data.includes("/") ? activeMeeting.data.split("/")[2] : activeMeeting.data.split("-")[0]) : new Date().getFullYear().toString();
+      const docId = `doc-ata-${activeMeeting.id_reuniao}`;
+      const jaExiste = documentos?.some(d => d.id_doc === docId || (d.id_predio === predio.id_predio && d.nome.includes(activeMeeting.tema) && d.tipo.includes("Ata")));
+      if (!jaExiste) {
+        const docAta: Documento = {
+          id_doc: docId,
+          id_predio: predio.id_predio,
+          nome: `Ata_${activeMeeting.tema.replace(/[^a-zA-Z0-9À-ÿ]/g, "_")}_${activeMeeting.data.replace(/\//g, "-")}.pdf`,
+          tipo: "Ata Oficial Certificada (PDF)",
+          data_upload: new Date().toLocaleDateString("pt-PT"),
+          tamanho: "480 KB",
+          categoria: "Oficial",
+          tema: "Atas & Convocatórias",
+          ano: anoStr,
+          sub_pasta: `Assembleias ${anoStr}`,
+          descricao: `Ata da Assembleia Geral referente a '${activeMeeting.tema}' de ${activeMeeting.data}. Aprovada e arquivada nos termos legais.`,
+          visibilidade: "Público",
+          autor: loggedUser.nome || "Administrador do Condomínio",
+          arquivado: true
+        };
+        onAddDocumento(docAta);
+      }
+    }
+
+    alert("✨ Ata final guardada com sucesso e arquivada automaticamente no Arquivo Digital (Pasta 'Atas & Convocatórias')!");
   };
 
   const notesToText = () => notasAta;
@@ -763,12 +990,12 @@ Powered by CondoManager AI`;
         </div>
 
         <h4 style="font-size: 11px; text-transform: uppercase; color: #334155; margin: 15px 0 10px 0; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px;">
-          1. Mesa da Assembleia (Quem Presidiu e Quem Secretariou):
+          1. Mesa da Assembleia (Quem Presidiu aos Trabalhos):
         </h4>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+        <div style="display: flex; justify-content: center; margin-bottom: 25px;">
           <!-- Presidente -->
-          <div style="padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; min-height: 100px; background-color: #f8fafc; page-break-inside: avoid;">
-            <p style="font-size: 10px; margin: 0 0 5px 0; font-weight: bold; color: #1e293b; text-transform: uppercase;">Presidente da Mesa</p>
+          <div style="padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; min-height: 100px; width: 340px; background-color: #f8fafc; page-break-inside: avoid;">
+            <p style="font-size: 10px; margin: 0 0 5px 0; font-weight: bold; color: #1e293b; text-transform: uppercase;">Presidente da Mesa (Administrador do Condomínio)</p>
             ${(() => {
               const presSig = activeMeeting.assinaturas?.find(a => a.fracao === "Presidente" || a.fracao === "Administrador");
               if (presSig) {
@@ -782,27 +1009,6 @@ Powered by CondoManager AI`;
                 return `
                   <div style="border-bottom: 1px solid #475569; height: 35px; width: 160px; margin: 10px auto 0 auto;"></div>
                   <p style="font-size: 9px; color: #475569; margin: 5px 0 0 0;">${presidenteMesa || loggedUser.nome}</p>
-                `;
-              }
-            })()}
-          </div>
-
-          <!-- Secretario -->
-          <div style="padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; min-height: 100px; background-color: #f8fafc; page-break-inside: avoid;">
-            <p style="font-size: 10px; margin: 0 0 5px 0; font-weight: bold; color: #1e293b; text-transform: uppercase;">Secretário da Mesa</p>
-            ${(() => {
-              const secSig = activeMeeting.assinaturas?.find(a => a.fracao === "Secretário" || a.fracao === "Secretario");
-              if (secSig) {
-                return `
-                  <div style="display: flex; justify-content: center; align-items: center; height: 50px;">
-                    <img src="${secSig.img}" style="max-height: 45px; max-width: 140px; mix-blend-mode: multiply;" />
-                  </div>
-                  <p style="font-size: 8px; color: #059669; margin: 5px 0 0 0; font-weight: bold;">✓ ASSINADO DIGITALMENTE (ID: ${secSig.nome})</p>
-                `;
-              } else {
-                return `
-                  <div style="border-bottom: 1px solid #475569; height: 35px; width: 160px; margin: 10px auto 0 auto;"></div>
-                  <p style="font-size: 9px; color: #475569; margin: 5px 0 0 0;">${secretarioMesa || "Secretário Designado"}</p>
                 `;
               }
             })()}
@@ -1120,10 +1326,31 @@ Powered by CondoManager AI`;
             )}
           </div>
 
-          <div className="flex space-x-2 pt-2">
-            <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors cursor-pointer flex items-center">
+          <div className="flex flex-wrap items-center gap-2 pt-2">
+            <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors cursor-pointer flex items-center shadow-xs">
               <i className="fa-solid fa-calendar-check mr-1.5"></i> {editingId ? "Guardar Alterações" : "Gerar Convocatória & Agendar"}
             </button>
+
+            <button
+              type="button"
+              disabled={loadingHumanize}
+              onClick={redigirConvocatoriaHumanizadaComIA}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+              title="A IA analisa os pontos da agenda e reescreve a convocatória com calor humano, empatia, clareza e rigor legal"
+            >
+              {loadingHumanize ? (
+                <>
+                  <i className="fa-solid fa-spinner fa-spin mr-1"></i>
+                  <span>A Analisar & Redigir com IA...</span>
+                </>
+              ) : (
+                <>
+                  <i className="fa-solid fa-wand-magic-sparkles mr-1 text-amber-300"></i>
+                  <span>Redigir Convocatória Humana & Analítica</span>
+                </>
+              )}
+            </button>
+
             {editingId && (
               <button type="button" onClick={() => { setEditingId(null); setTema(""); setData(""); setHora(""); setOrdensTrabalho(""); }} className="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-300 transition-colors cursor-pointer">
                 Cancelar Edição
@@ -1135,9 +1362,27 @@ Powered by CondoManager AI`;
 
       {emailConvocatoria && (
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-3 no-print animate-fadeIn">
-          <div className="flex items-center justify-between">
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Visualização do E-mail de Convocatória Oficial</h4>
-            <div className="flex items-center space-x-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <i className="fa-solid fa-envelope-open-text text-indigo-600"></i>
+                <span>Texto Oficial da Convocatória (100% Editável)</span>
+              </h4>
+              <p className="text-[11px] text-slate-500">
+                Pode rever e editar qualquer frase ou pormenor diretamente abaixo antes de enviar aos condóminos.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                disabled={loadingHumanize}
+                onClick={redigirConvocatoriaHumanizadaComIA}
+                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold px-2.5 py-1.5 rounded-lg border border-indigo-200 transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                title="Pedir à IA para reanalisar e reescrever num tom mais humano e analítico"
+              >
+                <i className={`fa-solid ${loadingHumanize ? "fa-spinner fa-spin" : "fa-wand-magic-sparkles text-indigo-600"}`}></i>
+                <span>{loadingHumanize ? "A Reescrever..." : "Melhorar com IA"}</span>
+              </button>
               <button 
                 type="button" 
                 onClick={() => {
@@ -1158,18 +1403,31 @@ Powered by CondoManager AI`;
                 className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
               >
                 <img src="/marca/18-pdf.png" alt="PDF" className="w-3.5 h-3.5 object-contain" />
-                <span>Descarregar Convocatória PDF</span>
+                <span>Descarregar PDF</span>
               </button>
               <button type="button" onClick={copiarTexto} className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 cursor-pointer">
-                <i className="fa-solid fa-copy mr-1.5"></i> Copiar Texto
+                <i className="fa-solid fa-copy mr-1.5"></i> Copiar
               </button>
-              <button type="button" onClick={notificarPorEmail} className="bg-indigo-600 text-white hover:bg-indigo-700 text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer">
-                <i className="fa-solid fa-paper-plane mr-1.5"></i> Disparar para Todos
+              <button type="button" onClick={notificarPorEmail} className="bg-indigo-600 text-white hover:bg-indigo-700 text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer shadow-xs">
+                <i className="fa-solid fa-paper-plane mr-1.5"></i> Disparar Email
               </button>
             </div>
           </div>
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs font-mono-custom whitespace-pre-wrap text-slate-700 leading-relaxed max-h-80 overflow-y-auto">
-            {emailConvocatoria}
+          
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-[11px] text-slate-400">
+              <span className="font-mono">{emailConvocatoria.length} caracteres • {emailConvocatoria.split(/\s+/).filter(Boolean).length} palavras</span>
+              <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                <i className="fa-solid fa-shield-check"></i> Pronto para envio e submissão
+              </span>
+            </div>
+            <textarea
+              value={emailConvocatoria}
+              onChange={e => setEmailConvocatoria(e.target.value)}
+              rows={14}
+              className="w-full bg-slate-50 p-4 rounded-xl border border-slate-300 text-xs font-mono-custom text-slate-800 leading-relaxed focus:bg-white focus:outline-emerald-500 shadow-inner transition-colors"
+              placeholder="Escreva ou edite o texto da convocatória..."
+            />
           </div>
         </div>
       )}
@@ -1183,14 +1441,37 @@ Powered by CondoManager AI`;
         ) : (
           predioReunioes.map(r => (
             <div key={r.id_reuniao} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4 relative">
-              <div className="absolute top-6 right-6 flex items-center space-x-2 no-print">
-                <button onClick={() => iniciarEdicao(r)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded text-xs cursor-pointer" title="Editar Reunião">
-                  <i className="fa-solid fa-pen-to-square"></i>
+              {/* Ações de Topo: Editar, Eliminar e Estado */}
+              <div className="absolute top-6 right-6 flex items-center gap-2 no-print">
+                <button
+                  type="button"
+                  onClick={() => iniciarEdicao(r)}
+                  className="h-8 px-2.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-300 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+                  title="Editar dados da Reunião / Convocatória"
+                  aria-label="Editar Reunião"
+                >
+                  <img src="/estados-acoes/13-editar.png" alt="Editar" className="h-3.5 w-3.5 object-contain shrink-0" />
+                  <span>Editar</span>
                 </button>
-                <button onClick={() => eliminarReuniao(r.id_reuniao)} className="bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1.5 rounded text-xs cursor-pointer" title="Cancelar Reunião">
-                  <i className="fa-solid fa-trash"></i>
+
+                <button
+                  type="button"
+                  onClick={() => eliminarReuniao(r.id_reuniao)}
+                  className="h-8 px-2.5 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 hover:border-red-600 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+                  title="Eliminar Assembleia"
+                  aria-label="Eliminar Assembleia"
+                >
+                  <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="h-3.5 w-3.5 object-contain shrink-0" />
+                  <span>Eliminar</span>
                 </button>
-                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${r.estado === "Realizada" ? "bg-slate-100 text-slate-600 border border-slate-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>{r.estado}</span>
+
+                <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${
+                  r.estado === "Realizada" 
+                    ? "bg-slate-100 text-slate-600 border border-slate-200" 
+                    : "bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs"
+                }`}>
+                  {r.estado}
+                </span>
               </div>
               
               <div className="pr-24 space-y-2">
@@ -1304,9 +1585,33 @@ Powered by CondoManager AI`;
                     className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
                     title="Descarregar Convocatória Oficial de Assembleia em PDF estruturado com Procuração anexa"
                   >
-                    <img src="/marca/18-pdf.png" alt="PDF" className="w-3.5 h-3.5 object-contain" />
+                    <img src="/marca/18-pdf.png" alt="PDF" className="w-3.5 h-3.5 object-contain shrink-0" />
                     <span>Convocatória Oficial (PDF)</span>
                   </button>
+
+                  {/* Botão Arquivar Convocatória no Arquivo Digital */}
+                  <button
+                    type="button"
+                    onClick={() => handleArquivarConvocatoria(r)}
+                    className="bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+                    title="Guardar / Arquivar Convocatória no Arquivo Digital (Pasta 'Atas & Convocatórias')"
+                  >
+                    <img src="/modulos/27-arquivo-automatico.png" alt="Arquivo" className="w-3.5 h-3.5 object-contain shrink-0" onError={(e) => { e.currentTarget.src = "/marca/18-pdf.png"; }} />
+                    <span>Arquivar Convocatória</span>
+                  </button>
+
+                  {/* Botão Arquivar Ata no Arquivo Digital (se a reunião foi realizada ou tem ata) */}
+                  {(r.estado === "Realizada" || !!r.ata) && (
+                    <button
+                      type="button"
+                      onClick={() => handleArquivarAta(r)}
+                      className="bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+                      title="Guardar / Arquivar Ata no Arquivo Digital (Pasta 'Atas & Convocatórias')"
+                    >
+                      <img src="/modulos/27-arquivo-automatico.png" alt="Arquivo" className="w-3.5 h-3.5 object-contain shrink-0" onError={(e) => { e.currentTarget.src = "/marca/18-pdf.png"; }} />
+                      <span>Arquivar Ata</span>
+                    </button>
+                  )}
 
                   <button
                     type="button"
@@ -1314,7 +1619,7 @@ Powered by CondoManager AI`;
                     className="bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
                     title="Descarregar Grelha das 12 Quotas Mensais de todas as Frações num ficheiro Excel/CSV para a Assembleia"
                   >
-                    <img src="/modulos/66-exportacao-financeira.png" alt="Excel" className="w-3.5 h-3.5 object-contain" onError={(e) => { e.currentTarget.src = "/marca/18-pdf.png"; }} />
+                    <img src="/modulos/66-exportacao-financeira.png" alt="Excel" className="w-3.5 h-3.5 object-contain shrink-0" onError={(e) => { e.currentTarget.src = "/marca/18-pdf.png"; }} />
                     <span>Mapa Anual / Balancete (.CSV)</span>
                   </button>
                 </div>
@@ -1562,7 +1867,7 @@ Powered by CondoManager AI`;
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 border-t border-slate-800">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 border-t border-slate-800">
                           <div className="flex flex-col">
                             <label className="text-[10px] font-bold text-slate-300 uppercase mb-1">Presidente da Mesa (Assina Ata)</label>
                             <input 
@@ -1570,17 +1875,6 @@ Powered by CondoManager AI`;
                               value={presidenteMesa} 
                               onChange={e => setPresidenteMesa(e.target.value)} 
                               placeholder="Nome do Presidente da Mesa"
-                              className="bg-slate-800 border border-slate-600 text-white px-2.5 py-1.5 rounded text-xs focus:outline-emerald-400"
-                            />
-                          </div>
-
-                          <div className="flex flex-col">
-                            <label className="text-[10px] font-bold text-slate-300 uppercase mb-1">Secretário da Mesa (Lavra e Assina)</label>
-                            <input 
-                              type="text" 
-                              value={secretarioMesa} 
-                              onChange={e => setSecretarioMesa(e.target.value)} 
-                              placeholder="Nome do Secretário da Mesa"
                               className="bg-slate-800 border border-slate-600 text-white px-2.5 py-1.5 rounded text-xs focus:outline-emerald-400"
                             />
                           </div>
@@ -1618,7 +1912,7 @@ Powered by CondoManager AI`;
                           type="button"
                           onClick={redigirAtaPorIA}
                           disabled={loadingAta}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs flex items-center justify-center space-x-1.5 self-start cursor-pointer disabled:opacity-50 mt-1"
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs flex items-center justify-center space-x-1.5 self-start cursor-pointer disabled:opacity-50 mt-1 shadow-xs"
                         >
                           {loadingAta ? (
                             <>
@@ -1628,55 +1922,89 @@ Powered by CondoManager AI`;
                           ) : (
                             <>
                               <i className="fa-solid fa-scroll"></i>
-                              <span>Gerar Ata Jurídica em Conformidade Legal</span>
+                              <span>Gerar Ata Jurídica com IA</span>
                             </>
                           )}
                         </button>
                       </div>
 
-                      {/* Editable Text Area for Mandatory Human Review */}
-                      {ataTexto && (
-                        <div className="space-y-3 animate-fadeIn">
-                          <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-start space-x-3 text-xs leading-relaxed text-amber-800">
-                            <div className="text-base pt-0.5"><i className="fa-solid fa-triangle-exclamation"></i></div>
-                            <div>
-                              <p className="font-bold">Aviso de Revisão Humana Obrigatória:</p>
-                              <p className="mt-1 font-medium text-amber-700">
-                                Por imperativo regulamentar, todo o texto gerado necessita de validação ou ratificação manual do administrador antes de ser submetido a assinaturas e arquivado. Revise atentamente todas as deliberações e votações abaixo.
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-col space-y-1">
-                            <label className="text-xs font-bold text-slate-600 uppercase">Texto Integral da Ata de Condóminos</label>
-                            <textarea
-                              value={ataTexto}
-                              onChange={e => setAtaTexto(e.target.value)}
-                              rows={16}
-                              className="border border-slate-200 p-4 rounded-xl text-xs font-mono-custom text-slate-700 leading-relaxed bg-slate-50 focus:outline-emerald-500"
-                            />
-                          </div>
-
-                          <div className="flex space-x-2">
-                            <button
-                              type="button"
-                              onClick={handleGuardarAtaFinal}
-                              className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer"
-                            >
-                              <i className="fa-solid fa-floppy-disk mr-1.5"></i>
-                              <span>Guardar Ata Final & Confirmar Leitura</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => imprimirDocumentoOficial("Ata Oficial de Assembleia de Condóminos")}
-                              className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2 rounded-lg text-xs border border-slate-200 cursor-pointer"
-                            >
-                              <i className="fa-solid fa-print mr-1.5"></i>
-                              <span>Pré-visualizar & Imprimir PDF Oficial</span>
-                            </button>
+                      {/* Editable Text Area for Mandatory Human Review (Always accessible and editable) */}
+                      <div className="space-y-3">
+                        <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl flex items-start space-x-3 text-xs leading-relaxed text-amber-800">
+                          <div className="text-base pt-0.5"><i className="fa-solid fa-pen-to-square text-amber-600"></i></div>
+                          <div>
+                            <p className="font-bold">Texto da Ata 100% Editável pelo Administrador:</p>
+                            <p className="mt-0.5 font-medium text-amber-700 text-[11px]">
+                              Pode rever, corrigir, acrescentar ou alterar qualquer parágrafo ou deliberação diretamente na caixa abaixo. Todas as edições manuais são preservadas ao guardar a ata final e na exportação do PDF oficial.
+                            </p>
                           </div>
                         </div>
-                      )}
+
+                        <div className="flex flex-col space-y-1.5">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                            <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                              <i className="fa-solid fa-file-lines text-slate-500"></i>
+                              <span>Texto Integral da Ata de Assembleia de Condóminos</span>
+                            </label>
+                            <span className="text-[11px] text-slate-400 font-mono">
+                              {ataTexto.length} caracteres • {ataTexto.split(/\s+/).filter(Boolean).length} palavras
+                            </span>
+                          </div>
+
+                          <textarea
+                            value={ataTexto}
+                            onChange={e => setAtaTexto(e.target.value)}
+                            rows={18}
+                            placeholder="O texto integral da ata redigida pela IA ou redigido manualmente aparecerá aqui. Pode escrever diretamente ou clicar em 'Gerar Ata Jurídica com IA' acima..."
+                            className="border border-slate-300 p-4 rounded-xl text-xs font-mono-custom text-slate-800 leading-relaxed bg-white focus:outline-emerald-500 shadow-inner"
+                          />
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={handleGuardarAtaFinal}
+                            className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer flex items-center gap-1.5 shadow-xs"
+                          >
+                            <i className="fa-solid fa-floppy-disk text-emerald-400"></i>
+                            <span>Guardar Ata Final & Arquivar</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => imprimirDocumentoOficial("Ata Oficial de Assembleia de Condóminos")}
+                            className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2 rounded-lg text-xs border border-slate-200 cursor-pointer flex items-center gap-1.5"
+                          >
+                            <i className="fa-solid fa-print"></i>
+                            <span>Pré-visualizar & Imprimir PDF Oficial</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!ataTexto) return alert("Nenhum texto de ata para copiar.");
+                              navigator.clipboard.writeText(ataTexto);
+                              alert("Texto da ata copiado para a área de transferência!");
+                            }}
+                            className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-3 py-2 rounded-lg text-xs border border-slate-200 cursor-pointer flex items-center gap-1.5"
+                          >
+                            <i className="fa-solid fa-copy"></i>
+                            <span>Copiar Texto</span>
+                          </button>
+                          {ataTexto && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm("Tem a certeza que deseja limpar o texto da ata?")) {
+                                  setAtaTexto("");
+                                }
+                              }}
+                              className="bg-red-50 hover:bg-red-100 text-red-600 font-semibold px-3 py-2 rounded-lg text-xs border border-red-200 cursor-pointer flex items-center gap-1.5"
+                            >
+                              <i className="fa-solid fa-eraser"></i>
+                              <span>Limpar Texto</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -1696,25 +2024,25 @@ Powered by CondoManager AI`;
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-300">
-                            A lei impõe que a ata seja <strong>assinada por quem presidiu à mesa</strong> e <strong>subscrita por todos os condóminos presentes e representados</strong> ({activeQuorum}‰).
+                            A lei impõe que a ata seja <strong>assinada por quem presidiu à mesa (Administrador)</strong> e <strong>subscrita por todos os condóminos presentes e representados</strong> ({activeQuorum}‰).
                           </p>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-                            <div className="bg-slate-800 p-2 rounded-lg border border-slate-700 text-center">
-                              <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Presidente Mesa</span>
-                              <span className={`text-[10px] font-bold ${activeMeeting.assinaturas?.some(a => a.fracao === "Presidente" || a.fracao === "Administrador") ? "text-emerald-400" : "text-amber-400"}`}>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                            <div className="bg-slate-800 p-2.5 rounded-lg border border-slate-700 flex items-center justify-between px-3">
+                              <div>
+                                <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Presidente da Mesa (Administrador)</span>
+                                <span className="text-xs text-slate-200 font-semibold">{presidenteMesa || loggedUser.nome}</span>
+                              </div>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${activeMeeting.assinaturas?.some(a => a.fracao === "Presidente" || a.fracao === "Administrador") ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-amber-500/20 text-amber-400 border border-amber-500/30"}`}>
                                 {activeMeeting.assinaturas?.some(a => a.fracao === "Presidente" || a.fracao === "Administrador") ? "✓ Assinado" : "⏳ Pendente"}
                               </span>
                             </div>
-                            <div className="bg-slate-800 p-2 rounded-lg border border-slate-700 text-center">
-                              <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Secretário Mesa</span>
-                              <span className={`text-[10px] font-bold ${activeMeeting.assinaturas?.some(a => a.fracao === "Secretário" || a.fracao === "Secretario") ? "text-emerald-400" : "text-amber-400"}`}>
-                                {activeMeeting.assinaturas?.some(a => a.fracao === "Secretário" || a.fracao === "Secretario") ? "✓ Assinado" : "⏳ Pendente"}
-                              </span>
-                            </div>
-                            <div className="col-span-2 bg-slate-800 p-2 rounded-lg border border-slate-700 flex items-center justify-between px-3">
-                              <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Subscrições de Presentes</span>
-                              <span className="text-[10px] font-bold text-emerald-400">
-                                {predioFracoes.filter(f => (activeMeeting.folha_presencas?.[f.id_fracao] || "Ausente") !== "Ausente" && activeMeeting.assinaturas?.some(a => a.fracao === f.fracao_nome)).length} de {predioFracoes.filter(f => (activeMeeting.folha_presencas?.[f.id_fracao] || "Ausente") !== "Ausente").length} subscritos
+                            <div className="bg-slate-800 p-2.5 rounded-lg border border-slate-700 flex items-center justify-between px-3">
+                              <div>
+                                <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Subscrições de Presentes / Representados</span>
+                                <span className="text-xs text-slate-200 font-semibold">{predioFracoes.filter(f => (activeMeeting.folha_presencas?.[f.id_fracao] || "Ausente") !== "Ausente" && activeMeeting.assinaturas?.some(a => a.fracao === f.fracao_nome)).length} de {predioFracoes.filter(f => (activeMeeting.folha_presencas?.[f.id_fracao] || "Ausente") !== "Ausente").length} frações</span>
+                              </div>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                {predioFracoes.filter(f => (activeMeeting.folha_presencas?.[f.id_fracao] || "Ausente") !== "Ausente" && activeMeeting.assinaturas?.some(a => a.fracao === f.fracao_nome)).length === predioFracoes.filter(f => (activeMeeting.folha_presencas?.[f.id_fracao] || "Ausente") !== "Ausente").length ? "✓ Concluído" : "Em Recolha"}
                               </span>
                             </div>
                           </div>
@@ -1746,8 +2074,6 @@ Powered by CondoManager AI`;
                                       setSignerFracao(e.target.value);
                                       if (e.target.value === "Presidente" || e.target.value === "Administrador") {
                                         setSignerNome(presidenteMesa || loggedUser.nome);
-                                      } else if (e.target.value === "Secretário") {
-                                        setSignerNome(secretarioMesa || "Secretário da Mesa");
                                       } else {
                                         const matchingFrac = predioFracoes.find(f => f.fracao_nome === e.target.value);
                                         setSignerNome(matchingFrac?.proprietario.nome || "");
@@ -1756,7 +2082,6 @@ Powered by CondoManager AI`;
                                     className="border border-slate-200 p-1.5 text-xs rounded bg-white font-medium"
                                   >
                                     <option value="Presidente">Presidente da Mesa ({presidenteMesa || loggedUser.nome})</option>
-                                    <option value="Secretário">Secretário da Mesa ({secretarioMesa || "Secretário"})</option>
                                     {predioFracoes.filter(f => {
                                       const presence = activeMeeting.folha_presencas?.[f.id_fracao] || "Ausente";
                                       return presence !== "Ausente";

@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso } from "../types";
 import { formatDatePT } from "../utils";
+import { saveMovimentoToSupabase } from "../lib/supabaseService";
+import { Save, CheckCircle2 } from "lucide-react";
 
 interface GestaoMovimentosProps {
   predio: Predio;
@@ -194,11 +196,12 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     }
 
     setMovements([novo, ...movements]);
+    saveMovimentoToSupabase(novo).catch(console.error);
     setValor("");
     setDescricao("");
     setUploadedFotos([]);
     setIsMovimentoCego(false);
-    alert(isCego ? "Movimento Cego lançado! Necessita de justificar posteriormente com fatura." : "Movimento lançado com sucesso!");
+    alert(isCego ? "Movimento Cego lançado e guardado no Supabase! Necessita de justificar posteriormente com fatura." : "Movimento lançado e guardado no Supabase com sucesso!");
   };
 
   // Sincronização Real de Caixa de Correio (sem simulações fictícias)
@@ -708,9 +711,13 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
               </div>
 
               <div className="pt-2">
-                <button type="submit" className="w-full bg-emerald-600 text-white py-2.5 rounded-lg text-sm font-bold hover:bg-emerald-700 transition-colors cursor-pointer flex items-center justify-center space-x-2">
-                  <i className="fa-solid fa-check-double"></i>
-                  <span>Lançar Movimento Validado</span>
+                <button 
+                  type="submit" 
+                  id="btn-guardar-movimento-supabase"
+                  className="w-full bg-emerald-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all cursor-pointer flex items-center justify-center space-x-2 shadow-xs hover:shadow-md"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Guardar e Lançar Movimento no Supabase</span>
                 </button>
               </div>
             </form>

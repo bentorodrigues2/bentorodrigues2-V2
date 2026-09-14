@@ -1,147 +1,23 @@
-import { supabase } from "../services/lib/supabaseClient.js";
-import { gerarHtmlAutoresponder, gerarHtmlResposta } from "../services/lib/htmlemail.js";
+import { processInboundEmail } from "../api/lib/inboundProcessor.js";
 
-// -----------------------------
-// 1. Classificador LOCAL (versão final)
-// -----------------------------
-async function classificarCategoria(texto) {
-  try {
-    const lower = texto.toLowerCase();
-
-    if (lower.includes("comprovativo") ||
-        lower.includes("transferência") ||
-        lower.includes("extrato") ||
-        lower.includes("recibo") ||
-        lower.includes("mbway"))
-      return "comprovativo";
-
-    if (lower.includes("fatura") || lower.includes("fornecedor"))
-      return "faturas";
-
-    if (lower.includes("orçamento") || lower.includes("proposta"))
-      return "orcamentos";
-
-    if (lower.includes("ata") || lower.includes("assembleia"))
-      return "assembleia";
-
-    if (lower.includes("quota") || lower.includes("pagamento"))
-      return "pagamentos";
-
-    if (lower.includes("ruído") || lower.includes("barulho"))
-      return "ruido";
-
-    if (lower.includes("avaria") || lower.includes("reparação"))
-      return "avarias";
-
-    return "geral";
-  } catch {
-    return "geral";
-  }
-}
-
-// -----------------------------
-// 2. Contexto da fração (Supabase)
-// -----------------------------
-async function obterContextoDaFracao(email) {
-  try {
-    const { data } = await supabase
-      .from("fracoes")
-      .select("id_fracao, id_predio, fracao_nome, email, contacto")
-      .eq("email", email)
-      .single();
-
-    return data || null;
-  } catch {
-    return null;
-  }
-}
-
-// -----------------------------
-// 3. HANDLER PRINCIPAL
-// -----------------------------
 export default async function handler(req, res) {
+  if (req.method === "GET") {
+    return res.status(200).json({ status: "online", handler: "inbound-email" });
+  }
+
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Método não permitido" });
+  }
+
   try {
-    const { from, subject, body } = req.body || {};
-
-    console.log("Inbound recebido:", { from, subject });
-
-    const textoEmail = body?.trim() || "(sem texto)";
-
-    // LIMPAR EMAIL
-    const emailLimpo = from
-      .replace(/"/g, "")
-      .replace(/.*</, "")
-      .replace(/>.*/, "")
-      .trim();
-
-    // CONTEXTO
-    const contexto = await obterContextoDaFracao(emailLimpo);
-    console.log("Contexto da fração:", contexto);
-
-    // CLASSIFICAÇÃO
-    const categoria = await classificarCategoria(textoEmail);
-
-    // NOME SEGURO (nunca mais “1A”)
-    const nomeRemetente =
-      contexto?.contacto ||
-      emailLimpo.split("@")[0] ||
-      "Condómino";
-
-    // AUTORESPONDER
-    const htmlAutoresponder = gerarHtmlAutoresponder(nomeRemetente);
-
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: "Condomínio <administracao@condomanagerai.com>",
-        to: emailLimpo,
-        subject: "Recebemos o seu contacto",
-        html: htmlAutoresponder,
-      }),
-    });
-
-    // -----------------------------
-    // 4. CHAMAR ROUTER INTELIGENTE
-    // -----------------------------
-    const routerResp = await fetch(
-      "https://bentorodrigues2.vercel.app/api/ai-studio?acao=router",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          categoria,
-          id_fracao: contexto?.id_fracao || null
-        })
-      }
-    );
-
-    const routerData = await routerResp.json();
-
-    // RESPOSTA FINAL (sem duplicar Olá e assinatura)
-    const htmlFinal = gerarHtmlResposta(nomeRemetente, routerData.message);
-
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: "Condomínio <administracao@condomanagerai.com>",
-        to: emailLimpo,
-        subject: routerData.subject,
-        html: htmlFinal,
-      }),
-    });
-
-    return res.status(200).json({ ok: true });
-
+    const result = await processInboundEmail(req.body);
+    return res.status(result.status || 200).json(result);
   } catch (err) {
-    console.error("Erro no inbound-email:", err);
-    return res.status(500).json({ ok: false });
+    console.error("Erro no inbound-email handler:", err);
+    return res.status(500).json({
+      ok: false,
+      error: "Erro no inbound-email",
+      detail: err?.message || String(err)
+    });
   }
 }

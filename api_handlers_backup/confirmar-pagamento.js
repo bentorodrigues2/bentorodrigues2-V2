@@ -2,8 +2,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-const resend = new Resend(process.env.RESEND_KEY);
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || "";
+const supabase = createClient(process.env.SUPABASE_URL || "", supabaseKey);
+const resendKey = process.env.RESEND_API_KEY || process.env.RESEND_KEY || "";
+const resend = new Resend(resendKey);
 
 export default async function handler(req, res) {
   try {
@@ -70,9 +72,9 @@ export default async function handler(req, res) {
       .select()
       .single();
 
-    // 5) Enviar email ao condómino
+    // 5) Enviar email ao condÃ³mino
     await resend.emails.send({
-      from: 'Condomínio <no-reply@condominio.pt>',
+      from: 'CondomÃ­nio <no-reply@condominio.pt>',
       to: dados.proprietarios.email,
       subject: recibo.subject,
       html: recibo.message,

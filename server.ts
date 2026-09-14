@@ -15,6 +15,7 @@ import {
   AI_STUDIO_ROUTER_LOGO_HTML,
   AI_STUDIO_ROUTER_SIGNATURE_HTML
 } from "./server/geminiService";
+import { processInboundEmail } from "./api/lib/inboundProcessor.js";
 
 dotenv.config();
 
@@ -33,6 +34,10 @@ async function startServer() {
   });
 
   // 1. AI Assistant Chat (Main Modal)
+  app.get("/api/ai-assistant/chat", (req, res) => {
+    return res.json({ status: "online", endpoint: "ai-assistant/chat" });
+  });
+
   app.post("/api/ai-assistant/chat", async (req, res) => {
     try {
       const userRole = (req.headers["x-user-role"] as string) || "ADMIN";
@@ -176,18 +181,25 @@ Elabora uma matriz comparativa com:
     }
   });
 
-  // 7. Generate Assembly Minutes / Minuta de Ata
+  // 7. Generate Assembly Minutes / Minuta de Ata (Sem menção a Secretário da Mesa)
   app.post("/api/generate-minutes", async (req, res) => {
     try {
       const body = req.body;
-      const prompt = `Redige uma Minuta Oficial de Ata de Assembleia Geral de Condóminos em estrita conformidade com o Artigo 1432.º e 1433.º do Código Civil Português e Decreto-Lei 268/2022:
+      const prompt = `Redige uma Minuta Oficial de Ata de Assembleia Geral de Condóminos em estrita conformidade com o Artigo 1432.º e 1433.º do Código Civil Português e Decreto-Lei 268/2022.
+REGRAS OBRIGATÓRIAS:
+- A reunião é presidida e conduzida pelo Administrador do Condomínio, que lavra e assina a ata.
+- NÃO incluir nem fazer qualquer menção à figura de "Secretário da Mesa" nem campos para assinatura de secretário.
+- A ata é assinada pelo Presidente da Mesa (Administrador) e subscrita pelos condóminos presentes e representados.
+
+Dados da Assembleia:
 Tema / Convocatória: ${body.tema || "Assembleia Geral Ordinária"}
 Data e Hora: ${body.data || ""} ${body.hora || ""}
 Local / Meio: ${body.local || "Instalações do Condomínio"}
-Quórum e Participantes: ${JSON.stringify(body.participantes || [])}
-Pontos da Ordem de Trabalhos e Deliberações: ${JSON.stringify(body.deliberacoes || body.pontos || [])}
+Quórum e Participantes: ${JSON.stringify(body.participantes || body.presentes || [])}
+Ausentes: ${JSON.stringify(body.ausentes || [])}
+Pontos da Ordem de Trabalhos e Deliberações: ${JSON.stringify(body.deliberacoes || body.pontos || body.notas || [])}
 
-Gera a ata integral com introdução, verificação de quórum, deliberações ponto por ponto com resultados das votações (votos a favor, contra e abstenções com respetiva permilagem), e encerramento formal para assinatura.`;
+Gera a ata integral estruturada com introdução, verificação de quórum por permilagem (1ª e 2ª convocatórias), deliberações ponto por ponto com resultados das votações (votos a favor, contra e abstenções com respetiva permilagem), e encerramento formal assinado pelo Presidente da Mesa.`;
 
       const responseText = await generateWithFallback({
         contents: [{ role: "user", parts: [{ text: prompt }] }]
@@ -197,6 +209,49 @@ Gera a ata integral com introdução, verificação de quórum, deliberações p
     } catch (err: any) {
       console.error("[/api/generate-minutes] Erro:", err);
       return res.status(500).json({ error: err.message || "Erro ao gerar minuta de ata." });
+    }
+  });
+
+  // 7.1. Humanize Convocatória / Redação Analítica e Humana da Convocatória
+  app.post("/api/humanize-convocatoria", async (req, res) => {
+    try {
+      const { tema, data, hora, horaSegunda, local, ordensTrabalho, isVideoconferencia, plataformaVideo, linkVideo, predio, loggedUser } = req.body;
+
+      const prompt = `És um especialista em gestão de comunidades e comunicação para condomínios em Portugal.
+A tua missão é reescrever a seguinte Convocatória de Assembleia de Condóminos com uma forte capacidade analítica e de uma forma profundamente HUMANA, calorosa, clara e envolvente, sem perder a validade e solenidade jurídica necessária (Código Civil Art. 1431.º e 1432.º).
+
+DADOS DA CONVOCATÓRIA:
+- Edifício: ${predio?.nome || "Condomínio"} (${predio?.morada_linha1 || ""}, ${predio?.localidade || ""})
+- Tema: ${tema || "Assembleia Geral de Condóminos"}
+- 1ª Convocatória: ${data} às ${hora} horas
+- 2ª Convocatória (Código Civil): ${data} às ${horaSegunda || "30 minutos depois"} horas
+- Local: ${local || "Instalações do Condomínio"}
+${isVideoconferencia ? `- Modalidade Mista / Vídeo: ${plataformaVideo} com link ${linkVideo}` : "- Modalidade: Presencial"}
+- Ordem de Trabalhos Bruta:
+${ordensTrabalho || "1. Contas; 2. Orçamento; 3. Assuntos Gerais."}
+
+DIRETRIZES DE ESTILO E CAPACIDADE ANALÍTICA:
+1. Linguagem Humana e Acolhedora: Fala para vizinhos e proprietários com empatia, transparência e respeito pelo tempo e património de cada um.
+2. Capacidade Analítica: Para cada ponto da ordem de trabalhos, faz um breve enquadramento analítico explicando sucintamente PORQUE é importante a decisão para a valorização, segurança ou boa convivência no condomínio (ex.: aprovação de contas dá transparência; orçamentos preparam o edifício; obras garantem a durabilidade).
+3. Facilidade de Participação: Reforça que a opinião de todos é essencial. Explica com simplicidade como quem não puder comparecer pessoalmente pode emitir procuração a outro condómino ou aceder online/PWA.
+4. Menção às 1ª e 2ª Convocatórias clara e pedagógica (explicando porque existem as duas horas).
+5. Sondagem de Presenças: Relembra amavelmente para assinalarem "vem/não vem" no WhatsApp ou na aplicação para antecipar o quórum.
+6. ASSINATURA OBRIGATÓRIA (sem menções comerciais ou marcas de terceiros):
+Com os meus cumprimentos,
+
+[Assinatura Digital]
+ O Administrador do Condomínio
+
+Devolve apenas o texto da convocatória pronto a enviar por email aos condóminos.`;
+
+      const responseText = await generateWithFallback({
+        contents: [{ role: "user", parts: [{ text: prompt }] }]
+      });
+
+      return res.json({ text: responseText, success: true });
+    } catch (err: any) {
+      console.error("[/api/humanize-convocatoria] Erro:", err);
+      return res.status(500).json({ error: err.message || "Erro ao humanizar convocatória." });
     }
   });
 
@@ -400,6 +455,28 @@ Devolve JSON com formato:
             : "Resposta gerada pelo motor institucional de 13 categorias oficiais.",
           detalhe: errStr
         }
+      });
+    }
+  });
+
+  // 14. Webhooks & Inbound Email Processor (Resend, Zapier, Make)
+  app.all(["/api/webhooks/resend", "/api/inbound", "/api/ai-studio-inbound"], async (req, res) => {
+    if (req.method === "GET") {
+      return res.json({
+        status: "online",
+        service: "Resend Inbound Email Webhook & Processor",
+        endpoints: ["/api/webhooks/resend", "/api/inbound", "/api/ai-studio-inbound"]
+      });
+    }
+    try {
+      const result = await processInboundEmail(req.body);
+      return res.status(result.status || 200).json(result);
+    } catch (err: any) {
+      console.error("[/api/webhooks/resend] Erro:", err);
+      return res.status(500).json({
+        ok: false,
+        error: "Erro no processamento do email inbound",
+        detail: err?.message || String(err)
       });
     }
   });

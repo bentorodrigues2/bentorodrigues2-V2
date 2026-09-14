@@ -3,7 +3,7 @@ import { Predio, LoggedUser, ChaveItem } from "../types";
 import { cpLookup } from "../data";
 import { gerarPdfEtiquetasChaves } from "../utils";
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
-import { SQL_GESTAO_CHAVES_SUPABASE } from "../data/emailRouterTemplates";
+import { Pencil, Trash2 } from "lucide-react";
 import { 
   fetchChavesFromSupabase, 
   saveSingleChaveToSupabase, 
@@ -1492,36 +1492,38 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                         {/* Ações */}
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end space-x-1.5">
-                            {/* Botão Editar (Ícone Lápis) */}
+                            {/* Botão Editar (Ícone Lápis 13-editar.png) */}
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedPredioId(p.id_predio);
                               }}
-                              className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-xs ${
+                              className={`h-8 px-2.5 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs ${
                                 isSelected
                                   ? "bg-blue-600 text-white ring-2 ring-blue-400"
-                                  : "bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border border-slate-200"
+                                  : "bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200"
                               }`}
                               title={isSelected ? "Prédio em edição ativa" : "Editar Prédio"}
                               aria-label="Editar Prédio"
                             >
-                              <i className="fa-solid fa-pencil text-xs"></i>
+                              <img src="/estados-acoes/13-editar.png" alt="Editar" className="h-4 w-4 object-contain" />
+                              <span className="text-xs font-semibold">Editar</span>
                             </button>
 
-                            {/* Botão Eliminar (Ícone Lixo) */}
+                            {/* Botão Eliminar (Ícone Lixo 14-eliminar.png) */}
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleRemoverPredio(p.id_predio);
                               }}
-                              className="h-8 w-8 rounded-lg flex items-center justify-center bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 hover:border-red-600 transition-all shadow-xs cursor-pointer"
+                              className="h-8 px-2.5 rounded-lg flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 hover:border-red-600 transition-all shadow-xs cursor-pointer"
                               title="Eliminar Prédio"
                               aria-label="Eliminar Prédio"
                             >
-                              <i className="fa-solid fa-trash-can text-xs"></i>
+                              <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="h-4 w-4 object-contain" />
+                              <span className="text-xs font-semibold">Eliminar</span>
                             </button>
                           </div>
                         </td>

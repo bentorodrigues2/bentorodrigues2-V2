@@ -812,14 +812,30 @@ export function FinanceiroAvancado({
                       Emitido via CondoManager AI • Documento nº {reciboNum} • Autenticidade Digital Garantida
                     </div>
                     <div className="text-center min-w-[240px]">
-                      <p className="text-[9.5px] uppercase font-black text-slate-900 mb-6">A ADMINISTRAÇÃO DO CONDOMÍNIO</p>
-                      <div className="w-[200px] border-b border-slate-300 mx-auto mb-1"></div>
-                      <input
-                        type="text"
-                        value={reciboAssinatura}
-                        onChange={e => setReciboAssinatura(e.target.value)}
-                        className="text-[9.5px] text-slate-700 text-center bg-transparent focus:outline-none w-full"
-                      />
+                      <p className="text-[9.5px] uppercase font-black text-slate-900 mb-2">A ADMINISTRAÇÃO DO CONDOMÍNIO</p>
+                      
+                      {/* Assinatura digital do gestor ou nome do administrador em caso de ausência */}
+                      {localStorage.getItem("admin_signature_digital") || localStorage.getItem("assinatura_admin_base64") ? (
+                        <div className="flex flex-col items-center justify-center my-1">
+                          <img 
+                            src={localStorage.getItem("admin_signature_digital") || localStorage.getItem("assinatura_admin_base64") || ""} 
+                            alt="Assinatura Digital" 
+                            className="h-9 max-w-[160px] object-contain"
+                          />
+                          <p className="text-[8px] text-emerald-700 font-bold tracking-tight">✓ Assinado Digitalmente: {reciboAssinatura || "José Carlos Guerra (Administrador)"}</p>
+                        </div>
+                      ) : (
+                        <div className="pt-1">
+                          <div className="w-[200px] border-b border-slate-300 mx-auto mb-1"></div>
+                          <input
+                            type="text"
+                            value={reciboAssinatura}
+                            onChange={e => setReciboAssinatura(e.target.value)}
+                            placeholder="Nome do Administrador"
+                            className="text-[9.5px] font-bold text-slate-700 text-center bg-transparent focus:outline-none w-full"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

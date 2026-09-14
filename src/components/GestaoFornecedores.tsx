@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Download } from "lucide-react";
+import { Download, Save } from "lucide-react";
 import { Predio, Fornecedor, LoggedUser } from "../types";
 import { exportToXLS, generateSupplierPwaManualPDF, gerarPdfRegistoFornecedorHomologado, gerarCartaoAniversarioCondominoPDF } from "../utils";
+import { saveFornecedorToSupabase, saveContratoToSupabase } from "../lib/supabaseService";
 
 interface GestaoFornecedoresProps {
   predio: Predio;
@@ -219,6 +220,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
       pwa_password_provisoria: passProvisoria
     };
     onAddFornecedor(novo);
+    saveFornecedorToSupabase(novo).catch(console.error);
     
     // Automatically select this new supplier in contract form if they want to build one next
     setSelectedFornecedorId(novoId);
@@ -263,6 +265,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
     };
 
     setContratos([novoContrato, ...contratos]);
+    saveContratoToSupabase(novoContrato).catch(console.error);
     setServicoNome("");
     setCustoMensal("");
     setCustoAnual("");
@@ -411,8 +414,13 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
                 </div>
               </div>
 
-              <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-semibold hover:bg-emerald-700 transition-colors cursor-pointer">
-                <i className="fa-solid fa-plus mr-1.5"></i> Registar Fornecedor
+              <button 
+                type="submit" 
+                id="btn-guardar-fornecedor-supabase"
+                className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors cursor-pointer flex items-center space-x-1.5 shadow-xs"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>Guardar Fornecedor no Supabase</span>
               </button>
             </form>
           )}
@@ -934,9 +942,13 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
                 </div>
               </div>
 
-              <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-semibold hover:bg-indigo-700 transition-colors cursor-pointer flex items-center space-x-2">
-                <i className="fa-solid fa-check"></i>
-                <span>Arquivar e Vincular Contrato</span>
+              <button 
+                type="submit" 
+                id="btn-guardar-contrato-supabase"
+                className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors cursor-pointer flex items-center space-x-2 shadow-xs"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>Guardar e Vincular Contrato no Supabase</span>
               </button>
             </form>
           )}

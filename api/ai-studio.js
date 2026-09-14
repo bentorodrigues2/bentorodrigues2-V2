@@ -12,14 +12,26 @@ export default async function handler(req, res) {
 
     // 2. CLASSIFICADOR LOCAL (texto → categoria)
     if (acao === "classificar") {
-      const mod = await import("../api_handlers_backup/ai-studio-classificador.js");
-      return mod.default(req, res);
+      // Endpoint oficial no servidor Express /api/classificador
+      const response = await fetch("http://127.0.0.1:3000/api/classificador", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(req.body || {})
+      });
+      const data = await response.json();
+      return res.status(response.status).json(data);
     }
 
     // 3. ROUTER LOCAL (categoria + contexto → resposta institucional)
     if (acao === "router") {
-      const mod = await import("../api_handlers_backup/ai-router.js");
-      return mod.default(req, res);
+      // Endpoint oficial no servidor Express /api/ai-studio-router
+      const response = await fetch("http://127.0.0.1:3000/api/ai-studio-router", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(req.body || {})
+      });
+      const data = await response.json();
+      return res.status(response.status).json(data);
     }
 
     // 4. MULTIMODAL (PDFs, imagens, anexos → AI Studio → lançamentos contabilísticos)

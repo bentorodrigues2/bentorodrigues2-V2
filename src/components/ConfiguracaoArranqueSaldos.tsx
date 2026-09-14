@@ -114,52 +114,7 @@ export function ConfiguracaoArranqueSaldos({
       });
     }
 
-    return [
-      {
-        id_conta: "conta-ordem-" + predio.id_predio,
-        nome: "Conta à Ordem Principal",
-        banco: "Millennium BCP",
-        iban: predio.iban || "PT50 0033 0000 1234 5678 9012 3",
-        tipo: "Conta à Ordem",
-        categoriaConta: "ORDEM",
-        saldo: 0,
-        finalidade: "Gestão corrente e despesas ordinárias do condomínio",
-        is_principal: true
-      },
-      {
-        id_conta: "conta-poupanca-" + predio.id_predio,
-        nome: "Fundo Comum de Reserva (FCR)",
-        banco: "Millennium BCP",
-        iban: (predio.iban || "PT50 0033 0000 1234 5678 9012 3").replace("0000", "9999"),
-        tipo: "Fundo Comum de Reserva",
-        categoriaConta: "POUPANCA",
-        saldo: 0,
-        finalidade: "Fundo legal de reserva (Artigo 4º DL 268/94)",
-        is_principal: false
-      },
-      {
-        id_conta: "conta-intervencoes-" + predio.id_predio,
-        nome: "Conta Poupança Intervenções / Obras",
-        banco: "Millennium BCP",
-        iban: (predio.iban || "PT50 0033 0000 1234 5678 9012 3").replace("1234", "8888"),
-        tipo: "Conta Intervenções & Obras",
-        categoriaConta: "INTERVENCOES",
-        saldo: 0,
-        finalidade: "Conta afeta exclusivamente a obras de conservação e intervenções específicas",
-        is_principal: false
-      },
-      {
-        id_conta: "conta-caixa-" + predio.id_predio,
-        nome: "Caixa de Numerário (Físico)",
-        banco: "Tesouraria Física",
-        iban: "CAIXA-NUMERARIO",
-        tipo: "Caixa de Numerário",
-        categoriaConta: "CAIXA",
-        saldo: 0,
-        finalidade: "Pequeno caixa em dinheiro sob custódia da administração",
-        is_principal: false
-      }
-    ];
+    return [];
   });
 
   // Atualizar campo de uma conta
@@ -577,7 +532,28 @@ export function ConfiguracaoArranqueSaldos({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {contasArranque.map((conta) => {
+              {contasArranque.length === 0 ? (
+                <div className="col-span-1 md:col-span-2 p-8 text-center bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 space-y-3">
+                  <div className="h-12 w-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+                    <Building2 className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Sem Contas Bancárias de Arranque Ativas</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-1">
+                      Adicione as contas oficiais do condomínio (Conta à Ordem, FCR, etc.) para definir os respetivos saldos de abertura.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleAddNovaConta("ORDEM")}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Adicionar Conta à Ordem</span>
+                  </button>
+                </div>
+              ) : (
+                contasArranque.map((conta) => {
                 const isIntervencao = conta.categoriaConta === "INTERVENCOES";
                 const isPoupanca = conta.categoriaConta === "POUPANCA";
                 const isCaixa = conta.categoriaConta === "CAIXA";
@@ -684,7 +660,7 @@ export function ConfiguracaoArranqueSaldos({
                     </div>
                   </div>
                 );
-              })}
+              }))}
             </div>
           </div>
 

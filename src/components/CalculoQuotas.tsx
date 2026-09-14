@@ -9,10 +9,12 @@ import {
   CreditCard, 
   Layers,
   ArrowRight,
-  Info
+  Info,
+  Save
 } from "lucide-react";
 import { Predio, Fracao, Conta, Aviso, LoggedUser } from "../types";
 import { jsPDF } from "jspdf";
+import { saveConfiguracaoQuotasToSupabase, saveAvisosToSupabase } from "../lib/supabaseService";
 
 interface CalculoQuotasProps {
   predio: Predio;
@@ -156,8 +158,25 @@ export function CalculoQuotas({
     });
 
     setAvisos((prev) => [...novosAvisos, ...prev]);
+
+    // Persistir configuração no Supabase
+    saveConfiguracaoQuotasToSupabase({
+      id_predio: predio.id_predio,
+      ano_exercicio: new Date().getFullYear(),
+      orcamento_regular: regVal,
+      data_limite_regular: dataLimiteRegular,
+      id_conta_ordinaria: contaOrdinariaId,
+      orcamento_extra: extVal,
+      num_prestacoes_extra: numPrestacoesExtra,
+      descricao_extra: descricaoExtra,
+      data_limite_extra: dataLimiteExtra,
+      id_conta_extraordinaria: contaExtraId
+    }).catch(console.error);
+
+    saveAvisosToSupabase(novosAvisos).catch(console.error);
+
     setSucessoEmissao(
-      `Emitidos com sucesso ${novosAvisos.length} avisos de cobrança interligados com as contas bancárias (${contaOrdinariaSel?.banco || "Conta Principal"} / ${contaExtraSel?.banco || "Conta FCR"}).`
+      `Emitidos com sucesso ${novosAvisos.length} avisos e guardada configuração no Supabase interligada às contas (${contaOrdinariaSel?.banco || "Conta Principal"} / ${contaExtraSel?.banco || "Conta FCR"}).`
     );
     setTimeout(() => setSucessoEmissao(null), 7000);
   };
@@ -291,11 +310,12 @@ export function CalculoQuotas({
           {loggedUser.role === "ADMIN" && (
             <button
               type="button"
+              id="btn-guardar-quotas-supabase"
               onClick={handleEmitirQuotasEmLote}
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer shadow-md"
             >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Emitir Avisos em Lote</span>
+              <Save className="w-3.5 h-3.5" />
+              <span>Guardar Configuração e Emitir Quotas no Supabase</span>
             </button>
           )}
         </div>
