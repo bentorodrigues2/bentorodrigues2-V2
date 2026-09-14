@@ -1,0 +1,21 @@
+{
+  "rewrites": [
+    { "source": "/api/ai-assistant/chat", "destination": "/api/ai?acao=chat" },
+    { "source": "/api/generate-legal-notice", "destination": "/api/ai?acao=generate-legal-notice" },
+    { "source": "/api/ai-query", "destination": "/api/ai?acao=ai-query" },
+    { "source": "/api/predict-budget", "destination": "/api/ai?acao=predict-budget" },
+    { "source": "/api/predict-reserve-fund", "destination": "/api/ai?acao=predict-reserve-fund" },
+    { "source": "/api/compare-proposals", "destination": "/api/ai?acao=compare-proposals" },
+    { "source": "/api/generate-minutes", "destination": "/api/ai?acao=generate-minutes" },
+    { "source": "/api/parse-import", "destination": "/api/ai?acao=parse-import" },
+    { "source": "/api/reconhecer-recibo", "destination": "/api/ai?acao=reconhecer-recibo" },
+    { "source": "/api/humanize-convocatoria", "destination": "/api/ai?acao=humanize-convocatoria" },
+    { "source": "/api/autoresponder", "destination": "/api/email?acao=autoresponder" },
+    { "source": "/api/classificador", "destination": "/api/email?acao=classificador" },
+    { "source": "/api/resposta-categoria", "destination": "/api/email?acao=resposta-categoria" },
+    { "source": "/api/ai-studio-router", "destination": "/api/email?acao=router" },
+    { "source": "/api/ai-studio-router/templates", "destination": "/api/email?acao=router-templates" },
+    { "source": "/api/inbound", "destination": "/api/webhooks/resend" },
+    { "source": "/api/ai-studio", "destination": "/api/webhooks/resend" }
+  ]
+}

@@ -15,7 +15,7 @@ import {
   AI_STUDIO_ROUTER_LOGO_HTML,
   AI_STUDIO_ROUTER_SIGNATURE_HTML
 } from "./server/geminiService";
-import { processInboundEmail } from "./api/lib/inboundProcessor.js";
+import { processInboundEmail } from "./server/lib/inboundProcessor.js";
 
 dotenv.config();
 
@@ -31,6 +31,17 @@ async function startServer() {
   // Health check
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", service: "Bento Rodrigues AI Backend" });
+  });
+
+  // Consolidated dispatchers (also available in local dev)
+  app.all("/api/ai", async (req, res) => {
+    const mod = await import("./api/ai.js");
+    return mod.default(req, res);
+  });
+
+  app.all("/api/email", async (req, res) => {
+    const mod = await import("./api/email.js");
+    return mod.default(req, res);
   });
 
   // 1. AI Assistant Chat (Main Modal)

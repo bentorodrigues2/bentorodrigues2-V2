@@ -1,4 +1,4 @@
-import { processInboundEmail } from "../lib/inboundProcessor.js";
+import { processInboundEmail } from "../../server/lib/inboundProcessor.js";
 
 export default async function handler(req, res) {
   if (req.method === "GET") {

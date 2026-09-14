@@ -1,6 +1,6 @@
 import { supabase } from "./supabaseServer.js";
 import { gerarHtmlAutoresponder, gerarHtmlResposta } from "./htmlemail.js";
-import { classifyEmailCategory, generateCategoryResponse } from "../../server/geminiService.ts";
+import { classifyEmailCategory, generateCategoryResponse } from "../geminiService.ts";
 
 /**
  * Filtro de remetentes automatizados, newsletters e fornecedores
