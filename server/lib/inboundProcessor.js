@@ -226,15 +226,66 @@ async function enviarEmailResend({ to, subject, html, attachments = [] }) {
 }
 
 /**
+ * O webhook `email.received` do Resend só envia metadados (from, subject,
+ * lista de anexos com nome/tipo) — nunca o corpo do email nem o conteúdo
+ * dos anexos. É preciso ir buscar isso à API depois de receber o webhook.
+ * https://resend.com/docs/api-reference/emails/retrieve-received-email
+ */
+async function obterConteudoCompleto(emailId) {
+  const resendApiKey = process.env.RESEND_API_KEY || process.env.RESEND_KEY;
+  if (!emailId || !resendApiKey) return null;
+
+  try {
+    const resp = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
+      headers: { Authorization: `Bearer ${resendApiKey}` }
+    });
+
+    if (!resp.ok) {
+      console.warn("[inboundProcessor] Falha ao obter email completo:", resp.status, await resp.text());
+      return null;
+    }
+
+    return await resp.json();
+  } catch (err) {
+    console.warn("[inboundProcessor] Erro ao obter email completo:", err?.message || err);
+    return null;
+  }
+}
+
+function htmlParaTexto(html) {
+  if (!html) return "";
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
  * Processador Central Inbound de Emails (Resend Webhook & API)
  */
 export async function processInboundEmail(payload) {
-  // Normalizar campos (suporta tanto direct payload como Resend webhook payload)
+  const isRealResendWebhook = payload?.type === "email.received" && payload?.data?.email_id;
   const webhookData = payload?.data || payload;
-  const from = webhookData?.from || payload?.from || "";
-  const subject = webhookData?.subject || payload?.subject || "(Sem assunto)";
-  const body = webhookData?.text || webhookData?.body || payload?.body || payload?.bodyText || "";
-  const attachments = webhookData?.attachments || payload?.attachments || [];
+
+  let from = webhookData?.from || payload?.from || "";
+  let subject = webhookData?.subject || payload?.subject || "(Sem assunto)";
+  let body = webhookData?.text || webhookData?.body || payload?.body || payload?.bodyText || "";
+  let attachments = webhookData?.attachments || payload?.attachments || [];
+
+  // Payload real do Resend: ir buscar o corpo e a lista completa de anexos
+  if (isRealResendWebhook) {
+    const completo = await obterConteudoCompleto(webhookData.email_id);
+    if (completo) {
+      from = completo.from || from;
+      subject = completo.subject || subject;
+      body = completo.text || htmlParaTexto(completo.html) || body;
+      attachments = completo.attachments || attachments;
+    } else {
+      console.warn("[inboundProcessor] Não foi possível obter o corpo completo do email; a processar só com metadados.");
+    }
+  }
 
   if (!from) {
     return { ok: false, status: 400, error: "Remetente ('from') é obrigatório." };
