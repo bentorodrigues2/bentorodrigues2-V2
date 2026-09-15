@@ -360,6 +360,7 @@ export interface ReciboQuitacao {
   id_fracao: string;
   nome_condomino: string;
   nif_condomino: string;
+  morada_condomino?: string;
   fracao_nome: string;
   permilagem: number;
   data_emissao: string;

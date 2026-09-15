@@ -104,13 +104,17 @@ export function generateOfficialReceiptPDF(
 
   let y = 34;
 
-  // Duas caixas: Condomínio (emissor) e Liquidado por (condómino)
+  // Duas caixas: Condomínio (emissor) e Liquidado por (condómino) — a caixa
+  // do condómino tem de conter obrigatoriamente Nome, Morada, Fração, NIF,
+  // Referência e Método de Pagamento, por isso ambas as caixas são um pouco
+  // mais altas do que a versão anterior (que só tinha 4 linhas).
   const colW = (pageWidth - 24 - 6) / 2;
+  const boxH = 36;
 
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(12, y, colW, 32, 2, 2, "F");
+  doc.roundedRect(12, y, colW, boxH, 2, 2, "F");
   doc.setDrawColor(...COR_SLATE_BORDA);
-  doc.roundedRect(12, y, colW, 32, 2, 2, "S");
+  doc.roundedRect(12, y, colW, boxH, 2, 2, "S");
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
@@ -131,9 +135,9 @@ export function generateOfficialReceiptPDF(
 
   const col2X = 12 + colW + 6;
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(col2X, y, colW, 32, 2, 2, "F");
+  doc.roundedRect(col2X, y, colW, boxH, 2, 2, "F");
   doc.setDrawColor(...COR_SLATE_BORDA);
-  doc.roundedRect(col2X, y, colW, 32, 2, 2, "S");
+  doc.roundedRect(col2X, y, colW, boxH, 2, 2, "S");
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
@@ -145,15 +149,21 @@ export function generateOfficialReceiptPDF(
   doc.setTextColor(15, 23, 42);
   doc.text(recibo.nome_condomino, col2X + 3, y + 11);
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.8);
-  doc.setTextColor(51, 65, 85);
-  doc.text(`NIF: ${recibo.nif_condomino || "—"}`, col2X + 3, y + 16);
-  // Referência individual da fração, usada pelo motor de IA para conciliação automática via extrato
-  doc.text(`Referência: ${prefixo}-FRA-${recibo.fracao_nome}`, col2X + 3, y + 20.5);
-  doc.text(`Método de Pagamento: ${recibo.metodo_pagamento}`, col2X + 3, y + 25);
+  const moradaCondomino =
+    (recibo as any).morada_condomino ||
+    `${predio.morada_linha1 || ""}${predio.num_porta ? `, ${predio.num_porta}` : ""}, ${predio.codigo_postal ? `${predio.codigo_postal} ` : ""}${predio.localidade || ""}`;
 
-  y += 38;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.5);
+  doc.setTextColor(51, 65, 85);
+  doc.text(`Morada: ${moradaCondomino}`, col2X + 3, y + 15.5);
+  doc.text(`Fração: ${recibo.fracao_nome}`, col2X + 3, y + 19.5);
+  doc.text(`NIF: ${recibo.nif_condomino || "—"}`, col2X + 3, y + 23.5);
+  // Referência individual da fração, usada pelo motor de IA para conciliação automática via extrato
+  doc.text(`Referência: ${prefixo}-FRA-${recibo.fracao_nome}`, col2X + 3, y + 27.5);
+  doc.text(`Método de Pagamento: ${recibo.metodo_pagamento}`, col2X + 3, y + 31.5);
+
+  y += boxH + 6;
 
   // Tabela de rubricas
   const tableW = pageWidth - 24;
@@ -209,17 +219,22 @@ export function generateOfficialReceiptPDF(
 
   y += 10;
 
-  // Declaração de quitação
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.3);
-  doc.setTextColor(71, 85, 105);
-  doc.text(
-    "O presente documento serve de quitação oficial de pagamento para todos os efeitos legais, comprovando a liquidação dos valores discriminados.",
-    15,
-    y + 4
-  );
-
-  y += 10;
+  // Declaração de quitação — só se aplica ao Recibo (comprovativo legal de
+  // pagamento); a Nota de Cobrança é meramente informativa, ainda não houve
+  // pagamento confirmado, por isso não pode ter esta menção.
+  if (tipoDocumento === "recibo") {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.3);
+    doc.setTextColor(71, 85, 105);
+    doc.text(
+      "O presente documento serve de quitação oficial de pagamento para todos os efeitos legais, comprovando a liquidação dos valores discriminados.",
+      15,
+      y + 4
+    );
+    y += 10;
+  } else {
+    y += 4;
+  }
 
   // Assinatura
   doc.setFont("helvetica", "bold");
