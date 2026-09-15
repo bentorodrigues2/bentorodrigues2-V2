@@ -1,5 +1,6 @@
 import { supabase } from "../server/lib/supabaseServer.js";
 import { enviarEmailPDF } from "../server/lib/pdfService.js";
+import { arquivarAnexoOriginal } from "../server/lib/multimodalService.js";
 
 /**
  * Reenvia por email um documento já arquivado no Supabase Storage (Arquivo
@@ -53,7 +54,36 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, email_enviado: true });
     }
 
-    return res.status(400).json({ error: "Ação inválida. Use acao=enviar" });
+    // Anexa um ficheiro digitalizado (foto/PDF) ao Arquivo Digital — usado
+    // para juntar a uma ata a folha de assinaturas assinada em papel, para
+    // quem preferir assinar fisicamente em vez de assinatura digital no ecrã.
+    if (acao === "anexar") {
+      const { fileBase64, fileName, mimeType, predio, ano, tema, tipo, fluxo, descricao, categoria } = body;
+      if (!fileBase64 || !fileName) {
+        return res.status(400).json({ error: "fileBase64 e fileName são obrigatórios" });
+      }
+
+      const buffer = Buffer.from(fileBase64, "base64");
+      const caminho = await arquivarAnexoOriginal({
+        buffer,
+        filename: fileName,
+        mimeType: mimeType || "application/octet-stream",
+        ano: ano || new Date().getFullYear(),
+        tema: tema || "Assembleias",
+        tipo: tipo || "Anexo",
+        predio: predio || "geral",
+        fracao: "geral",
+        fluxo: fluxo || "anexo_manual",
+        origem: "upload_admin",
+        categoria: categoria || undefined,
+        visibilidade: "Público",
+        descricao
+      });
+
+      return res.status(200).json({ ok: true, caminho });
+    }
+
+    return res.status(400).json({ error: "Ação inválida. Use acao=enviar|anexar" });
   } catch (err) {
     console.error("Erro em /api/documento:", err);
     return res.status(500).json({ error: err?.message || String(err) });

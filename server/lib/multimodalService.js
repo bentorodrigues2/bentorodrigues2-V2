@@ -46,7 +46,7 @@ export async function extrairDadosDocumento(anexos) {
  * "documentos" e regista-o na tabela documentos, tal como pdfService.js
  * faz para os PDFs gerados — mas aqui para o anexo tal como chegou.
  */
-export async function arquivarAnexoOriginal({ buffer, filename, mimeType, ano, tema, tipo, predio, fracao, fluxo }) {
+export async function arquivarAnexoOriginal({ buffer, filename, mimeType, ano, tema, tipo, predio, fracao, fluxo, origem, categoria, visibilidade, descricao }) {
   const anoSeguro = ano || new Date().getFullYear();
   const nomeSeguro = sanitizarNomeFicheiro(filename);
   const pastas = [anoSeguro, tema, tipo, predio || "geral", fracao || "geral", fluxo]
@@ -71,7 +71,10 @@ export async function arquivarAnexoOriginal({ buffer, filename, mimeType, ano, t
     predio,
     fracao,
     fluxo,
-    origem: "email_inbound_anexo",
+    origem: origem || "email_inbound_anexo",
+    categoria: categoria || null,
+    visibilidade: visibilidade || null,
+    descricao: descricao || null,
     created_at: new Date().toISOString()
   });
 

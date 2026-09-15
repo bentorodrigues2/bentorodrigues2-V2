@@ -62,6 +62,8 @@ export function GestaoAssembleias({ predio, fracoes, reunioes, onAddReuniao, set
   const [signerFracao, setSignerFracao] = useState("Administrador");
   const [presidenteMesa, setPresidenteMesa] = useState("José Carlos Guerra (Administrador)");
   const [localReuniao, setLocalReuniao] = useState("");
+  const [uploadingFolhaAssinaturas, setUploadingFolhaAssinaturas] = useState(false);
+  const folhaAssinaturasInputRef = useRef<HTMLInputElement | null>(null);
 
   const predioReunioes = reunioes.filter(r => r.id_predio === predio.id_predio);
   const predioFracoes = fracoes.filter(f => f.id_predio === predio.id_predio);
@@ -726,14 +728,14 @@ Com os meus cumprimentos,
       return;
     }
 
-    setReunioes(reunioes.map(r =>
-      r.id_reuniao === activeMeeting.id_reuniao
-        ? { ...r, ata: ataTexto, notas_ata: notesToText(), estado: "Realizada" as const }
-        : r
-    ));
-
     const ataNumero = String(reunioes.filter(r => r.estado === "Realizada").length + 1);
     const anoStr = activeMeeting.data ? (activeMeeting.data.includes("/") ? activeMeeting.data.split("/")[2] : activeMeeting.data.split("-")[0]) : new Date().getFullYear().toString();
+
+    setReunioes(reunioes.map(r =>
+      r.id_reuniao === activeMeeting.id_reuniao
+        ? { ...r, ata: ataTexto, notas_ata: notesToText(), estado: "Realizada" as const, numero_ata: ataNumero }
+        : r
+    ));
 
     triggerSendReaction("email", `A finalizar, arquivar e enviar a Ata a ${destinatarios.length} condómino(s)...`, async () => {
       try {
@@ -788,6 +790,111 @@ Com os meus cumprimentos,
         throw err;
       }
     });
+  };
+
+  // Permite anexar a digitalização (foto ou PDF) da folha de assinaturas
+  // física, para condóminos que prefiram assinar em papel em vez de
+  // assinatura digital no ecrã (ver quadro "Assinatura Manuscrita Física").
+  // Fotos são comprimidas para WebP no cliente antes do envio.
+  const handleUploadFolhaAssinaturas = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !activeMeeting) return;
+
+    if (!activeMeeting.numero_ata) {
+      alert("Finalize primeiro a ata (\"Guardar, Arquivar & Enviar Ata aos Condóminos\") antes de anexar a folha de assinaturas.");
+      return;
+    }
+
+    const comprimirParaWebP = (imgFile: File): Promise<{ base64: string; mimeType: string; nome: string }> =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            const MAX_WIDTH = 1600;
+            let width = img.width;
+            let height = img.height;
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx?.drawImage(img, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL("image/webp", 0.85);
+            resolve({ base64: dataUrl.split(",")[1], mimeType: "image/webp", nome: `Folha_Assinaturas_Ata_N${activeMeeting.numero_ata}.webp` });
+          };
+          img.onerror = reject;
+          img.src = event.target?.result as string;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(imgFile);
+      });
+
+    const lerComoBase64 = (anyFile: File): Promise<{ base64: string; mimeType: string; nome: string }> =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const dataUrl = event.target?.result as string;
+          resolve({ base64: dataUrl.split(",")[1], mimeType: anyFile.type || "application/octet-stream", nome: `Folha_Assinaturas_Ata_N${activeMeeting.numero_ata}${anyFile.name.slice(anyFile.name.lastIndexOf("."))}` });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(anyFile);
+      });
+
+    setUploadingFolhaAssinaturas(true);
+    try {
+      const { base64, mimeType, nome } = file.type.startsWith("image/")
+        ? await comprimirParaWebP(file)
+        : await lerComoBase64(file);
+
+      const resp = await fetch("/api/documento?acao=anexar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileBase64: base64,
+          fileName: nome,
+          mimeType,
+          predio: predio.id_predio,
+          ano: new Date().getFullYear(),
+          tema: "Assembleias",
+          tipo: "Ata",
+          fluxo: "ata_folha_assinaturas_papel",
+          categoria: "Atas & Convocatórias",
+          descricao: `Folha de assinaturas digitalizada (assinatura física em papel) da Ata N.º ${activeMeeting.numero_ata} — ${activeMeeting.tema}, ${activeMeeting.data}.`
+        })
+      });
+      const resultado = await resp.json();
+      if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao anexar a folha de assinaturas");
+
+      if (onAddDocumento) {
+        onAddDocumento({
+          id_doc: `doc-ata-assinaturas-${activeMeeting.id_reuniao}-${Date.now()}`,
+          id_predio: predio.id_predio,
+          nome,
+          tipo: "Ata",
+          data_upload: new Date().toLocaleDateString("pt-PT"),
+          tamanho: "",
+          categoria: "Atas & Convocatórias",
+          tema: "Assembleias",
+          ano: String(new Date().getFullYear()),
+          descricao: `Folha de assinaturas digitalizada da Ata N.º ${activeMeeting.numero_ata} — ${activeMeeting.tema}.`,
+          visibilidade: "Público",
+          autor: loggedUser.nome || "Administrador do Condomínio",
+          arquivado: true,
+          caminho: resultado.caminho
+        });
+      }
+
+      alert(`✅ Folha de assinaturas anexada com sucesso à Ata N.º ${activeMeeting.numero_ata} e arquivada em "Atas & Convocatórias"!`);
+    } catch (err: any) {
+      alert(`❌ Erro ao anexar a folha de assinaturas: ${err?.message || "erro desconhecido"}`);
+    } finally {
+      setUploadingFolhaAssinaturas(false);
+    }
   };
 
   const notesToText = () => notasAta;
@@ -2297,6 +2404,33 @@ Com os meus cumprimentos,
                               className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg text-xs w-full text-center mt-3 cursor-pointer"
                             >
                               <i className="fa-solid fa-print mr-1"></i> Imprimir Ata com Assinatura Física
+                            </button>
+
+                            <input
+                              ref={folhaAssinaturasInputRef}
+                              type="file"
+                              accept="image/*,.pdf"
+                              onChange={handleUploadFolhaAssinaturas}
+                              className="hidden"
+                            />
+                            <button
+                              type="button"
+                              disabled={uploadingFolhaAssinaturas}
+                              onClick={() => folhaAssinaturasInputRef.current?.click()}
+                              className="bg-white hover:bg-slate-50 text-slate-700 font-bold px-4 py-2 rounded-lg text-xs w-full text-center mt-2 cursor-pointer border border-slate-200 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                              title={activeMeeting.numero_ata ? "Anexa a folha assinada em papel (foto ou PDF) ao Arquivo Digital, ligada a esta ata" : "Finalize a ata primeiro (\"Guardar, Arquivar & Enviar\") para poder anexar a folha assinada"}
+                            >
+                              {uploadingFolhaAssinaturas ? (
+                                <>
+                                  <i className="fa-solid fa-spinner fa-spin"></i>
+                                  <span>A carregar...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <i className="fa-solid fa-camera text-indigo-500"></i>
+                                  <span>Anexar Folha de Assinaturas Digitalizada</span>
+                                </>
+                              )}
                             </button>
                           </div>
                         </div>

@@ -202,6 +202,7 @@ export interface Reuniao {
   votosPresenca?: ReuniaoVotoPresenca[];
   ata?: string; // Generated official meeting minutes text
   notas_ata?: string; // Simple user-provided discussion notes
+  numero_ata?: string; // Número atribuído à ata quando finalizada e enviada
   folha_presencas?: { [fracaoId: string]: "Presente" | "Ausente" | "Representado" };
   representantes?: { [fracaoId: string]: string }; // Map of fraction ID to proxy representative name
   assinaturas?: ReuniaoAssinatura[];

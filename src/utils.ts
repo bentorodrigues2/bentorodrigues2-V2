@@ -3133,7 +3133,6 @@ export function gerarAtaAprovadaOficialPDF(
     deliberacoes?: string;
     quorum?: string;
     mesaPresidente?: string;
-    mesaSecretario?: string;
     hora1?: string;
     hora2?: string;
     local?: string;
@@ -3182,7 +3181,7 @@ export function gerarAtaAprovadaOficialPDF(
     doc.text(`Data da Reunião: ${dataAssembleia} | 1.ª Conv.: ${conteudoReal?.hora1 || "20h30"} | 2.ª Conv.: ${conteudoReal?.hora2 || "21h00"}`, 18, y + 11);
     doc.text(`Local: ${conteudoReal?.local || "Sala de Condomínio & Plataforma https://bentorodrigues2.condomanagerai.com"}`, 18, y + 16);
     doc.text(`Quórum Verificado: ${conteudoReal?.quorum || "785,00"} ‰ do Capital`, 130, y + 6);
-    doc.text(`Mesa: ${conteudoReal?.mesaPresidente || "José Carlos Guerra"} (Pres.) / ${conteudoReal?.mesaSecretario || conteudoReal?.mesaPresidente || "José Carlos Guerra"} (Sec.)`, 130, y + 11);
+    doc.text(`Mesa: ${conteudoReal?.mesaPresidente || "José Carlos Guerra"} (Administração do Condomínio)`, 130, y + 11);
     y += 28;
 
     // Ordem de Trabalhos — usa o texto real editado pelo Administrador
@@ -3233,19 +3232,18 @@ export function gerarAtaAprovadaOficialPDF(
     doc.text(fechoLines, 14, y);
     y += fechoLines.length * 4.5 + 14;
 
-    // Assinaturas
+    // Assinatura — uma só linha, da Administração do Condomínio (não há
+    // Presidente/Secretário separados quando é a própria Administração a
+    // conduzir a Mesa, caso mais comum em condomínios de menor dimensão)
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.text("O Presidente da Mesa da Assembleia:", 20, y);
-    doc.text("O Secretário / Administrador:", 115, y);
+    doc.text("A Administração do Condomínio:", 105, y, { align: "center" });
     y += 12;
-    doc.line(20, y, 90, y);
-    doc.line(115, y, 185, y);
+    doc.line(65, y, 145, y);
     y += 4;
     doc.setFontSize(7.5);
     doc.setTextColor(100, 116, 139);
-    doc.text(conteudoReal?.mesaPresidente || "José Carlos Guerra", 20, y);
-    doc.text(`${conteudoReal?.mesaSecretario || conteudoReal?.mesaPresidente || "José Carlos Guerra"} • Administrador`, 115, y);
+    doc.text(conteudoReal?.mesaPresidente || "José Carlos Guerra", 105, y, { align: "center" });
 
     // Rodapé
     doc.setFontSize(6.5);
