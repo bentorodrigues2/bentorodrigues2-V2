@@ -10,9 +10,71 @@ import {
 } from "../server/geminiService.js";
 import { gerarHtmlResposta } from "../server/lib/htmlemail.js";
 import { enviarEmailSemAnexo } from "../server/lib/mailer.js";
+import { supabase } from "../server/lib/supabaseServer.js";
 
 export default async function handler(req, res) {
   const acao = req.query?.acao || req.body?.acao;
+
+  // SINCRONIZAÇÃO REAL DA CAIXA DE ENTRADA (/api/email?acao=sincronizar-caixa-entrada)
+  // O processamento em si já é automático e em tempo real via webhook do
+  // Resend (api/webhooks/resend.js) — este botão não "liga" nada que esteja
+  // desligado, serve para dar um diagnóstico real e imediato: quantos
+  // emails chegaram nas últimas 24h (consulta direta à API do Resend) e
+  // quantas pendências há mesmo neste prédio neste momento (respostas de IA
+  // por aprovar + movimentos cegos por justificar), em vez de mostrar
+  // sempre "0 pendências críticas" sem verificar nada.
+  if (acao === "sincronizar-caixa-entrada") {
+    try {
+      const idPredio = req.method === "GET" ? req.query?.id_predio : req.body?.id_predio;
+      const resendApiKey = process.env.RESEND_API_KEY || process.env.RESEND_KEY;
+
+      let emailsRecebidos24h = 0;
+      let ultimoEmailRecebido = null;
+      if (resendApiKey) {
+        const resp = await fetch("https://api.resend.com/emails/receiving?limit=50", {
+          headers: { Authorization: `Bearer ${resendApiKey}` }
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          const emails = Array.isArray(data?.data) ? data.data : [];
+          const agora = Date.now();
+          emailsRecebidos24h = emails.filter((e) => agora - new Date(e.created_at).getTime() < 24 * 60 * 60 * 1000).length;
+          ultimoEmailRecebido = emails[0]?.created_at || null;
+        }
+      }
+
+      let respostasPendentes = 0;
+      let movimentosPorJustificar = 0;
+      if (idPredio) {
+        const { count: cResp } = await supabase
+          .from("respostas_ia_pendentes")
+          .select("id", { count: "exact", head: true })
+          .eq("id_predio", idPredio)
+          .eq("estado", "PENDENTE");
+        respostasPendentes = cResp || 0;
+
+        const { count: cMov } = await supabase
+          .from("movimentos")
+          .select("id_movimento", { count: "exact", head: true })
+          .eq("id_predio", idPredio)
+          .eq("is_movimento_cego", true)
+          .eq("estado", "Movimento Cego / Por Justificar");
+        movimentosPorJustificar = cMov || 0;
+      }
+
+      return res.status(200).json({
+        ok: true,
+        emailsRecebidos24h,
+        ultimoEmailRecebido,
+        respostasPendentes,
+        movimentosPorJustificar,
+        totalPendenciasCriticas: respostasPendentes + movimentosPorJustificar
+      });
+    } catch (err) {
+      console.error("[api/email?acao=sincronizar-caixa-entrada] Erro:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao sincronizar a caixa de entrada" });
+    }
+  }
 
   // 0. NOTIFICAÇÃO INSTITUCIONAL SIMPLES, SEM ANEXO (/api/email?acao=notificar)
   // Usado por ações pontuais do admin que não têm documento associado

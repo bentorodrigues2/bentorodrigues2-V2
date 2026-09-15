@@ -775,16 +775,30 @@ export function ConfiguracoesAdministracao({
     addLog("IA", "Modo Auto-Responder", `Configurado para: ${mode === "confirmacao_previa" ? "Confirmação Prévia pelo Administrador" : "Totalmente Autónomo"}`);
   };
 
-  const handleSyncNow = () => {
+  const handleSyncNow = async () => {
     setIsSyncingNow(true);
-    setTimeout(() => {
+    try {
+      const resp = await fetch(`/api/email?acao=sincronizar-caixa-entrada&id_predio=${encodeURIComponent(predioId)}`);
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) throw new Error(data?.error || "Falha ao consultar a caixa de entrada");
+
       const nowStr = "Hoje às " + new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
       setLastSyncTime(nowStr);
       localStorage.setItem(`last_sync_time_${predioId}`, nowStr);
+
+      const resumo = `${data.emailsRecebidos24h} email(s) recebido(s) nas últimas 24h. Pendências reais: ${data.respostasPendentes} resposta(s) de IA por aprovar, ${data.movimentosPorJustificar} movimento(s) por justificar.`;
+      addLog("IA", "Varredura da Caixa de Entrada", resumo);
+
+      alert(
+        data.totalPendenciasCriticas > 0
+          ? `⚠️ Sincronização concluída.\n\n${resumo}`
+          : `✅ Sincronização concluída! Sem pendências críticas neste momento.\n\n${data.emailsRecebidos24h} email(s) recebido(s) nas últimas 24h.`
+      );
+    } catch (err: any) {
+      alert(`❌ Não foi possível sincronizar: ${err?.message || "erro desconhecido"}`);
+    } finally {
       setIsSyncingNow(false);
-      addLog("IA", "Varredura da Caixa de Entrada", "Caixa de correio sincronizada com sucesso. 0 pendências críticas.");
-      alert("✅ Sincronização concluída! A caixa de entrada está em dia e a IA está a monitorizar novas faturas e comprovativos.");
-    }, 1200);
+    }
   };
 
   const handleRunSimulation = () => {
