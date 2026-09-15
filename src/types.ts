@@ -146,8 +146,6 @@ export interface Fracao {
   apolice_validade?: string;
   apolice_doc?: string;
   solicitacao_email_incendio?: boolean;
-  quota_mensal?: number;
-  divida_total?: number;
 }
 
 export interface Aviso {

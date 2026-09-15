@@ -515,8 +515,17 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   const cegosPendentesPagamento = todosCegosPendentes.filter(m => m.descricao?.includes("[pagamento:"));
   const cegosPendentes = todosCegosPendentes.filter(m => !m.descricao?.includes("[pagamento:"));
 
+  // Dívida real por fração: soma dos avisos de "Cota Ordinária" vencidos e
+  // por pagar (o campo divida_total da fração nunca chegou a ser lido/
+  // escrito do Supabase, ficando sempre vazio).
+  const hojeISO = new Date().toISOString().split("T")[0];
+  const calcularDividaFracao = (idFracao: string): number =>
+    avisos
+      .filter(a => a.id_fracao === idFracao && a.tipo === "Cota Ordinária" && a.estado === "Pendente" && a.vencimento && a.vencimento < hojeISO)
+      .reduce((soma, a) => soma + (Number(a.valor) || 0), 0);
+
   // Frações com dívidas para seleção rápida
-  const fracoesComDivida = fracoes.filter(f => (f.divida_total || 0) > 0 || (f.id_predio === predio.id_predio));
+  const fracoesComDivida = fracoes.filter(f => f.id_predio === predio.id_predio);
 
   return (
     <div className="space-y-6">
@@ -1155,19 +1164,22 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                   onChange={e => {
                     const id = e.target.value;
                     setDividaFracaoId(id);
-                    const f = fracoes.find(x => x.id_fracao === id);
-                    if (f && (f.divida_total || 0) > 0) {
-                      setDividaValor((f.divida_total || 0).toFixed(2));
+                    const divida = calcularDividaFracao(id);
+                    if (divida > 0) {
+                      setDividaValor(divida.toFixed(2));
                     }
                   }}
                   className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs focus:outline-emerald-500"
                 >
                   <option value="">Selecione a fração que efetuou o pagamento...</option>
-                  {fracoesComDivida.map(f => (
-                    <option key={f.id_fracao} value={f.id_fracao}>
-                      Fração {f.fracao_nome || f.id_fracao} - {f.proprietario?.nome || "Sem proprietário"} {f.divida_total ? `(Dívida: ${f.divida_total.toFixed(2)}€)` : ''}
-                    </option>
-                  ))}
+                  {fracoesComDivida.map(f => {
+                    const divida = calcularDividaFracao(f.id_fracao);
+                    return (
+                      <option key={f.id_fracao} value={f.id_fracao}>
+                        Fração {f.fracao_nome || f.id_fracao} - {f.proprietario?.nome || "Sem proprietário"} {divida > 0 ? `(Dívida: ${divida.toFixed(2)}€)` : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 

@@ -362,10 +362,7 @@ export function FichaEmpresaGestora({
   // KPIs — dados reais: nº de prédios/frações a partir dos registos
   // efetivos; faturação e inadimplência a partir dos avisos de "Cota
   // Ordinária" realmente emitidos (Gestão de Emissão) e do seu estado real
-  // (Pendente/Paga), não de fórmulas fixas sobre o nº de prédios. Os campos
-  // quota_mensal/divida_total da fração existem no tipo mas nunca chegaram
-  // a ser escritos nem lidos do Supabase em lado nenhum do código — usar os
-  // avisos reais em vez deles.
+  // (Pendente/Paga), não de fórmulas fixas sobre o nº de prédios.
   const totalPrediosCount = predios.length;
   const totalFracoesCount = fracoes.length;
 
