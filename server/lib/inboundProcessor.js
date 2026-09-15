@@ -5,7 +5,12 @@ import { classifyEmailCategory, generateCategoryResponse } from "../geminiServic
 import { extrairDadosDocumento, arquivarAnexoOriginal } from "./multimodalService.js";
 
 /**
- * Filtro de remetentes automatizados, newsletters e fornecedores
+ * Filtro de remetentes automatizados e newsletters/spam.
+ * NOTA: não bloquear domínios de fornecedores reais (EDP, Galp, Vodafone,
+ * seguradoras, empreiteiros, etc.) — são precisamente quem envia as
+ * faturas/comprovativos que o motor de OCR deve processar. Um bloqueio
+ * anterior aqui estava a descartar em silêncio faturas reais destes
+ * fornecedores antes de sequer chegarem à extração por IA.
  */
 const FORNECEDORES_E_NOREPLY = [
   "noreply",
@@ -18,16 +23,7 @@ const FORNECEDORES_E_NOREPLY = [
   "newsletter",
   "marketing",
   "promo",
-  "campaign",
-  "edp.pt",
-  "galp.com",
-  "galp.pt",
-  "vodafone.pt",
-  "meo.pt",
-  "nos.pt",
-  "seguradora",
-  "sotecnisol",
-  "conduril"
+  "campaign"
 ];
 
 function isBloqueado(email) {
@@ -507,8 +503,13 @@ export async function processInboundEmail(payload) {
         const principal = anexosComConteudo[0];
         comprovativoUrl = principal.filename;
 
-        // Fatura de fornecedor: arquiva o ficheiro original no Arquivo Digital
-        if ((dadosExtraidos?.tipo_documento || "").toLowerCase() === "fatura") {
+        // Arquiva o ficheiro original no Arquivo Digital para qualquer tipo de
+        // documento financeiro reconhecido (fatura, comprovativo, recibo,
+        // extrato) — antes só faturas eram arquivadas, perdendo o ficheiro
+        // original de comprovativos/recibos processados.
+        const tipoDocLower = (dadosExtraidos?.tipo_documento || "").toLowerCase();
+        const TIPOS_ARQUIVAVEIS = { fatura: "Fatura de Fornecedor", comprovativo: "Comprovativo de Pagamento", recibo: "Recibo", extrato: "Extrato Bancário" };
+        if (TIPOS_ARQUIVAVEIS[tipoDocLower]) {
           try {
             const caminhoArquivo = await arquivarAnexoOriginal({
               buffer: principal.buffer,
@@ -516,14 +517,14 @@ export async function processInboundEmail(payload) {
               mimeType: principal.mimeType,
               ano: new Date().getFullYear(),
               tema: "Faturas & Recibos",
-              tipo: "Fatura de Fornecedor",
+              tipo: TIPOS_ARQUIVAVEIS[tipoDocLower],
               predio: contexto?.id_predio || null,
               fracao: contexto?.fracao || null,
-              fluxo: "fatura_email_inbound"
+              fluxo: `${tipoDocLower}_email_inbound`
             });
             comprovativoUrl = caminhoArquivo;
           } catch (errArquivo) {
-            console.warn("[inboundProcessor] Aviso ao arquivar fatura:", errArquivo?.message || errArquivo);
+            console.warn("[inboundProcessor] Aviso ao arquivar documento:", errArquivo?.message || errArquivo);
           }
         }
 

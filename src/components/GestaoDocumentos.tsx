@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from "react";
 import { jsPDF } from "jspdf";
-import { Predio, Documento, LoggedUser } from "../types";
+import { Predio, Documento, LoggedUser, DocumentoVersao } from "../types";
 import { formatDatePT, downloadBlob, addPdfHeaderWithLogo, downloadReceiptPDF, downloadNotaCobrancaPDF } from "../utils";
 import { getIllustratedManualHtml } from "../utils/manualIllustratedTemplates";
 import { triggerSendReaction } from "./SendingReactionModal";
+import { updateDocumentoMetadataToSupabase, deleteDocumentoFromSupabase } from "../lib/supabaseService";
 import { EnciclopediaPlataforma } from "./EnciclopediaPlataforma";
 import { 
   FileText, 
@@ -83,6 +84,7 @@ export function GestaoDocumentos({
   const [editDesc, setEditDesc] = useState("");
   const [editAutor, setEditAutor] = useState("");
   const [editCategoria, setEditCategoria] = useState("");
+  const [editNotaAlteracao, setEditNotaAlteracao] = useState("");
 
   const abrirModalEditarDoc = (doc: Documento) => {
     setEditingDoc(doc);
@@ -90,23 +92,60 @@ export function GestaoDocumentos({
     setEditDesc(doc.descricao || "");
     setEditAutor(doc.autor || loggedUser.nome);
     setEditCategoria(doc.categoria || "Documento Geral");
+    setEditNotaAlteracao("");
   };
 
-  const guardarEGuardarPdf = () => {
+  const [guardandoEdicaoDoc, setGuardandoEdicaoDoc] = useState(false);
+
+  const guardarEGuardarPdf = async () => {
     if (!editingDoc) return;
+
+    const versaoAnterior = editingDoc.versao_atual || 1;
+    const houveAlteracao =
+      editingDoc.nome !== editNome ||
+      (editingDoc.descricao || "") !== editDesc ||
+      (editingDoc.autor || "") !== editAutor ||
+      (editingDoc.categoria || "") !== editCategoria;
+
+    const novoHistorico: DocumentoVersao[] = houveAlteracao
+      ? [
+          ...(editingDoc.versoes || []),
+          {
+            id_versao: "v" + Date.now(),
+            versao: versaoAnterior,
+            data_upload: editingDoc.data_upload,
+            tamanho: editingDoc.tamanho,
+            descricao_alteracao: editNotaAlteracao.trim() || "Atualização de metadados",
+            carregado_por: editingDoc.autor || "Administração"
+          }
+        ]
+      : (editingDoc.versoes || []);
+
     const docAtualizado: Documento = {
       ...editingDoc,
       nome: editNome,
       descricao: editDesc,
       autor: editAutor,
-      categoria: editCategoria
+      categoria: editCategoria,
+      versao_atual: houveAlteracao ? versaoAnterior + 1 : versaoAnterior,
+      versoes: novoHistorico
     };
 
-    if (setDocumentos) {
-      setDocumentos(prev => prev.map(d => d.id_doc === editingDoc.id_doc ? docAtualizado : d));
+    setGuardandoEdicaoDoc(true);
+    try {
+      const ok = await updateDocumentoMetadataToSupabase(docAtualizado);
+      if (!ok) {
+        alert("Erro ao gravar as alterações no Supabase — tente novamente.");
+        return;
+      }
+      if (setDocumentos) {
+        setDocumentos(prev => prev.map(d => d.id_doc === editingDoc.id_doc ? docAtualizado : d));
+      }
+      setEditingDoc(null);
+      handleDownloadPdf(docAtualizado);
+    } finally {
+      setGuardandoEdicaoDoc(false);
     }
-    setEditingDoc(null);
-    handleDownloadPdf(docAtualizado);
   };
 
   // Helper to generate full printable HTML content for any document
@@ -1458,6 +1497,8 @@ export function GestaoDocumentos({
     const dest = emailDestinatario.trim();
     const assunto = emailAssunto;
     const mensagem = emailMensagem;
+    const adminEmail = predio.email_condominio || predio.email;
+    const cc = emailEnviarCopiaAdmin && adminEmail && adminEmail !== dest ? adminEmail : undefined;
     setEmailModalDoc(null);
 
     triggerSendReaction("email", `A enviar "${docNome}" para ${dest}...`, async () => {
@@ -1470,7 +1511,8 @@ export function GestaoDocumentos({
             nome: docNome,
             email: dest,
             assunto,
-            mensagem
+            mensagem,
+            cc
           })
         });
         const resultado = await resp.json();
@@ -1748,28 +1790,38 @@ export function GestaoDocumentos({
   };
 
   // Confirm Floppy Disk AI Archiving
-  const confirmarArquivamentoIA = () => {
+  const [arquivandoDoc, setArquivandoDoc] = useState(false);
+
+  const confirmarArquivamentoIA = async () => {
     if (!archiveTargetDoc) return;
 
-    if (setDocumentos) {
-      setDocumentos(prev => prev.map(d => {
-        if (d.id_doc === archiveTargetDoc.id_doc) {
-          return {
-            ...d,
-            ano: targetAno,
-            tema: targetTema,
-            sub_pasta: targetSubPasta,
-            fornecedor: targetFornecedor,
-            arquivado: true,
-            data_arquivamento: new Date().toISOString().split("T")[0]
-          };
-        }
-        return d;
-      }));
-    }
+    setArquivandoDoc(true);
+    try {
+      const docAtualizado: Documento = {
+        ...archiveTargetDoc,
+        ano: targetAno,
+        tema: targetTema,
+        sub_pasta: targetSubPasta,
+        fornecedor: targetFornecedor,
+        arquivado: true,
+        data_arquivamento: new Date().toISOString().split("T")[0]
+      };
 
-    setAiMessage(`💾 Ficheiro "${archiveTargetDoc.nome}" arquivado com sucesso no repositório de ${targetAno} > ${targetTema} > ${targetSubPasta}!`);
-    setArchiveTargetDoc(null);
+      const ok = await updateDocumentoMetadataToSupabase(docAtualizado);
+      if (!ok) {
+        alert("Erro ao arquivar o ficheiro no Supabase — tente novamente.");
+        return;
+      }
+
+      if (setDocumentos) {
+        setDocumentos(prev => prev.map(d => d.id_doc === archiveTargetDoc.id_doc ? docAtualizado : d));
+      }
+
+      setAiMessage(`💾 Ficheiro "${archiveTargetDoc.nome}" arquivado com sucesso no repositório de ${targetAno} > ${targetTema} > ${targetSubPasta}!`);
+      setArchiveTargetDoc(null);
+    } finally {
+      setArquivandoDoc(false);
+    }
   };
 
   // Handler for manual upload submission
@@ -1828,23 +1880,34 @@ export function GestaoDocumentos({
   };
 
   // Delete document (Admin only)
-  const eliminarDocumento = (docId: string) => {
+  const eliminarDocumento = async (docId: string) => {
     if (!["ADMIN", "EMPRESA_GESTORA"].includes(loggedUser.role)) return;
     if (!setDocumentos) return;
 
-    if (confirm("Tem a certeza de que pretende eliminar este ficheiro permanentemente?")) {
-      setDocumentos(prev => prev.filter(d => d.id_doc !== docId));
-      alert("Ficheiro removido do Arquivo com sucesso.");
+    if (!confirm("Tem a certeza de que pretende eliminar este ficheiro permanentemente?")) return;
+
+    const ok = await deleteDocumentoFromSupabase(docId);
+    if (!ok) {
+      alert("Erro ao eliminar o ficheiro no Supabase — tente novamente.");
+      return;
     }
+    setDocumentos(prev => prev.filter(d => d.id_doc !== docId));
+    alert("Ficheiro removido do Arquivo com sucesso.");
   };
 
   // Toggle Visibility
-  const alternarVisibilidade = (doc: Documento) => {
+  const alternarVisibilidade = async (doc: Documento) => {
     if (!["ADMIN", "EMPRESA_GESTORA"].includes(loggedUser.role)) return;
     if (!setDocumentos) return;
 
     const novaVis = doc.visibilidade === "Administração" ? "Público" : "Administração";
-    setDocumentos(prev => prev.map(d => d.id_doc === doc.id_doc ? { ...d, visibilidade: novaVis } : d));
+    const docAtualizado = { ...doc, visibilidade: novaVis as Documento["visibilidade"] };
+    const ok = await updateDocumentoMetadataToSupabase(docAtualizado);
+    if (!ok) {
+      alert("Erro ao alterar a visibilidade no Supabase — tente novamente.");
+      return;
+    }
+    setDocumentos(prev => prev.map(d => d.id_doc === doc.id_doc ? docAtualizado : d));
   };
 
   return (
@@ -2648,11 +2711,12 @@ export function GestaoDocumentos({
 
               <button
                 type="button"
+                disabled={arquivandoDoc}
                 onClick={confirmarArquivamentoIA}
-                className="bg-emerald-400 hover:bg-emerald-300 text-emerald-950 font-black px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-lg cursor-pointer"
+                className="bg-emerald-400 hover:bg-emerald-300 disabled:opacity-60 text-emerald-950 font-black px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-lg cursor-pointer"
               >
                 <Save className="h-4 w-4" />
-                <span>Sim, Confirmar e Arquivar</span>
+                <span>{arquivandoDoc ? "A arquivar..." : "Sim, Confirmar e Arquivar"}</span>
               </button>
             </div>
           </div>
@@ -2999,7 +3063,12 @@ export function GestaoDocumentos({
                   <FileText className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-white">Editar Dados & Metadados do Documento</h3>
+                  <h3 className="text-sm font-black text-white flex items-center gap-2">
+                    <span>Editar Dados & Metadados do Documento</span>
+                    <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded text-[10px] font-mono">
+                      v{editingDoc.versao_atual || 1}
+                    </span>
+                  </h3>
                   <p className="text-[10px] text-emerald-300 font-bold">Arquivo Digital • Atualização do Registo Oficial</p>
                 </div>
               </div>
@@ -3051,6 +3120,32 @@ export function GestaoDocumentos({
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white text-xs leading-relaxed focus:outline-none focus:border-emerald-400"
                 />
               </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">Nota da Alteração (fica registada no histórico de versões)</label>
+                <input
+                  type="text"
+                  value={editNotaAlteracao}
+                  onChange={e => setEditNotaAlteracao(e.target.value)}
+                  placeholder="Ex: Atualização do valor da quota extraordinária"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-400"
+                />
+              </div>
+
+              {editingDoc.versoes && editingDoc.versoes.length > 0 && (
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Histórico de Versões</label>
+                  <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                    {[...editingDoc.versoes].reverse().map(v => (
+                      <div key={v.id_versao} className="bg-slate-800/70 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[10px] text-slate-300 flex justify-between items-center gap-2">
+                        <span className="font-mono text-emerald-400 font-bold shrink-0">v{v.versao}</span>
+                        <span className="flex-1 truncate">{v.descricao_alteracao}</span>
+                        <span className="text-slate-500 shrink-0">{v.carregado_por}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="bg-emerald-950/40 border border-emerald-500/30 p-3 rounded-xl text-[11px] text-emerald-200 flex items-center gap-2">
@@ -3066,11 +3161,12 @@ export function GestaoDocumentos({
                 Cancelar
               </button>
               <button
+                disabled={guardandoEdicaoDoc}
                 onClick={guardarEGuardarPdf}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-lg"
+                className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-black px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-lg"
               >
                 <DownloadCloud className="h-4 w-4" />
-                <span>Guardar & Atualizar Documento</span>
+                <span>{guardandoEdicaoDoc ? "A gravar..." : "Guardar & Atualizar Documento"}</span>
               </button>
             </div>
           </div>

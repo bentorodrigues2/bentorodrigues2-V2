@@ -7,7 +7,7 @@ import { arquivarAnexoOriginal } from "../server/lib/multimodalService.js";
  * Digital) — usado pelo botão "Enviar por Email" em GestaoDocumentos.tsx,
  * que antes só mostrava uma animação de sucesso sem nunca enviar nada.
  */
-async function enviarDocumentoExistente({ caminho, nomeFicheiro, to, assunto, mensagem, nomeDestinatario }) {
+async function enviarDocumentoExistente({ caminho, nomeFicheiro, to, assunto, mensagem, nomeDestinatario, cc }) {
   const { data, error } = await supabase.storage.from("documentos").download(caminho);
   if (error || !data) {
     throw new Error(error?.message || "Documento não encontrado no arquivo");
@@ -22,7 +22,8 @@ async function enviarDocumentoExistente({ caminho, nomeFicheiro, to, assunto, me
     assunto,
     mensagem,
     pdfBuffer,
-    nome: nomeFicheiro
+    nome: nomeFicheiro,
+    cc
   });
 }
 
@@ -37,7 +38,7 @@ export default async function handler(req, res) {
     const body = req.body || {};
 
     if (acao === "enviar") {
-      const { caminho, nome, email, assunto, mensagem, nomeDestinatario } = body;
+      const { caminho, nome, email, assunto, mensagem, nomeDestinatario, cc } = body;
       if (!caminho || !email) {
         return res.status(400).json({ error: "caminho e email são obrigatórios" });
       }
@@ -48,7 +49,8 @@ export default async function handler(req, res) {
         to: email,
         assunto: assunto || `Documento: ${nome || "Documento"}`,
         mensagem: mensagem || `Segue em anexo o documento solicitado.`,
-        nomeDestinatario
+        nomeDestinatario,
+        cc
       });
 
       return res.status(200).json({ ok: true, email_enviado: true });

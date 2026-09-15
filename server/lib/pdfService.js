@@ -101,7 +101,7 @@ export async function registarDocumento({ caminho, ano, tema, tipo, predio, frac
  * Envia o PDF por email sempre com o template institucional (logótipo,
  * texto humanizado, assinatura) — nunca um email "nu" com o anexo solto.
  */
-export async function enviarEmailPDF({ to, nomeDestinatario, assunto, mensagem, pdfBuffer, nome }) {
+export async function enviarEmailPDF({ to, nomeDestinatario, assunto, mensagem, pdfBuffer, nome, cc }) {
   const resendApiKey = process.env.RESEND_API_KEY;
   if (!resendApiKey || !to) return;
 
@@ -116,6 +116,7 @@ export async function enviarEmailPDF({ to, nomeDestinatario, assunto, mensagem, 
     body: JSON.stringify({
       from: fromAddress,
       to: [to],
+      ...(cc ? { cc: [cc] } : {}),
       subject: assunto,
       html,
       attachments: [{ filename: nome, content: pdfBuffer.toString("base64") }]

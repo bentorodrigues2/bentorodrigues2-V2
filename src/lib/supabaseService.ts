@@ -1116,10 +1116,54 @@ export async function fetchDocumentosFromSupabase(idPredio?: string): Promise<Do
       ano: row.ano != null ? String(row.ano) : undefined,
       url_foto: row.url_foto || undefined,
       relevancia_perfis: row.relevancia_perfis || undefined,
-      caminho: row.caminho || undefined
+      caminho: row.caminho || undefined,
+      sub_pasta: row.sub_pasta || undefined,
+      fornecedor: row.fornecedor || undefined,
+      arquivado: row.arquivado ?? undefined,
+      data_arquivamento: row.data_arquivamento || undefined,
+      versao_atual: row.versao_atual != null ? Number(row.versao_atual) : 1,
+      versoes: row.versoes || []
     }));
   } catch (err) {
     return null;
+  }
+}
+
+export async function updateDocumentoMetadataToSupabase(doc: Documento): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("documentos").update({
+      nome: doc.nome,
+      descricao: doc.descricao || null,
+      autor: doc.autor || null,
+      categoria: doc.categoria || null,
+      visibilidade: doc.visibilidade || null,
+      ano: doc.ano || null,
+      tema: doc.tema || null,
+      sub_pasta: doc.sub_pasta || null,
+      fornecedor: doc.fornecedor || null,
+      arquivado: doc.arquivado ?? null,
+      data_arquivamento: doc.data_arquivamento || null,
+      versao_atual: doc.versao_atual || 1,
+      versoes: doc.versoes || []
+    }).eq("id_doc", doc.id_doc);
+    if (error) console.warn("[Supabase] Update documento error:", error.message);
+    return !error;
+  } catch (err) {
+    console.warn("[Supabase] Update documento exception:", err);
+    return false;
+  }
+}
+
+export async function deleteDocumentoFromSupabase(idDoc: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("documentos").delete().eq("id_doc", idDoc);
+    if (error) console.warn("[Supabase] Delete documento error:", error.message);
+    return !error;
+  } catch (err) {
+    console.warn("[Supabase] Delete documento exception:", err);
+    return false;
   }
 }
 

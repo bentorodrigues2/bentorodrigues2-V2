@@ -238,6 +238,7 @@ export interface Documento {
   descricao?: string;
   visibilidade?: "Público" | "Administração";
   autor?: string;
+  versao_atual?: number;
   versoes?: DocumentoVersao[];
   tema?: string;
   ano?: string;
