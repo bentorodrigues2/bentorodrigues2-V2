@@ -131,12 +131,28 @@ export function GestaoFracoes({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
+  // A assinatura só em localStorage nunca chega ao servidor (ex.: recibos
+  // gerados automaticamente por email) — guarda também no Supabase, dentro
+  // do JSON "patrimonio" do prédio, para ficar acessível a partir do backend.
+  const persistirAssinaturaNoSupabase = async (dataUrl: string) => {
+    if (!isSupabaseConfigured) return;
+    try {
+      await supabase
+        .from("predios")
+        .update({ patrimonio: { ...(predio.patrimonio || {}), assinatura_admin_base64: dataUrl } })
+        .eq("id_predio", predio.id_predio);
+    } catch (err) {
+      console.warn("[Supabase] Erro ao guardar assinatura do administrador:", err);
+    }
+  };
+
   const saveAdminCanvasSignature = () => {
     const canvas = adminCanvasRef.current;
     if (!canvas) return;
     const dataUrl = canvas.toDataURL("image/png");
     setAdminSignatureSaved(dataUrl);
     localStorage.setItem("admin_signature_digital", dataUrl);
+    persistirAssinaturaNoSupabase(dataUrl);
     alert("✅ Assinatura Digital do Administrador recolhida e gravada com sucesso! Será aplicada automaticamente em todos os recibos e documentos oficiais.");
   };
 
@@ -149,6 +165,7 @@ export function GestaoFracoes({
       if (res) {
         setAdminSignatureSaved(res);
         localStorage.setItem("admin_signature_digital", res);
+        persistirAssinaturaNoSupabase(res);
         alert("✅ Ficheiro de Assinatura do Administrador carregado e gravado com sucesso!");
       }
     };

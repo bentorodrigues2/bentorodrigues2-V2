@@ -83,11 +83,24 @@ export default async function handler(req, res) {
       data_pagamento: pagamento.data_pagamento || new Date().toISOString().split("T")[0],
       metodo_pagamento: "Transferência Bancária",
       valor_total: Number(pagamento.valor || 0),
-      rubricas: [{ descricao: pagamento.descricao || "Quota de Condomínio", valor: Number(pagamento.valor || 0), tipo: "Quota Ordinária" }],
+      // Divisão legal mínima (DL 268/94, Art. 4.º): 10% do valor da quota
+      // reverte obrigatoriamente para o Fundo Comum de Reserva.
+      rubricas: (() => {
+        const total = Number(pagamento.valor || 0);
+        const valorReserva = Math.round(total * 0.10 * 100) / 100;
+        const valorQuota = Math.round((total - valorReserva) * 100) / 100;
+        return [
+          { descricao: pagamento.descricao || "Quota de Condomínio", valor: valorQuota, tipo: "Quota Ordinária" },
+          { descricao: "Fundo Comum de Reserva (10% legal)", valor: valorReserva, tipo: "Fundo Comum de Reserva" }
+        ];
+      })(),
       iban_predio: predio?.iban || "",
       codigo_verificacao_hash: hash,
       emitido_por: "José Carlos Guerra (Administrador do Condomínio)",
-      adminSignatureBase64: "sem-assinatura-digital"
+      // A assinatura é guardada em predios.patrimonio.assinatura_admin_base64
+      // (ver src/components/GestaoFracoes.tsx) — se não existir, o gerador
+      // do recibo já trata graciosamente (imprime só o nome do administrador).
+      adminSignatureBase64: predio?.patrimonio?.assinatura_admin_base64 || "sem-assinatura-digital"
     };
 
     const predioParaRecibo = predio || { id_predio: recibo.id_predio, nome: "Condomínio", morada_linha1: "", num_porta: "", codigo_postal: "", localidade: "", nif: "" };
