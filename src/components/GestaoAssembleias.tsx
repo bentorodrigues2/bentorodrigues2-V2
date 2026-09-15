@@ -11,6 +11,7 @@ import {
   addPdfWatermark, 
   addPdfHeaderWithLogo,
   gerarConvocatoriaOficialPDF,
+  gerarDeclaracaoRepresentacaoPDF,
   exportarBalanceteMapaAnualXLS
 } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
@@ -1441,6 +1442,16 @@ Com os meus cumprimentos,
                 Cancelar Edição
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => gerarDeclaracaoRepresentacaoPDF()}
+              className="bg-white hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-lg text-sm font-semibold border border-slate-200 transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+              title="Documento em branco, para qualquer condómino preencher e entregar antes da reunião"
+            >
+              <i className="fa-solid fa-file-pdf text-red-600"></i>
+              <span>Declaração de Representação (PDF)</span>
+            </button>
           </div>
         </form>
       )}
@@ -1492,6 +1503,15 @@ Com os meus cumprimentos,
               </button>
               <button type="button" onClick={copiarTexto} className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 cursor-pointer">
                 <i className="fa-solid fa-copy mr-1.5"></i> Copiar
+              </button>
+              <button
+                type="button"
+                onClick={() => gerarDeclaracaoRepresentacaoPDF()}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 cursor-pointer flex items-center gap-1.5"
+                title="Documento em branco, para qualquer condómino preencher e entregar antes da reunião"
+              >
+                <i className="fa-solid fa-file-pdf text-red-600"></i>
+                <span>Declaração de Representação</span>
               </button>
               <button type="button" onClick={notificarPorEmail} className="bg-indigo-600 text-white hover:bg-indigo-700 text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer shadow-xs">
                 <i className="fa-solid fa-paper-plane mr-1.5"></i> Disparar Email
@@ -1548,6 +1568,17 @@ Com os meus cumprimentos,
                 >
                   <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="h-3.5 w-3.5 object-contain shrink-0" />
                   <span>Eliminar</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => gerarDeclaracaoRepresentacaoPDF()}
+                  className="h-8 px-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+                  title="Declaração de Representação em branco (PDF), para os condóminos preencherem"
+                  aria-label="Declaração de Representação"
+                >
+                  <i className="fa-solid fa-file-pdf text-red-600"></i>
+                  <span>Procuração</span>
                 </button>
 
                 <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${

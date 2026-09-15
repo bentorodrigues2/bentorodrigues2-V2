@@ -3408,6 +3408,177 @@ export function gerarParticipacaoSinistroPDF(
 }
 
 /**
+ * Declaração de Representação / Minuta de Procuração para Assembleia Geral,
+ * nos termos dos Artigos 1431.º e 1432.º do Código Civil e Decreto-Lei
+ * n.º 268/94 (redação da Lei n.º 8/2022). Documento intencionalmente em
+ * branco (linhas para preenchimento manual) — não recebe dados de nenhuma
+ * reunião específica, para poder ser descarregado e usado por qualquer
+ * condómino antes mesmo de a convocatória estar finalizada.
+ */
+export function gerarDeclaracaoRepresentacaoPDF(devolverDoc?: boolean) {
+  try {
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const CINZA_LINHA = "____________________________________________";
+
+    let y = addPdfHeaderWithLogo(doc);
+
+    // Banner Principal
+    doc.setFillColor(15, 23, 42); // Dark Slate #0F172A
+    doc.rect(14, y, 182, 11, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10.5);
+    doc.text("DECLARAÇÃO DE REPRESENTAÇÃO / MINUTA DE PROCURAÇÃO", 105, y + 7, { align: "center" });
+    y += 15;
+
+    doc.setTextColor(71, 85, 105);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.text(
+      "(Nos termos dos Artigos 1431.º e 1432.º do Código Civil e Decreto-Lei n.º 268/94, com a redação da Lei n.º 8/2022)",
+      105,
+      y,
+      { align: "center" }
+    );
+    y += 10;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`CONDOMÍNIO: ${CINZA_LINHA}`, 14, y);
+    y += 10;
+
+    // Caixa 1: Identificação da Assembleia
+    doc.setFillColor(15, 23, 42);
+    doc.roundedRect(14, y, 182, 6, 1, 1, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("IDENTIFICAÇÃO DA ASSEMBLEIA GERAL DE CONDÓMINOS", 18, y + 4.2);
+    y += 9;
+
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(186, 230, 253); // Sky-200
+    doc.roundedRect(14, y, 182, 28, 2, 2, "FD");
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 41, 59);
+    doc.text(`• Condomínio: ${"_".repeat(38)} (NIF: ${"_".repeat(14)})`, 18, y + 6);
+    doc.text(`• Reunião: Assembleia Geral de Condóminos`, 18, y + 12);
+    doc.text(`• Data e Hora: ___ / ___ / 2026, com início às ___ : ___ horas`, 18, y + 18);
+    doc.text(`• Local: ${"_".repeat(52)}`, 18, y + 24);
+    y += 34;
+
+    // Caixa 2: Identificação do Outorgante
+    doc.setFillColor(15, 23, 42);
+    doc.roundedRect(14, y, 182, 6, 1, 1, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("IDENTIFICAÇÃO DO(A) CONDÓMINO(A) OUTORGANTE (MANDANTE)", 18, y + 4.2);
+    y += 9;
+
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(186, 230, 253);
+    doc.roundedRect(14, y, 182, 16, 2, 2, "FD");
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 41, 59);
+    doc.text(`Nome: ${"_".repeat(58)}`, 18, y + 6);
+    doc.text(`NIF: ${"_".repeat(20)}    Fração: ${"_".repeat(10)}`, 18, y + 12);
+    y += 22;
+
+    // Título de mandato — cor harmonizada com a caixa 3 (Slate-800)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(30, 41, 59); // Slate-800, igual à caixa 3
+    doc.text("CONFIRO PELO PRESENTE MANDATO PLENOS PODERES DE REPRESENTAÇÃO A:", 14, y);
+    y += 7;
+
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(186, 230, 253);
+    doc.roundedRect(14, y, 182, 16, 2, 2, "FD");
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 41, 59);
+    doc.text(`Nome do(a) Procurador(a) / Mandatário(a): ${"_".repeat(34)}`, 18, y + 6);
+    doc.text(`NIF: ${"_".repeat(20)}`, 18, y + 12);
+    y += 22;
+
+    // Caixa 3: Âmbito dos Poderes
+    doc.setFillColor(15, 23, 42);
+    doc.roundedRect(14, y, 182, 6, 1, 1, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("ÂMBITO DOS PODERES E VOTAÇÃO DE DELIBERAÇÕES", 18, y + 4.2);
+    y += 9;
+
+    doc.setFillColor(240, 249, 255); // Sky-50
+    doc.setDrawColor(186, 230, 253); // Sky-200
+    doc.roundedRect(14, y, 182, 24, 2, 2, "FD");
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 41, 59);
+    doc.setDrawColor(100, 116, 139);
+    // Checkbox desenhado como retângulo (o glifo Unicode "☐" não é
+    // suportado pela fonte base do jsPDF e renderiza mal)
+    const caixaVotacao = (texto: string, yLinha: number) => {
+      doc.rect(18, yLinha - 2.8, 2.8, 2.8, "S");
+      doc.text(texto, 23, yLinha);
+    };
+    caixaVotacao("Participar e discutir os pontos da Ordem de Trabalhos da Assembleia Geral;", y + 6);
+    caixaVotacao("Votar, em nome do outorgante, as deliberações submetidas à Assembleia Geral;", y + 13);
+    caixaVotacao("Assinar a Folha de Presenças em representação do outorgante.", y + 20);
+    y += 32;
+
+    // Instruções de Entrega
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7.5);
+    doc.setTextColor(71, 85, 105);
+    const instrucoes = doc.splitTextToSize(
+      "A presente procuração deve ser entregue à Mesa da Assembleia (ou à Administração do Condomínio) antes do início dos trabalhos, devidamente assinada pelo condómino outorgante.",
+      182
+    );
+    doc.text(instrucoes, 14, y);
+    y += instrucoes.length * 4 + 10;
+
+    // Local e Data / Assinatura
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`Local e Data: ${"_".repeat(28)}, ____ de ${"_".repeat(16)} de 2026`, 14, y);
+    y += 16;
+
+    doc.line(14, y, 110, y);
+    y += 4;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text("Assinatura do(a) Condómino(a) Outorgante (conforme Cartão de Cidadão ou Chave Móvel Digital)", 14, y);
+
+    // Rodapé
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text("CondoManager AI • Minuta de Procuração / Declaração de Representação", 105, 285, { align: "center" });
+
+    if (devolverDoc) return doc;
+    const blob = doc.output("blob");
+    downloadBlob(blob, "Declaracao_Representacao_Procuracao.pdf");
+    return true;
+  } catch (err) {
+    console.error("Erro ao gerar Declaração de Representação PDF:", err);
+    if (typeof alert !== "undefined") alert("Ocorreu um erro ao gerar a Declaração de Representação.");
+    return false;
+  }
+}
+
+/**
  * Geração Automática da Referência BR23E para Conciliação Bancária
  * Regra: Gerada de forma unívoca a partir da fração/condómino, não editável pelo utilizador,
  * destinada exclusivamente ao Perfil Bancário do Condómino / Perfil da Fração.
