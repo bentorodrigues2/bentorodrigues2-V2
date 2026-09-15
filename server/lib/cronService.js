@@ -1,9 +1,35 @@
 import { supabase } from "./supabaseServer.js";
 import { generateOfficialReceiptPDF, nomeFicheiroRecibo } from "./receiptGenerator.js";
 import { guardarNoArquivo, registarDocumento, enviarEmailPDF } from "./pdfService.js";
-import { gerarHtmlResposta } from "./htmlemail.js";
-import { gerarCartaoAniversarioCondominoPDF } from "./pdfDocs.js";
+import { gerarHtmlResposta, gerarHtmlAniversario } from "./htmlemail.js";
 import { derivarPrefixoEdificio } from "./reciboUtils.js";
+
+/**
+ * Guarda de "já executado hoje" — protege contra envios duplicados quando o
+ * endpoint /api/cron é chamado mais do que uma vez no mesmo dia (cron externo
+ * mal configurado, novo trigger a testar o worker, retry, etc.). Usa a
+ * tabela ai_auditoria como registo leve (origem + referencia + dia).
+ */
+async function jaExecutadoHoje(origem, referencia) {
+  if (!referencia) return false;
+  const hojeISO = new Date().toISOString().split("T")[0];
+  const { data } = await supabase
+    .from("ai_auditoria")
+    .select("id_log")
+    .eq("origem", origem)
+    .eq("referencia", referencia)
+    .gte("criado_em", `${hojeISO}T00:00:00`)
+    .limit(1);
+  return Boolean(data && data.length);
+}
+
+async function marcarExecutadoHoje(origem, referencia, entidade) {
+  try {
+    await supabase.from("ai_auditoria").insert({ origem, referencia, entidade: entidade || null });
+  } catch (err) {
+    console.warn(`[cronService] Aviso ao marcar "${origem}" como executado:`, err?.message || err);
+  }
+}
 
 /**
  * Envia um email institucional (logótipo + assinatura) sem PDF anexo — usado
@@ -118,6 +144,11 @@ export async function emitirQuotasMensais() {
 
     for (const f of fracoes) {
       try {
+        if (await jaExecutadoHoje("cron_emissao_quotas", f.id_fracao)) {
+          console.log(`[cronService] Fração ${f.fracao_nome} já teve a quota emitida hoje — a saltar.`);
+          continue;
+        }
+
         const isShopExempt = f.tipologia === "Loja Comercial" && (f.tipo_access || "").includes("Exterior");
         const fatorIsencao = isShopExempt ? 0.4 : 1.0;
         const orcamentoMensalProporcional = (orcamentoAnual / 12) * (f.permilagem / 1000) * fatorIsencao;
@@ -229,6 +260,7 @@ export async function emitirQuotasMensais() {
           nome: nomeFicheiro
         });
 
+        await marcarExecutadoHoje("cron_emissao_quotas", f.id_fracao, f.fracao_nome);
         resultados.push({ predio: predio.nome, fracao: f.fracao_nome, email: proprietario.email, valor: valorTotal });
       } catch (errFracao) {
         console.error(`[cronService] Erro ao emitir quota da fração ${f.fracao_nome}:`, errFracao);
@@ -263,6 +295,8 @@ export async function enviarLembretesQuotas() {
   const resultados = [];
   for (const aviso of avisosPendentes) {
     try {
+      if (await jaExecutadoHoje("cron_lembrete_quotas", aviso.id_fracao)) continue;
+
       const [{ data: fracao }, proprietario] = await Promise.all([
         supabase.from("fracoes").select("fracao_nome").eq("id_fracao", aviso.id_fracao).maybeSingle(),
         obterProprietarioDaFracao(aviso.id_fracao)
@@ -281,7 +315,10 @@ export async function enviarLembretesQuotas() {
         html
       });
 
-      if (enviado) resultados.push({ fracao: fracaoNome, email: proprietario.email });
+      if (enviado) {
+        await marcarExecutadoHoje("cron_lembrete_quotas", aviso.id_fracao, fracaoNome);
+        resultados.push({ fracao: fracaoNome, email: proprietario.email });
+      }
     } catch (errAviso) {
       console.error("[cronService] Erro ao enviar lembrete:", errAviso);
     }
@@ -316,6 +353,8 @@ export async function avisarQuotasEmMora() {
   const resultados = [];
   for (const aviso of avisosPendentes) {
     try {
+      if (await jaExecutadoHoje("cron_aviso_mora", aviso.id_fracao)) continue;
+
       const [{ data: fracao }, proprietario] = await Promise.all([
         supabase.from("fracoes").select("fracao_nome").eq("id_fracao", aviso.id_fracao).maybeSingle(),
         obterProprietarioDaFracao(aviso.id_fracao)
@@ -334,7 +373,10 @@ export async function avisarQuotasEmMora() {
         html
       });
 
-      if (enviado) resultados.push({ fracao: fracaoNome, email: proprietario.email });
+      if (enviado) {
+        await marcarExecutadoHoje("cron_aviso_mora", aviso.id_fracao, fracaoNome);
+        resultados.push({ fracao: fracaoNome, email: proprietario.email });
+      }
     } catch (errAviso) {
       console.error("[cronService] Erro ao enviar aviso de mora:", errAviso);
     }
@@ -373,25 +415,32 @@ export async function enviarFelicitacoesAniversario() {
   for (const proprietario of aniversariantes) {
     try {
       if (!proprietario.email) continue;
+      if (await jaExecutadoHoje("cron_aniversario", proprietario.id_proprietario)) continue;
 
       const { data: predio } = proprietario.id_predio
-        ? await supabase.from("predios").select("nome").eq("id_predio", proprietario.id_predio).maybeSingle()
+        ? await supabase.from("predios").select("nome, patrimonio").eq("id_predio", proprietario.id_predio).maybeSingle()
         : { data: null };
 
-      const doc = gerarCartaoAniversarioCondominoPDF(proprietario.nome, predio?.nome || "Condomínio", "Administração do Condomínio", true);
-      const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
-      const nomeFicheiro = "Cartao_Aniversario_Condomino.pdf";
-
-      await enviarEmailPDF({
-        to: proprietario.email,
-        nomeDestinatario: proprietario.nome,
-        assunto: "Feliz Aniversário! 🎉 — A Administração do Condomínio",
-        mensagem: `Toda a Administração do condomínio deseja-lhe um Feliz Aniversário! Segue em anexo um pequeno postal de felicitações.`,
-        pdfBuffer,
-        nome: nomeFicheiro
+      // O postal é o próprio corpo do email (não faz sentido como PDF em
+      // anexo) e leva a assinatura digital real do administrador quando
+      // existir — ver src/components/GestaoFracoes.tsx.
+      const html = gerarHtmlAniversario({
+        nome: proprietario.nome,
+        predioNome: predio?.nome || "Condomínio",
+        adminNome: predio?.patrimonio?.nome_administrador || "José Carlos Guerra",
+        adminSignatureBase64: predio?.patrimonio?.assinatura_admin_base64 || null
       });
 
-      resultados.push({ proprietario: proprietario.nome, email: proprietario.email });
+      const enviado = await enviarEmailSemAnexo({
+        to: proprietario.email,
+        subject: `Feliz Aniversário, ${proprietario.nome}! 🎉`,
+        html
+      });
+
+      if (enviado) {
+        await marcarExecutadoHoje("cron_aniversario", proprietario.id_proprietario, proprietario.nome);
+        resultados.push({ proprietario: proprietario.nome, email: proprietario.email });
+      }
     } catch (errAniv) {
       console.error("[cronService] Erro ao enviar felicitação de aniversário:", errAniv);
     }

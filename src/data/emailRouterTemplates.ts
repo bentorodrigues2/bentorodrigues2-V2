@@ -3,7 +3,7 @@
 // ============================================================================
 
 export const AI_STUDIO_ROUTER_LOGO_HTML = `<div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp"
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp"
        alt="CondoManager AI"
        style="width:240px;opacity:0.95;" />
 </div>`;
@@ -211,7 +211,7 @@ export const PROMPT_COMPLETO_AI_STUDIO = `⭐ LOGOTIPO PARA TODOS OS EMAILS (AI 
 Cola isto no início de TODAS as mensagens:
 
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp"
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp"
        alt="CondoManager AI"
        style="width:240px;opacity:0.95;" />
 </div>
@@ -223,7 +223,7 @@ Organizado, limpo, pronto a colar.
 subject: Registo de ocorrência de ruído
 message:
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -243,7 +243,7 @@ José Carlos Guerra
 subject: Registo de avaria na iluminação
 message:
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -263,7 +263,7 @@ José Carlos Guerra
 subject: Comunicação de infiltração / humidade
 message:
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -283,7 +283,7 @@ José Carlos Guerra
 subject: Avaria no elevador
 message:
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -303,7 +303,7 @@ José Carlos Guerra
 subject: Comunicação sobre a limpeza do edifício
 message:
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -323,7 +323,7 @@ José Carlos Guerra
 subject: Receção de comprovativo de pagamento
 message:
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -343,7 +343,7 @@ José Carlos Guerra
 subject: Pedido de documentos do condomínio
 message:
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -363,7 +363,7 @@ José Carlos Guerra
 subject: Assunto relativo à Assembleia de Condóminos
 message:
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -383,7 +383,7 @@ José Carlos Guerra
 subject: Participação de sinistro / Seguro
 message:
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -403,7 +403,7 @@ José Carlos Guerra
 subject: Comunicação sobre obras / intervenções
 message:
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -423,7 +423,7 @@ José Carlos Guerra
 subject: Assunto relativo a animais no condomínio
 message:
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -443,7 +443,7 @@ José Carlos Guerra
 subject: Comunicação à Administração do Condomínio
 message:
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},

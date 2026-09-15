@@ -1143,7 +1143,7 @@ export function gerarPdfRegistoFornecedorHomologado(
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9.5);
     doc.setTextColor(146, 64, 14);
-    doc.text("CONSOLA DO FORNECEDOR / PWA: https://bentorodrigues2.vercel.app", 20, y + 8);
+    doc.text("CONSOLA DO FORNECEDOR / PWA: https://bentorodrigues2.condomanagerai.com", 20, y + 8);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
@@ -1197,7 +1197,7 @@ export function gerarPdfRegistoFornecedorHomologado(
     y += 6;
 
     const passosPWA = [
-      "• Aceda no seu telemóvel ao endereço: https://bentorodrigues2.vercel.app",
+      "• Aceda no seu telemóvel ao endereço: https://bentorodrigues2.condomanagerai.com",
       "• No iPhone (Safari): Toque no ícone de Partilha e selecione 'Adicionar ao Ecrã Principal'.",
       "• No Android (Chrome): Toque nos 3 pontos verticais e selecione 'Instalar Aplicação' ou 'Adicionar ao ecrã inicial'.",
       "• Tenha acesso imediato para fotografar intervenções, submeter faturas e consultar solicitações em tempo real."
@@ -1278,7 +1278,7 @@ export function generateCondominoPwaManualPDF(condominoNome: string, buildingNam
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
-    doc.text(`Link de Acesso Direto: https://bentorodrigues2.vercel.app`, 18, y + 12);
+    doc.text(`Link de Acesso Direto: https://bentorodrigues2.condomanagerai.com`, 18, y + 12);
     doc.text(`Password Provisória: ${passwordProvisoria || "Condo2026!"}`, 18, y + 17);
     doc.text(`Segurança: Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no primeiro acesso.`, 18, y + 22);
     doc.text(`Administração / Vizinho (3ºE): José Carlos Guerra`, 18, y + 27);
@@ -1291,8 +1291,8 @@ export function generateCondominoPwaManualPDF(condominoNome: string, buildingNam
         title: "1. COMO INSTALAR A APLICAÇÃO (PWA) NO SEU TELEMÓVEL",
         items: [
           "• A aplicação funciona sem ocupar espaço na memória e não necessita de ir à App Store ou Google Play.",
-          "• No iPhone (iOS / Safari): Abra https://bentorodrigues2.vercel.app no Safari, toque no botão 'Partilhar' (ícone do quadrado com a seta para cima) e selecione 'Adicionar ao Ecrã Principal'.",
-          "• No Android (Google Chrome): Abra https://bentorodrigues2.vercel.app no Chrome, toque no menu dos 3 pontos no canto superior direito e selecione 'Instalar Aplicação' ou 'Adicionar ao ecrã inicial'.",
+          "• No iPhone (iOS / Safari): Abra https://bentorodrigues2.condomanagerai.com no Safari, toque no botão 'Partilhar' (ícone do quadrado com a seta para cima) e selecione 'Adicionar ao Ecrã Principal'.",
+          "• No Android (Google Chrome): Abra https://bentorodrigues2.condomanagerai.com no Chrome, toque no menu dos 3 pontos no canto superior direito e selecione 'Instalar Aplicação' ou 'Adicionar ao ecrã inicial'.",
           "• Ficará com o ícone do condomínio no seu ecrã com abertura instantânea e notificações ativas."
         ]
       },
@@ -2098,7 +2098,7 @@ export function gerarPdfBoasVindasAdministrador(
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9.5);
     doc.setTextColor(146, 64, 14); // Amber-900
-    doc.text("CONSOLA DE ADMINISTRAÇÃO: https://bentorodrigues2.vercel.app", 20, y + 8);
+    doc.text("CONSOLA DE ADMINISTRAÇÃO: https://bentorodrigues2.condomanagerai.com", 20, y + 8);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
@@ -2155,7 +2155,7 @@ export function gerarPdfBoasVindasAdministrador(
     y += 6;
 
     const passosPWA = [
-      "• Aceda no seu telemóvel ao endereço: https://bentorodrigues2.vercel.app",
+      "• Aceda no seu telemóvel ao endereço: https://bentorodrigues2.condomanagerai.com",
       "• No iPhone (Safari): Toque no ícone de Partilha (quadrado com seta para cima) e escolha 'Adicionar ao Ecrã Principal'.",
       "• No Android (Google Chrome): Toque nos 3 pontos no topo direito e selecione 'Instalar Aplicação' ou 'Adicionar ao ecrã inicial'.",
       "• Aceda a qualquer momento às finanças, aprovações, notificações urgentes e chat com condóminos diretamente pelo telemóvel."
@@ -2283,7 +2283,7 @@ export function gerarPdfBoasVindasGestor(
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9.5);
     doc.setTextColor(146, 64, 14);
-    doc.text("CONSOLA DE ADMINISTRAÇÃO: https://bentorodrigues2.vercel.app", 20, y + 8);
+    doc.text("CONSOLA DE ADMINISTRAÇÃO: https://bentorodrigues2.condomanagerai.com", 20, y + 8);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
@@ -2339,7 +2339,7 @@ export function gerarPdfBoasVindasGestor(
     y += 6;
 
     const passosPWA = [
-      "• Aceda no seu telemóvel ao endereço: https://bentorodrigues2.vercel.app",
+      "• Aceda no seu telemóvel ao endereço: https://bentorodrigues2.condomanagerai.com",
       "• No iPhone (Safari): Toque no ícone de Partilha (quadrado com seta para cima) e escolha 'Adicionar ao Ecrã Principal'.",
       "• No Android (Google Chrome): Toque nos 3 pontos no topo direito e selecione 'Instalar Aplicação' ou 'Adicionar ao ecrã inicial'.",
       "• Aceda a qualquer momento à triagem de ocorrências, aprovação de despesas e resposta a solicitações pelo telemóvel."
@@ -2659,7 +2659,7 @@ export function gerarConvocatoriaOficialPDF(
     doc.text("• VOTAÇÃO & SONDAGEM:", 18, y + 28);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(15, 23, 42);
-    doc.text("https://bentorodrigues2.vercel.app (Sondagem & Votação Online)", 65, y + 28);
+    doc.text("https://bentorodrigues2.condomanagerai.com (Sondagem & Votação Online)", 65, y + 28);
 
     y += boxHeight + 4;
 
@@ -2676,7 +2676,7 @@ export function gerarConvocatoriaOficialPDF(
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       doc.setTextColor(15, 23, 42);
-      doc.text(`Plataforma: ${reuniao.plataformaVideoconferencia || "Google Meet / Zoom"} | Link: ${reuniao.linkVideoconferencia || "https://bentorodrigues2.vercel.app"}`, 18, y + 10);
+      doc.text(`Plataforma: ${reuniao.plataformaVideoconferencia || "Google Meet / Zoom"} | Link: ${reuniao.linkVideoconferencia || "https://bentorodrigues2.condomanagerai.com"}`, 18, y + 10);
       y += 17;
     }
 
@@ -2721,7 +2721,7 @@ export function gerarConvocatoriaOficialPDF(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.8);
     const notasLegais = [
-      "a) Documentação de Suporte & Votação: O Relatório e Contas, Orçamento 2026/2027, Balancete e Sondagem de Presenças encontram-se na plataforma oficial https://bentorodrigues2.vercel.app.",
+      "a) Documentação de Suporte & Votação: O Relatório e Contas, Orçamento 2026/2027, Balancete e Sondagem de Presenças encontram-se na plataforma oficial https://bentorodrigues2.condomanagerai.com.",
       "b) Representação por Mandato (Procuração): O condómino impossibilitado de comparecer pode fazer-se representar por procurador (outro condómino ou terceiro idóneo), bastando preencher e assinar a minuta de procuração anexa.",
       "c) Força Executiva da Ata: Nos termos do Artigo 6.º do Decreto-Lei n.º 268/94, as atas das deliberações da assembleia constituem título executivo contra os proprietários relativamente às contribuições e despesas aprovadas."
     ];
@@ -3165,7 +3165,7 @@ export function gerarAtaAprovadaOficialPDF(
     doc.setTextColor(30, 41, 59);
     doc.text(`Edifício: ${predioNome} (NIF: ${predioNif})`, 18, y + 6);
     doc.text(`Data da Reunião: ${dataAssembleia} | 1.ª Conv.: 20h30 | 2.ª Conv.: 21h00`, 18, y + 11);
-    doc.text(`Local: Sala de Condomínio & Plataforma https://bentorodrigues2.vercel.app`, 18, y + 16);
+    doc.text(`Local: Sala de Condomínio & Plataforma https://bentorodrigues2.condomanagerai.com`, 18, y + 16);
     doc.text(`Quórum Verificado: 785,00 ‰ do Capital`, 130, y + 6);
     doc.text(`Mesa: José Carlos Guerra (Admin/Sec.)`, 130, y + 11);
     y += 28;

@@ -542,7 +542,7 @@ Se não houver resposta:
  * Logotipo oficial obrigatório no início de TODAS as mensagens do AI Studio Router.
  */
 export const AI_STUDIO_ROUTER_LOGO_HTML = `<div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp"
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp"
        alt="CondoManager AI"
        style="width:240px;opacity:0.95;" />
 </div>`;
@@ -720,7 +720,7 @@ export const PROMPT_COMPLETO_AI_STUDIO = `⭐ LOGOTIPO PARA TODOS OS EMAILS (AI 
 Cola isto no início de TODAS as mensagens:
 html
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp"
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp"
        alt="CondoManager AI"
        style="width:240px;opacity:0.95;" />
 </div>
@@ -733,7 +733,7 @@ subject: Registo de ocorrência de ruído
 message:
 html
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -753,7 +753,7 @@ subject: Intervenção agendada — iluminação comum
 message:
 html
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -773,7 +773,7 @@ subject: Registo de infiltração — encaminhamento técnico
 message:
 html
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -793,7 +793,7 @@ subject: Avaria no portão — intervenção programada
 message:
 html
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -813,7 +813,7 @@ subject: Avaria no elevador — comunicação à manutenção
 message:
 html
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -833,7 +833,7 @@ subject: Envio da ata solicitada
 message:
 html
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -853,7 +853,7 @@ subject: Documentação solicitada
 message:
 html
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -871,7 +871,7 @@ subject: Envio de recibo / informação de quotas
 message:
 html
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -891,7 +891,7 @@ subject: Registo de reclamação
 message:
 html
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -911,7 +911,7 @@ subject: Agradecimento pela sugestão
 message:
 html
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -929,7 +929,7 @@ subject: Pedido de reunião — confirmação
 message:
 html
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -947,7 +947,7 @@ subject: Registo de ocorrência — limpeza
 message:
 html
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -965,7 +965,7 @@ subject: Registo de ocorrência entre vizinhos
 message:
 html
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 Exmo. Sr./Sra. \${nome},
@@ -1190,7 +1190,7 @@ export const REGRAS_INTELIGENTES_CATEGORIA_SYSTEM_PROMPT = `A tua função é ge
 ⭐ REGRA CRÍTICA DE LOGOTIPO:
 Todas as mensagens DEVEM começar obrigatoriamente pelo HTML:
 <div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.vercel.app/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
+  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
 </div>
 
 ⭐ REGRA CRÍTICA DE ASSINATURA:

@@ -353,7 +353,7 @@ export function CentralDocumentosMinutas({
             estado: "Agendada",
             isVideoconferencia: true,
             plataformaVideoconferencia: "Zoom / Ligação Online",
-            linkVideoconferencia: "https://bentorodrigues2.vercel.app"
+            linkVideoconferencia: "https://bentorodrigues2.condomanagerai.com"
           },
           fracoes,
           loggedUser?.nome || "José Carlos Guerra"
@@ -434,7 +434,7 @@ Olá ${fracoes[0]?.proprietario?.nome || "(Nome do condómino)"},
 
 Espero que se encontre bem.
 O meu nome é José Carlos Guerra, administrador do nosso prédio e também seu vizinho no 3ºE. Disponibilizo o meu contacto direto (919943465) para qualquer assunto urgente ou questão que possa surgir.
-Informo que a sua conta no CondoManager AI foi criada com sucesso. Pode aceder à sua área reservada através do link: https://bentorodrigues2.vercel.app e pode baixar a aplicação AQUI (https://bentorodrigues2.vercel.app).
+Informo que a sua conta no CondoManager AI foi criada com sucesso. Pode aceder à sua área reservada através do link: https://bentorodrigues2.condomanagerai.com e pode baixar a aplicação AQUI (https://bentorodrigues2.condomanagerai.com).
 Através desta plataforma — acessível via computador ou telemóvel — poderá acompanhar toda a atividade do condomínio, consultar documentos, reportar avarias, enviar comprovativos de pagamento e comunicar diretamente comigo. A sua participação ativa é fundamental para a gestão transparente do nosso prédio.
 
 Importante:
@@ -442,7 +442,7 @@ Importante:
     • Instruções: Em anexo, encontrará um breve guia de utilização da plataforma.
 
 Dados de Acesso:
-Link: https://bentorodrigues2.vercel.app
+Link: https://bentorodrigues2.condomanagerai.com
 Utilizador: ${fracoes[0]?.proprietario?.email || "(Email do condómino)"}
 Password Provisória: Cnd-94K2A8
 (Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no seu primeiro acesso.)
@@ -479,10 +479,10 @@ Privilégios e Módulos Ativados:
 • Controlo Cadastral & Jurídico: Registo de frações, autos e cobrança coerciva
 • Parametrização do Autoresponder e Regras IA do Prédio
 
-Aceda à consola de administração em https://bentorodrigues2.vercel.app utilizando as suas credenciais seguras, pode acompanhar pelo seu telemóvel para baixar a aplicação selecione AQUI (https://bentorodrigues2.vercel.app)
+Aceda à consola de administração em https://bentorodrigues2.condomanagerai.com utilizando as suas credenciais seguras, pode acompanhar pelo seu telemóvel para baixar a aplicação selecione AQUI (https://bentorodrigues2.condomanagerai.com)
 
 Dados de Acesso:
-Link: https://bentorodrigues2.vercel.app
+Link: https://bentorodrigues2.condomanagerai.com
 Utilizador: ${testEmailRecipient.includes("@") ? testEmailRecipient : "administracao@condomanagerai.com"}
 Password Provisória: Admin#2026!
 (Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no seu primeiro acesso.)
@@ -514,10 +514,10 @@ Privilégios e Módulos Ativados:
 • Comunicação Direta com Condóminos, Comunicados e Notificações
 • Consulta Documental, Atas e Gestão de Reservas de Espaços Comuns
 
-Aceda à consola de administração em https://bentorodrigues2.vercel.app utilizando as suas credenciais seguras, pode acompanhar pelo seu telemóvel para baixar a aplicação selecione AQUI (https://bentorodrigues2.vercel.app)
+Aceda à consola de administração em https://bentorodrigues2.condomanagerai.com utilizando as suas credenciais seguras, pode acompanhar pelo seu telemóvel para baixar a aplicação selecione AQUI (https://bentorodrigues2.condomanagerai.com)
 
 Dados de Acesso:
-Link: https://bentorodrigues2.vercel.app
+Link: https://bentorodrigues2.condomanagerai.com
 Utilizador: ${testEmailRecipient.includes("@") ? testEmailRecipient : "gestor@condomanagerai.com"}
 Password Provisória: Gestor#2026!
 (Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no seu primeiro acesso.)
@@ -548,7 +548,7 @@ Dados Fiscais para Faturação :
 • E-mail para Envio de Faturas/Recibos: ${(predio as any).email_administracao || (predio as any).email || "administracao@condomanagerai.com"}
 
 Dados de Acesso:
-Link: https://bentorodrigues2.vercel.app
+Link: https://bentorodrigues2.condomanagerai.com
 Utilizador: ${testEmailRecipient.includes("@") ? testEmailRecipient : "fornecedor@empresa.pt"}
 Password Provisória: Forn-82M4P9
 (Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no seu primeiro acesso.)
@@ -701,7 +701,7 @@ Nos termos da lei, ficam convocados para a Assembleia Geral Ordinária de Condó
 • 1.ª Convocação: 20h30 (com quórum superior a 500‰)
 • 2.ª Convocação: 21h00 (com qualquer quórum presente)
 • Local: Sala de Condomínio / Ligação Zoom
-• Plataforma de Votação Online: https://bentorodrigues2.vercel.app
+• Plataforma de Votação Online: https://bentorodrigues2.condomanagerai.com
 
 Ordem de Trabalhos:
 1. Apresentação e votação do Relatório de Contas do exercício transato.
