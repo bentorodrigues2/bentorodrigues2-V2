@@ -561,13 +561,11 @@ Com os meus cumprimentos,
  * Monta o email completo em HTML com o logotipo no topo, saudação personalizada, corpo e assinatura.
  */
 export function buildOfficialEmailMessage(corpo: string, nomeDestinatario?: string): string {
-  const nome = (nomeDestinatario && nomeDestinatario.trim()) ? nomeDestinatario.trim() : "${nome}";
-  return `${AI_STUDIO_ROUTER_LOGO_HTML}
-
-Exmo. Sr./Sra. ${nome},
-<br><br>
-${corpo}
-${AI_STUDIO_ROUTER_SIGNATURE_HTML}`;
+  // NOTA: devolve só o corpo. Quem envia o email (gerarHtmlResposta em
+  // htmlemail.js) já trata da saudação, do logótipo e da assinatura
+  // institucional uma única vez — se este texto os incluísse também,
+  // apareceriam duplicados no email final.
+  return corpo;
 }
 
 export interface OfficialEmailRouterTemplate {

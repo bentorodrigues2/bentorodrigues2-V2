@@ -25,7 +25,7 @@ export function gerarHtmlAutoresponder(nome = "Condómino") {
     </div>
     <div style="background-color: #f1f5f9; border-left: 4px solid #0284c7; padding: 14px 16px; margin: 20px 0; border-radius: 0 6px 6px 0;">
       <p style="margin: 0; font-size: 14px; color: #334155;">
-        <strong>Informação:</strong> Comprovativos de pagamento e participações de ocorrências são processados com prioridade. Se anexou documentos ou faturas, os registos serão validados em conformidade.
+        <strong>Informação:</strong> Comprovativos de pagamento e participações de ocorrências são processados com prioridade, para uma resposta mais rápida relembramos que pode usar a aplicação do condomínio.
       </p>
     </div>
     <p style="margin-top: 28px; font-size: 13px; color: #64748b; border-top: 1px solid #f1f5f9; padding-top: 16px;">
