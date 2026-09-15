@@ -7,8 +7,7 @@ const COR_DARK_SLATE: [number, number, number] = [11, 20, 38]; // #0B1426
 const COR_TEAL: [number, number, number] = [13, 148, 136]; // #0D9488
 const COR_AMBAR: [number, number, number] = [194, 65, 12]; // #C2410C
 const COR_MAGENTA: [number, number, number] = [190, 24, 93]; // #BE185D
-const COR_SKY: [number, number, number] = [2, 132, 199]; // #0284C7
-const COR_SLATE_BORDA: [number, number, number] = [203, 213, 225]; // #CBD5E1
+const COR_SLATE_BORDA: [number, number, number] = [160, 172, 190]; // um pouco mais escuro que #CBD5E1, para as molduras não ficarem impercetíveis
 
 function formatDataPT(iso?: string): string {
   if (!iso) return "";
@@ -115,7 +114,7 @@ export function generateOfficialReceiptPDF(
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
-  doc.setTextColor(...COR_SKY);
+  doc.setTextColor(...COR_TEAL);
   doc.text("CONDOMÍNIO DO EDIFÍCIO:", 15, y + 6);
 
   doc.setFont("helvetica", "bold");
@@ -138,7 +137,7 @@ export function generateOfficialReceiptPDF(
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
-  doc.setTextColor(...COR_SKY);
+  doc.setTextColor(...COR_TEAL);
   doc.text("LIQUIDADO POR (PROPRIETÁRIO / FRAÇÃO):", col2X + 3, y + 6);
 
   doc.setFont("helvetica", "bold");
@@ -149,7 +148,7 @@ export function generateOfficialReceiptPDF(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(6.8);
   doc.setTextColor(51, 65, 85);
-  doc.text(`NIF: ${recibo.nif_condomino || "—"} • Fração: ${recibo.fracao_nome}${fracao?.piso ? ` (${fracao.piso})` : ""}`, col2X + 3, y + 16);
+  doc.text(`NIF: ${recibo.nif_condomino || "—"}`, col2X + 3, y + 16);
   // Referência individual da fração, usada pelo motor de IA para conciliação automática via extrato
   doc.text(`Referência: ${prefixo}-FRA-${recibo.fracao_nome}`, col2X + 3, y + 20.5);
   doc.text(`Método de Pagamento: ${recibo.metodo_pagamento}`, col2X + 3, y + 25);
@@ -200,7 +199,7 @@ export function generateOfficialReceiptPDF(
   // Isenção de IVA + Total
   doc.setFont("helvetica", "normal");
   doc.setFontSize(6);
-  doc.setTextColor(100, 116, 139);
+  doc.setTextColor(80, 94, 115);
   doc.text("Isento de I.V.A. nos termos do artº 9º do nº21 do CIVA", 15, y + 5);
 
   doc.setFont("helvetica", "bold");
@@ -258,7 +257,7 @@ export function generateOfficialReceiptPDF(
   // Rodapé de autenticidade
   doc.setFont("helvetica", "normal");
   doc.setFontSize(5.8);
-  doc.setTextColor(148, 163, 184);
+  doc.setTextColor(115, 128, 148);
   doc.text(
     `Emitido via CondoManager AI • Documento nº ${recibo.id_recibo} • Autenticidade Digital Garantida`,
     12,
