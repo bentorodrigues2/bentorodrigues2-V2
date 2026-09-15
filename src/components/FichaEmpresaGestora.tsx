@@ -106,7 +106,7 @@ export function FichaEmpresaGestora({
   const [modalPasswordProvisoria, setModalPasswordProvisoria] = useState("");
   const [modalGerarPdfAgora, setModalGerarPdfAgora] = useState(true);
 
-  // Logo WebP
+  // Logótipo institucional (PNG, redimensionado)
   const [gestoraLogo, setGestoraLogo] = useState<string>(() => {
     return activeLogo || localStorage.getItem("whiteLabelLogo") || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100%' height='100%' fill='%23059669'/><text x='50%' y='55%' font-family='sans-serif' font-size='24' font-weight='black' fill='%23ffffff' dominant-baseline='middle' text-anchor='middle'>GF</text></svg>";
   });
@@ -149,12 +149,17 @@ export function FichaEmpresaGestora({
         canvas.width = width;
         canvas.height = height;
         ctx?.drawImage(img, 0, 0, width, height);
-        const webpUrl = canvas.toDataURL("image/webp", 0.85);
+        // PNG (não WebP) propositadamente: este logótipo é também desenhado
+        // no cabeçalho dos PDFs oficiais via jsPDF no servidor, cujo
+        // descodificador de WebP é pouco fiável para WebP com perdas — PNG
+        // funciona sempre, e para um logótipo pequeno a diferença de
+        // tamanho de ficheiro é irrelevante.
+        const logoUrl = canvas.toDataURL("image/png");
 
-        setGestoraLogo(webpUrl);
-        localStorage.setItem("whiteLabelLogo", webpUrl);
+        setGestoraLogo(logoUrl);
+        localStorage.setItem("whiteLabelLogo", logoUrl);
         if (onUpdateBrandingLogo) {
-          onUpdateBrandingLogo(webpUrl);
+          onUpdateBrandingLogo(logoUrl);
         }
         showNotification("Logótipo institucional atualizado com sucesso!");
       };

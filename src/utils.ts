@@ -2022,7 +2022,8 @@ export function gerarPdfBoasVindasAdministrador(
   adminInfo?: Partial<GestorCarteira>,
   predios?: Predio[],
   condominioNome: string = "Condomínio Edifício Estrela da Barra",
-  devolverDoc?: boolean
+  devolverDoc?: boolean,
+  logoUrl?: string
 ) {
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -2040,6 +2041,16 @@ export function gerarPdfBoasVindasAdministrador(
     // Accent line
     doc.setFillColor(16, 185, 129); // Emerald-500
     doc.rect(0, 41, 210, 2, "F");
+
+    // Logótipo White-Label da empresa gestora (quando definido), canto superior direito
+    if (logoUrl) {
+      try {
+        const formato = logoUrl.includes("image/png") ? "PNG" : logoUrl.includes("image/jpeg") ? "JPEG" : "WEBP";
+        doc.addImage(logoUrl, formato, 170, 6, 25, 25);
+      } catch (eLogo) {
+        console.warn("[gerarPdfBoasVindasAdministrador] Falha ao desenhar logótipo white-label:", eLogo);
+      }
+    }
 
     // Title and Building Name
     doc.setFont("helvetica", "bold");
@@ -2208,7 +2219,7 @@ export function gerarPdfBoasVindasGestor(
   devolverDoc?: boolean
 ) {
   if (gestor?.perfil === "ADMIN") {
-    return gerarPdfBoasVindasAdministrador(gestor, predios, empresaNome, devolverDoc);
+    return gerarPdfBoasVindasAdministrador(gestor, predios, empresaNome, devolverDoc, logoUrl);
   }
 
   try {
@@ -2227,6 +2238,16 @@ export function gerarPdfBoasVindasGestor(
     // Accent line
     doc.setFillColor(16, 185, 129); // Emerald-500
     doc.rect(0, 41, 210, 2, "F");
+
+    // Logótipo White-Label da empresa gestora (quando definido), canto superior direito
+    if (logoUrl) {
+      try {
+        const formato = logoUrl.includes("image/png") ? "PNG" : logoUrl.includes("image/jpeg") ? "JPEG" : "WEBP";
+        doc.addImage(logoUrl, formato, 170, 6, 25, 25);
+      } catch (eLogo) {
+        console.warn("[gerarPdfBoasVindasGestor] Falha ao desenhar logótipo white-label:", eLogo);
+      }
+    }
 
     // Title and Company/Building Name
     doc.setFont("helvetica", "bold");

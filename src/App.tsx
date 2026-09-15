@@ -245,7 +245,13 @@ export default function App() {
   const [fornecedoresTab, setFornecedoresTab] = useState<"fornecedores" | "contratos">("fornecedores");
   const [iaInitialTab, setIaInitialTab] = useState<"juridico" | "fundo_reserva" | "orcamentos" | "orcamento_anual_ia" | "cerebro_ia" | undefined>(undefined);
   const [viewMode, setViewMode] = useState<"BROWSER" | "PWA">("BROWSER");
-  const [brandingColor, setBrandingColor] = useState<string>("emerald");
+  const [brandingColor, setBrandingColorState] = useState<string>(() => {
+    return localStorage.getItem("brandingColor") || "emerald";
+  });
+  const setBrandingColor = (color: string) => {
+    setBrandingColorState(color);
+    localStorage.setItem("brandingColor", color);
+  };
   const [whiteLabelLogo, setWhiteLabelLogo] = useState<string>(() => {
     return localStorage.getItem("whiteLabelLogo") || "";
   });

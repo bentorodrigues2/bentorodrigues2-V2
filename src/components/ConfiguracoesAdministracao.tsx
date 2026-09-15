@@ -1037,26 +1037,46 @@ export function ConfiguracoesAdministracao({
     }
   };
 
-  // Exportação Inteligente backup
+  // Exportação Inteligente backup (JSON — inclui os dados reais já carregados
+  // deste prédio: frações, movimentos e documentos arquivados)
+  const FILTROS_PALAVRAS_CHAVE: Record<string, string[]> = {
+    "Documentos e Pastas": ["ata", "convocatória", "documento", "regulamento", "manual"],
+    "Financeiro e Contabilidade": ["financeiro", "fatura", "recibo", "quota", "pasta paga", "cobrança"],
+    "Manutenção e Obras": ["obra", "manutenção", "vistoria", "scie", "fornecedor"],
+    "Auditoria": ["auditoria"]
+  };
+
   const handleExportBackup = (type: "total" | "parcial", filter?: string) => {
+    const palavrasChave = filter ? FILTROS_PALAVRAS_CHAVE[filter] : undefined;
+    const corresponde = (texto?: string) =>
+      !palavrasChave || palavrasChave.some(p => (texto || "").toLowerCase().includes(p));
+
+    const isFracoesFilter = filter === "Condóminos e Frações";
+    const documentosFiltrados = type === "total" || isFracoesFilter
+      ? documentos
+      : documentos.filter(d => corresponde(d.tema) || corresponde(d.categoria) || corresponde(d.tipo));
+    const movimentosFiltrados = type === "total" || filter === "Financeiro e Contabilidade" || isFracoesFilter
+      ? movimentos
+      : (filter === "Financeiro e Contabilidade" ? movimentos : []);
+    const fracoesFiltradas = type === "total" || isFracoesFilter ? fracoes : [];
+    const logsFiltrados = type === "total" || filter === "Auditoria" ? logs : [];
+
     const backupData = {
       sistema: "CondoManager AI Platform 2026",
       tipo_backup: type,
       modulo_filtro: filter || "Todos os Módulos",
       data_exportacao: new Date().toISOString(),
       predio: predio,
-      frações_total: fracoes.length,
-      documentos_total: documentos.length,
-      movimentos_total: movimentos.length,
-      fraçoes: fracoes,
-      movimentos: movimentos,
-      logs_auditoria: logs
+      fracoes: fracoesFiltradas,
+      movimentos: movimentosFiltrados,
+      documentos: documentosFiltrados,
+      logs_atividade_local: logsFiltrados
     };
 
     const jsonStr = JSON.stringify(backupData, null, 2);
     const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8;" });
     downloadBlob(blob, `CondoManager_Backup_${type}_${predioId}_${Date.now()}.json`);
-    addLog("Exportação", `Exportação de Backup (${type.toUpperCase()})`, `Ficheiros exportados: ${filter || "Todos"}`);
+    addLog("Exportação", `Exportação de Backup (${type.toUpperCase()})`, `Módulo: ${filter || "Todos"}`);
   };
 
   // Exportação Manual Editável / PDF
@@ -3119,10 +3139,10 @@ export function ConfiguracoesAdministracao({
                   <h3 className="text-sm font-black uppercase tracking-wider text-white">Exportação de Dados & Cópias de Segurança</h3>
                   <span className="bg-teal-500/20 text-teal-400 border border-teal-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                     <span className="h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse"></span>
-                    <span>Backup Total (.ZIP / JSON)</span>
+                    <span>Backup Total (.JSON)</span>
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">Efetue cópias de segurança instantâneas, descarregue o dossier integral em ZIP e exporte manuais em PDF e DOC.</p>
+                <p className="text-xs text-slate-400 mt-0.5">Efetue cópias de segurança instantâneas em JSON e exporte manuais em PDF e DOC.</p>
               </div>
             </div>
           </div>
@@ -3139,19 +3159,16 @@ export function ConfiguracoesAdministracao({
             <div className="bg-slate-50 dark:bg-slate-950 p-5 rounded-2xl border space-y-4">
               <div className="space-y-1">
                 <span className="text-[9px] bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-bold px-2 py-0.5 rounded uppercase">Backup Total</span>
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">Exportação Integral (.ZIP Inteligente)</h4>
-                <p className="text-xs text-slate-500">Descarrega um ficheiro compactado estruturado contendo toda a informação do condomínio.</p>
+                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">Exportação Integral (.JSON)</h4>
+                <p className="text-xs text-slate-500">Descarrega um ficheiro JSON estruturado com os dados deste prédio já carregados na plataforma.</p>
               </div>
 
               <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border text-[11px] text-slate-600 dark:text-slate-400 font-medium space-y-1">
-                <strong className="text-slate-700 dark:text-slate-300 block mb-1">Ficheiros incluídos no ZIP:</strong>
-                <p>• Documentação Completa (PDFs do Arquivo)</p>
-                <p>• Fichas de Condóminos & Frações (Excel/JSON)</p>
-                <p>• Fichas de Fornecedores & Contratos</p>
+                <strong className="text-slate-700 dark:text-slate-300 block mb-1">Dados incluídos no ficheiro JSON:</strong>
+                <p>• Metadados dos Documentos Arquivados (categoria, tema, caminho)</p>
+                <p>• Fichas de Condóminos & Frações</p>
                 <p>• Extratos Financeiros e Saldos (Movimentos)</p>
-                <p>• Dossiers de Engenharia Técnica (Vistorias)</p>
-                <p>• Atas e Convocatórias de Assembleias</p>
-                <p>• Histórico de Auditoria Interna e IA</p>
+                <p>• Registo de Atividade local desta sessão</p>
               </div>
 
               <button
@@ -3159,7 +3176,7 @@ export function ConfiguracoesAdministracao({
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-xl text-xs cursor-pointer shadow flex items-center justify-center gap-1.5"
               >
                 <FileDown className="h-4 w-4" />
-                <span>Descarregar ZIP Inteligente Total</span>
+                <span>Descarregar Backup Total (JSON)</span>
               </button>
             </div>
 
