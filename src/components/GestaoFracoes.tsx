@@ -271,6 +271,42 @@ export function GestaoFracoes({
 
   // Fire insurance email modal state
   const [fireInsuranceModalFracao, setFireInsuranceModalFracao] = useState<Fracao | null>(null);
+  const [enviandoPedidoApolice, setEnviandoPedidoApolice] = useState(false);
+
+  // Edição inline dos dados do seguro (seguradora / nº apólice / validade)
+  const [editandoSeguroFracaoId, setEditandoSeguroFracaoId] = useState<string | null>(null);
+  const [tempSeguradora, setTempSeguradora] = useState("");
+  const [tempApoliceNum, setTempApoliceNum] = useState("");
+  const [tempApoliceValidade, setTempApoliceValidade] = useState("");
+  const [guardandoSeguro, setGuardandoSeguro] = useState(false);
+
+  const iniciarEdicaoSeguro = (f: Fracao) => {
+    setEditandoSeguroFracaoId(f.id_fracao);
+    setTempSeguradora(f.seguradora || "");
+    setTempApoliceNum(f.apolice_num || "");
+    setTempApoliceValidade(f.apolice_validade || "");
+  };
+
+  const guardarSeguroFracao = async (f: Fracao) => {
+    setGuardandoSeguro(true);
+    try {
+      const atualizada: Fracao = {
+        ...f,
+        seguradora: tempSeguradora || undefined,
+        apolice_num: tempApoliceNum || undefined,
+        apolice_validade: tempApoliceValidade || undefined
+      };
+      const ok = await saveFracaoToSupabase(atualizada);
+      if (ok) {
+        onUpdateFracoes(fracoes.map(fr => fr.id_fracao === f.id_fracao ? atualizada : fr));
+        setEditandoSeguroFracaoId(null);
+      } else {
+        alert("Erro ao gravar os dados do seguro no Supabase.");
+      }
+    } finally {
+      setGuardandoSeguro(false);
+    }
+  };
 
   // Resident Form States
   const [resFracaoTarget, setResFracaoTarget] = useState("Fração H (3º Dto)");
@@ -1039,19 +1075,30 @@ export function GestaoFracoes({
     setIsEditingPermilages(false);
   };
 
-  const salvarPermilagens = () => {
+  // Grava a sério no Supabase as frações do prédio ativo cuja permilagem mudou —
+  // sem isto, as permilagens revertiam ao recarregar a página apesar da
+  // mensagem de sucesso (bug crítico: a permilagem determina o cálculo legal
+  // das quotas).
+  const persistirPermilagens = async (updated: Fracao[]) => {
+    onUpdateFracoes(updated);
+    const alteradas = updated.filter(f => f.id_predio === predio.id_predio);
+    const resultados = await Promise.all(alteradas.map(f => saveFracaoToSupabase(f)));
+    return resultados.every(Boolean);
+  };
+
+  const salvarPermilagens = async () => {
     const updated = fracoes.map(f => {
       if (f.id_predio === predio.id_predio && tempPermilages[f.id_fracao] !== undefined) {
         return { ...f, permilagem: Math.max(1, Math.min(1000, Number(tempPermilages[f.id_fracao]) || 1)) };
       }
       return f;
     });
-    onUpdateFracoes(updated);
+    const ok = await persistirPermilagens(updated);
     setIsEditingPermilages(false);
-    alert("Permilagens salvas com sucesso!");
+    alert(ok ? "Permilagens salvas com sucesso!" : "As permilagens foram atualizadas no ecrã, mas houve um erro a gravar no Supabase — tente novamente.");
   };
 
-  const autoAjustarPermilagens = () => {
+  const autoAjustarPermilagens = async () => {
     if (predioFracoes.length === 0) return;
     const diff = 1000 - totalPermilagem;
     if (diff === 0) return alert("A soma já é exatamente 1000‰!");
@@ -1073,8 +1120,8 @@ export function GestaoFracoes({
       testBuildingFracoes[0].permilagem += finalDiff;
     }
 
-    onUpdateFracoes(updated);
-    alert("As permilagens foram ajustadas proporcionalmente de forma automática para somar 1000‰ legais!");
+    const ok = await persistirPermilagens(updated);
+    alert(ok ? "As permilagens foram ajustadas proporcionalmente de forma automática para somar 1000‰ legais!" : "As permilagens foram ajustadas no ecrã, mas houve um erro a gravar no Supabase — tente novamente.");
   };
 
   // Batch emit from Calculator
@@ -2517,7 +2564,7 @@ export function GestaoFracoes({
             </div>
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
                 let totalAreaWeighted = 0;
                 const weightedByFracao: Record<string, number> = {};
                 predioFracoes.forEach(f => {
@@ -2548,8 +2595,8 @@ export function GestaoFracoes({
                   if (idx !== -1) updated[idx].permilagem += diff;
                 }
 
-                onUpdateFracoes(updated);
-                alert("Permilagens recalculadas e atualizadas com sucesso para exatamente 1000‰ legais com base nas áreas e coeficientes!");
+                const ok = await persistirPermilagens(updated);
+                alert(ok ? "Permilagens recalculadas e atualizadas com sucesso para exatamente 1000‰ legais com base nas áreas e coeficientes!" : "As permilagens foram recalculadas no ecrã, mas houve um erro a gravar no Supabase — tente novamente.");
               }}
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg text-xs shadow-sm transition-all cursor-pointer flex items-center gap-2"
             >
@@ -2901,27 +2948,84 @@ export function GestaoFracoes({
                       <span className={`text-[10px] font-mono font-bold bg-white px-2 py-0.5 rounded border ${isAlertRequired ? 'border-red-300 text-red-900' : 'border-amber-300 text-amber-900'}`}>
                         {selectedFracao.seguradora || "Não Fornecida"} • Apólice: {selectedFracao.apolice_num || "Pendente"}
                       </span>
-                      {!isAlertRequired && (
-                        <button
-                          type="button"
-                          onClick={() => setFireInsuranceModalFracao(selectedFracao)}
-                          className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] px-2.5 py-1 rounded transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
-                        >
-                          <i className="fa-solid fa-paper-plane text-[9px]"></i>
-                          <span>Enviar E-mail Pedido de Apólice</span>
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => iniciarEdicaoSeguro(selectedFracao)}
+                        className="bg-slate-600 hover:bg-slate-700 text-white font-bold text-[10px] px-2.5 py-1 rounded transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
+                      >
+                        <i className="fa-solid fa-pen text-[9px]"></i>
+                        <span>Editar</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFireInsuranceModalFracao(selectedFracao)}
+                        className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] px-2.5 py-1 rounded transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
+                      >
+                        <i className="fa-solid fa-paper-plane text-[9px]"></i>
+                        <span>Enviar E-mail Pedido de Apólice</span>
+                      </button>
                     </div>
                   </div>
+
+                  {editandoSeguroFracaoId === selectedFracao.id_fracao && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white p-3 rounded-lg border border-amber-200">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 mb-1">Seguradora</label>
+                        <input
+                          type="text"
+                          value={tempSeguradora}
+                          onChange={e => setTempSeguradora(e.target.value)}
+                          placeholder="Ex: Fidelidade"
+                          className="w-full text-xs p-2 rounded-lg border border-slate-300"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 mb-1">Nº Apólice</label>
+                        <input
+                          type="text"
+                          value={tempApoliceNum}
+                          onChange={e => setTempApoliceNum(e.target.value)}
+                          className="w-full text-xs p-2 rounded-lg border border-slate-300"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 mb-1">Validade</label>
+                        <input
+                          type="date"
+                          value={tempApoliceValidade}
+                          onChange={e => setTempApoliceValidade(e.target.value)}
+                          className="w-full text-xs p-2 rounded-lg border border-slate-300"
+                        />
+                      </div>
+                      <div className="sm:col-span-3 flex justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setEditandoSeguroFracaoId(null)}
+                          className="text-[10px] font-bold text-slate-500 px-3 py-1.5 rounded-lg cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          disabled={guardandoSeguro}
+                          onClick={() => guardarSeguroFracao(selectedFracao)}
+                          className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg cursor-pointer"
+                        >
+                          {guardandoSeguro ? "A gravar..." : "Gravar"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between text-xs text-amber-900 pt-1">
                     <label className="flex items-center space-x-2.5 cursor-pointer select-none">
                       <input
                         type="checkbox"
                         checked={selectedFracao.solicitacao_email_incendio ?? true}
-                        onChange={(e) => {
-                          const updated = fracoes.map(f => f.id_fracao === selectedFracao.id_fracao ? { ...f, solicitacao_email_incendio: e.target.checked } : f);
-                          onUpdateFracoes(updated);
+                        onChange={async (e) => {
+                          const atualizada = { ...selectedFracao, solicitacao_email_incendio: e.target.checked };
+                          onUpdateFracoes(fracoes.map(f => f.id_fracao === selectedFracao.id_fracao ? atualizada : f));
+                          await saveFracaoToSupabase(atualizada);
                         }}
                         className="h-4 w-4 text-amber-600 rounded border-amber-300 focus:ring-amber-500"
                       />
@@ -2929,9 +3033,6 @@ export function GestaoFracoes({
                         Solicitação por e-mail automatizada (Pedido anual de Apólice de Incêndio a 02/01)
                       </span>
                     </label>
-                    <span className="text-[10px] text-slate-500 font-mono">
-                      Próxima Notificação Programada: <strong>02/01/2027</strong>
-                    </span>
                   </div>
                 </div>
               );
@@ -3168,14 +3269,44 @@ export function GestaoFracoes({
                 </div>
               </div>
               <button
-                onClick={() => {
-                  const recipientEmail = fireInsuranceModalFracao.proprietario?.email;
-                  setFireInsuranceModalFracao(null);
-                  alert(`E-mail de solicitação de apólice de incêndio enviado com sucesso para ${recipientEmail}!`);
+                disabled={enviandoPedidoApolice}
+                onClick={async () => {
+                  const alvo = fireInsuranceModalFracao;
+                  const recipientEmail = alvo.proprietario?.email;
+                  if (!recipientEmail) {
+                    alert("Esta fração não tem email de proprietário registado.");
+                    return;
+                  }
+                  setEnviandoPedidoApolice(true);
+                  try {
+                    const resp = await fetch("/api/email?acao=notificar", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        to: recipientEmail,
+                        nomeDestinatario: alvo.proprietario.nome,
+                        assunto: `Solicitação de Apólice de Seguro de Incêndio — Fração ${alvo.fracao_nome}`,
+                        mensagem: `Para manter o registo legal do nosso condomínio devidamente atualizado, solicitamos o favor de nos enviar uma cópia da sua apólice de seguro de incêndio / multirriscos ou do respetivo recibo de pagamento renovado referente à sua Fração ${alvo.fracao_nome} (${alvo.piso}).<br><br>Poderá responder diretamente a este e-mail anexando o comprovativo em formato PDF ou imagem, ou efetuar o carregamento na sua área reservada da plataforma CondoManager AI.<br><br>Agradecemos desde já a sua pronta colaboração na manutenção da segurança jurídica de todo o edifício.`
+                      })
+                    });
+                    const data = await resp.json();
+                    if (!resp.ok || !data.ok) throw new Error(data.error || "Falha ao enviar");
+
+                    const atualizada = { ...alvo, solicitacao_email_incendio: true };
+                    await saveFracaoToSupabase(atualizada);
+                    onUpdateFracoes(fracoes.map(f => f.id_fracao === alvo.id_fracao ? atualizada : f));
+
+                    setFireInsuranceModalFracao(null);
+                    alert(`E-mail de solicitação de apólice de incêndio enviado com sucesso para ${recipientEmail}!`);
+                  } catch (err: any) {
+                    alert("Erro ao enviar o email: " + (err?.message || "erro desconhecido"));
+                  } finally {
+                    setEnviandoPedidoApolice(false);
+                  }
                 }}
-                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded-lg text-xs transition-colors cursor-pointer shadow-md text-center flex items-center justify-center gap-2"
+                className="w-full bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white font-bold py-2.5 px-4 rounded-lg text-xs transition-colors cursor-pointer shadow-md text-center flex items-center justify-center gap-2"
               >
-                <i className="fa-solid fa-paper-plane"></i>
+                {enviandoPedidoApolice ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-paper-plane"></i>}
                 <span>Enviar E-mail de Solicitação de Apólice</span>
               </button>
             </div>

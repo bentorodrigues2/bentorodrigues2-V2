@@ -384,6 +384,57 @@ Devolve apenas o texto da convocatória pronto a enviar por email aos condómino
     }
   }
 
+  // VALIDADOR DE PEDIDOS DO REGULAMENTO INTERNO (/api/ai?acao=validar-regulamento)
+  if (acao === "validar-regulamento") {
+    if (req.method === "GET") {
+      return res.status(200).json({ status: "online", endpoint: "/api/ai?acao=validar-regulamento" });
+    }
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
+
+    try {
+      const { regras, pedidoTexto } = req.body || {};
+      if (!pedidoTexto) {
+        return res.status(400).json({ error: "pedidoTexto é obrigatório." });
+      }
+
+      const prompt = `És o motor de validação de pedidos informais de condóminos de um condomínio em Portugal, à luz do Regulamento Interno do edifício e da lei da propriedade horizontal (Código Civil, artigos 1414.º a 1438.º-A).
+
+Regulamento Interno em vigor neste edifício:
+${JSON.stringify(regras || {}, null, 2)}
+
+Pedido submetido pelo condómino:
+"${pedidoTexto}"
+
+Analisa o pedido face ao regulamento e à lei aplicável e devolve APENAS um JSON estrito com este formato exato:
+{
+  "decisao": "Aprovado" | "Aprovado com Condições" | "Rejeitado",
+  "fundamentacao": "Explicação clara e fundamentada citando o regulamento interno e/ou artigos legais aplicáveis",
+  "recomendacaoIA": "Recomendação prática para a administração sobre como proceder"
+}`;
+
+      const responseText = await generateWithFallback({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        responseMimeType: "application/json"
+      });
+
+      try {
+        const parsed = JSON.parse(responseText);
+        return res.status(200).json(parsed);
+      } catch {
+        return res.status(200).json({
+          decisao: "Aprovado com Condições",
+          fundamentacao: responseText,
+          recomendacaoIA: "Reveja manualmente — a resposta da IA não veio em formato estruturado."
+        });
+      }
+    } catch (err) {
+      console.error("[api/ai?acao=validar-regulamento] Erro:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao validar pedido com IA." });
+    }
+  }
+
   // Se nenhuma ação válida foi especificada
   if (req.method === "GET") {
     return res.status(200).json({
@@ -399,12 +450,13 @@ Devolve apenas o texto da convocatória pronto a enviar por email aos condómino
         "generate-minutes",
         "parse-import",
         "reconhecer-recibo",
-        "humanize-convocatoria"
+        "humanize-convocatoria",
+        "validar-regulamento"
       ]
     });
   }
 
   return res.status(400).json({
-    error: "Ação não especificada ou inválida. Use ?acao=chat|generate-legal-notice|ai-query|predict-budget|predict-reserve-fund|compare-proposals|generate-minutes|parse-import|reconhecer-recibo|humanize-convocatoria"
+    error: "Ação não especificada ou inválida. Use ?acao=chat|generate-legal-notice|ai-query|predict-budget|predict-reserve-fund|compare-proposals|generate-minutes|parse-import|reconhecer-recibo|humanize-convocatoria|validar-regulamento"
   });
 }

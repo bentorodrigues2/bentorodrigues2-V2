@@ -4,11 +4,12 @@ import { cpLookup } from "../data";
 import { gerarPdfEtiquetasChaves } from "../utils";
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import { Pencil, Trash2 } from "lucide-react";
-import { 
-  fetchChavesFromSupabase, 
-  saveSingleChaveToSupabase, 
-  saveChavesToSupabase, 
-  deleteChaveFromSupabase 
+import {
+  fetchChavesFromSupabase,
+  saveSingleChaveToSupabase,
+  saveChavesToSupabase,
+  deleteChaveFromSupabase,
+  fetchFracoesFromSupabase
 } from "../lib/supabaseService";
 
 interface GestaoPrediosProps {
@@ -56,7 +57,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
     activeSubSection === "predios_regras" ? "regras" : "cadastro";
 
   // Status de Aprovação das Regras & Estatutos em Assembleia
-  const [regumentoAprovado, setRegumentoAprovado] = useState(true);
+  const [regumentoAprovado, setRegumentoAprovado] = useState(false);
 
   // Módulo de Gestão de Chaves do Prédio (Iniciam por selecionar e contadores a 0)
   const [chaves, setChaves] = useState<ChaveItem[]>(() => [
@@ -115,94 +116,62 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
   }, [selectedPredioId, predios]);
 
   // Regras do Prédio (Regulamento Automático) State
-  const [regras, setRegras] = useState(() => {
-    return {
-      silencio: "Proibido ruído e música alta entre as 22:00 e as 08:00 nos dias úteis, e entre as 23:00 e as 09:00 nos fins de semana e feriados.",
-      animais: "Permitidos no máximo 2 animais de pequeno/médio porte por fração. Uso obrigatório de trela nas áreas comuns. Limpeza imediata de dejeções.",
-      obras: "Obras ruidosas permitidas apenas em dias úteis das 09:00 às 18:00. Obrigatoriedade de avisar a vizinhança no hall com 48h de antecedência.",
-      estacionamento: "Estacionamento exclusivo no lugar afeto à fração. Cargas e descargas na zona comum limitadas a 30 minutos.",
-      lixo: "Deposição de resíduos domésticos nos contentores das 20:00 às 22:00. Separação obrigatória nos ecopontos comuns.",
-      areasComuns: "Reserva da Sala Comum e Churrasqueira com 24h de antecedência. Lotação máxima da Piscina: 12 pessoas; Ginásio: 4 pessoas."
-    };
-  });
+  const REGRAS_DEFAULT = {
+    silencio: "Proibido ruído e música alta entre as 22:00 e as 08:00 nos dias úteis, e entre as 23:00 e as 09:00 nos fins de semana e feriados.",
+    animais: "Permitidos no máximo 2 animais de pequeno/médio porte por fração. Uso obrigatório de trela nas áreas comuns. Limpeza imediata de dejeções.",
+    obras: "Obras ruidosas permitidas apenas em dias úteis das 09:00 às 18:00. Obrigatoriedade de avisar a vizinhança no hall com 48h de antecedência.",
+    estacionamento: "Estacionamento exclusivo no lugar afeto à fração. Cargas e descargas na zona comum limitadas a 30 minutos.",
+    lixo: "Deposição de resíduos domésticos nos contentores das 20:00 às 22:00. Separação obrigatória nos ecopontos comuns.",
+    areasComuns: "Reserva da Sala Comum e Churrasqueira com 24h de antecedência. Lotação máxima da Piscina: 12 pessoas; Ginásio: 4 pessoas."
+  };
+  const [regras, setRegras] = useState(REGRAS_DEFAULT);
+  const [guardandoRegulamento, setGuardandoRegulamento] = useState(false);
+  const [enviandoNotificacaoRegulamento, setEnviandoNotificacaoRegulamento] = useState(false);
 
   // AI Validation State for Pedidos
   const [pedidoTexto, setPedidoTexto] = useState("");
   const [validandoPedido, setValidandoPedido] = useState(false);
   const [resultadoValidacao, setResultadoValidacao] = useState<{
     decisao: "Aprovado" | "Aprovado com Condições" | "Rejeitado";
-    motivos: string[];
-    regrasAplicadas: string[];
+    fundamentacao: string;
     recomendacaoIA: string;
   } | null>(null);
 
-  const handleValidarPedidoIA = () => {
+  const handleValidarPedidoIA = async () => {
     if (!pedidoTexto.trim()) return alert("Descreva o pedido ou pretensão do condómino.");
     setValidandoPedido(true);
     setResultadoValidacao(null);
 
-    setTimeout(() => {
-      const q = pedidoTexto.toLowerCase();
-      let decisao: "Aprovado" | "Aprovado com Condições" | "Rejeitado" = "Aprovado";
-      const motivos: string[] = [];
-      const regrasAplicadas: string[] = [];
-
-      if (q.includes("festa") || q.includes("música") || q.includes("barulho") || q.includes("23h") || q.includes("24h") || q.includes("noite") || q.includes("madrugada")) {
-        regrasAplicadas.push("Regra de Silêncio (22h-08h úteis / 23h-09h fds)");
-        if (q.includes("23h") || q.includes("24h") || q.includes("madrugada") || q.includes("música alta")) {
-          decisao = "Rejeitado";
-          motivos.push("Viola o horário de descanso regulamentar do prédio (Artº 1º - Silêncio).");
-        } else {
-          decisao = "Aprovado com Condições";
-          motivos.push("Música em volume moderado e encerramento rigoroso até às 22:00.");
-        }
-      }
-
-      if (q.includes("obra") || q.includes("furar") || q.includes("partir") || q.includes("remodelação")) {
-        regrasAplicadas.push("Regra de Obras (09h-18h dias úteis)");
-        if (q.includes("domingo") || q.includes("sábado") || q.includes("noite")) {
-          decisao = "Rejeitado";
-          motivos.push("Obras ruidosas são estritamente proibidas aos fins de semana e noites.");
-        } else {
-          if (decisao !== "Rejeitado") decisao = "Aprovado com Condições";
-          motivos.push("Fixar aviso prévio no hall com 48h de antecedência e respeitar o horário 09h-18h.");
-        }
-      }
-
-      if (q.includes("cão") || q.includes("gato") || q.includes("animal") || q.includes("pet")) {
-        regrasAplicadas.push("Regra de Animais de Estimação");
-        motivos.push("Manter o animal com trela nas zonas comuns e assegurar a higienização imediata.");
-        if (decisao === "Aprovado") decisao = "Aprovado com Condições";
-      }
-
-      if (q.includes("piscina") || q.includes("sala") || q.includes("churrasqueira") || q.includes("reserva")) {
-        regrasAplicadas.push("Regra de Uso de Áreas Comuns");
-        if (q.includes("30 pessoas") || q.includes("40 pessoas") || q.includes("multidão")) {
-          decisao = "Rejeitado";
-          motivos.push("Excede a lotação máxima de segurança permitida para as zonas comuns.");
-        } else {
-          motivos.push("Efetuar a reserva com 24h de antecedência na PWA e efetuar limpeza pós-evento.");
-          if (decisao === "Aprovado") decisao = "Aprovado com Condições";
-        }
-      }
-
-      if (motivos.length === 0) {
-        motivos.push("O pedido está em inteira conformidade com o Regulamento Geral do Condomínio.");
-      }
+    try {
+      const resp = await fetch("/api/ai?acao=validar-regulamento", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ regras, pedidoTexto })
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Falha ao validar com IA");
 
       setResultadoValidacao({
-        decisao,
-        motivos,
-        regrasAplicadas: regrasAplicadas.length > 0 ? regrasAplicadas : ["Regulamento Geral do Condomínio"],
-        recomendacaoIA: decisao === "Rejeitado"
-          ? "A IA recomenda notificar o condómino sobre a impossibilidade legal de autorizar o pedido nos moldes solicitados."
-          : decisao === "Aprovado com Condições"
-          ? "A IA recomenda enviar termo de responsabilidade com as condições especificadas."
-          : "O pedido pode ser deferido automaticamente com notificação na PWA."
+        decisao: data.decisao,
+        fundamentacao: data.fundamentacao,
+        recomendacaoIA: data.recomendacaoIA
       });
 
+      if (predioAtivo?.id_predio && isSupabaseConfigured) {
+        await supabase.from("pedidos_regulamento").insert({
+          id_pedido: "pedreg_" + Date.now(),
+          id_predio: predioAtivo.id_predio,
+          texto_pedido: pedidoTexto,
+          decisao: data.decisao,
+          fundamentacao: data.fundamentacao,
+          recomendacao_ia: data.recomendacaoIA
+        });
+      }
+    } catch (err: any) {
+      alert("Erro ao validar o pedido com IA: " + (err?.message || "erro desconhecido"));
+    } finally {
       setValidandoPedido(false);
-    }, 600);
+    }
   };
 
   // Form states
@@ -575,6 +544,99 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
 
   const predioAtivo = predios.find(p => p.id_predio === selectedPredioId) || predios[0];
   const prefixoCodigoIniciais = extrairIniciaisCodigoPredio(predioAtivo);
+
+  // Carregar o Regulamento Interno real do prédio ativo (guardado em patrimonio.regulamento)
+  useEffect(() => {
+    setRegras(predioAtivo?.patrimonio?.regulamento || REGRAS_DEFAULT);
+    setRegumentoAprovado(Boolean(predioAtivo?.patrimonio?.regulamento_aprovado));
+  }, [predioAtivo?.id_predio]);
+
+  const guardarRegulamento = async () => {
+    if (!predioAtivo?.id_predio || !isSupabaseConfigured) {
+      alert("Supabase não está configurado.");
+      return;
+    }
+    setGuardandoRegulamento(true);
+    try {
+      const novoPatrimonio = { ...(predioAtivo.patrimonio || {}), regulamento: regras };
+      const { error } = await supabase.from('predios').update({ patrimonio: novoPatrimonio }).eq('id_predio', predioAtivo.id_predio);
+      if (error) throw new Error(error.message);
+      onUpdatePredio({ ...predioAtivo, patrimonio: novoPatrimonio as any });
+      alert("Regulamento do Prédio atualizado com sucesso e sincronizado com o motor de validação da IA!");
+    } catch (err: any) {
+      alert("Erro ao gravar o regulamento: " + (err?.message || "erro desconhecido"));
+    } finally {
+      setGuardandoRegulamento(false);
+    }
+  };
+
+  const aprovarENotificarRegulamento = async () => {
+    if (!predioAtivo?.id_predio) return;
+    if (!confirm("Confirmar a APROVAÇÃO OFICIAL do Regulamento e Estatutos do Prédio em Assembleia Geral?\n\nAo aprovar, o documento será automaticamente anexado aos E-mails de Boas-Vindas aos novos condóminos.")) {
+      return;
+    }
+    setGuardandoRegulamento(true);
+    try {
+      const novoPatrimonio = { ...(predioAtivo.patrimonio || {}), regulamento: regras, regulamento_aprovado: true };
+      const { error } = await supabase.from('predios').update({ patrimonio: novoPatrimonio }).eq('id_predio', predioAtivo.id_predio);
+      if (error) throw new Error(error.message);
+      onUpdatePredio({ ...predioAtivo, patrimonio: novoPatrimonio as any });
+      setRegumentoAprovado(true);
+    } catch (err: any) {
+      alert("Erro ao aprovar o regulamento: " + (err?.message || "erro desconhecido"));
+      setGuardandoRegulamento(false);
+      return;
+    }
+    setGuardandoRegulamento(false);
+
+    if (!confirm("Regulamento e Estatutos Aprovados com Sucesso!\n\nDeseja enviar uma notificação por e-mail a TODOS os condóminos do edifício com a cópia do Regulamento Aprovado?")) {
+      return;
+    }
+    setEnviandoNotificacaoRegulamento(true);
+    try {
+      const fracoesPredio = await fetchFracoesFromSupabase(predioAtivo.id_predio);
+      const destinatarios = (fracoesPredio || [])
+        .filter(f => f.proprietario?.email)
+        .map(f => ({ email: f.proprietario.email, nome: f.proprietario.nome }));
+
+      if (destinatarios.length === 0) {
+        alert("Nenhuma fração tem email de proprietário registado.");
+        return;
+      }
+
+      const mensagem = `O Regulamento Interno e Estatutos do ${predioAtivo.nome || "condomínio"} foram aprovados em Assembleia Geral. Seguem os pontos principais:<br><br>
+      <strong>1. Silêncio:</strong> ${regras.silencio}<br>
+      <strong>2. Animais:</strong> ${regras.animais}<br>
+      <strong>3. Obras:</strong> ${regras.obras}<br>
+      <strong>4. Estacionamento:</strong> ${regras.estacionamento}<br>
+      <strong>5. Resíduos:</strong> ${regras.lixo}<br>
+      <strong>6. Áreas Comuns:</strong> ${regras.areasComuns}`;
+
+      const resp = await fetch("/api/email?acao=broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ destinatarios, assunto: `Regulamento Interno Aprovado — ${predioAtivo.nome || "Condomínio"}`, mensagem })
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) throw new Error(data.error || "Falha ao enviar");
+      alert(`E-mail de notificação com Regulamento & Estatutos Aprovados enviado com sucesso a ${data.total_enviados}/${data.total_destinatarios} condóminos!`);
+    } catch (err: any) {
+      alert("Erro ao enviar a notificação: " + (err?.message || "erro desconhecido"));
+    } finally {
+      setEnviandoNotificacaoRegulamento(false);
+    }
+  };
+
+  const marcarRegulamentoPendente = async () => {
+    if (!predioAtivo?.id_predio) return;
+    if (!confirm("Deseja alterar o estado do Regulamento para PENDENTE DE APROVAÇÃO?")) return;
+    const novoPatrimonio = { ...(predioAtivo.patrimonio || {}), regulamento_aprovado: false };
+    const { error } = await supabase.from('predios').update({ patrimonio: novoPatrimonio }).eq('id_predio', predioAtivo.id_predio);
+    if (!error) {
+      onUpdatePredio({ ...predioAtivo, patrimonio: novoPatrimonio as any });
+      setRegumentoAprovado(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -1078,27 +1140,19 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
 
               <button
                 type="button"
-                onClick={() => {
-                  if (!regumentoAprovado) {
-                    if (confirm("Confirmar a APROVAÇÃO OFICIAL do Regulamento e Estatutos do Prédio em Assembleia Geral?\n\nAo aprovar, o documento será automaticamente anexado aos E-mails de Boas-Vindas aos novos condóminos.")) {
-                      setRegumentoAprovado(true);
-                      if (confirm("Regulamento e Estatutos Aprovados com Sucesso!\n\nDeseja enviar uma notificação por e-mail a TODOS os condóminos do edifício com a cópia do Regulamento Aprovado?")) {
-                        alert("E-mail de notificação com Regulamento & Estatutos Aprovados enviado com sucesso a todos os condóminos!");
-                      }
-                    }
-                  } else {
-                    if (confirm("Deseja alterar o estado do Regulamento para PENDENTE DE APROVAÇÃO?")) {
-                      setRegumentoAprovado(false);
-                    }
-                  }
-                }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all shadow-xs flex items-center space-x-2 shrink-0 ${
-                  regumentoAprovado 
-                    ? "bg-slate-200 hover:bg-slate-300 text-slate-800" 
+                disabled={guardandoRegulamento || enviandoNotificacaoRegulamento}
+                onClick={() => regumentoAprovado ? marcarRegulamentoPendente() : aprovarENotificarRegulamento()}
+                className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all shadow-xs flex items-center space-x-2 shrink-0 disabled:opacity-60 ${
+                  regumentoAprovado
+                    ? "bg-slate-200 hover:bg-slate-300 text-slate-800"
                     : "bg-emerald-600 hover:bg-emerald-700 text-white"
                 }`}
               >
-                <i className={`fa-solid ${regumentoAprovado ? "fa-pen-to-square" : "fa-check-double"}`}></i>
+                {(guardandoRegulamento || enviandoNotificacaoRegulamento) ? (
+                  <i className="fa-solid fa-spinner fa-spin"></i>
+                ) : (
+                  <i className={`fa-solid ${regumentoAprovado ? "fa-pen-to-square" : "fa-check-double"}`}></i>
+                )}
                 <span>{regumentoAprovado ? "Marcar como Pendente" : "Aprovar & Notificar Condóminos"}</span>
               </button>
             </div>
@@ -1116,10 +1170,11 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
 
               <button
                 type="button"
-                onClick={() => alert("Regulamento do Prédio atualizado com sucesso e sincronizado com o motor de validação da IA!")}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all shadow-xs flex items-center space-x-2 shrink-0"
+                disabled={guardandoRegulamento}
+                onClick={guardarRegulamento}
+                className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all shadow-xs flex items-center space-x-2 shrink-0"
               >
-                <i className="fa-solid fa-floppy-disk"></i>
+                {guardandoRegulamento ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-floppy-disk"></i>}
                 <span>Guardar Regulamento</span>
               </button>
             </div>
@@ -1292,24 +1347,9 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                   </span>
                 </div>
 
-                <div className="space-y-1.5">
-                  <span className="text-xs font-bold text-slate-300">Regras do Prédio Aplicadas:</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {resultadoValidacao.regrasAplicadas.map((r, idx) => (
-                      <span key={idx} className="bg-slate-700 text-slate-200 px-2 py-0.5 rounded text-[11px] font-mono">
-                        {r}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
                 <div className="space-y-1 text-xs">
                   <span className="font-bold text-slate-300 block">Fundamentação:</span>
-                  <ul className="list-disc list-inside space-y-1 text-slate-300 pl-1">
-                    {resultadoValidacao.motivos.map((m, idx) => (
-                      <li key={idx}>{m}</li>
-                    ))}
-                  </ul>
+                  <p className="text-slate-300">{resultadoValidacao.fundamentacao}</p>
                 </div>
 
                 <div className="p-3 bg-violet-950/40 border border-violet-800/50 rounded-lg text-xs text-violet-200 flex items-start space-x-2">
