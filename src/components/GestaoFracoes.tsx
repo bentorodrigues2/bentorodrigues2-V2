@@ -958,6 +958,24 @@ export function GestaoFracoes({
             try {
               generateCondominoPwaManualPDF(propNome.trim(), predio.nome, tempPass);
             } catch (err) {}
+            // Envia o mesmo guia por email a sério (o download acima é só a
+            // cópia local para o administrador) — ver api/pdf.js?tipo=boas-vindas
+            try {
+              await fetch("/api/pdf?tipo=boas-vindas", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  nome: propNome.trim(),
+                  buildingName: predio.nome,
+                  password: tempPass,
+                  email: propEmail.trim(),
+                  predio: predio.id_predio,
+                  ano: new Date().getFullYear()
+                })
+              });
+            } catch (err) {
+              console.warn("[GestaoFracoes] Aviso ao enviar email de boas-vindas:", err);
+            }
             alert(`✅ Proprietário associado com sucesso à Fração ${targetFracao.fracao_nome} no Supabase!\n\n📧 E-MAIL DE BOAS-VINDAS ENVIADO:\n• E-mail: ${propEmail.trim()}\n• Password Provisória: ${tempPass}\n• No primeiro acesso, o condómino poderá definir a sua password.`);
           } else {
             alert(`✅ Dados do proprietário da Fração ${targetFracao.fracao_nome} (${propNome.trim()}) gravados com sucesso no Supabase!`);

@@ -193,7 +193,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
     reader.readAsDataURL(file);
   };
 
-  const submeterFornecedor = (e: React.FormEvent) => {
+  const submeterFornecedor = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loggedUser.role !== 'ADMIN' && loggedUser.role !== 'EMPRESA_GESTORA') {
       return alert("Apenas administradores podem cadastrar fornecedores!");
@@ -228,6 +228,24 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
     // If PWA profile checklist had selected items, trigger automated welcome email & PDF manual
     if (perfisPwa.length > 0) {
       setWelcomeModalFornecedor(novo);
+
+      if (novo.email_contacto) {
+        try {
+          await fetch("/api/pdf?tipo=registo-fornecedor", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fornecedor: novo,
+              predioObj: predio,
+              email: novo.email_contacto,
+              predio: predio.id_predio,
+              ano: new Date().getFullYear()
+            })
+          });
+        } catch (err) {
+          console.warn("[GestaoFornecedores] Aviso ao enviar email de registo do fornecedor:", err);
+        }
+      }
     }
 
     setNome(""); setNif(""); setIban(""); setCategoria(""); setMorada(""); setContacto(""); setPessoaContacto(""); setTelemovelDireto(""); setEmailContacto(""); setDataNascimento(""); setPerfisPwa([]);

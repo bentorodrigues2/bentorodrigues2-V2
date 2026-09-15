@@ -151,11 +151,17 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
     const categoriaMovimento = dadosExtraidos?.categoria_contabilistica || (isFatura ? "Fornecedores" : "Quotas");
 
     // 1. Inserir em pagamentos (estado: 'pendente') — só faz sentido para receitas de condómino
+    // "referencia" é NOT NULL sem default na tabela real, e "origem" tem um
+    // CHECK constraint que só aceita um conjunto fechado de valores (não
+    // inclui "email_inbound") — por isso gera-se uma referência própria e
+    // omite-se "origem" (fica NULL, o que o constraint aceita).
     let pagamento = null;
     if (!isFatura) {
+      const referenciaGerada = `EMAIL-${Date.now().toString(36).toUpperCase()}`;
       const { data, error: errPag } = await supabase
         .from("pagamentos")
         .insert({
+          referencia: referenciaGerada,
           estado: "pendente",
           fracao: fracaoNome,
           id_fracao: contexto?.id_fracao || contexto?.id || null,
@@ -165,7 +171,6 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
           entidade: entidadeExtraida,
           comprovativo_url: comprovativoUrl || null,
           tipo: "quota_mensal",
-          origem: "email_inbound",
           criado_em: new Date().toISOString()
         })
         .select()
@@ -177,10 +182,14 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
     }
 
     // 2. Inserir em movimentos (estado: 'Movimento Cego / Por Justificar', is_movimento_cego: true, estado_conciliacao: 'PENDENTE')
+    // "id_movimento" é a PK (text) e não tem default — tem de ser gerado aqui.
+    const idMovimentoGerado = `MOV-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const { data: movimento, error: errMov } = await supabase
       .from("movimentos")
       .insert({
+        id_movimento: idMovimentoGerado,
         id_predio: contexto?.id_predio || null,
+        fracao_id: contexto?.id_fracao || null,
         descricao: `${entidadeExtraida || (isFatura ? "Fatura de fornecedor" : "Comprovativo")} via Email (${fracaoNome} - ${extrairEmailLimpo(remetenteEmail)})${pagamento?.id ? ` [pagamento:${pagamento.id}]` : ""}`,
         valor: valorExtraido || 0,
         tipo: tipoMovimento,

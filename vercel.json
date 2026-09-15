@@ -24,6 +24,7 @@
     { "source": "/api/pdf/carta-n1", "destination": "/api/pdf?tipo=carta-n1" },
     { "source": "/api/pdf/carta-n2", "destination": "/api/pdf?tipo=carta-n2" },
     { "source": "/api/pdf/boas-vindas", "destination": "/api/pdf?tipo=boas-vindas" },
+    { "source": "/api/pdf/registo-fornecedor", "destination": "/api/pdf?tipo=registo-fornecedor" },
     { "source": "/api/pdf/sinistro", "destination": "/api/pdf?tipo=sinistro" },
     { "source": "/api/pdf/scie", "destination": "/api/pdf?tipo=scie" }
   ]

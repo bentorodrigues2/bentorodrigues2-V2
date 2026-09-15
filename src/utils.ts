@@ -1036,7 +1036,8 @@ export function generateSupplierPwaManualPDF(fornecedorNome: string, perfis: str
  */
 export function gerarPdfRegistoFornecedorHomologado(
   fornecedor?: Partial<Fornecedor>,
-  predio?: Predio
+  predio?: Predio,
+  devolverDoc?: boolean
 ) {
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -1229,15 +1230,16 @@ export function gerarPdfRegistoFornecedorHomologado(
     doc.setTextColor(148, 163, 184);
     doc.text(`Documento emitido para ${fornecedorNome} em ${new Date().toLocaleDateString("pt-PT")}. Confidencial.`, 105, 288, { align: "center" });
 
+    if (devolverDoc) return doc;
     const blob = doc.output("blob");
     downloadBlob(blob, `Instrucoes_Acesso_Perfil_Fornecedor.pdf`);
   } catch (err) {
     console.error("Erro ao gerar PDF do Fornecedor:", err);
-    alert("Ocorreu um erro ao gerar o PDF de Registo de Fornecedor Homologado.");
+    if (typeof alert !== "undefined") alert("Ocorreu um erro ao gerar o PDF de Registo de Fornecedor Homologado.");
   }
 }
 
-export function generateCondominoPwaManualPDF(condominoNome: string, buildingName: string = "Condomínio Bento Rodrigues 2", passwordProvisoria?: string) {
+export function generateCondominoPwaManualPDF(condominoNome: string, buildingName: string = "Condomínio Bento Rodrigues 2", passwordProvisoria?: string, devolverDoc?: boolean) {
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     let y = addPdfHeaderWithLogo(doc, `${buildingName} - Manual do Condómino`);
@@ -1349,6 +1351,7 @@ export function generateCondominoPwaManualPDF(condominoNome: string, buildingNam
       y += 3;
     }
 
+    if (devolverDoc) return doc;
     const blob = doc.output("blob");
     downloadBlob(blob, `Instrucoes_Site_e_PWA_Condomino.pdf`);
   } catch (err) {
@@ -2831,7 +2834,8 @@ export function gerarConvocatoriaOficialPDF(
 export function gerarCartaoAniversarioCondominoPDF(
   destinatarioNome: string = "Ana Silva",
   predioNome: string = "Condomínio Edifício Estrela da Barra",
-  administradorNome: string = "José Carlos Guerra"
+  administradorNome: string = "José Carlos Guerra",
+  devolverDoc?: boolean
 ) {
   try {
     const doc = new jsPDF({
@@ -2954,13 +2958,15 @@ export function gerarCartaoAniversarioCondominoPDF(
     doc.setTextColor(71, 85, 105);
     doc.text(`A Administração do ${predioNome}`, 105, 123.5, { align: "center" });
 
+    if (devolverDoc) return doc;
+
     // Download do postal
     const blob = doc.output("blob");
     downloadBlob(blob, `Cartao_Aniversario_Condomino.pdf`);
     return true;
   } catch (err) {
     console.error("Erro ao gerar Cartão de Aniversário PDF:", err);
-    alert("Ocorreu um erro ao gerar o Cartão de Aniversário.");
+    if (typeof alert !== "undefined") alert("Ocorreu um erro ao gerar o Cartão de Aniversário.");
     return false;
   }
 }

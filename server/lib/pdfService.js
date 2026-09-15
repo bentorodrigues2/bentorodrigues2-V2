@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 import { supabase } from "./supabaseServer.js";
 import { gerarHtmlResposta } from "./htmlemail.js";
+import { sanitizarSegmentoStorage } from "./storageUtils.js";
 
 /**
  * Gera um PDF real a partir de texto simples (jsPDF funciona em Node sem
@@ -54,7 +55,10 @@ function gerarPDFBuffer(conteudo, titulo) {
 }
 
 export async function guardarNoArquivo({ pdfBuffer, ano, tema, tipo, predio, fracao, fluxo, nomeFicheiro }) {
-  const caminho = `${ano}/${tema}/${tipo}/${predio}/${fracao}/${fluxo}/${nomeFicheiro}`;
+  // Só as pastas passam pelo sanitizador (a Storage API rejeita espaços/acentos
+  // na chave) — o nome do ficheiro já vem seguro dos geradores (sem espaços).
+  const pastas = [ano, tema, tipo, predio, fracao, fluxo].map(sanitizarSegmentoStorage).join("/");
+  const caminho = `${pastas}/${nomeFicheiro}`;
 
   const { error } = await supabase.storage
     .from("documentos")

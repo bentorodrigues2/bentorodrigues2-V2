@@ -2,21 +2,7 @@ import { createHash } from "crypto";
 import { supabase } from "../server/lib/supabaseServer.js";
 import { guardarNoArquivo, registarDocumento, enviarEmailPDF } from "../server/lib/pdfService.js";
 import { generateOfficialReceiptPDF, nomeFicheiroRecibo } from "../server/lib/receiptGenerator.js";
-
-const STOPWORDS_PREFIXO = ["rua", "edifício", "edificio", "condomínio", "condominio", "do", "da", "de", "dos", "das", "e"];
-
-/** Deriva um prefixo curto do edifício (ex.: "Rua Bento Rodrigues 2" -> "BR2") */
-function derivarPrefixoEdificio(nomePredio) {
-  const nomeLimpo = (nomePredio || "").replace(/\(.*?\)/g, "").trim();
-  const digitos = (nomeLimpo.match(/\d+/) || [""])[0];
-  const semDigitos = nomeLimpo.replace(/\d+/g, "").trim();
-  const iniciais = semDigitos
-    .split(/\s+/)
-    .filter((w) => w && !STOPWORDS_PREFIXO.includes(w.toLowerCase()))
-    .map((w) => w[0].toUpperCase())
-    .join("");
-  return (iniciais || "COND") + digitos;
-}
+import { derivarPrefixoEdificio } from "../server/lib/reciboUtils.js";
 
 export default async function handler(req, res) {
   try {
@@ -57,6 +43,47 @@ export default async function handler(req, res) {
         .ilike("descricao", `%[pagamento:${id_pagamento}]%`);
     } catch (errMovLink) {
       console.warn("[confirmar-pagamento] Aviso ao atualizar movimento ligado:", errMovLink?.message || errMovLink);
+    }
+
+    // 1.2) Marcar como "Pago" o(s) aviso(s) (nota de cobrança) correspondentes
+    // a este pagamento, para que os emails automáticos de lembrete/mora (ver
+    // server/lib/cronService.js) deixem de ser enviados a quem já pagou. Os
+    // avisos são criados aos pares (Quota Ordinária + Fundo de Reserva) com a
+    // mesma data de emissão — agrupa por data e escolhe o grupo pendente cuja
+    // soma bate certo com o valor pago; sem correspondência exata, assume o
+    // grupo pendente mais antigo (aviso é uma tabela sem FK direta para
+    // pagamentos, tal como os movimentos).
+    try {
+      if (pagamento.id_fracao) {
+        const { data: pendentesAvisos } = await supabase
+          .from("avisos")
+          .select("*")
+          .eq("id_fracao", pagamento.id_fracao)
+          .eq("estado", "Pendente")
+          .order("data", { ascending: true });
+
+        if (pendentesAvisos?.length) {
+          const grupos = {};
+          for (const av of pendentesAvisos) {
+            (grupos[av.data] = grupos[av.data] || []).push(av);
+          }
+          const chavesOrdenadas = Object.keys(grupos).sort();
+          const valorPago = Number(pagamento.valor || 0);
+          let grupoAlvo = chavesOrdenadas
+            .map((k) => grupos[k])
+            .find((g) => Math.abs(g.reduce((s, a) => s + Number(a.valor || 0), 0) - valorPago) < 0.05);
+          if (!grupoAlvo) grupoAlvo = grupos[chavesOrdenadas[0]];
+
+          if (grupoAlvo?.length) {
+            await supabase
+              .from("avisos")
+              .update({ estado: "Pago" })
+              .in("id_aviso", grupoAlvo.map((a) => a.id_aviso));
+          }
+        }
+      }
+    } catch (errAvisos) {
+      console.warn("[confirmar-pagamento] Aviso ao atualizar avisos ligados:", errAvisos?.message || errAvisos);
     }
 
     // 2) Buscar proprietário e fração separadamente (sem depender de relações

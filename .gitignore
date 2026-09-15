@@ -15,3 +15,4 @@ bun.lock.json
 # geminiService sem depender de um .ts em runtime puro Node na Vercel
 server/geminiService.js
 server/lib/receiptGenerator.js
+server/lib/pdfDocs.js

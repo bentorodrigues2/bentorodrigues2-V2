@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Predio, Fracao, Aviso, LoggedUser, Documento } from "../types";
 import { formatDatePT, generateAndDownloadPdf, formatQuotaReceiptNumber, downloadReceiptPDF, gerarReferenciaBR23E } from "../utils";
+import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 
 interface GestaoEmissaoProps {
   predio: Predio;
@@ -13,8 +14,31 @@ interface GestaoEmissaoProps {
 }
 
 export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, setDocumentos, loggedUser }: GestaoEmissaoProps) {
-  const [orcamentoAnual, setOrcamentoAnual] = useState("");
+  const [orcamentoAnual, setOrcamentoAnual] = useState(() => {
+    const guardado = (predio.patrimonio as any)?.orcamento_anual;
+    return guardado ? String(guardado) : "";
+  });
   const [mes, setMes] = useState("Janeiro");
+
+  // O orçamento anual também é necessário no servidor (emissão automática de
+  // quotas no dia 25 via cron — ver server/lib/cronService.js), por isso é
+  // guardado em predios.patrimonio, tal como a assinatura do administrador.
+  useEffect(() => {
+    const guardado = (predio.patrimonio as any)?.orcamento_anual;
+    setOrcamentoAnual(guardado ? String(guardado) : "");
+  }, [predio.id_predio]);
+
+  const persistirOrcamentoNoSupabase = async (valor: number) => {
+    if (!isSupabaseConfigured) return;
+    try {
+      await supabase
+        .from("predios")
+        .update({ patrimonio: { ...(predio.patrimonio || {}), orcamento_anual: valor } })
+        .eq("id_predio", predio.id_predio);
+    } catch (err) {
+      console.warn("[Supabase] Erro ao guardar orçamento anual:", err);
+    }
+  };
 
   // Document Viewer modal states
   const [selectedAviso, setSelectedAviso] = useState<Aviso | null>(null);
@@ -42,6 +66,8 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
       return alert("Apenas administradores podem emitir quotas!");
     }
     if (!orcamentoAnual) return alert("Preencha o Orçamento Anual!");
+
+    persistirOrcamentoNoSupabase(Number(orcamentoAnual));
 
     const novosAvisos: Aviso[] = [];
     const d = new Date();

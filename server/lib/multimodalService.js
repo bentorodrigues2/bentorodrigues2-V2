@@ -1,5 +1,6 @@
 import { generateWithFallback } from "../geminiService.js";
 import { supabase } from "./supabaseServer.js";
+import { sanitizarSegmentoStorage, sanitizarNomeFicheiro } from "./storageUtils.js";
 
 const PROMPT_EXTRACAO = `
 Analisa o(s) documento(s) anexo(s) (comprovativos, faturas, recibos, extratos).
@@ -47,7 +48,11 @@ export async function extrairDadosDocumento(anexos) {
  */
 export async function arquivarAnexoOriginal({ buffer, filename, mimeType, ano, tema, tipo, predio, fracao, fluxo }) {
   const anoSeguro = ano || new Date().getFullYear();
-  const caminho = `${anoSeguro}/${tema}/${tipo}/${predio || "geral"}/${fracao || "geral"}/${fluxo}/${filename}`;
+  const nomeSeguro = sanitizarNomeFicheiro(filename);
+  const pastas = [anoSeguro, tema, tipo, predio || "geral", fracao || "geral", fluxo]
+    .map(sanitizarSegmentoStorage)
+    .join("/");
+  const caminho = `${pastas}/${nomeSeguro}`;
 
   const { error: errUpload } = await supabase.storage
     .from("documentos")

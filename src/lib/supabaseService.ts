@@ -217,6 +217,7 @@ export async function saveProprietarioToSupabase(proprietario: Proprietario, idF
         email: proprietario.email,
         tlm: proprietario.tlm,
         iban: proprietario.iban,
+        data_nascimento: proprietario.data_nascimento || null,
         administrador_interno: proprietario.administrador_interno,
         notificacao_preferencial: proprietario.notificacao_preferencial
       });
