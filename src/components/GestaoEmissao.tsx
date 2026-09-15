@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Predio, Fracao, Aviso, LoggedUser, Documento } from "../types";
 import { formatDatePT, generateAndDownloadPdf, formatQuotaReceiptNumber, downloadReceiptPDF, gerarReferenciaBR23E } from "../utils";
-import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
+import { isSupabaseConfigured } from "@/lib/supabaseClient";
+import { dbUpdate } from "../lib/supabaseService";
 
 interface GestaoEmissaoProps {
   predio: Predio;
@@ -31,10 +32,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
   const persistirOrcamentoNoSupabase = async (valor: number) => {
     if (!isSupabaseConfigured) return;
     try {
-      await supabase
-        .from("predios")
-        .update({ patrimonio: { ...(predio.patrimonio || {}), orcamento_anual: valor } })
-        .eq("id_predio", predio.id_predio);
+      await dbUpdate("predios", { patrimonio: { ...(predio.patrimonio || {}), orcamento_anual: valor } }, [["id_predio", "eq", predio.id_predio]]);
     } catch (err) {
       console.warn("[Supabase] Erro ao guardar orçamento anual:", err);
     }

@@ -40,7 +40,8 @@ import {
   deleteSeguroPartesComunsFromSupabase,
   fetchSinistrosFromSupabase,
   saveSinistroToSupabase,
-  deleteSinistroFromSupabase
+  deleteSinistroFromSupabase,
+  dbUpdate
 } from "../lib/supabaseService";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { askAI } from "../ai/ai";
@@ -384,14 +385,11 @@ Não incluas blocos markdown nem texto adicional, apenas JSON puro.`;
 
     // 2. Atualizar tabela de fracoes no Supabase
     if (isSupabaseConfigured) {
-      await supabase
-        .from("fracoes")
-        .update({
-          seguradora: seguroObj.seguradora,
-          apolice_num: seguroObj.apolice_numero,
-          apolice_validade: seguroObj.apolice_validade
-        })
-        .eq("id_fracao", fracao.id_fracao);
+      await dbUpdate("fracoes", {
+        seguradora: seguroObj.seguradora,
+        apolice_num: seguroObj.apolice_numero,
+        apolice_validade: seguroObj.apolice_validade
+      }, [["id_fracao", "eq", fracao.id_fracao]]);
     }
 
     // 3. Atualizar estados em memória
@@ -432,14 +430,11 @@ Não incluas blocos markdown nem texto adicional, apenas JSON puro.`;
     await deleteSeguroFracaoFromSupabase(seguroId);
 
     if (isSupabaseConfigured) {
-      await supabase
-        .from("fracoes")
-        .update({
-          seguradora: null,
-          apolice_num: null,
-          apolice_validade: null
-        })
-        .eq("id_fracao", fracao.id_fracao);
+      await dbUpdate("fracoes", {
+        seguradora: null,
+        apolice_num: null,
+        apolice_validade: null
+      }, [["id_fracao", "eq", fracao.id_fracao]]);
     }
 
     setSegurosFracoesMap(prev => {

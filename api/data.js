@@ -41,7 +41,8 @@ const TABELAS_PERMITIDAS = new Set([
   "seguros_partes_comuns",
   "sinistros",
   "contratos",
-  "reunioes"
+  "reunioes",
+  "configuracao_quotas_predio"
 ]);
 
 const OPERADORES_PERMITIDOS = new Set(["eq", "neq", "gt", "gte", "lt", "lte", "in", "is"]);

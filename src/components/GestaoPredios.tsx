@@ -9,7 +9,12 @@ import {
   saveSingleChaveToSupabase,
   saveChavesToSupabase,
   deleteChaveFromSupabase,
-  fetchFracoesFromSupabase
+  fetchFracoesFromSupabase,
+  savePedidoRegulamentoToSupabase,
+  dbSelect,
+  dbInsert,
+  dbUpdate,
+  dbDelete
 } from "../lib/supabaseService";
 
 interface GestaoPrediosProps {
@@ -158,7 +163,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
       });
 
       if (predioAtivo?.id_predio && isSupabaseConfigured) {
-        await supabase.from("pedidos_regulamento").insert({
+        await savePedidoRegulamentoToSupabase({
           id_pedido: "pedreg_" + Date.now(),
           id_predio: predioAtivo.id_predio,
           texto_pedido: pedidoTexto,
@@ -206,10 +211,10 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
     const carregarPrediosSupabase = async () => {
       if (!isSupabaseConfigured) return;
       try {
-        const { data, error } = await supabase.from('predios').select('*');
-        if (error) {
-          console.warn("[Supabase] Erro ao ler predios:", error.message);
-        } else if (data && data.length > 0) {
+        const data = await dbSelect('predios');
+        if (!data) {
+          console.warn("[Supabase] Erro ao ler predios");
+        } else if (data.length > 0) {
           data.forEach((p: any) => {
             const mappedPredio: Predio = {
               id_predio: p.id_predio,
@@ -394,36 +399,24 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
       };
 
       try {
-        const { error: updateError } = await supabase
-          .from('predios')
-          .update({
-            nome: updated.nome,
-            morada_linha1: updated.morada_linha1,
-            morada_linha2: updated.morada_linha2,
-            num_porta: updated.num_porta,
-            letra_porta: updated.letra_porta,
-            codigo_postal: updated.codigo_postal,
-            localidade: updated.localidade,
-            nif: updated.nif,
-            email: updated.email,
-            autoresponder_ativo: updated.autoresponder_ativo,
-            foto: updated.foto,
-            patrimonio: updated.patrimonio
-          })
-          .eq('id_predio', selectedPredioId);
+        const ok = await dbUpdate('predios', {
+          nome: updated.nome,
+          morada_linha1: updated.morada_linha1,
+          morada_linha2: updated.morada_linha2,
+          num_porta: updated.num_porta,
+          letra_porta: updated.letra_porta,
+          codigo_postal: updated.codigo_postal,
+          localidade: updated.localidade,
+          nif: updated.nif,
+          email: updated.email,
+          autoresponder_ativo: updated.autoresponder_ativo,
+          foto: updated.foto,
+          patrimonio: updated.patrimonio
+        }, [['id_predio', 'eq', selectedPredioId]]);
 
-        if (updateError) {
-          alert(`Erro ao atualizar prédio no Supabase: ${updateError.message}`);
+        if (!ok) {
+          alert(`Erro ao atualizar prédio no Supabase.`);
           return;
-        }
-
-        // Regra 2: Depois de gravar, atualizar a lista com select('*')
-        const { data: prediosAtualizados, error: readError } = await supabase
-          .from('predios')
-          .select('*');
-
-        if (readError) {
-          console.warn("[Supabase] Aviso ao ler predios:", readError.message);
         }
 
         onUpdatePredio(updated);
@@ -450,36 +443,25 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
       };
 
       try {
-        const { error: insertError } = await supabase
-          .from('predios')
-          .insert([{
-            id_predio: novo.id_predio,
-            nome: novo.nome,
-            morada_linha1: novo.morada_linha1,
-            morada_linha2: novo.morada_linha2,
-            num_porta: novo.num_porta,
-            letra_porta: novo.letra_porta,
-            codigo_postal: novo.codigo_postal,
-            localidade: novo.localidade,
-            nif: novo.nif,
-            email: novo.email,
-            autoresponder_ativo: novo.autoresponder_ativo,
-            foto: novo.foto,
-            patrimonio: novo.patrimonio
-          }]);
+        const ok = await dbInsert('predios', {
+          id_predio: novo.id_predio,
+          nome: novo.nome,
+          morada_linha1: novo.morada_linha1,
+          morada_linha2: novo.morada_linha2,
+          num_porta: novo.num_porta,
+          letra_porta: novo.letra_porta,
+          codigo_postal: novo.codigo_postal,
+          localidade: novo.localidade,
+          nif: novo.nif,
+          email: novo.email,
+          autoresponder_ativo: novo.autoresponder_ativo,
+          foto: novo.foto,
+          patrimonio: novo.patrimonio
+        });
 
-        if (insertError) {
-          alert(`Erro ao gravar prédio no Supabase: ${insertError.message}`);
+        if (!ok) {
+          alert(`Erro ao gravar prédio no Supabase.`);
           return;
-        }
-
-        // Regra 2: Depois de gravar, atualizar a lista com select('*')
-        const { data: prediosAtualizados, error: readError } = await supabase
-          .from('predios')
-          .select('*');
-
-        if (readError) {
-          console.warn("[Supabase] Aviso ao ler predios:", readError.message);
         }
 
         onAddPredio(novo);
@@ -500,23 +482,11 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
     const nameStr = target?.nome || `${target?.morada_linha1}, Nº ${target?.num_porta}`;
     if (confirm(`Tem a certeza de que deseja remover o prédio "${nameStr}" do cadastro?`)) {
       try {
-        const { error: deleteError } = await supabase
-          .from('predios')
-          .delete()
-          .eq('id_predio', idPredio);
+        const ok = await dbDelete('predios', [['id_predio', 'eq', idPredio]]);
 
-        if (deleteError) {
-          alert(`Erro ao remover prédio no Supabase: ${deleteError.message}`);
+        if (!ok) {
+          alert(`Erro ao remover prédio no Supabase.`);
           return;
-        }
-
-        // Regra 2: Depois de eliminar, atualizar a lista com select('*')
-        const { data: prediosRestantes, error: readError } = await supabase
-          .from('predios')
-          .select('*');
-
-        if (readError) {
-          console.warn("[Supabase] Aviso ao ler predios:", readError.message);
         }
 
         if (onDeletePredio) {
@@ -559,8 +529,8 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
     setGuardandoRegulamento(true);
     try {
       const novoPatrimonio = { ...(predioAtivo.patrimonio || {}), regulamento: regras };
-      const { error } = await supabase.from('predios').update({ patrimonio: novoPatrimonio }).eq('id_predio', predioAtivo.id_predio);
-      if (error) throw new Error(error.message);
+      const ok = await dbUpdate('predios', { patrimonio: novoPatrimonio }, [['id_predio', 'eq', predioAtivo.id_predio]]);
+      if (!ok) throw new Error("Falha ao gravar");
       onUpdatePredio({ ...predioAtivo, patrimonio: novoPatrimonio as any });
       alert("Regulamento do Prédio atualizado com sucesso e sincronizado com o motor de validação da IA!");
     } catch (err: any) {
@@ -578,8 +548,8 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
     setGuardandoRegulamento(true);
     try {
       const novoPatrimonio = { ...(predioAtivo.patrimonio || {}), regulamento: regras, regulamento_aprovado: true };
-      const { error } = await supabase.from('predios').update({ patrimonio: novoPatrimonio }).eq('id_predio', predioAtivo.id_predio);
-      if (error) throw new Error(error.message);
+      const ok = await dbUpdate('predios', { patrimonio: novoPatrimonio }, [['id_predio', 'eq', predioAtivo.id_predio]]);
+      if (!ok) throw new Error("Falha ao gravar");
       onUpdatePredio({ ...predioAtivo, patrimonio: novoPatrimonio as any });
       setRegumentoAprovado(true);
     } catch (err: any) {
@@ -631,8 +601,8 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
     if (!predioAtivo?.id_predio) return;
     if (!confirm("Deseja alterar o estado do Regulamento para PENDENTE DE APROVAÇÃO?")) return;
     const novoPatrimonio = { ...(predioAtivo.patrimonio || {}), regulamento_aprovado: false };
-    const { error } = await supabase.from('predios').update({ patrimonio: novoPatrimonio }).eq('id_predio', predioAtivo.id_predio);
-    if (!error) {
+    const ok = await dbUpdate('predios', { patrimonio: novoPatrimonio }, [['id_predio', 'eq', predioAtivo.id_predio]]);
+    if (ok) {
       onUpdatePredio({ ...predioAtivo, patrimonio: novoPatrimonio as any });
       setRegumentoAprovado(false);
     }

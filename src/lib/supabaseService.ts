@@ -64,31 +64,31 @@ async function dbCall(body: Record<string, unknown>): Promise<{ ok: boolean; dat
   }
 }
 
-async function dbSelect(tabela: string, opts: { colunas?: string; filtros?: Filtro[]; order?: { coluna: string; asc?: boolean }; limit?: number } = {}): Promise<any[] | null> {
+export async function dbSelect(tabela: string, opts: { colunas?: string; filtros?: Filtro[]; order?: { coluna: string; asc?: boolean }; limit?: number } = {}): Promise<any[] | null> {
   const resultado = await dbCall({ tabela, acao: "select", ...opts });
   if (!resultado.ok || !resultado.data) return null;
   return resultado.data;
 }
 
-async function dbInsert(tabela: string, dados: unknown): Promise<boolean> {
+export async function dbInsert(tabela: string, dados: unknown): Promise<boolean> {
   const resultado = await dbCall({ tabela, acao: "insert", dados });
   if (!resultado.ok) console.warn(`[Supabase/data] Insert ${tabela} error:`, resultado.error);
   return resultado.ok;
 }
 
-async function dbUpsert(tabela: string, dados: unknown, opcoesUpsert?: { onConflict?: string }): Promise<boolean> {
+export async function dbUpsert(tabela: string, dados: unknown, opcoesUpsert?: { onConflict?: string }): Promise<boolean> {
   const resultado = await dbCall({ tabela, acao: "upsert", dados, opcoesUpsert });
   if (!resultado.ok) console.warn(`[Supabase/data] Upsert ${tabela} error:`, resultado.error);
   return resultado.ok;
 }
 
-async function dbUpdate(tabela: string, dados: unknown, filtros: Filtro[]): Promise<boolean> {
+export async function dbUpdate(tabela: string, dados: unknown, filtros: Filtro[]): Promise<boolean> {
   const resultado = await dbCall({ tabela, acao: "update", dados, filtros });
   if (!resultado.ok) console.warn(`[Supabase/data] Update ${tabela} error:`, resultado.error);
   return resultado.ok;
 }
 
-async function dbDelete(tabela: string, filtros?: Filtro[], orFiltro?: string): Promise<boolean> {
+export async function dbDelete(tabela: string, filtros?: Filtro[], orFiltro?: string): Promise<boolean> {
   const resultado = await dbCall({ tabela, acao: "delete", filtros, orFiltro });
   if (!resultado.ok) console.warn(`[Supabase/data] Delete ${tabela} error:`, resultado.error);
   return resultado.ok;
@@ -101,13 +101,9 @@ async function dbDelete(tabela: string, filtros?: Filtro[], orFiltro?: string): 
 export async function fetchPrediosFromSupabase(): Promise<Predio[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    const { data, error } = await supabase.from("predios").select("*");
-    if (error) {
-      console.warn("[Supabase] Error fetching predios:", error.message);
-      return null;
-    }
+    const data = await dbSelect("predios");
     if (!data || data.length === 0) return null;
-    
+
     return data.map((row: any) => ({
       id_predio: row.id_predio,
       nome: row.nome,
@@ -145,40 +141,28 @@ export async function fetchPrediosFromSupabase(): Promise<Predio[] | null> {
 
 export async function savePredioToSupabase(predio: Predio): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("predios").upsert({
-      id_predio: predio.id_predio,
-      nome: predio.nome,
-      morada_linha1: predio.morada_linha1,
-      morada_linha2: predio.morada_linha2,
-      num_porta: predio.num_porta,
-      letra_porta: predio.letra_porta,
-      codigo_postal: predio.codigo_postal,
-      localidade: predio.localidade,
-      nif: predio.nif,
-      patrimonio: predio.patrimonio,
-      iban: predio.iban,
-      email: predio.email,
-      email_condominio: predio.email_condominio || predio.email,
-      autoresponder_ativo: predio.autoresponder_ativo ?? true,
-      foto: predio.foto
-    });
-    if (error) console.warn("[Supabase] Save predio error:", error.message);
-    return !error;
-  } catch (err) {
-    console.warn("[Supabase] Save predio exception:", err);
-    return false;
-  }
+  return dbUpsert("predios", {
+    id_predio: predio.id_predio,
+    nome: predio.nome,
+    morada_linha1: predio.morada_linha1,
+    morada_linha2: predio.morada_linha2,
+    num_porta: predio.num_porta,
+    letra_porta: predio.letra_porta,
+    codigo_postal: predio.codigo_postal,
+    localidade: predio.localidade,
+    nif: predio.nif,
+    patrimonio: predio.patrimonio,
+    iban: predio.iban,
+    email: predio.email,
+    email_condominio: predio.email_condominio || predio.email,
+    autoresponder_ativo: predio.autoresponder_ativo ?? true,
+    foto: predio.foto
+  });
 }
 
 export async function deletePredioFromSupabase(idPredio: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("predios").delete().eq("id_predio", idPredio);
-    return !error;
-  } catch (err) {
-    return false;
-  }
+  return dbDelete("predios", [["id_predio", "eq", idPredio]]);
 }
 
 // ============================================================================
@@ -294,10 +278,8 @@ export async function deleteProprietarioFromSupabase(identifier: string, idFraca
 export async function fetchContasFromSupabase(idPredio?: string): Promise<Conta[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    let query = supabase.from("contas").select("*");
-    if (idPredio) query = query.eq("id_predio", idPredio);
-    const { data, error } = await query;
-    if (error || !data || data.length === 0) return null;
+    const data = await dbSelect("contas", { filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined });
+    if (!data || data.length === 0) return null;
 
     return data.map((row: any) => ({
       id_conta: row.id_conta,
@@ -320,35 +302,25 @@ export async function fetchContasFromSupabase(idPredio?: string): Promise<Conta[
 
 export async function saveContaToSupabase(conta: Conta): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("contas").upsert({
-      id_conta: conta.id_conta,
-      id_predio: conta.id_predio,
-      banco: conta.banco,
-      iban: conta.iban,
-      tipo: conta.tipo,
-      saldo: conta.saldo,
-      balcao: conta.balcao || null,
-      morada_balcao: conta.morada_balcao || null,
-      contacto_banco: conta.contacto_banco || null,
-      gestor_contas: conta.gestor_contas || null,
-      email_gestor: conta.email_gestor || null,
-      is_principal: Boolean(conta.is_principal)
-    });
-    return !error;
-  } catch (err) {
-    return false;
-  }
+  return dbUpsert("contas", {
+    id_conta: conta.id_conta,
+    id_predio: conta.id_predio,
+    banco: conta.banco,
+    iban: conta.iban,
+    tipo: conta.tipo,
+    saldo: conta.saldo,
+    balcao: conta.balcao || null,
+    morada_balcao: conta.morada_balcao || null,
+    contacto_banco: conta.contacto_banco || null,
+    gestor_contas: conta.gestor_contas || null,
+    email_gestor: conta.email_gestor || null,
+    is_principal: Boolean(conta.is_principal)
+  });
 }
 
 export async function deleteContaFromSupabase(idConta: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("contas").delete().eq("id_conta", idConta);
-    return !error;
-  } catch (err) {
-    return false;
-  }
+  return dbDelete("contas", [["id_conta", "eq", idConta]]);
 }
 
 // ============================================================================
@@ -515,15 +487,7 @@ export async function fetchAllProfiles(): Promise<SupabaseUserProfile[]> {
 export async function fetchChavesFromSupabase(idPredio?: string): Promise<ChaveItem[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    let query = supabase.from("gestao_chaves").select("*");
-    if (idPredio) {
-      query = query.eq("id_predio", idPredio);
-    }
-    const { data, error } = await query;
-    if (error) {
-      console.warn("[Supabase] Error fetching chaves:", error.message);
-      return null;
-    }
+    const data = await dbSelect("gestao_chaves", { filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined });
     if (!data) return null;
     return data.map((row: any) => ({
       id_chave: row.id_chave,
@@ -549,83 +513,54 @@ export async function fetchChavesFromSupabase(idPredio?: string): Promise<ChaveI
 
 export async function saveSingleChaveToSupabase(chave: ChaveItem): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("gestao_chaves").upsert({
-      id_chave: chave.id_chave,
-      id_predio: chave.id_predio,
-      area_nome: chave.area_nome,
-      local: chave.local || chave.local_sugerido || chave.area_nome,
-      codigo_chave: chave.codigo_chave,
-      quantidade: chave.quantidade,
-      no_claviculario: chave.no_claviculario,
-      status: chave.status || (chave.no_claviculario ? "disponivel" : "entregue"),
-      responsavel: chave.responsavel || null,
-      data_entrega: chave.data_entrega || null,
-      data_devolucao: chave.data_devolucao || null,
-      num_chaveiro: chave.num_chaveiro || "1",
-      local_sugerido: chave.local_sugerido || chave.local || null,
-      observacoes: chave.observacoes || null,
-      updated_at: new Date().toISOString()
-    });
-    if (error) {
-      console.warn("[Supabase] Save chave error:", error.message);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.warn("[Supabase] Exception saving chave:", err);
-    return false;
-  }
+  return dbUpsert("gestao_chaves", {
+    id_chave: chave.id_chave,
+    id_predio: chave.id_predio,
+    area_nome: chave.area_nome,
+    local: chave.local || chave.local_sugerido || chave.area_nome,
+    codigo_chave: chave.codigo_chave,
+    quantidade: chave.quantidade,
+    no_claviculario: chave.no_claviculario,
+    status: chave.status || (chave.no_claviculario ? "disponivel" : "entregue"),
+    responsavel: chave.responsavel || null,
+    data_entrega: chave.data_entrega || null,
+    data_devolucao: chave.data_devolucao || null,
+    num_chaveiro: chave.num_chaveiro || "1",
+    local_sugerido: chave.local_sugerido || chave.local || null,
+    observacoes: chave.observacoes || null,
+    updated_at: new Date().toISOString()
+  });
 }
 
 export async function saveChavesToSupabase(chaves: ChaveItem[]): Promise<{ success: boolean; count: number; error?: string }> {
   if (!isSupabaseConfigured()) {
     return { success: false, count: 0, error: "Supabase não está configurado." };
   }
-  try {
-    const payload = chaves.map(c => ({
-      id_chave: c.id_chave,
-      id_predio: c.id_predio,
-      area_nome: c.area_nome,
-      local: c.local || c.local_sugerido || c.area_nome,
-      codigo_chave: c.codigo_chave,
-      quantidade: c.quantidade || 1,
-      no_claviculario: c.no_claviculario ?? true,
-      status: c.status || (c.no_claviculario ? "disponivel" : "entregue"),
-      responsavel: c.responsavel || null,
-      data_entrega: c.data_entrega || null,
-      data_devolucao: c.data_devolucao || null,
-      num_chaveiro: c.num_chaveiro || "1",
-      local_sugerido: c.local_sugerido || c.local || null,
-      observacoes: c.observacoes || null,
-      updated_at: new Date().toISOString()
-    }));
+  const payload = chaves.map(c => ({
+    id_chave: c.id_chave,
+    id_predio: c.id_predio,
+    area_nome: c.area_nome,
+    local: c.local || c.local_sugerido || c.area_nome,
+    codigo_chave: c.codigo_chave,
+    quantidade: c.quantidade || 1,
+    no_claviculario: c.no_claviculario ?? true,
+    status: c.status || (c.no_claviculario ? "disponivel" : "entregue"),
+    responsavel: c.responsavel || null,
+    data_entrega: c.data_entrega || null,
+    data_devolucao: c.data_devolucao || null,
+    num_chaveiro: c.num_chaveiro || "1",
+    local_sugerido: c.local_sugerido || c.local || null,
+    observacoes: c.observacoes || null,
+    updated_at: new Date().toISOString()
+  }));
 
-    const { error } = await supabase.from("gestao_chaves").upsert(payload);
-    if (error) {
-      console.warn("[Supabase] Batch save chaves error:", error.message);
-      return { success: false, count: 0, error: error.message };
-    }
-    return { success: true, count: payload.length };
-  } catch (err: any) {
-    console.warn("[Supabase] Exception batch saving chaves:", err);
-    return { success: false, count: 0, error: err?.message || String(err) };
-  }
+  const ok = await dbUpsert("gestao_chaves", payload);
+  return ok ? { success: true, count: payload.length } : { success: false, count: 0, error: "Falha ao gravar chaves" };
 }
 
 export async function deleteChaveFromSupabase(idChave: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("gestao_chaves").delete().eq("id_chave", idChave);
-    if (error) {
-      console.warn("[Supabase] Delete chave error:", error.message);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.warn("[Supabase] Exception deleting chave:", err);
-    return false;
-  }
+  return dbDelete("gestao_chaves", [["id_chave", "eq", idChave]]);
 }
 
 // ============================================================================
@@ -674,16 +609,9 @@ export async function seedInitialDataToSupabase(
 export async function fetchSegurosFracoesFromSupabase(fracaoIds?: string[]): Promise<SeguroFracao[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    let query = supabase.from("seguros_fracoes").select("*");
-    if (fracaoIds && fracaoIds.length > 0) {
-      query = query.in("fracao_id", fracaoIds);
-    }
-    const { data, error } = await query;
-    if (error) {
-      console.warn("[Supabase] Tabela seguros_fracoes não disponível ou erro:", error.message);
-      return null;
-    }
-    return (data || []).map((row: any) => ({
+    const data = await dbSelect("seguros_fracoes", { filtros: fracaoIds && fracaoIds.length > 0 ? [["fracao_id", "in", fracaoIds]] : undefined });
+    if (!data) return null;
+    return data.map((row: any) => ({
       id: row.id,
       fracao_id: row.fracao_id,
       seguradora: row.seguradora,
@@ -704,35 +632,25 @@ export async function fetchSegurosFracoesFromSupabase(fracaoIds?: string[]): Pro
 
 export async function saveSeguroFracaoToSupabase(seguro: SeguroFracao): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured()) return { success: false, error: "Supabase não configurado" };
-  try {
-    const payload = {
-      id: seguro.id,
-      fracao_id: seguro.fracao_id,
-      seguradora: seguro.seguradora,
-      apolice_numero: seguro.apolice_numero,
-      apolice_validade: seguro.apolice_validade,
-      tipo_cobertura: seguro.tipo_cobertura || "Incêndio e Multirriscos",
-      capital_seguro: seguro.capital_seguro || 0,
-      documento_url: seguro.documento_url || null,
-      estado_validacao: seguro.estado_validacao,
-      atualizado_em: new Date().toISOString()
-    };
-    const { error } = await supabase.from("seguros_fracoes").upsert(payload);
-    if (error) throw error;
-    return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || String(err) };
-  }
+  const payload = {
+    id: seguro.id,
+    fracao_id: seguro.fracao_id,
+    seguradora: seguro.seguradora,
+    apolice_numero: seguro.apolice_numero,
+    apolice_validade: seguro.apolice_validade,
+    tipo_cobertura: seguro.tipo_cobertura || "Incêndio e Multirriscos",
+    capital_seguro: seguro.capital_seguro || 0,
+    documento_url: seguro.documento_url || null,
+    estado_validacao: seguro.estado_validacao,
+    atualizado_em: new Date().toISOString()
+  };
+  const ok = await dbUpsert("seguros_fracoes", payload);
+  return ok ? { success: true } : { success: false, error: "Falha ao gravar seguro de fração" };
 }
 
 export async function deleteSeguroFracaoFromSupabase(id: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("seguros_fracoes").delete().eq("id", id);
-    return !error;
-  } catch {
-    return false;
-  }
+  return dbDelete("seguros_fracoes", [["id", "eq", id]]);
 }
 
 // ============================================================================
@@ -742,15 +660,9 @@ export async function deleteSeguroFracaoFromSupabase(id: string): Promise<boolea
 export async function fetchSegurosPartesComunsFromSupabase(condominioId: string): Promise<SeguroPartesComuns[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    const { data, error } = await supabase
-      .from("seguros_partes_comuns")
-      .select("*")
-      .eq("condominio_id", condominioId);
-    if (error) {
-      console.warn("[Supabase] Tabela seguros_partes_comuns não disponível:", error.message);
-      return null;
-    }
-    return (data || []).map((row: any) => ({
+    const data = await dbSelect("seguros_partes_comuns", { filtros: [["condominio_id", "eq", condominioId]] });
+    if (!data) return null;
+    return data.map((row: any) => ({
       id: row.id,
       condominio_id: row.condominio_id,
       seguradora: row.seguradora,
@@ -773,37 +685,27 @@ export async function fetchSegurosPartesComunsFromSupabase(condominioId: string)
 
 export async function saveSeguroPartesComunsToSupabase(seguro: SeguroPartesComuns): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured()) return { success: false, error: "Supabase não configurado" };
-  try {
-    const payload = {
-      id: seguro.id,
-      condominio_id: seguro.condominio_id,
-      seguradora: seguro.seguradora,
-      apolice_numero: seguro.apolice_numero,
-      apolice_validade: seguro.apolice_validade,
-      tomador_seguro: seguro.tomador_seguro,
-      capital_seguro_edificio: seguro.capital_seguro_edificio || 0,
-      franquia: seguro.franquia || 0,
-      contacto_mediador: seguro.contacto_mediador,
-      documento_url: seguro.documento_url || null,
-      estado: seguro.estado,
-      atualizado_em: new Date().toISOString()
-    };
-    const { error } = await supabase.from("seguros_partes_comuns").upsert(payload);
-    if (error) throw error;
-    return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || String(err) };
-  }
+  const payload = {
+    id: seguro.id,
+    condominio_id: seguro.condominio_id,
+    seguradora: seguro.seguradora,
+    apolice_numero: seguro.apolice_numero,
+    apolice_validade: seguro.apolice_validade,
+    tomador_seguro: seguro.tomador_seguro,
+    capital_seguro_edificio: seguro.capital_seguro_edificio || 0,
+    franquia: seguro.franquia || 0,
+    contacto_mediador: seguro.contacto_mediador,
+    documento_url: seguro.documento_url || null,
+    estado: seguro.estado,
+    atualizado_em: new Date().toISOString()
+  };
+  const ok = await dbUpsert("seguros_partes_comuns", payload);
+  return ok ? { success: true } : { success: false, error: "Falha ao gravar seguro de partes comuns" };
 }
 
 export async function deleteSeguroPartesComunsFromSupabase(id: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("seguros_partes_comuns").delete().eq("id", id);
-    return !error;
-  } catch {
-    return false;
-  }
+  return dbDelete("seguros_partes_comuns", [["id", "eq", id]]);
 }
 
 // ============================================================================
@@ -813,15 +715,9 @@ export async function deleteSeguroPartesComunsFromSupabase(id: string): Promise<
 export async function fetchSinistrosFromSupabase(idPredio: string): Promise<SinistroSeguro[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    const { data, error } = await supabase
-      .from("sinistros")
-      .select("*")
-      .eq("id_predio", idPredio);
-    if (error) {
-      console.warn("[Supabase] Tabela sinistros não disponível:", error.message);
-      return null;
-    }
-    return (data || []).map((row: any) => ({
+    const data = await dbSelect("sinistros", { filtros: [["id_predio", "eq", idPredio]] });
+    if (!data) return null;
+    return data.map((row: any) => ({
       id_sinistro: row.id_sinistro || row.id,
       id_predio: row.id_predio,
       id_fracao: row.id_fracao,
@@ -852,46 +748,36 @@ export async function fetchSinistrosFromSupabase(idPredio: string): Promise<Sini
 
 export async function saveSinistroToSupabase(sinistro: SinistroSeguro): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured()) return { success: false, error: "Supabase não configurado" };
-  try {
-    const payload = {
-      id_sinistro: sinistro.id_sinistro,
-      id_predio: sinistro.id_predio,
-      id_fracao: sinistro.id_fracao || null,
-      fracao_nome: sinistro.fracao_nome || null,
-      tipo_sinistro: sinistro.tipo_sinistro,
-      data_ocorrencia: sinistro.data_ocorrencia,
-      data_participacao: sinistro.data_participacao,
-      seguradora: sinistro.seguradora,
-      num_apolice: sinistro.num_apolice,
-      num_processo_sinistro: sinistro.num_processo_sinistro,
-      perito_nome: sinistro.perito_nome || null,
-      perito_contacto: sinistro.perito_contacto || null,
-      data_peritagem: sinistro.data_peritagem || null,
-      descricao_danos: sinistro.descricao_danos,
-      valor_estimado_danos: sinistro.valor_estimado_danos,
-      valor_indemnizacao_aprovado: sinistro.valor_indemnizacao_aprovado || null,
-      franquia_aplicavel: sinistro.franquia_aplicavel || null,
-      estado: sinistro.estado,
-      fotos: sinistro.fotos || [],
-      relatorios_pdf: sinistro.relatorios_pdf || [],
-      observacoes: sinistro.observacoes || null
-    };
-    const { error } = await supabase.from("sinistros").upsert(payload);
-    if (error) throw error;
-    return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || String(err) };
-  }
+  const payload = {
+    id_sinistro: sinistro.id_sinistro,
+    id_predio: sinistro.id_predio,
+    id_fracao: sinistro.id_fracao || null,
+    fracao_nome: sinistro.fracao_nome || null,
+    tipo_sinistro: sinistro.tipo_sinistro,
+    data_ocorrencia: sinistro.data_ocorrencia,
+    data_participacao: sinistro.data_participacao,
+    seguradora: sinistro.seguradora,
+    num_apolice: sinistro.num_apolice,
+    num_processo_sinistro: sinistro.num_processo_sinistro,
+    perito_nome: sinistro.perito_nome || null,
+    perito_contacto: sinistro.perito_contacto || null,
+    data_peritagem: sinistro.data_peritagem || null,
+    descricao_danos: sinistro.descricao_danos,
+    valor_estimado_danos: sinistro.valor_estimado_danos,
+    valor_indemnizacao_aprovado: sinistro.valor_indemnizacao_aprovado || null,
+    franquia_aplicavel: sinistro.franquia_aplicavel || null,
+    estado: sinistro.estado,
+    fotos: sinistro.fotos || [],
+    relatorios_pdf: sinistro.relatorios_pdf || [],
+    observacoes: sinistro.observacoes || null
+  };
+  const ok = await dbUpsert("sinistros", payload);
+  return ok ? { success: true } : { success: false, error: "Falha ao gravar sinistro" };
 }
 
 export async function deleteSinistroFromSupabase(idSinistro: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("sinistros").delete().eq("id_sinistro", idSinistro);
-    return !error;
-  } catch {
-    return false;
-  }
+  return dbDelete("sinistros", [["id_sinistro", "eq", idSinistro]]);
 }
 
 // ============================================================================
@@ -899,62 +785,47 @@ export async function deleteSinistroFromSupabase(idSinistro: string): Promise<bo
 // ============================================================================
 export async function saveFornecedorToSupabase(forn: any): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("fornecedores").upsert({
-      id_fornecedor: forn.id_fornecedor,
-      id_predio: forn.id_predio,
-      nome: forn.nome,
-      nif: forn.nif,
-      iban: forn.iban || null,
-      categoria: forn.categoria,
-      morada: forn.morada || null,
-      contacto: forn.contacto || null,
-      pessoa_contacto: forn.pessoa_contacto || null,
-      telemovel_direto: forn.telemovel_direto || null,
-      email_contacto: forn.email_contacto || null,
-      data_nascimento: forn.data_nascimento || null,
-      perfis_pwa: forn.perfis_pwa || null,
-      pwa_acesso_enviado: forn.pwa_acesso_enviado || false,
-      pwa_password_provisoria: forn.pwa_password_provisoria || null
-    });
-    return !error;
-  } catch {
-    return false;
-  }
+  return dbUpsert("fornecedores", {
+    id_fornecedor: forn.id_fornecedor,
+    id_predio: forn.id_predio,
+    nome: forn.nome,
+    nif: forn.nif,
+    iban: forn.iban || null,
+    categoria: forn.categoria,
+    morada: forn.morada || null,
+    contacto: forn.contacto || null,
+    pessoa_contacto: forn.pessoa_contacto || null,
+    telemovel_direto: forn.telemovel_direto || null,
+    email_contacto: forn.email_contacto || null,
+    data_nascimento: forn.data_nascimento || null,
+    perfis_pwa: forn.perfis_pwa || null,
+    pwa_acesso_enviado: forn.pwa_acesso_enviado || false,
+    pwa_password_provisoria: forn.pwa_password_provisoria || null
+  });
 }
 
 export async function deleteFornecedorFromSupabase(idFornecedor: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("fornecedores").delete().eq("id_fornecedor", idFornecedor);
-    return !error;
-  } catch {
-    return false;
-  }
+  return dbDelete("fornecedores", [["id_fornecedor", "eq", idFornecedor]]);
 }
 
 export async function saveContratoToSupabase(contrato: any): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("contratos").upsert({
-      id_contrato: contrato.id_contrato,
-      id_predio: contrato.id_predio,
-      id_fornecedor: contrato.id_fornecedor,
-      servico: contrato.servico,
-      custo_mensal: contrato.custo_mensal,
-      custo_anual: contrato.custo_anual,
-      renovacao_automatica: contrato.renovacao_automatica,
-      data_fim: contrato.data_fim,
-      alerta_renovacao: contrato.alerta_renovacao,
-      sla_resposta: contrato.sla_resposta || null,
-      penalizacao_atraso: contrato.penalizacao_atraso || null,
-      indexacao_preco: contrato.indexacao_preco || null,
-      documento_nome: contrato.documento_nome || null
-    });
-    return !error;
-  } catch {
-    return false;
-  }
+  return dbUpsert("contratos", {
+    id_contrato: contrato.id_contrato,
+    id_predio: contrato.id_predio,
+    id_fornecedor: contrato.id_fornecedor,
+    servico: contrato.servico,
+    custo_mensal: contrato.custo_mensal,
+    custo_anual: contrato.custo_anual,
+    renovacao_automatica: contrato.renovacao_automatica,
+    data_fim: contrato.data_fim,
+    alerta_renovacao: contrato.alerta_renovacao,
+    sla_resposta: contrato.sla_resposta || null,
+    penalizacao_atraso: contrato.penalizacao_atraso || null,
+    indexacao_preco: contrato.indexacao_preco || null,
+    documento_nome: contrato.documento_nome || null
+  });
 }
 
 // ============================================================================
@@ -962,23 +833,18 @@ export async function saveContratoToSupabase(contrato: any): Promise<boolean> {
 // ============================================================================
 export async function saveReuniaoToSupabase(reuniao: any): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("reunioes").upsert({
-      id_reuniao: reuniao.id_reuniao,
-      id_predio: reuniao.id_predio,
-      tema: reuniao.tema,
-      data: reuniao.data,
-      hora: reuniao.hora,
-      ordens_trabalho: reuniao.ordens_trabalho,
-      local: reuniao.local || null,
-      estado: reuniao.estado || "Agendada",
-      ata_conteudo: reuniao.ata_conteudo || null,
-      tipo: reuniao.tipo || "Ordinária"
-    });
-    return !error;
-  } catch {
-    return false;
-  }
+  return dbUpsert("reunioes", {
+    id_reuniao: reuniao.id_reuniao,
+    id_predio: reuniao.id_predio,
+    tema: reuniao.tema,
+    data: reuniao.data,
+    hora: reuniao.hora,
+    ordens_trabalho: reuniao.ordens_trabalho,
+    local: reuniao.local || null,
+    estado: reuniao.estado || "Agendada",
+    ata_conteudo: reuniao.ata_conteudo || null,
+    tipo: reuniao.tipo || "Ordinária"
+  });
 }
 
 // ============================================================================
@@ -992,34 +858,25 @@ export async function saveReuniaoToSupabase(reuniao: any): Promise<boolean> {
  */
 export async function saveOcorrenciaToSupabase(ocorrencia: Ocorrencia): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("ocorrencias").upsert({
-      id_ocorr: ocorrencia.id_ocorr,
-      id_predio: ocorrencia.id_predio,
-      id_fracao: ocorrencia.id_fracao || null,
-      descricao: ocorrencia.descricao,
-      data: ocorrencia.data,
-      estado: ocorrencia.estado || "Pendente",
-      medidas_tomadas: ocorrencia.medidas_tomadas || null,
-      fotos: ocorrencia.fotos || [],
-      categoria: ocorrencia.categoria || null,
-      tecnico_atribuido: ocorrencia.tecnico_atribuido || null
-    });
-    if (error) console.warn("[Supabase] Save ocorrencia error:", error.message);
-    return !error;
-  } catch (err) {
-    console.warn("[Supabase] Save ocorrencia exception:", err);
-    return false;
-  }
+  return dbUpsert("ocorrencias", {
+    id_ocorr: ocorrencia.id_ocorr,
+    id_predio: ocorrencia.id_predio,
+    id_fracao: ocorrencia.id_fracao || null,
+    descricao: ocorrencia.descricao,
+    data: ocorrencia.data,
+    estado: ocorrencia.estado || "Pendente",
+    medidas_tomadas: ocorrencia.medidas_tomadas || null,
+    fotos: ocorrencia.fotos || [],
+    categoria: ocorrencia.categoria || null,
+    tecnico_atribuido: ocorrencia.tecnico_atribuido || null
+  });
 }
 
 export async function fetchOcorrenciasFromSupabase(idPredio?: string): Promise<Ocorrencia[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    let query = supabase.from("ocorrencias").select("*");
-    if (idPredio) query = query.eq("id_predio", idPredio);
-    const { data, error } = await query;
-    if (error || !data || data.length === 0) return null;
+    const data = await dbSelect("ocorrencias", { filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined });
+    if (!data || data.length === 0) return null;
 
     return data.map((row: any) => ({
       id_ocorr: row.id_ocorr,
@@ -1043,32 +900,25 @@ export async function fetchOcorrenciasFromSupabase(idPredio?: string): Promise<O
 // ============================================================================
 export async function saveConfiguracaoQuotasToSupabase(config: any): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("configuracao_quotas_predio").upsert({
-      id_predio: config.id_predio,
-      ano_exercicio: config.ano_exercicio || new Date().getFullYear(),
-      orcamento_regular: config.orcamento_regular || 0,
-      data_limite_regular: config.data_limite_regular || null,
-      id_conta_ordinaria: config.id_conta_ordinaria || null,
-      orcamento_extra: config.orcamento_extra || 0,
-      num_prestacoes_extra: config.num_prestacoes_extra || 1,
-      descricao_extra: config.descricao_extra || null,
-      data_limite_extra: config.data_limite_extra || null,
-      id_conta_extraordinaria: config.id_conta_extraordinaria || null
-    });
-    return !error;
-  } catch {
-    return false;
-  }
+  return dbUpsert("configuracao_quotas_predio", {
+    id_predio: config.id_predio,
+    ano_exercicio: config.ano_exercicio || new Date().getFullYear(),
+    orcamento_regular: config.orcamento_regular || 0,
+    data_limite_regular: config.data_limite_regular || null,
+    id_conta_ordinaria: config.id_conta_ordinaria || null,
+    orcamento_extra: config.orcamento_extra || 0,
+    num_prestacoes_extra: config.num_prestacoes_extra || 1,
+    descricao_extra: config.descricao_extra || null,
+    data_limite_extra: config.data_limite_extra || null,
+    id_conta_extraordinaria: config.id_conta_extraordinaria || null
+  });
 }
 
 export async function fetchAvisosFromSupabase(idPredio?: string): Promise<Aviso[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    let query = supabase.from("avisos").select("*");
-    if (idPredio) query = query.eq("id_predio", idPredio);
-    const { data, error } = await query;
-    if (error || !data || data.length === 0) return null;
+    const data = await dbSelect("avisos", { filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined });
+    if (!data || data.length === 0) return null;
 
     return data.map((row: any) => ({
       id_aviso: row.id_aviso,
@@ -1088,23 +938,18 @@ export async function fetchAvisosFromSupabase(idPredio?: string): Promise<Aviso[
 
 export async function saveAvisosToSupabase(novosAvisos: any[]): Promise<boolean> {
   if (!isSupabaseConfigured() || !novosAvisos.length) return false;
-  try {
-    const payload = novosAvisos.map(a => ({
-      id_aviso: a.id_aviso,
-      id_predio: a.id_predio,
-      id_fracao: a.id_fracao,
-      tipo: a.tipo,
-      data: a.data,
-      vencimento: a.vencimento,
-      descricao: a.descricao,
-      valor: a.valor,
-      estado: a.estado || "Pendente"
-    }));
-    const { error } = await supabase.from("avisos").upsert(payload);
-    return !error;
-  } catch {
-    return false;
-  }
+  const payload = novosAvisos.map(a => ({
+    id_aviso: a.id_aviso,
+    id_predio: a.id_predio,
+    id_fracao: a.id_fracao,
+    tipo: a.tipo,
+    data: a.data,
+    vencimento: a.vencimento,
+    descricao: a.descricao,
+    valor: a.valor,
+    estado: a.estado || "Pendente"
+  }));
+  return dbUpsert("avisos", payload);
 }
 
 // ============================================================================
@@ -1113,10 +958,8 @@ export async function saveAvisosToSupabase(novosAvisos: any[]): Promise<boolean>
 export async function fetchDocumentosFromSupabase(idPredio?: string): Promise<Documento[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    let query = supabase.from("documentos").select("*");
-    if (idPredio) query = query.eq("id_predio", idPredio);
-    const { data, error } = await query;
-    if (error || !data || data.length === 0) return null;
+    const data = await dbSelect("documentos", { filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined });
+    if (!data || data.length === 0) return null;
 
     return data.map((row: any) => ({
       id_doc: row.id_doc,
@@ -1148,40 +991,26 @@ export async function fetchDocumentosFromSupabase(idPredio?: string): Promise<Do
 
 export async function updateDocumentoMetadataToSupabase(doc: Documento): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("documentos").update({
-      nome: doc.nome,
-      descricao: doc.descricao || null,
-      autor: doc.autor || null,
-      categoria: doc.categoria || null,
-      visibilidade: doc.visibilidade || null,
-      ano: doc.ano || null,
-      tema: doc.tema || null,
-      sub_pasta: doc.sub_pasta || null,
-      fornecedor: doc.fornecedor || null,
-      arquivado: doc.arquivado ?? null,
-      data_arquivamento: doc.data_arquivamento || null,
-      versao_atual: doc.versao_atual || 1,
-      versoes: doc.versoes || []
-    }).eq("id_doc", doc.id_doc);
-    if (error) console.warn("[Supabase] Update documento error:", error.message);
-    return !error;
-  } catch (err) {
-    console.warn("[Supabase] Update documento exception:", err);
-    return false;
-  }
+  return dbUpdate("documentos", {
+    nome: doc.nome,
+    descricao: doc.descricao || null,
+    autor: doc.autor || null,
+    categoria: doc.categoria || null,
+    visibilidade: doc.visibilidade || null,
+    ano: doc.ano || null,
+    tema: doc.tema || null,
+    sub_pasta: doc.sub_pasta || null,
+    fornecedor: doc.fornecedor || null,
+    arquivado: doc.arquivado ?? null,
+    data_arquivamento: doc.data_arquivamento || null,
+    versao_atual: doc.versao_atual || 1,
+    versoes: doc.versoes || []
+  }, [["id_doc", "eq", doc.id_doc]]);
 }
 
 export async function deleteDocumentoFromSupabase(idDoc: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("documentos").delete().eq("id_doc", idDoc);
-    if (error) console.warn("[Supabase] Delete documento error:", error.message);
-    return !error;
-  } catch (err) {
-    console.warn("[Supabase] Delete documento exception:", err);
-    return false;
-  }
+  return dbDelete("documentos", [["id_doc", "eq", idDoc]]);
 }
 
 // ============================================================================
@@ -1190,10 +1019,8 @@ export async function deleteDocumentoFromSupabase(idDoc: string): Promise<boolea
 export async function fetchReservasFromSupabase(idPredio?: string): Promise<Reserva[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    let query = supabase.from("reservas").select("*");
-    if (idPredio) query = query.eq("id_predio", idPredio);
-    const { data, error } = await query;
-    if (error || !data || data.length === 0) return null;
+    const data = await dbSelect("reservas", { filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined });
+    if (!data || data.length === 0) return null;
 
     return data.map((row: any) => ({
       id_reserva: row.id_reserva,
@@ -1214,25 +1041,18 @@ export async function fetchReservasFromSupabase(idPredio?: string): Promise<Rese
 
 export async function saveReservaToSupabase(reserva: Reserva): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("reservas").upsert({
-      id_reserva: reserva.id_reserva,
-      id_predio: reserva.id_predio,
-      id_fracao: reserva.id_fracao || null,
-      area_comum: reserva.area_comum,
-      data: reserva.data,
-      hora_inicio: reserva.hora_inicio,
-      hora_fim: reserva.hora_fim,
-      responsavel: reserva.responsavel,
-      num_pessoas: reserva.num_pessoas,
-      estado: reserva.estado || "Pendente"
-    });
-    if (error) console.warn("[Supabase] Save reserva error:", error.message);
-    return !error;
-  } catch (err) {
-    console.warn("[Supabase] Save reserva exception:", err);
-    return false;
-  }
+  return dbUpsert("reservas", {
+    id_reserva: reserva.id_reserva,
+    id_predio: reserva.id_predio,
+    id_fracao: reserva.id_fracao || null,
+    area_comum: reserva.area_comum,
+    data: reserva.data,
+    hora_inicio: reserva.hora_inicio,
+    hora_fim: reserva.hora_fim,
+    responsavel: reserva.responsavel,
+    num_pessoas: reserva.num_pessoas,
+    estado: reserva.estado || "Pendente"
+  });
 }
 
 // ============================================================================
@@ -1248,10 +1068,8 @@ export async function saveReservaToSupabase(reserva: Reserva): Promise<boolean> 
 export async function fetchFornecedoresFromSupabase(idPredio?: string): Promise<Fornecedor[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    let query = supabase.from("fornecedores").select("*");
-    if (idPredio) query = query.eq("id_predio", idPredio);
-    const { data, error } = await query;
-    if (error || !data || data.length === 0) return null;
+    const data = await dbSelect("fornecedores", { filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined });
+    if (!data || data.length === 0) return null;
 
     return data.map((row: any) => ({
       id_fornecedor: row.id_fornecedor,
@@ -1282,10 +1100,8 @@ export async function fetchFornecedoresFromSupabase(idPredio?: string): Promise<
 export async function fetchProcessosJuridicosFromSupabase(idPredio?: string): Promise<ProcessoJuridico[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    let query = supabase.from("processos_juridicos").select("*");
-    if (idPredio) query = query.eq("id_predio", idPredio);
-    const { data, error } = await query;
-    if (error || !data || data.length === 0) return null;
+    const data = await dbSelect("processos_juridicos", { filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined });
+    if (!data || data.length === 0) return null;
 
     return data.map((row: any) => ({
       id_processo: row.id_processo,
@@ -1318,44 +1134,32 @@ export async function fetchProcessosJuridicosFromSupabase(idPredio?: string): Pr
 
 export async function saveProcessoJuridicoToSupabase(processo: ProcessoJuridico): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("processos_juridicos").upsert({
-      id_processo: processo.id_processo,
-      id_predio: processo.id_predio,
-      id_fracao: processo.id_fracao,
-      nome_reu: processo.nome_reu,
-      nif_reu: processo.nif_reu,
-      tipo_processo: processo.tipo_processo,
-      titulo_processo: processo.titulo_processo,
-      descricao_resumo: processo.descricao_resumo,
-      valor_divida_capital: processo.valor_divida_capital,
-      valor_juros_mora: processo.valor_juros_mora,
-      taxa_juros: processo.taxa_juros,
-      custas_processuais_estimadas: processo.custas_processuais_estimadas,
-      valor_total_pedido: processo.valor_total_pedido,
-      tribunal_competente: processo.tribunal_competente,
-      fase_processual: processo.fase_processual,
-      data_abertura: processo.data_abertura,
-      mandatario_responsavel: processo.mandatario_responsavel,
-      historico_tramitacao: processo.historico_tramitacao,
-      provas: processo.provas
-    });
-    if (error) console.warn("[Supabase] Save processo jurídico error:", error.message);
-    return !error;
-  } catch (err) {
-    console.warn("[Supabase] Save processo jurídico exception:", err);
-    return false;
-  }
+  return dbUpsert("processos_juridicos", {
+    id_processo: processo.id_processo,
+    id_predio: processo.id_predio,
+    id_fracao: processo.id_fracao,
+    nome_reu: processo.nome_reu,
+    nif_reu: processo.nif_reu,
+    tipo_processo: processo.tipo_processo,
+    titulo_processo: processo.titulo_processo,
+    descricao_resumo: processo.descricao_resumo,
+    valor_divida_capital: processo.valor_divida_capital,
+    valor_juros_mora: processo.valor_juros_mora,
+    taxa_juros: processo.taxa_juros,
+    custas_processuais_estimadas: processo.custas_processuais_estimadas,
+    valor_total_pedido: processo.valor_total_pedido,
+    tribunal_competente: processo.tribunal_competente,
+    fase_processual: processo.fase_processual,
+    data_abertura: processo.data_abertura,
+    mandatario_responsavel: processo.mandatario_responsavel,
+    historico_tramitacao: processo.historico_tramitacao,
+    provas: processo.provas
+  });
 }
 
 export async function deleteProcessoJuridicoFromSupabase(idProcesso: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("processos_juridicos").delete().eq("id_processo", idProcesso);
-    return !error;
-  } catch (err) {
-    return false;
-  }
+  return dbDelete("processos_juridicos", [["id_processo", "eq", idProcesso]]);
 }
 
 // ============================================================================
@@ -1365,10 +1169,8 @@ export async function deleteProcessoJuridicoFromSupabase(idProcesso: string): Pr
 export async function fetchComunicadosFromSupabase(idPredio?: string): Promise<Comunicado[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    let query = supabase.from("comunicados").select("*").order("created_at", { ascending: false });
-    if (idPredio) query = query.eq("id_predio", idPredio);
-    const { data, error } = await query;
-    if (error || !data) return null;
+    const data = await dbSelect("comunicados", { filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined, order: { coluna: "created_at", asc: false } });
+    if (!data) return null;
     return data.map((row: any) => ({
       id_comunicado: row.id_comunicado,
       id_predio: row.id_predio,
@@ -1387,32 +1189,23 @@ export async function fetchComunicadosFromSupabase(idPredio?: string): Promise<C
 
 export async function saveComunicadoToSupabase(comunicado: Comunicado): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("comunicados").upsert({
-      id_comunicado: comunicado.id_comunicado,
-      id_predio: comunicado.id_predio,
-      titulo: comunicado.titulo,
-      mensagem: comunicado.mensagem,
-      urgencia: comunicado.urgencia,
-      autor_nome: comunicado.autor_nome || null,
-      total_destinatarios: comunicado.total_destinatarios || 0,
-      total_enviados: comunicado.total_enviados || 0
-    });
-    if (error) console.warn("[Supabase] Save comunicado error:", error.message);
-    return !error;
-  } catch (err) {
-    console.warn("[Supabase] Save comunicado exception:", err);
-    return false;
-  }
+  return dbUpsert("comunicados", {
+    id_comunicado: comunicado.id_comunicado,
+    id_predio: comunicado.id_predio,
+    titulo: comunicado.titulo,
+    mensagem: comunicado.mensagem,
+    urgencia: comunicado.urgencia,
+    autor_nome: comunicado.autor_nome || null,
+    total_destinatarios: comunicado.total_destinatarios || 0,
+    total_enviados: comunicado.total_enviados || 0
+  });
 }
 
 export async function fetchConversasFromSupabase(idPredio?: string): Promise<ConversaCondomino[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    let query = supabase.from("conversas").select("*").order("updated_at", { ascending: false });
-    if (idPredio) query = query.eq("id_predio", idPredio);
-    const { data, error } = await query;
-    if (error || !data) return null;
+    const data = await dbSelect("conversas", { filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined, order: { coluna: "updated_at", asc: false } });
+    if (!data) return null;
     return data.map((row: any) => ({
       id_conversa: row.id_conversa,
       id_predio: row.id_predio,
@@ -1430,33 +1223,22 @@ export async function fetchConversasFromSupabase(idPredio?: string): Promise<Con
 
 export async function saveConversaToSupabase(conversa: ConversaCondomino): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("conversas").upsert({
-      id_conversa: conversa.id_conversa,
-      id_predio: conversa.id_predio,
-      id_fracao: conversa.id_fracao,
-      proprietario_nome: conversa.proprietario_nome || null,
-      assunto: conversa.assunto || null,
-      estado: conversa.estado,
-      updated_at: new Date().toISOString()
-    });
-    if (error) console.warn("[Supabase] Save conversa error:", error.message);
-    return !error;
-  } catch (err) {
-    console.warn("[Supabase] Save conversa exception:", err);
-    return false;
-  }
+  return dbUpsert("conversas", {
+    id_conversa: conversa.id_conversa,
+    id_predio: conversa.id_predio,
+    id_fracao: conversa.id_fracao,
+    proprietario_nome: conversa.proprietario_nome || null,
+    assunto: conversa.assunto || null,
+    estado: conversa.estado,
+    updated_at: new Date().toISOString()
+  });
 }
 
 export async function fetchMensagensConversaFromSupabase(idConversa: string): Promise<MensagemConversa[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    const { data, error } = await supabase
-      .from("mensagens_conversa")
-      .select("*")
-      .eq("id_conversa", idConversa)
-      .order("created_at", { ascending: true });
-    if (error || !data) return null;
+    const data = await dbSelect("mensagens_conversa", { filtros: [["id_conversa", "eq", idConversa]], order: { coluna: "created_at", asc: true } });
+    if (!data) return null;
     return data.map((row: any) => ({
       id_mensagem: row.id_mensagem,
       id_conversa: row.id_conversa,
@@ -1471,28 +1253,19 @@ export async function fetchMensagensConversaFromSupabase(idConversa: string): Pr
 
 export async function saveMensagemConversaToSupabase(mensagem: MensagemConversa): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("mensagens_conversa").insert({
-      id_mensagem: mensagem.id_mensagem,
-      id_conversa: mensagem.id_conversa,
-      autor: mensagem.autor,
-      texto: mensagem.texto
-    });
-    if (error) console.warn("[Supabase] Save mensagem conversa error:", error.message);
-    return !error;
-  } catch (err) {
-    console.warn("[Supabase] Save mensagem conversa exception:", err);
-    return false;
-  }
+  return dbInsert("mensagens_conversa", {
+    id_mensagem: mensagem.id_mensagem,
+    id_conversa: mensagem.id_conversa,
+    autor: mensagem.autor,
+    texto: mensagem.texto
+  });
 }
 
 export async function fetchSondagensFromSupabase(idPredio?: string): Promise<Sondagem[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    let query = supabase.from("sondagens").select("*, sondagens_votos(*)").order("created_at", { ascending: false });
-    if (idPredio) query = query.eq("id_predio", idPredio);
-    const { data, error } = await query;
-    if (error || !data) return null;
+    const data = await dbSelect("sondagens", { colunas: "*, sondagens_votos(*)", filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined, order: { coluna: "created_at", asc: false } });
+    if (!data) return null;
     return data.map((row: any) => ({
       id_sondagem: row.id_sondagem,
       id_predio: row.id_predio,
@@ -1517,48 +1290,32 @@ export async function fetchSondagensFromSupabase(idPredio?: string): Promise<Son
 
 export async function saveSondagemToSupabase(sondagem: Sondagem): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("sondagens").upsert({
-      id_sondagem: sondagem.id_sondagem,
-      id_predio: sondagem.id_predio,
-      pergunta: sondagem.pergunta,
-      opcoes: sondagem.opcoes,
-      estado: sondagem.estado,
-      data_fecho: sondagem.data_fecho || null
-    });
-    if (error) console.warn("[Supabase] Save sondagem error:", error.message);
-    return !error;
-  } catch (err) {
-    console.warn("[Supabase] Save sondagem exception:", err);
-    return false;
-  }
+  return dbUpsert("sondagens", {
+    id_sondagem: sondagem.id_sondagem,
+    id_predio: sondagem.id_predio,
+    pergunta: sondagem.pergunta,
+    opcoes: sondagem.opcoes,
+    estado: sondagem.estado,
+    data_fecho: sondagem.data_fecho || null
+  });
 }
 
 export async function saveVotoSondagemToSupabase(voto: VotoSondagem): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("sondagens_votos").upsert({
-      id_voto: voto.id_voto,
-      id_sondagem: voto.id_sondagem,
-      id_fracao: voto.id_fracao,
-      opcao_escolhida: voto.opcao_escolhida,
-      permilagem: voto.permilagem || 0
-    }, { onConflict: "id_sondagem,id_fracao" });
-    if (error) console.warn("[Supabase] Save voto sondagem error:", error.message);
-    return !error;
-  } catch (err) {
-    console.warn("[Supabase] Save voto sondagem exception:", err);
-    return false;
-  }
+  return dbUpsert("sondagens_votos", {
+    id_voto: voto.id_voto,
+    id_sondagem: voto.id_sondagem,
+    id_fracao: voto.id_fracao,
+    opcao_escolhida: voto.opcao_escolhida,
+    permilagem: voto.permilagem || 0
+  }, { onConflict: "id_sondagem,id_fracao" });
 }
 
 export async function fetchQuestionariosFromSupabase(idPredio?: string): Promise<Questionario[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    let query = supabase.from("questionarios").select("*, questionarios_respostas(*)").order("created_at", { ascending: false });
-    if (idPredio) query = query.eq("id_predio", idPredio);
-    const { data, error } = await query;
-    if (error || !data) return null;
+    const data = await dbSelect("questionarios", { colunas: "*, questionarios_respostas(*)", filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined, order: { coluna: "created_at", asc: false } });
+    if (!data) return null;
     return data.map((row: any) => ({
       id_questionario: row.id_questionario,
       id_predio: row.id_predio,
@@ -1582,37 +1339,38 @@ export async function fetchQuestionariosFromSupabase(idPredio?: string): Promise
 
 export async function saveQuestionarioToSupabase(questionario: Questionario): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("questionarios").upsert({
-      id_questionario: questionario.id_questionario,
-      id_predio: questionario.id_predio,
-      titulo: questionario.titulo,
-      descricao: questionario.descricao || null,
-      estado: questionario.estado
-    });
-    if (error) console.warn("[Supabase] Save questionario error:", error.message);
-    return !error;
-  } catch (err) {
-    console.warn("[Supabase] Save questionario exception:", err);
-    return false;
-  }
+  return dbUpsert("questionarios", {
+    id_questionario: questionario.id_questionario,
+    id_predio: questionario.id_predio,
+    titulo: questionario.titulo,
+    descricao: questionario.descricao || null,
+    estado: questionario.estado
+  });
 }
 
 export async function saveRespostaQuestionarioToSupabase(resposta: RespostaQuestionario): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("questionarios_respostas").upsert({
-      id_resposta: resposta.id_resposta,
-      id_questionario: resposta.id_questionario,
-      id_fracao: resposta.id_fracao,
-      resposta_texto: resposta.resposta_texto || null,
-      classificacao: resposta.classificacao || null
-    }, { onConflict: "id_questionario,id_fracao" });
-    if (error) console.warn("[Supabase] Save resposta questionario error:", error.message);
-    return !error;
-  } catch (err) {
-    console.warn("[Supabase] Save resposta questionario exception:", err);
-    return false;
-  }
+  return dbUpsert("questionarios_respostas", {
+    id_resposta: resposta.id_resposta,
+    id_questionario: resposta.id_questionario,
+    id_fracao: resposta.id_fracao,
+    resposta_texto: resposta.resposta_texto || null,
+    classificacao: resposta.classificacao || null
+  }, { onConflict: "id_questionario,id_fracao" });
+}
+
+// ============================================================================
+// VALIDADOR DE PEDIDOS DO REGULAMENTO INTERNO POR IA (pedidos_regulamento)
+// ============================================================================
+export async function savePedidoRegulamentoToSupabase(pedido: {
+  id_pedido: string;
+  id_predio: string;
+  texto_pedido: string;
+  decisao: string;
+  fundamentacao: string;
+  recomendacao_ia: string;
+}): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbInsert("pedidos_regulamento", pedido);
 }
 

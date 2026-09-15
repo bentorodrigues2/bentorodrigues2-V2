@@ -5,7 +5,7 @@ import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCon
 import { ModalFichaCondominoEditavel } from "./ModalFichaCondominoEditavel";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
-import { saveFracaoToSupabase, deleteFracaoFromSupabase, saveProprietarioToSupabase, deleteProprietarioFromSupabase } from "../lib/supabaseService";
+import { saveFracaoToSupabase, deleteFracaoFromSupabase, saveProprietarioToSupabase, deleteProprietarioFromSupabase, dbSelect, dbUpdate, dbInsert, dbDelete, dbUpsert } from "../lib/supabaseService";
 
 interface GestaoFracoesProps {
   predio: Predio;
@@ -137,10 +137,7 @@ export function GestaoFracoes({
   const persistirAssinaturaNoSupabase = async (dataUrl: string) => {
     if (!isSupabaseConfigured) return;
     try {
-      await supabase
-        .from("predios")
-        .update({ patrimonio: { ...(predio.patrimonio || {}), assinatura_admin_base64: dataUrl } })
-        .eq("id_predio", predio.id_predio);
+      await dbUpdate("predios", { patrimonio: { ...(predio.patrimonio || {}), assinatura_admin_base64: dataUrl } }, [["id_predio", "eq", predio.id_predio]]);
     } catch (err) {
       console.warn("[Supabase] Erro ao guardar assinatura do administrador:", err);
     }
@@ -388,12 +385,10 @@ export function GestaoFracoes({
     const carregarDadosSupabase = async () => {
       if (!isSupabaseConfigured) return;
       try {
-        const { data: fracoesData, error: errFracoes } = await supabase
-          .from('fracoes')
-          .select('*');
-        if (errFracoes) {
-          console.warn("[Supabase] Aviso ao ler fracoes:", errFracoes.message);
-        } else if (fracoesData && fracoesData.length > 0 && isMounted) {
+        const fracoesData = await dbSelect('fracoes');
+        if (!fracoesData) {
+          console.warn("[Supabase] Aviso ao ler fracoes");
+        } else if (fracoesData.length > 0 && isMounted) {
           const fracoesFormatadas: Fracao[] = fracoesData.map((row: any) => ({
             id_fracao: row.id_fracao,
             id_predio: row.id_predio,
@@ -417,12 +412,10 @@ export function GestaoFracoes({
           onUpdateFracoes(fracoesFormatadas);
         }
 
-        const { data: propsData, error: errProps } = await supabase
-          .from('proprietarios')
-          .select('*');
-        if (errProps) {
-          console.warn("[Supabase] Aviso ao ler proprietarios:", errProps.message);
-        } else if (propsData && propsData.length > 0 && isMounted) {
+        const propsData = await dbSelect('proprietarios');
+        if (!propsData) {
+          console.warn("[Supabase] Aviso ao ler proprietarios");
+        } else if (propsData.length > 0 && isMounted) {
           const propsFormatados: Proprietario[] = propsData.map((row: any) => ({
             id_proprietario: row.id_proprietario || row.nif,
             id_predio: row.id_predio,
@@ -568,23 +561,11 @@ export function GestaoFracoes({
     }
     try {
       // DELETE na tabela 'fracoes'
-      const { error: deleteError } = await supabase
-        .from('fracoes')
-        .delete()
-        .eq('id_fracao', idFracao);
+      const deleteOk = await dbDelete('fracoes', [['id_fracao', 'eq', idFracao]]);
 
-      if (deleteError) {
-        alert(`Erro ao eliminar fração no Supabase: ${deleteError.message}`);
+      if (!deleteOk) {
+        alert(`Erro ao eliminar fração no Supabase.`);
         return;
-      }
-
-      // Regra 2: Depois de gravar/eliminar, atualizar a lista com select('*')
-      const { data: fracoesRestantes, error: readError } = await supabase
-        .from('fracoes')
-        .select('*');
-
-      if (readError) {
-        console.warn("[Supabase] Aviso ao atualizar lista com select('*'):", readError.message);
       }
 
       const updated = fracoes.filter(f => f.id_fracao !== idFracao);
@@ -610,27 +591,21 @@ export function GestaoFracoes({
     }
     try {
       // DELETE na tabela 'proprietarios'
-      const { error: deleteError } = await supabase
-        .from('proprietarios')
-        .delete()
-        .eq('nif', prop.nif);
+      const deleteOk = await dbDelete('proprietarios', [['nif', 'eq', prop.nif]]);
 
-      if (deleteError) {
-        console.warn("[Supabase] Aviso ao eliminar na tabela 'proprietarios':", deleteError.message);
+      if (!deleteOk) {
+        console.warn("[Supabase] Aviso ao eliminar na tabela 'proprietarios'");
       }
 
       if (prop.id_fracao) {
         // Atualizar fração no Supabase
-        const { error: fracError } = await supabase
-          .from('fracoes')
-          .update({
-            proprietario: null,
-            administrador_interno: "Não"
-          })
-          .eq('id_fracao', prop.id_fracao);
+        const fracOk = await dbUpdate('fracoes', {
+          proprietario: null,
+          administrador_interno: "Não"
+        }, [['id_fracao', 'eq', prop.id_fracao]]);
 
-        if (fracError) {
-          alert(`Erro ao desassociar proprietário da fração no Supabase: ${fracError.message}`);
+        if (!fracOk) {
+          alert(`Erro ao desassociar proprietário da fração no Supabase.`);
           return;
         }
 
@@ -645,15 +620,6 @@ export function GestaoFracoes({
           onUpdateFracoes(updatedList);
           await saveFracaoToSupabase(updatedFracao);
         }
-      }
-
-      // Regra 2: Depois de gravar/eliminar, atualizar a lista com select('*')
-      const { data: propsRestantes, error: readError } = await supabase
-        .from('proprietarios')
-        .select('*');
-
-      if (readError) {
-        console.warn("[Supabase] Aviso ao ler proprietarios:", readError.message);
       }
 
       setUnassignedProprietarios(prev => prev.filter(p => (p.nif || p.nome) !== (prop.nif || prop.nome)));
@@ -737,31 +703,19 @@ export function GestaoFracoes({
 
       try {
         // UPDATE na tabela 'fracoes'
-        const { error: updateError } = await supabase
-          .from('fracoes')
-          .update({
-            fracao_nome: fracaoNome.trim(),
-            piso: piso.trim(),
-            permilagem: valorPermilagem,
-            tipologia: tipologia.trim(),
-            tipo_access: tipoAcesso,
-            tem_garagem_spot: garagem,
-            tem_arrecadacao_box: arrecadacao
-          })
-          .eq('id_fracao', editingFracaoId);
+        const updateOk = await dbUpdate('fracoes', {
+          fracao_nome: fracaoNome.trim(),
+          piso: piso.trim(),
+          permilagem: valorPermilagem,
+          tipologia: tipologia.trim(),
+          tipo_access: tipoAcesso,
+          tem_garagem_spot: garagem,
+          tem_arrecadacao_box: arrecadacao
+        }, [['id_fracao', 'eq', editingFracaoId]]);
 
-        if (updateError) {
-          alert(`Erro ao atualizar fração no Supabase: ${updateError.message}`);
+        if (!updateOk) {
+          alert(`Erro ao atualizar fração no Supabase.`);
           return;
-        }
-
-        // Regra 2: Depois de gravar, atualizar a lista com select('*')
-        const { data: fracoesAtualizadas, error: readError } = await supabase
-          .from('fracoes')
-          .select('*');
-
-        if (readError) {
-          console.warn("[Supabase] Aviso ao ler fracoes:", readError.message);
         }
 
         const updatedList = fracoes.map(f => f.id_fracao === editingFracaoId ? updatedFracao : f);
@@ -800,39 +754,28 @@ export function GestaoFracoes({
 
     try {
       // INSERT na tabela 'fracoes'
-      const { error: insertError } = await supabase
-        .from('fracoes')
-        .insert([{
-          id_fracao: nova.id_fracao,
-          id_predio: nova.id_predio,
-          fracao_nome: nova.fracao_nome,
-          piso: nova.piso,
-          permilagem: nova.permilagem,
-          tipologia: nova.tipologia,
-          tipo_access: nova.tipo_access,
-          tem_garagem_spot: nova.tem_garagem_spot,
-          tem_arrecadacao_box: nova.tem_arrecadacao_box,
-          is_arrendada: nova.is_arrendada,
-          administrador_interno: nova.administrador_interno,
-          notificacao_preferencial: nova.notificacao_preferencial,
-          referencia_br23e: nova.referencia_br23e,
-          proprietario: nova.proprietario,
-          proprietarios_adicionais: nova.proprietarios_adicionais,
-          inquilino: nova.inquilino
-        }]);
+      const insertOk = await dbInsert('fracoes', {
+        id_fracao: nova.id_fracao,
+        id_predio: nova.id_predio,
+        fracao_nome: nova.fracao_nome,
+        piso: nova.piso,
+        permilagem: nova.permilagem,
+        tipologia: nova.tipologia,
+        tipo_access: nova.tipo_access,
+        tem_garagem_spot: nova.tem_garagem_spot,
+        tem_arrecadacao_box: nova.tem_arrecadacao_box,
+        is_arrendada: nova.is_arrendada,
+        administrador_interno: nova.administrador_interno,
+        notificacao_preferencial: nova.notificacao_preferencial,
+        referencia_br23e: nova.referencia_br23e,
+        proprietario: nova.proprietario,
+        proprietarios_adicionais: nova.proprietarios_adicionais,
+        inquilino: nova.inquilino
+      });
 
-      if (insertError) {
-        alert(`Erro ao gravar fração no Supabase: ${insertError.message}`);
+      if (!insertOk) {
+        alert(`Erro ao gravar fração no Supabase.`);
         return;
-      }
-
-      // Regra 2: Depois de gravar, atualizar a lista com select('*')
-      const { data: fracoesAtualizadas, error: readError } = await supabase
-        .from('fracoes')
-        .select('*');
-
-      if (readError) {
-        console.warn("[Supabase] Aviso ao ler fracoes:", readError.message);
       }
 
       onAddFracao(nova);
@@ -924,12 +867,10 @@ export function GestaoFracoes({
       };
 
       // Tenta atualizar ou inserir na tabela 'proprietarios'
-      const { error: upsertPropError } = await supabase
-        .from('proprietarios')
-        .upsert(propPayload);
+      const upsertPropOk = await dbUpsert('proprietarios', propPayload);
 
-      if (upsertPropError) {
-        console.warn("[Supabase] Aviso ao gravar na tabela proprietarios:", upsertPropError.message);
+      if (!upsertPropOk) {
+        console.warn("[Supabase] Aviso ao gravar na tabela proprietarios");
       }
 
       // Se houver fração selecionada, atualiza a fração no Supabase
@@ -937,34 +878,27 @@ export function GestaoFracoes({
         if (targetFracao) {
           const isNewEmail = targetFracao.proprietario?.email !== propEmail.trim();
 
-          const { error: updateFracError } = await supabase
-            .from('fracoes')
-            .update({
-              referencia_br23e: refBR23E,
-              proprietario: novoProprietarioObj,
-              proprietarios_adicionais: proprietariosAdicionais,
-              inquilino: arrendada && inqNome.trim() ? {
-                nome: inqNome.trim(),
-                email: inqEmail.trim(),
-                tlm: inqTlm.trim(),
-                nif: inqNif.trim(),
-                data_nascimento: inqDataNascimento.trim() || undefined,
-                foto: inqFoto
-              } : null,
-              administrador_interno: adminInterno,
-              notificacao_preferencial: notificacao,
-              is_arrendada: arrendada
-            })
-            .eq('id_fracao', selectedFracaoId);
+          const updateFracOk = await dbUpdate('fracoes', {
+            referencia_br23e: refBR23E,
+            proprietario: novoProprietarioObj,
+            proprietarios_adicionais: proprietariosAdicionais,
+            inquilino: arrendada && inqNome.trim() ? {
+              nome: inqNome.trim(),
+              email: inqEmail.trim(),
+              tlm: inqTlm.trim(),
+              nif: inqNif.trim(),
+              data_nascimento: inqDataNascimento.trim() || undefined,
+              foto: inqFoto
+            } : null,
+            administrador_interno: adminInterno,
+            notificacao_preferencial: notificacao,
+            is_arrendada: arrendada
+          }, [['id_fracao', 'eq', selectedFracaoId]]);
 
-          if (updateFracError) {
-            alert(`Erro ao atualizar proprietário da fração no Supabase: ${updateFracError.message}`);
+          if (!updateFracOk) {
+            alert(`Erro ao atualizar proprietário da fração no Supabase.`);
             return;
           }
-
-          // Regra 2: Depois de gravar, atualizar a lista com select('*')
-          const { data: fracoesAtualizadas } = await supabase.from('fracoes').select('*');
-          const { data: proprietariosAtualizados } = await supabase.from('proprietarios').select('*');
 
           const updatedFracao: Fracao = {
             ...targetFracao,
@@ -1021,9 +955,6 @@ export function GestaoFracoes({
           return;
         }
       }
-
-      // Regra 2: Depois de gravar, atualizar a lista com select('*')
-      const { data: proprietariosAtualizados } = await supabase.from('proprietarios').select('*');
 
       setUnassignedProprietarios(prev => {
         const filtered = prev.filter(p => (p.nif || p.nome) !== (novoProprietarioObj.nif || novoProprietarioObj.nome));
