@@ -24,7 +24,8 @@ import {
   Questionario,
   RespostaQuestionario,
   EmpresaGestoraConfig,
-  GestorCarteira
+  GestorCarteira,
+  RespostaIAPendente
 } from "../types";
 
 /**
@@ -133,7 +134,8 @@ export async function fetchPrediosFromSupabase(): Promise<Predio[] | null> {
       iban: row.iban || null,
       email: row.email || null,
       email_condominio: row.email_condominio || row.email || null,
-      autoresponder_ativo: row.autoresponder_ativo ?? true
+      autoresponder_ativo: row.autoresponder_ativo ?? true,
+      autoresponder_modo: row.autoresponder_modo || "confirmacao_previa"
     }));
   } catch (err) {
     console.warn("[Supabase] Exception fetching predios:", err);
@@ -158,6 +160,7 @@ export async function savePredioToSupabase(predio: Predio): Promise<boolean> {
     email: predio.email,
     email_condominio: predio.email_condominio || predio.email,
     autoresponder_ativo: predio.autoresponder_ativo ?? true,
+    autoresponder_modo: predio.autoresponder_modo || "confirmacao_previa",
     foto: predio.foto
   });
 }
@@ -479,6 +482,19 @@ export async function saveGestorCarteiraToSupabase(gestor: GestorCarteira): Prom
 
 export async function deleteGestorCarteiraFromSupabase(idGestor: string): Promise<boolean> {
   return dbDelete("gestores_carteira", [["id_gestor", "eq", idGestor]]);
+}
+
+// ============================================================================
+// RESPOSTAS DE IA PENDENTES DE CONFIRMAÇÃO (Autoresponder — modo Confirmação Prévia)
+// ============================================================================
+
+export async function fetchRespostasIAPendentes(idPredio: string): Promise<RespostaIAPendente[]> {
+  if (!isSupabaseConfigured() || !idPredio) return [];
+  const data = await dbSelect("respostas_ia_pendentes", {
+    filtros: [["id_predio", "eq", idPredio], ["estado", "eq", "PENDENTE"]],
+    order: { coluna: "criado_em", asc: false }
+  });
+  return (data || []) as RespostaIAPendente[];
 }
 
 // ============================================================================

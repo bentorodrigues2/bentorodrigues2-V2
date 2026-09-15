@@ -56,6 +56,7 @@ export interface Predio {
   email?: string | null; // E-mail oficial do prédio/condomínio (pré-definido para Autoresponder e IA)
   email_condominio?: string | null;
   autoresponder_ativo?: boolean;
+  autoresponder_modo?: "confirmacao_previa" | "totalmente_autonomo";
   pisos?: number;
   elevadores?: number;
   garagens?: number;
@@ -690,6 +691,23 @@ export interface ReservaEspacoComum {
   valor_caucao?: number;
   termo_responsabilidade_aceite: boolean;
   estado: "PENDENTE_APROVACAO" | "CONFIRMADA" | "RECUSADA" | "CONCLUIDA";
+}
+
+export interface RespostaIAPendente {
+  id: string;
+  id_predio: string;
+  id_fracao?: string | null;
+  destinatario_email: string;
+  destinatario_nome?: string | null;
+  assunto: string;
+  mensagem_html: string;
+  categoria?: string | null;
+  from_address?: string | null;
+  reply_to?: string | null;
+  anexos?: { filename: string; path?: string; url?: string }[];
+  estado: "PENDENTE" | "ENVIADA" | "REJEITADA";
+  criado_em: string;
+  resolvido_em?: string | null;
 }
 
 export interface Comunicado {

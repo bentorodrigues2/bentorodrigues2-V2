@@ -2,6 +2,7 @@ import { emitirQuotasMensais, enviarLembretesQuotas, avisarQuotasEmMora, enviarF
 import { supabase } from "../server/lib/supabaseServer.js";
 import { enviarEmailSemAnexo } from "../server/lib/mailer.js";
 import { gerarHtmlResposta } from "../server/lib/htmlemail.js";
+import { enviarEmailResend } from "../server/lib/inboundProcessor.js";
 
 const JOBS = {
   EMISSAO_MENSAL_QUOTAS: emitirQuotasMensais,
@@ -113,6 +114,58 @@ export default async function handler(req, res) {
   }
 
   const acao = req.query?.acao;
+
+  if (acao === "aprovar-resposta-ia") {
+    try {
+      const { id } = req.body || {};
+      if (!id) return res.status(400).json({ error: "id é obrigatório" });
+
+      const { data: resposta, error: errFetch } = await supabase
+        .from("respostas_ia_pendentes")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (errFetch || !resposta) return res.status(404).json({ error: "Resposta pendente não encontrada" });
+      if (resposta.estado !== "PENDENTE") return res.status(400).json({ error: "Esta resposta já foi resolvida" });
+
+      const enviado = await enviarEmailResend({
+        to: resposta.destinatario_email,
+        subject: resposta.assunto,
+        html: resposta.mensagem_html,
+        attachments: resposta.anexos || [],
+        fromAddress: resposta.from_address,
+        replyTo: resposta.reply_to || undefined
+      });
+
+      if (enviado) {
+        await supabase
+          .from("respostas_ia_pendentes")
+          .update({ estado: "ENVIADA", resolvido_em: new Date().toISOString() })
+          .eq("id", id);
+      }
+
+      return res.status(200).json({ ok: true, enviado });
+    } catch (err) {
+      console.error("Erro em /api/admin?acao=aprovar-resposta-ia:", err);
+      return res.status(500).json({ error: err?.message || String(err) });
+    }
+  }
+
+  if (acao === "rejeitar-resposta-ia") {
+    try {
+      const { id } = req.body || {};
+      if (!id) return res.status(400).json({ error: "id é obrigatório" });
+      await supabase
+        .from("respostas_ia_pendentes")
+        .update({ estado: "REJEITADA", resolvido_em: new Date().toISOString() })
+        .eq("id", id)
+        .eq("estado", "PENDENTE");
+      return res.status(200).json({ ok: true });
+    } catch (err) {
+      console.error("Erro em /api/admin?acao=rejeitar-resposta-ia:", err);
+      return res.status(500).json({ error: err?.message || String(err) });
+    }
+  }
 
   if (acao === "recuperar-password") {
     try {

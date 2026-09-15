@@ -45,7 +45,8 @@ const TABELAS_PERMITIDAS = new Set([
   "configuracao_quotas_predio",
   "profiles",
   "empresa_gestora_config",
-  "gestores_carteira"
+  "gestores_carteira",
+  "respostas_ia_pendentes"
 ]);
 
 const OPERADORES_PERMITIDOS = new Set(["eq", "neq", "gt", "gte", "lt", "lte", "in", "is"]);

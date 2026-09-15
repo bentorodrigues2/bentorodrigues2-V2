@@ -229,20 +229,36 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
 }
 
 /**
- * Resolve a identidade de remetente (nome de apresentação + Reply-To) a usar
- * na resposta ao condómino, de acordo com a escolha em Empresa Gestora →
- * "Remetente do Autoresponder" (EMPRESA vs. CONDOMINIO). O envio em si
- * continua a sair do domínio verificado no Resend (EMAIL_FROM_ADDRESS) —
- * um "from" com um domínio arbitrário não verificado seria rejeitado pelo
- * Resend — mas o nome apresentado e o Reply-To (para onde vão as respostas
- * do condómino) passam a refletir mesmo a escolha feita nas Definições, em
- * vez de ser sempre a mesma caixa genérica independentemente do que lá está
- * configurado.
+ * Resolve, num só sítio, tudo o que depende da configuração real feita nas
+ * Definições/Empresa Gestora para esta resposta:
+ *  - identidade de remetente (nome de apresentação + Reply-To), de acordo
+ *    com "Remetente do Autoresponder" (EMPRESA vs. CONDOMINIO). O envio em
+ *    si continua a sair do domínio verificado no Resend (EMAIL_FROM_ADDRESS)
+ *    — um "from" com domínio arbitrário não verificado seria rejeitado —
+ *    mas o nome apresentado e o Reply-To passam a refletir a escolha feita.
+ *  - modoAutoresponder do prédio em causa ("confirmacao_previa" vs.
+ *    "totalmente_autonomo"), que decide se a resposta da IA sai de imediato
+ *    ou fica em fila de aprovação (ver processInboundEmail).
  */
-async function resolverRemetente(contexto) {
+async function obterContextoEnvio(contexto) {
   const fromEmailBase = process.env.EMAIL_FROM_ADDRESS || "administracao@condomanagerai.com";
 
-  let modo = "CONDOMINIO";
+  let predioRow = null;
+  if (contexto?.id_predio) {
+    try {
+      const { data } = await supabase
+        .from("predios")
+        .select("nome, email, email_condominio, autoresponder_modo")
+        .eq("id_predio", contexto.id_predio)
+        .maybeSingle();
+      predioRow = data || null;
+    } catch (err) {
+      console.warn("[inboundProcessor] Aviso ao ler o prédio:", err?.message || err);
+    }
+  }
+  const modoAutoresponder = predioRow?.autoresponder_modo || "confirmacao_previa";
+
+  let modoRemetente = "CONDOMINIO";
   let empresaNome = "CondoManager AI Condomínio";
   let empresaEmail = null;
   try {
@@ -251,46 +267,37 @@ async function resolverRemetente(contexto) {
       .select("email_autoresponder_principal, nome_empresa, email_corporativo")
       .eq("id", "default")
       .maybeSingle();
-    if (config?.email_autoresponder_principal) modo = config.email_autoresponder_principal;
+    if (config?.email_autoresponder_principal) modoRemetente = config.email_autoresponder_principal;
     if (config?.nome_empresa) empresaNome = config.nome_empresa;
     if (config?.email_corporativo) empresaEmail = config.email_corporativo;
   } catch (err) {
     console.warn("[inboundProcessor] Aviso ao ler empresa_gestora_config, a assumir modo CONDOMINIO:", err?.message || err);
   }
 
-  if (modo === "EMPRESA") {
+  if (modoRemetente === "EMPRESA") {
     return {
       fromAddress: `${empresaNome} <${fromEmailBase}>`,
-      replyTo: empresaEmail || undefined
+      replyTo: empresaEmail || undefined,
+      modoAutoresponder
     };
   }
 
   // Modo CONDOMINIO (predefinição): usa o nome e o email do prédio em causa.
-  if (contexto?.id_predio) {
-    try {
-      const { data: predio } = await supabase
-        .from("predios")
-        .select("nome, email, email_condominio")
-        .eq("id_predio", contexto.id_predio)
-        .maybeSingle();
-      if (predio) {
-        return {
-          fromAddress: `${predio.nome || "Condomínio"} <${fromEmailBase}>`,
-          replyTo: predio.email || predio.email_condominio || undefined
-        };
-      }
-    } catch (err) {
-      console.warn("[inboundProcessor] Aviso ao ler o prédio para remetente, a usar identidade genérica:", err?.message || err);
-    }
+  if (predioRow) {
+    return {
+      fromAddress: `${predioRow.nome || "Condomínio"} <${fromEmailBase}>`,
+      replyTo: predioRow.email || predioRow.email_condominio || undefined,
+      modoAutoresponder
+    };
   }
 
-  return { fromAddress: `Condomínio <${fromEmailBase}>`, replyTo: undefined };
+  return { fromAddress: `Condomínio <${fromEmailBase}>`, replyTo: undefined, modoAutoresponder };
 }
 
 /**
  * Enviar email via Resend API
  */
-async function enviarEmailResend({ to, subject, html, attachments = [], fromAddress, replyTo }) {
+export async function enviarEmailResend({ to, subject, html, attachments = [], fromAddress, replyTo }) {
   const resendApiKey = process.env.RESEND_API_KEY || process.env.RESEND_KEY;
   if (!resendApiKey) {
     console.warn("[inboundProcessor] RESEND_API_KEY não configurada. Email ignorado:", { to, subject });
@@ -502,11 +509,13 @@ export async function processInboundEmail(payload) {
   const nomeRemetente = contexto?.nome || contexto?.proprietario || cleanFrom.split("@")[0] || "Condómino";
 
   // Identidade de remetente conforme configurado em Empresa Gestora
-  // (EMPRESA vs. CONDOMINIO) — a mesma para o autoresponder imediato e para
-  // a resposta institucional abaixo.
-  const { fromAddress, replyTo } = await resolverRemetente(contexto);
+  // (EMPRESA vs. CONDOMINIO) e modo de autoresponder do prédio
+  // (confirmacao_previa vs. totalmente_autonomo).
+  const { fromAddress, replyTo, modoAutoresponder } = await obterContextoEnvio(contexto);
 
-  // 5. Enviar Autoresponder imediato
+  // 5. Enviar Autoresponder imediato — mero aviso de receção ("recebemos o
+  // seu contacto"), não uma resposta com conteúdo decidido pela IA, por
+  // isso sai sempre de imediato mesmo em modo "confirmacao_previa".
   const htmlAutoresponder = gerarHtmlAutoresponder(nomeRemetente);
   await enviarEmailResend({
     to: cleanFrom,
@@ -621,17 +630,45 @@ export async function processInboundEmail(payload) {
     });
   }
 
-  // 8. Enviar resposta institucional se subject e mensagem forem fornecidos
+  // 8. Enviar (ou colocar em fila de aprovação) a resposta institucional
+  // redigida pela IA, se subject e mensagem tiverem sido gerados. Em modo
+  // "confirmacao_previa" (predefinição do prédio), esta é a resposta com
+  // conteúdo decidido pela IA — fica pendente até o administrador clicar em
+  // "Aprovar" em Definições, em vez de sair sozinha.
+  let respostaEnviada = false;
+  let respostaPendenteConfirmacao = false;
   if (aiData?.subject && aiData?.message) {
     const htmlInstitucional = gerarHtmlResposta(nomeRemetente, aiData.message);
-    await enviarEmailResend({
-      to: cleanFrom,
-      subject: aiData.subject,
-      html: htmlInstitucional,
-      attachments: anexosParaEnviar,
-      fromAddress,
-      replyTo
-    });
+
+    if (modoAutoresponder === "confirmacao_previa") {
+      try {
+        await supabase.from("respostas_ia_pendentes").insert({
+          id: `RESP-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          id_predio: contexto?.id_predio || null,
+          id_fracao: contexto?.id_fracao || null,
+          destinatario_email: cleanFrom,
+          destinatario_nome: nomeRemetente,
+          assunto: aiData.subject,
+          mensagem_html: htmlInstitucional,
+          categoria,
+          from_address: fromAddress,
+          reply_to: replyTo || null,
+          anexos: anexosParaEnviar
+        });
+        respostaPendenteConfirmacao = true;
+      } catch (err) {
+        console.error("[inboundProcessor] Erro ao colocar resposta da IA em fila de aprovação:", err);
+      }
+    } else {
+      respostaEnviada = await enviarEmailResend({
+        to: cleanFrom,
+        subject: aiData.subject,
+        html: htmlInstitucional,
+        attachments: anexosParaEnviar,
+        fromAddress,
+        replyTo
+      });
+    }
   }
 
   return {
@@ -639,7 +676,8 @@ export async function processInboundEmail(payload) {
     status: 200,
     categoria,
     autoresponder: true,
-    respostaEnviada: Boolean(aiData?.subject && aiData?.message),
+    respostaEnviada,
+    respostaPendenteConfirmacao,
     comprovativoPendente: Boolean(comprovativoRegisto),
     comprovativoIgnoradoDuplicado,
     tipoDocumentoExtraido: dadosExtraidos?.tipo_documento || null,

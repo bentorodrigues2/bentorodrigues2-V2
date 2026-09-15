@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { jsPDF } from "jspdf";
-import { Predio, LoggedUser, Documento, Movimento, Fracao } from "../types";
+import { Predio, LoggedUser, Documento, Movimento, Fracao, RespostaIAPendente } from "../types";
 import { downloadBlob, exportToXLS, addPdfHeaderWithLogo } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
+import { dbUpdate, fetchRespostasIAPendentes } from "../lib/supabaseService";
 import { 
   Settings, Mail, Shield, Bell, ListTodo, FileDown, CheckCircle, 
   AlertTriangle, Play, RefreshCw, FileText, Check, Database, Sparkles, Trash2, ArrowRight,
@@ -466,10 +467,51 @@ export function ConfiguracoesAdministracao({
     return saved !== null ? saved === "true" : true;
   });
 
-  const [autoresponderMode, setAutoresponderMode] = useState<"confirmacao_previa" | "totalmente_autonomo">(() => {
-    const saved = localStorage.getItem(`autoresponder_mode_${predioId}`);
-    return (saved as any) || "confirmacao_previa";
-  });
+  const [autoresponderMode, setAutoresponderMode] = useState<"confirmacao_previa" | "totalmente_autonomo">(
+    predio?.autoresponder_modo || "confirmacao_previa"
+  );
+
+  useEffect(() => {
+    setAutoresponderMode(predio?.autoresponder_modo || "confirmacao_previa");
+  }, [predio?.autoresponder_modo]);
+
+  // Respostas de IA pendentes de confirmação (autoresponder em modo
+  // "confirmacao_previa" — ver server/lib/inboundProcessor.js)
+  const [respostasPendentes, setRespostasPendentes] = useState<RespostaIAPendente[]>([]);
+  const [carregandoRespostas, setCarregandoRespostas] = useState(false);
+  const [resolvendoRespostaId, setResolvendoRespostaId] = useState<string | null>(null);
+
+  const carregarRespostasPendentes = async () => {
+    if (!predio?.id_predio) return;
+    setCarregandoRespostas(true);
+    const lista = await fetchRespostasIAPendentes(predio.id_predio);
+    setRespostasPendentes(lista);
+    setCarregandoRespostas(false);
+  };
+
+  useEffect(() => {
+    carregarRespostasPendentes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [predio?.id_predio]);
+
+  const resolverRespostaPendente = async (id: string, acao: "aprovar-resposta-ia" | "rejeitar-resposta-ia") => {
+    setResolvendoRespostaId(id);
+    try {
+      const resp = await fetch(`/api/admin?acao=${acao}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id })
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) throw new Error(data?.error || "Falha ao processar o pedido");
+      setRespostasPendentes(prev => prev.filter(r => r.id !== id));
+      addLog("IA", "Resposta de IA Pendente", acao === "aprovar-resposta-ia" ? "Resposta aprovada e enviada ao condómino." : "Resposta rejeitada — não foi enviada.");
+    } catch (err: any) {
+      alert(`❌ Erro: ${err?.message || "não foi possível concluir a ação"}`);
+    } finally {
+      setResolvendoRespostaId(null);
+    }
+  };
 
   const [syncInterval, setSyncInterval] = useState<string>(() => {
     return localStorage.getItem(`sync_interval_${predioId}`) || "5";
@@ -706,9 +748,12 @@ export function ConfiguracoesAdministracao({
     addLog("IA", "Sincronizador de Caixa de Entrada", active ? "Sincronização de e-mails ativada." : "Sincronização de e-mails pausada.");
   };
 
-  const handleSelectAutoresponderMode = (mode: "confirmacao_previa" | "totalmente_autonomo") => {
+  const handleSelectAutoresponderMode = async (mode: "confirmacao_previa" | "totalmente_autonomo") => {
     setAutoresponderMode(mode);
-    localStorage.setItem(`autoresponder_mode_${predioId}`, mode);
+    if (predio?.id_predio) {
+      await dbUpdate("predios", { autoresponder_modo: mode }, [["id_predio", "eq", predio.id_predio]]);
+      onUpdatePredio?.({ ...predio, autoresponder_modo: mode });
+    }
     addLog("IA", "Modo Auto-Responder", `Configurado para: ${mode === "confirmacao_previa" ? "Confirmação Prévia pelo Administrador" : "Totalmente Autónomo"}`);
   };
 
@@ -1913,6 +1958,69 @@ export function ConfiguracoesAdministracao({
                     </div>
                   </div>
                 </div>
+
+                {/* Respostas de IA Pendentes de Confirmação (modo confirmacao_previa) */}
+                {autoresponderMode === "confirmacao_previa" && (
+                  <div className="pt-2 border-t border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] uppercase font-black text-slate-400 tracking-wider">
+                        Respostas de IA Pendentes de Confirmação {respostasPendentes.length > 0 && `(${respostasPendentes.length})`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={carregarRespostasPendentes}
+                        disabled={carregandoRespostas}
+                        className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 disabled:opacity-50"
+                      >
+                        <RefreshCw className={`h-3 w-3 ${carregandoRespostas ? "animate-spin" : ""}`} /> Atualizar
+                      </button>
+                    </div>
+
+                    {respostasPendentes.length === 0 ? (
+                      <p className="text-[11px] text-slate-500 bg-slate-950/60 border border-slate-800 rounded-xl p-3">
+                        Sem respostas por confirmar neste momento. Quando chegar um email de um condómino, a resposta redigida pela IA aparece aqui antes de ser enviada.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {respostasPendentes.map(r => (
+                          <div key={r.id} className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-xs font-bold text-white">{r.assunto}</p>
+                                <p className="text-[10px] text-slate-400">Para: {r.destinatario_nome || r.destinatario_email} ({r.destinatario_email})</p>
+                              </div>
+                              <span className="text-[9px] uppercase font-black text-slate-400 bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded shrink-0">
+                                {r.categoria || "geral"}
+                              </span>
+                            </div>
+                            <div
+                              className="text-[11px] text-slate-300 bg-slate-900/60 rounded-lg p-2 max-h-24 overflow-y-auto"
+                              dangerouslySetInnerHTML={{ __html: r.mensagem_html }}
+                            />
+                            <div className="flex items-center gap-2 pt-1">
+                              <button
+                                type="button"
+                                disabled={resolvendoRespostaId === r.id}
+                                onClick={() => resolverRespostaPendente(r.id, "aprovar-resposta-ia")}
+                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-[11px] font-bold py-1.5 rounded-lg flex items-center justify-center gap-1.5"
+                              >
+                                {resolvendoRespostaId === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Aprovar e Enviar
+                              </button>
+                              <button
+                                type="button"
+                                disabled={resolvendoRespostaId === r.id}
+                                onClick={() => resolverRespostaPendente(r.id, "rejeitar-resposta-ia")}
+                                className="flex-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-300 text-[11px] font-bold py-1.5 rounded-lg"
+                              >
+                                Rejeitar
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Fluxo Automático Ativo */}
                 <div className="pt-2 border-t border-slate-800">
