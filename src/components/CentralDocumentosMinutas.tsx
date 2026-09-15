@@ -292,8 +292,7 @@ export function CentralDocumentosMinutas({
       if (emailId === "boas_vindas_condomino") {
         generateCondominoPwaManualPDF(
           fracoes[0]?.proprietario?.nome || "Condómino",
-          predio.nome || "Condomínio Edifício Estrela da Barra",
-          "Cnd-94K2A8"
+          predio.nome || "Condomínio Edifício Estrela da Barra"
         );
         triggerSendReaction("email", "Manual do Condómino (PDF) descarregado com sucesso!");
       } else if (emailId === "boas_vindas_administrador") {
@@ -302,8 +301,7 @@ export function CentralDocumentosMinutas({
             nome: loggedUser.nome || "Administrador do Condomínio",
             email: testEmailRecipient.includes("@") ? testEmailRecipient : "administracao@condomanagerai.com",
             perfil: "ADMIN",
-            tlm: "+351 919 943 465",
-            password_provisoria: "Admin#2026!"
+            tlm: "+351 919 943 465"
           },
           [predio],
           "Condomínio Edifício Estrela da Barra"
@@ -315,8 +313,7 @@ export function CentralDocumentosMinutas({
             nome: "Gestor de Portfólio / Operacional",
             email: testEmailRecipient.includes("@") ? testEmailRecipient : "gestor@condomanagerai.com",
             perfil: "GESTOR",
-            tlm: "+351 919 943 465",
-            password_provisoria: "Gestor#2026!"
+            tlm: "+351 919 943 465"
           },
           [predio],
           "Condomínio Edifício Estrela da Barra"
@@ -326,8 +323,7 @@ export function CentralDocumentosMinutas({
         gerarPdfRegistoFornecedorHomologado(
           {
             nome: "Fornecedor / Prestador de Serviços",
-            email_contacto: testEmailRecipient.includes("@") ? testEmailRecipient : "fornecedor@empresa.pt",
-            pwa_password_provisoria: "Forn-82M4P9"
+            email_contacto: testEmailRecipient.includes("@") ? testEmailRecipient : "fornecedor@empresa.pt"
           },
           predio
         );
@@ -444,8 +440,7 @@ Importante:
 Dados de Acesso:
 Link: https://bentorodrigues2.condomanagerai.com
 Utilizador: ${fracoes[0]?.proprietario?.email || "(Email do condómino)"}
-Password Provisória: Cnd-94K2A8
-(Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no seu primeiro acesso.)
+Ativação do Acesso: verifique o seu email — enviámos um link seguro para definir a sua própria palavra-passe.
 
 Qualquer dúvida adicional, estou ao dispor.
 
@@ -484,8 +479,7 @@ Aceda à consola de administração em https://bentorodrigues2.condomanagerai.co
 Dados de Acesso:
 Link: https://bentorodrigues2.condomanagerai.com
 Utilizador: ${testEmailRecipient.includes("@") ? testEmailRecipient : "administracao@condomanagerai.com"}
-Password Provisória: Admin#2026!
-(Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no seu primeiro acesso.)
+Ativação do Acesso: verifique o seu email — enviámos um link seguro para definir a sua própria palavra-passe.
 
 Cordiais saudações,
 CondoManager AI - Central de Operações`
@@ -519,8 +513,7 @@ Aceda à consola de administração em https://bentorodrigues2.condomanagerai.co
 Dados de Acesso:
 Link: https://bentorodrigues2.condomanagerai.com
 Utilizador: ${testEmailRecipient.includes("@") ? testEmailRecipient : "gestor@condomanagerai.com"}
-Password Provisória: Gestor#2026!
-(Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no seu primeiro acesso.)
+Ativação do Acesso: verifique o seu email — enviámos um link seguro para definir a sua própria palavra-passe.
 
 Cordiais saudações,
 CondoManager AI - Central de Operações`
@@ -550,8 +543,7 @@ Dados Fiscais para Faturação :
 Dados de Acesso:
 Link: https://bentorodrigues2.condomanagerai.com
 Utilizador: ${testEmailRecipient.includes("@") ? testEmailRecipient : "fornecedor@empresa.pt"}
-Password Provisória: Forn-82M4P9
-(Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no seu primeiro acesso.)
+Ativação do Acesso: verifique o seu email — enviámos um link seguro para definir a sua própria palavra-passe.
 
 Atentamente,
 

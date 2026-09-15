@@ -74,7 +74,9 @@ export default function AuthForm({
     }
     setSendingReset(true);
     try {
-      const siteUrl = typeof window !== "undefined" ? window.location.origin : undefined;
+      const PRODUCTION_SITE_URL = "https://bentorodrigues2.condomanagerai.com";
+      const origin = typeof window !== "undefined" ? window.location.origin : undefined;
+      const siteUrl = origin && !origin.includes("localhost") ? origin : PRODUCTION_SITE_URL;
       const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
         redirectTo: siteUrl
       });
