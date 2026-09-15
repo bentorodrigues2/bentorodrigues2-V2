@@ -10,8 +10,11 @@ export default async function handler(req, res) {
   try {
     const { to, subject, html } = req.body;
 
+    const fromEmail = process.env.EMAIL_FROM_ADDRESS || 'no-reply@condomanagerai.com';
+    const fromAddress = fromEmail.includes('<') ? fromEmail : `Condomínio <${fromEmail}>`;
+
     const data = await resend.emails.send({
-      from: process.env.EMAIL_FROM_ADDRESS || 'no-reply@condomanagerai.com',
+      from: fromAddress,
       to,
       subject,
       html,
