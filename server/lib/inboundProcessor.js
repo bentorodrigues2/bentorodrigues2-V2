@@ -46,23 +46,7 @@ async function obterContexto(email) {
   try {
     const cleanEmail = extrairEmailLimpo(email);
 
-    // 1. Procurar na tabela fracoes
-    const { data: fracao, error: errFracao } = await supabase
-      .from("fracoes")
-      .select("*, predios(*)")
-      .ilike("email", cleanEmail)
-      .maybeSingle();
-
-    if (fracao && !errFracao) {
-      return {
-        ...fracao,
-        fracao: fracao.fracao || fracao.fracao_nome || fracao.id_fracao || "Fração",
-        id_predio: fracao.id_predio || fracao.predios?.id || null,
-        nome: fracao.proprietario || fracao.nome || null
-      };
-    }
-
-    // 2. Procurar na tabela proprietarios
+    // 1. Procurar diretamente na tabela proprietarios (é lá que vive o nome real)
     const { data: prop, error: errProp } = await supabase
       .from("proprietarios")
       .select("*, fracoes(*)")
@@ -75,6 +59,36 @@ async function obterContexto(email) {
         fracao: prop.fracoes?.fracao_nome || prop.fracao || prop.id_fracao || "Fração",
         id_predio: prop.id_predio || prop.fracoes?.id_predio || null,
         nome: prop.nome || null
+      };
+    }
+
+    // 2. Procurar na tabela fracoes (a tabela fracoes não tem coluna de nome do
+    // proprietário — se encontrarmos a fração pelo email, vamos ainda buscar o
+    // nome à proprietarios pela fracao_id, para não devolver nome vazio)
+    const { data: fracao, error: errFracao } = await supabase
+      .from("fracoes")
+      .select("*, predios(*)")
+      .ilike("email", cleanEmail)
+      .maybeSingle();
+
+    if (fracao && !errFracao) {
+      let nomeProprietario = null;
+      try {
+        const { data: propDaFracao } = await supabase
+          .from("proprietarios")
+          .select("nome")
+          .eq("fracao_id", fracao.id_fracao)
+          .maybeSingle();
+        nomeProprietario = propDaFracao?.nome || null;
+      } catch {
+        // sem proprietário associado a esta fração, segue sem nome
+      }
+
+      return {
+        ...fracao,
+        fracao: fracao.fracao_nome || fracao.id_fracao || "Fração",
+        id_predio: fracao.id_predio || fracao.predios?.id || null,
+        nome: nomeProprietario
       };
     }
 
