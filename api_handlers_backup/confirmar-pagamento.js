@@ -24,6 +24,24 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Pagamento não encontrado", detail: errPag?.message });
     }
 
+    // 1.1) Resolver também o movimento ligado a este pagamento (criado pelo
+    // mesmo email automático — ver server/lib/inboundProcessor.js, que grava
+    // a marca "[pagamento:<id>]" na descrição por não haver FK entre as duas
+    // tabelas). Sem isto, o movimento fica "Por Justificar" para sempre
+    // mesmo depois do pagamento estar confirmado.
+    try {
+      await supabase
+        .from("movimentos")
+        .update({
+          estado: "Justificado",
+          estado_conciliacao: "CONCILIADO",
+          is_movimento_cego: false
+        })
+        .ilike("descricao", `%[pagamento:${id_pagamento}]%`);
+    } catch (errMovLink) {
+      console.warn("[confirmar-pagamento] Aviso ao atualizar movimento ligado:", errMovLink?.message || errMovLink);
+    }
+
     // 2) Buscar proprietário e fração separadamente (sem depender de relações
     // embutidas do PostgREST, que exigem FKs registadas na cache do schema)
     const [{ data: proprietario }, { data: fracao }] = await Promise.all([
