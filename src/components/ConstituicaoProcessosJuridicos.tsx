@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { Predio, Fracao, LoggedUser, ProcessoJuridico, ProcessoProva, TipoProvaJuridica, Documento } from "../types";
 import { generateAndDownloadPdf, formatDatePT } from "../utils";
+import { saveProcessoJuridicoToSupabase } from "../lib/supabaseService";
 
 interface ConstituicaoProcessosJuridicosProps {
   predio: Predio;
@@ -209,6 +210,7 @@ export function ConstituicaoProcessosJuridicos({
     };
 
     setProcessos(prev => [novoProcesso, ...prev]);
+    saveProcessoJuridicoToSupabase(novoProcesso).catch(console.error);
     setSelectedProcessoId(novoId);
     setShowNovoProcessoModal(false);
     showToast(`Processo ${novoId} constituído com sucesso! Pode agora juntar recibos, prints e provas.`);
@@ -266,6 +268,8 @@ export function ConstituicaoProcessosJuridicos({
     });
 
     setProcessos(updatedProcessos);
+    const processoAtualizado = updatedProcessos.find(p => p.id_processo === currentProcesso.id_processo);
+    if (processoAtualizado) saveProcessoJuridicoToSupabase(processoAtualizado).catch(console.error);
 
     // If sync with Digital Archive is enabled, push document to GestaoDocumentos
     if (novaProvaArquivarDigital && onAddDocumento) {
@@ -326,6 +330,8 @@ export function ConstituicaoProcessosJuridicos({
     });
 
     setProcessos(updatedProcessos);
+    const processoSemProva = updatedProcessos.find(p => p.id_processo === currentProcesso.id_processo);
+    if (processoSemProva) saveProcessoJuridicoToSupabase(processoSemProva).catch(console.error);
     showToast("Prova removida dos autos com sucesso.");
   };
 
@@ -358,6 +364,8 @@ export function ConstituicaoProcessosJuridicos({
     });
 
     setProcessos(updatedProcessos);
+    const processoComMarco = updatedProcessos.find(p => p.id_processo === currentProcesso.id_processo);
+    if (processoComMarco) saveProcessoJuridicoToSupabase(processoComMarco).catch(console.error);
     setShowAddMarcoModal(false);
     setNovoMarcoDesc("");
     showToast("Marco processual registado na cronologia do processo.");

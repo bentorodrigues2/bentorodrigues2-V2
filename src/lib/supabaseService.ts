@@ -14,7 +14,8 @@ import {
   ChaveItem,
   SeguroFracao,
   SeguroPartesComuns,
-  SinistroSeguro
+  SinistroSeguro,
+  ProcessoJuridico
 } from "../types";
 
 /**
@@ -1199,6 +1200,88 @@ export async function fetchFornecedoresFromSupabase(idPredio?: string): Promise<
     }));
   } catch (err) {
     return null;
+  }
+}
+
+// ============================================================================
+// PROCESSOS JURÍDICOS / CONTENCIOSO
+// ============================================================================
+export async function fetchProcessosJuridicosFromSupabase(idPredio?: string): Promise<ProcessoJuridico[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    let query = supabase.from("processos_juridicos").select("*");
+    if (idPredio) query = query.eq("id_predio", idPredio);
+    const { data, error } = await query;
+    if (error || !data || data.length === 0) return null;
+
+    return data.map((row: any) => ({
+      id_processo: row.id_processo,
+      id_predio: row.id_predio,
+      id_fracao: row.id_fracao || "",
+      fracao_nome: row.fracao_nome || row.id_fracao || "",
+      nome_reu: row.nome_reu || "",
+      nif_reu: row.nif_reu || "",
+      tipo_processo: row.tipo_processo,
+      titulo_processo: row.titulo_processo || "",
+      descricao_resumo: row.descricao_resumo || "",
+      valor_divida_capital: Number(row.valor_divida_capital) || 0,
+      valor_juros_mora: Number(row.valor_juros_mora) || 0,
+      taxa_juros: Number(row.taxa_juros) || 0,
+      custas_processuais_estimadas: Number(row.custas_processuais_estimadas) || 0,
+      valor_total_pedido: Number(row.valor_total_pedido) || 0,
+      tribunal_competente: row.tribunal_competente || "",
+      fase_processual: row.fase_processual,
+      data_abertura: row.data_abertura || "",
+      data_ultima_atualizacao: row.updated_at ? String(row.updated_at).split("T")[0] : row.data_abertura || "",
+      mandatario_responsavel: row.mandatario_responsavel || "",
+      provas: row.provas || [],
+      historico_tramitacao: row.historico_tramitacao || [],
+      pasta_arquivo_digital_nome: row.pasta_arquivo_digital_nome || undefined
+    }));
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function saveProcessoJuridicoToSupabase(processo: ProcessoJuridico): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("processos_juridicos").upsert({
+      id_processo: processo.id_processo,
+      id_predio: processo.id_predio,
+      id_fracao: processo.id_fracao,
+      nome_reu: processo.nome_reu,
+      nif_reu: processo.nif_reu,
+      tipo_processo: processo.tipo_processo,
+      titulo_processo: processo.titulo_processo,
+      descricao_resumo: processo.descricao_resumo,
+      valor_divida_capital: processo.valor_divida_capital,
+      valor_juros_mora: processo.valor_juros_mora,
+      taxa_juros: processo.taxa_juros,
+      custas_processuais_estimadas: processo.custas_processuais_estimadas,
+      valor_total_pedido: processo.valor_total_pedido,
+      tribunal_competente: processo.tribunal_competente,
+      fase_processual: processo.fase_processual,
+      data_abertura: processo.data_abertura,
+      mandatario_responsavel: processo.mandatario_responsavel,
+      historico_tramitacao: processo.historico_tramitacao,
+      provas: processo.provas
+    });
+    if (error) console.warn("[Supabase] Save processo jurídico error:", error.message);
+    return !error;
+  } catch (err) {
+    console.warn("[Supabase] Save processo jurídico exception:", err);
+    return false;
+  }
+}
+
+export async function deleteProcessoJuridicoFromSupabase(idProcesso: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("processos_juridicos").delete().eq("id_processo", idProcesso);
+    return !error;
+  } catch (err) {
+    return false;
   }
 }
 

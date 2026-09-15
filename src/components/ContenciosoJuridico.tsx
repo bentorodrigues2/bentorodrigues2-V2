@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Predio, Fracao, Aviso, LoggedUser, ProcessoJuridico } from "../types";
 import { formatDatePT, generateAndDownloadPdf } from "../utils";
 import { processosJudiciaisIniciais } from "../data";
+import { fetchProcessosJuridicosFromSupabase } from "../lib/supabaseService";
 import { ConstituicaoProcessosJuridicos } from "./ConstituicaoProcessosJuridicos";
 
 interface ContenciosoJuridicoProps {
@@ -32,8 +33,16 @@ export function ContenciosoJuridico({
     }
   }, [initialTab]);
 
-  // Shared legal processes state
+  // Shared legal processes state — carregado do Supabase no arranque
+  // (fetchProcessosJuridicosFromSupabase devolve null se não houver dados
+  // reais ainda, e nesse caso mantém-se a demonstração local)
   const [processosState, setProcessosState] = useState<ProcessoJuridico[]>(processosJudiciaisIniciais);
+
+  useEffect(() => {
+    fetchProcessosJuridicosFromSupabase(predio.id_predio).then((reais) => {
+      if (reais) setProcessosState(reais);
+    });
+  }, [predio.id_predio]);
   const [selectedFracaoId, setSelectedFracaoId] = useState<string>("");
   const [interestRate, setInterestRate] = useState<number>(4.0); // Default 4% annual interest
   const [printedDoc, setPrintedDoc] = useState<boolean>(false);
