@@ -9,3 +9,8 @@ coverage/
 bun.lock
 bun.lockb
 bun.lock.json
+
+# gerado pelo build (esbuild) a partir de server/geminiService.ts,
+# necessário para as funções serverless em /api conseguirem importar
+# geminiService sem depender de um .ts em runtime puro Node na Vercel
+server/geminiService.js

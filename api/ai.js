@@ -1,7 +1,7 @@
 import {
   processAIChat,
   generateWithFallback
-} from "../server/geminiService.ts";
+} from "../server/geminiService.js";
 
 export default async function handler(req, res) {
   const acao = req.query?.acao || req.body?.acao;
