@@ -703,57 +703,16 @@ Com os meus cumprimentos,
   };
 
   // Save the modified minutes text and notes back to global state
-  const handleGuardarAtaFinal = () => {
+  // Ação única: guarda a ata localmente (marca a reunião como Realizada),
+  // gera o PDF oficial com o conteúdo real editado, arquiva-o a sério no
+  // Supabase e envia-o por email a todos os condóminos — cumprimento do
+  // prazo legal de 30 dias do Art. 1432.º do Código Civil. Antes existiam
+  // dois botões separados ("Guardar Ata Final" só local/fictício e "Enviar
+  // Ata" real); fundidos num só, para não haver um caminho falso.
+  const handleFinalizarEArquivarAta = () => {
     if (!activeMeeting) return;
-    const updated = reunioes.map(r => {
-      if (r.id_reuniao === activeMeeting.id_reuniao) {
-        return {
-          ...r,
-          ata: ataTexto,
-          notas_ata: notesToText(),
-          estado: "Realizada" as const
-        };
-      }
-      return r;
-    });
-    setReunioes(updated);
-
-    // Auto-arquivar Ata Oficial no Arquivo Digital
-    if (onAddDocumento) {
-      const anoStr = activeMeeting.data ? (activeMeeting.data.includes("/") ? activeMeeting.data.split("/")[2] : activeMeeting.data.split("-")[0]) : new Date().getFullYear().toString();
-      const docId = `doc-ata-${activeMeeting.id_reuniao}`;
-      const jaExiste = documentos?.some(d => d.id_doc === docId || (d.id_predio === predio.id_predio && d.nome.includes(activeMeeting.tema) && d.tipo.includes("Ata")));
-      if (!jaExiste) {
-        const docAta: Documento = {
-          id_doc: docId,
-          id_predio: predio.id_predio,
-          nome: `Ata_${activeMeeting.tema.replace(/[^a-zA-Z0-9À-ÿ]/g, "_")}_${activeMeeting.data.replace(/\//g, "-")}.pdf`,
-          tipo: "Ata Oficial Certificada (PDF)",
-          data_upload: new Date().toLocaleDateString("pt-PT"),
-          tamanho: "480 KB",
-          categoria: "Oficial",
-          tema: "Atas & Convocatórias",
-          ano: anoStr,
-          sub_pasta: `Assembleias ${anoStr}`,
-          descricao: `Ata da Assembleia Geral referente a '${activeMeeting.tema}' de ${activeMeeting.data}. Aprovada e arquivada nos termos legais.`,
-          visibilidade: "Público",
-          autor: loggedUser.nome || "Administrador do Condomínio",
-          arquivado: true
-        };
-        onAddDocumento(docAta);
-      }
-    }
-
-    alert("✨ Ata final guardada com sucesso e arquivada automaticamente no Arquivo Digital (Pasta 'Atas & Convocatórias')!");
-  };
-
-  // Envio real da ata aprovada a todos os condóminos — cumprimento do prazo
-  // legal de 30 dias do Art. 1432.º do Código Civil. Usa o texto real
-  // editado pelo Administrador (ataTexto/ordensTrabalho), nunca conteúdo
-  // inventado — ver gerarAtaAprovadaOficialPDF em src/utils.ts.
-  const handleEnviarAtaAosCondominos = () => {
     if (!ataTexto.trim()) {
-      alert("Escreva ou gere o texto da ata antes de a enviar aos condóminos.");
+      alert("Escreva ou gere o texto da ata antes de a finalizar.");
       return;
     }
 
@@ -766,9 +725,16 @@ Com os meus cumprimentos,
       return;
     }
 
-    const ataNumero = String(reunioes.filter(r => r.estado === "Realizada").length + 1);
+    setReunioes(reunioes.map(r =>
+      r.id_reuniao === activeMeeting.id_reuniao
+        ? { ...r, ata: ataTexto, notas_ata: notesToText(), estado: "Realizada" as const }
+        : r
+    ));
 
-    triggerSendReaction("email", `A enviar a Ata aos ${destinatarios.length} condómino(s)...`, async () => {
+    const ataNumero = String(reunioes.filter(r => r.estado === "Realizada").length + 1);
+    const anoStr = activeMeeting.data ? (activeMeeting.data.includes("/") ? activeMeeting.data.split("/")[2] : activeMeeting.data.split("-")[0]) : new Date().getFullYear().toString();
+
+    triggerSendReaction("email", `A finalizar, arquivar e enviar a Ata a ${destinatarios.length} condómino(s)...`, async () => {
       try {
         const resp = await fetch("/api/pdf?tipo=ata-aprovada", {
           method: "POST",
@@ -792,9 +758,32 @@ Com os meus cumprimentos,
           })
         });
         const resultado = await resp.json();
-        if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar a ata");
+        if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao finalizar a ata");
+
+        // Reflete no Arquivo Digital local o documento real que acabou de
+        // ser gravado no Supabase (caminho real, não fabricado).
+        if (onAddDocumento) {
+          const docAta: Documento = {
+            id_doc: `doc-ata-${activeMeeting.id_reuniao}`,
+            id_predio: predio.id_predio,
+            nome: `Ata_N${ataNumero}_Assinada.pdf`,
+            tipo: "Ata",
+            data_upload: new Date().toLocaleDateString("pt-PT"),
+            tamanho: "",
+            categoria: "Atas & Convocatórias",
+            tema: "Atas & Convocatórias",
+            ano: anoStr,
+            sub_pasta: `Assembleias ${anoStr}`,
+            descricao: `Ata da Assembleia Geral referente a '${activeMeeting.tema}' de ${activeMeeting.data}. Aprovada, arquivada e enviada aos condóminos.`,
+            visibilidade: "Público",
+            autor: loggedUser.nome || "Administrador do Condomínio",
+            arquivado: true,
+            caminho: resultado.caminho
+          };
+          onAddDocumento(docAta);
+        }
       } catch (err: any) {
-        alert(`❌ Erro ao enviar a ata: ${err?.message || "erro desconhecido"}`);
+        alert(`❌ Erro ao finalizar a ata: ${err?.message || "erro desconhecido"}`);
         throw err;
       }
     });
@@ -2059,20 +2048,12 @@ Com os meus cumprimentos,
                         <div className="flex flex-wrap items-center gap-2 pt-1">
                           <button
                             type="button"
-                            onClick={handleGuardarAtaFinal}
-                            className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer flex items-center gap-1.5 shadow-xs"
-                          >
-                            <i className="fa-solid fa-floppy-disk text-emerald-400"></i>
-                            <span>Guardar Ata Final & Arquivar</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleEnviarAtaAosCondominos}
+                            onClick={handleFinalizarEArquivarAta}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer flex items-center gap-1.5 shadow-xs"
                             title="Nos termos do Art. 1432.º do Código Civil: prazo legal de 30 dias para notificar os condóminos ausentes"
                           >
                             <i className="fa-solid fa-paper-plane"></i>
-                            <span>Enviar Ata aos Condóminos</span>
+                            <span>Guardar, Arquivar & Enviar Ata aos Condóminos</span>
                           </button>
                           <button
                             type="button"
