@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import { ActionIcon } from "./components/ActionIcon";
 import { LoggedUser, Predio, Conta, Fornecedor, Fracao, Aviso, Movimento, Reuniao, Documento, Ocorrencia, Reserva, CapacidadeLimite } from "./types";
 import { initialPredios, initialContas, initialFornecedores, initialFracoes, initialAvisos, initialMovements, initialReunioes, initialDocumentos, initialOcorrencias, defaultEmptyPredio } from "./data";
-import { isSupabaseConfigured } from "./lib/supabaseService";
+import { isSupabaseConfigured, fetchUserProfileByEmail } from "./lib/supabaseService";
+import { supabase } from "./lib/supabaseClient";
 import {
   fetchPrediosFromSupabase,
   fetchFracoesFromSupabase,
@@ -60,6 +61,7 @@ import { SendingReactionModal } from "./components/SendingReactionModal";
 import { DraggableAIFloatingButton } from "./components/DraggableAIFloatingButton";
 import LayoutTop from "./components/LayoutTop";
 import AuthForm from "./components/AuthForm";
+import SetPasswordScreen from "./components/SetPasswordScreen";
 import { validatePasswordPolicy, createSecurityLog, INITIAL_USER_SECURITY, UserSecurityState } from "./lib/authSecurity";
 import { 
   createNewSession, 
@@ -75,7 +77,6 @@ import {
   isTabAllowedForRole,
   isMenuAllowedForRole
 } from "./lib/sessionManager";
-import { resolveUserByEmail, DEMO_ACCOUNTS_MAP } from "./utils";
 const condoManagerLogo = "/marca/02-versao-horizontal.png";
 const logoutIcon = "/estados-acoes/17-desligar.png";
 const terminarSessaoIcon = "/estados-acoes/16-terminar-sessao.png";
@@ -101,6 +102,18 @@ export default function App() {
   // automaticamente pelo backend (pagamentos, movimentos, avisos, notas de
   // cobrança, etc.) alguma vez chegava a aparecer no ecrã do administrador.
   // Cada fetch* devolve null se o Supabase não estiver configurado ou se a
+  // Deteta chegada através de um link de convite/recuperação de password
+  // (o Supabase Auth SDK já apanhou o token da própria URL sozinho) — mostra
+  // o ecrã de "Definir Palavra-passe" em vez do login/dashboard normal.
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setNeedsPasswordSetup({ email: session?.user?.email || undefined });
+      }
+    });
+    return () => { authListener?.subscription?.unsubscribe(); };
+  }, []);
+
   // tabela ainda estiver vazia — nesse caso os dados de demonstração
   // mantêm-se, para a app nunca ficar em branco.
   useEffect(() => {
@@ -155,6 +168,7 @@ export default function App() {
   });
 
   const [browserIsLoggedOut, setBrowserIsLoggedOut] = useState<boolean>(true);
+  const [needsPasswordSetup, setNeedsPasswordSetup] = useState<{ email?: string } | null>(null);
   const [browserEmail, setBrowserEmail] = useState<string>("condomanagerai@gmail.com");
   const [browserPassword, setBrowserPassword] = useState<string>("••••••••");
   const [browserSelectedRole, setBrowserSelectedRole] = useState<LoggedUser["role"]>("ADMIN");
@@ -369,6 +383,7 @@ export default function App() {
   }, [loggedUser, activeSection]);
 
   const handleSecureLogout = (reason?: string) => {
+    supabase.auth.signOut().catch(() => {});
     purgeSession();
     setLoggedUser(null);
     setBrowserIsLoggedOut(true);
@@ -582,27 +597,49 @@ export default function App() {
     handleProfileChange(loggedUser.role === "ADMIN" ? "USER" : "ADMIN");
   };
 
+  if (needsPasswordSetup) {
+    return (
+      <SetPasswordScreen
+        email={needsPasswordSetup.email}
+        onDone={async () => {
+          const cleanEmail = (needsPasswordSetup.email || "").trim().toLowerCase();
+          setNeedsPasswordSetup(null);
+          const perfil = cleanEmail ? await fetchUserProfileByEmail(cleanEmail) : null;
+          if (perfil) {
+            setLoggedUser({ role: perfil.role, email: perfil.email || cleanEmail, nome: perfil.nome || cleanEmail });
+          } else if (cleanEmail) {
+            setLoggedUser({ role: "USER", email: cleanEmail, nome: cleanEmail });
+          }
+          setBrowserIsLoggedOut(false);
+          setCurrentRoute("/dashboard");
+          window.history.pushState({}, "", "/dashboard");
+        }}
+      />
+    );
+  }
+
   if (browserIsLoggedOut) {
-    const handleLoginFromTop = (emailInput?: string) => {
-      const cleanEmail = (emailInput || "condomanagerai@gmail.com").trim().toLowerCase();
-      const account = resolveUserByEmail(cleanEmail) || {
-        role: "ADMIN" as const,
-        nome: "Administrador do Condomínio",
-        email: cleanEmail
-      };
-      setLoggedUser({ role: account.role, email: account.email, nome: account.nome });
+    const handleLoginFromTop = async (emailInput?: string) => {
+      const cleanEmail = (emailInput || "").trim().toLowerCase();
+      if (!cleanEmail) return;
+
+      const perfil = await fetchUserProfileByEmail(cleanEmail);
+      if (!perfil) {
+        // Sessão real do Supabase Auth existe, mas ainda não tem perfil
+        // (ex.: conta acabada de ativar) — entra como condómino por
+        // omissão; o administrador pode ajustar o perfil depois.
+        setLoggedUser({ role: "USER", email: cleanEmail, nome: cleanEmail });
+      } else {
+        setLoggedUser({
+          role: perfil.role,
+          email: perfil.email || cleanEmail,
+          nome: perfil.nome || cleanEmail
+        });
+      }
+
       setBrowserIsLoggedOut(false);
       setCurrentRoute("/dashboard");
       window.history.pushState({}, "", "/dashboard");
-
-      // Auto-open Security Menu on First Access / Provisional Password
-      const isProvisional = typeof localStorage !== "undefined" && localStorage.getItem(`provisional_access_${cleanEmail}`) === "true";
-      const isPasswordSet = typeof localStorage !== "undefined" && localStorage.getItem(`user_password_set_${cleanEmail}`) === "true";
-      if (isProvisional || (!isPasswordSet && account.role === "USER")) {
-        setTimeout(() => {
-          setUserProfileModalOpen(true);
-        }, 400);
-      }
     };
 
     if (currentRoute === "/") {

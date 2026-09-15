@@ -926,92 +926,6 @@ export function downloadListaCondominosPDF(predioNome: string = "Condomínio Act
   }
 }
 
-export const DEMO_ACCOUNTS_MAP: Record<string, { role: "ADMIN" | "EMPRESA_GESTORA" | "USER" | "INQUILINO" | "TECNICO" | "LIMPEZAS" | "JURIDICO" | "AUDITOR" | "CONTABILISTA"; nome: string; pass: string; title: string }> = {
-  // Administrador Principal Provisório de Arranque
-  "condomanagerai@gmail.com": { role: "ADMIN", nome: "Administrador do Condomínio", pass: "*Condomanager2026", title: "👑 Administrador Principal" },
-
-  // Administrador Interno
-  "admin@condomanager.pt": { role: "ADMIN", nome: "Carlos Administrador", pass: "Admin12345!", title: "👑 Administrador Interno" },
-  "carlos.adm@condomanager.pt": { role: "ADMIN", nome: "Carlos Administrador", pass: "Admin12345!", title: "👑 Administrador Interno" },
-
-  // Empresa Gestora
-  "gestora@condomanager.pt": { role: "EMPRESA_GESTORA", nome: "Gestão Forte, Lda", pass: "Gestora12345!", title: "🏢 Empresa Gestora" },
-  "geral@gestaoforte.pt": { role: "EMPRESA_GESTORA", nome: "Gestão Forte, Lda", pass: "Gestora12345!", title: "🏢 Empresa Gestora" },
-
-  // Portal do Condómino (Proprietário)
-  "condomino@condomanager.pt": { role: "USER", nome: "Ana Silva (Fração A)", pass: "Condomino12345!", title: "🏠 Portal do Condómino (Proprietário)" },
-  "ana.silva@gmail.com": { role: "USER", nome: "Ana Silva (Fração A)", pass: "Condomino12345!", title: "🏠 Portal do Condómino (Proprietário)" },
-  "amelia.sousa@yahoo.com": { role: "USER", nome: "D.ª Amélia Sousa (Fração B)", pass: "Condomino12345!", title: "🏠 Portal do Condómino (Proprietário)" },
-
-  // Inquilino / Arrendatário (Sem acesso a dados financeiros)
-  "inquilino@condomanager.pt": { role: "INQUILINO", nome: "Bruno Ferreira (Inquilino Fração A)", pass: "Inquilino12345!", title: "🔑 Portal do Inquilino / Arrendatário" },
-  "bruno.inquilino@gmail.com": { role: "INQUILINO", nome: "Bruno Ferreira (Inquilino Fração A)", pass: "Inquilino12345!", title: "🔑 Portal do Inquilino / Arrendatário" },
-  "ricardo.loc@gmail.com": { role: "INQUILINO", nome: "Ricardo Inquilino (Fração A)", pass: "Inquilino12345!", title: "🔑 Portal do Inquilino / Arrendatário" },
-
-  // Técnico / Vistorias
-  "tecnico@condomanager.pt": { role: "TECNICO", nome: "Eng. Rui Melo", pass: "Tecnico12345!", title: "🔍 Inspetor Técnico" },
-  "rui.melo@vistoriasegura.pt": { role: "TECNICO", nome: "Eng. Rui Melo", pass: "Tecnico12345!", title: "🔍 Inspetor Técnico" },
-  "rui.melim@vistoriasia.pt": { role: "TECNICO", nome: "Eng. Rui Melo", pass: "Tecnico12345!", title: "🔍 Inspetor Técnico" },
-
-  // Equipa de Limpezas
-  "limpezas@condomanager.pt": { role: "LIMPEZAS", nome: "Maria Silva (Limpezas)", pass: "Limpezas12345!", title: "🧹 Equipa de Higienização" },
-  "limpezas.geral@cleancondo.pt": { role: "LIMPEZAS", nome: "Maria Silva (Limpezas)", pass: "Limpezas12345!", title: "🧹 Equipa de Higienização" },
-  "rosa.limpezas@cleancondo.pt": { role: "LIMPEZAS", nome: "D.ª Rosa Limpezas", pass: "Limpezas12345!", title: "🧹 Equipa de Higienização" },
-
-  // Perfil Jurídico
-  "juridico@condomanager.pt": { role: "JURIDICO", nome: "Dra. Margarida Castro", pass: "Juridico12345!", title: "⚖️ Perfil Jurídico" },
-  "margarida.adv@contencioso.pt": { role: "JURIDICO", nome: "Dra. Margarida Castro", pass: "Juridico12345!", title: "⚖️ Perfil Jurídico" },
-  "leonor.silva@lawyers.pt": { role: "JURIDICO", nome: "Dra. Leonor Silva", pass: "Juridico12345!", title: "⚖️ Perfil Jurídico" },
-
-  // Auditor Independente
-  "auditor@condomanager.pt": { role: "AUDITOR", nome: "Dr. António Melo", pass: "Auditor12345!", title: "🕵️ Auditor Independente" },
-  "antonio.auditor@auditoria.pt": { role: "AUDITOR", nome: "Dr. António Melo", pass: "Auditor12345!", title: "🕵️ Auditor Independente" },
-  "jorge.santos@auditoriapredial.pt": { role: "AUDITOR", nome: "Dr. Jorge Santos", pass: "Auditor12345!", title: "🕵️ Auditor Independente" },
-
-  // Contabilista Certificado
-  "contabilista@condomanager.pt": { role: "CONTABILISTA", nome: "Dra. Paula Silva", pass: "Contas12345!", title: "📈 Contabilista Certificado" },
-  "paula.contas@contabilidade.pt": { role: "CONTABILISTA", nome: "Dra. Paula Silva", pass: "Contas12345!", title: "📈 Contabilista Certificado" },
-  "antonio.costa@contabilidade.pt": { role: "CONTABILISTA", nome: "Dr. António Costa", pass: "Contas12345!", title: "📈 Contabilista Certificado" },
-};
-
-export function resolveUserByEmail(rawEmail: string) {
-  const cleanEmail = (rawEmail || "").trim().toLowerCase();
-  if (!cleanEmail) {
-    return null;
-  }
-  if (DEMO_ACCOUNTS_MAP[cleanEmail]) {
-    return { ...DEMO_ACCOUNTS_MAP[cleanEmail], email: cleanEmail };
-  }
-  // Keyword matching for flexible domain/email inputs
-  if (cleanEmail.includes('admin') || cleanEmail.includes('carlos')) {
-    return { role: "ADMIN" as const, nome: "Carlos Administrador", pass: "Admin12345!", title: "👑 Administrador Interno", email: cleanEmail };
-  }
-  if (cleanEmail.includes('gestor') || cleanEmail.includes('geral') || cleanEmail.includes('empresa') || cleanEmail.includes('forte')) {
-    return { role: "EMPRESA_GESTORA" as const, nome: "Gestão Forte, Lda", pass: "Gestora12345!", title: "🏢 Empresa Gestora", email: cleanEmail };
-  }
-  if (cleanEmail.includes('inquilino') || cleanEmail.includes('arrendatario') || cleanEmail.includes('locatario') || cleanEmail.includes('ricardo.loc') || cleanEmail.includes('bruno.inquilino')) {
-    return { role: "INQUILINO" as const, nome: "Bruno Ferreira (Inquilino)", pass: "Inquilino12345!", title: "🔑 Portal do Inquilino / Arrendatário", email: cleanEmail };
-  }
-  if (cleanEmail.includes('tecnic') || cleanEmail.includes('melo') || cleanEmail.includes('melim') || cleanEmail.includes('vistoria')) {
-    return { role: "TECNICO" as const, nome: "Eng. Rui Melo", pass: "Tecnico12345!", title: "🔍 Inspetor Técnico", email: cleanEmail };
-  }
-  if (cleanEmail.includes('limp') || cleanEmail.includes('rosa') || cleanEmail.includes('clean')) {
-    return { role: "LIMPEZAS" as const, nome: "Maria Silva (Limpezas)", pass: "Limpezas12345!", title: "🧹 Equipa de Higienização", email: cleanEmail };
-  }
-  if (cleanEmail.includes('juri') || cleanEmail.includes('adv') || cleanEmail.includes('law') || cleanEmail.includes('margarida') || cleanEmail.includes('leonor')) {
-    return { role: "JURIDICO" as const, nome: "Dra. Margarida Castro", pass: "Juridico12345!", title: "⚖️ Perfil Jurídico", email: cleanEmail };
-  }
-  if (cleanEmail.includes('audit') || cleanEmail.includes('antonio') || cleanEmail.includes('santos')) {
-    return { role: "AUDITOR" as const, nome: "Dr. António Melo", pass: "Auditor12345!", title: "🕵️ Auditor Independente", email: cleanEmail };
-  }
-  if (cleanEmail.includes('conta') || cleanEmail.includes('paula') || cleanEmail.includes('costa')) {
-    return { role: "CONTABILISTA" as const, nome: "Dra. Paula Silva", pass: "Contas12345!", title: "📈 Contabilista Certificado", email: cleanEmail };
-  }
-  
-  // Default fallback for any condomino email
-  return { role: "USER" as const, nome: "Ana Silva (Fração A)", pass: "Condomino12345!", title: "🏠 Portal do Condómino", email: cleanEmail };
-}
-
 export function formatQuotaReceiptNumber(identifier: string | number): string {
   if (!identifier) return "BR2 00001";
   const str = String(identifier);
@@ -1046,7 +960,6 @@ export function gerarPdfRegistoFornecedorHomologado(
     const condominioNome = "Condomínio Edifício Estrela da Barra";
     const fornecedorNome = fornecedor?.nome || "Fornecedor / Prestador de Serviços";
     const emailFornecedor = fornecedor?.email_contacto || fornecedor?.contacto || "fornecedor@empresa.pt";
-    const passwordProvisoria = fornecedor?.pwa_password_provisoria || "Forn-82M4P9";
     const nifPredio = predio?.nif || "900123456";
     const moradaFaturacao = predio?.morada_linha1 || "Rua Bento Rodrigues";
     const emailFaturacao = (predio as any)?.email_administracao || (predio as any)?.email || "administracao@condomanagerai.com";
@@ -1151,12 +1064,12 @@ export function gerarPdfRegistoFornecedorHomologado(
     doc.text(`Utilizador (E-mail): ${emailFornecedor}`, 20, y + 16);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(180, 83, 9);
-    doc.text(`Password Provisória: ${passwordProvisoria}`, 20, y + 23);
+    doc.text(`Ativação do Acesso: verifique o seu email`, 20, y + 23);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(185, 28, 28);
-    doc.text("⚠️ Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no seu primeiro acesso.", 20, y + 30);
+    doc.text("⚠️ Enviámos um link seguro para o seu email para definir a sua própria palavra-passe de acesso.", 20, y + 30);
 
     y += 42;
 
@@ -1239,7 +1152,7 @@ export function gerarPdfRegistoFornecedorHomologado(
   }
 }
 
-export function generateCondominoPwaManualPDF(condominoNome: string, buildingName: string = "Condomínio Bento Rodrigues 2", passwordProvisoria?: string, devolverDoc?: boolean) {
+export function generateCondominoPwaManualPDF(condominoNome: string, buildingName: string = "Condomínio Bento Rodrigues 2", _passwordProvisoria?: string, devolverDoc?: boolean) {
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     let y = addPdfHeaderWithLogo(doc, `${buildingName} - Manual do Condómino`);
@@ -1268,23 +1181,22 @@ export function generateCondominoPwaManualPDF(condominoNome: string, buildingNam
     // Credentials Box
     doc.setFillColor(240, 253, 244);
     doc.setDrawColor(187, 247, 208);
-    doc.roundedRect(14, y, 182, 34, 3, 3, "FD");
+    doc.roundedRect(14, y, 182, 30, 3, 3, "FD");
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9.5);
     doc.setTextColor(6, 95, 70);
-    doc.text("DADOS DE ACESSO À ÁREA RESERVADA DO CONDÓMINO", 18, y + 6);
+    doc.text("ATIVAÇÃO DO SEU ACESSO À ÁREA RESERVADA DO CONDÓMINO", 18, y + 6);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
     doc.text(`Link de Acesso Direto: https://bentorodrigues2.condomanagerai.com`, 18, y + 12);
-    doc.text(`Password Provisória: ${passwordProvisoria || "Condo2026!"}`, 18, y + 17);
-    doc.text(`Segurança: Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no primeiro acesso.`, 18, y + 22);
-    doc.text(`Administração / Vizinho (3ºE): José Carlos Guerra`, 18, y + 27);
-    doc.text(`Contacto Direto / Urgências: +351 919 943 465`, 18, y + 31);
+    doc.text(`Verifique o seu email — enviámos um link seguro para definir a sua própria palavra-passe.`, 18, y + 17);
+    doc.text(`Administração / Vizinho (3ºE): José Carlos Guerra`, 18, y + 22);
+    doc.text(`Contacto Direto / Urgências: +351 919 943 465`, 18, y + 27);
 
-    y += 40;
+    y += 36;
 
     const sections = [
       {
@@ -2032,7 +1944,6 @@ export function gerarPdfBoasVindasAdministrador(
     const nomeAdmin = adminInfo?.nome || "Administrador do Condomínio";
     const emailAdmin = adminInfo?.email || "administracao@condomanagerai.com";
     const tlmAdmin = adminInfo?.tlm || "+351 919 943 465";
-    const passProvisoria = adminInfo?.password_provisoria || "Admin#2026!";
 
     // Header Background
     doc.setFillColor(15, 23, 42); // Slate-900
@@ -2118,12 +2029,12 @@ export function gerarPdfBoasVindasAdministrador(
     doc.text(`Utilizador (E-mail): ${emailAdmin}`, 20, y + 16);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(180, 83, 9);
-    doc.text(`Password Provisória: ${passProvisoria}`, 20, y + 23);
+    doc.text(`Ativação do Acesso: verifique o seu email`, 20, y + 23);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(185, 28, 28);
-    doc.text("⚠️ Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no seu primeiro acesso.", 20, y + 30);
+    doc.text("⚠️ Enviámos um link seguro para o seu email para definir a sua própria palavra-passe de acesso.", 20, y + 30);
 
     y += 42;
 
@@ -2229,7 +2140,6 @@ export function gerarPdfBoasVindasGestor(
     const nomeGestor = gestor?.nome || "Gestor de Carteira";
     const emailGestor = gestor?.email || "gestor@condomanagerai.com";
     const tlmGestor = gestor?.tlm || "+351 919 943 465";
-    const passProvisoria = gestor?.password_provisoria || "Gestor#2026!";
 
     // Header Background
     doc.setFillColor(15, 23, 42); // Slate-900
@@ -2315,12 +2225,12 @@ export function gerarPdfBoasVindasGestor(
     doc.text(`Utilizador (E-mail): ${emailGestor}`, 20, y + 16);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(180, 83, 9);
-    doc.text(`Password Provisória: ${passProvisoria}`, 20, y + 23);
+    doc.text(`Ativação do Acesso: verifique o seu email`, 20, y + 23);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(185, 28, 28);
-    doc.text("⚠️ Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no seu primeiro acesso.", 20, y + 30);
+    doc.text("⚠️ Enviámos um link seguro para o seu email para definir a sua própria palavra-passe de acesso.", 20, y + 30);
 
     y += 42;
 

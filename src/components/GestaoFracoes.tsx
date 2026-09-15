@@ -923,30 +923,33 @@ export function GestaoFracoes({
           await saveProprietarioToSupabase(novoProprietarioObj, selectedFracaoId);
 
           if (isNewEmail || !targetFracao.proprietario) {
-            const tempPass = "Cnd-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-            localStorage.setItem(`provisional_access_${propEmail.trim().toLowerCase()}`, "true");
             try {
-              generateCondominoPwaManualPDF(propNome.trim(), predio.nome, tempPass);
+              generateCondominoPwaManualPDF(propNome.trim(), predio.nome);
             } catch (err) {}
-            // Envia o mesmo guia por email a sério (o download acima é só a
-            // cópia local para o administrador) — ver api/pdf.js?tipo=boas-vindas
+            // Cria o acesso real (Supabase Auth) e envia um email com um
+            // link seguro de ativação — a pessoa define a sua própria
+            // password, nunca uma password gerada pelo sistema.
+            let convidado = false;
             try {
-              await fetch("/api/pdf?tipo=boas-vindas", {
+              const resp = await fetch("/api/admin?acao=convidar", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  nome: propNome.trim(),
-                  buildingName: predio.nome,
-                  password: tempPass,
                   email: propEmail.trim(),
-                  predio: predio.id_predio,
-                  ano: new Date().getFullYear()
+                  nome: propNome.trim(),
+                  role: "USER",
+                  id_predio: predio.id_predio,
+                  id_fracao: selectedFracaoId
                 })
               });
+              const data = await resp.json();
+              convidado = resp.ok && data.ok;
             } catch (err) {
-              console.warn("[GestaoFracoes] Aviso ao enviar email de boas-vindas:", err);
+              console.warn("[GestaoFracoes] Aviso ao enviar convite de ativação:", err);
             }
-            alert(`✅ Proprietário associado com sucesso à Fração ${targetFracao.fracao_nome} no Supabase!\n\n📧 E-MAIL DE BOAS-VINDAS ENVIADO:\n• E-mail: ${propEmail.trim()}\n• Password Provisória: ${tempPass}\n• No primeiro acesso, o condómino poderá definir a sua password.`);
+            alert(convidado
+              ? `✅ Proprietário associado com sucesso à Fração ${targetFracao.fracao_nome}!\n\n📧 Foi enviado um email para ${propEmail.trim()} com um link seguro para o condómino ativar o seu acesso e definir a própria password.`
+              : `✅ Proprietário associado com sucesso à Fração ${targetFracao.fracao_nome} no Supabase, mas houve um erro a enviar o email de ativação. Pode reenviá-lo mais tarde.`);
           } else {
             alert(`✅ Dados do proprietário da Fração ${targetFracao.fracao_nome} (${propNome.trim()}) gravados com sucesso no Supabase!`);
           }

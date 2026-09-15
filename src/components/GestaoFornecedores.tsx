@@ -201,7 +201,6 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
     if (!nome || !nif || !categoria) return alert("Preencha todos os campos obrigatórios (Nome, NIF, Categoria)!");
 
     const novoId = "forn-" + (fornecedores.length + 1);
-    const passProvisoria = "PwaForn2026!";
     const novo: Fornecedor = {
       id_fornecedor: novoId,
       id_predio: predio.id_predio,
@@ -216,8 +215,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
       email_contacto: emailContacto || undefined,
       data_nascimento: dataNascimento || undefined,
       perfis_pwa: perfisPwa.length > 0 ? perfisPwa : undefined,
-      pwa_acesso_enviado: perfisPwa.length > 0,
-      pwa_password_provisoria: passProvisoria
+      pwa_acesso_enviado: perfisPwa.length > 0
     };
     onAddFornecedor(novo);
     saveFornecedorToSupabase(novo).catch(console.error);
@@ -590,8 +588,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
                         <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1">Dados de Acesso:</p>
                         <p>• <strong>Link:</strong> <span className="font-mono text-indigo-600">https://bentorodrigues2.condomanagerai.com</span></p>
                         <p>• <strong>Utilizador:</strong> <span className="font-mono">{welcomeModalFornecedor.email_contacto || welcomeModalFornecedor.contacto || "fornecedor@empresa.pt"}</span></p>
-                        <p>• <strong>Password Provisória:</strong> <span className="font-mono font-bold text-amber-900">{welcomeModalFornecedor.pwa_password_provisoria || "Forn-82M4P9"}</span></p>
-                        <p className="text-[10px] text-amber-700 italic mt-1">(Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no seu primeiro acesso.)</p>
+                        <p className="text-[10px] text-amber-700 italic mt-1">O email enviado ao fornecedor não contém nenhuma palavra-passe — inclui apenas o link de acesso e os dados de contacto da administração.</p>
                       </div>
 
                       <div className="bg-emerald-100/80 border border-emerald-200 p-2.5 rounded-lg flex items-center justify-between">

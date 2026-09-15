@@ -103,7 +103,6 @@ export function FichaEmpresaGestora({
   const [modalEmail, setModalEmail] = useState("");
   const [modalPerfil, setModalPerfil] = useState<"GESTOR" | "ADMIN">("GESTOR");
   const [modalPredios, setModalPredios] = useState<string[]>([]);
-  const [modalPasswordProvisoria, setModalPasswordProvisoria] = useState("");
   const [modalGerarPdfAgora, setModalGerarPdfAgora] = useState(true);
 
   // Logótipo institucional (PNG, redimensionado)
@@ -202,7 +201,6 @@ export function FichaEmpresaGestora({
     setModalEmail("");
     setModalPerfil("GESTOR");
     setModalPredios(predios.map(p => p.id_predio)); // Por defeito seleciona todos
-    setModalPasswordProvisoria(`Gestor#${Math.floor(1000 + Math.random() * 9000)}!`);
     setModalGerarPdfAgora(true);
     setIsGestorModalOpen(true);
   };
@@ -214,7 +212,6 @@ export function FichaEmpresaGestora({
     setModalEmail(g.email);
     setModalPerfil(g.perfil);
     setModalPredios(g.predios_atribuidos || []);
-    setModalPasswordProvisoria(g.password_provisoria || `Gestor#${Math.floor(1000 + Math.random() * 9000)}!`);
     setModalGerarPdfAgora(false);
     setIsGestorModalOpen(true);
   };
@@ -227,21 +224,19 @@ export function FichaEmpresaGestora({
     }
   };
 
-  // Envio real do email de ativação (antes só descarregava o PDF localmente
-  // e a notificação mentia dizendo "E-mail de Ativação enviado").
-  const enviarEmailBoasVindasGestorReal = async (gestor: GestorCarteira) => {
+  // Cria o acesso real (Supabase Auth) e envia um email com um link seguro
+  // de ativação — a pessoa define a sua própria password. Substitui o
+  // padrão antigo de gerar uma "password provisória" local e mostrá-la em
+  // alertas/PDFs.
+  const enviarConviteAtivacaoGestor = async (gestor: GestorCarteira) => {
     try {
-      const resp = await fetch("/api/pdf?tipo=boas-vindas-gestor", {
+      const resp = await fetch("/api/admin?acao=convidar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          gestor,
-          predios,
-          empresaNome: empresaConfig.nome_empresa,
-          logoUrl: gestoraLogo,
           email: gestor.email,
-          predio: predios[0]?.id_predio,
-          ano: new Date().getFullYear()
+          nome: gestor.nome,
+          role: gestor.perfil === "ADMIN" ? "ADMIN" : "GESTOR"
         })
       });
       const resultado = await resp.json();
@@ -270,8 +265,7 @@ export function FichaEmpresaGestora({
             tlm: modalTlm.trim(),
             email: modalEmail.trim(),
             perfil: modalPerfil,
-            predios_atribuidos: modalPredios,
-            password_provisoria: modalPasswordProvisoria
+            predios_atribuidos: modalPredios
           };
         }
         return g;
@@ -288,24 +282,20 @@ export function FichaEmpresaGestora({
         perfil: modalPerfil,
         predios_atribuidos: modalPredios,
         status_acesso: "PENDENTE_PRIMEIRO_ACESSO",
-        password_provisoria: modalPasswordProvisoria,
         email_boas_vindas_enviado: modalGerarPdfAgora,
         data_atribuicao: new Date().toISOString().split("T")[0],
         foto: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
       };
-
-      // Guardar a regra de que no primeiro login obrigatoriamente altera a password
-      localStorage.setItem(`force_password_change_${novoGestor.email}`, "true");
 
       setGestores([...gestores, novoGestor]);
 
       if (modalGerarPdfAgora) {
         gerarPdfBoasVindasGestor(novoGestor, predios, empresaConfig.nome_empresa, gestoraLogo);
         const docName = novoGestor.perfil === "ADMIN" ? "Instrucoes_Acesso_Perfil_Administrador.pdf" : "Instrucoes_Acesso_Perfil_Gestor.pdf";
-        const enviado = await enviarEmailBoasVindasGestorReal(novoGestor);
+        const enviado = await enviarConviteAtivacaoGestor(novoGestor);
         showNotification(
           enviado
-            ? `Colaborador adicionado! E-mail de Ativação enviado e ${docName} descarregado com sucesso.`
+            ? `Colaborador adicionado! E-mail com link de ativação enviado e ${docName} descarregado com sucesso.`
             : `Colaborador "${novoGestor.nome}" registado, mas o email de ativação falhou — pode reenviar mais tarde na lista de gestores.`
         );
       } else {
@@ -317,13 +307,10 @@ export function FichaEmpresaGestora({
   };
 
   const handleEnviarEmailBoasVindas = async (gestor: GestorCarteira) => {
-    // Registar obrigação de alterar a password no 1º acesso
-    localStorage.setItem(`force_password_change_${gestor.email}`, "true");
-
     // Gerar o PDF Oficial (cópia local para o administrador)
     gerarPdfBoasVindasGestor(gestor, predios, empresaConfig.nome_empresa, gestoraLogo);
 
-    const enviado = await enviarEmailBoasVindasGestorReal(gestor);
+    const enviado = await enviarConviteAtivacaoGestor(gestor);
     if (!enviado) return;
 
     // Atualizar estado
@@ -341,7 +328,7 @@ export function FichaEmpresaGestora({
 
     const docName = gestor.perfil === "ADMIN" ? "Instrucoes_Acesso_Perfil_Administrador.pdf" : "Instrucoes_Acesso_Perfil_Gestor.pdf";
     showNotification(
-      `E-mail de Ativação enviado para ${gestor.email}! O documento oficial "${docName}" com a senha provisória "${gestor.password_provisoria || "Admin#2026!"}" foi enviado e descarregado.`
+      `Email com link de ativação enviado para ${gestor.email}! O documento oficial "${docName}" foi descarregado.`
     );
   };
 
@@ -1165,29 +1152,14 @@ export function FichaEmpresaGestora({
                 </div>
               </div>
 
-              {/* CREDENCIAIS PROVISÓRIAS & AVISO 1º ACESSO */}
-              <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
-                    <Key className="h-3.5 w-3.5 text-amber-600" />
-                    Password Provisória de Acesso
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setModalPasswordProvisoria(`Gestor#${Math.floor(1000 + Math.random() * 9000)}!`)}
-                    className="text-[10px] text-amber-800 dark:text-amber-300 underline font-bold"
-                  >
-                    Gerar Nova
-                  </button>
-                </div>
-                <input 
-                  type="text" 
-                  value={modalPasswordProvisoria}
-                  onChange={e => setModalPasswordProvisoria(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 px-3 py-1.5 text-xs font-mono font-bold text-amber-950 dark:text-amber-200 rounded-lg"
-                />
+              {/* ATIVAÇÃO DE ACESSO REAL */}
+              <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl space-y-1.5">
+                <span className="text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                  <Key className="h-3.5 w-3.5 text-amber-600" />
+                  Ativação de Acesso por Email
+                </span>
                 <p className="text-[9.5px] text-amber-800 dark:text-amber-300 leading-snug">
-                  ⚠️ <strong>Regra de Segurança:</strong> No primeiro login, o sistema exigirá obrigatoriamente a substituição desta senha provisória por uma nova senha confidencial.
+                  Não é definida nenhuma palavra-passe aqui. Ao gravar, é enviado um email real para <strong>{modalEmail || "o email indicado"}</strong> com um link seguro para o próprio colaborador definir a sua palavra-passe e ativar o acesso.
                 </p>
               </div>
 
