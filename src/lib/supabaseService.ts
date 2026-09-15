@@ -529,6 +529,28 @@ export async function registarAuditoria(entry: Omit<RegistoAuditoria, "criado_em
   return dbInsert("auditoria_plataforma", { ...entry, origem: entry.origem || "web" });
 }
 
+export interface DecisaoIA {
+  id_log: number;
+  id_predio?: string | null;
+  origem: string;
+  tipo_documento?: string | null;
+  entidade?: string | null;
+  referencia?: string | null;
+  valor?: number | null;
+  id_movimento?: string | null;
+  criado_em: string;
+}
+
+export async function fetchDecisoesIA(idPredio: string): Promise<DecisaoIA[]> {
+  if (!isSupabaseConfigured() || !idPredio) return [];
+  const data = await dbSelect("ai_auditoria", {
+    filtros: [["id_predio", "eq", idPredio]],
+    order: { coluna: "criado_em", asc: false },
+    limit: 100
+  });
+  return (data || []) as DecisaoIA[];
+}
+
 // ============================================================================
 // GESTÃO DE CHAVES (CLAVICULÁRIO / CHAVEIRO)
 // ============================================================================

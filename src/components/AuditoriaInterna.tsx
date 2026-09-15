@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Predio, Conta, Fracao, Movimento, Documento, AuditLogEntry, LoggedUser } from "../types";
-import { fetchRegistoAuditoria } from "../lib/supabaseService";
+import { fetchRegistoAuditoria, fetchDecisoesIA, DecisaoIA } from "../lib/supabaseService";
 
 interface AuditoriaInternaProps {
   predio: Predio;
@@ -25,39 +25,50 @@ export function AuditoriaInterna({
 }: AuditoriaInternaProps) {
   const [activeTab, setActiveTab] = useState<"historico" | "financeira" | "documental" | "ia_audit">("historico");
   
-  // State for Task 11: Decisões e Automações da IA
-  const [decisoesIA, setDecisoesIA] = useState([
-    {
-      id: "dec-1",
-      modulo: "Reconciliação Bancária",
-      data_hora: "2026-08-05 10:14:22",
-      decisao: "Reconciliação Automática de Movimento #REC-881 (160.00€)",
-      confianca: 99.4,
-      justificacao: "Correspondência exata de valor, data e NIF do emitente da fatura OCR.",
-      estado: "Aprovado",
-      automatica: true
-    },
-    {
-      id: "dec-2",
-      modulo: "Previsão de Inadimplência",
-      data_hora: "2026-08-04 16:30:00",
-      decisao: "Classificação de Risco Alto para Fração H (Dívida de 250.00€)",
-      confianca: 88.5,
-      justificacao: "Atraso médio superior a 40 dias e ausência de resposta ao lembrete amigável.",
-      estado: "Pendente Aprovação",
-      automatica: false
-    },
-    {
-      id: "dec-3",
-      modulo: "Manutenção Preditiva",
-      data_hora: "2026-08-02 09:12:15",
-      decisao: "Lembrete de Vistoria de Selos Mecânicos da Bomba de Água",
-      confianca: 94.0,
-      justificacao: "Atingidas 4.200 horas de operação e nível de desgaste preditivo de 82%.",
-      estado: "Aprovado",
-      automatica: true
-    }
-  ]);
+  // Decisões e automações reais da IA — lidas da tabela ai_auditoria (o
+  // próprio motor grava aqui sempre que processa um email recebido ou corre
+  // um job de cron). Antes disto eram 3 linhas fixas no código, sempre as
+  // mesmas, com um botão "Aprovar/Reverter" que só mudava uma cor no ecrã
+  // sem qualquer efeito real.
+  const [decisoesIA, setDecisoesIA] = useState<DecisaoIA[]>([]);
+
+  useEffect(() => {
+    if (!predio.id_predio) return;
+    fetchDecisoesIA(predio.id_predio).then(setDecisoesIA);
+  }, [predio.id_predio]);
+
+  const ORIGEM_LABELS: Record<string, string> = {
+    email_inbound: "Processamento de Email Recebido",
+    cron_emissao_quotas: "Emissão Mensal de Quotas",
+    cron_lembrete_quotas: "Lembrete de Quota em Atraso",
+    cron_aviso_mora: "Aviso de Mora",
+    cron_aniversario: "Felicitação de Aniversário"
+  };
+
+  const descreverDecisao = (d: DecisaoIA): string => {
+    const partes: string[] = [];
+    if (d.tipo_documento) partes.push(`Documento: ${d.tipo_documento}`);
+    if (d.entidade) partes.push(`Entidade: ${d.entidade}`);
+    if (d.referencia) partes.push(`Referência: ${d.referencia}`);
+    if (d.valor) partes.push(`Valor: ${Number(d.valor).toFixed(2)}€`);
+    if (d.id_movimento) partes.push(`Movimento: ${d.id_movimento}`);
+    return partes.length > 0 ? partes.join(" • ") : "Execução automática sem dados adicionais associados.";
+  };
+
+  // Estatísticas reais (contagens efetivas dos registos lidos acima) —
+  // substituem os 3 números fixos que existiam antes ("1.482 automações",
+  // "99.8% OCR", "Precisão Global 99.2%"), que não vinham de lado nenhum.
+  const totalDecisoesIA = decisoesIA.length;
+  const ultimaExecucaoIA = decisoesIA[0]?.criado_em
+    ? new Date(decisoesIA[0].criado_em).toLocaleString("pt-PT").replace(",", "")
+    : "—";
+  const origemMaisFrequente = (() => {
+    if (decisoesIA.length === 0) return null;
+    const contagem = new Map<string, number>();
+    for (const d of decisoesIA) contagem.set(d.origem, (contagem.get(d.origem) || 0) + 1);
+    const [origem, total] = [...contagem.entries()].sort((a, b) => b[1] - a[1])[0];
+    return { label: ORIGEM_LABELS[origem] || origem, total };
+  })();
   
   // Registo de auditoria — real, partilhado entre dispositivos e inalterável
   // (tabela auditoria_plataforma via /api/data, só select/insert). Antes
@@ -530,27 +541,27 @@ export function AuditoriaInterna({
                 </h3>
               </div>
               <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-3 py-1 rounded-full">
-                ● Precisão Global: 99.2%
+                ● {totalDecisoesIA} registo{totalDecisoesIA !== 1 ? "s" : ""}
               </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono">
               <div className="p-4 bg-slate-800/80 rounded-xl border border-slate-700">
                 <span className="text-[10px] text-slate-400 uppercase block">Total de Automações Executadas</span>
-                <span className="text-2xl font-black text-white block mt-1">1,482</span>
-                <span className="text-[10px] text-emerald-400 block mt-1">100% Auditadas em Logs</span>
+                <span className="text-2xl font-black text-white block mt-1">{totalDecisoesIA}</span>
+                <span className="text-[10px] text-emerald-400 block mt-1">Contagem real deste prédio</span>
               </div>
 
               <div className="p-4 bg-slate-800/80 rounded-xl border border-slate-700">
-                <span className="text-[10px] text-slate-400 uppercase block">Taxa de Leitura OCR Faturas</span>
-                <span className="text-2xl font-black text-violet-300 block mt-1">99.8%</span>
-                <span className="text-[10px] text-slate-400 block mt-1">Validação Fiscal & NIF Ativa</span>
+                <span className="text-[10px] text-slate-400 uppercase block">Última Execução</span>
+                <span className="text-lg font-black text-violet-300 block mt-1">{ultimaExecucaoIA}</span>
+                <span className="text-[10px] text-slate-400 block mt-1">Registo mais recente</span>
               </div>
 
               <div className="p-4 bg-slate-800/80 rounded-xl border border-slate-700">
-                <span className="text-[10px] text-slate-400 uppercase block">Decisões Autónomas Revertidas</span>
-                <span className="text-2xl font-black text-amber-400 block mt-1">0.1%</span>
-                <span className="text-[10px] text-slate-400 block mt-1">Controlo e Contraditório Humano</span>
+                <span className="text-[10px] text-slate-400 uppercase block">Origem Mais Frequente</span>
+                <span className="text-sm font-black text-amber-400 block mt-1 leading-tight">{origemMaisFrequente ? origemMaisFrequente.label : "—"}</span>
+                <span className="text-[10px] text-slate-400 block mt-1">{origemMaisFrequente ? `${origemMaisFrequente.total} ocorrência(s)` : "Sem dados ainda"}</span>
               </div>
             </div>
           </div>
@@ -566,55 +577,32 @@ export function AuditoriaInterna({
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-mono text-[10px] uppercase">
+                    <th className="p-3">Data / Hora</th>
                     <th className="p-3">Módulo</th>
-                    <th className="p-3">Decisão / Ação Recomendada</th>
-                    <th className="p-3 text-center">Nível de Confiança</th>
-                    <th className="p-3">Justificação Algorítmica</th>
-                    <th className="p-3 text-center">Estado</th>
-                    <th className="p-3 text-center">Controlo Humano</th>
+                    <th className="p-3">Detalhe</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-sans">
-                  {decisoesIA.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <td className="p-3 font-bold text-slate-800 dark:text-slate-200 font-mono">{item.modulo}</td>
-                      <td className="p-3 font-semibold text-slate-900 dark:text-white">{item.decisao}</td>
-                      <td className="p-3 text-center font-mono font-bold text-violet-500">{item.confianca}%</td>
-                      <td className="p-3 text-slate-500 dark:text-slate-400 text-[11px]">{item.justificacao}</td>
-                      <td className="p-3 text-center font-mono">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          item.estado === "Aprovado" 
-                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800"
-                            : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-800"
-                        }`}>
-                          {item.estado}
-                        </span>
-                      </td>
-                      <td className="p-3 text-center space-x-1.5">
-                        {item.estado !== "Aprovado" ? (
-                          <button
-                            onClick={() => {
-                              setDecisoesIA(prev => prev.map(d => d.id === item.id ? { ...d, estado: "Aprovado" } : d));
-                              alert("Decisão da IA aprovada manualmente com sucesso!");
-                            }}
-                            className="px-2.5 py-1 text-[10px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded transition-all cursor-pointer"
-                          >
-                            <i className="fa-solid fa-check mr-1"></i> Aprovar
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setDecisoesIA(prev => prev.map(d => d.id === item.id ? { ...d, estado: "Revertido Manualmente" } : d));
-                              alert("Decisão da IA revertida. Ação desfeita e registada em audit log!");
-                            }}
-                            className="px-2.5 py-1 text-[10px] font-bold bg-rose-600 hover:bg-rose-500 text-white rounded transition-all cursor-pointer"
-                          >
-                            <i className="fa-solid fa-rotate-left mr-1"></i> Reverter
-                          </button>
-                        )}
+                  {decisoesIA.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="p-8 text-center text-slate-400">
+                        <i className="fa-solid fa-robot text-2xl mb-2 block text-slate-300"></i>
+                        Ainda sem decisões automáticas registadas para este prédio.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    decisoesIA.map((item) => (
+                      <tr key={item.id_log} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <td className="p-3 font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                          {new Date(item.criado_em).toLocaleString("pt-PT").replace(",", "")}
+                        </td>
+                        <td className="p-3 font-bold text-slate-800 dark:text-slate-200 font-mono text-[11px]">
+                          {ORIGEM_LABELS[item.origem] || item.origem}
+                        </td>
+                        <td className="p-3 text-slate-600 dark:text-slate-300 text-[11px]">{descreverDecisao(item)}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
