@@ -16,6 +16,15 @@
     { "source": "/api/ai-studio-router", "destination": "/api/email?acao=router" },
     { "source": "/api/ai-studio-router/templates", "destination": "/api/email?acao=router-templates" },
     { "source": "/api/inbound", "destination": "/api/webhooks/resend" },
-    { "source": "/api/ai-studio", "destination": "/api/webhooks/resend" }
+    { "source": "/api/ai-studio", "destination": "/api/webhooks/resend" },
+    { "source": "/api/pdf/convocatoria", "destination": "/api/pdf?tipo=convocatoria" },
+    { "source": "/api/pdf/ata", "destination": "/api/pdf?tipo=ata" },
+    { "source": "/api/pdf/aviso", "destination": "/api/pdf?tipo=aviso" },
+    { "source": "/api/pdf/recibo", "destination": "/api/pdf?tipo=recibo" },
+    { "source": "/api/pdf/carta-n1", "destination": "/api/pdf?tipo=carta-n1" },
+    { "source": "/api/pdf/carta-n2", "destination": "/api/pdf?tipo=carta-n2" },
+    { "source": "/api/pdf/boas-vindas", "destination": "/api/pdf?tipo=boas-vindas" },
+    { "source": "/api/pdf/sinistro", "destination": "/api/pdf?tipo=sinistro" },
+    { "source": "/api/pdf/scie", "destination": "/api/pdf?tipo=scie" }
   ]
 }
