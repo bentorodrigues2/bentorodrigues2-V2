@@ -1,7 +1,22 @@
 import { createHash } from "crypto";
 import { supabase } from "../server/lib/supabaseServer.js";
 import { guardarNoArquivo, registarDocumento, enviarEmailPDF } from "../server/lib/pdfService.js";
-import { generateOfficialReceiptPDF } from "../server/lib/receiptGenerator.js";
+import { generateOfficialReceiptPDF, nomeFicheiroRecibo } from "../server/lib/receiptGenerator.js";
+
+const STOPWORDS_PREFIXO = ["rua", "edifício", "edificio", "condomínio", "condominio", "do", "da", "de", "dos", "das", "e"];
+
+/** Deriva um prefixo curto do edifício (ex.: "Rua Bento Rodrigues 2" -> "BR2") */
+function derivarPrefixoEdificio(nomePredio) {
+  const nomeLimpo = (nomePredio || "").replace(/\(.*?\)/g, "").trim();
+  const digitos = (nomeLimpo.match(/\d+/) || [""])[0];
+  const semDigitos = nomeLimpo.replace(/\d+/g, "").trim();
+  const iniciais = semDigitos
+    .split(/\s+/)
+    .filter((w) => w && !STOPWORDS_PREFIXO.includes(w.toLowerCase()))
+    .map((w) => w[0].toUpperCase())
+    .join("");
+  return (iniciais || "COND") + digitos;
+}
 
 export default async function handler(req, res) {
   try {
@@ -66,12 +81,22 @@ export default async function handler(req, res) {
 
     // 3) Montar e gerar o recibo oficial (mesmo template legal usado no
     // frontend em src/utils/receiptGenerator.ts — compilado para
-    // server/lib/receiptGenerator.js no build)
+    // server/lib/receiptGenerator.js no build). Numeração: prefixo do
+    // edifício + sequencial de 5 dígitos, ex. "BR2 00195".
     const hash = createHash("sha256").update(`${pagamento.id}-${pagamento.valor}-${pagamento.confirmado_em}`).digest("hex");
+    const prefixoEdificio = derivarPrefixoEdificio(predio?.nome);
+
+    const { count: totalConfirmados } = await supabase
+      .from("pagamentos")
+      .select("id", { count: "exact", head: true })
+      .eq("estado", "confirmado");
+
+    const sequencial = String(totalConfirmados || 1).padStart(5, "0");
+    const idRecibo = `${prefixoEdificio} ${sequencial}`;
 
     const recibo = {
-      id_recibo: `REC-${ano}/${String(pagamento.id).slice(0, 8)}`,
-      numero_sequencial: 1,
+      id_recibo: idRecibo,
+      numero_sequencial: totalConfirmados || 1,
       ano,
       id_predio: fracao?.id_predio || "",
       id_fracao: pagamento.id_fracao || "",
@@ -107,7 +132,7 @@ export default async function handler(req, res) {
 
     const doc = generateOfficialReceiptPDF(recibo, predioParaRecibo, fracao || {});
     const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
-    const nomeFicheiro = `recibo_${pagamento.id}.pdf`;
+    const nomeFicheiro = nomeFicheiroRecibo(recibo);
 
     const caminho = await guardarNoArquivo({
       pdfBuffer,
