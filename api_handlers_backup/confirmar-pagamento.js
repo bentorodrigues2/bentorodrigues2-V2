@@ -1,5 +1,7 @@
+import { createHash } from "crypto";
 import { supabase } from "../server/lib/supabaseServer.js";
-import { gerarDocumentoPDF } from "../server/lib/pdfService.js";
+import { guardarNoArquivo, registarDocumento, enviarEmailPDF } from "../server/lib/pdfService.js";
+import { generateOfficialReceiptPDF } from "../server/lib/receiptGenerator.js";
 
 export default async function handler(req, res) {
   try {
@@ -46,50 +48,92 @@ export default async function handler(req, res) {
     // embutidas do PostgREST, que exigem FKs registadas na cache do schema)
     const [{ data: proprietario }, { data: fracao }] = await Promise.all([
       pagamento.id_proprietario
-        ? supabase.from("proprietarios").select("nome, email").eq("id_proprietario", pagamento.id_proprietario).maybeSingle()
+        ? supabase.from("proprietarios").select("nome, email, nif").eq("id_proprietario", pagamento.id_proprietario).maybeSingle()
         : Promise.resolve({ data: null }),
       pagamento.id_fracao
-        ? supabase.from("fracoes").select("fracao_nome, id_predio").eq("id_fracao", pagamento.id_fracao).maybeSingle()
+        ? supabase.from("fracoes").select("fracao_nome, id_predio, piso, permilagem").eq("id_fracao", pagamento.id_fracao).maybeSingle()
         : Promise.resolve({ data: null })
     ]);
+
+    const { data: predio } = fracao?.id_predio
+      ? await supabase.from("predios").select("*").eq("id_predio", fracao.id_predio).maybeSingle()
+      : { data: null };
 
     const nomeDestinatario = proprietario?.nome || pagamento.entidade || "Condómino(a)";
     const emailDestinatario = proprietario?.email || null;
     const fracaoNome = fracao?.fracao_nome || pagamento.fracao || "Fração";
     const ano = new Date(pagamento.data_pagamento || pagamento.criado_em || Date.now()).getFullYear();
 
-    const conteudoRecibo = `RECIBO DE PAGAMENTO
+    // 3) Montar e gerar o recibo oficial (mesmo template legal usado no
+    // frontend em src/utils/receiptGenerator.ts — compilado para
+    // server/lib/receiptGenerator.js no build)
+    const hash = createHash("sha256").update(`${pagamento.id}-${pagamento.valor}-${pagamento.confirmado_em}`).digest("hex");
 
-Exmo(a). Sr(a). ${nomeDestinatario},
+    const recibo = {
+      id_recibo: `REC-${ano}/${String(pagamento.id).slice(0, 8)}`,
+      numero_sequencial: 1,
+      ano,
+      id_predio: fracao?.id_predio || "",
+      id_fracao: pagamento.id_fracao || "",
+      nome_condomino: nomeDestinatario,
+      nif_condomino: proprietario?.nif || "",
+      fracao_nome: fracaoNome,
+      permilagem: fracao?.permilagem || 0,
+      data_emissao: new Date().toISOString().split("T")[0],
+      data_pagamento: pagamento.data_pagamento || new Date().toISOString().split("T")[0],
+      metodo_pagamento: "Transferência Bancária",
+      valor_total: Number(pagamento.valor || 0),
+      rubricas: [{ descricao: pagamento.descricao || "Quota de Condomínio", valor: Number(pagamento.valor || 0), tipo: "Quota Ordinária" }],
+      iban_predio: predio?.iban || "",
+      codigo_verificacao_hash: hash,
+      emitido_por: "José Carlos Guerra (Administrador do Condomínio)",
+      adminSignatureBase64: "sem-assinatura-digital"
+    };
 
-Confirmamos a receção do pagamento referente à fração ${fracaoNome}.
+    const predioParaRecibo = predio || { id_predio: recibo.id_predio, nome: "Condomínio", morada_linha1: "", num_porta: "", codigo_postal: "", localidade: "", nif: "" };
 
-Valor: ${Number(pagamento.valor || 0).toFixed(2)} EUR
-Data: ${pagamento.data_pagamento || new Date().toISOString().split("T")[0]}
-Referência: ${pagamento.referencia || pagamento.id}
+    const doc = generateOfficialReceiptPDF(recibo, predioParaRecibo, fracao || {});
+    const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
+    const nomeFicheiro = `recibo_${pagamento.id}.pdf`;
 
-Este documento serve de comprovativo de quitação do valor acima indicado.
+    const caminho = await guardarNoArquivo({
+      pdfBuffer,
+      ano,
+      tema: "Financeiro",
+      tipo: "Recibo",
+      predio: fracao?.id_predio || "geral",
+      fracao: pagamento.id_fracao || "geral",
+      fluxo: "recibo_pos_confirmacao",
+      nomeFicheiro
+    });
 
-Com os melhores cumprimentos,
-A administração do condomínio`;
-
-    // 3) Gerar o PDF do recibo, arquivar e enviar por email (tudo numa só chamada)
-    const resultado = await gerarDocumentoPDF({
-      conteudo: conteudoRecibo,
+    await registarDocumento({
+      caminho,
       ano,
       tema: "Financeiro",
       tipo: "Recibo",
       predio: fracao?.id_predio || null,
       fracao: pagamento.id_fracao || null,
       fluxo: "recibo_pos_confirmacao",
-      emailDestino: emailDestinatario,
-      nomeFicheiro: `recibo_${pagamento.id}.pdf`
+      origem: "confirmacao_pagamento",
+      nomeFicheiro
     });
+
+    if (emailDestinatario) {
+      await enviarEmailPDF({
+        to: emailDestinatario,
+        nomeDestinatario,
+        assunto: `Recibo de Quitação — ${fracaoNome}`,
+        mensagem: `Segue em anexo o recibo oficial de quitação referente à fração <strong>${fracaoNome}</strong>, no valor de <strong>${recibo.valor_total.toFixed(2)} €</strong>.`,
+        pdfBuffer,
+        nome: nomeFicheiro
+      });
+    }
 
     return res.status(200).json({
       status: "ok",
       pagamento_confirmado: pagamento.id,
-      recibo_caminho: resultado.caminho,
+      recibo_caminho: caminho,
       email_enviado: Boolean(emailDestinatario)
     });
   } catch (e) {

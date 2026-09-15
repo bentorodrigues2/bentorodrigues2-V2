@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import { supabase } from "./supabaseServer.js";
+import { gerarHtmlResposta } from "./htmlemail.js";
 
 /**
  * Gera um PDF real a partir de texto simples (jsPDF funciona em Node sem
@@ -52,7 +53,7 @@ function gerarPDFBuffer(conteudo, titulo) {
   return Buffer.from(doc.output("arraybuffer"));
 }
 
-async function guardarNoArquivo({ pdfBuffer, ano, tema, tipo, predio, fracao, fluxo, nomeFicheiro }) {
+export async function guardarNoArquivo({ pdfBuffer, ano, tema, tipo, predio, fracao, fluxo, nomeFicheiro }) {
   const caminho = `${ano}/${tema}/${tipo}/${predio}/${fracao}/${fluxo}/${nomeFicheiro}`;
 
   const { error } = await supabase.storage
@@ -63,7 +64,7 @@ async function guardarNoArquivo({ pdfBuffer, ano, tema, tipo, predio, fracao, fl
   return caminho;
 }
 
-async function registarDocumento({ caminho, ano, tema, tipo, predio, fracao, fluxo, origem, nomeFicheiro }) {
+export async function registarDocumento({ caminho, ano, tema, tipo, predio, fracao, fluxo, origem, nomeFicheiro }) {
   const { error } = await supabase.from("documentos").insert({
     id_doc: `DOC-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     id_predio: predio,
@@ -82,12 +83,18 @@ async function registarDocumento({ caminho, ano, tema, tipo, predio, fracao, flu
   if (error) throw error;
 }
 
-async function enviarEmailPDF({ to, assunto, mensagem, pdfBuffer, nome }) {
+/**
+ * Envia o PDF por email sempre com o template institucional (logótipo,
+ * texto humanizado, assinatura) — nunca um email "nu" com o anexo solto.
+ */
+export async function enviarEmailPDF({ to, nomeDestinatario, assunto, mensagem, pdfBuffer, nome }) {
   const resendApiKey = process.env.RESEND_API_KEY;
   if (!resendApiKey || !to) return;
 
   const fromEmail = process.env.EMAIL_FROM_ADDRESS || "administracao@condomanagerai.com";
   const fromAddress = fromEmail.includes("<") ? fromEmail : `Condomínio <${fromEmail}>`;
+
+  const html = gerarHtmlResposta(nomeDestinatario || "Condómino(a)", mensagem);
 
   const resp = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -96,7 +103,7 @@ async function enviarEmailPDF({ to, assunto, mensagem, pdfBuffer, nome }) {
       from: fromAddress,
       to: [to],
       subject: assunto,
-      html: mensagem,
+      html,
       attachments: [{ filename: nome, content: pdfBuffer.toString("base64") }]
     })
   });
@@ -107,10 +114,13 @@ async function enviarEmailPDF({ to, assunto, mensagem, pdfBuffer, nome }) {
 }
 
 /**
- * Gera o PDF, arquiva-o no Supabase Storage, regista o documento e (se
- * emailDestino for fornecido) envia-o por email.
+ * Gera o PDF (a partir de texto simples), arquiva-o no Supabase Storage,
+ * regista o documento e (se emailDestino for fornecido) envia-o por email
+ * com o template institucional. Para documentos com layout legal próprio
+ * (ex. recibo oficial via receiptGenerator.js), monta o buffer à parte e
+ * usa só guardarNoArquivo/registarDocumento/enviarEmailPDF diretamente.
  */
-export async function gerarDocumentoPDF({ conteudo, ano, tema, tipo, predio, fracao, fluxo, emailDestino, nomeFicheiro }) {
+export async function gerarDocumentoPDF({ conteudo, ano, tema, tipo, predio, fracao, fluxo, emailDestino, nomeDestinatario, nomeFicheiro }) {
   const pdfBuffer = gerarPDFBuffer(conteudo, tipo);
 
   const caminho = await guardarNoArquivo({ pdfBuffer, ano, tema, tipo, predio, fracao, fluxo, nomeFicheiro });
@@ -120,8 +130,9 @@ export async function gerarDocumentoPDF({ conteudo, ano, tema, tipo, predio, fra
   if (emailDestino) {
     await enviarEmailPDF({
       to: emailDestino,
+      nomeDestinatario,
       assunto: `Novo documento: ${tipo}`,
-      mensagem: `<p>Segue em anexo o documento: <strong>${tipo}</strong>.</p>`,
+      mensagem: `Segue em anexo o seu documento: <strong>${tipo}</strong>.`,
       pdfBuffer,
       nome: nomeFicheiro
     });
