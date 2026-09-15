@@ -2021,7 +2021,8 @@ export function gerarPdfEtiquetasChaves(
 export function gerarPdfBoasVindasAdministrador(
   adminInfo?: Partial<GestorCarteira>,
   predios?: Predio[],
-  condominioNome: string = "Condomínio Edifício Estrela da Barra"
+  condominioNome: string = "Condomínio Edifício Estrela da Barra",
+  devolverDoc?: boolean
 ) {
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -2187,11 +2188,12 @@ export function gerarPdfBoasVindasAdministrador(
     doc.setTextColor(148, 163, 184);
     doc.text(`Documento emitido para ${nomeAdmin} em ${new Date().toLocaleDateString("pt-PT")}. Confidencial.`, 105, 288, { align: "center" });
 
+    if (devolverDoc) return doc;
     const blob = doc.output("blob");
     downloadBlob(blob, `Instrucoes_Acesso_Perfil_Administrador.pdf`);
   } catch (err) {
     console.error("Erro ao gerar PDF do Administrador:", err);
-    alert("Ocorreu um erro ao gerar o PDF de Boas-Vindas do Administrador.");
+    if (typeof alert !== "undefined") alert("Ocorreu um erro ao gerar o PDF de Boas-Vindas do Administrador.");
   }
 }
 
@@ -2202,10 +2204,11 @@ export function gerarPdfBoasVindasGestor(
   gestor?: Partial<GestorCarteira>,
   predios?: Predio[],
   empresaNome: string = "Condomínio Edifício Estrela da Barra",
-  logoUrl?: string
+  logoUrl?: string,
+  devolverDoc?: boolean
 ) {
   if (gestor?.perfil === "ADMIN") {
-    return gerarPdfBoasVindasAdministrador(gestor, predios, empresaNome);
+    return gerarPdfBoasVindasAdministrador(gestor, predios, empresaNome, devolverDoc);
   }
 
   try {
@@ -2371,11 +2374,12 @@ export function gerarPdfBoasVindasGestor(
     doc.setTextColor(148, 163, 184);
     doc.text(`Documento emitido para ${nomeGestor} em ${new Date().toLocaleDateString("pt-PT")}. Confidencial.`, 105, 288, { align: "center" });
 
+    if (devolverDoc) return doc;
     const blob = doc.output("blob");
     downloadBlob(blob, `Instrucoes_Acesso_Perfil_Gestor.pdf`);
   } catch (err) {
     console.error("Erro ao gerar PDF de Boas-Vindas do Gestor:", err);
-    alert("Ocorreu um erro ao gerar o PDF de Boas-Vindas do Gestor.");
+    if (typeof alert !== "undefined") alert("Ocorreu um erro ao gerar o PDF de Boas-Vindas do Gestor.");
   }
 }
 

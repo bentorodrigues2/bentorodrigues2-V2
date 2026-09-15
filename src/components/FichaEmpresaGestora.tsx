@@ -222,7 +222,33 @@ export function FichaEmpresaGestora({
     }
   };
 
-  const salvarGestor = (e: React.FormEvent) => {
+  // Envio real do email de ativação (antes só descarregava o PDF localmente
+  // e a notificação mentia dizendo "E-mail de Ativação enviado").
+  const enviarEmailBoasVindasGestorReal = async (gestor: GestorCarteira) => {
+    try {
+      const resp = await fetch("/api/pdf?tipo=boas-vindas-gestor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gestor,
+          predios,
+          empresaNome: empresaConfig.nome_empresa,
+          logoUrl: gestoraLogo,
+          email: gestor.email,
+          predio: predios[0]?.id_predio,
+          ano: new Date().getFullYear()
+        })
+      });
+      const resultado = await resp.json();
+      if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar o email de ativação");
+      return true;
+    } catch (err: any) {
+      alert(`❌ Erro ao enviar o email de ativação: ${err?.message || "erro desconhecido"}`);
+      return false;
+    }
+  };
+
+  const salvarGestor = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!modalNome.trim() || !modalEmail.trim()) {
       alert("Por favor preencha o Nome e o E-mail direto do gestor.");
@@ -271,7 +297,12 @@ export function FichaEmpresaGestora({
       if (modalGerarPdfAgora) {
         gerarPdfBoasVindasGestor(novoGestor, predios, empresaConfig.nome_empresa, gestoraLogo);
         const docName = novoGestor.perfil === "ADMIN" ? "Instrucoes_Acesso_Perfil_Administrador.pdf" : "Instrucoes_Acesso_Perfil_Gestor.pdf";
-        showNotification(`Colaborador adicionado! E-mail de Ativação enviado e ${docName} descarregado com sucesso.`);
+        const enviado = await enviarEmailBoasVindasGestorReal(novoGestor);
+        showNotification(
+          enviado
+            ? `Colaborador adicionado! E-mail de Ativação enviado e ${docName} descarregado com sucesso.`
+            : `Colaborador "${novoGestor.nome}" registado, mas o email de ativação falhou — pode reenviar mais tarde na lista de gestores.`
+        );
       } else {
         showNotification(`Colaborador "${novoGestor.nome}" registado com sucesso!`);
       }
@@ -280,12 +311,15 @@ export function FichaEmpresaGestora({
     setIsGestorModalOpen(false);
   };
 
-  const handleEnviarEmailBoasVindas = (gestor: GestorCarteira) => {
+  const handleEnviarEmailBoasVindas = async (gestor: GestorCarteira) => {
     // Registar obrigação de alterar a password no 1º acesso
     localStorage.setItem(`force_password_change_${gestor.email}`, "true");
 
-    // Gerar o PDF Oficial
+    // Gerar o PDF Oficial (cópia local para o administrador)
     gerarPdfBoasVindasGestor(gestor, predios, empresaConfig.nome_empresa, gestoraLogo);
+
+    const enviado = await enviarEmailBoasVindasGestorReal(gestor);
+    if (!enviado) return;
 
     // Atualizar estado
     const atualizados = gestores.map(g => {
@@ -302,7 +336,7 @@ export function FichaEmpresaGestora({
 
     const docName = gestor.perfil === "ADMIN" ? "Instrucoes_Acesso_Perfil_Administrador.pdf" : "Instrucoes_Acesso_Perfil_Gestor.pdf";
     showNotification(
-      `E-mail de Ativação enviado para ${gestor.email}! O documento oficial "${docName}" com a senha provisória "${gestor.password_provisoria || "Admin#2026!"}" foi descarregado.`
+      `E-mail de Ativação enviado para ${gestor.email}! O documento oficial "${docName}" com a senha provisória "${gestor.password_provisoria || "Admin#2026!"}" foi enviado e descarregado.`
     );
   };
 

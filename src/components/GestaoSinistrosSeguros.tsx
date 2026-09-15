@@ -125,6 +125,8 @@ export function GestaoSinistrosSeguros({
   const [formSinDataOcorrencia, setFormSinDataOcorrencia] = useState(new Date().toISOString().split("T")[0]);
   const [formSinDataParticipacao, setFormSinDataParticipacao] = useState(new Date().toISOString().split("T")[0]);
   const [formSinSeguradora, setFormSinSeguradora] = useState("");
+  const [formSinSeguradoraEmail, setFormSinSeguradoraEmail] = useState("");
+  const [enviandoParticipacaoSinistro, setEnviandoParticipacaoSinistro] = useState(false);
   const [formSinNumApolice, setFormSinNumApolice] = useState("");
   const [formSinNumProcesso, setFormSinNumProcesso] = useState("");
   const [formSinPeritoNome, setFormSinPeritoNome] = useState("");
@@ -592,6 +594,45 @@ Não incluas blocos markdown nem texto adicional, apenas JSON puro.`;
 
     showToast(`✓ Processo de sinistro ${novoSinistro.num_processo_sinistro} guardado com sucesso!`);
     setModalSinistro({ isOpen: false, sinistroEditando: null });
+  };
+
+  // Envio real da Participação Formal de Sinistro à seguradora — antes só
+  // existia a versão de exemplo no ecrã "Minutas & Simulador".
+  const handleEnviarParticipacaoSeguradora = async () => {
+    if (!formSinSeguradoraEmail.trim()) {
+      alert("Indique o email da seguradora para onde enviar a participação.");
+      return;
+    }
+    if (!formSinNumProcesso.trim() || !formSinDescricaoDanos.trim()) {
+      alert("Preencha o Nº de Processo e a Descrição dos Danos antes de enviar a participação.");
+      return;
+    }
+
+    setEnviandoParticipacaoSinistro(true);
+    try {
+      const resp = await fetch("/api/pdf?tipo=participacao-sinistro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          numeroSinistro: formSinNumProcesso,
+          apoliceNumero: formSinNumApolice,
+          seguradoraNome: formSinSeguradora,
+          predioNome: predio.nome,
+          predioNif: predio.nif,
+          email: formSinSeguradoraEmail.trim(),
+          predio: predio.id_predio,
+          ano: new Date().getFullYear()
+        })
+      });
+      const resultado = await resp.json();
+      if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar a participação");
+
+      showToast(`✓ Participação formal enviada para ${formSinSeguradoraEmail.trim()}!`);
+    } catch (err: any) {
+      alert(`❌ Erro ao enviar a participação à seguradora: ${err?.message || "erro desconhecido"}`);
+    } finally {
+      setEnviandoParticipacaoSinistro(false);
+    }
   };
 
   // Eliminar Sinistro
@@ -1874,6 +1915,30 @@ Não incluas blocos markdown nem texto adicional, apenas JSON puro.`;
                   placeholder="Ex: Obras adjudicadas com prazo de 15 dias."
                   className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-950 px-3 py-2 text-xs rounded-xl focus:outline-emerald-500"
                 />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block">
+                  Email da Seguradora (para envio da Participação Formal)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="email"
+                    value={formSinSeguradoraEmail}
+                    onChange={e => setFormSinSeguradoraEmail(e.target.value)}
+                    placeholder="sinistros@seguradora.pt"
+                    className="flex-1 border border-slate-200 dark:border-slate-800 dark:bg-slate-950 px-3 py-2 text-xs rounded-xl focus:outline-emerald-500"
+                  />
+                  <button
+                    type="button"
+                    disabled={enviandoParticipacaoSinistro}
+                    onClick={handleEnviarParticipacaoSeguradora}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl cursor-pointer text-xs shadow-md transition-all flex items-center gap-1.5 shrink-0"
+                  >
+                    <i className={`fa-solid ${enviandoParticipacaoSinistro ? "fa-spinner fa-spin" : "fa-paper-plane"}`}></i>
+                    <span>{enviandoParticipacaoSinistro ? "A enviar..." : "Enviar Participação"}</span>
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">

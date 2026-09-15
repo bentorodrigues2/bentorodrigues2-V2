@@ -7,7 +7,8 @@ import {
   gerarAtaAprovadaOficialPDF,
   gerarParticipacaoSinistroPDF,
   gerarTermoAcordoPagamentoPDF,
-  gerarNotificacaoObrasIrregularesPDF
+  gerarNotificacaoObrasIrregularesPDF,
+  gerarPdfBoasVindasGestor
 } from "../server/lib/pdfDocs.js";
 
 const TIPOS = {
@@ -26,7 +27,8 @@ const TIPOS = {
   "ata-aprovada": { tema: "Assembleias", tipo: "Ata", fluxo: "ata_aprovada", categoria: "Atas & Convocatórias" },
   "participacao-sinistro": { tema: "Seguros", tipo: "Participação de Sinistro", fluxo: "participacao_sinistro", categoria: "Seguros & Apólices" },
   "termo-acordo-pagamento": { tema: "Contencioso e Ações Judiciais", tipo: "Termo de Acordo de Pagamento", fluxo: "termo_acordo_pagamento", categoria: "Processos Judiciais & Contencioso" },
-  "notificacao-obras-irregulares": { tema: "Contencioso e Ações Judiciais", tipo: "Notificação de Obras Irregulares", fluxo: "notificacao_obras_irregulares", categoria: "Processos Judiciais & Contencioso" }
+  "notificacao-obras-irregulares": { tema: "Contencioso e Ações Judiciais", tipo: "Notificação de Obras Irregulares", fluxo: "notificacao_obras_irregulares", categoria: "Processos Judiciais & Contencioso" },
+  "boas-vindas-gestor": { tema: "Comunicações", tipo: "Boas-vindas Gestão", fluxo: "boas_vindas_gestao" }
 };
 
 const TIPOS_ESPECIAIS = new Set([
@@ -37,7 +39,8 @@ const TIPOS_ESPECIAIS = new Set([
   "ata-aprovada",
   "participacao-sinistro",
   "termo-acordo-pagamento",
-  "notificacao-obras-irregulares"
+  "notificacao-obras-irregulares",
+  "boas-vindas-gestor"
 ]);
 
 /**
@@ -109,12 +112,23 @@ function gerarDocEspecial(tipo, body) {
     };
   }
 
-  // notificacao-obras-irregulares
+  if (tipo === "notificacao-obras-irregulares") {
+    return {
+      doc: gerarNotificacaoObrasIrregularesPDF(body.notificacao || {}, true),
+      nomeFicheiro: `Notificacao_Obras_Irregulares_${(body.notificacao?.fracaoNome || "fracao").replace(/\s+/g, "_")}.pdf`,
+      assunto: `Notificação de Cessação de Obras / Violação do Regulamento — Fração ${body.notificacao?.fracaoNome || ""}`,
+      mensagem: `Segue em anexo notificação formal relativa a obras não autorizadas / violação do regulamento interno detetada na sua fração.`
+    };
+  }
+
+  // boas-vindas-gestor (cobre também Super Admin, quando gestor.perfil === "ADMIN")
+  const gestor = body.gestor || {};
+  const ehAdmin = gestor.perfil === "ADMIN";
   return {
-    doc: gerarNotificacaoObrasIrregularesPDF(body.notificacao || {}, true),
-    nomeFicheiro: `Notificacao_Obras_Irregulares_${(body.notificacao?.fracaoNome || "fracao").replace(/\s+/g, "_")}.pdf`,
-    assunto: `Notificação de Cessação de Obras / Violação do Regulamento — Fração ${body.notificacao?.fracaoNome || ""}`,
-    mensagem: `Segue em anexo notificação formal relativa a obras não autorizadas / violação do regulamento interno detetada na sua fração.`
+    doc: gerarPdfBoasVindasGestor(gestor, body.predios || [], body.empresaNome, body.logoUrl, true),
+    nomeFicheiro: ehAdmin ? "Instrucoes_Acesso_Perfil_Administrador.pdf" : "Instrucoes_Acesso_Perfil_Gestor.pdf",
+    assunto: ehAdmin ? "Nomeação & Ativação de Acesso à Gestão — Administrador" : "Nomeação & Ativação de Acesso à Gestão — Gestor Operacional",
+    mensagem: `Foi ativado o seu perfil de acesso à gestão do condomínio. Segue em anexo o documento com as credenciais provisórias e o guia de acesso à plataforma.`
   };
 }
 
