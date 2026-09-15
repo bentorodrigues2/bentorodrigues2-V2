@@ -74,18 +74,19 @@ export default function AuthForm({
     }
     setSendingReset(true);
     try {
-      const PRODUCTION_SITE_URL = "https://bentorodrigues2.condomanagerai.com";
-      const origin = typeof window !== "undefined" ? window.location.origin : undefined;
-      const siteUrl = origin && !origin.includes("localhost") ? origin : PRODUCTION_SITE_URL;
-      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: siteUrl
+      // Passa pelo nosso próprio endpoint (que gera o link e envia o email
+      // via Resend, em português e com a marca da app) em vez de deixar o
+      // supabase.auth.resetPasswordForEmail disparar o email genérico do
+      // Supabase (em inglês, remetente "Supabase Auth").
+      await fetch("/api/admin?acao=recuperar-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: cleanEmail })
       });
-      if (error) {
-        alert(`Erro ao enviar o email de recuperação: ${error.message}`);
-        return;
-      }
       createSecurityLog(cleanEmail, "PASSWORD_RESET_REQUESTED", "Pedido de e-mail de redefinição de palavra-passe enviado.");
       setResetSent(true);
+    } catch (err) {
+      alert("Não foi possível enviar o email de recuperação. Tente novamente.");
     } finally {
       setSendingReset(false);
     }

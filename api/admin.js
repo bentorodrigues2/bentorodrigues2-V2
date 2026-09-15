@@ -53,6 +53,40 @@ async function convidarUtilizador({ email, nome, role, id_predio, id_fracao }) {
   return { actionLink: data.action_link, reenvio: false };
 }
 
+/**
+ * Pedido de "Esqueceu-se da password?" feito pelo próprio utilizador no
+ * login. Em vez de deixar o supabase.auth.resetPasswordForEmail (chamado
+ * diretamente do browser) disparar o email genérico e em inglês do próprio
+ * Supabase, geramos o link aqui no servidor e enviamos nós o email, com a
+ * mesma marca/idioma dos restantes emails da app. Devolve sempre sucesso,
+ * exista ou não a conta, para não revelar a terceiros que emails têm conta.
+ */
+async function pedirRecuperacaoPassword({ email }) {
+  const emailLimpo = (email || "").trim().toLowerCase();
+  if (!emailLimpo) throw new Error("email é obrigatório");
+
+  const { data, error } = await supabase.auth.admin.generateLink({
+    type: "recovery",
+    email: emailLimpo,
+    options: { redirectTo: SITE_URL }
+  });
+
+  if (error) {
+    console.warn("[recuperar-password] Não foi possível gerar o link:", error.message);
+    return { enviado: false };
+  }
+
+  const actionLink = data.action_link;
+  const mensagem =
+    `Recebemos um pedido para redefinir a palavra-passe da sua conta no CondoManager AI.<br><br>Para escolher uma nova palavra-passe, clique no botão abaixo:<br><br>` +
+    `<a href="${actionLink}" style="display:inline-block;background-color:#0f766e;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Redefinir Palavra-passe</a><br><br>` +
+    `Se o botão não funcionar, copie e cole este link no navegador:<br>${actionLink}<br><br>Se não pediu esta alteração, pode ignorar este email com segurança — a sua palavra-passe atual mantém-se inalterada.`;
+
+  const html = gerarHtmlResposta("Utilizador(a)", mensagem);
+  const enviado = await enviarEmailSemAnexo({ to: emailLimpo, subject: "Redefinição de Palavra-passe — CondoManager AI", html });
+  return { enviado };
+}
+
 async function atualizarPerfil({ id, email, nome, role, id_predio, id_fracao }) {
   if (!id) return;
   await supabase.from("profiles").upsert({
@@ -79,6 +113,18 @@ export default async function handler(req, res) {
   }
 
   const acao = req.query?.acao;
+
+  if (acao === "recuperar-password") {
+    try {
+      const { email } = req.body || {};
+      await pedirRecuperacaoPassword({ email });
+      // Resposta sempre igual, exista ou não a conta (evita enumeração de emails).
+      return res.status(200).json({ ok: true });
+    } catch (err) {
+      console.error("Erro em /api/admin?acao=recuperar-password:", err);
+      return res.status(200).json({ ok: true });
+    }
+  }
 
   if (acao === "convidar") {
     try {
