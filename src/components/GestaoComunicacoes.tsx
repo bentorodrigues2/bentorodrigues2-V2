@@ -1,5 +1,19 @@
-import React, { useState } from "react";
-import { Predio, Fracao, LoggedUser, Aviso } from "../types";
+import React, { useState, useEffect, useCallback } from "react";
+import { Predio, Fracao, LoggedUser, Aviso, Comunicado, ConversaCondomino, MensagemConversa, Sondagem, Questionario } from "../types";
+import { supabase } from "../lib/supabaseClient";
+import {
+  isSupabaseConfigured,
+  fetchComunicadosFromSupabase,
+  saveComunicadoToSupabase,
+  fetchConversasFromSupabase,
+  saveConversaToSupabase,
+  fetchMensagensConversaFromSupabase,
+  saveMensagemConversaToSupabase,
+  fetchSondagensFromSupabase,
+  saveSondagemToSupabase,
+  fetchQuestionariosFromSupabase,
+  saveQuestionarioToSupabase
+} from "../lib/supabaseService";
 
 interface GestaoComunicacoesProps {
   predio: Predio;
@@ -11,176 +25,358 @@ interface GestaoComunicacoesProps {
   onSubSectionChange?: (sub: "broadcast" | "chat" | "sondagens" | "questionarios") => void;
 }
 
-interface ConversaItem {
-  id: string;
-  fracaoId: string;
-  fracaoNome: string;
-  proprietario: string;
-  assunto: string;
-  ultima_atualizacao: string;
-  estado: "pendente" | "arquivada";
-  mensagens: Array<{ autor: "condomino" | "administracao"; texto: string; data: string }>;
-}
-
 export function GestaoComunicacoes({
   predio,
   fracoes,
-  avisos,
   loggedUser,
   activeSubSection = "broadcast",
   onSubSectionChange,
 }: GestaoComunicacoesProps) {
   const [commSubTab, setCommSubTab] = useState<"broadcast" | "chat" | "sondagens" | "questionarios">(activeSubSection);
 
-  // Sync internal state when prop changes
-  React.useEffect(() => {
-    if (activeSubSection) {
-      setCommSubTab(activeSubSection);
-    }
+  useEffect(() => {
+    if (activeSubSection) setCommSubTab(activeSubSection);
   }, [activeSubSection]);
 
   const handleTabClick = (sub: "broadcast" | "chat" | "sondagens" | "questionarios") => {
     setCommSubTab(sub);
-    if (onSubSectionChange) {
-      onSubSectionChange(sub);
-    }
+    if (onSubSectionChange) onSubSectionChange(sub);
   };
 
-  // 1. BROADCAST STATE
-  const [comunicadosList, setComunicadosList] = useState<Array<{
-    id: string;
-    titulo: string;
-    mensagem: string;
-    data_envio: string;
-    urgencia: "normal" | "urgente";
-    anexos: string[];
-    estado: string;
-  }>>([]);
+  const destinatariosPredio = fracoes
+    .filter(f => f.proprietario?.email)
+    .map(f => ({ email: f.proprietario.email, nome: f.proprietario.nome }));
+
+  // ==========================================================================
+  // 1. BROADCAST (Comunicados & Avisos)
+  // ==========================================================================
+  const [comunicadosList, setComunicadosList] = useState<Comunicado[]>([]);
+  const [loadingComunicados, setLoadingComunicados] = useState(false);
+  const [enviandoBroadcast, setEnviandoBroadcast] = useState(false);
 
   const [comunicadoTitulo, setComunicadoTitulo] = useState("");
   const [comunicadoMensagem, setComunicadoMensagem] = useState("");
   const [comunicadoUrgencia, setComunicadoUrgencia] = useState<"normal" | "urgente">("normal");
 
-  const handleSendBroadcast = (e: React.FormEvent) => {
+  const carregarComunicados = useCallback(async () => {
+    if (!predio?.id_predio) return;
+    setLoadingComunicados(true);
+    const dados = await fetchComunicadosFromSupabase(predio.id_predio);
+    setComunicadosList(dados || []);
+    setLoadingComunicados(false);
+  }, [predio?.id_predio]);
+
+  useEffect(() => { carregarComunicados(); }, [carregarComunicados]);
+
+  const handleSendBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!comunicadoTitulo.trim() || !comunicadoMensagem.trim()) return;
+    if (!comunicadoTitulo.trim() || !comunicadoMensagem.trim() || enviandoBroadcast) return;
 
-    const newCom = {
-      id: "com_" + Date.now(),
-      titulo: comunicadoTitulo,
-      mensagem: comunicadoMensagem,
-      data_envio: new Date().toLocaleDateString("pt-PT"),
-      urgencia: comunicadoUrgencia,
-      anexos: [],
-      estado: "enviado",
-    };
+    if (destinatariosPredio.length === 0) {
+      alert("Nenhuma fração tem email de proprietário registado. Não há destinatários para este comunicado.");
+      return;
+    }
 
-    setComunicadosList(prev => [newCom, ...prev]);
-    setComunicadoTitulo("");
-    setComunicadoMensagem("");
-    alert("Comunicado Global enviado com sucesso para todas as frações!");
+    setEnviandoBroadcast(true);
+    try {
+      const resp = await fetch("/api/email?acao=broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          destinatarios: destinatariosPredio,
+          assunto: comunicadoTitulo,
+          mensagem: comunicadoMensagem,
+          urgente: comunicadoUrgencia === "urgente"
+        })
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) throw new Error(data.error || "Falha ao enviar comunicado");
+
+      const novoComunicado: Comunicado = {
+        id_comunicado: "com_" + Date.now(),
+        id_predio: predio.id_predio,
+        titulo: comunicadoTitulo,
+        mensagem: comunicadoMensagem,
+        urgencia: comunicadoUrgencia,
+        autor_nome: loggedUser?.nome,
+        total_destinatarios: data.total_destinatarios,
+        total_enviados: data.total_enviados
+      };
+      await saveComunicadoToSupabase(novoComunicado);
+      setComunicadosList(prev => [{ ...novoComunicado, created_at: new Date().toISOString() }, ...prev]);
+      setComunicadoTitulo("");
+      setComunicadoMensagem("");
+      alert(`Comunicado enviado com sucesso a ${data.total_enviados} de ${data.total_destinatarios} destinatário(s)!`);
+    } catch (err: any) {
+      alert("Erro ao enviar o comunicado: " + (err?.message || "erro desconhecido"));
+    } finally {
+      setEnviandoBroadcast(false);
+    }
   };
 
-  // 2. CHAT / INBOX STATE
-  const [conversas, setConversas] = useState<ConversaItem[]>([]);
-
+  // ==========================================================================
+  // 2. CHAT / INBOX (Admin)
+  // ==========================================================================
+  const [conversas, setConversas] = useState<ConversaCondomino[]>([]);
+  const [loadingConversas, setLoadingConversas] = useState(false);
   const [selectedConversaId, setSelectedConversaId] = useState<string>("");
+  const [mensagensSelecionadas, setMensagensSelecionadas] = useState<MensagemConversa[]>([]);
   const [respostaTexto, setRespostaTexto] = useState("");
+  const [enviandoResposta, setEnviandoResposta] = useState(false);
 
-  const handleSendResposta = (e: React.FormEvent) => {
+  const carregarConversas = useCallback(async () => {
+    if (!predio?.id_predio) return;
+    setLoadingConversas(true);
+    const dados = await fetchConversasFromSupabase(predio.id_predio);
+    setConversas(dados || []);
+    setLoadingConversas(false);
+  }, [predio?.id_predio]);
+
+  useEffect(() => { carregarConversas(); }, [carregarConversas]);
+
+  // Realtime: novas conversas / atualizações à lista da inbox
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !predio?.id_predio) return;
+    const canal = supabase
+      .channel(`conversas_${predio.id_predio}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversas", filter: `id_predio=eq.${predio.id_predio}` },
+        () => { carregarConversas(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(canal); };
+  }, [predio?.id_predio, carregarConversas]);
+
+  const carregarMensagens = useCallback(async (idConversa: string) => {
+    const dados = await fetchMensagensConversaFromSupabase(idConversa);
+    setMensagensSelecionadas(dados || []);
+  }, []);
+
+  useEffect(() => {
+    if (selectedConversaId) carregarMensagens(selectedConversaId);
+    else setMensagensSelecionadas([]);
+  }, [selectedConversaId, carregarMensagens]);
+
+  // Realtime: mensagens novas na conversa aberta
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !selectedConversaId) return;
+    const canal = supabase
+      .channel(`mensagens_${selectedConversaId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "mensagens_conversa", filter: `id_conversa=eq.${selectedConversaId}` },
+        (payload: any) => {
+          const nova = payload.new;
+          setMensagensSelecionadas(prev => prev.some(m => m.id_mensagem === nova.id_mensagem) ? prev : [...prev, {
+            id_mensagem: nova.id_mensagem,
+            id_conversa: nova.id_conversa,
+            autor: nova.autor,
+            texto: nova.texto,
+            created_at: nova.created_at
+          }]);
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(canal); };
+  }, [selectedConversaId]);
+
+  const handleSendResposta = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!respostaTexto.trim()) return;
+    if (!respostaTexto.trim() || !selectedConversaId || enviandoResposta) return;
 
-    setConversas(prev => prev.map(c => {
-      if (c.id === selectedConversaId) {
-        return {
-          ...c,
-          estado: "arquivada" as const,
-          ultima_atualizacao: new Date().toLocaleDateString("pt-PT"),
-          mensagens: [
-            ...c.mensagens,
-            { autor: "administracao", texto: respostaTexto, data: new Date().toLocaleDateString("pt-PT") + " " + new Date().toTimeString().split(" ")[0].substring(0, 5) }
-          ]
-        };
+    const selectedC = conversas.find(c => c.id_conversa === selectedConversaId);
+    if (!selectedC) return;
+
+    setEnviandoResposta(true);
+    try {
+      const novaMensagem: MensagemConversa = {
+        id_mensagem: "msg_" + Date.now(),
+        id_conversa: selectedConversaId,
+        autor: "administracao",
+        texto: respostaTexto
+      };
+      await saveMensagemConversaToSupabase(novaMensagem);
+      setMensagensSelecionadas(prev => [...prev, { ...novaMensagem, created_at: new Date().toISOString() }]);
+
+      const fracaoDaConversa = fracoes.find(f => f.id_fracao === selectedC.id_fracao);
+      if (fracaoDaConversa?.proprietario?.email) {
+        await fetch("/api/email?acao=notificar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: fracaoDaConversa.proprietario.email,
+            nomeDestinatario: fracaoDaConversa.proprietario.nome,
+            assunto: `Nova resposta da Administração: ${selectedC.assunto || "a sua mensagem"}`,
+            mensagem: respostaTexto
+          })
+        });
       }
-      return c;
-    }));
 
-    setRespostaTexto("");
-    alert("Resposta enviada com sucesso! A conversa foi arquivada no histórico.");
+      setRespostaTexto("");
+    } catch (err) {
+      alert("Erro ao enviar a resposta.");
+    } finally {
+      setEnviandoResposta(false);
+    }
   };
 
-  // 3. SONDAGENS STATE
-  const [sondagensList, setSondagensList] = useState<Array<{
-    id: string;
-    pergunta: string;
-    opcoes: string[];
-    votos: Record<string, number>;
-    estado: string;
-    criada: string;
-    fecho: string;
-  }>>([]);
+  const handleArquivarConversa = async (idConversa: string) => {
+    const c = conversas.find(cv => cv.id_conversa === idConversa);
+    if (!c) return;
+    const atualizada = { ...c, estado: "arquivada" as const };
+    await saveConversaToSupabase(atualizada);
+    setConversas(prev => prev.map(cv => cv.id_conversa === idConversa ? atualizada : cv));
+  };
 
+  const selectedConversa = conversas.find(c => c.id_conversa === selectedConversaId);
+
+  // ==========================================================================
+  // 3. SONDAGENS
+  // ==========================================================================
+  const [sondagensList, setSondagensList] = useState<Sondagem[]>([]);
+  const [loadingSondagens, setLoadingSondagens] = useState(false);
+  const [criandoSondagem, setCriandoSondagem] = useState(false);
   const [sondagemPergunta, setSondagemPergunta] = useState("");
   const [sondagemOpcao1, setSondagemOpcao1] = useState("A Favor");
   const [sondagemOpcao2, setSondagemOpcao2] = useState("Contra");
 
-  const handleCreateSondagem = (e: React.FormEvent) => {
+  const carregarSondagens = useCallback(async () => {
+    if (!predio?.id_predio) return;
+    setLoadingSondagens(true);
+    const dados = await fetchSondagensFromSupabase(predio.id_predio);
+    setSondagensList(dados || []);
+    setLoadingSondagens(false);
+  }, [predio?.id_predio]);
+
+  useEffect(() => { carregarSondagens(); }, [carregarSondagens]);
+
+  const handleCreateSondagem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!sondagemPergunta.trim()) return;
+    if (!sondagemPergunta.trim() || criandoSondagem) return;
 
     const ops = [sondagemOpcao1.trim(), sondagemOpcao2.trim()].filter(Boolean);
-    const initVotes: Record<string, number> = {};
-    ops.forEach(o => { initVotes[o] = 0; });
+    setCriandoSondagem(true);
+    try {
+      const dataFecho = new Date();
+      dataFecho.setDate(dataFecho.getDate() + 15);
+      const nova: Sondagem = {
+        id_sondagem: "sond_" + Date.now(),
+        id_predio: predio.id_predio,
+        pergunta: sondagemPergunta,
+        opcoes: ops,
+        estado: "ativa",
+        data_fecho: dataFecho.toISOString().split("T")[0]
+      };
+      const ok = await saveSondagemToSupabase(nova);
+      if (!ok) throw new Error("Falha ao gravar sondagem");
 
-    const newSond = {
-      id: "sond_" + Date.now(),
-      pergunta: sondagemPergunta,
-      opcoes: ops,
-      votos: initVotes,
-      estado: "ativa",
-      criada: new Date().toLocaleDateString("pt-PT"),
-      fecho: "Em 15 dias",
-    };
+      if (destinatariosPredio.length > 0) {
+        await fetch("/api/email?acao=broadcast", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            destinatarios: destinatariosPredio,
+            assunto: `Nova Sondagem: ${sondagemPergunta}`,
+            mensagem: `A administração lançou uma nova sondagem: "${sondagemPergunta}". Aceda à sua área de condómino para votar.`
+          })
+        });
+      }
 
-    setSondagensList(prev => [newSond, ...prev]);
-    setSondagemPergunta("");
-    alert("Sondagem criada e disponibilizada aos condóminos com sucesso!");
+      setSondagensList(prev => [{ ...nova, votos: [] }, ...prev]);
+      setSondagemPergunta("");
+      alert("Sondagem criada e notificação enviada aos condóminos!");
+    } catch (err: any) {
+      alert("Erro ao criar sondagem: " + (err?.message || "erro desconhecido"));
+    } finally {
+      setCriandoSondagem(false);
+    }
   };
 
-  // 4. QUESTIONÁRIOS STATE
-  const [questionariosList, setQuestionariosList] = useState<Array<{
-    id: string;
-    titulo: string;
-    descricao: string;
-    respostasCount: number;
-    criado: string;
-    estado: string;
-  }>>([]);
+  const handleFecharSondagem = async (idSondagem: string) => {
+    const s = sondagensList.find(sd => sd.id_sondagem === idSondagem);
+    if (!s) return;
+    const atualizada = { ...s, estado: "fechada" as const };
+    await saveSondagemToSupabase(atualizada);
+    setSondagensList(prev => prev.map(sd => sd.id_sondagem === idSondagem ? atualizada : sd));
+  };
 
+  const totalPermilagemPredio = fracoes.reduce((acc, f) => acc + (f.permilagem || 0), 0) || 1000;
+
+  const resultadosPermilagem = (s: Sondagem) => {
+    const votos = s.votos || [];
+    return s.opcoes.map(op => {
+      const totalPermil = votos.filter(v => v.opcao_escolhida === op).reduce((acc, v) => acc + (v.permilagem || 0), 0);
+      const pct = Math.min((totalPermil / totalPermilagemPredio) * 100, 100);
+      return { opcao: op, votos: votos.filter(v => v.opcao_escolhida === op).length, permilagem: totalPermil, pct };
+    });
+  };
+
+  // ==========================================================================
+  // 4. QUESTIONÁRIOS
+  // ==========================================================================
+  const [questionariosList, setQuestionariosList] = useState<Questionario[]>([]);
+  const [loadingQuestionarios, setLoadingQuestionarios] = useState(false);
+  const [criandoQuest, setCriandoQuest] = useState(false);
   const [questTitulo, setQuestTitulo] = useState("");
   const [questDesc, setQuestDesc] = useState("");
 
-  const handleCreateQuest = (e: React.FormEvent) => {
+  const carregarQuestionarios = useCallback(async () => {
+    if (!predio?.id_predio) return;
+    setLoadingQuestionarios(true);
+    const dados = await fetchQuestionariosFromSupabase(predio.id_predio);
+    setQuestionariosList(dados || []);
+    setLoadingQuestionarios(false);
+  }, [predio?.id_predio]);
+
+  useEffect(() => { carregarQuestionarios(); }, [carregarQuestionarios]);
+
+  const handleCreateQuest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!questTitulo.trim()) return;
+    if (!questTitulo.trim() || criandoQuest) return;
 
-    const newQuest = {
-      id: "quest_" + Date.now(),
-      titulo: questTitulo,
-      descricao: questDesc,
-      respostasCount: 0,
-      criado: new Date().toLocaleDateString("pt-PT"),
-      estado: "ativo",
-    };
+    setCriandoQuest(true);
+    try {
+      const novo: Questionario = {
+        id_questionario: "quest_" + Date.now(),
+        id_predio: predio.id_predio,
+        titulo: questTitulo,
+        descricao: questDesc,
+        estado: "ativo"
+      };
+      const ok = await saveQuestionarioToSupabase(novo);
+      if (!ok) throw new Error("Falha ao gravar questionário");
 
-    setQuestionariosList(prev => [newQuest, ...prev]);
-    setQuestTitulo("");
-    setQuestDesc("");
-    alert("Questionário criado com sucesso!");
+      if (destinatariosPredio.length > 0) {
+        await fetch("/api/email?acao=broadcast", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            destinatarios: destinatariosPredio,
+            assunto: `Novo Questionário: ${questTitulo}`,
+            mensagem: `A administração publicou um novo questionário: "${questTitulo}". ${questDesc || ""} Aceda à sua área de condómino para responder.`
+          })
+        });
+      }
+
+      setQuestionariosList(prev => [{ ...novo, respostas: [] }, ...prev]);
+      setQuestTitulo("");
+      setQuestDesc("");
+      alert("Questionário publicado e notificação enviada aos condóminos!");
+    } catch (err: any) {
+      alert("Erro ao criar questionário: " + (err?.message || "erro desconhecido"));
+    } finally {
+      setCriandoQuest(false);
+    }
   };
 
-  const selectedConversa = conversas.find(c => c.id === selectedConversaId) || conversas[0];
+  const handleEncerrarQuest = async (idQuestionario: string) => {
+    const q = questionariosList.find(qq => qq.id_questionario === idQuestionario);
+    if (!q) return;
+    const atualizado = { ...q, estado: "encerrado" as const };
+    await saveQuestionarioToSupabase(atualizado);
+    setQuestionariosList(prev => prev.map(qq => qq.id_questionario === idQuestionario ? atualizado : qq));
+  };
 
   return (
     <div className="space-y-6">
@@ -210,11 +406,28 @@ export function GestaoComunicacoes({
             <span>Canal Oficial de Comunicação Ativo</span>
           </div>
         </div>
+
+        <div className="flex flex-wrap gap-2">
+          {(["broadcast", "chat", "sondagens", "questionarios"] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => handleTabClick(tab)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                commSubTab === tab ? "bg-emerald-600 text-white" : "bg-white text-emerald-800 border border-emerald-200 hover:bg-emerald-100"
+              }`}
+            >
+              {tab === "broadcast" && "📢 Comunicados"}
+              {tab === "chat" && "💬 Mensagens"}
+              {tab === "sondagens" && "📊 Sondagens"}
+              {tab === "questionarios" && "📝 Questionários"}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ÁREA DE CONTEÚDO CORRESPONDENTE AO SUB-MENU SELECIONADO */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs min-h-[450px]">
-        
+
         {/* SUB-MENU 1: COMUNICADOS & AVISOS (BROADCAST) */}
         {commSubTab === "broadcast" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -222,6 +435,9 @@ export function GestaoComunicacoes({
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                 <i className="fa-solid fa-pen-nib text-emerald-600"></i> Redigir Novo Comunicado Geral
               </h4>
+              <p className="text-[10px] text-slate-500">
+                Será enviado por email a {destinatariosPredio.length} fração(ões) com email registado.
+              </p>
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">Título do Comunicado *</label>
@@ -261,24 +477,30 @@ export function GestaoComunicacoes({
 
               <button
                 type="submit"
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-3 rounded-xl text-xs transition-all cursor-pointer shadow-xs flex items-center justify-center gap-2"
+                disabled={enviandoBroadcast}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold p-3 rounded-xl text-xs transition-all cursor-pointer shadow-xs flex items-center justify-center gap-2"
               >
-                <i className="fa-solid fa-paper-plane text-xs"></i>
-                <span>Disparar Comunicado Global</span>
+                {enviandoBroadcast ? (
+                  <><i className="fa-solid fa-spinner fa-spin text-xs"></i><span>A enviar...</span></>
+                ) : (
+                  <><i className="fa-solid fa-paper-plane text-xs"></i><span>Disparar Comunicado Global</span></>
+                )}
               </button>
             </form>
 
             <div className="lg:col-span-7 space-y-4">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">Histórico de Comunicados Enviados</h4>
               <div className="space-y-3">
-                {comunicadosList.length === 0 ? (
+                {loadingComunicados ? (
+                  <div className="text-center text-slate-400 py-10 text-xs"><i className="fa-solid fa-spinner fa-spin mr-2"></i>A carregar...</div>
+                ) : comunicadosList.length === 0 ? (
                   <div className="text-center text-slate-400 py-10 px-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
                     <i className="fa-solid fa-bullhorn text-2xl mb-2 text-slate-300 block"></i>
                     Nenhum comunicado enviado até ao momento. Utilize o formulário para disparar um comunicado para todos os condóminos.
                   </div>
                 ) : (
                   comunicadosList.map(item => (
-                    <div key={item.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                    <div key={item.id_comunicado} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
                       <div className="flex justify-between items-start gap-2">
                         <span className="font-bold text-xs text-slate-900">{item.titulo}</span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.urgencia === "urgente" ? "bg-red-100 text-red-700 border border-red-200" : "bg-emerald-100 text-emerald-800 border border-emerald-200"}`}>
@@ -287,8 +509,8 @@ export function GestaoComunicacoes({
                       </div>
                       <p className="text-xs text-slate-600 leading-relaxed">{item.mensagem}</p>
                       <div className="flex justify-between items-center text-[10px] text-slate-400 pt-1 border-t border-slate-200/60">
-                        <span>Data: {item.data_envio}</span>
-                        <span className="text-emerald-600 font-bold">✓ Enviado a todas as frações</span>
+                        <span>Data: {item.created_at ? new Date(item.created_at).toLocaleDateString("pt-PT") : ""}</span>
+                        <span className="text-emerald-600 font-bold">✓ Enviado a {item.total_enviados}/{item.total_destinatarios} fração(ões)</span>
                       </div>
                     </div>
                   ))
@@ -304,7 +526,9 @@ export function GestaoComunicacoes({
             <div className="lg:col-span-4 space-y-3 border-r border-slate-200 pr-0 lg:pr-4">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 mb-2">Mensagens Recebidas</h4>
               <div className="space-y-2">
-                {conversas.length === 0 ? (
+                {loadingConversas ? (
+                  <div className="text-center text-slate-400 py-8 text-xs"><i className="fa-solid fa-spinner fa-spin mr-2"></i>A carregar...</div>
+                ) : conversas.length === 0 ? (
                   <div className="text-center text-slate-400 py-8 px-2 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
                     <i className="fa-regular fa-comments text-2xl mb-1 text-slate-300 block"></i>
                     Nenhuma mensagem recebida na caixa de entrada.
@@ -312,21 +536,21 @@ export function GestaoComunicacoes({
                 ) : (
                   conversas.map(c => (
                     <button
-                      key={c.id}
-                      onClick={() => setSelectedConversaId(c.id)}
+                      key={c.id_conversa}
+                      onClick={() => setSelectedConversaId(c.id_conversa)}
                       className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer space-y-1 ${
-                        selectedConversaId === c.id
+                        selectedConversaId === c.id_conversa
                           ? "bg-emerald-50 border-emerald-300 ring-2 ring-emerald-400/20"
                           : "bg-slate-50 border-slate-200 hover:bg-slate-100"
                       }`}
                     >
                       <div className="flex justify-between items-center">
-                        <span className="font-bold text-xs text-slate-900 truncate">{c.proprietario}</span>
+                        <span className="font-bold text-xs text-slate-900 truncate">{c.proprietario_nome}</span>
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${c.estado === "pendente" ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-600"}`}>
                           {c.estado === "pendente" ? "Pendente" : "Arquivada"}
                         </span>
                       </div>
-                      <div className="text-[11px] font-semibold text-emerald-800 truncate">{c.fracaoNome}</div>
+                      <div className="text-[11px] font-semibold text-emerald-800 truncate">{fracoes.find(f => f.id_fracao === c.id_fracao)?.fracao_nome || c.id_fracao}</div>
                       <div className="text-[10px] text-slate-500 truncate">{c.assunto}</div>
                     </button>
                   ))
@@ -338,18 +562,30 @@ export function GestaoComunicacoes({
               {selectedConversa ? (
                 <div className="space-y-4 flex-1 flex flex-col justify-between">
                   <div>
-                    <div className="border-b border-slate-200 pb-3 mb-4">
-                      <h3 className="font-bold text-sm text-slate-900">{selectedConversa.assunto}</h3>
-                      <p className="text-xs text-slate-500">{selectedConversa.fracaoNome} — {selectedConversa.proprietario}</p>
+                    <div className="border-b border-slate-200 pb-3 mb-4 flex justify-between items-start">
+                      <div>
+                        <h3 className="font-bold text-sm text-slate-900">{selectedConversa.assunto}</h3>
+                        <p className="text-xs text-slate-500">
+                          {fracoes.find(f => f.id_fracao === selectedConversa.id_fracao)?.fracao_nome} — {selectedConversa.proprietario_nome}
+                        </p>
+                      </div>
+                      {selectedConversa.estado === "pendente" && (
+                        <button
+                          onClick={() => handleArquivarConversa(selectedConversa.id_conversa)}
+                          className="text-[10px] font-bold text-slate-500 hover:text-slate-800 border border-slate-300 rounded-lg px-2.5 py-1.5 cursor-pointer"
+                        >
+                          <i className="fa-solid fa-box-archive mr-1"></i> Arquivar
+                        </button>
+                      )}
                     </div>
 
                     <div className="space-y-3 max-h-[300px] overflow-y-auto p-2">
-                      {selectedConversa.mensagens.map((m, idx) => (
-                        <div key={idx} className={`flex ${m.autor === "administracao" ? "justify-end" : "justify-start"}`}>
+                      {mensagensSelecionadas.map((m) => (
+                        <div key={m.id_mensagem} className={`flex ${m.autor === "administracao" ? "justify-end" : "justify-start"}`}>
                           <div className={`max-w-[80%] p-3 rounded-xl text-xs space-y-1 ${m.autor === "administracao" ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-800 border border-slate-200"}`}>
-                            <div className="font-bold text-[10px] opacity-80">{m.autor === "administracao" ? "Administração" : selectedConversa.proprietario}</div>
+                            <div className="font-bold text-[10px] opacity-80">{m.autor === "administracao" ? "Administração" : selectedConversa.proprietario_nome}</div>
                             <div>{m.texto}</div>
-                            <div className="text-[9px] opacity-70 text-right">{m.data}</div>
+                            <div className="text-[9px] opacity-70 text-right">{m.created_at ? new Date(m.created_at).toLocaleString("pt-PT") : ""}</div>
                           </div>
                         </div>
                       ))}
@@ -368,10 +604,11 @@ export function GestaoComunicacoes({
                     />
                     <button
                       type="submit"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-2"
+                      disabled={enviandoResposta}
+                      className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold px-4 py-2 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-2"
                     >
-                      <i className="fa-solid fa-reply text-xs"></i>
-                      <span>Enviar Resposta & Arquivar</span>
+                      {enviandoResposta ? <i className="fa-solid fa-spinner fa-spin text-xs"></i> : <i className="fa-solid fa-reply text-xs"></i>}
+                      <span>Enviar Resposta</span>
                     </button>
                   </form>
                 </div>
@@ -430,46 +667,53 @@ export function GestaoComunicacoes({
 
               <button
                 type="submit"
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-3 rounded-xl text-xs transition-all cursor-pointer shadow-xs flex items-center justify-center gap-2"
+                disabled={criandoSondagem}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold p-3 rounded-xl text-xs transition-all cursor-pointer shadow-xs flex items-center justify-center gap-2"
               >
-                <i className="fa-solid fa-square-poll-horizontal text-xs"></i>
+                {criandoSondagem ? <i className="fa-solid fa-spinner fa-spin text-xs"></i> : <i className="fa-solid fa-square-poll-horizontal text-xs"></i>}
                 <span>Lançar Sondagem aos Condóminos</span>
               </button>
             </form>
 
             <div className="lg:col-span-7 space-y-4">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">Sondagens Ativas e Resultados</h4>
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">Sondagens Ativas e Resultados (ponderado por permilagem)</h4>
               <div className="space-y-4">
-                {sondagensList.length === 0 ? (
+                {loadingSondagens ? (
+                  <div className="text-center text-slate-400 py-10 text-xs"><i className="fa-solid fa-spinner fa-spin mr-2"></i>A carregar...</div>
+                ) : sondagensList.length === 0 ? (
                   <div className="text-center text-slate-400 py-10 px-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
                     <i className="fa-solid fa-square-poll-horizontal text-2xl mb-2 text-slate-300 block"></i>
                     Nenhuma sondagem ou votação ativa no momento. Utilize o formulário para criar uma nova sondagem para os condóminos.
                   </div>
                 ) : (
                   sondagensList.map(s => (
-                    <div key={s.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+                    <div key={s.id_sondagem} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
                       <div className="flex justify-between items-start gap-2">
                         <span className="font-bold text-xs text-slate-900">{s.pergunta}</span>
-                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
-                          Ativa ({s.fecho})
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${s.estado === "ativa" ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-slate-200 text-slate-600 border-slate-300"}`}>
+                            {s.estado === "ativa" ? `Ativa (fecha ${s.data_fecho ? new Date(s.data_fecho).toLocaleDateString("pt-PT") : ""})` : "Fechada"}
+                          </span>
+                          {s.estado === "ativa" && (
+                            <button onClick={() => handleFecharSondagem(s.id_sondagem)} className="text-[10px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer">
+                              Fechar
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       <div className="space-y-2 pt-1">
-                        {Object.entries(s.votos).map(([op, v]) => {
-                          const count = Number(v) || 0;
-                          return (
-                            <div key={op} className="space-y-1">
-                              <div className="flex justify-between text-[11px] font-semibold text-slate-700">
-                                <span>{op}</span>
-                                <span>{count} Votos</span>
-                              </div>
-                              <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                                <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(count * 8, 100)}%` }}></div>
-                              </div>
+                        {resultadosPermilagem(s).map(r => (
+                          <div key={r.opcao} className="space-y-1">
+                            <div className="flex justify-between text-[11px] font-semibold text-slate-700">
+                              <span>{r.opcao}</span>
+                              <span>{r.votos} voto(s) — {r.pct.toFixed(1)}‰ do total</span>
                             </div>
-                          );
-                        })}
+                            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                              <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${r.pct}%` }}></div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ))
@@ -512,9 +756,10 @@ export function GestaoComunicacoes({
 
               <button
                 type="submit"
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-3 rounded-xl text-xs transition-all cursor-pointer shadow-xs flex items-center justify-center gap-2"
+                disabled={criandoQuest}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold p-3 rounded-xl text-xs transition-all cursor-pointer shadow-xs flex items-center justify-center gap-2"
               >
-                <i className="fa-solid fa-paper-plane text-xs"></i>
+                {criandoQuest ? <i className="fa-solid fa-spinner fa-spin text-xs"></i> : <i className="fa-solid fa-paper-plane text-xs"></i>}
                 <span>Publicar Inquérito aos Condóminos</span>
               </button>
             </form>
@@ -522,24 +767,33 @@ export function GestaoComunicacoes({
             <div className="lg:col-span-7 space-y-4">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">Inquéritos em Andamento</h4>
               <div className="space-y-3">
-                {questionariosList.length === 0 ? (
+                {loadingQuestionarios ? (
+                  <div className="text-center text-slate-400 py-10 text-xs"><i className="fa-solid fa-spinner fa-spin mr-2"></i>A carregar...</div>
+                ) : questionariosList.length === 0 ? (
                   <div className="text-center text-slate-400 py-10 px-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
                     <i className="fa-solid fa-clipboard-question text-2xl mb-2 text-slate-300 block"></i>
                     Nenhum inquérito ou questionário criado até ao momento. Utilize o formulário para lançar um inquérito de auscultação aos condóminos.
                   </div>
                 ) : (
                   questionariosList.map(q => (
-                    <div key={q.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                    <div key={q.id_questionario} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
                       <div className="flex justify-between items-start">
                         <span className="font-bold text-xs text-slate-900">{q.titulo}</span>
-                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
-                          Ativo
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${q.estado === "ativo" ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-slate-200 text-slate-600 border-slate-300"}`}>
+                            {q.estado === "ativo" ? "Ativo" : "Encerrado"}
+                          </span>
+                          {q.estado === "ativo" && (
+                            <button onClick={() => handleEncerrarQuest(q.id_questionario)} className="text-[10px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer">
+                              Encerrar
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <p className="text-xs text-slate-600">{q.descricao}</p>
                       <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-200">
-                        <span>Criado em: {q.criado}</span>
-                        <span className="font-bold text-emerald-700">{q.respostasCount} Respostas Recebidas</span>
+                        <span>Criado em: {q.created_at ? new Date(q.created_at).toLocaleDateString("pt-PT") : ""}</span>
+                        <span className="font-bold text-emerald-700">{(q.respostas || []).length} Respostas Recebidas</span>
                       </div>
                     </div>
                   ))

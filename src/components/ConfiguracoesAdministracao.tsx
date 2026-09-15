@@ -520,7 +520,6 @@ export function ConfiguracoesAdministracao({
   const [notifVistorias, setNotifVistorias] = useState(true);
   const [notifCanalEmail, setNotifCanalEmail] = useState(true);
   const [notifCanalPush, setNotifCanalPush] = useState(true);
-  const [notifCanalSMS, setNotifCanalSMS] = useState(true);
 
   // Activity logs state (limpo para testes com Supabase)
   const [logs, setLogs] = useState<AuditLogEntry[]>(() => {
@@ -2873,7 +2872,7 @@ export function ConfiguracoesAdministracao({
                     <span>Multicanal Ativo</span>
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">Defina quais eventos despoletam alertas push, e-mails ou SMS aos condóminos, técnicos e órgãos de administração.</p>
+                <p className="text-xs text-slate-400 mt-0.5">Defina quais eventos despoletam alertas push ou e-mails aos condóminos, técnicos e órgãos de administração.</p>
               </div>
             </div>
           </div>
@@ -2957,18 +2956,6 @@ export function ConfiguracoesAdministracao({
                 />
               </div>
 
-              <div className="flex justify-between items-center p-3 rounded-xl border bg-slate-50 dark:bg-slate-950 text-xs">
-                <div>
-                  <span className="font-bold block text-slate-800 dark:text-slate-200">Alertas de SMS Administrativos (Opcional)</span>
-                  <span className="text-[11px] text-slate-500">Envio de sms para convocações urgentes de assembleias.</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={notifCanalSMS}
-                  onChange={e => setNotifCanalSMS(e.target.checked)}
-                  className="h-4 w-4 rounded text-emerald-500 focus:ring-emerald-500 cursor-pointer"
-                />
-              </div>
             </div>
 
             <div className="pt-2">

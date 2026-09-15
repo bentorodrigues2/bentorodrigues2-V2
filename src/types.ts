@@ -11,6 +11,16 @@ export interface Patrimonio {
   tem_ginasio: boolean;
   tem_spa: boolean;
   tem_wc_piscina?: boolean;
+  regulamento?: {
+    silencio: string;
+    animais: string;
+    obras: string;
+    estacionamento: string;
+    lixo: string;
+    areasComuns: string;
+  };
+  regulamento_aprovado?: boolean;
+  assinatura_admin_base64?: string;
 }
 
 export interface ChaveItem {
@@ -681,6 +691,77 @@ export interface ReservaEspacoComum {
   valor_caucao?: number;
   termo_responsabilidade_aceite: boolean;
   estado: "PENDENTE_APROVACAO" | "CONFIRMADA" | "RECUSADA" | "CONCLUIDA";
+}
+
+export interface Comunicado {
+  id_comunicado: string;
+  id_predio: string;
+  titulo: string;
+  mensagem: string;
+  urgencia: "normal" | "urgente";
+  autor_nome?: string;
+  total_destinatarios?: number;
+  total_enviados?: number;
+  created_at?: string;
+}
+
+export interface MensagemConversa {
+  id_mensagem: string;
+  id_conversa: string;
+  autor: "condomino" | "administracao";
+  texto: string;
+  created_at?: string;
+}
+
+export interface ConversaCondomino {
+  id_conversa: string;
+  id_predio: string;
+  id_fracao: string;
+  proprietario_nome?: string;
+  assunto?: string;
+  estado: "pendente" | "arquivada";
+  created_at?: string;
+  updated_at?: string;
+  mensagens?: MensagemConversa[];
+}
+
+export interface Sondagem {
+  id_sondagem: string;
+  id_predio: string;
+  pergunta: string;
+  opcoes: string[];
+  estado: "ativa" | "fechada";
+  data_fecho?: string;
+  created_at?: string;
+  votos?: VotoSondagem[];
+}
+
+export interface VotoSondagem {
+  id_voto: string;
+  id_sondagem: string;
+  id_fracao: string;
+  opcao_escolhida: string;
+  permilagem?: number;
+  created_at?: string;
+}
+
+export interface Questionario {
+  id_questionario: string;
+  id_predio: string;
+  titulo: string;
+  descricao?: string;
+  estado: "ativo" | "encerrado";
+  created_at?: string;
+  respostas?: RespostaQuestionario[];
+}
+
+export interface RespostaQuestionario {
+  id_resposta: string;
+  id_questionario: string;
+  id_fracao: string;
+  resposta_texto?: string;
+  classificacao?: number;
+  created_at?: string;
 }
 
 

@@ -243,7 +243,7 @@ export default function App() {
   const [openMenuFornecedores, setOpenMenuFornecedores] = useState(false);
   const [openMenuConfiguracoesIA, setOpenMenuConfiguracoesIA] = useState(false);
   const [fornecedoresTab, setFornecedoresTab] = useState<"fornecedores" | "contratos">("fornecedores");
-  const [iaInitialTab, setIaInitialTab] = useState<"juridico" | "fundo_reserva" | "orcamentos" | "orcamento_anual_ia" | "cerebro_ia" | "comunicacoes_adenda" | undefined>(undefined); 
+  const [iaInitialTab, setIaInitialTab] = useState<"juridico" | "fundo_reserva" | "orcamentos" | "orcamento_anual_ia" | "cerebro_ia" | undefined>(undefined);
   const [viewMode, setViewMode] = useState<"BROWSER" | "PWA">("BROWSER");
   const [brandingColor, setBrandingColor] = useState<string>("emerald");
   const [whiteLabelLogo, setWhiteLabelLogo] = useState<string>(() => {

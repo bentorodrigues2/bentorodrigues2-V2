@@ -23,11 +23,24 @@ import {
   Upload,
   Download
 } from "lucide-react";
-import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento } from "../types";
+import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondagem, Questionario } from "../types";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
 import { generateCondominoPwaManualPDF, gerarCartaoAniversarioCondominoPDF } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { playVoiceNoteSimulation } from "../lib/soundService";
+import { supabase } from "../lib/supabaseClient";
+import {
+  isSupabaseConfigured,
+  fetchConversasFromSupabase,
+  saveConversaToSupabase,
+  fetchMensagensConversaFromSupabase,
+  saveMensagemConversaToSupabase,
+  fetchComunicadosFromSupabase,
+  fetchSondagensFromSupabase,
+  saveVotoSondagemToSupabase,
+  fetchQuestionariosFromSupabase,
+  saveRespostaQuestionarioToSupabase
+} from "../lib/supabaseService";
 
 // Inner Interfaces
 export interface MensagemAdministracao {
@@ -474,23 +487,82 @@ export function PortalCondomino({
   };
 
   // Contact Drawer / WhatsApp Chat submit
+  const uploadAnexoMensagem = async (dataUrl: string, nomeFicheiro: string): Promise<string | null> => {
+    try {
+      const match = dataUrl.match(/^data:([^;]+);base64,(.*)$/);
+      if (!match) return null;
+      const [, mimeType, base64] = match;
+      const resp = await fetch("/api/documento?acao=anexar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileBase64: base64,
+          fileName: nomeFicheiro,
+          mimeType,
+          predio: predio.id_predio,
+          ano: new Date().getFullYear(),
+          tema: "Comunicações",
+          tipo: "Anexo de Mensagem",
+          fluxo: "mensagem_condomino_anexo",
+          categoria: "Mensagens",
+          descricao: `Anexo enviado por ${loggedUser.nome} via chat com a administração`
+        })
+      });
+      const data = await resp.json();
+      return resp.ok && data.ok ? data.caminho : null;
+    } catch {
+      return null;
+    }
+  };
+
   const handleSendMsgToAdmin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!newMsgTexto && !newMsgAnexo && !recordedAudioUrl && !msgDocAttachment) {
       alert("Por favor, escreva uma mensagem, anexe uma fotografia/documento ou grave uma mensagem de voz.");
       return;
     }
-    
-    triggerSendReaction("mensagem", "A Enviar Mensagem à Administração...", () => {
+
+    triggerSendReaction("mensagem", "A Enviar Mensagem à Administração...", async () => {
       const userFracao = fracoes.find((f) => f.proprietario.email === loggedUser.email);
       const isVoice = !!recordedAudioUrl;
       const docLabel = msgDocAttachment ? ` 📄 (${msgDocAttachment.name})` : "";
+
+      let textoFinal = newMsgTexto || (isVoice ? `🎙️ Nota de voz (${recordingTimer || 4}s)` : msgDocAttachment ? `📎 Documento anexo: ${msgDocAttachment.name}` : "Fotografia anexada");
+
+      // Anexos (foto/áudio/documento) são carregados a sério para o Arquivo Digital,
+      // para não se perderem ao sair da sessão — a mensagem passa a referir o caminho.
+      if (newMsgAnexo) {
+        const caminho = await uploadAnexoMensagem(newMsgAnexo, `foto_${Date.now()}.webp`);
+        if (caminho) textoFinal += `\n📎 Anexo arquivado: ${caminho}`;
+      }
+      if (recordedAudioUrl) {
+        const caminho = await uploadAnexoMensagem(recordedAudioUrl, `audio_${Date.now()}.webm`);
+        if (caminho) textoFinal += `\n📎 Anexo arquivado: ${caminho}`;
+      }
+
+      const idConversa = "conv_" + Date.now();
+      const conversa = {
+        id_conversa: idConversa,
+        id_predio: predio.id_predio,
+        id_fracao: userFracao?.id_fracao || "",
+        proprietario_nome: loggedUser.nome,
+        assunto: newMsgAssunto || (isVoice ? "Mensagem de Voz" : "Mensagem Direta" + docLabel),
+        estado: "pendente" as const
+      };
+      await saveConversaToSupabase(conversa);
+      await saveMensagemConversaToSupabase({
+        id_mensagem: "msg_" + Date.now(),
+        id_conversa: idConversa,
+        autor: "condomino",
+        texto: textoFinal
+      });
+
       const novaMsg: MensagemAdministracao = {
-        id: "msg-" + Date.now(),
+        id: idConversa,
         id_fracao: userFracao?.id_fracao || "frac-1",
         nome_remetente: `${loggedUser.nome} (Fração ${userFracao?.fracao_nome || "A"})`,
-        assunto: newMsgAssunto || (isVoice ? "Mensagem de Voz" : "Mensagem Direta" + docLabel),
-        mensagem: newMsgTexto || (isVoice ? `🎙️ Nota de voz (${recordingTimer || 4}s)` : msgDocAttachment ? `📎 Documento anexo: ${msgDocAttachment.name}` : "Fotografia anexada"),
+        assunto: conversa.assunto,
+        mensagem: textoFinal,
         data: new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }),
         anexoWebP: newMsgAnexo,
         audioUrl: recordedAudioUrl,
@@ -748,6 +820,118 @@ export function PortalCondomino({
   const activeUserAvisos = avisos.filter(
     (a) => a.id_fracao === activeUserFracao?.id_fracao && a.id_predio === predio.id_predio
   );
+
+  // Carregar mensagens reais (Supabase) da fração do condómino autenticado.
+  // Cada "ticket" (MensagemAdministracao) corresponde a uma conversa; a 1ª
+  // mensagem é sempre do condómino e a 2ª (se existir) vira a resposta do admin.
+  const carregarMensagensReais = React.useCallback(async () => {
+    if (!activeUserFracao?.id_fracao || !predio?.id_predio) return;
+    const convs = await fetchConversasFromSupabase(predio.id_predio);
+    const minhas = (convs || []).filter(c => c.id_fracao === activeUserFracao.id_fracao);
+    const tickets: MensagemAdministracao[] = [];
+    for (const c of minhas) {
+      const msgs = await fetchMensagensConversaFromSupabase(c.id_conversa);
+      const primeira = (msgs || [])[0];
+      if (!primeira) continue;
+      const resposta = (msgs || []).find(m => m.autor === "administracao");
+      tickets.push({
+        id: c.id_conversa,
+        id_fracao: c.id_fracao,
+        nome_remetente: `${loggedUser.nome} (Fração ${activeUserFracao.fracao_nome})`,
+        assunto: c.assunto || "Mensagem Direta",
+        mensagem: primeira.texto,
+        data: primeira.created_at ? new Date(primeira.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : "",
+        anexoWebP: null,
+        estado: resposta ? "Respondida" : "Pendente",
+        respostaAdmin: resposta?.texto,
+        dataResposta: resposta?.created_at ? new Date(resposta.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : undefined,
+      });
+    }
+    setMensagens(tickets.reverse());
+  }, [activeUserFracao?.id_fracao, predio?.id_predio, loggedUser.nome]);
+
+  useEffect(() => { carregarMensagensReais(); }, [carregarMensagensReais]);
+
+  // Tempo real: refrescar sempre que houver uma conversa nova/atualizada desta fração
+  // (ex.: a administração respondeu a um pedido).
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !activeUserFracao?.id_fracao) return;
+    const canal = supabase
+      .channel(`portal_conversas_${activeUserFracao.id_fracao}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversas", filter: `id_fracao=eq.${activeUserFracao.id_fracao}` },
+        () => { carregarMensagensReais(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "mensagens_conversa" },
+        () => { carregarMensagensReais(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(canal); };
+  }, [activeUserFracao?.id_fracao, carregarMensagensReais]);
+
+  // Comunicados, Sondagens & Questionários (feed real do condómino)
+  const [comunicadosFeed, setComunicadosFeed] = useState<Comunicado[]>([]);
+  const [sondagensFeed, setSondagensFeed] = useState<Sondagem[]>([]);
+  const [questionariosFeed, setQuestionariosFeed] = useState<Questionario[]>([]);
+  const [respostaQuestTexto, setRespostaQuestTexto] = useState<{ [id: string]: string }>({});
+  const [aEnviarVoto, setAEnviarVoto] = useState<string>("");
+  const [aEnviarResposta, setAEnviarResposta] = useState<string>("");
+
+  const carregarFeedComunicacao = React.useCallback(async () => {
+    if (!predio?.id_predio) return;
+    const [com, sond, quest] = await Promise.all([
+      fetchComunicadosFromSupabase(predio.id_predio),
+      fetchSondagensFromSupabase(predio.id_predio),
+      fetchQuestionariosFromSupabase(predio.id_predio)
+    ]);
+    setComunicadosFeed(com || []);
+    setSondagensFeed(sond || []);
+    setQuestionariosFeed(quest || []);
+  }, [predio?.id_predio]);
+
+  useEffect(() => { carregarFeedComunicacao(); }, [carregarFeedComunicacao]);
+
+  const jaVotou = (s: Sondagem) => (s.votos || []).some(v => v.id_fracao === activeUserFracao?.id_fracao);
+  const jaRespondeu = (q: Questionario) => (q.respostas || []).some(r => r.id_fracao === activeUserFracao?.id_fracao);
+
+  const handleVotarSondagem = async (idSondagem: string, opcao: string) => {
+    if (!activeUserFracao?.id_fracao || aEnviarVoto) return;
+    setAEnviarVoto(idSondagem);
+    try {
+      await saveVotoSondagemToSupabase({
+        id_voto: "voto_" + Date.now(),
+        id_sondagem: idSondagem,
+        id_fracao: activeUserFracao.id_fracao,
+        opcao_escolhida: opcao,
+        permilagem: activeUserFracao.permilagem || 0
+      });
+      await carregarFeedComunicacao();
+    } finally {
+      setAEnviarVoto("");
+    }
+  };
+
+  const handleResponderQuestionario = async (idQuestionario: string) => {
+    if (!activeUserFracao?.id_fracao || aEnviarResposta) return;
+    const texto = respostaQuestTexto[idQuestionario];
+    if (!texto?.trim()) return;
+    setAEnviarResposta(idQuestionario);
+    try {
+      await saveRespostaQuestionarioToSupabase({
+        id_resposta: "resp_" + Date.now(),
+        id_questionario: idQuestionario,
+        id_fracao: activeUserFracao.id_fracao,
+        resposta_texto: texto
+      });
+      setRespostaQuestTexto(prev => ({ ...prev, [idQuestionario]: "" }));
+      await carregarFeedComunicacao();
+    } finally {
+      setAEnviarResposta("");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -1182,6 +1366,95 @@ export function PortalCondomino({
                   </div>
                 </div>
               </>
+            )}
+
+            {/* Comunicados da Administração */}
+            {comunicadosFeed.length > 0 && (
+              <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+                <h3 className="text-sm font-bold uppercase text-slate-800 mb-4 flex items-center">
+                  <i className="fa-solid fa-bullhorn mr-2 text-emerald-600"></i> Comunicados da Administração
+                </h3>
+                <div className="space-y-3">
+                  {comunicadosFeed.slice(0, 5).map(c => (
+                    <div key={c.id_comunicado} className={`p-3 rounded-xl border ${c.urgencia === "urgente" ? "bg-red-50 border-red-200" : "bg-slate-50 border-slate-200"}`}>
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="font-bold text-xs text-slate-900">{c.urgencia === "urgente" ? "🚨 " : ""}{c.titulo}</span>
+                        <span className="text-[10px] text-slate-400">{c.created_at ? new Date(c.created_at).toLocaleDateString("pt-PT") : ""}</span>
+                      </div>
+                      <p className="text-xs text-slate-600 mt-1">{c.mensagem}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sondagens Ativas */}
+            {sondagensFeed.filter(s => s.estado === "ativa").length > 0 && (
+              <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+                <h3 className="text-sm font-bold uppercase text-slate-800 mb-4 flex items-center">
+                  <i className="fa-solid fa-square-poll-horizontal mr-2 text-emerald-600"></i> Sondagens Ativas
+                </h3>
+                <div className="space-y-4">
+                  {sondagensFeed.filter(s => s.estado === "ativa").map(s => (
+                    <div key={s.id_sondagem} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                      <span className="font-bold text-xs text-slate-900 block">{s.pergunta}</span>
+                      {jaVotou(s) ? (
+                        <p className="text-[11px] text-emerald-700 font-semibold"><i className="fa-solid fa-circle-check mr-1"></i>Já votou nesta sondagem.</p>
+                      ) : (
+                        <div className="flex gap-2 flex-wrap">
+                          {s.opcoes.map(op => (
+                            <button
+                              key={op}
+                              disabled={aEnviarVoto === s.id_sondagem}
+                              onClick={() => handleVotarSondagem(s.id_sondagem, op)}
+                              className="text-xs font-bold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-3 py-1.5 rounded-lg cursor-pointer"
+                            >
+                              {op}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Questionários Ativos */}
+            {questionariosFeed.filter(q => q.estado === "ativo").length > 0 && (
+              <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+                <h3 className="text-sm font-bold uppercase text-slate-800 mb-4 flex items-center">
+                  <i className="fa-solid fa-clipboard-question mr-2 text-emerald-600"></i> Questionários Ativos
+                </h3>
+                <div className="space-y-4">
+                  {questionariosFeed.filter(q => q.estado === "ativo").map(q => (
+                    <div key={q.id_questionario} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                      <span className="font-bold text-xs text-slate-900 block">{q.titulo}</span>
+                      {q.descricao && <p className="text-xs text-slate-600">{q.descricao}</p>}
+                      {jaRespondeu(q) ? (
+                        <p className="text-[11px] text-emerald-700 font-semibold"><i className="fa-solid fa-circle-check mr-1"></i>Já respondeu a este questionário.</p>
+                      ) : (
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="A sua resposta..."
+                            value={respostaQuestTexto[q.id_questionario] || ""}
+                            onChange={e => setRespostaQuestTexto(prev => ({ ...prev, [q.id_questionario]: e.target.value }))}
+                            className="flex-1 text-xs p-2 rounded-lg border border-slate-300 bg-white"
+                          />
+                          <button
+                            disabled={aEnviarResposta === q.id_questionario}
+                            onClick={() => handleResponderQuestionario(q.id_questionario)}
+                            className="text-xs font-bold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-3 py-1.5 rounded-lg cursor-pointer"
+                          >
+                            Enviar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
             {/* Messaging Inbox / Feed inside Portal */}

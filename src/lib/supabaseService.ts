@@ -15,7 +15,14 @@ import {
   SeguroFracao,
   SeguroPartesComuns,
   SinistroSeguro,
-  ProcessoJuridico
+  ProcessoJuridico,
+  Comunicado,
+  ConversaCondomino,
+  MensagemConversa,
+  Sondagem,
+  VotoSondagem,
+  Questionario,
+  RespostaQuestionario
 } from "../types";
 
 /**
@@ -149,7 +156,10 @@ export async function fetchFracoesFromSupabase(idPredio?: string): Promise<Fraca
       inquilino: row.inquilino || null,
       seguradora: row.seguradora || "",
       apolice_num: row.apolice_num || "",
-      apolice_validade: row.apolice_validade || ""
+      apolice_validade: row.apolice_validade || "",
+      apolice_doc: row.apolice_doc || undefined,
+      referencia_br23e: row.referencia_br23e || undefined,
+      solicitacao_email_incendio: row.solicitacao_email_incendio ?? true
     }));
   } catch (err) {
     return null;
@@ -175,10 +185,12 @@ export async function saveFracaoToSupabase(fracao: Fracao): Promise<boolean> {
       inquilino: fracao.inquilino,
       administrador_interno: fracao.administrador_interno,
       notificacao_preferencial: fracao.notificacao_preferencial,
+      referencia_br23e: fracao.referencia_br23e,
       seguradora: fracao.seguradora,
       apolice_num: fracao.apolice_num,
       apolice_validade: fracao.apolice_validade,
-      apolice_doc: fracao.apolice_doc
+      apolice_doc: fracao.apolice_doc,
+      solicitacao_email_incendio: fracao.solicitacao_email_incendio
     });
     return !error;
   } catch (err) {
@@ -1281,6 +1293,264 @@ export async function deleteProcessoJuridicoFromSupabase(idProcesso: string): Pr
     const { error } = await supabase.from("processos_juridicos").delete().eq("id_processo", idProcesso);
     return !error;
   } catch (err) {
+    return false;
+  }
+}
+
+// ============================================================================
+// MÓDULO DE MENSAGENS & COMUNICAÇÃO (comunicados, chat, sondagens, questionários)
+// ============================================================================
+
+export async function fetchComunicadosFromSupabase(idPredio?: string): Promise<Comunicado[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    let query = supabase.from("comunicados").select("*").order("created_at", { ascending: false });
+    if (idPredio) query = query.eq("id_predio", idPredio);
+    const { data, error } = await query;
+    if (error || !data) return null;
+    return data.map((row: any) => ({
+      id_comunicado: row.id_comunicado,
+      id_predio: row.id_predio,
+      titulo: row.titulo,
+      mensagem: row.mensagem,
+      urgencia: row.urgencia || "normal",
+      autor_nome: row.autor_nome || undefined,
+      total_destinatarios: row.total_destinatarios || 0,
+      total_enviados: row.total_enviados || 0,
+      created_at: row.created_at
+    }));
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function saveComunicadoToSupabase(comunicado: Comunicado): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("comunicados").upsert({
+      id_comunicado: comunicado.id_comunicado,
+      id_predio: comunicado.id_predio,
+      titulo: comunicado.titulo,
+      mensagem: comunicado.mensagem,
+      urgencia: comunicado.urgencia,
+      autor_nome: comunicado.autor_nome || null,
+      total_destinatarios: comunicado.total_destinatarios || 0,
+      total_enviados: comunicado.total_enviados || 0
+    });
+    if (error) console.warn("[Supabase] Save comunicado error:", error.message);
+    return !error;
+  } catch (err) {
+    console.warn("[Supabase] Save comunicado exception:", err);
+    return false;
+  }
+}
+
+export async function fetchConversasFromSupabase(idPredio?: string): Promise<ConversaCondomino[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    let query = supabase.from("conversas").select("*").order("updated_at", { ascending: false });
+    if (idPredio) query = query.eq("id_predio", idPredio);
+    const { data, error } = await query;
+    if (error || !data) return null;
+    return data.map((row: any) => ({
+      id_conversa: row.id_conversa,
+      id_predio: row.id_predio,
+      id_fracao: row.id_fracao,
+      proprietario_nome: row.proprietario_nome || undefined,
+      assunto: row.assunto || undefined,
+      estado: row.estado || "pendente",
+      created_at: row.created_at,
+      updated_at: row.updated_at
+    }));
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function saveConversaToSupabase(conversa: ConversaCondomino): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("conversas").upsert({
+      id_conversa: conversa.id_conversa,
+      id_predio: conversa.id_predio,
+      id_fracao: conversa.id_fracao,
+      proprietario_nome: conversa.proprietario_nome || null,
+      assunto: conversa.assunto || null,
+      estado: conversa.estado,
+      updated_at: new Date().toISOString()
+    });
+    if (error) console.warn("[Supabase] Save conversa error:", error.message);
+    return !error;
+  } catch (err) {
+    console.warn("[Supabase] Save conversa exception:", err);
+    return false;
+  }
+}
+
+export async function fetchMensagensConversaFromSupabase(idConversa: string): Promise<MensagemConversa[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const { data, error } = await supabase
+      .from("mensagens_conversa")
+      .select("*")
+      .eq("id_conversa", idConversa)
+      .order("created_at", { ascending: true });
+    if (error || !data) return null;
+    return data.map((row: any) => ({
+      id_mensagem: row.id_mensagem,
+      id_conversa: row.id_conversa,
+      autor: row.autor,
+      texto: row.texto,
+      created_at: row.created_at
+    }));
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function saveMensagemConversaToSupabase(mensagem: MensagemConversa): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("mensagens_conversa").insert({
+      id_mensagem: mensagem.id_mensagem,
+      id_conversa: mensagem.id_conversa,
+      autor: mensagem.autor,
+      texto: mensagem.texto
+    });
+    if (error) console.warn("[Supabase] Save mensagem conversa error:", error.message);
+    return !error;
+  } catch (err) {
+    console.warn("[Supabase] Save mensagem conversa exception:", err);
+    return false;
+  }
+}
+
+export async function fetchSondagensFromSupabase(idPredio?: string): Promise<Sondagem[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    let query = supabase.from("sondagens").select("*, sondagens_votos(*)").order("created_at", { ascending: false });
+    if (idPredio) query = query.eq("id_predio", idPredio);
+    const { data, error } = await query;
+    if (error || !data) return null;
+    return data.map((row: any) => ({
+      id_sondagem: row.id_sondagem,
+      id_predio: row.id_predio,
+      pergunta: row.pergunta,
+      opcoes: row.opcoes || [],
+      estado: row.estado || "ativa",
+      data_fecho: row.data_fecho || undefined,
+      created_at: row.created_at,
+      votos: (row.sondagens_votos || []).map((v: any) => ({
+        id_voto: v.id_voto,
+        id_sondagem: v.id_sondagem,
+        id_fracao: v.id_fracao,
+        opcao_escolhida: v.opcao_escolhida,
+        permilagem: v.permilagem || 0,
+        created_at: v.created_at
+      }))
+    }));
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function saveSondagemToSupabase(sondagem: Sondagem): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("sondagens").upsert({
+      id_sondagem: sondagem.id_sondagem,
+      id_predio: sondagem.id_predio,
+      pergunta: sondagem.pergunta,
+      opcoes: sondagem.opcoes,
+      estado: sondagem.estado,
+      data_fecho: sondagem.data_fecho || null
+    });
+    if (error) console.warn("[Supabase] Save sondagem error:", error.message);
+    return !error;
+  } catch (err) {
+    console.warn("[Supabase] Save sondagem exception:", err);
+    return false;
+  }
+}
+
+export async function saveVotoSondagemToSupabase(voto: VotoSondagem): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("sondagens_votos").upsert({
+      id_voto: voto.id_voto,
+      id_sondagem: voto.id_sondagem,
+      id_fracao: voto.id_fracao,
+      opcao_escolhida: voto.opcao_escolhida,
+      permilagem: voto.permilagem || 0
+    }, { onConflict: "id_sondagem,id_fracao" });
+    if (error) console.warn("[Supabase] Save voto sondagem error:", error.message);
+    return !error;
+  } catch (err) {
+    console.warn("[Supabase] Save voto sondagem exception:", err);
+    return false;
+  }
+}
+
+export async function fetchQuestionariosFromSupabase(idPredio?: string): Promise<Questionario[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    let query = supabase.from("questionarios").select("*, questionarios_respostas(*)").order("created_at", { ascending: false });
+    if (idPredio) query = query.eq("id_predio", idPredio);
+    const { data, error } = await query;
+    if (error || !data) return null;
+    return data.map((row: any) => ({
+      id_questionario: row.id_questionario,
+      id_predio: row.id_predio,
+      titulo: row.titulo,
+      descricao: row.descricao || undefined,
+      estado: row.estado || "ativo",
+      created_at: row.created_at,
+      respostas: (row.questionarios_respostas || []).map((r: any) => ({
+        id_resposta: r.id_resposta,
+        id_questionario: r.id_questionario,
+        id_fracao: r.id_fracao,
+        resposta_texto: r.resposta_texto || undefined,
+        classificacao: r.classificacao || undefined,
+        created_at: r.created_at
+      }))
+    }));
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function saveQuestionarioToSupabase(questionario: Questionario): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("questionarios").upsert({
+      id_questionario: questionario.id_questionario,
+      id_predio: questionario.id_predio,
+      titulo: questionario.titulo,
+      descricao: questionario.descricao || null,
+      estado: questionario.estado
+    });
+    if (error) console.warn("[Supabase] Save questionario error:", error.message);
+    return !error;
+  } catch (err) {
+    console.warn("[Supabase] Save questionario exception:", err);
+    return false;
+  }
+}
+
+export async function saveRespostaQuestionarioToSupabase(resposta: RespostaQuestionario): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("questionarios_respostas").upsert({
+      id_resposta: resposta.id_resposta,
+      id_questionario: resposta.id_questionario,
+      id_fracao: resposta.id_fracao,
+      resposta_texto: resposta.resposta_texto || null,
+      classificacao: resposta.classificacao || null
+    }, { onConflict: "id_questionario,id_fracao" });
+    if (error) console.warn("[Supabase] Save resposta questionario error:", error.message);
+    return !error;
+  } catch (err) {
+    console.warn("[Supabase] Save resposta questionario exception:", err);
     return false;
   }
 }

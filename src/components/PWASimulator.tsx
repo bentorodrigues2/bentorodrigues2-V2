@@ -18,6 +18,7 @@ import {
 import { GestaoReservas } from "./GestaoReservas";
 import { GestaoManutencaoIntervencoes } from "./GestaoManutencaoIntervencoes";
 import { IAAvancada } from "./IAAvancada";
+import { GestaoComunicacoes } from "./GestaoComunicacoes";
 import { GestaoDocumentos } from "./GestaoDocumentos";
 import { GestaoMovimentos } from "./GestaoMovimentos";
 import { GestaoFracoes } from "./GestaoFracoes";
@@ -2962,51 +2963,39 @@ export function PWASimulator({
                         />
                       )}
                       {activePwaSubMenuDetails === "comunicar_broadcast" && (
-                        <IAAvancada 
+                        <GestaoComunicacoes
                           predio={predio}
                           fracoes={fracoes}
                           avisos={avisos}
-                          movements={movements}
-                          fornecedores={fornecedores}
                           loggedUser={loggedUser}
-                          initialTab="comunicacoes_adenda"
-                          commSubTabProp="broadcast"
+                          activeSubSection="broadcast"
                         />
                       )}
                       {activePwaSubMenuDetails === "comunicar_chat" && (
-                        <IAAvancada 
+                        <GestaoComunicacoes
                           predio={predio}
                           fracoes={fracoes}
                           avisos={avisos}
-                          movements={movements}
-                          fornecedores={fornecedores}
                           loggedUser={loggedUser}
-                          initialTab="comunicacoes_adenda"
-                          commSubTabProp="chat"
+                          activeSubSection="chat"
                         />
                       )}
                       {activePwaSubMenuDetails === "comunicar_sondagens" && (
-                        <IAAvancada 
+                        <GestaoComunicacoes
                           predio={predio}
                           fracoes={fracoes}
                           avisos={avisos}
-                          movements={movements}
-                          fornecedores={fornecedores}
                           loggedUser={loggedUser}
-                          initialTab="comunicacoes_adenda"
-                          commSubTabProp="sondagens"
+                          activeSubSection="sondagens"
                         />
                       )}
                       {activePwaSubMenuDetails === "comunicar_questionarios" && (
-                        <IAAvancada 
+                        <GestaoComunicacoes
                           predio={predio}
                           fracoes={fracoes}
                           avisos={avisos}
-                          movements={movements}
-                          fornecedores={fornecedores}
                           loggedUser={loggedUser}
-                          initialTab="comunicacoes_adenda"
-                          commSubTabProp="questionarios"
+                          activeSubSection="questionarios"
                         />
                       )}
                       {activePwaSubMenuDetails === "comunicar_cerebro" && (

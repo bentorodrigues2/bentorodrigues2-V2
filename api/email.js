@@ -38,6 +38,33 @@ export default async function handler(req, res) {
     }
   }
 
+  // 0.5. COMUNICADO GLOBAL / BROADCAST (/api/email?acao=broadcast)
+  // Usado por GestaoComunicacoes.tsx (e pela ADENDA FG-COMM em IAAvancada.tsx)
+  // para enviar um comunicado real a todos os destinatários indicados.
+  if (acao === "broadcast") {
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
+    try {
+      const { destinatarios, assunto, mensagem, urgente } = req.body || {};
+      if (!Array.isArray(destinatarios) || destinatarios.length === 0 || !assunto || !mensagem) {
+        return res.status(400).json({ error: "destinatarios[], assunto e mensagem são obrigatórios" });
+      }
+      const assuntoFinal = urgente ? `🚨 URGENTE — ${assunto}` : assunto;
+      let enviados = 0;
+      for (const dest of destinatarios) {
+        if (!dest?.email) continue;
+        const html = gerarHtmlResposta(dest.nome || "Condómino(a)", mensagem);
+        const ok = await enviarEmailSemAnexo({ to: dest.email, subject: assuntoFinal, html });
+        if (ok) enviados += 1;
+      }
+      return res.status(200).json({ ok: true, total_destinatarios: destinatarios.length, total_enviados: enviados });
+    } catch (err) {
+      console.error("[api/email?acao=broadcast] Erro:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao enviar comunicado" });
+    }
+  }
+
   // 1. TEMPLATES (/api/ai-studio-router/templates -> ?acao=router-templates)
   if (
     acao === "router-templates" ||

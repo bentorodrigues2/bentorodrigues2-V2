@@ -14,9 +14,14 @@ import { emitirQuotasMensais, enviarLembretesQuotas, avisarQuotasEmMora, enviarF
 export default async function handler(req, res) {
   try {
     const secretEsperado = process.env.CRON_SECRET;
-    const secretRecebido = req.query?.secret || req.headers["x-cron-secret"];
+    const authHeader = req.headers["authorization"];
+    const secretRecebido =
+      req.query?.secret ||
+      req.headers["x-cron-secret"] ||
+      (authHeader && authHeader.startsWith("Bearer ") ? authHeader.slice(7) : undefined);
 
-    if (secretEsperado && secretRecebido !== secretEsperado) {
+    // Sem CRON_SECRET configurado, o endpoint fica fechado por omissão (nunca aberto ao público).
+    if (!secretEsperado || secretRecebido !== secretEsperado) {
       return res.status(401).json({ error: "Não autorizado" });
     }
 
