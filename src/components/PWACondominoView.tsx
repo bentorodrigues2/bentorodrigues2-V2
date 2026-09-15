@@ -3,20 +3,47 @@ import { ActionIcon } from "./ActionIcon";
 const logoutIcon = "/estados-acoes/17-desligar.png";
 const terminarSessaoIcon = "/estados-acoes/16-terminar-sessao.png";
 import { motion } from "motion/react";
-import { 
-  LoggedUser, 
-  Predio, 
-  Documento, 
-  Ocorrencia, 
-  Reserva, 
-  Movimento, 
-  Aviso 
+import {
+  LoggedUser,
+  Predio,
+  Documento,
+  Ocorrencia,
+  Reserva,
+  Movimento,
+  Aviso,
+  Comunicado,
+  Sondagem,
+  Questionario
 } from "../types";
 import { generateAndDownloadPdf, downloadEmailDocument, exportToXLS, downloadBlob } from "../utils";
 import { GestaoDocumentos } from "./GestaoDocumentos";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
 import { DraggableAIFloatingButton } from "./DraggableAIFloatingButton";
 import { playVoiceNoteSimulation } from "../lib/soundService";
+import { supabase } from "../lib/supabaseClient";
+import {
+  isSupabaseConfigured,
+  fetchConversasFromSupabase,
+  saveConversaToSupabase,
+  fetchMensagensConversaFromSupabase,
+  saveMensagemConversaToSupabase,
+  fetchComunicadosFromSupabase,
+  fetchSondagensFromSupabase,
+  saveVotoSondagemToSupabase,
+  fetchQuestionariosFromSupabase,
+  saveRespostaQuestionarioToSupabase
+} from "../lib/supabaseService";
+
+interface TicketMensagem {
+  id_conversa: string;
+  assunto: string;
+  mensagem: string;
+  data: string;
+  autor: "condomino" | "administracao";
+  estado: "Pendente" | "Respondida";
+  respostaAdmin?: string;
+  dataResposta?: string;
+}
 import { 
   Smartphone, 
   User, 
@@ -169,9 +196,131 @@ export default function PWACondominoView({
     }
   };
 
-  // State managers for interactive simulations
-  const [votedPoll, setVotedPoll] = useState<string | null>(null);
-  const [votosSimulados, setVotosSimulados] = useState({ sim: 8, nao: 3, adiar: 1 });
+  // Mensagens, comunicados, sondagens e questionários — reais (Supabase),
+  // com o mesmo padrão já usado em PortalCondomino.tsx (Portal Web). Antes
+  // desta correção era tudo texto fixo/estado local sem qualquer ligação
+  // ao backend.
+  const [mensagens, setMensagens] = useState<TicketMensagem[]>([]);
+  const [comunicadosFeed, setComunicadosFeed] = useState<Comunicado[]>([]);
+  const [sondagensFeed, setSondagensFeed] = useState<Sondagem[]>([]);
+  const [questionariosFeed, setQuestionariosFeed] = useState<Questionario[]>([]);
+  const [respostaQuestTexto, setRespostaQuestTexto] = useState<{ [id: string]: string }>({});
+  const [aEnviarVoto, setAEnviarVoto] = useState<string>("");
+  const [aEnviarResposta, setAEnviarResposta] = useState<string>("");
+
+  const carregarMensagensReais = React.useCallback(async () => {
+    if (!condominoFracao?.id_fracao || !predio?.id_predio) return;
+    const convs = await fetchConversasFromSupabase(predio.id_predio);
+    const minhas = (convs || []).filter((c: any) => c.id_fracao === condominoFracao.id_fracao);
+    const tickets: TicketMensagem[] = [];
+    for (const c of minhas) {
+      const msgs = await fetchMensagensConversaFromSupabase(c.id_conversa);
+      const primeira = (msgs || [])[0];
+      if (!primeira) continue;
+      const resposta = (msgs || []).find((m: any) => m.autor === "administracao");
+      tickets.push({
+        id_conversa: c.id_conversa,
+        assunto: c.assunto || "Mensagem Direta",
+        mensagem: primeira.texto,
+        data: primeira.created_at ? new Date(primeira.created_at).toLocaleString("pt-PT").replace(",", "") : "",
+        autor: "condomino",
+        estado: resposta ? "Respondida" : "Pendente",
+        respostaAdmin: resposta?.texto,
+        dataResposta: resposta?.created_at ? new Date(resposta.created_at).toLocaleString("pt-PT").replace(",", "") : undefined
+      });
+    }
+    setMensagens(tickets.reverse());
+  }, [condominoFracao?.id_fracao, predio?.id_predio]);
+
+  useEffect(() => { carregarMensagensReais(); }, [carregarMensagensReais]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !condominoFracao?.id_fracao) return;
+    const canal = supabase
+      .channel(`pwa_conversas_${condominoFracao.id_fracao}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversas", filter: `id_fracao=eq.${condominoFracao.id_fracao}` }, () => carregarMensagensReais())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "mensagens_conversa" }, () => carregarMensagensReais())
+      .subscribe();
+    return () => { supabase.removeChannel(canal); };
+  }, [condominoFracao?.id_fracao, carregarMensagensReais]);
+
+  const carregarFeedComunicacao = React.useCallback(async () => {
+    if (!predio?.id_predio) return;
+    const [com, sond, quest] = await Promise.all([
+      fetchComunicadosFromSupabase(predio.id_predio),
+      fetchSondagensFromSupabase(predio.id_predio),
+      fetchQuestionariosFromSupabase(predio.id_predio)
+    ]);
+    setComunicadosFeed(com || []);
+    setSondagensFeed(sond || []);
+    setQuestionariosFeed(quest || []);
+  }, [predio?.id_predio]);
+
+  useEffect(() => { carregarFeedComunicacao(); }, [carregarFeedComunicacao]);
+
+  const jaVotouSondagem = (s: Sondagem) => (s.votos || []).some(v => v.id_fracao === condominoFracao?.id_fracao);
+  const jaRespondeuQuestionario = (q: Questionario) => (q.respostas || []).some(r => r.id_fracao === condominoFracao?.id_fracao);
+  const sondagensPorVotar = sondagensFeed.filter(s => s.estado === "ativa" && !jaVotouSondagem(s));
+
+  const handleVotarSondagemReal = async (idSondagem: string, opcao: string) => {
+    if (!condominoFracao?.id_fracao || aEnviarVoto) return;
+    setAEnviarVoto(idSondagem);
+    try {
+      await saveVotoSondagemToSupabase({
+        id_voto: "voto_" + Date.now(),
+        id_sondagem: idSondagem,
+        id_fracao: condominoFracao.id_fracao,
+        opcao_escolhida: opcao,
+        permilagem: condominoFracao.permilagem || 0
+      });
+      await carregarFeedComunicacao();
+    } finally {
+      setAEnviarVoto("");
+    }
+  };
+
+  const handleResponderQuestionarioReal = async (idQuestionario: string) => {
+    if (!condominoFracao?.id_fracao || aEnviarResposta) return;
+    const texto = respostaQuestTexto[idQuestionario];
+    if (!texto?.trim()) return;
+    setAEnviarResposta(idQuestionario);
+    try {
+      await saveRespostaQuestionarioToSupabase({
+        id_resposta: "resp_" + Date.now(),
+        id_questionario: idQuestionario,
+        id_fracao: condominoFracao.id_fracao,
+        resposta_texto: texto
+      });
+      setRespostaQuestTexto(prev => ({ ...prev, [idQuestionario]: "" }));
+      await carregarFeedComunicacao();
+    } finally {
+      setAEnviarResposta("");
+    }
+  };
+
+  const handleEnviarMensagemReal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMsgText.trim() || !condominoFracao?.id_fracao || !predio?.id_predio) return;
+    const texto = newMsgText.trim();
+    setNewMsgText("");
+    const idConversa = "conv_" + Date.now();
+    await saveConversaToSupabase({
+      id_conversa: idConversa,
+      id_predio: predio.id_predio,
+      id_fracao: condominoFracao.id_fracao,
+      proprietario_nome: loggedUser.nome,
+      assunto: "Mensagem Direta",
+      estado: "pendente"
+    });
+    await saveMensagemConversaToSupabase({
+      id_mensagem: "msg_" + Date.now(),
+      id_conversa: idConversa,
+      autor: "condomino",
+      texto
+    });
+    await carregarMensagensReais();
+  };
+
   const [quotaState, setQuotaState] = useState<"pago" | "atraso" | "processamento" | "multiplo" | "cobranca">("pago");
   const [hasScrolled, setHasScrolled] = useState(false);
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
@@ -188,7 +337,7 @@ export default function PWACondominoView({
     if (cardId === "reservas_limpezas") return 0;
     if (cardId === "limpezas") return 0;
     if (cardId === "fornecedores") return 0;
-    if (cardId === "sondagens") return votedPoll ? 0 : 1;
+    if (cardId === "sondagens") return sondagensPorVotar.length > 0 ? 1 : 0;
     if (cardId === "obras") return 0;
     return 0;
   };
@@ -202,7 +351,7 @@ export default function PWACondominoView({
       case "reservas_limpezas": return "Ativo";
       case "limpezas": return "Relatórios";
       case "fornecedores": return "Ativos";
-      case "sondagens": return votedPoll ? "Votado" : "1 Ativa";
+      case "sondagens": return sondagensPorVotar.length > 0 ? `${sondagensPorVotar.length} Ativa(s)` : "Votado";
       case "obras": return "Histórico";
       default: return "Ativo";
     }
@@ -313,19 +462,6 @@ export default function PWACondominoView({
   const [bookingDate, setBookingDate] = useState("2026-07-25");
   const [bookingTime, setBookingTime] = useState("14:00 - 18:00");
   const [bookingGuests, setBookingGuests] = useState(15);
-
-  // Handle mock vote
-  const handleVote = (opcao: string) => {
-    setVotedPoll(opcao);
-    if (opcao === "Sim") {
-      setVotosSimulados(p => ({ ...p, sim: p.sim + 1 }));
-    } else if (opcao === "Não") {
-      setVotosSimulados(p => ({ ...p, nao: p.nao + 1 }));
-    } else {
-      setVotosSimulados(p => ({ ...p, adiar: p.adiar + 1 }));
-    }
-    alert(`Voto "${opcao}" submetido com sucesso!`);
-  };
 
   // Handle reporting avaria (Módulo 3)
   const handleReportAvaria = (e: React.FormEvent) => {
@@ -1690,58 +1826,44 @@ export default function PWACondominoView({
         )}
 
         {/* ========================================== */}
-        {/* MÓDULO 8 — MENSAGENS */}
+        {/* MÓDULO — COMUNICADOS (antes: item de menu sem qualquer conteúdo) */}
         {/* ========================================== */}
-        {activeTab === "mensagens" && (
-          <div className="space-y-4 animate-fade-in" id="pwa-modulo-mensagens">
+        {activeTab === "comunicacoes" && (
+          <div className="space-y-4 animate-fade-in" id="pwa-modulo-comunicacoes">
             <div>
-              <h3 className="text-sm font-black tracking-tight text-slate-800 dark:text-white">💬 Comunicações à Administração</h3>
+              <h3 className="text-sm font-black tracking-tight text-slate-800 dark:text-white">📢 Comunicados da Administração</h3>
             </div>
 
-            {/* Chat Box Interface */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3 rounded-xl shadow-sm flex flex-col space-y-3 text-[10px]">
-              <span className="text-[9px] font-extrabold text-teal-600 uppercase tracking-widest block">Conversação da Fração 3ºE</span>
-              
-              <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
-                <div className="p-2 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-100 dark:border-slate-850/60 space-y-1">
-                  <div className="flex justify-between font-bold text-slate-400 text-[8px]">
-                    <span>Administração</span>
-                    <span>12/07 16:15</span>
-                  </div>
-                  <p className="text-slate-600 dark:text-white leading-normal">
-                    "Boa tarde Sr. João, informamos que a equipa de vistorias já reportou a anomalia na porta do ginásio. O fornecedor técnico foi adjudicado para verificação esta quarta-feira."
-                  </p>
-                  <span className="text-[8px] uppercase tracking-wider font-extrabold text-emerald-600 flex items-center">
-                    <Check className="h-2.5 w-2.5 mr-0.5" /> Lida
-                  </span>
-                </div>
-
-                <div className="p-2 bg-teal-50/50 dark:bg-teal-950/10 rounded-lg border border-teal-50 dark:border-teal-950/40 space-y-1 text-right">
-                  <div className="flex justify-between font-bold text-teal-600 text-[8px] flex-row-reverse">
-                    <span>Você (3ºE)</span>
-                    <span>12/07 14:10</span>
-                  </div>
-                  <p className="text-teal-900 dark:text-teal-300 leading-normal italic">
-                    "Detetei que a porta do ginásio no piso -1 não está a fechar corretamente após as limpezas. Podem mandar verificar?"
-                  </p>
-                </div>
+            {comunicadosFeed.length === 0 ? (
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-4 rounded-xl text-[10px] text-slate-400 text-center">
+                Sem comunicados publicados ainda.
               </div>
-
-              {/* Form integration */}
-              <form onSubmit={handleEnviarMensagem} className="flex gap-2 border-t border-slate-100 dark:border-slate-800 pt-2 shrink-0">
-                <input 
-                  type="text" 
-                  required
-                  value={newMsgText}
-                  onChange={e => setNewMsgText(e.target.value)}
-                  placeholder="Escreva ao gestor do prédio..."
-                  className="flex-grow bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-2.5 py-1.5 text-[10px] rounded focus:outline-none focus:border-teal-500 dark:text-white"
-                />
-                <button type="submit" className="p-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded cursor-pointer transition-colors shrink-0">
-                  <Send className="h-3.5 w-3.5" />
-                </button>
-              </form>
-            </div>
+            ) : (
+              <div className="space-y-2.5">
+                {comunicadosFeed.map(c => (
+                  <div
+                    key={c.id_comunicado}
+                    className={`bg-white dark:bg-slate-900 border p-3.5 rounded-xl shadow-sm space-y-1.5 text-[10px] ${
+                      c.urgencia === "urgente" ? "border-red-300 dark:border-red-800" : "border-slate-100 dark:border-slate-800"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
+                        c.urgencia === "urgente" ? "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                      }`}>
+                        {c.urgencia === "urgente" ? "🚨 Urgente" : "Comunicado"}
+                      </span>
+                      <span className="text-slate-400 text-[8px]">
+                        {c.created_at ? new Date(c.created_at).toLocaleDateString("pt-PT") : ""}
+                      </span>
+                    </div>
+                    <h4 className="font-extrabold text-slate-800 dark:text-white text-xs">{c.titulo}</h4>
+                    <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">{c.mensagem}</p>
+                    {c.autor_nome && <p className="text-slate-400 text-[8px] pt-1">— {c.autor_nome}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -1751,119 +1873,123 @@ export default function PWACondominoView({
               <h3 className="text-sm font-black tracking-tight text-slate-800 dark:text-white">🗳️ Sondagens & Opiniões</h3>
             </div>
 
-            {/* Active Poll card */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3.5 rounded-xl shadow-sm space-y-3 text-[10px]">
-              <span className="text-[9px] font-extrabold text-indigo-600 uppercase tracking-widest block">Sondagem Ativa do Edifício</span>
-              
-              {votedPoll ? (
-                <div className="flex flex-col items-center justify-center py-5 text-slate-400 text-center">
-                  <Check className="h-5 w-5 text-emerald-500 mb-1.5 animate-bounce" />
-                  <span className="text-[9px] font-extrabold text-slate-800 dark:text-slate-100">O seu voto foi registado com sucesso!</span>
-                  <span className="text-[8px] text-slate-400 mt-0.5">A sondagem ativa foi movida para o "Arquivo de Sondagens" abaixo.</span>
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-1">
-                    <h4 className="font-extrabold text-slate-800 dark:text-white text-xs">Concorda com a pintura das escadas em tom cinza claro?</h4>
-                    <p className="text-slate-400 text-[9px]">A pintura irá cobrir os desgastes atuais. Custos cobertos pelo fundo de reserva extraordinário adjudicado.</p>
-                  </div>
-                  <div className="space-y-1.5 pt-1">
-                    <button 
-                      onClick={() => handleVote("Sim")}
-                      className="w-full text-left p-2 bg-slate-50 hover:bg-indigo-50 dark:bg-slate-950 dark:hover:bg-indigo-950/20 border border-slate-150 dark:border-slate-850 rounded-lg font-bold flex justify-between items-center cursor-pointer transition-all"
-                    >
-                      <span>Sim, concordo inteiramente</span>
-                      <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-                    </button>
-                    <button 
-                      onClick={() => handleVote("Não")}
-                      className="w-full text-left p-2 bg-slate-50 hover:bg-indigo-50 dark:bg-slate-950 dark:hover:bg-indigo-950/20 border border-slate-150 dark:border-slate-850 rounded-lg font-bold flex justify-between items-center cursor-pointer transition-all"
-                    >
-                      <span>Não, prefiro manter o tom atual</span>
-                      <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-                    </button>
-                    <button 
-                      onClick={() => handleVote("Adiar")}
-                      className="w-full text-left p-2 bg-slate-50 hover:bg-indigo-50 dark:bg-slate-950 dark:hover:bg-indigo-950/20 border border-slate-150 dark:border-slate-850 rounded-lg font-bold flex justify-between items-center cursor-pointer transition-all"
-                    >
-                      <span>Adiar decisão para próxima assembleia</span>
-                      <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Arquivo de Sondagens */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3.5 rounded-xl shadow-xs space-y-3 text-[10px]">
-              <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">📂 Arquivo de Sondagens</span>
-              
-              {votedPoll && (
-                <div className="p-3 bg-indigo-50/45 dark:bg-indigo-950/10 rounded-lg border border-indigo-100 dark:border-indigo-950/30 space-y-2.5">
-                  <div className="space-y-1">
-                    <h5 className="font-extrabold text-slate-850 dark:text-slate-100">Concorda com a pintura das escadas em tom cinza claro?</h5>
-                    <span className="text-[8px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded font-extrabold uppercase">Votado por si (Votou: "{votedPoll}")</span>
-                  </div>
-
-                  {/* Render beautiful chart results */}
-                  <div className="space-y-2 pt-1">
-                    {/* SIM */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[8px] font-bold">
-                        <span>Sim</span>
-                        <span>{Math.round((votosSimulados.sim / (votosSimulados.sim + votosSimulados.nao + votosSimulados.adiar)) * 100)}%</span>
-                      </div>
-                      <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                        <div 
-                          className="bg-indigo-600 h-full transition-all duration-500" 
-                          style={{ width: `${(votosSimulados.sim / (votosSimulados.sim + votosSimulados.nao + votosSimulados.adiar)) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* NAO */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[8px] font-bold">
-                        <span>Não</span>
-                        <span>{Math.round((votosSimulados.nao / (votosSimulados.sim + votosSimulados.nao + votosSimulados.adiar)) * 100)}%</span>
-                      </div>
-                      <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                        <div 
-                          className="bg-slate-400 h-full transition-all duration-500" 
-                          style={{ width: `${(votosSimulados.nao / (votosSimulados.sim + votosSimulados.nao + votosSimulados.adiar)) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* ADIAR */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[8px] font-bold">
-                        <span>Adiar</span>
-                        <span>{Math.round((votosSimulados.adiar / (votosSimulados.sim + votosSimulados.nao + votosSimulados.adiar)) * 100)}%</span>
-                      </div>
-                      <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                        <div 
-                          className="bg-slate-300 h-full transition-all duration-500" 
-                          style={{ width: `${(votosSimulados.adiar / (votosSimulados.sim + votosSimulados.nao + votosSimulados.adiar)) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="text-[7px] text-slate-400 text-center font-bold pt-1">
-                      Total de votos registados: {votosSimulados.sim + votosSimulados.nao + votosSimulados.adiar} frações
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="p-2.5 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-100 flex justify-between items-center">
-                <div>
-                  <h5 className="font-bold text-slate-700 dark:text-slate-300">Câmara de Segurança Garagem</h5>
-                  <span className="text-[8px] text-slate-400">Março 2026 • 12 Votos</span>
-                </div>
-                <span className="text-[9px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 px-2 py-0.5 rounded font-extrabold uppercase">Aprovado (72%)</span>
+            {/* Sondagens Ativas — reais (Supabase), uma por cada sondagem em curso */}
+            {sondagensFeed.filter(s => s.estado === "ativa").length === 0 ? (
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-4 rounded-xl text-[10px] text-slate-400 text-center">
+                Sem sondagens ativas neste momento.
               </div>
-            </div>
+            ) : (
+              sondagensFeed.filter(s => s.estado === "ativa").map(s => (
+                <div key={s.id_sondagem} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3.5 rounded-xl shadow-sm space-y-3 text-[10px]">
+                  <span className="text-[9px] font-extrabold text-indigo-600 uppercase tracking-widest block">Sondagem Ativa do Edifício</span>
+
+                  {jaVotouSondagem(s) ? (
+                    <div className="flex flex-col items-center justify-center py-5 text-slate-400 text-center">
+                      <Check className="h-5 w-5 text-emerald-500 mb-1.5" />
+                      <span className="text-[9px] font-extrabold text-slate-800 dark:text-slate-100">O seu voto foi registado com sucesso!</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-1">
+                        <h4 className="font-extrabold text-slate-800 dark:text-white text-xs">{s.pergunta}</h4>
+                      </div>
+                      <div className="space-y-1.5 pt-1">
+                        {s.opcoes.map(op => (
+                          <button
+                            key={op}
+                            disabled={aEnviarVoto === s.id_sondagem}
+                            onClick={() => handleVotarSondagemReal(s.id_sondagem, op)}
+                            className="w-full text-left p-2 bg-slate-50 hover:bg-indigo-50 dark:bg-slate-950 dark:hover:bg-indigo-950/20 border border-slate-150 dark:border-slate-850 rounded-lg font-bold flex justify-between items-center cursor-pointer transition-all disabled:opacity-50"
+                          >
+                            <span>{op}</span>
+                            <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))
+            )}
+
+            {/* Arquivo de Sondagens — as já fechadas ou já votadas por si, com resultados reais */}
+            {sondagensFeed.filter(s => s.estado === "fechada" || jaVotouSondagem(s)).length > 0 && (
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3.5 rounded-xl shadow-xs space-y-3 text-[10px]">
+                <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">📂 Arquivo de Sondagens</span>
+
+                {sondagensFeed.filter(s => s.estado === "fechada" || jaVotouSondagem(s)).map(s => {
+                  const votos = s.votos || [];
+                  const totalVotos = votos.length;
+                  return (
+                    <div key={s.id_sondagem} className="p-3 bg-indigo-50/45 dark:bg-indigo-950/10 rounded-lg border border-indigo-100 dark:border-indigo-950/30 space-y-2.5">
+                      <div className="space-y-1">
+                        <h5 className="font-extrabold text-slate-850 dark:text-slate-100">{s.pergunta}</h5>
+                        {jaVotouSondagem(s) && (
+                          <span className="text-[8px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded font-extrabold uppercase">
+                            Votado por si ({votos.find(v => v.id_fracao === condominoFracao?.id_fracao)?.opcao_escolhida})
+                          </span>
+                        )}
+                      </div>
+                      {totalVotos > 0 && (
+                        <div className="space-y-2 pt-1">
+                          {s.opcoes.map(op => {
+                            const count = votos.filter(v => v.opcao_escolhida === op).length;
+                            const pct = totalVotos > 0 ? Math.round((count / totalVotos) * 100) : 0;
+                            return (
+                              <div key={op} className="space-y-1">
+                                <div className="flex justify-between text-[8px] font-bold">
+                                  <span>{op}</span>
+                                  <span>{pct}%</span>
+                                </div>
+                                <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                  <div className="bg-indigo-600 h-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                          <div className="text-[7px] text-slate-400 text-center font-bold pt-1">
+                            Total de votos registados: {totalVotos} frações
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Questionários Ativos — reais (Supabase) */}
+            {questionariosFeed.filter(q => q.estado === "ativo").length > 0 && (
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3.5 rounded-xl shadow-sm space-y-3 text-[10px]">
+                <span className="text-[9px] font-extrabold text-emerald-600 uppercase tracking-widest block">📋 Questionários Ativos</span>
+                {questionariosFeed.filter(q => q.estado === "ativo").map(q => (
+                  <div key={q.id_questionario} className="p-2.5 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-100 dark:border-slate-850/60 space-y-1.5">
+                    <h5 className="font-extrabold text-slate-800 dark:text-slate-100">{q.titulo}</h5>
+                    {q.descricao && <p className="text-slate-400 text-[9px]">{q.descricao}</p>}
+                    {jaRespondeuQuestionario(q) ? (
+                      <span className="text-[8px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded font-extrabold uppercase inline-block">Já respondeu</span>
+                    ) : (
+                      <div className="flex gap-1.5 pt-1">
+                        <input
+                          type="text"
+                          placeholder="A sua resposta..."
+                          value={respostaQuestTexto[q.id_questionario] || ""}
+                          onChange={e => setRespostaQuestTexto(prev => ({ ...prev, [q.id_questionario]: e.target.value }))}
+                          className="flex-grow bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-1.5 rounded text-[10px] focus:outline-none focus:border-emerald-500"
+                        />
+                        <button
+                          disabled={aEnviarResposta === q.id_questionario}
+                          onClick={() => handleResponderQuestionarioReal(q.id_questionario)}
+                          className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded text-[10px] font-bold cursor-pointer"
+                        >
+                          Enviar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -1909,27 +2035,31 @@ export default function PWACondominoView({
             {/* Main Chat Box Container */}
             <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm space-y-3 relative">
               <div className="h-64 bg-slate-50 dark:bg-slate-950/70 border border-slate-150 dark:border-slate-850 rounded-2xl p-3 space-y-2.5 overflow-y-auto">
-                {/* Admin Message */}
-                <div className="p-2.5 bg-white dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-750 space-y-1 max-w-[85%] shadow-xs">
-                  <div className="flex justify-between font-bold text-slate-400 text-[8px]">
-                    <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">🏢 Administração do Condomínio</span>
-                    <span>Hoje 16:15</span>
-                  </div>
-                  <p className="text-slate-700 dark:text-slate-200 leading-normal text-[10px]">
-                    Boa tarde Sr. João, informamos que a equipa de vistorias já reportou a anomalia na porta do ginásio. O fornecedor técnico foi adjudicado para verificação esta quarta-feira.
-                  </p>
-                </div>
+                {mensagens.length === 0 && (
+                  <p className="text-slate-400 text-[10px] text-center py-6">Sem conversas ainda — escreva à administração abaixo.</p>
+                )}
 
-                {/* Resident Message */}
-                <div className="p-2.5 bg-emerald-600 text-white rounded-2xl space-y-1 ml-auto max-w-[85%] shadow-xs">
-                  <div className="flex justify-between font-bold text-emerald-100 text-[8px] flex-row-reverse">
-                    <span>Você (3ºE)</span>
-                    <span>Hoje 14:10</span>
-                  </div>
-                  <p className="text-white leading-normal text-[10px]">
-                    Detetei que a porta do ginásio no piso -1 não está a fechar corretamente após as limpezas. Podem mandar verificar?
-                  </p>
-                </div>
+                {/* Conversas reais (Supabase) */}
+                {mensagens.map(ticket => (
+                  <React.Fragment key={ticket.id_conversa}>
+                    <div className="p-2.5 bg-emerald-600 text-white rounded-2xl space-y-1 ml-auto max-w-[85%] shadow-xs">
+                      <div className="flex justify-between font-bold text-emerald-100 text-[8px] flex-row-reverse">
+                        <span>Você</span>
+                        <span>{ticket.data}</span>
+                      </div>
+                      <p className="text-white leading-normal text-[10px]">{ticket.mensagem}</p>
+                    </div>
+                    {ticket.respostaAdmin && (
+                      <div className="p-2.5 bg-white dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-750 space-y-1 max-w-[85%] shadow-xs">
+                        <div className="flex justify-between font-bold text-slate-400 text-[8px]">
+                          <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">🏢 Administração do Condomínio</span>
+                          <span>{ticket.dataResposta}</span>
+                        </div>
+                        <p className="text-slate-700 dark:text-slate-200 leading-normal text-[10px]">{ticket.respostaAdmin}</p>
+                      </div>
+                    )}
+                  </React.Fragment>
+                ))}
 
                 {/* Dynamic messages */}
                 {customMessages.map((msg, idx) => {
@@ -2154,19 +2284,20 @@ export default function PWACondominoView({
               )}
 
               {/* Chat Input Form */}
-              <form 
-                onSubmit={(e) => { 
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
                   if (chatAudioData && !newMsgText) {
                     setNewMsgText(`🎙️ [Nota de voz de ${chatAudioTimer || 4}s]`);
                   }
-                  handleEnviarMensagem(e);
+                  handleEnviarMensagemReal(e);
                   setChatAudioData(null);
                   setChatPhotoWebp(null);
                   setChatPhotoName(null);
                   setChatDocAttachment(null);
                   setIsEmojiPickerOpen(false);
                   setIsAttachmentMenuOpen(false);
-                }} 
+                }}
                 className="flex items-center gap-1.5 pt-2 border-t border-slate-150 dark:border-slate-800"
               >
                 {/* CLIP BUTTON */}
@@ -3736,98 +3867,92 @@ export default function PWACondominoView({
 
                 {activePwaModal === "responder_sondagem" && (
                   <div className="space-y-3.5 text-[10px]">
-                    <p className="text-slate-300">Responda à sondagem do seu edifício. O seu voto é registado de forma encriptada na PWA.</p>
-                    
-                    <div className="bg-slate-850 border border-slate-800 p-3.5 rounded-xl space-y-3">
-                      {votedPoll ? (
-                        <div className="flex flex-col items-center justify-center py-4 text-center">
-                          <CheckCircle className="h-6 w-6 text-emerald-400 mb-2 animate-bounce" />
-                          <span className="font-extrabold text-white">Voto registado com sucesso!</span>
-                          <span className="text-[8.5px] text-slate-400 mt-1">Obrigado pelo seu contributo para as decisões comunitárias.</span>
-                        </div>
-                      ) : (
-                        <>
+                    <p className="text-slate-300">Responda à sondagem ativa do seu edifício.</p>
+
+                    {(() => {
+                      const sondagemAtiva = sondagensFeed.find(s => s.estado === "ativa" && !jaVotouSondagem(s));
+                      const sondagemVotada = sondagensFeed.find(s => s.estado === "ativa" && jaVotouSondagem(s));
+                      if (!sondagemAtiva && !sondagemVotada) {
+                        return <p className="text-slate-400 text-center py-4">Sem sondagens ativas neste momento.</p>;
+                      }
+                      if (!sondagemAtiva) {
+                        return (
+                          <div className="bg-slate-850 border border-slate-800 p-3.5 rounded-xl flex flex-col items-center justify-center py-4 text-center">
+                            <CheckCircle className="h-6 w-6 text-emerald-400 mb-2" />
+                            <span className="font-extrabold text-white">Voto já registado nesta sondagem!</span>
+                            <span className="text-[8.5px] text-slate-400 mt-1">Obrigado pelo seu contributo para as decisões comunitárias.</span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="bg-slate-850 border border-slate-800 p-3.5 rounded-xl space-y-3">
                           <div className="space-y-1">
-                            <h4 className="font-black text-white text-xs leading-snug">Concorda com a pintura das escadas em tom cinza claro?</h4>
-                            <p className="text-slate-400 text-[8.5px]">A pintura irá cobrir os desgastes atuais. Custos cobertos pelo fundo de reserva extraordinário.</p>
+                            <h4 className="font-black text-white text-xs leading-snug">{sondagemAtiva.pergunta}</h4>
                           </div>
                           <div className="space-y-2 pt-1.5">
-                            {[
-                              { key: "Sim", text: "Sim, concordo inteiramente" },
-                              { key: "Não", text: "Não, prefiro manter o tom atual" },
-                              { key: "Adiar", text: "Adiar decisão para próxima assembleia" }
-                            ].map(opt => (
+                            {sondagemAtiva.opcoes.map(op => (
                               <button
-                                key={opt.key}
-                                onClick={() => handleVote(opt.key)}
-                                className="w-full text-left p-2.5 bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-slate-600 rounded-xl font-bold flex justify-between items-center transition-all cursor-pointer"
+                                key={op}
+                                disabled={aEnviarVoto === sondagemAtiva.id_sondagem}
+                                onClick={() => handleVotarSondagemReal(sondagemAtiva.id_sondagem, op)}
+                                className="w-full text-left p-2.5 bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-slate-600 rounded-xl font-bold flex justify-between items-center transition-all cursor-pointer disabled:opacity-50"
                               >
-                                <span>{opt.text}</span>
+                                <span>{op}</span>
                                 <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
                               </button>
                             ))}
                           </div>
-                        </>
-                      )}
-                    </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
                 {activePwaModal === "estatisticas_sondagem" && (
                   <div className="space-y-3.5 text-[10px]">
-                    <p className="text-slate-300">Consulte os resultados interativos das sondagens do condomínio em tempo real:</p>
-                    
-                    <div className="bg-slate-850 border border-slate-800 p-3.5 rounded-xl space-y-3">
-                      <div className="space-y-1">
-                        <span className="text-[8px] bg-emerald-950 text-emerald-400 font-extrabold uppercase px-1.5 py-0.5 rounded border border-emerald-900/30">Deliberação Ativa</span>
-                        <h4 className="font-extrabold text-white text-[11px] mt-1">Pintura das escadas interiores em tom cinza claro?</h4>
-                      </div>
+                    <p className="text-slate-300">Consulte os resultados reais das sondagens do condomínio:</p>
 
-                      <div className="space-y-2.5 pt-1.5">
-                        {/* Sim */}
-                        <div className="space-y-1">
-                          <div className="flex justify-between font-bold text-[9px]">
-                            <span>Sim, concordo inteiramente</span>
-                            <span className="font-mono text-emerald-400">{(votosSimulados.sim / (votosSimulados.sim + votosSimulados.nao + votosSimulados.adiar) * 100).toFixed(1)}% ({votosSimulados.sim} votos)</span>
-                          </div>
-                          <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                            <div 
-                              className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
-                              style={{ width: `${(votosSimulados.sim / (votosSimulados.sim + votosSimulados.nao + votosSimulados.adiar) * 100)}%` }}
-                            />
-                          </div>
-                        </div>
+                    {sondagensFeed.length === 0 ? (
+                      <p className="text-slate-400 text-center py-4">Sem sondagens registadas ainda.</p>
+                    ) : (
+                      sondagensFeed.map(s => {
+                        const votos = s.votos || [];
+                        const totalVotos = votos.length;
+                        return (
+                          <div key={s.id_sondagem} className="bg-slate-850 border border-slate-800 p-3.5 rounded-xl space-y-3">
+                            <div className="space-y-1">
+                              <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded border ${s.estado === "ativa" ? "bg-emerald-950 text-emerald-400 border-emerald-900/30" : "bg-slate-800 text-slate-400 border-slate-700"}`}>
+                                {s.estado === "ativa" ? "Deliberação Ativa" : "Encerrada"}
+                              </span>
+                              <h4 className="font-extrabold text-white text-[11px] mt-1">{s.pergunta}</h4>
+                            </div>
 
-                        {/* Não */}
-                        <div className="space-y-1">
-                          <div className="flex justify-between font-bold text-[9px]">
-                            <span>Não, prefiro manter o tom atual</span>
-                            <span className="font-mono text-rose-450">{(votosSimulados.nao / (votosSimulados.sim + votosSimulados.nao + votosSimulados.adiar) * 100).toFixed(1)}% ({votosSimulados.nao} votos)</span>
+                            {totalVotos === 0 ? (
+                              <p className="text-slate-400 text-[9px]">Ainda sem votos registados.</p>
+                            ) : (
+                              <div className="space-y-2.5 pt-1.5">
+                                {s.opcoes.map(op => {
+                                  const count = votos.filter(v => v.opcao_escolhida === op).length;
+                                  const pct = totalVotos > 0 ? (count / totalVotos) * 100 : 0;
+                                  return (
+                                    <div key={op} className="space-y-1">
+                                      <div className="flex justify-between font-bold text-[9px]">
+                                        <span>{op}</span>
+                                        <span className="font-mono text-emerald-400">{pct.toFixed(1)}% ({count} votos)</span>
+                                      </div>
+                                      <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                        <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            <span className="text-[7.5px] text-slate-400 font-mono uppercase font-bold text-center block pt-1 border-t border-slate-800">Total de Votos: {totalVotos}</span>
                           </div>
-                          <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                            <div 
-                              className="bg-rose-500 h-full rounded-full transition-all duration-500" 
-                              style={{ width: `${(votosSimulados.nao / (votosSimulados.sim + votosSimulados.nao + votosSimulados.adiar) * 100)}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Adiar */}
-                        <div className="space-y-1">
-                          <div className="flex justify-between font-bold text-[9px]">
-                            <span>Adiar decisão para próxima assembleia</span>
-                            <span className="font-mono text-amber-400">{(votosSimulados.adiar / (votosSimulados.sim + votosSimulados.nao + votosSimulados.adiar) * 100).toFixed(1)}% ({votosSimulados.adiar} votos)</span>
-                          </div>
-                          <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                            <div 
-                              className="bg-amber-500 h-full rounded-full transition-all duration-500" 
-                              style={{ width: `${(votosSimulados.adiar / (votosSimulados.sim + votosSimulados.nao + votosSimulados.adiar) * 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <span className="text-[7.5px] text-slate-400 font-mono uppercase font-bold text-center block pt-1 border-t border-slate-800">Total de Frações Votantes: {votosSimulados.sim + votosSimulados.nao + votosSimulados.adiar} (Quorum: 100%)</span>
-                    </div>
+                        );
+                      })
+                    )}
                   </div>
                 )}
 
