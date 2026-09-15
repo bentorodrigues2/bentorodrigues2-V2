@@ -1,4 +1,5 @@
 import { supabase } from "../services/lib/supabaseClient.js";
+import { generateWithFallback } from "../server/geminiService.js";
 
 export default async function handler(req, res) {
   try {
@@ -36,32 +37,16 @@ export default async function handler(req, res) {
       })),
     ];
 
-    const respostaAI = await fetch(
-      `${process.env.AI_STUDIO_ENDPOINT}?key=${process.env.AI_STUDIO_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts,
-            },
-          ],
-        }),
-      }
-    );
-
-    if (!respostaAI.ok) {
-      const txt = await respostaAI.text();
-      console.error("Erro ao chamar Gemini multimodal:", txt);
+    let content;
+    try {
+      content = await generateWithFallback({
+        contents: [{ role: "user", parts }],
+        responseMimeType: "application/json"
+      });
+    } catch (err) {
+      console.error("Erro ao chamar Gemini multimodal:", err?.message || err);
       return res.status(500).json({ error: "Erro no Gemini multimodal" });
     }
-
-    const resultado = await respostaAI.json();
-
-    const content =
-      resultado?.candidates?.[0]?.content?.parts?.find((p) => p.text)?.text ||
-      "{}";
 
     let parsed;
     try {
