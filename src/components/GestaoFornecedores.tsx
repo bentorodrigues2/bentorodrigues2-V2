@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Download, Save } from "lucide-react";
 import { Predio, Fornecedor, LoggedUser } from "../types";
 import { exportToXLS, generateSupplierPwaManualPDF, gerarPdfRegistoFornecedorHomologado, gerarCartaoAniversarioCondominoPDF } from "../utils";
-import { saveFornecedorToSupabase, saveContratoToSupabase } from "../lib/supabaseService";
+import { saveFornecedorToSupabase, saveContratoToSupabase, fetchContratosFromSupabase, deleteContratoFromSupabase } from "../lib/supabaseService";
 
 interface GestaoFornecedoresProps {
   predio: Predio;
@@ -16,11 +16,14 @@ export interface Contrato {
   id_contrato: string;
   id_predio: string;
   id_fornecedor: string;
+  tipo_contrato: string;
   servico: string;
+  data_inicio: string;
   custo_mensal: number;
   custo_anual: number;
   renovacao_automatica: boolean;
   data_fim: string;
+  estado: string;
   alerta_renovacao: boolean;
   sla_resposta?: string;
   penalizacao_atraso?: string;
@@ -68,48 +71,22 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
     );
   };
 
-  // Contract state & simulated data store
-  const [contratos, setContratos] = useState<Contrato[]>([
-    {
-      id_contrato: "contr-1",
-      id_predio: "predio-1",
-      id_fornecedor: "forn-1", // Reference to first supplier
-      servico: "Manutenção Preventiva de Elevadores (Contrato Mensal)",
-      custo_mensal: 85.0,
-      custo_anual: 1020.0,
-      renovacao_automatica: true,
-      data_fim: "2026-12-31",
-      alerta_renovacao: true,
-      sla_resposta: "2h (Emergência) / 24h (Padrão)",
-      penalizacao_atraso: "5% de desconto mensal por cada dia de paragem não agendada",
-      indexacao_preco: "Taxa Inflação INE (IPC +2.1%)",
-      historico_renovacoes: ["Renovado automaticamente em 01-01-2026 para 2026-12-31"],
-      documento_nome: "contrato_otis_elevador_assinado.pdf"
-    },
-    {
-      id_contrato: "contr-2",
-      id_predio: "predio-1",
-      id_fornecedor: "forn-2",
-      servico: "Seguro Multirriscos Edifícios (Anual)",
-      custo_mensal: 29.17,
-      custo_anual: 350.0,
-      renovacao_automatica: true,
-      data_fim: "2026-08-10", // Expiration within 30 days
-      alerta_renovacao: true,
-      sla_resposta: "Peritagem até 48h após sinistro",
-      penalizacao_atraso: "Sem penalização aplicável",
-      indexacao_preco: "Revisão Anual de Valor de Reconstrução (+3.5%)",
-      historico_renovacoes: ["Em Período de Pré-Aviso de Renovação 2026/2027"],
-      documento_nome: "apolice_multirriscos_fidelidade_2026.pdf"
-    }
-  ]);
+  // Contratos — carregados do Supabase (tabela real, antes só existiam
+  // como 2 exemplos fixos no código e o "guardar" nunca persistia de facto).
+  const [contratos, setContratos] = useState<Contrato[]>([]);
+
+  useEffect(() => {
+    fetchContratosFromSupabase(predio.id_predio).then(setContratos);
+  }, [predio.id_predio]);
 
   // Global budget reference for impact evaluation
   const [orcamentoReferencia, setOrcamentoReferencia] = useState("5000");
 
   // New Contract Form State
   const [selectedFornecedorId, setSelectedFornecedorId] = useState("");
+  const [tipoContrato, setTipoContrato] = useState("Manutenção");
   const [servicoNome, setServicoNome] = useState("");
+  const [dataInicio, setDataInicio] = useState(() => new Date().toISOString().split("T")[0]);
   const [custoMensal, setCustoMensal] = useState("");
   const [custoAnual, setCustoAnual] = useState("");
   const [renovacaoAuto, setRenovacaoAuto] = useState(true);
@@ -120,22 +97,27 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
   const [documentoNome, setDocumentoNome] = useState("");
   const [documentoBase64, setDocumentoBase64] = useState("");
 
-  const renovarContratoAutomatico = (idContrato: string) => {
-    setContratos(prev => prev.map(c => {
-      if (c.id_contrato === idContrato) {
-        const parts = c.data_fim.split("-");
-        const nextYear = (parseInt(parts[0]) || 2026) + 1;
-        const newDateFim = `${nextYear}-${parts[1] || "12"}-${parts[2] || "31"}`;
-        const logMsg = `Renovado automaticamente pela IA em ${new Date().toLocaleDateString("pt-PT")} para ${newDateFim}`;
-        return {
-          ...c,
-          data_fim: newDateFim,
-          historico_renovacoes: [logMsg, ...(c.historico_renovacoes || [])]
-        };
-      }
-      return c;
-    }));
-    alert("✨ Contrato renovado automaticamente por +1 ano com registo auditado e alerta atualizado!");
+  const renovarContratoAutomatico = async (idContrato: string) => {
+    const atual = contratos.find(c => c.id_contrato === idContrato);
+    if (!atual) return;
+
+    const parts = atual.data_fim.split("-");
+    const nextYear = (parseInt(parts[0]) || 2026) + 1;
+    const newDateFim = `${nextYear}-${parts[1] || "12"}-${parts[2] || "31"}`;
+    const logMsg = `Renovado automaticamente pela IA em ${new Date().toLocaleDateString("pt-PT")} para ${newDateFim}`;
+    const atualizado: Contrato = {
+      ...atual,
+      data_fim: newDateFim,
+      historico_renovacoes: [logMsg, ...(atual.historico_renovacoes || [])]
+    };
+
+    const ok = await saveContratoToSupabase(atualizado);
+    if (ok) {
+      setContratos(prev => prev.map(c => c.id_contrato === idContrato ? atualizado : c));
+      alert("✨ Contrato renovado automaticamente por +1 ano com registo auditado e alerta atualizado!");
+    } else {
+      alert("❌ Não foi possível guardar a renovação no Supabase. Tente novamente.");
+    }
   };
 
   const exportarRelatorioContratosXLS = () => {
@@ -263,36 +245,48 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
     const cAnual = Number(custoAnual) || 0;
 
     const novoContrato: Contrato = {
-      id_contrato: "contr-" + (contratos.length + 1),
+      id_contrato: crypto.randomUUID(),
       id_predio: predio.id_predio,
       id_fornecedor: selectedFornecedorId,
+      tipo_contrato: tipoContrato,
       servico: servicoNome,
+      data_inicio: dataInicio,
       custo_mensal: cMensal,
       custo_anual: cAnual,
       renovacao_automatica: renovacaoAuto,
       data_fim: dataFim,
+      estado: "Ativo",
       alerta_renovacao: true,
       sla_resposta: slaResposta || "24h padrão",
       penalizacao_atraso: penalizacaoAtraso || "Sem penalização",
       indexacao_preco: indexacaoPreco || "IPC Taxa Inflação",
       historico_renovacoes: [`Criado e registado em ${new Date().toLocaleDateString("pt-PT")}`],
-      documento_nome: documentoNome || undefined,
-      documento_base64: documentoBase64 || undefined
+      documento_nome: documentoNome || undefined
     };
 
-    setContratos([novoContrato, ...contratos]);
-    saveContratoToSupabase(novoContrato).catch(console.error);
-    setServicoNome("");
-    setCustoMensal("");
-    setCustoAnual("");
-    setDocumentoNome("");
-    setDocumentoBase64("");
-    alert("Serviço Contratado registado e arquivado no sistema!");
+    saveContratoToSupabase(novoContrato).then(ok => {
+      if (ok) {
+        setContratos([novoContrato, ...contratos]);
+        setServicoNome("");
+        setCustoMensal("");
+        setCustoAnual("");
+        setDocumentoNome("");
+        setDocumentoBase64("");
+        alert("Serviço Contratado registado e arquivado no sistema!");
+      } else {
+        alert("❌ Não foi possível guardar o contrato no Supabase. Tente novamente.");
+      }
+    });
   };
 
-  const excluirContrato = (id: string) => {
+  const excluirContrato = async (id: string) => {
     if (!window.confirm("Deseja realmente arquivar/remover este contrato?")) return;
-    setContratos(contratos.filter(c => c.id_contrato !== id));
+    const ok = await deleteContratoFromSupabase(id);
+    if (ok) {
+      setContratos(contratos.filter(c => c.id_contrato !== id));
+    } else {
+      alert("❌ Não foi possível remover o contrato no Supabase. Tente novamente.");
+    }
   };
 
   const exportarFornecedoresXLS = () => {
@@ -841,6 +835,33 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
                     value={servicoNome}
                     onChange={e => setServicoNome(e.target.value)}
                     placeholder="Ex: Contrato de Manutenção Preventiva de Elevador Principal"
+                    className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col">
+                  <label className="text-xs font-semibold text-slate-500 mb-1">Tipo de Contrato *</label>
+                  <select
+                    required
+                    value={tipoContrato}
+                    onChange={e => setTipoContrato(e.target.value)}
+                    className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 bg-white"
+                  >
+                    <option value="Manutenção">Manutenção</option>
+                    <option value="Seguro">Seguro</option>
+                    <option value="Limpeza">Limpeza</option>
+                    <option value="Arrendamento">Arrendamento</option>
+                  </select>
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-semibold text-slate-500 mb-1">Data de Início *</label>
+                  <input
+                    type="date"
+                    required
+                    value={dataInicio}
+                    onChange={e => setDataInicio(e.target.value)}
                     className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-indigo-500"
                   />
                 </div>

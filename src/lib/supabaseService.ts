@@ -906,23 +906,63 @@ export async function deleteFornecedorFromSupabase(idFornecedor: string): Promis
   return dbDelete("fornecedores", [["id_fornecedor", "eq", idFornecedor]]);
 }
 
+// A tabela real "contratos" usa titulo/valor_anual_mensal/tipo_contrato/
+// data_inicio/estado — nomes diferentes dos que este upsert enviava
+// (servico/custo_anual/etc.), e nunca enviava tipo_contrato/data_inicio/
+// estado (NOT NULL na tabela), pelo que o upsert falhava sempre em
+// silêncio. sla_resposta/penalizacao_atraso/indexacao_preco/
+// historico_renovacoes/custo_mensal/documento_nome são colunas reais
+// acrescentadas à tabela por não existirem no schema original.
 export async function saveContratoToSupabase(contrato: any): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
   return dbUpsert("contratos", {
     id_contrato: contrato.id_contrato,
     id_predio: contrato.id_predio,
     id_fornecedor: contrato.id_fornecedor,
-    servico: contrato.servico,
-    custo_mensal: contrato.custo_mensal,
-    custo_anual: contrato.custo_anual,
-    renovacao_automatica: contrato.renovacao_automatica,
+    tipo_contrato: contrato.tipo_contrato,
+    titulo: contrato.servico,
+    data_inicio: contrato.data_inicio,
     data_fim: contrato.data_fim,
+    valor_anual_mensal: contrato.custo_anual,
+    custo_mensal: contrato.custo_mensal,
+    renovacao_automatica: contrato.renovacao_automatica,
+    estado: contrato.estado || "Ativo",
     alerta_renovacao: contrato.alerta_renovacao,
     sla_resposta: contrato.sla_resposta || null,
     penalizacao_atraso: contrato.penalizacao_atraso || null,
     indexacao_preco: contrato.indexacao_preco || null,
+    historico_renovacoes: contrato.historico_renovacoes || [],
     documento_nome: contrato.documento_nome || null
   });
+}
+
+export async function fetchContratosFromSupabase(idPredio?: string): Promise<any[]> {
+  if (!isSupabaseConfigured()) return [];
+  const data = await dbSelect("contratos", { filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined });
+  if (!data) return [];
+  return data.map((row: any) => ({
+    id_contrato: row.id_contrato,
+    id_predio: row.id_predio,
+    id_fornecedor: row.id_fornecedor,
+    tipo_contrato: row.tipo_contrato,
+    servico: row.titulo,
+    data_inicio: row.data_inicio,
+    data_fim: row.data_fim,
+    custo_anual: Number(row.valor_anual_mensal) || 0,
+    custo_mensal: Number(row.custo_mensal) || 0,
+    renovacao_automatica: Boolean(row.renovacao_automatica),
+    estado: row.estado,
+    alerta_renovacao: row.alerta_renovacao ?? true,
+    sla_resposta: row.sla_resposta || undefined,
+    penalizacao_atraso: row.penalizacao_atraso || undefined,
+    indexacao_preco: row.indexacao_preco || undefined,
+    historico_renovacoes: row.historico_renovacoes || [],
+    documento_nome: row.documento_nome || undefined
+  }));
+}
+
+export async function deleteContratoFromSupabase(idContrato: string): Promise<boolean> {
+  return dbDelete("contratos", [["id_contrato", "eq", idContrato]]);
 }
 
 // ============================================================================
