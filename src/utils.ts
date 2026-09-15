@@ -3577,6 +3577,210 @@ export function gerarDeclaracaoRepresentacaoPDF(devolverDoc?: boolean) {
 }
 
 /**
+ * Termo de Acordo de Pagamento em Prestações — confissão de dívida e
+ * calendário de pagamento, com cláusula resolutiva expressa (o
+ * incumprimento de uma prestação vence de imediato todas as restantes).
+ */
+export function gerarTermoAcordoPagamentoPDF(params: {
+  predioNome: string;
+  predioNif: string;
+  condominoNome: string;
+  condominoNif: string;
+  fracaoNome: string;
+  valorTotalDivida: number;
+  numeroPrestacoes: number;
+  valorPrestacao: number;
+  dataPrimeiraPrestacao: string;
+  ibanPagamento: string;
+  administradorNome?: string;
+}, devolverDoc?: boolean) {
+  try {
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    let y = addPdfHeaderWithLogo(doc, params.predioNome);
+
+    doc.setFillColor(15, 23, 42);
+    doc.rect(14, y, 182, 11, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10.5);
+    doc.text("TERMO DE ACORDO DE PAGAMENTO EM PRESTAÇÕES", 105, y + 7, { align: "center" });
+    y += 18;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 41, 59);
+    const intro = doc.splitTextToSize(
+      `Entre o Condomínio do Edifício ${params.predioNome} (NIF: ${params.predioNif}), adiante designado "Primeiro Outorgante", e ${params.condominoNome} (NIF: ${params.condominoNif}), proprietário(a) da fração autónoma "${params.fracaoNome}", adiante designado(a) "Segundo Outorgante", é celebrado o presente Termo de Acordo de Pagamento em Prestações, nos termos e com as cláusulas seguintes.`,
+      182
+    );
+    doc.text(intro, 14, y);
+    y += intro.length * 4.5 + 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("1.ª — CONFISSÃO DE DÍVIDA", 14, y);
+    y += 6;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    const confissao = doc.splitTextToSize(
+      `O Segundo Outorgante confessa, de forma livre e esclarecida, ser devedor ao Primeiro Outorgante da quantia global de ${params.valorTotalDivida.toFixed(2)} €, respeitante a quotas de condomínio e demais encargos em atraso, apurada até à data da assinatura do presente termo.`,
+      182
+    );
+    doc.text(confissao, 14, y);
+    y += confissao.length * 4.5 + 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("2.ª — CALENDÁRIO DE PAGAMENTO", 14, y);
+    y += 6;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    const calendarioTexto = doc.splitTextToSize(
+      `A dívida referida na Cláusula 1.ª será liquidada em ${params.numeroPrestacoes} prestações mensais, iguais e sucessivas, no valor de ${params.valorPrestacao.toFixed(2)} € cada, vencendo-se a primeira em ${formatDatePT(params.dataPrimeiraPrestacao)} e as seguintes em igual dia dos meses subsequentes, mediante transferência bancária para o IBAN ${params.ibanPagamento}.`,
+      182
+    );
+    doc.text(calendarioTexto, 14, y);
+    y += calendarioTexto.length * 4.5 + 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("3.ª — CLÁUSULA RESOLUTIVA EXPRESSA", 14, y);
+    y += 6;
+    doc.setFillColor(254, 242, 242);
+    doc.setDrawColor(252, 165, 165);
+    const clausulaTexto = doc.splitTextToSize(
+      "O incumprimento de uma única prestação, no montante ou na data fixados, implica o vencimento imediato de todas as demais prestações ainda não liquidadas, tornando-se a totalidade da dívida remanescente exigível de imediato, ficando o Primeiro Outorgante desde já autorizado a recorrer diretamente à via judicial executiva competente, sem necessidade de nova interpelação.",
+      174
+    );
+    const clausulaH = clausulaTexto.length * 4.2 + 8;
+    doc.roundedRect(14, y, 182, clausulaH, 2, 2, "FD");
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(127, 29, 29);
+    doc.text(clausulaTexto, 18, y + 6);
+    y += clausulaH + 10;
+
+    doc.setTextColor(30, 41, 59);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.text(`Local e Data: ${"_".repeat(28)}, ____ de ${"_".repeat(16)} de 2026`, 14, y);
+    y += 20;
+
+    doc.setDrawColor(160, 172, 190);
+    doc.line(20, y, 90, y);
+    doc.line(115, y, 185, y);
+    y += 4;
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text("O Primeiro Outorgante (Administração)", 20, y);
+    doc.text(`O Segundo Outorgante (${params.condominoNome})`, 115, y);
+
+    doc.setFontSize(6.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text("CondoManager AI • Termo de Acordo de Pagamento em Prestações", 105, 285, { align: "center" });
+
+    if (devolverDoc) return doc;
+    const blob = doc.output("blob");
+    downloadBlob(blob, `Termo_Acordo_Pagamento_${params.fracaoNome.replace(/\s+/g, "_")}.pdf`);
+    return true;
+  } catch (err) {
+    console.error("Erro ao gerar Termo de Acordo de Pagamento PDF:", err);
+    if (typeof alert !== "undefined") alert("Ocorreu um erro ao gerar o Termo de Acordo de Pagamento.");
+    return false;
+  }
+}
+
+/**
+ * Notificação de Cessação de Obras / Violação do Regulamento Interno
+ * (Art.º 1422.º do Código Civil).
+ */
+export function gerarNotificacaoObrasIrregularesPDF(params: {
+  predioNome: string;
+  predioNif: string;
+  condominoNome: string;
+  fracaoNome: string;
+  descricaoInfracao: string;
+  administradorNome?: string;
+}, devolverDoc?: boolean) {
+  try {
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    let y = addPdfHeaderWithLogo(doc, params.predioNome);
+
+    doc.setFillColor(15, 23, 42);
+    doc.rect(14, y, 182, 11, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10.5);
+    doc.text("NOTIFICAÇÃO DE CESSAÇÃO DE OBRAS / VIOLAÇÃO DO REGULAMENTO", 105, y + 7, { align: "center" });
+    y += 15;
+
+    doc.setTextColor(71, 85, 105);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.text("(Artigo 1422.º do Código Civil e Regulamento Interno do Condomínio)", 105, y, { align: "center" });
+    y += 10;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 41, 59);
+    doc.text(`Exmo.(a) Sr.(a) ${params.condominoNome},`, 14, y);
+    y += 8;
+
+    const corpo = doc.splitTextToSize(
+      `A Administração do Condomínio do Edifício ${params.predioNome} (NIF: ${params.predioNif}) vem por este meio notificar V. Exa. para cessar de imediato os trabalhos / comportamentos não autorizados que estão a decorrer na fração "${params.fracaoNome}", por manifesta infração ao Regulamento Interno do Condomínio e ao regime da Propriedade Horizontal.`,
+      182
+    );
+    doc.text(corpo, 14, y);
+    y += corpo.length * 4.5 + 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("INCUMPRIMENTO DETETADO:", 14, y);
+    y += 6;
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    const infracaoLines = doc.splitTextToSize(params.descricaoInfracao || "(descrição não fornecida)", 174);
+    const infracaoH = infracaoLines.length * 4.2 + 8;
+    doc.roundedRect(14, y, 182, infracaoH, 2, 2, "FD");
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 41, 59);
+    doc.text(infracaoLines, 18, y + 6);
+    y += infracaoH + 10;
+
+    const aviso = doc.splitTextToSize(
+      "Solicitamos a reposição imediata da normalidade no prazo de 48 (quarenta e oito) horas, sob pena de acionamento das entidades policiais, camarárias e judiciais competentes, sem prejuízo do direito de indemnização por eventuais danos causados às partes comuns ou a terceiros.",
+      182
+    );
+    doc.text(aviso, 14, y);
+    y += aviso.length * 4.5 + 14;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.text("A Administração do Condomínio:", 105, y, { align: "center" });
+    y += 12;
+    doc.line(65, y, 145, y);
+    y += 4;
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(params.administradorNome || "José Carlos Guerra", 105, y, { align: "center" });
+
+    doc.setFontSize(6.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text("CondoManager AI • Notificação de Cessação de Obras / Violação do Regulamento", 105, 285, { align: "center" });
+
+    if (devolverDoc) return doc;
+    const blob = doc.output("blob");
+    downloadBlob(blob, `Notificacao_Obras_Irregulares_${params.fracaoNome.replace(/\s+/g, "_")}.pdf`);
+    return true;
+  } catch (err) {
+    console.error("Erro ao gerar Notificação de Obras Irregulares PDF:", err);
+    if (typeof alert !== "undefined") alert("Ocorreu um erro ao gerar a Notificação de Obras Irregulares.");
+    return false;
+  }
+}
+
+/**
  * Geração Automática da Referência BR23E para Conciliação Bancária
  * Regra: Gerada de forma unívoca a partir da fração/condómino, não editável pelo utilizador,
  * destinada exclusivamente ao Perfil Bancário do Condómino / Perfil da Fração.

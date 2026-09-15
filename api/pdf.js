@@ -5,7 +5,9 @@ import {
   gerarConvocatoriaOficialPDF,
   gerarNotificacaoDividaPDF,
   gerarAtaAprovadaOficialPDF,
-  gerarParticipacaoSinistroPDF
+  gerarParticipacaoSinistroPDF,
+  gerarTermoAcordoPagamentoPDF,
+  gerarNotificacaoObrasIrregularesPDF
 } from "../server/lib/pdfDocs.js";
 
 const TIPOS = {
@@ -22,7 +24,9 @@ const TIPOS = {
   "convocatoria-oficial": { tema: "Assembleias", tipo: "Convocatória", fluxo: "convocatoria_oficial", categoria: "Atas & Convocatórias" },
   "notificacao-divida": { tema: "Comunicações", tipo: "Notificação de Dívida", fluxo: "notificacao_divida" },
   "ata-aprovada": { tema: "Assembleias", tipo: "Ata", fluxo: "ata_aprovada", categoria: "Atas & Convocatórias" },
-  "participacao-sinistro": { tema: "Seguros", tipo: "Participação de Sinistro", fluxo: "participacao_sinistro", categoria: "Seguros & Apólices" }
+  "participacao-sinistro": { tema: "Seguros", tipo: "Participação de Sinistro", fluxo: "participacao_sinistro", categoria: "Seguros & Apólices" },
+  "termo-acordo-pagamento": { tema: "Contencioso e Ações Judiciais", tipo: "Termo de Acordo de Pagamento", fluxo: "termo_acordo_pagamento", categoria: "Processos Judiciais & Contencioso" },
+  "notificacao-obras-irregulares": { tema: "Contencioso e Ações Judiciais", tipo: "Notificação de Obras Irregulares", fluxo: "notificacao_obras_irregulares", categoria: "Processos Judiciais & Contencioso" }
 };
 
 const TIPOS_ESPECIAIS = new Set([
@@ -31,7 +35,9 @@ const TIPOS_ESPECIAIS = new Set([
   "convocatoria-oficial",
   "notificacao-divida",
   "ata-aprovada",
-  "participacao-sinistro"
+  "participacao-sinistro",
+  "termo-acordo-pagamento",
+  "notificacao-obras-irregulares"
 ]);
 
 /**
@@ -85,12 +91,30 @@ function gerarDocEspecial(tipo, body) {
     };
   }
 
-  // participacao-sinistro
+  if (tipo === "participacao-sinistro") {
+    return {
+      doc: gerarParticipacaoSinistroPDF(body.numeroSinistro, body.apoliceNumero, body.seguradoraNome, body.predioNome, body.predioNif, true),
+      nomeFicheiro: `Participacao_Sinistro_${body.numeroSinistro || ""}.pdf`,
+      assunto: `Participação Urgente de Sinistro — Apólice n.º ${body.apoliceNumero || ""} — ${body.predioNome || ""}`,
+      mensagem: `Vimos por este meio formalizar a participação de sinistro ocorrido nas partes comuns do condomínio. Segue em anexo o auto de vistoria com registo fotográfico para efeitos de marcação de peritagem técnica.`
+    };
+  }
+
+  if (tipo === "termo-acordo-pagamento") {
+    return {
+      doc: gerarTermoAcordoPagamentoPDF(body.acordo || {}, true),
+      nomeFicheiro: `Termo_Acordo_Pagamento_${(body.acordo?.fracaoNome || "fracao").replace(/\s+/g, "_")}.pdf`,
+      assunto: `Termo de Acordo de Pagamento em Prestações — Fração ${body.acordo?.fracaoNome || ""}`,
+      mensagem: `Segue em anexo o Termo de Acordo de Pagamento em Prestações relativo à regularização da dívida da sua fração, conforme negociado com a Administração.`
+    };
+  }
+
+  // notificacao-obras-irregulares
   return {
-    doc: gerarParticipacaoSinistroPDF(body.numeroSinistro, body.apoliceNumero, body.seguradoraNome, body.predioNome, body.predioNif, true),
-    nomeFicheiro: `Participacao_Sinistro_${body.numeroSinistro || ""}.pdf`,
-    assunto: `Participação Urgente de Sinistro — Apólice n.º ${body.apoliceNumero || ""} — ${body.predioNome || ""}`,
-    mensagem: `Vimos por este meio formalizar a participação de sinistro ocorrido nas partes comuns do condomínio. Segue em anexo o auto de vistoria com registo fotográfico para efeitos de marcação de peritagem técnica.`
+    doc: gerarNotificacaoObrasIrregularesPDF(body.notificacao || {}, true),
+    nomeFicheiro: `Notificacao_Obras_Irregulares_${(body.notificacao?.fracaoNome || "fracao").replace(/\s+/g, "_")}.pdf`,
+    assunto: `Notificação de Cessação de Obras / Violação do Regulamento — Fração ${body.notificacao?.fracaoNome || ""}`,
+    mensagem: `Segue em anexo notificação formal relativa a obras não autorizadas / violação do regulamento interno detetada na sua fração.`
   };
 }
 

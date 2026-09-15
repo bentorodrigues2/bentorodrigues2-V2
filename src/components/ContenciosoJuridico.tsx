@@ -45,6 +45,13 @@ export function ContenciosoJuridico({
   }, [predio.id_predio]);
   const [selectedFracaoId, setSelectedFracaoId] = useState<string>("");
   const [interestRate, setInterestRate] = useState<number>(4.0); // Default 4% annual interest
+
+  // --- ENVIO REAL DE NOTIFICAÇÕES (Interpelação em Mora / Obras Irregulares / Acordo de Pagamento) ---
+  const [tipoCartaEnvio, setTipoCartaEnvio] = useState<"mora" | "obras" | "acordo">("mora");
+  const [descricaoInfracaoObras, setDescricaoInfracaoObras] = useState<string>("");
+  const [numPrestacoesAcordo, setNumPrestacoesAcordo] = useState<number>(6);
+  const [dataPrimeiraPrestacao, setDataPrimeiraPrestacao] = useState<string>("");
+  const [enviandoNotificacaoReal, setEnviandoNotificacaoReal] = useState<boolean>(false);
   const [printedDoc, setPrintedDoc] = useState<boolean>(false);
   const [docObrigatorioType, setDocObrigatorioType] = useState<string>("Declaração de Dívida");
   const [isEmitting, setIsEmitting] = useState<boolean>(false);
@@ -271,6 +278,88 @@ export function ContenciosoJuridico({
     setPrintedDoc(true);
     window.print();
     setTimeout(() => setPrintedDoc(false), 2000);
+  };
+
+  // Envio real por email das 3 notificações jurídicas (interpelação em
+  // mora, obras irregulares, acordo de pagamento) — antes só existia a
+  // pré-visualização/impressão local, sem nenhum PDF oficial nem email real.
+  const handleEnviarNotificacaoReal = async () => {
+    if (!selectedFracao?.proprietario?.email) {
+      alert("A fração selecionada não tem email de proprietário registado.");
+      return;
+    }
+    if (tipoCartaEnvio === "obras" && !descricaoInfracaoObras.trim()) {
+      alert("Descreva a infração/incumprimento detetado antes de enviar.");
+      return;
+    }
+
+    setEnviandoNotificacaoReal(true);
+    try {
+      let tipo: string;
+      let body: any;
+
+      if (tipoCartaEnvio === "mora") {
+        tipo = "notificacao-divida";
+        body = {
+          proprietarioNome: selectedFracao.proprietario.nome,
+          fracaoNome: selectedFracao.fracao_nome,
+          valorDivida: selectedFracaoInfo?.totalDebt || 0,
+          predioNome: predio.nome,
+          predioNif: predio.nif,
+          ibanPagamento: predioContasIBAN(predio.id_predio)
+        };
+      } else if (tipoCartaEnvio === "obras") {
+        tipo = "notificacao-obras-irregulares";
+        body = {
+          notificacao: {
+            predioNome: predio.nome,
+            predioNif: predio.nif,
+            condominoNome: selectedFracao.proprietario.nome,
+            fracaoNome: selectedFracao.fracao_nome,
+            descricaoInfracao: descricaoInfracaoObras,
+            administradorNome: loggedUser.nome
+          }
+        };
+      } else {
+        tipo = "termo-acordo-pagamento";
+        const totalDivida = selectedFracaoInfo?.totalDebt || 0;
+        const valorPrestacao = Math.round((totalDivida / numPrestacoesAcordo) * 100) / 100;
+        body = {
+          acordo: {
+            predioNome: predio.nome,
+            predioNif: predio.nif,
+            condominoNome: selectedFracao.proprietario.nome,
+            condominoNif: selectedFracao.proprietario.nif,
+            fracaoNome: selectedFracao.fracao_nome,
+            valorTotalDivida: totalDivida,
+            numeroPrestacoes: numPrestacoesAcordo,
+            valorPrestacao,
+            dataPrimeiraPrestacao: dataPrimeiraPrestacao || new Date().toISOString().split("T")[0],
+            ibanPagamento: predioContasIBAN(predio.id_predio),
+            administradorNome: loggedUser.nome
+          }
+        };
+      }
+
+      const resp = await fetch(`/api/pdf?tipo=${tipo}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...body,
+          email: selectedFracao.proprietario.email,
+          predio: predio.id_predio,
+          ano: new Date().getFullYear()
+        })
+      });
+      const resultado = await resp.json();
+      if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar a notificação");
+
+      alert(`✅ Notificação enviada com sucesso para ${selectedFracao.proprietario.email} e arquivada no Arquivo Digital!`);
+    } catch (err: any) {
+      alert(`❌ Erro ao enviar a notificação: ${err?.message || "erro desconhecido"}`);
+    } finally {
+      setEnviandoNotificacaoReal(false);
+    }
   };
 
   // 5. REGULAMENTO INTERNO AUTOMÁTICO COM BASE NO PATRIMÓNIO
@@ -1030,6 +1119,72 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                 >
                   <i className="fa-solid fa-print"></i>
                   <span>Imprimir / Exportar Carta AR</span>
+                </button>
+              </div>
+
+              {/* Envio real de notificações jurídicas por email */}
+              <div className="pt-3 mt-1 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                <label className="text-[10px] uppercase font-bold text-slate-400">Tipo de Notificação a Enviar por Email</label>
+                <select
+                  value={tipoCartaEnvio}
+                  onChange={e => setTipoCartaEnvio(e.target.value as typeof tipoCartaEnvio)}
+                  className="w-full border border-slate-200 dark:border-slate-800 p-2 text-xs rounded bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
+                >
+                  <option value="mora">Notificação Formal de Interpelação em Mora</option>
+                  <option value="obras">Notificação de Cessação de Obras / Violação do Regulamento</option>
+                  <option value="acordo">Termo de Acordo de Pagamento em Prestações</option>
+                </select>
+
+                {tipoCartaEnvio === "obras" && (
+                  <textarea
+                    rows={3}
+                    placeholder="Descreva a infração/incumprimento detetado..."
+                    value={descricaoInfracaoObras}
+                    onChange={e => setDescricaoInfracaoObras(e.target.value)}
+                    className="w-full border border-slate-200 dark:border-slate-800 p-2 text-xs rounded bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
+                  />
+                )}
+
+                {tipoCartaEnvio === "acordo" && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-slate-400">N.º Prestações</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={numPrestacoesAcordo}
+                        onChange={e => setNumPrestacoesAcordo(parseInt(e.target.value) || 1)}
+                        className="mt-1 w-full border border-slate-200 dark:border-slate-800 p-2 text-xs rounded bg-white dark:bg-slate-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-slate-400">1.ª Prestação</label>
+                      <input
+                        type="date"
+                        value={dataPrimeiraPrestacao}
+                        onChange={e => setDataPrimeiraPrestacao(e.target.value)}
+                        className="mt-1 w-full border border-slate-200 dark:border-slate-800 p-2 text-xs rounded bg-white dark:bg-slate-900"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleEnviarNotificacaoReal}
+                  disabled={enviandoNotificacaoReal || !selectedFracaoId}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded text-xs transition-colors cursor-pointer flex items-center justify-center space-x-2 shadow"
+                >
+                  {enviandoNotificacaoReal ? (
+                    <>
+                      <i className="fa-solid fa-spinner fa-spin"></i>
+                      <span>A enviar...</span>
+                    </>
+                  ) : (
+                    <>
+                      <i className="fa-solid fa-paper-plane"></i>
+                      <span>Enviar Notificação por Email</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
