@@ -248,7 +248,9 @@ export async function emitirQuotasMensais() {
           fracao: f.id_fracao,
           fluxo: "emissao_quotas_mensal",
           origem: "cron_emissao_quotas",
-          nomeFicheiro
+          nomeFicheiro,
+          categoria: "Pasta Paga. Quotas",
+          visibilidade: "Público"
         });
 
         await enviarEmailPDF({

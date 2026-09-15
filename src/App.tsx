@@ -3,6 +3,18 @@ import { useState, useEffect } from "react";
 import { ActionIcon } from "./components/ActionIcon";
 import { LoggedUser, Predio, Conta, Fornecedor, Fracao, Aviso, Movimento, Reuniao, Documento, Ocorrencia, Reserva, CapacidadeLimite } from "./types";
 import { initialPredios, initialContas, initialFornecedores, initialFracoes, initialAvisos, initialMovements, initialReunioes, initialDocumentos, initialOcorrencias, defaultEmptyPredio } from "./data";
+import { isSupabaseConfigured } from "./lib/supabaseService";
+import {
+  fetchPrediosFromSupabase,
+  fetchFracoesFromSupabase,
+  fetchContasFromSupabase,
+  fetchMovimentosFromSupabase,
+  fetchAvisosFromSupabase,
+  fetchDocumentosFromSupabase,
+  fetchOcorrenciasFromSupabase,
+  fetchReservasFromSupabase,
+  fetchFornecedoresFromSupabase
+} from "./lib/supabaseService";
 import { PainelControlo } from "./components/PainelControlo";
 import { GestaoPredios } from "./components/GestaoPredios";
 import { GestaoFracoes } from "./components/GestaoFracoes";
@@ -82,6 +94,52 @@ export default function App() {
 
   // Reservation states (Base limpa para início de produção)
   const [reservas, setReservas] = useState<Reserva[]>([]);
+
+  // Carregamento inicial dos dados reais do Supabase — sem isto, a app
+  // corria sempre sobre os dados de demonstração estáticos definidos em
+  // ./data, mesmo com o Supabase configurado, e nada do que é criado
+  // automaticamente pelo backend (pagamentos, movimentos, avisos, notas de
+  // cobrança, etc.) alguma vez chegava a aparecer no ecrã do administrador.
+  // Cada fetch* devolve null se o Supabase não estiver configurado ou se a
+  // tabela ainda estiver vazia — nesse caso os dados de demonstração
+  // mantêm-se, para a app nunca ficar em branco.
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
+    (async () => {
+      const [
+        prediosReais,
+        fracoesReais,
+        contasReais,
+        movimentosReais,
+        avisosReais,
+        documentosReais,
+        ocorrenciasReais,
+        reservasReais,
+        fornecedoresReais
+      ] = await Promise.all([
+        fetchPrediosFromSupabase(),
+        fetchFracoesFromSupabase(),
+        fetchContasFromSupabase(),
+        fetchMovimentosFromSupabase(),
+        fetchAvisosFromSupabase(),
+        fetchDocumentosFromSupabase(),
+        fetchOcorrenciasFromSupabase(),
+        fetchReservasFromSupabase(),
+        fetchFornecedoresFromSupabase()
+      ]);
+
+      if (prediosReais) setPredios(prediosReais);
+      if (fracoesReais) setFracoes(fracoesReais);
+      if (contasReais) setContas(contasReais);
+      if (movimentosReais) setMovements(movimentosReais);
+      if (avisosReais) setAvisos(avisosReais);
+      if (documentosReais) setDocumentos(documentosReais);
+      if (ocorrenciasReais) setOcorrencias(ocorrenciasReais);
+      if (reservasReais) setReservas(reservasReais);
+      if (fornecedoresReais) setFornecedores(fornecedoresReais);
+    })();
+  }, []);
 
   const [capacidades, setCapacidades] = useState<CapacidadeLimite[]>([
     { area_comum: "Ginásio", limite: 5 },

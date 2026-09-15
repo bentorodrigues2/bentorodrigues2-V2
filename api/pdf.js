@@ -2,15 +2,15 @@ import { gerarDocumentoPDF, guardarNoArquivo, registarDocumento, enviarEmailPDF 
 import { generateCondominoPwaManualPDF, gerarPdfRegistoFornecedorHomologado } from "../server/lib/pdfDocs.js";
 
 const TIPOS = {
-  convocatoria: { tema: "Assembleias", tipo: "Convocatória", fluxo: "convocatoria" },
-  ata: { tema: "Assembleias", tipo: "Ata", fluxo: "ata" },
+  convocatoria: { tema: "Assembleias", tipo: "Convocatória", fluxo: "convocatoria", categoria: "Atas & Convocatórias" },
+  ata: { tema: "Assembleias", tipo: "Ata", fluxo: "ata", categoria: "Atas & Convocatórias" },
   aviso: { tema: "Avisos", tipo: "Aviso", fluxo: "aviso" },
-  recibo: { tema: "Financeiro", tipo: "Recibo", fluxo: "recibo" },
+  recibo: { tema: "Financeiro", tipo: "Recibo", fluxo: "recibo", categoria: "Pasta Paga. Quotas" },
   "carta-n1": { tema: "Comunicações", tipo: "Carta N1", fluxo: "carta_n1" },
   "carta-n2": { tema: "Comunicações", tipo: "Carta N2", fluxo: "carta_n2" },
   "boas-vindas": { tema: "Comunicações", tipo: "Boas-vindas", fluxo: "boas_vindas" },
   "registo-fornecedor": { tema: "Fornecedores", tipo: "Registo de Fornecedor", fluxo: "registo_fornecedor" },
-  sinistro: { tema: "Seguros", tipo: "Sinistro", fluxo: "sinistro" },
+  sinistro: { tema: "Seguros", tipo: "Sinistro", fluxo: "sinistro", categoria: "Seguros & Apólices" },
   scie: { tema: "SCIE", tipo: "Relatório SCIE", fluxo: "scie" }
 };
 
@@ -60,7 +60,12 @@ async function gerarDocumentoEspecial(tipo, config, body) {
     fracao: body.fracao || null,
     fluxo: config.fluxo,
     origem: `pdf_${tipo.replace(/-/g, "_")}`,
-    nomeFicheiro
+    nomeFicheiro,
+    // O Arquivo Digital identifica os manuais/guias PWA por esta categoria
+    // (ver GestaoDocumentos.tsx, isManualDoc) — sem isto o guia de
+    // boas-vindas não aparecia na pasta certa.
+    categoria: tipo === "boas-vindas" ? "Instruções PWA & Desktop" : undefined,
+    visibilidade: "Público"
   });
 
   if (body.email) {
@@ -116,7 +121,8 @@ export default async function handler(req, res) {
       fracao: body.fracao,
       fluxo: config.fluxo,
       emailDestino: body.email,
-      nomeFicheiro: `${tipo}_${body.ano}.pdf`
+      nomeFicheiro: `${tipo}_${body.ano}.pdf`,
+      categoria: config.categoria
     });
 
     return res.status(200).json({ ok: true, ...resultado });

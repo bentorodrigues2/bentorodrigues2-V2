@@ -181,7 +181,9 @@ export default async function handler(req, res) {
       fracao: pagamento.id_fracao || null,
       fluxo: "recibo_pos_confirmacao",
       origem: "confirmacao_pagamento",
-      nomeFicheiro
+      nomeFicheiro,
+      categoria: "Pasta Paga. Quotas",
+      visibilidade: "Público"
     });
 
     if (emailDestinatario) {

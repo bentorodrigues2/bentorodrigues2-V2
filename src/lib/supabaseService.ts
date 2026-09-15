@@ -337,6 +337,7 @@ export async function fetchMovimentosFromSupabase(idPredio?: string): Promise<Mo
       categoria: row.categoria,
       fotos: row.fotos || [],
       estado: row.estado || "Confirmado",
+      is_movimento_cego: Boolean(row.is_movimento_cego),
       id_fracao: row.fracao_id,
       metodo_pagamento: row.forma_pagamento
     }));
@@ -953,23 +954,57 @@ export async function saveReuniaoToSupabase(reuniao: any): Promise<boolean> {
 // ============================================================================
 // GESTÃO DE OCORRÊNCIAS
 // ============================================================================
-export async function saveOcorrenciaToSupabase(ocorrencia: any): Promise<boolean> {
+/**
+ * Corrigido: a versão anterior usava colunas (id_ocorrencia, titulo,
+ * gravidade, data_abertura) que não existem nem na tabela real do Supabase
+ * nem no tipo Ocorrencia do frontend — todas as gravações falhavam sempre
+ * em silêncio (o chamador nunca verifica o booleano devolvido).
+ */
+export async function saveOcorrenciaToSupabase(ocorrencia: Ocorrencia): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
   try {
     const { error } = await supabase.from("ocorrencias").upsert({
-      id_ocorrencia: ocorrencia.id_ocorrencia,
+      id_ocorr: ocorrencia.id_ocorr,
       id_predio: ocorrencia.id_predio,
       id_fracao: ocorrencia.id_fracao || null,
-      titulo: ocorrencia.titulo,
       descricao: ocorrencia.descricao,
-      tipo: ocorrencia.tipo || "Geral",
-      gravidade: ocorrencia.gravidade || "Média",
+      data: ocorrencia.data,
       estado: ocorrencia.estado || "Pendente",
-      data_abertura: ocorrencia.data_abertura || new Date().toISOString()
+      medidas_tomadas: ocorrencia.medidas_tomadas || null,
+      fotos: ocorrencia.fotos || [],
+      categoria: ocorrencia.categoria || null,
+      tecnico_atribuido: ocorrencia.tecnico_atribuido || null
     });
+    if (error) console.warn("[Supabase] Save ocorrencia error:", error.message);
     return !error;
-  } catch {
+  } catch (err) {
+    console.warn("[Supabase] Save ocorrencia exception:", err);
     return false;
+  }
+}
+
+export async function fetchOcorrenciasFromSupabase(idPredio?: string): Promise<Ocorrencia[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    let query = supabase.from("ocorrencias").select("*");
+    if (idPredio) query = query.eq("id_predio", idPredio);
+    const { data, error } = await query;
+    if (error || !data || data.length === 0) return null;
+
+    return data.map((row: any) => ({
+      id_ocorr: row.id_ocorr,
+      id_predio: row.id_predio,
+      id_fracao: row.id_fracao || "",
+      descricao: row.descricao || "",
+      data: row.data || "",
+      estado: row.estado || "Pendente",
+      medidas_tomadas: row.medidas_tomadas || "",
+      fotos: row.fotos || [],
+      categoria: row.categoria || undefined,
+      tecnico_atribuido: row.tecnico_atribuido || undefined
+    }));
+  } catch (err) {
+    return null;
   }
 }
 
@@ -997,6 +1032,30 @@ export async function saveConfiguracaoQuotasToSupabase(config: any): Promise<boo
   }
 }
 
+export async function fetchAvisosFromSupabase(idPredio?: string): Promise<Aviso[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    let query = supabase.from("avisos").select("*");
+    if (idPredio) query = query.eq("id_predio", idPredio);
+    const { data, error } = await query;
+    if (error || !data || data.length === 0) return null;
+
+    return data.map((row: any) => ({
+      id_aviso: row.id_aviso,
+      id_predio: row.id_predio,
+      id_fracao: row.id_fracao,
+      tipo: row.tipo,
+      data: row.data,
+      vencimento: row.vencimento,
+      descricao: row.descricao,
+      valor: Number(row.valor),
+      estado: row.estado || "Pendente"
+    }));
+  } catch (err) {
+    return null;
+  }
+}
+
 export async function saveAvisosToSupabase(novosAvisos: any[]): Promise<boolean> {
   if (!isSupabaseConfigured() || !novosAvisos.length) return false;
   try {
@@ -1015,6 +1074,130 @@ export async function saveAvisosToSupabase(novosAvisos: any[]): Promise<boolean>
     return !error;
   } catch {
     return false;
+  }
+}
+
+// ============================================================================
+// DOCUMENTOS (ARQUIVO DIGITAL)
+// ============================================================================
+export async function fetchDocumentosFromSupabase(idPredio?: string): Promise<Documento[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    let query = supabase.from("documentos").select("*");
+    if (idPredio) query = query.eq("id_predio", idPredio);
+    const { data, error } = await query;
+    if (error || !data || data.length === 0) return null;
+
+    return data.map((row: any) => ({
+      id_doc: row.id_doc,
+      id_predio: row.id_predio,
+      nome: row.nome,
+      tipo: row.tipo,
+      data_upload: row.data_upload || row.created_at,
+      tamanho: row.tamanho || "",
+      categoria: row.categoria || undefined,
+      descricao: row.descricao || undefined,
+      visibilidade: row.visibilidade || undefined,
+      autor: row.autor || undefined,
+      tema: row.tema || undefined,
+      ano: row.ano != null ? String(row.ano) : undefined,
+      url_foto: row.url_foto || undefined,
+      relevancia_perfis: row.relevancia_perfis || undefined
+    }));
+  } catch (err) {
+    return null;
+  }
+}
+
+// ============================================================================
+// RESERVAS DE ESPAÇOS COMUNS
+// ============================================================================
+export async function fetchReservasFromSupabase(idPredio?: string): Promise<Reserva[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    let query = supabase.from("reservas").select("*");
+    if (idPredio) query = query.eq("id_predio", idPredio);
+    const { data, error } = await query;
+    if (error || !data || data.length === 0) return null;
+
+    return data.map((row: any) => ({
+      id_reserva: row.id_reserva,
+      id_predio: row.id_predio,
+      id_fracao: row.id_fracao || "",
+      area_comum: row.area_comum,
+      data: row.data,
+      hora_inicio: row.hora_inicio,
+      hora_fim: row.hora_fim,
+      responsavel: row.responsavel || "",
+      num_pessoas: Number(row.num_pessoas) || 0,
+      estado: row.estado || "Pendente"
+    }));
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function saveReservaToSupabase(reserva: Reserva): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from("reservas").upsert({
+      id_reserva: reserva.id_reserva,
+      id_predio: reserva.id_predio,
+      id_fracao: reserva.id_fracao || null,
+      area_comum: reserva.area_comum,
+      data: reserva.data,
+      hora_inicio: reserva.hora_inicio,
+      hora_fim: reserva.hora_fim,
+      responsavel: reserva.responsavel,
+      num_pessoas: reserva.num_pessoas,
+      estado: reserva.estado || "Pendente"
+    });
+    if (error) console.warn("[Supabase] Save reserva error:", error.message);
+    return !error;
+  } catch (err) {
+    console.warn("[Supabase] Save reserva exception:", err);
+    return false;
+  }
+}
+
+// ============================================================================
+// FORNECEDORES
+// ============================================================================
+// A tabela real "fornecedores" ainda não tem as colunas id_predio,
+// pessoa_contacto, telemovel_direto, email_contacto, data_nascimento,
+// perfis_pwa, pwa_acesso_enviado, pwa_password_provisoria — ver
+// supabase_fornecedores_missing_columns.sql para as adicionar (ALTER TABLE
+// aditivo). Até essa migração ser aplicada, estes campos ficam undefined
+// nos dados lidos e as gravações desses campos são ignoradas pelo Supabase
+// (mas o resto do fornecedor grava-se e lê-se normalmente).
+export async function fetchFornecedoresFromSupabase(idPredio?: string): Promise<Fornecedor[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    let query = supabase.from("fornecedores").select("*");
+    if (idPredio) query = query.eq("id_predio", idPredio);
+    const { data, error } = await query;
+    if (error || !data || data.length === 0) return null;
+
+    return data.map((row: any) => ({
+      id_fornecedor: row.id_fornecedor,
+      id_predio: row.id_predio || idPredio || "",
+      nome: row.nome,
+      nif: row.nif || "",
+      iban: row.iban || undefined,
+      categoria: row.categoria || "",
+      morada: row.morada || undefined,
+      contacto: row.contacto || undefined,
+      pessoa_contacto: row.pessoa_contacto || undefined,
+      telemovel_direto: row.telemovel_direto || undefined,
+      email_contacto: row.email_contacto || row.email || undefined,
+      data_nascimento: row.data_nascimento || undefined,
+      perfis_pwa: row.perfis_pwa || undefined,
+      pwa_acesso_enviado: row.pwa_acesso_enviado || false,
+      pwa_password_provisoria: row.pwa_password_provisoria || undefined,
+      foto: row.foto || null
+    }));
+  } catch (err) {
+    return null;
   }
 }
 

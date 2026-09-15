@@ -122,6 +122,38 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     });
   };
 
+  const [confirmandoPagamentoMovId, setConfirmandoPagamentoMovId] = useState<string | null>(null);
+
+  const confirmarPagamentoEEnviarRecibo = async (mov: Movimento) => {
+    const match = mov.descricao?.match(/\[pagamento:([^\]]+)\]/);
+    const idPagamento = match?.[1];
+    if (!idPagamento) return;
+
+    setConfirmandoPagamentoMovId(mov.id_mov);
+    try {
+      const resp = await fetch("/api/pagamento?acao=confirmar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_pagamento: idPagamento })
+      });
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        alert(`Erro ao confirmar pagamento: ${data?.error || "erro desconhecido"}`);
+        return;
+      }
+
+      setMovements(prev => prev.map(m => m.id_mov === mov.id_mov ? { ...m, estado: "Justificado", is_movimento_cego: false } : m));
+      alert(data.email_enviado
+        ? "✅ Pagamento confirmado! O recibo oficial de quitação foi gerado e enviado por email ao condómino."
+        : "✅ Pagamento confirmado e recibo gerado. (O condómino não tem email registado, por isso o recibo não foi enviado por email — está disponível no Arquivo Digital.)");
+    } catch (err: any) {
+      alert(`Erro ao confirmar pagamento: ${err?.message || "erro desconhecido"}`);
+    } finally {
+      setConfirmandoPagamentoMovId(null);
+    }
+  };
+
   const handleJustificationFileChange = (e: React.ChangeEvent<HTMLInputElement>, movId: string) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -474,7 +506,14 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   };
 
   // Contabilizar movimentos cegos não justificados
-  const cegosPendentes = predioMovements.filter(m => m.is_movimento_cego && m.estado === "Movimento Cego / Por Justificar");
+  const todosCegosPendentes = predioMovements.filter(m => m.is_movimento_cego && m.estado === "Movimento Cego / Por Justificar");
+  // Movimentos ligados a um pagamento pendente (criado automaticamente por um
+  // comprovativo recebido por email — ver server/lib/inboundProcessor.js) têm
+  // a marca "[pagamento:<id>]" na descrição e são confirmados com 1 clique,
+  // que dispara o envio do recibo oficial; os restantes são despesas cegas
+  // genuínas que precisam mesmo de fatura anexada.
+  const cegosPendentesPagamento = todosCegosPendentes.filter(m => m.descricao?.includes("[pagamento:"));
+  const cegosPendentes = todosCegosPendentes.filter(m => !m.descricao?.includes("[pagamento:"));
 
   // Frações com dívidas para seleção rápida
   const fracoesComDivida = fracoes.filter(f => (f.divida_total || 0) > 0 || (f.id_predio === predio.id_predio));
@@ -568,6 +607,39 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Pagamentos pendentes de confirmação — criados automaticamente a partir
+          de comprovativos recebidos por email; 1 clique confirma e envia o
+          recibo oficial de quitação ao condómino */}
+      {cegosPendentesPagamento.length > 0 && (
+        <div className="bg-teal-50 border-l-4 border-teal-600 p-4 rounded-xl shadow-sm space-y-2">
+          <div className="flex items-center space-x-3 text-teal-800">
+            <i className="fa-solid fa-file-invoice-dollar text-xl"></i>
+            <div>
+              <h4 className="font-bold text-sm">Pagamentos por Confirmar</h4>
+              <p className="text-xs">Comprovativos recebidos por email, ainda por validar. Ao confirmar, o recibo oficial de quitação é gerado e enviado automaticamente ao condómino.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 pt-2 border-t border-teal-200">
+            {cegosPendentesPagamento.map(m => (
+              <div key={m.id_mov} className="flex justify-between items-center text-xs bg-white p-2.5 rounded-lg border border-teal-300">
+                <div className="space-y-0.5">
+                  <p className="font-semibold text-slate-800 line-clamp-1">{m.descricao.replace(/\s*\[pagamento:[^\]]+\]/, "")}</p>
+                  <p className="text-[10px] text-slate-500 font-mono-custom">Valor: <span className="font-bold text-teal-700">{m.valor.toFixed(2)}€</span></p>
+                </div>
+                <button
+                  onClick={() => confirmarPagamentoEEnviarRecibo(m)}
+                  disabled={confirmandoPagamentoMovId === m.id_mov}
+                  className="bg-teal-600 hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-2.5 py-1 rounded text-[10px] font-bold flex items-center space-x-1 transition-colors cursor-pointer"
+                >
+                  <i className={`fa-solid ${confirmandoPagamentoMovId === m.id_mov ? "fa-spinner fa-spin" : "fa-check"} mr-1`}></i>
+                  <span>{confirmandoPagamentoMovId === m.id_mov ? "A confirmar..." : "Confirmar e Enviar Recibo"}</span>
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       )}

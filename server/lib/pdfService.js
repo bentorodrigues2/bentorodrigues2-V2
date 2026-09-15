@@ -68,7 +68,15 @@ export async function guardarNoArquivo({ pdfBuffer, ano, tema, tipo, predio, fra
   return caminho;
 }
 
-export async function registarDocumento({ caminho, ano, tema, tipo, predio, fracao, fluxo, origem, nomeFicheiro }) {
+/**
+ * "categoria" e "visibilidade" não são cosméticos — o Arquivo Digital
+ * (GestaoDocumentos.tsx) usa-os para decidir em que pasta um documento
+ * aparece e quem o pode ver (ex.: pasta "Pasta Paga. Quotas", ou os manuais
+ * PWA identificados por categoria "Instruções PWA & Desktop"). Omiti-los
+ * deixava os documentos gerados aqui a aparecer só por acaso, via
+ * correspondência solta ao campo "tipo".
+ */
+export async function registarDocumento({ caminho, ano, tema, tipo, predio, fracao, fluxo, origem, nomeFicheiro, categoria, visibilidade }) {
   const { error } = await supabase.from("documentos").insert({
     id_doc: `DOC-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     id_predio: predio,
@@ -81,6 +89,8 @@ export async function registarDocumento({ caminho, ano, tema, tipo, predio, frac
     fracao,
     fluxo,
     origem,
+    categoria: categoria || null,
+    visibilidade: visibilidade || null,
     created_at: new Date().toISOString()
   });
 
@@ -124,12 +134,12 @@ export async function enviarEmailPDF({ to, nomeDestinatario, assunto, mensagem, 
  * (ex. recibo oficial via receiptGenerator.js), monta o buffer à parte e
  * usa só guardarNoArquivo/registarDocumento/enviarEmailPDF diretamente.
  */
-export async function gerarDocumentoPDF({ conteudo, ano, tema, tipo, predio, fracao, fluxo, emailDestino, nomeDestinatario, nomeFicheiro }) {
+export async function gerarDocumentoPDF({ conteudo, ano, tema, tipo, predio, fracao, fluxo, emailDestino, nomeDestinatario, nomeFicheiro, categoria, visibilidade }) {
   const pdfBuffer = gerarPDFBuffer(conteudo, tipo);
 
   const caminho = await guardarNoArquivo({ pdfBuffer, ano, tema, tipo, predio, fracao, fluxo, nomeFicheiro });
 
-  await registarDocumento({ caminho, ano, tema, tipo, predio, fracao, fluxo, origem: "gemini_auto_pdf", nomeFicheiro });
+  await registarDocumento({ caminho, ano, tema, tipo, predio, fracao, fluxo, origem: "gemini_auto_pdf", nomeFicheiro, categoria, visibilidade: visibilidade || "Público" });
 
   if (emailDestino) {
     await enviarEmailPDF({
