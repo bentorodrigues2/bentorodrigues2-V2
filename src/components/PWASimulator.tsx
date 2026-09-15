@@ -3180,8 +3180,10 @@ export function PWASimulator({
                         />
                       )}
                       {activePwaSubMenuDetails === "configuracoes_gestora" && (
-                        <FichaEmpresaGestora 
+                        <FichaEmpresaGestora
                           predios={[predio]}
+                          fracoes={fracoes}
+                          avisos={avisos}
                           loggedUser={loggedUser}
                         />
                       )}

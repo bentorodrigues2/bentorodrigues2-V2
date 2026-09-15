@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { Predio, LoggedUser, GestorCarteira, EmpresaGestoraConfig } from "../types";
-import { initialGestoresCarteira, initialEmpresaGestoraConfig } from "../data";
+import { Predio, Fracao, Movimento, Aviso, LoggedUser, GestorCarteira, EmpresaGestoraConfig } from "../types";
+import { initialEmpresaGestoraConfig } from "../data";
 import { gerarPdfBoasVindasGestor } from "../utils";
+import {
+  fetchEmpresaGestoraConfig,
+  saveEmpresaGestoraConfig,
+  fetchGestoresCarteiraFromSupabase,
+  saveGestorCarteiraToSupabase,
+  deleteGestorCarteiraFromSupabase,
+  fetchMovimentosFromSupabase
+} from "../lib/supabaseService";
 import { 
   Building2, 
   Users, 
@@ -46,6 +54,8 @@ import {
 
 interface FichaEmpresaGestoraProps {
   predios: Predio[];
+  fracoes: Fracao[];
+  avisos: Aviso[];
   loggedUser: LoggedUser;
   onUpdateBrandingColor?: (color: string) => void;
   activeColor?: string;
@@ -55,45 +65,45 @@ interface FichaEmpresaGestoraProps {
 
 export function FichaEmpresaGestora({
   predios,
+  fracoes,
+  avisos,
   loggedUser,
   onUpdateBrandingColor,
   activeColor = "emerald",
   onUpdateBrandingLogo,
   activeLogo
 }: FichaEmpresaGestoraProps) {
-  // Configurações da Empresa Gestora
-  const [empresaConfig, setEmpresaConfig] = useState<EmpresaGestoraConfig>(() => {
-    const saved = localStorage.getItem("condo_empresa_gestora_config");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    return initialEmpresaGestoraConfig;
-  });
-
-  const [gestores, setGestores] = useState<GestorCarteira[]>(() => {
-    const saved = localStorage.getItem("condo_gestores_carteira");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    return initialGestoresCarteira;
-  });
-
-  // Guardar no localStorage
-  useEffect(() => {
-    localStorage.setItem("condo_empresa_gestora_config", JSON.stringify(empresaConfig));
-  }, [empresaConfig]);
+  // Configurações da Empresa Gestora — persistidas no Supabase (tabela
+  // empresa_gestora_config, linha única 'default') em vez de localStorage,
+  // para sincronizar entre dispositivos e não se perderem ao limpar o browser.
+  const [empresaConfig, setEmpresaConfig] = useState<EmpresaGestoraConfig>(initialEmpresaGestoraConfig);
+  const [gestores, setGestores] = useState<GestorCarteira[]>([]);
+  const [portfolioMovimentos, setPortfolioMovimentos] = useState<Movimento[]>([]);
+  const [carregado, setCarregado] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem("condo_gestores_carteira", JSON.stringify(gestores));
-  }, [gestores]);
+    (async () => {
+      const [config, listaGestores, movimentos] = await Promise.all([
+        fetchEmpresaGestoraConfig(),
+        fetchGestoresCarteiraFromSupabase(),
+        fetchMovimentosFromSupabase()
+      ]);
+      if (config) setEmpresaConfig({ ...initialEmpresaGestoraConfig, ...config });
+      setGestores(listaGestores);
+      setPortfolioMovimentos(movimentos || []);
+      setCarregado(true);
+    })();
+  }, []);
+
+  // Guardar a configuração institucional no Supabase (com pequeno debounce,
+  // já que os campos de texto disparam uma mudança por cada tecla premida).
+  useEffect(() => {
+    if (!carregado) return;
+    const timer = setTimeout(() => {
+      saveEmpresaGestoraConfig(empresaConfig);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [empresaConfig, carregado]);
 
   // Modal para Criar / Editar Gestor
   const [isGestorModalOpen, setIsGestorModalOpen] = useState(false);
@@ -257,9 +267,10 @@ export function FichaEmpresaGestora({
 
     if (editingGestorId) {
       // Editar
+      let gestorAtualizado: GestorCarteira | null = null;
       const atualizados = gestores.map(g => {
         if (g.id_gestor === editingGestorId) {
-          return {
+          gestorAtualizado = {
             ...g,
             nome: modalNome.trim(),
             tlm: modalTlm.trim(),
@@ -267,10 +278,12 @@ export function FichaEmpresaGestora({
             perfil: modalPerfil,
             predios_atribuidos: modalPredios
           };
+          return gestorAtualizado;
         }
         return g;
       });
       setGestores(atualizados);
+      if (gestorAtualizado) await saveGestorCarteiraToSupabase(gestorAtualizado);
       showNotification(`Gestor "${modalNome}" atualizado com sucesso!`);
     } else {
       // Criar Novo
@@ -288,6 +301,7 @@ export function FichaEmpresaGestora({
       };
 
       setGestores([...gestores, novoGestor]);
+      await saveGestorCarteiraToSupabase(novoGestor);
 
       if (modalGerarPdfAgora) {
         gerarPdfBoasVindasGestor(novoGestor, predios, empresaConfig.nome_empresa, gestoraLogo);
@@ -314,17 +328,20 @@ export function FichaEmpresaGestora({
     if (!enviado) return;
 
     // Atualizar estado
+    let gestorAtualizado: GestorCarteira | null = null;
     const atualizados = gestores.map(g => {
       if (g.id_gestor === gestor.id_gestor) {
-        return {
+        gestorAtualizado = {
           ...g,
           email_boas_vindas_enviado: true,
           status_acesso: "PENDENTE_PRIMEIRO_ACESSO" as const
         };
+        return gestorAtualizado;
       }
       return g;
     });
     setGestores(atualizados);
+    if (gestorAtualizado) await saveGestorCarteiraToSupabase(gestorAtualizado);
 
     const docName = gestor.perfil === "ADMIN" ? "Instrucoes_Acesso_Perfil_Administrador.pdf" : "Instrucoes_Acesso_Perfil_Gestor.pdf";
     showNotification(
@@ -332,36 +349,87 @@ export function FichaEmpresaGestora({
     );
   };
 
-  const handleRemoverGestor = (idGestor: string) => {
+  const handleRemoverGestor = async (idGestor: string) => {
     const gestor = gestores.find(g => g.id_gestor === idGestor);
     if (!gestor) return;
     if (confirm(`Tem a certeza de que deseja remover o gestor ${gestor.nome}?`)) {
       setGestores(gestores.filter(g => g.id_gestor !== idGestor));
+      await deleteGestorCarteiraFromSupabase(idGestor);
       showNotification(`Gestor ${gestor.nome} removido.`, "info");
     }
   };
 
-  // KPIs
+  // KPIs — dados reais: nº de prédios/frações a partir dos registos
+  // efetivos; faturação e inadimplência a partir dos avisos de "Cota
+  // Ordinária" realmente emitidos (Gestão de Emissão) e do seu estado real
+  // (Pendente/Paga), não de fórmulas fixas sobre o nº de prédios. Os campos
+  // quota_mensal/divida_total da fração existem no tipo mas nunca chegaram
+  // a ser escritos nem lidos do Supabase em lado nenhum do código — usar os
+  // avisos reais em vez deles.
   const totalPrediosCount = predios.length;
-  const totalFracoesCount = totalPrediosCount * 12;
-  const totalFaturacaoMensal = totalPrediosCount * 2450;
-  const totalFaturacaoEmAtraso = totalPrediosCount * 450;
-  const totalTaxaInadimplencia = ((totalFaturacaoEmAtraso / totalFaturacaoMensal) * 100).toFixed(1);
+  const totalFracoesCount = fracoes.length;
 
-  const globalFinancialHistory = [
-    { mes: "Jan", Receita: 4800 * totalPrediosCount, Despesa: 3200 * totalPrediosCount, Extraordinario: 500 * totalPrediosCount },
-    { mes: "Fev", Receita: 4900 * totalPrediosCount, Despesa: 3400 * totalPrediosCount, Extraordinario: 800 * totalPrediosCount },
-    { mes: "Mar", Receita: 5100 * totalPrediosCount, Despesa: 4100 * totalPrediosCount, Extraordinario: 1200 * totalPrediosCount },
-    { mes: "Abr", Receita: 5200 * totalPrediosCount, Despesa: 3800 * totalPrediosCount, Extraordinario: 1500 * totalPrediosCount },
-    { mes: "Mai", Receita: 5400 * totalPrediosCount, Despesa: 3900 * totalPrediosCount, Extraordinario: 900 * totalPrediosCount },
-    { mes: "Jun", Receita: 5600 * totalPrediosCount, Despesa: 4200 * totalPrediosCount, Extraordinario: 2400 * totalPrediosCount },
-    { mes: "Jul", Receita: 5800 * totalPrediosCount, Despesa: 4000 * totalPrediosCount, Extraordinario: 1800 * totalPrediosCount }
-  ];
+  const hoje = new Date();
+  const anoMesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`;
+  const avisosQuotaOrdinaria = avisos.filter(a => a.tipo === "Cota Ordinária");
 
-  const portfolioDistribution = [
-    { name: "Prédios Residenciais", value: Math.max(1, Math.ceil(totalPrediosCount * 0.7)), color: "#10b981" },
-    { name: "Prédios Comerciais/Mistos", value: Math.max(1, Math.ceil(totalPrediosCount * 0.3)), color: "#3b82f6" }
-  ];
+  const totalFaturacaoMensal = avisosQuotaOrdinaria
+    .filter(a => String(a.data || a.vencimento || "").slice(0, 7) === anoMesAtual)
+    .reduce((soma, a) => soma + (Number(a.valor) || 0), 0);
+
+  const totalFaturacaoEmAtraso = avisosQuotaOrdinaria
+    .filter(a => a.estado === "Pendente" && a.vencimento && a.vencimento < hoje.toISOString().split("T")[0])
+    .reduce((soma, a) => soma + (Number(a.valor) || 0), 0);
+
+  const totalTaxaInadimplencia = totalFaturacaoMensal > 0
+    ? ((totalFaturacaoEmAtraso / totalFaturacaoMensal) * 100).toFixed(1)
+    : "0.0";
+
+  const MESES_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  const globalFinancialHistory = (() => {
+    const hoje = new Date();
+    const meses = Array.from({ length: 7 }, (_, idx) => {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() - (6 - idx), 1);
+      return {
+        chave: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+        mes: MESES_PT[d.getMonth()],
+        Receita: 0,
+        Despesa: 0,
+        Extraordinario: 0
+      };
+    });
+    for (const mov of portfolioMovimentos) {
+      if (!mov.data) continue;
+      const bucket = meses.find(m => m.chave === String(mov.data).slice(0, 7));
+      if (!bucket) continue;
+      const valor = Number(mov.valor) || 0;
+      if ((mov.categoria || "").toLowerCase().includes("extraordin")) {
+        bucket.Extraordinario += valor;
+      } else if (mov.tipo === "Receita") {
+        bucket.Receita += valor;
+      } else if (mov.tipo === "Despesa") {
+        bucket.Despesa += valor;
+      }
+    }
+    return meses;
+  })();
+
+  const portfolioDistribution = (() => {
+    const TIPOLOGIAS_COMERCIAIS = new Set(["Loja Comercial", "Escritório / Serviços"]);
+    const TIPOLOGIAS_OUTRO = new Set(["Garagem / Box", "Arrecadação Autónoma", "Outro"]);
+    let residencial = 0, comercial = 0, outro = 0;
+    for (const f of fracoes) {
+      if (TIPOLOGIAS_COMERCIAIS.has(f.tipologia)) comercial++;
+      else if (TIPOLOGIAS_OUTRO.has(f.tipologia)) outro++;
+      else residencial++; // T0 a T6+ e tipologias não reconhecidas
+    }
+    const dist = [
+      { name: "Frações Residenciais", value: residencial, color: "#10b981" },
+      { name: "Frações Comerciais", value: comercial, color: "#3b82f6" }
+    ];
+    if (outro > 0) dist.push({ name: "Garagens / Arrecadações", value: outro, color: "#94a3b8" });
+    return dist;
+  })();
 
   return (
     <div className="space-y-8 animate-fade-in pb-12">

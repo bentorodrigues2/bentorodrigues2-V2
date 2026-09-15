@@ -229,9 +229,68 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
 }
 
 /**
+ * Resolve a identidade de remetente (nome de apresentação + Reply-To) a usar
+ * na resposta ao condómino, de acordo com a escolha em Empresa Gestora →
+ * "Remetente do Autoresponder" (EMPRESA vs. CONDOMINIO). O envio em si
+ * continua a sair do domínio verificado no Resend (EMAIL_FROM_ADDRESS) —
+ * um "from" com um domínio arbitrário não verificado seria rejeitado pelo
+ * Resend — mas o nome apresentado e o Reply-To (para onde vão as respostas
+ * do condómino) passam a refletir mesmo a escolha feita nas Definições, em
+ * vez de ser sempre a mesma caixa genérica independentemente do que lá está
+ * configurado.
+ */
+async function resolverRemetente(contexto) {
+  const fromEmailBase = process.env.EMAIL_FROM_ADDRESS || "administracao@condomanagerai.com";
+
+  let modo = "CONDOMINIO";
+  let empresaNome = "CondoManager AI Condomínio";
+  let empresaEmail = null;
+  try {
+    const { data: config } = await supabase
+      .from("empresa_gestora_config")
+      .select("email_autoresponder_principal, nome_empresa, email_corporativo")
+      .eq("id", "default")
+      .maybeSingle();
+    if (config?.email_autoresponder_principal) modo = config.email_autoresponder_principal;
+    if (config?.nome_empresa) empresaNome = config.nome_empresa;
+    if (config?.email_corporativo) empresaEmail = config.email_corporativo;
+  } catch (err) {
+    console.warn("[inboundProcessor] Aviso ao ler empresa_gestora_config, a assumir modo CONDOMINIO:", err?.message || err);
+  }
+
+  if (modo === "EMPRESA") {
+    return {
+      fromAddress: `${empresaNome} <${fromEmailBase}>`,
+      replyTo: empresaEmail || undefined
+    };
+  }
+
+  // Modo CONDOMINIO (predefinição): usa o nome e o email do prédio em causa.
+  if (contexto?.id_predio) {
+    try {
+      const { data: predio } = await supabase
+        .from("predios")
+        .select("nome, email, email_condominio")
+        .eq("id_predio", contexto.id_predio)
+        .maybeSingle();
+      if (predio) {
+        return {
+          fromAddress: `${predio.nome || "Condomínio"} <${fromEmailBase}>`,
+          replyTo: predio.email || predio.email_condominio || undefined
+        };
+      }
+    } catch (err) {
+      console.warn("[inboundProcessor] Aviso ao ler o prédio para remetente, a usar identidade genérica:", err?.message || err);
+    }
+  }
+
+  return { fromAddress: `Condomínio <${fromEmailBase}>`, replyTo: undefined };
+}
+
+/**
  * Enviar email via Resend API
  */
-async function enviarEmailResend({ to, subject, html, attachments = [] }) {
+async function enviarEmailResend({ to, subject, html, attachments = [], fromAddress, replyTo }) {
   const resendApiKey = process.env.RESEND_API_KEY || process.env.RESEND_KEY;
   if (!resendApiKey) {
     console.warn("[inboundProcessor] RESEND_API_KEY não configurada. Email ignorado:", { to, subject });
@@ -240,14 +299,18 @@ async function enviarEmailResend({ to, subject, html, attachments = [] }) {
 
   try {
     const fromEmail = process.env.EMAIL_FROM_ADDRESS || "administracao@condomanagerai.com";
-    const fromAddress = fromEmail.includes("<") ? fromEmail : `Condomínio <${fromEmail}>`;
+    const fromFinal = fromAddress || (fromEmail.includes("<") ? fromEmail : `Condomínio <${fromEmail}>`);
 
     const payload = {
-      from: fromAddress,
+      from: fromFinal,
       to: [to],
       subject,
       html
     };
+
+    if (replyTo) {
+      payload.reply_to = replyTo;
+    }
 
     if (Array.isArray(attachments) && attachments.length > 0) {
       payload.attachments = attachments;
@@ -438,12 +501,19 @@ export async function processInboundEmail(payload) {
 
   const nomeRemetente = contexto?.nome || contexto?.proprietario || cleanFrom.split("@")[0] || "Condómino";
 
+  // Identidade de remetente conforme configurado em Empresa Gestora
+  // (EMPRESA vs. CONDOMINIO) — a mesma para o autoresponder imediato e para
+  // a resposta institucional abaixo.
+  const { fromAddress, replyTo } = await resolverRemetente(contexto);
+
   // 5. Enviar Autoresponder imediato
   const htmlAutoresponder = gerarHtmlAutoresponder(nomeRemetente);
   await enviarEmailResend({
     to: cleanFrom,
     subject: `Recebemos o seu contacto - ${subject}`,
-    html: htmlAutoresponder
+    html: htmlAutoresponder,
+    fromAddress,
+    replyTo
   });
 
   // 6. Preparar Anexos da resposta institucional
@@ -558,7 +628,9 @@ export async function processInboundEmail(payload) {
       to: cleanFrom,
       subject: aiData.subject,
       html: htmlInstitucional,
-      attachments: anexosParaEnviar
+      attachments: anexosParaEnviar,
+      fromAddress,
+      replyTo
     });
   }
 

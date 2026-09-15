@@ -22,7 +22,9 @@ import {
   Sondagem,
   VotoSondagem,
   Questionario,
-  RespostaQuestionario
+  RespostaQuestionario,
+  EmpresaGestoraConfig,
+  GestorCarteira
 } from "../types";
 
 /**
@@ -443,6 +445,40 @@ export async function fetchAllProfiles(): Promise<SupabaseUserProfile[]> {
   if (!isSupabaseConfigured()) return [];
   const data = await dbSelect("profiles", { order: { coluna: "created_at", asc: false } });
   return (data || []) as SupabaseUserProfile[];
+}
+
+// ============================================================================
+// EMPRESA GESTORA (CONFIGURAÇÃO INSTITUCIONAL & GESTORES DE CARTEIRA)
+// ============================================================================
+
+export async function fetchEmpresaGestoraConfig(): Promise<EmpresaGestoraConfig | null> {
+  if (!isSupabaseConfigured()) return null;
+  const data = await dbSelect("empresa_gestora_config", { filtros: [["id", "eq", "default"]] });
+  if (!data || data.length === 0) return null;
+  return data[0] as EmpresaGestoraConfig;
+}
+
+export async function saveEmpresaGestoraConfig(config: EmpresaGestoraConfig): Promise<boolean> {
+  const { gestores, ...configSemGestores } = config as EmpresaGestoraConfig & { gestores?: GestorCarteira[] };
+  return dbUpsert(
+    "empresa_gestora_config",
+    { ...configSemGestores, id: "default", updated_at: new Date().toISOString() },
+    { onConflict: "id" }
+  );
+}
+
+export async function fetchGestoresCarteiraFromSupabase(): Promise<GestorCarteira[]> {
+  if (!isSupabaseConfigured()) return [];
+  const data = await dbSelect("gestores_carteira", { order: { coluna: "created_at", asc: false } });
+  return (data || []) as GestorCarteira[];
+}
+
+export async function saveGestorCarteiraToSupabase(gestor: GestorCarteira): Promise<boolean> {
+  return dbUpsert("gestores_carteira", gestor, { onConflict: "id_gestor" });
+}
+
+export async function deleteGestorCarteiraFromSupabase(idGestor: string): Promise<boolean> {
+  return dbDelete("gestores_carteira", [["id_gestor", "eq", idGestor]]);
 }
 
 // ============================================================================

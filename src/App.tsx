@@ -2274,8 +2274,10 @@ export default function App() {
           ) : (
             <>
               {activeSection === "ficha_gestora" && (
-                <FichaEmpresaGestora 
+                <FichaEmpresaGestora
                   predios={predios}
+                  fracoes={fracoes}
+                  avisos={avisos}
                   loggedUser={loggedUser}
                   onUpdateBrandingColor={setBrandingColor}
                   activeColor={brandingColor}
