@@ -1,6 +1,8 @@
+import { createHash } from "crypto";
 import { supabase } from "./supabaseServer.js";
 import { gerarHtmlAutoresponder, gerarHtmlResposta } from "./htmlemail.js";
 import { classifyEmailCategory, generateCategoryResponse } from "../geminiService.js";
+import { extrairDadosDocumento, arquivarAnexoOriginal } from "./multimodalService.js";
 
 /**
  * Filtro de remetentes automatizados, newsletters e fornecedores
@@ -128,41 +130,50 @@ async function obterAnexosDoPredio(id_predio) {
  * Lançar comprovativo pendente diretamente em pagamentos e movimentos
  * Mantém conformidade com o frontend (GestaoMovimentos.tsx / GestaoPagamentos.tsx)
  */
-async function registarComprovativoPendente({ aiData, contexto, comprovativoUrl, remetenteEmail }) {
+async function registarComprovativoPendente({ categoria, dadosExtraidos, contexto, comprovativoUrl, remetenteEmail, fileHash }) {
   try {
+    const tipoDocumento = (dadosExtraidos?.tipo_documento || "").toLowerCase();
     const isComprovativo =
-      aiData?.categoria === "quotas" ||
-      aiData?.dadosExtraidos?.valorTotal > 0 ||
-      (aiData?.acao && aiData.acao.includes("comprovativo"));
+      categoria === "quotas" ||
+      ["comprovativo", "fatura", "recibo", "extrato"].includes(tipoDocumento) ||
+      (dadosExtraidos?.valor_total > 0);
 
     if (!isComprovativo) return null;
 
-    const valorExtraido = aiData?.dadosExtraidos?.valorTotal || null;
-    const dataExtraida = aiData?.dadosExtraidos?.dataDocumento || new Date().toISOString().split("T")[0];
-    const entidadeExtraida = aiData?.dadosExtraidos?.entidade || null;
+    const isFatura = tipoDocumento === "fatura";
+    const valorExtraido = dadosExtraidos?.valor_total || null;
+    const dataExtraida = dadosExtraidos?.data_documento || new Date().toISOString().split("T")[0];
+    const entidadeExtraida = dadosExtraidos?.entidade || null;
     const fracaoNome = contexto?.fracao || contexto?.fracao_nome || "Fração Não Identificada";
 
-    // 1. Inserir em pagamentos (estado: 'pendente')
-    const { data: pagamento, error: errPag } = await supabase
-      .from("pagamentos")
-      .insert({
-        estado: "pendente",
-        fracao: fracaoNome,
-        id_fracao: contexto?.id_fracao || contexto?.id || null,
-        id_proprietario: contexto?.id_proprietario || contexto?.id || null,
-        valor: valorExtraido,
-        data_pagamento: dataExtraida,
-        entidade: entidadeExtraida,
-        comprovativo_url: comprovativoUrl || null,
-        tipo: "quota_mensal",
-        origem: "email_inbound",
-        criado_em: new Date().toISOString()
-      })
-      .select()
-      .maybeSingle();
+    // Faturas de fornecedor são despesa; comprovativos/recibos de condómino são receita
+    const tipoMovimento = isFatura ? "Despesa" : "Receita";
+    const categoriaMovimento = dadosExtraidos?.categoria_contabilistica || (isFatura ? "Fornecedores" : "Quotas");
 
-    if (errPag) {
-      console.warn("[inboundProcessor] Aviso ao inserir pagamento pendente:", errPag.message);
+    // 1. Inserir em pagamentos (estado: 'pendente') — só faz sentido para receitas de condómino
+    let pagamento = null;
+    if (!isFatura) {
+      const { data, error: errPag } = await supabase
+        .from("pagamentos")
+        .insert({
+          estado: "pendente",
+          fracao: fracaoNome,
+          id_fracao: contexto?.id_fracao || contexto?.id || null,
+          id_proprietario: contexto?.id_proprietario || contexto?.id || null,
+          valor: valorExtraido,
+          data_pagamento: dataExtraida,
+          entidade: entidadeExtraida,
+          comprovativo_url: comprovativoUrl || null,
+          tipo: "quota_mensal",
+          origem: "email_inbound",
+          criado_em: new Date().toISOString()
+        })
+        .select()
+        .maybeSingle();
+      pagamento = data;
+      if (errPag) {
+        console.warn("[inboundProcessor] Aviso ao inserir pagamento pendente:", errPag.message);
+      }
     }
 
     // 2. Inserir em movimentos (estado: 'Movimento Cego / Por Justificar', is_movimento_cego: true, estado_conciliacao: 'PENDENTE')
@@ -170,10 +181,10 @@ async function registarComprovativoPendente({ aiData, contexto, comprovativoUrl,
       .from("movimentos")
       .insert({
         id_predio: contexto?.id_predio || null,
-        descricao: `Comprovativo Quota via Email (${fracaoNome} - ${extrairEmailLimpo(remetenteEmail)})`,
+        descricao: `${entidadeExtraida || (isFatura ? "Fatura de fornecedor" : "Comprovativo")} via Email (${fracaoNome} - ${extrairEmailLimpo(remetenteEmail)})${pagamento?.id ? ` [pagamento:${pagamento.id}]` : ""}`,
         valor: valorExtraido || 0,
-        tipo: "Receita",
-        categoria: "Quotas",
+        tipo: tipoMovimento,
+        categoria: categoriaMovimento,
         data: dataExtraida,
         estado: "Movimento Cego / Por Justificar",
         is_movimento_cego: true,
@@ -186,6 +197,23 @@ async function registarComprovativoPendente({ aiData, contexto, comprovativoUrl,
 
     if (errMov) {
       console.warn("[inboundProcessor] Aviso ao inserir movimento pendente:", errMov.message);
+    }
+
+    // 3. Log de auditoria (liga movimento + pagamento pelo mesmo evento, guarda o hash para deteção de duplicados)
+    try {
+      await supabase.from("ai_auditoria").insert({
+        origem: "email_inbound",
+        tipo_documento: tipoDocumento || null,
+        entidade: entidadeExtraida,
+        referencia: dadosExtraidos?.referencia || null,
+        valor: valorExtraido,
+        file_hash: fileHash || null,
+        id_movimento: movimento?.id_movimento || null,
+        id_pagamento: pagamento?.id || null,
+        raw_json: dadosExtraidos || null
+      });
+    } catch (errAud) {
+      console.warn("[inboundProcessor] Aviso ao gravar ai_auditoria:", errAud?.message || errAud);
     }
 
     return { pagamento, movimento };
@@ -266,6 +294,62 @@ async function obterConteudoCompleto(emailId) {
   } catch (err) {
     console.warn("[inboundProcessor] Erro ao obter email completo:", err?.message || err);
     return null;
+  }
+}
+
+/**
+ * Vai buscar o conteúdo binário real de um anexo (o webhook e o "email
+ * completo" só dão metadados — nome, tipo, id). Dois passos:
+ * 1) pedir o download_url assinado; 2) descarregar o ficheiro em si.
+ * https://resend.com/docs/api-reference/emails/retrieve-received-email-attachment
+ */
+async function obterConteudoAnexo(emailId, attachmentId) {
+  const resendApiKey = process.env.RESEND_API_KEY || process.env.RESEND_KEY;
+  if (!emailId || !attachmentId || !resendApiKey) return null;
+
+  try {
+    const meta = await fetch(
+      `https://api.resend.com/emails/receiving/${emailId}/attachments/${attachmentId}`,
+      { headers: { Authorization: `Bearer ${resendApiKey}` } }
+    );
+    if (!meta.ok) return null;
+    const metaJson = await meta.json();
+    if (!metaJson?.download_url) return null;
+
+    const ficheiro = await fetch(metaJson.download_url);
+    if (!ficheiro.ok) return null;
+
+    const arrayBuffer = await ficheiro.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    return {
+      filename: metaJson.filename || "anexo",
+      mimeType: metaJson.content_type || "application/octet-stream",
+      buffer,
+      base64: buffer.toString("base64"),
+      hash: createHash("sha256").update(buffer).digest("hex")
+    };
+  } catch (err) {
+    console.warn("[inboundProcessor] Erro ao obter conteúdo do anexo:", err?.message || err);
+    return null;
+  }
+}
+
+/**
+ * Verifica se algum destes hashes já foi processado antes (evita lançar
+ * o mesmo comprovativo duas vezes se o Resend reentregar o webhook).
+ */
+async function algumHashJaProcessado(hashes) {
+  if (!hashes.length) return false;
+  try {
+    const { data } = await supabase
+      .from("ai_auditoria")
+      .select("file_hash")
+      .in("file_hash", hashes)
+      .limit(1);
+    return Boolean(data && data.length > 0);
+  } catch {
+    return false;
   }
 }
 
@@ -383,21 +467,79 @@ export async function processInboundEmail(payload) {
     anexosParaEnviar.push(...docsPredio);
   }
 
-  // 7. Lançamento pendente de comprovativos (directo em pagamentos e movimentos)
+  // 7. Ler o conteúdo real dos anexos (até 3, para não disparar demasiadas
+  // chamadas) e extrair dados estruturados via IA multimodal — lançamento
+  // pendente em pagamentos/movimentos, e arquivo automático se for fatura
   let comprovativoUrl = null;
-  if (Array.isArray(attachments) && attachments.length > 0) {
-    comprovativoUrl = attachments[0]?.url || attachments[0]?.path || null;
-  }
-  if (!comprovativoUrl && anexosParaEnviar.length > 0) {
-    comprovativoUrl = anexosParaEnviar[0]?.path || null;
-  }
+  let dadosExtraidos = null;
+  let comprovativoRegisto = null;
+  let comprovativoIgnoradoDuplicado = false;
 
-  const comprovativoRegisto = await registarComprovativoPendente({
-    aiData,
-    contexto,
-    comprovativoUrl,
-    remetenteEmail: cleanFrom
-  });
+  if (isRealResendWebhook && Array.isArray(attachments) && attachments.length > 0) {
+    const anexosComConteudo = [];
+    for (const anexo of attachments.slice(0, 3)) {
+      const conteudo = await obterConteudoAnexo(webhookData.email_id, anexo.id);
+      if (conteudo) anexosComConteudo.push(conteudo);
+    }
+
+    if (anexosComConteudo.length > 0) {
+      const hashes = anexosComConteudo.map((a) => a.hash);
+      comprovativoIgnoradoDuplicado = await algumHashJaProcessado(hashes);
+
+      if (!comprovativoIgnoradoDuplicado) {
+        try {
+          dadosExtraidos = await extrairDadosDocumento(
+            anexosComConteudo.map((a) => ({ mimeType: a.mimeType, base64: a.base64 }))
+          );
+        } catch (err) {
+          console.warn("[inboundProcessor] Aviso na extração multimodal:", err?.message || err);
+        }
+
+        const principal = anexosComConteudo[0];
+        comprovativoUrl = principal.filename;
+
+        // Fatura de fornecedor: arquiva o ficheiro original no Arquivo Digital
+        if ((dadosExtraidos?.tipo_documento || "").toLowerCase() === "fatura") {
+          try {
+            const caminhoArquivo = await arquivarAnexoOriginal({
+              buffer: principal.buffer,
+              filename: principal.filename,
+              mimeType: principal.mimeType,
+              ano: new Date().getFullYear(),
+              tema: "Faturas & Recibos",
+              tipo: "Fatura de Fornecedor",
+              predio: contexto?.id_predio || null,
+              fracao: contexto?.fracao || null,
+              fluxo: "fatura_email_inbound"
+            });
+            comprovativoUrl = caminhoArquivo;
+          } catch (errArquivo) {
+            console.warn("[inboundProcessor] Aviso ao arquivar fatura:", errArquivo?.message || errArquivo);
+          }
+        }
+
+        comprovativoRegisto = await registarComprovativoPendente({
+          categoria,
+          dadosExtraidos,
+          contexto,
+          comprovativoUrl,
+          remetenteEmail: cleanFrom,
+          fileHash: principal.hash
+        });
+      } else {
+        console.log("[inboundProcessor] Anexo já processado anteriormente (hash duplicado) — a ignorar novo lançamento.");
+      }
+    }
+  } else if (categoria === "quotas") {
+    // Sem anexo mas categoria sugere comprovativo — regista pendente sem dados extraídos
+    comprovativoRegisto = await registarComprovativoPendente({
+      categoria,
+      dadosExtraidos: null,
+      contexto,
+      comprovativoUrl: null,
+      remetenteEmail: cleanFrom
+    });
+  }
 
   // 8. Enviar resposta institucional se subject e mensagem forem fornecidos
   if (aiData?.subject && aiData?.message) {
@@ -417,6 +559,8 @@ export async function processInboundEmail(payload) {
     autoresponder: true,
     respostaEnviada: Boolean(aiData?.subject && aiData?.message),
     comprovativoPendente: Boolean(comprovativoRegisto),
+    comprovativoIgnoradoDuplicado,
+    tipoDocumentoExtraido: dadosExtraidos?.tipo_documento || null,
     contexto: contexto ? { fracao: contexto.fracao, predio: contexto.id_predio } : null
   };
 }
