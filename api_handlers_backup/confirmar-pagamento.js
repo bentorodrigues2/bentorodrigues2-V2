@@ -3,6 +3,7 @@ import { supabase } from "../server/lib/supabaseServer.js";
 import { guardarNoArquivo, registarDocumento, enviarEmailPDF } from "../server/lib/pdfService.js";
 import { generateOfficialReceiptPDF, nomeFicheiroRecibo } from "../server/lib/receiptGenerator.js";
 import { derivarPrefixoEdificio } from "../server/lib/reciboUtils.js";
+import { obterModeloEmail, interpolarModeloEmail } from "../server/lib/emailTemplates.js";
 
 export default async function handler(req, res) {
   try {
@@ -187,11 +188,24 @@ export default async function handler(req, res) {
     });
 
     if (emailDestinatario) {
+      const modeloRecibo = await obterModeloEmail(fracao?.id_predio, "recibo_pagamento");
+      const valoresRecibo = {
+        nome: nomeDestinatario,
+        fracao: fracaoNome,
+        valor: `${recibo.valor_total.toFixed(2)} €`,
+        data: new Date(recibo.data_pagamento).toLocaleDateString("pt-PT"),
+        metodo: recibo.metodo_pagamento
+      };
+
       await enviarEmailPDF({
         to: emailDestinatario,
         nomeDestinatario,
-        assunto: `Recibo de Quitação — ${fracaoNome}`,
-        mensagem: `Segue em anexo o recibo oficial de quitação referente à fração <strong>${fracaoNome}</strong>, no valor de <strong>${recibo.valor_total.toFixed(2)} €</strong>.`,
+        assunto: modeloRecibo
+          ? interpolarModeloEmail(modeloRecibo.subject, valoresRecibo)
+          : `Recibo de Quitação — ${fracaoNome}`,
+        mensagem: modeloRecibo
+          ? interpolarModeloEmail(modeloRecibo.body, valoresRecibo).replace(/\n/g, "<br>")
+          : `Segue em anexo o recibo oficial de quitação referente à fração <strong>${fracaoNome}</strong>, no valor de <strong>${recibo.valor_total.toFixed(2)} €</strong>.`,
         pdfBuffer,
         nome: nomeFicheiro
       });

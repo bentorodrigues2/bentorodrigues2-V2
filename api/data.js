@@ -48,7 +48,8 @@ const TABELAS_PERMITIDAS = new Set([
   "gestores_carteira",
   "respostas_ia_pendentes",
   "auditoria_plataforma",
-  "ai_auditoria"
+  "ai_auditoria",
+  "email_templates"
 ]);
 
 // Registos de auditoria: só select e insert, mesmo por este proxy — para

@@ -541,6 +541,32 @@ export interface DecisaoIA {
   criado_em: string;
 }
 
+// ============================================================================
+// MODELOS DE EMAIL (só os ligados a envios reais lêem isto — ver
+// server/lib/emailTemplates.js, TEMPLATES_LIGADOS_A_ENVIOS_REAIS)
+// ============================================================================
+
+export interface EmailTemplateOverride {
+  id_predio: string;
+  template_id: string;
+  subject: string;
+  body: string;
+}
+
+export async function fetchEmailTemplateOverrides(idPredio: string): Promise<EmailTemplateOverride[]> {
+  if (!isSupabaseConfigured() || !idPredio) return [];
+  const data = await dbSelect("email_templates", { filtros: [["id_predio", "eq", idPredio]] });
+  return (data || []) as EmailTemplateOverride[];
+}
+
+export async function saveEmailTemplateOverride(idPredio: string, templateId: string, subject: string, body: string): Promise<boolean> {
+  return dbUpsert(
+    "email_templates",
+    { id_predio: idPredio, template_id: templateId, subject, body, updated_at: new Date().toISOString() },
+    { onConflict: "id_predio,template_id" }
+  );
+}
+
 export async function fetchDecisoesIA(idPredio: string): Promise<DecisaoIA[]> {
   if (!isSupabaseConfigured() || !idPredio) return [];
   const data = await dbSelect("ai_auditoria", {

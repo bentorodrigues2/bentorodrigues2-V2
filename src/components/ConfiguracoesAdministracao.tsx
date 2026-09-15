@@ -3,7 +3,7 @@ import { jsPDF } from "jspdf";
 import { Predio, LoggedUser, Documento, Movimento, Fracao, RespostaIAPendente } from "../types";
 import { downloadBlob, exportToXLS, addPdfHeaderWithLogo } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
-import { dbUpdate, fetchRespostasIAPendentes, fetchRegistoAuditoria, registarAuditoria } from "../lib/supabaseService";
+import { dbUpdate, fetchRespostasIAPendentes, fetchRegistoAuditoria, registarAuditoria, fetchEmailTemplateOverrides, saveEmailTemplateOverride } from "../lib/supabaseService";
 import { 
   Settings, Mail, Shield, Bell, ListTodo, FileDown, CheckCircle, 
   AlertTriangle, Play, RefreshCw, FileText, Check, Database, Sparkles, Trash2, ArrowRight,
@@ -585,16 +585,22 @@ export function ConfiguracoesAdministracao({
   const [logSearch, setLogSearch] = useState("");
   const [logFilter, setLogFilter] = useState<string>("Todas");
 
-  // Email Templates State with Persistence
-  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>(() => {
-    const saved = localStorage.getItem(`condomanager_email_templates_${predioId}`);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {}
-    }
-    return INITIAL_EMAIL_TEMPLATES;
-  });
+  // Modelos de email — só os 4 ligados a envios automáticos reais (Aviso de
+  // Cobrança, Lembrete de Quota, Aviso de Dívida, Recibo de Pagamento) são
+  // lidos pelo backend quando envia; os restantes 18 continuam só como
+  // referência/pré-visualização (ver server/lib/emailTemplates.js).
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>(INITIAL_EMAIL_TEMPLATES);
+
+  useEffect(() => {
+    if (!predio?.id_predio) return;
+    fetchEmailTemplateOverrides(predio.id_predio).then(overrides => {
+      if (overrides.length === 0) return;
+      setEmailTemplates(prev => prev.map(t => {
+        const override = overrides.find(o => o.template_id === t.id);
+        return override ? { ...t, subject: override.subject, body: override.body } : t;
+      }));
+    });
+  }, [predio?.id_predio]);
 
   // Selected template state
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("aviso_cobranca");
@@ -614,8 +620,12 @@ export function ConfiguracoesAdministracao({
     }
   }, [selectedTemplateId]);
 
+  // Modelos realmente ligados a um envio automático — ver
+  // server/lib/emailTemplates.js, TEMPLATES_LIGADOS_A_ENVIOS_REAIS.
+  const TEMPLATES_LIGADOS_A_ENVIOS_REAIS = new Set(["aviso_cobranca", "lembrete_quota", "aviso_divida", "recibo_pagamento"]);
+
   // Method to save template changes
-  const handleSaveTemplate = () => {
+  const handleSaveTemplate = async () => {
     const updated = emailTemplates.map(t => {
       if (t.id === selectedTemplateId) {
         return { ...t, subject: editedSubject, body: editedBody };
@@ -623,13 +633,19 @@ export function ConfiguracoesAdministracao({
       return t;
     });
     setEmailTemplates(updated);
-    localStorage.setItem(`condomanager_email_templates_${predioId}`, JSON.stringify(updated));
+    if (predio?.id_predio) {
+      await saveEmailTemplateOverride(predio.id_predio, selectedTemplateId, editedSubject, editedBody);
+    }
     addLog("Configuração", "Atualização de Modelo de Email", `Modelo editado: ${activeTemplate?.title}`);
-    alert(`Modelo de e-mail "${activeTemplate?.title}" atualizado com sucesso!`);
+    alert(
+      TEMPLATES_LIGADOS_A_ENVIOS_REAIS.has(selectedTemplateId)
+        ? `Modelo de e-mail "${activeTemplate?.title}" atualizado com sucesso! Este modelo é lido pelo envio automático real.`
+        : `Modelo de e-mail "${activeTemplate?.title}" guardado. Nota: este modelo ainda não está ligado a nenhum envio automático real — fica só como referência.`
+    );
   };
 
   // Method to reset template changes
-  const handleResetTemplate = () => {
+  const handleResetTemplate = async () => {
     const original = INITIAL_EMAIL_TEMPLATES.find(t => t.id === selectedTemplateId);
     if (original) {
       setEditedSubject(original.subject);
@@ -641,7 +657,9 @@ export function ConfiguracoesAdministracao({
         return t;
       });
       setEmailTemplates(updated);
-      localStorage.setItem(`condomanager_email_templates_${predioId}`, JSON.stringify(updated));
+      if (predio?.id_predio) {
+        await saveEmailTemplateOverride(predio.id_predio, selectedTemplateId, original.subject, original.body);
+      }
       addLog("Configuração", "Restauro de Modelo de Email", `Modelo restaurado: ${activeTemplate?.title}`);
       alert(`Modelo "${activeTemplate?.title}" restaurado para o padrão oficial!`);
     }
@@ -1649,7 +1667,14 @@ export function ConfiguracoesAdministracao({
                               {t.number}
                             </span>
                             <div className="flex-grow min-w-0">
-                              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{t.title}</h4>
+                              <div className="flex items-center gap-1.5">
+                                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{t.title}</h4>
+                                {TEMPLATES_LIGADOS_A_ENVIOS_REAIS.has(t.id) && (
+                                  <span className="shrink-0 text-[8px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
+                                    Envio real
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">{t.category.replace(" (apenas os essenciais)", "")}</p>
                             </div>
                           </div>
@@ -1674,6 +1699,11 @@ export function ConfiguracoesAdministracao({
                         <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
                           {activeTemplate?.title}
                         </h4>
+                        <p className={`text-[10.5px] mt-1 font-medium ${TEMPLATES_LIGADOS_A_ENVIOS_REAIS.has(selectedTemplateId) ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+                          {TEMPLATES_LIGADOS_A_ENVIOS_REAIS.has(selectedTemplateId)
+                            ? "✓ Este modelo é lido pelo envio automático real."
+                            : "⚠ Este modelo ainda não está ligado a nenhum envio automático — fica só como referência."}
+                        </p>
                       </div>
                       <div className="flex gap-2">
                         <button

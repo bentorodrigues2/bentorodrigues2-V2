@@ -4,6 +4,7 @@ import { guardarNoArquivo, registarDocumento, enviarEmailPDF } from "./pdfServic
 import { gerarHtmlResposta, gerarHtmlAniversario } from "./htmlemail.js";
 import { derivarPrefixoEdificio } from "./reciboUtils.js";
 import { enviarEmailSemAnexo } from "./mailer.js";
+import { obterModeloEmail, interpolarModeloEmail } from "./emailTemplates.js";
 
 /**
  * Guarda de "já executado hoje" — protege contra envios duplicados quando o
@@ -226,11 +227,25 @@ export async function emitirQuotasMensais() {
           visibilidade: "Público"
         });
 
+        // Usa o modelo "Aviso de Cobrança" editado em Definições, se existir
+        // (senão mantém o texto por omissão abaixo).
+        const modeloCobranca = await obterModeloEmail(predio.id_predio, "aviso_cobranca");
+        const valoresCobranca = {
+          nome: proprietario.nome,
+          fracao: f.fracao_nome,
+          valor: `${valorTotal.toFixed(2)} €`,
+          data: formatarDataPT(vencimento)
+        };
+
         await enviarEmailPDF({
           to: proprietario.email,
           nomeDestinatario: proprietario.nome,
-          assunto: `Nota de Cobrança — Quota de ${mesRefLabel} / ${anoRef} — Fração ${f.fracao_nome}`,
-          mensagem: `Segue em anexo a nota de cobrança referente à quota de condomínio de <strong>${mesRefLabel} de ${anoRef}</strong>, no valor de <strong>${valorTotal.toFixed(2)} €</strong>, com vencimento a <strong>${formatarDataPT(vencimento)}</strong>.<br><br>Assim que o pagamento for confirmado pela administração, receberá o respetivo recibo de quitação oficial. Para um rápido cruzamento de dados, envie o comprovativo do pagamento para o email <strong>bentorodrgues2@gmail.com</strong>.`,
+          assunto: modeloCobranca
+            ? interpolarModeloEmail(modeloCobranca.subject, valoresCobranca)
+            : `Nota de Cobrança — Quota de ${mesRefLabel} / ${anoRef} — Fração ${f.fracao_nome}`,
+          mensagem: modeloCobranca
+            ? interpolarModeloEmail(modeloCobranca.body, valoresCobranca).replace(/\n/g, "<br>")
+            : `Segue em anexo a nota de cobrança referente à quota de condomínio de <strong>${mesRefLabel} de ${anoRef}</strong>, no valor de <strong>${valorTotal.toFixed(2)} €</strong>, com vencimento a <strong>${formatarDataPT(vencimento)}</strong>.<br><br>Assim que o pagamento for confirmado pela administração, receberá o respetivo recibo de quitação oficial. Para um rápido cruzamento de dados, envie o comprovativo do pagamento para o email <strong>bentorodrgues2@gmail.com</strong>.`,
           pdfBuffer,
           nome: nomeFicheiro
         });
@@ -279,14 +294,28 @@ export async function enviarLembretesQuotas() {
       if (!proprietario?.email) continue;
 
       const fracaoNome = fracao?.fracao_nome || aviso.id_fracao;
-      const html = gerarHtmlResposta(
-        proprietario.nome,
-        `Relembramos que a quota de condomínio referente à fração <strong>${fracaoNome}</strong>, no valor de <strong>${Number(aviso.valor).toFixed(2)} €</strong>, se encontra ainda por regularizar, com vencimento a <strong>${formatarDataPT(aviso.vencimento)}</strong>.<br><br>Se já efetuou o pagamento, pode ignorar esta mensagem — basta enviar o comprovativo por email para que seja validado pela administração e o respetivo recibo lhe seja enviado.`
-      );
+
+      const modeloLembrete = await obterModeloEmail(aviso.id_predio, "lembrete_quota");
+      const valoresLembrete = {
+        nome: proprietario.nome,
+        fracao: fracaoNome,
+        valor: `${Number(aviso.valor).toFixed(2)} €`,
+        data: formatarDataPT(aviso.vencimento),
+        metodo: "Transferência Bancária"
+      };
+
+      const assuntoLembrete = modeloLembrete
+        ? interpolarModeloEmail(modeloLembrete.subject, valoresLembrete)
+        : `Lembrete: Quota de Condomínio por Regularizar — Fração ${fracaoNome}`;
+      const corpoLembrete = modeloLembrete
+        ? interpolarModeloEmail(modeloLembrete.body, valoresLembrete).replace(/\n/g, "<br>")
+        : `Relembramos que a quota de condomínio referente à fração <strong>${fracaoNome}</strong>, no valor de <strong>${Number(aviso.valor).toFixed(2)} €</strong>, se encontra ainda por regularizar, com vencimento a <strong>${formatarDataPT(aviso.vencimento)}</strong>.<br><br>Se já efetuou o pagamento, pode ignorar esta mensagem — basta enviar o comprovativo por email para que seja validado pela administração e o respetivo recibo lhe seja enviado.`;
+
+      const html = gerarHtmlResposta(proprietario.nome, corpoLembrete);
 
       const enviado = await enviarEmailSemAnexo({
         to: proprietario.email,
-        subject: `Lembrete: Quota de Condomínio por Regularizar — Fração ${fracaoNome}`,
+        subject: assuntoLembrete,
         html
       });
 
@@ -337,14 +366,35 @@ export async function avisarQuotasEmMora() {
       if (!proprietario?.email) continue;
 
       const fracaoNome = fracao?.fracao_nome || aviso.id_fracao;
-      const html = gerarHtmlResposta(
-        proprietario.nome,
-        `A quota de condomínio referente à fração <strong>${fracaoNome}</strong>, no valor de <strong>${Number(aviso.valor).toFixed(2)} €</strong>, encontra-se em mora — o prazo de vencimento (<strong>${formatarDataPT(aviso.vencimento)}</strong>) já foi ultrapassado.<br><br>Solicitamos a regularização o mais breve possível, de forma a evitar o agravamento da dívida nos termos regulamentares. Caso já tenha efetuado o pagamento, agradecemos o envio do comprovativo por email.`
-      );
+
+      const { count: mesesEmAtraso } = await supabase
+        .from("avisos")
+        .select("id_aviso", { count: "exact", head: true })
+        .eq("id_fracao", aviso.id_fracao)
+        .eq("tipo", "Quota Ordinária")
+        .eq("estado", "Pendente");
+
+      const modeloMora = await obterModeloEmail(aviso.id_predio, "aviso_divida");
+      const valoresMora = {
+        nome: proprietario.nome,
+        fracao: fracaoNome,
+        valor: `${Number(aviso.valor).toFixed(2)} €`,
+        data: formatarDataPT(aviso.vencimento),
+        x: `${mesesEmAtraso || 1} mês(es)`
+      };
+
+      const assuntoMora = modeloMora
+        ? interpolarModeloEmail(modeloMora.subject, valoresMora)
+        : `Aviso de Mora — Quota de Condomínio em Atraso — Fração ${fracaoNome}`;
+      const corpoMora = modeloMora
+        ? interpolarModeloEmail(modeloMora.body, valoresMora).replace(/\n/g, "<br>")
+        : `A quota de condomínio referente à fração <strong>${fracaoNome}</strong>, no valor de <strong>${Number(aviso.valor).toFixed(2)} €</strong>, encontra-se em mora — o prazo de vencimento (<strong>${formatarDataPT(aviso.vencimento)}</strong>) já foi ultrapassado.<br><br>Solicitamos a regularização o mais breve possível, de forma a evitar o agravamento da dívida nos termos regulamentares. Caso já tenha efetuado o pagamento, agradecemos o envio do comprovativo por email.`;
+
+      const html = gerarHtmlResposta(proprietario.nome, corpoMora);
 
       const enviado = await enviarEmailSemAnexo({
         to: proprietario.email,
-        subject: `Aviso de Mora — Quota de Condomínio em Atraso — Fração ${fracaoNome}`,
+        subject: assuntoMora,
         html
       });
 
