@@ -32,11 +32,66 @@ export function isSupabaseConfigured(): boolean {
   const url = import.meta.env.VITE_SUPABASE_URL;
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
   return Boolean(
-    url && 
-    key && 
-    !url.includes("placeholder-project") && 
+    url &&
+    key &&
+    !url.includes("placeholder-project") &&
     !key.includes("placeholder-anon-key")
   );
+}
+
+// ============================================================================
+// ACESSO A DADOS VIA /api/data (proxy no servidor com service_role)
+// ----------------------------------------------------------------------------
+// Tabelas migradas para este proxy deixam de estar acessíveis diretamente
+// pela anon key (RLS passa a negar por omissão nessas tabelas) — o browser
+// só consegue ler/escrever passando por aqui, e este endpoint corre no
+// servidor com uma chave que nunca é exposta ao cliente. Ver api/data.js.
+// ============================================================================
+
+type Filtro = [string, "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "in" | "is", any];
+
+async function dbCall(body: Record<string, unknown>): Promise<{ ok: boolean; data?: any; error?: string }> {
+  try {
+    const resp = await fetch("/api/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    if (!resp.ok) return { ok: false, error: `HTTP ${resp.status}` };
+    return await resp.json();
+  } catch (err: any) {
+    return { ok: false, error: err?.message || String(err) };
+  }
+}
+
+async function dbSelect(tabela: string, opts: { colunas?: string; filtros?: Filtro[]; order?: { coluna: string; asc?: boolean }; limit?: number } = {}): Promise<any[] | null> {
+  const resultado = await dbCall({ tabela, acao: "select", ...opts });
+  if (!resultado.ok || !resultado.data) return null;
+  return resultado.data;
+}
+
+async function dbInsert(tabela: string, dados: unknown): Promise<boolean> {
+  const resultado = await dbCall({ tabela, acao: "insert", dados });
+  if (!resultado.ok) console.warn(`[Supabase/data] Insert ${tabela} error:`, resultado.error);
+  return resultado.ok;
+}
+
+async function dbUpsert(tabela: string, dados: unknown, opcoesUpsert?: { onConflict?: string }): Promise<boolean> {
+  const resultado = await dbCall({ tabela, acao: "upsert", dados, opcoesUpsert });
+  if (!resultado.ok) console.warn(`[Supabase/data] Upsert ${tabela} error:`, resultado.error);
+  return resultado.ok;
+}
+
+async function dbUpdate(tabela: string, dados: unknown, filtros: Filtro[]): Promise<boolean> {
+  const resultado = await dbCall({ tabela, acao: "update", dados, filtros });
+  if (!resultado.ok) console.warn(`[Supabase/data] Update ${tabela} error:`, resultado.error);
+  return resultado.ok;
+}
+
+async function dbDelete(tabela: string, filtros?: Filtro[], orFiltro?: string): Promise<boolean> {
+  const resultado = await dbCall({ tabela, acao: "delete", filtros, orFiltro });
+  if (!resultado.ok) console.warn(`[Supabase/data] Delete ${tabela} error:`, resultado.error);
+  return resultado.ok;
 }
 
 // ============================================================================
@@ -133,10 +188,8 @@ export async function deletePredioFromSupabase(idPredio: string): Promise<boolea
 export async function fetchFracoesFromSupabase(idPredio?: string): Promise<Fracao[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    let query = supabase.from("fracoes").select("*");
-    if (idPredio) query = query.eq("id_predio", idPredio);
-    const { data, error } = await query;
-    if (error || !data || data.length === 0) return null;
+    const data = await dbSelect("fracoes", { filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined });
+    if (!data || data.length === 0) return null;
 
     return data.map((row: any) => ({
       id_fracao: row.id_fracao,
@@ -168,99 +221,70 @@ export async function fetchFracoesFromSupabase(idPredio?: string): Promise<Fraca
 
 export async function saveFracaoToSupabase(fracao: Fracao): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("fracoes").upsert({
-      id_fracao: fracao.id_fracao,
-      id_predio: fracao.id_predio,
-      fracao_nome: fracao.fracao_nome,
-      piso: fracao.piso,
-      permilagem: fracao.permilagem,
-      tipologia: fracao.tipologia,
-      tipo_access: fracao.tipo_access,
-      tem_garagem_spot: fracao.tem_garagem_spot,
-      tem_arrecadacao_box: fracao.tem_arrecadacao_box,
-      is_arrendada: fracao.is_arrendada,
-      proprietario: fracao.proprietario,
-      proprietarios_adicionais: fracao.proprietarios_adicionais || [],
-      inquilino: fracao.inquilino,
-      administrador_interno: fracao.administrador_interno,
-      notificacao_preferencial: fracao.notificacao_preferencial,
-      referencia_br23e: fracao.referencia_br23e,
-      seguradora: fracao.seguradora,
-      apolice_num: fracao.apolice_num,
-      apolice_validade: fracao.apolice_validade,
-      apolice_doc: fracao.apolice_doc,
-      solicitacao_email_incendio: fracao.solicitacao_email_incendio
-    });
-    return !error;
-  } catch (err) {
-    return false;
-  }
+  return dbUpsert("fracoes", {
+    id_fracao: fracao.id_fracao,
+    id_predio: fracao.id_predio,
+    fracao_nome: fracao.fracao_nome,
+    piso: fracao.piso,
+    permilagem: fracao.permilagem,
+    tipologia: fracao.tipologia,
+    tipo_access: fracao.tipo_access,
+    tem_garagem_spot: fracao.tem_garagem_spot,
+    tem_arrecadacao_box: fracao.tem_arrecadacao_box,
+    is_arrendada: fracao.is_arrendada,
+    proprietario: fracao.proprietario,
+    proprietarios_adicionais: fracao.proprietarios_adicionais || [],
+    inquilino: fracao.inquilino,
+    administrador_interno: fracao.administrador_interno,
+    notificacao_preferencial: fracao.notificacao_preferencial,
+    referencia_br23e: fracao.referencia_br23e,
+    seguradora: fracao.seguradora,
+    apolice_num: fracao.apolice_num,
+    apolice_validade: fracao.apolice_validade,
+    apolice_doc: fracao.apolice_doc,
+    solicitacao_email_incendio: fracao.solicitacao_email_incendio
+  });
 }
 
 export async function deleteFracaoFromSupabase(idFracao: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("fracoes").delete().eq("id_fracao", idFracao);
-    return !error;
-  } catch (err) {
-    return false;
-  }
+  return dbDelete("fracoes", [["id_fracao", "eq", idFracao]]);
 }
 
 export async function saveProprietarioToSupabase(proprietario: Proprietario, idFracao?: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    // If associated with a fraction, update fraction's owner
-    if (idFracao) {
-      await supabase.from("fracoes").update({ 
-        proprietario: proprietario,
-        administrador_interno: proprietario.administrador_interno || "Não",
-        notificacao_preferencial: proprietario.notificacao_preferencial || "Digital (E-mail e Mensagens Push)"
-      }).eq("id_fracao", idFracao);
-    }
-    // Also try saving to proprietarios table if present
-    try {
-      await supabase.from("proprietarios").upsert({
-        id_proprietario: proprietario.id_proprietario || proprietario.nif,
-        id_predio: proprietario.id_predio,
-        id_fracao: idFracao || proprietario.id_fracao,
-        nome: proprietario.nome,
-        nif: proprietario.nif,
-        email: proprietario.email,
-        tlm: proprietario.tlm,
-        iban: proprietario.iban,
-        data_nascimento: proprietario.data_nascimento || null,
-        administrador_interno: proprietario.administrador_interno,
-        notificacao_preferencial: proprietario.notificacao_preferencial
-      });
-    } catch {
-      // Table may not exist yet, which is safe
-    }
-    return true;
-  } catch (err) {
-    return false;
+  // If associated with a fraction, update fraction's owner
+  if (idFracao) {
+    await dbUpdate("fracoes", {
+      proprietario: proprietario,
+      administrador_interno: proprietario.administrador_interno || "Não",
+      notificacao_preferencial: proprietario.notificacao_preferencial || "Digital (E-mail e Mensagens Push)"
+    }, [["id_fracao", "eq", idFracao]]);
   }
+  // Also try saving to proprietarios table if present (safe no-op if it doesn't exist)
+  await dbUpsert("proprietarios", {
+    id_proprietario: proprietario.id_proprietario || proprietario.nif,
+    id_predio: proprietario.id_predio,
+    id_fracao: idFracao || proprietario.id_fracao,
+    nome: proprietario.nome,
+    nif: proprietario.nif,
+    email: proprietario.email,
+    tlm: proprietario.tlm,
+    iban: proprietario.iban,
+    data_nascimento: proprietario.data_nascimento || null,
+    administrador_interno: proprietario.administrador_interno,
+    notificacao_preferencial: proprietario.notificacao_preferencial
+  });
+  return true;
 }
 
 export async function deleteProprietarioFromSupabase(identifier: string, idFracao?: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    if (idFracao) {
-      await supabase.from("fracoes").update({ 
-        proprietario: null,
-        administrador_interno: "Não"
-      }).eq("id_fracao", idFracao);
-    }
-    try {
-      await supabase.from("proprietarios").delete().or(`id_proprietario.eq.${identifier},nif.eq.${identifier},email.eq.${identifier}`);
-    } catch {
-      // Table may not exist
-    }
-    return true;
-  } catch (err) {
-    return false;
+  if (idFracao) {
+    await dbUpdate("fracoes", { proprietario: null, administrador_interno: "Não" }, [["id_fracao", "eq", idFracao]]);
   }
+  await dbDelete("proprietarios", undefined, `id_proprietario.eq.${identifier},nif.eq.${identifier},email.eq.${identifier}`);
+  return true;
 }
 
 // ============================================================================
@@ -334,10 +358,8 @@ export async function deleteContaFromSupabase(idConta: string): Promise<boolean>
 export async function fetchMovimentosFromSupabase(idPredio?: string): Promise<Movimento[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    let query = supabase.from("movimentos").select("*");
-    if (idPredio) query = query.eq("id_predio", idPredio);
-    const { data, error } = await query;
-    if (error || !data || data.length === 0) return null;
+    const data = await dbSelect("movimentos", { filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined });
+    if (!data || data.length === 0) return null;
 
     return data.map((row: any) => ({
       id_mov: row.id_movimento,
@@ -361,23 +383,18 @@ export async function fetchMovimentosFromSupabase(idPredio?: string): Promise<Mo
 
 export async function saveMovimentoToSupabase(mov: Movimento): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  try {
-    const { error } = await supabase.from("movimentos").upsert({
-      id_movimento: mov.id_mov,
-      id_predio: mov.id_predio,
-      id_conta: mov.id_conta || null,
-      data: mov.data,
-      tipo: mov.tipo,
-      categoria: mov.categoria,
-      descricao: mov.descricao,
-      valor: mov.valor,
-      fracao_id: mov.id_fracao || null,
-      forma_pagamento: mov.metodo_pagamento || "Transferência"
-    });
-    return !error;
-  } catch (err) {
-    return false;
-  }
+  return dbUpsert("movimentos", {
+    id_movimento: mov.id_mov,
+    id_predio: mov.id_predio,
+    id_conta: mov.id_conta || null,
+    data: mov.data,
+    tipo: mov.tipo,
+    categoria: mov.categoria,
+    descricao: mov.descricao,
+    valor: mov.valor,
+    fracao_id: mov.id_fracao || null,
+    forma_pagamento: mov.metodo_pagamento || "Transferência"
+  });
 }
 
 // ============================================================================
