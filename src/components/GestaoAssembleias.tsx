@@ -747,6 +747,59 @@ Com os meus cumprimentos,
     alert("✨ Ata final guardada com sucesso e arquivada automaticamente no Arquivo Digital (Pasta 'Atas & Convocatórias')!");
   };
 
+  // Envio real da ata aprovada a todos os condóminos — cumprimento do prazo
+  // legal de 30 dias do Art. 1432.º do Código Civil. Usa o texto real
+  // editado pelo Administrador (ataTexto/ordensTrabalho), nunca conteúdo
+  // inventado — ver gerarAtaAprovadaOficialPDF em src/utils.ts.
+  const handleEnviarAtaAosCondominos = () => {
+    if (!ataTexto.trim()) {
+      alert("Escreva ou gere o texto da ata antes de a enviar aos condóminos.");
+      return;
+    }
+
+    const destinatarios = predioFracoes
+      .map(f => ({ email: f.proprietario?.email, nome: f.proprietario?.nome || f.fracao_nome }))
+      .filter((d): d is { email: string; nome: string } => Boolean(d.email));
+
+    if (destinatarios.length === 0) {
+      alert("Nenhuma fração tem email de proprietário registado — não há para quem enviar.");
+      return;
+    }
+
+    const ataNumero = String(reunioes.filter(r => r.estado === "Realizada").length + 1);
+
+    triggerSendReaction("email", `A enviar a Ata aos ${destinatarios.length} condómino(s)...`, async () => {
+      try {
+        const resp = await fetch("/api/pdf?tipo=ata-aprovada", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ataNumero,
+            dataAssembleia: activeMeeting?.data || data || formatDatePT(new Date().toISOString()),
+            predioNome: predio.nome,
+            predioNif: predio.nif,
+            conteudoReal: {
+              ordemTrabalhos: activeMeeting?.ordens_trabalho || ordensTrabalho,
+              deliberacoes: ataTexto,
+              quorum: activeQuorum.toFixed(2),
+              mesaPresidente: presidenteMesa,
+              hora1: activeMeeting?.hora || hora,
+              local: activeMeeting?.local_reuniao
+            },
+            destinatarios,
+            predio: predio.id_predio,
+            ano: new Date().getFullYear()
+          })
+        });
+        const resultado = await resp.json();
+        if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar a ata");
+      } catch (err: any) {
+        alert(`❌ Erro ao enviar a ata: ${err?.message || "erro desconhecido"}`);
+        throw err;
+      }
+    });
+  };
+
   const notesToText = () => notasAta;
 
   // SIGNATURE DRAWING ENGINE
@@ -2011,6 +2064,15 @@ Com os meus cumprimentos,
                           >
                             <i className="fa-solid fa-floppy-disk text-emerald-400"></i>
                             <span>Guardar Ata Final & Arquivar</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleEnviarAtaAosCondominos}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer flex items-center gap-1.5 shadow-xs"
+                            title="Nos termos do Art. 1432.º do Código Civil: prazo legal de 30 dias para notificar os condóminos ausentes"
+                          >
+                            <i className="fa-solid fa-paper-plane"></i>
+                            <span>Enviar Ata aos Condóminos</span>
                           </button>
                           <button
                             type="button"

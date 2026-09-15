@@ -3127,7 +3127,17 @@ export function gerarAtaAprovadaOficialPDF(
   dataAssembleia: string = "15/09/2026",
   predioNome: string = "Condomínio Edifício Estrela da Barra",
   predioNif: string = "900 123 456",
-  devolverDoc?: boolean
+  devolverDoc?: boolean,
+  conteudoReal?: {
+    ordemTrabalhos?: string;
+    deliberacoes?: string;
+    quorum?: string;
+    mesaPresidente?: string;
+    mesaSecretario?: string;
+    hora1?: string;
+    hora2?: string;
+    local?: string;
+  }
 ) {
   try {
     const doc = new jsPDF({
@@ -3169,46 +3179,46 @@ export function gerarAtaAprovadaOficialPDF(
     doc.setFontSize(8.5);
     doc.setTextColor(30, 41, 59);
     doc.text(`Edifício: ${predioNome} (NIF: ${predioNif})`, 18, y + 6);
-    doc.text(`Data da Reunião: ${dataAssembleia} | 1.ª Conv.: 20h30 | 2.ª Conv.: 21h00`, 18, y + 11);
-    doc.text(`Local: Sala de Condomínio & Plataforma https://bentorodrigues2.condomanagerai.com`, 18, y + 16);
-    doc.text(`Quórum Verificado: 785,00 ‰ do Capital`, 130, y + 6);
-    doc.text(`Mesa: José Carlos Guerra (Admin/Sec.)`, 130, y + 11);
+    doc.text(`Data da Reunião: ${dataAssembleia} | 1.ª Conv.: ${conteudoReal?.hora1 || "20h30"} | 2.ª Conv.: ${conteudoReal?.hora2 || "21h00"}`, 18, y + 11);
+    doc.text(`Local: ${conteudoReal?.local || "Sala de Condomínio & Plataforma https://bentorodrigues2.condomanagerai.com"}`, 18, y + 16);
+    doc.text(`Quórum Verificado: ${conteudoReal?.quorum || "785,00"} ‰ do Capital`, 130, y + 6);
+    doc.text(`Mesa: ${conteudoReal?.mesaPresidente || "José Carlos Guerra"} (Pres.) / ${conteudoReal?.mesaSecretario || conteudoReal?.mesaPresidente || "José Carlos Guerra"} (Sec.)`, 130, y + 11);
     y += 28;
 
-    // Ordem de Trabalhos
+    // Ordem de Trabalhos — usa o texto real editado pelo Administrador
+    // (ver GestaoAssembleias.tsx, ordensTrabalho/ataTexto); o texto de
+    // exemplo abaixo só é usado como demonstração quando não há dados reais.
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
     doc.text("ORDEM DE TRABALHOS (CONFORME CONVOCATÓRIA):", 14, y);
     y += 5;
 
-    const ordens = [
-      "1. Apresentação, discussão e votação do Relatório de Gestão e Contas do exercício transato.",
-      "2. Discussão e aprovação do Orçamento Previsional e Quotas para o exercício 2026/2027.",
-      "3. Plano de Manutenção Periódica e Conservação das Áreas Comuns (Portão e Caleiras).",
-      "4. Eleição / Recondução da Administração do Condomínio."
-    ];
+    const ordensTexto = conteudoReal?.ordemTrabalhos ||
+      "1. Apresentação, discussão e votação do Relatório de Gestão e Contas do exercício transato.\n" +
+      "2. Discussão e aprovação do Orçamento Previsional e Quotas para o exercício seguinte.\n" +
+      "3. Plano de Manutenção Periódica e Conservação das Áreas Comuns.\n" +
+      "4. Eleição / Recondução da Administração do Condomínio.";
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(51, 65, 85);
-    ordens.forEach(o => {
-      doc.text(o, 18, y);
-      y += 5;
-    });
-    y += 4;
+    const ordensLines = doc.splitTextToSize(ordensTexto, 178);
+    doc.text(ordensLines, 18, y);
+    y += ordensLines.length * 4.5 + 4;
 
-    // Deliberações
+    // Deliberações — idem, usa o texto real da ata editado pelo
+    // Administrador (ataTexto), nunca um resumo inventado
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
     doc.text("DELIBERAÇÕES E DECISÕES TOMADAS:", 14, y);
     y += 5;
 
-    const delibs = 
-      `PONTO 1: O Relatório e Contas foi apresentado pela Administração, registando receitas de 5.480,00 € e despesas de 4.120,00 €. Colocado à votação, foi aprovado por maioria (740‰ a favor, 45‰ de abstenção).\n\n` +
-      `PONTO 2: Foi apresentado o Orçamento Previsional 2026/2027 no montante de 5.850,00 €, mantendo o valor base das quotas mensais e a dotação de 10% para o Fundo Comum de Reserva. Foi aprovado por unanimidade (785‰ a favor).\n\n` +
-      `PONTO 3: Aprovada a adjudicação da reparação do portão da garagem à empresa 'Portões & Automatismos Lda' e a impermeabilização da caleira norte.\n\n` +
-      `PONTO 4: Foi deliberada a recondução do condómino José Carlos Guerra no cargo de Administrador do Condomínio com agradecimento pelo trabalho desenvolvido.`;
+    const delibs = conteudoReal?.deliberacoes ||
+      `PONTO 1: O Relatório e Contas foi apresentado pela Administração. Colocado à votação, foi aprovado por maioria.\n\n` +
+      `PONTO 2: Foi apresentado o Orçamento Previsional para o exercício seguinte, mantendo a dotação de 10% para o Fundo Comum de Reserva. Foi aprovado por unanimidade.\n\n` +
+      `PONTO 3: Deliberações sobre manutenção e conservação das áreas comuns aprovadas conforme discutido em assembleia.\n\n` +
+      `PONTO 4: Deliberada a recondução da Administração do Condomínio com agradecimento pelo trabalho desenvolvido.`;
 
     const delibLines = doc.splitTextToSize(delibs, 182);
     doc.setFont("helvetica", "normal");
@@ -3234,8 +3244,8 @@ export function gerarAtaAprovadaOficialPDF(
     y += 4;
     doc.setFontSize(7.5);
     doc.setTextColor(100, 116, 139);
-    doc.text("Assinatura Reconhecida da Mesa", 20, y);
-    doc.text("José Carlos Guerra • Administrador", 115, y);
+    doc.text(conteudoReal?.mesaPresidente || "José Carlos Guerra", 20, y);
+    doc.text(`${conteudoReal?.mesaSecretario || conteudoReal?.mesaPresidente || "José Carlos Guerra"} • Administrador`, 115, y);
 
     // Rodapé
     doc.setFontSize(6.5);

@@ -78,10 +78,10 @@ function gerarDocEspecial(tipo, body) {
 
   if (tipo === "ata-aprovada") {
     return {
-      doc: gerarAtaAprovadaOficialPDF(body.ataNumero, body.dataAssembleia, body.predioNome, body.predioNif, true),
+      doc: gerarAtaAprovadaOficialPDF(body.ataNumero, body.dataAssembleia, body.predioNome, body.predioNif, true, body.conteudoReal),
       nomeFicheiro: `Ata_N${body.ataNumero || ""}_Assinada.pdf`,
       assunto: `Ata Aprovada n.º ${body.ataNumero || ""} — ${body.predioNome || "Condomínio"}`,
-      mensagem: `Segue em anexo a ata aprovada e assinada pela mesa da Assembleia Geral.`
+      mensagem: `Em cumprimento do disposto no n.º 1 do Artigo 1432.º do Código Civil e da Lei n.º 8/2022, remete-se em anexo a cópia integral da ata respeitante à Assembleia Geral realizada a ${body.dataAssembleia || ""}.<br><br>Os condóminos ausentes dispõem do prazo de 90 dias após a receção desta comunicação para exercer o direito de oposição às deliberações tomadas, caso assim o entendam.`
     };
   }
 
