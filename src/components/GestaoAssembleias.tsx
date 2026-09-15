@@ -448,7 +448,50 @@ Com os meus cumprimentos,
   };
 
   const notificarPorEmail = () => {
-    triggerSendReaction("email", "A Enviar Convocatórias por E-mail...");
+    const destinatarios = predioFracoes
+      .map(f => ({ email: f.proprietario?.email, nome: f.proprietario?.nome || f.fracao_nome }))
+      .filter((d): d is { email: string; nome: string } => Boolean(d.email));
+
+    if (destinatarios.length === 0) {
+      alert("Nenhuma fração tem email de proprietário registado — não há para quem enviar.");
+      return;
+    }
+
+    const reuniaoParaEnvio: Reuniao = {
+      id_reuniao: activeMeeting?.id_reuniao || "temp",
+      id_predio: predio.id_predio,
+      tema: tema || "Assembleia Geral de Condóminos",
+      data: data || formatDatePT(new Date().toISOString()),
+      hora: hora || "20:30",
+      ordens_trabalho: ordensTrabalho || "1. Apreciação e votação do Relatório e Contas;\n2. Aprovação do Orçamento;\n3. Assuntos Gerais.",
+      estado: "Agendada",
+      isVideoconferencia,
+      plataformaVideoconferencia: plataformaVideo,
+      linkVideoconferencia: linkVideo
+    };
+
+    triggerSendReaction("email", `A enviar convocatórias para ${destinatarios.length} condómino(s)...`, async () => {
+      try {
+        const resp = await fetch("/api/pdf?tipo=convocatoria-oficial", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            predioObj: predio,
+            reuniao: reuniaoParaEnvio,
+            fracoes: predioFracoes,
+            administradorNome: loggedUser?.nome,
+            destinatarios,
+            predio: predio.id_predio,
+            ano: new Date().getFullYear()
+          })
+        });
+        const resultado = await resp.json();
+        if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar convocatórias");
+      } catch (err: any) {
+        alert(`❌ Erro ao enviar as convocatórias por email: ${err?.message || "erro desconhecido"}`);
+        throw err;
+      }
+    });
   };
 
   // Selection of active meeting workspace

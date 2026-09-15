@@ -8,9 +8,35 @@ import {
   getFallbackCategoryResponse,
   processAutoresponderEmail
 } from "../server/geminiService.js";
+import { gerarHtmlResposta } from "../server/lib/htmlemail.js";
+import { enviarEmailSemAnexo } from "../server/lib/mailer.js";
 
 export default async function handler(req, res) {
   const acao = req.query?.acao || req.body?.acao;
+
+  // 0. NOTIFICAÇÃO INSTITUCIONAL SIMPLES, SEM ANEXO (/api/email?acao=notificar)
+  // Usado por ações pontuais do admin que não têm documento associado
+  // (ex.: pedido/aviso de apólice de seguro em falta ou expirada).
+  if (acao === "notificar") {
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
+    try {
+      const { to, nomeDestinatario, assunto, mensagem } = req.body || {};
+      if (!to || !assunto || !mensagem) {
+        return res.status(400).json({ error: "to, assunto e mensagem são obrigatórios" });
+      }
+      const html = gerarHtmlResposta(nomeDestinatario || "Condómino(a)", mensagem);
+      const enviado = await enviarEmailSemAnexo({ to, subject: assunto, html });
+      if (!enviado) {
+        return res.status(502).json({ error: "Falha ao enviar o email via Resend" });
+      }
+      return res.status(200).json({ ok: true, email_enviado: true });
+    } catch (err) {
+      console.error("[api/email?acao=notificar] Erro:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao enviar notificação" });
+    }
+  }
 
   // 1. TEMPLATES (/api/ai-studio-router/templates -> ?acao=router-templates)
   if (
@@ -92,7 +118,7 @@ export default async function handler(req, res) {
         geminiKeyConfigurada: hasKey,
         totalCategorias: Object.keys(OFFICIAL_EMAIL_ROUTER_TEMPLATES).length,
         categorias: Object.keys(OFFICIAL_EMAIL_ROUTER_TEMPLATES),
-        logotipoUrl: "https://bentorodrigues2.vercel.app/email/20-logotipo.webp",
+        logotipoUrl: "https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp",
         instrucoes: "Endpoint pronto para chamadas POST de autoresponder com as 13 categorias e logotipo oficial."
       });
     }

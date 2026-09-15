@@ -237,6 +237,8 @@ export interface Documento {
   tipo_arquivo?: "documento" | "fotografia";
   url_foto?: string;
   relevancia_perfis?: ("ADMIN" | "EMPRESA_GESTORA" | "USER" | "INQUILINO" | "TECNICO" | "LIMPEZAS" | "JURIDICO" | "AUDITOR" | "CONTABILISTA")[];
+  /** Caminho no Supabase Storage (bucket "documentos") — só existe em documentos gerados pelo backend */
+  caminho?: string;
 }
 
 export interface OcorrenciaFoto {

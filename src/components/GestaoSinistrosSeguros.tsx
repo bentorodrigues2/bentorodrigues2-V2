@@ -604,10 +604,36 @@ Não incluas blocos markdown nem texto adicional, apenas JSON puro.`;
     showToast(`Registo de sinistro ${idSinistro} eliminado com sucesso.`);
   };
 
+  const enviarNotificacaoApolice = async (email: string, nome: string, fracaoNome: string) => {
+    const resp = await fetch("/api/email?acao=notificar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: email,
+        nomeDestinatario: nome,
+        assunto: `Notificação Legal — Seguro de Incêndio da Fração ${fracaoNome}`,
+        mensagem: `Nos termos do <strong>Artigo 1429.º do Código Civil</strong>, é obrigatório o seguro contra o risco de incêndio da sua fração e das partes comuns do edifício.<br><br>Solicitamos o envio do comprovativo de apólice em vigor (ou da sua renovação) referente à fração <strong>${fracaoNome}</strong>, no mais curto espaço de tempo possível.<br><br>Caso já tenha efetuado a contratação/renovação, agradecemos o envio do comprovativo por email.`
+      })
+    });
+    const resultado = await resp.json();
+    if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar notificação");
+  };
+
   const handleEnviarPedidoApolice = (fracao: Fracao) => {
-    triggerSendReaction("email", `A enviar notificação de apólice de seguro: Fração ${fracao.fracao_nome}`, () => {
-      showToast(`📧 Notificação legal enviada com sucesso para o condómino da Fração ${fracao.fracao_nome}!`);
-      setNotifModalFracao(null);
+    const email = fracao.proprietario?.email;
+    if (!email) {
+      alert(`A fração ${fracao.fracao_nome} não tem email de proprietário registado.`);
+      return;
+    }
+    triggerSendReaction("email", `A enviar notificação de apólice de seguro: Fração ${fracao.fracao_nome}`, async () => {
+      try {
+        await enviarNotificacaoApolice(email, fracao.proprietario?.nome || fracao.fracao_nome, fracao.fracao_nome);
+        showToast(`📧 Notificação legal enviada com sucesso para o condómino da Fração ${fracao.fracao_nome}!`);
+        setNotifModalFracao(null);
+      } catch (err: any) {
+        alert(`❌ Erro ao enviar a notificação: ${err?.message || "erro desconhecido"}`);
+        throw err;
+      }
     });
   };
 
@@ -694,8 +720,27 @@ Não incluas blocos markdown nem texto adicional, apenas JSON puro.`;
           <button
             type="button"
             onClick={() => {
-              triggerSendReaction("email", "A notificar todas as frações com seguro em falta/expirado", () => {
-                showToast(`📧 Enviados avisos automáticos para as ${fracoesExpiradasOuPendentes.length} frações em incumprimento!`);
+              const comEmail = fracoesExpiradasOuPendentes.filter(f => f.proprietario?.email);
+              if (comEmail.length === 0) {
+                alert("Nenhuma das frações em incumprimento tem email de proprietário registado.");
+                return;
+              }
+              triggerSendReaction("email", `A notificar ${comEmail.length} fração(ões) com seguro em falta/expirado...`, async () => {
+                try {
+                  let enviados = 0;
+                  for (const f of comEmail) {
+                    try {
+                      await enviarNotificacaoApolice(f.proprietario!.email, f.proprietario?.nome || f.fracao_nome, f.fracao_nome);
+                      enviados += 1;
+                    } catch (errFracao) {
+                      console.warn(`Falha ao notificar fração ${f.fracao_nome}:`, errFracao);
+                    }
+                  }
+                  showToast(`📧 Enviados avisos para ${enviados} de ${comEmail.length} frações em incumprimento!`);
+                } catch (err: any) {
+                  alert(`❌ Erro ao notificar as frações: ${err?.message || "erro desconhecido"}`);
+                  throw err;
+                }
               });
             }}
             className="bg-red-600 hover:bg-red-700 active:scale-95 text-white font-black text-xs px-4 py-2.5 rounded-xl shadow-md transition-all shrink-0 cursor-pointer flex items-center gap-2"

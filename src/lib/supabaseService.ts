@@ -1102,7 +1102,8 @@ export async function fetchDocumentosFromSupabase(idPredio?: string): Promise<Do
       tema: row.tema || undefined,
       ano: row.ano != null ? String(row.ano) : undefined,
       url_foto: row.url_foto || undefined,
-      relevancia_perfis: row.relevancia_perfis || undefined
+      relevancia_perfis: row.relevancia_perfis || undefined,
+      caminho: row.caminho || undefined
     }));
   } catch (err) {
     return null;

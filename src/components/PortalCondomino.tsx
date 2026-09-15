@@ -2267,8 +2267,30 @@ export function PortalCondomino({
                 onClick={() => {
                   generateCondominoPwaManualPDF(welcomeMailModal.fracao.proprietario.nome, predio.nome, welcomeMailModal.pass);
                   const recipientEmail = welcomeMailModal.fracao.proprietario.email;
+                  const recipientNome = welcomeMailModal.fracao.proprietario.nome;
+                  const pass = welcomeMailModal.pass;
                   setWelcomeMailModal(null);
-                  triggerSendReaction("email", `E-mail de Boas-Vindas para ${recipientEmail}`);
+                  triggerSendReaction("email", `A enviar Email de Boas-Vindas para ${recipientEmail}...`, async () => {
+                    try {
+                      const resp = await fetch("/api/pdf?tipo=boas-vindas", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          nome: recipientNome,
+                          buildingName: predio.nome,
+                          password: pass,
+                          email: recipientEmail,
+                          predio: predio.id_predio,
+                          ano: new Date().getFullYear()
+                        })
+                      });
+                      const resultado = await resp.json();
+                      if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar email de boas-vindas");
+                    } catch (err: any) {
+                      alert(`❌ Erro ao enviar o email de boas-vindas: ${err?.message || "erro desconhecido"}`);
+                      throw err;
+                    }
+                  });
                 }}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-lg text-xs transition-colors cursor-pointer shadow-md text-center"
               >

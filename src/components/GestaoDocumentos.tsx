@@ -1453,10 +1453,33 @@ export function GestaoDocumentos({
 
   const confirmarEnvioEmail = () => {
     if (!emailModalDoc || !emailDestinatario.trim()) return;
-    const docNome = emailModalDoc.nome;
+    const doc = emailModalDoc;
+    const docNome = doc.nome;
     const dest = emailDestinatario.trim();
+    const assunto = emailAssunto;
+    const mensagem = emailMensagem;
     setEmailModalDoc(null);
-    triggerSendReaction("email", `A enviar "${docNome}" para ${dest}...`);
+
+    triggerSendReaction("email", `A enviar "${docNome}" para ${dest}...`, async () => {
+      try {
+        const resp = await fetch("/api/documento?acao=enviar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            caminho: doc.caminho,
+            nome: docNome,
+            email: dest,
+            assunto,
+            mensagem
+          })
+        });
+        const resultado = await resp.json();
+        if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar o documento");
+      } catch (err: any) {
+        alert(`❌ Erro ao enviar o documento por email: ${err?.message || "erro desconhecido"}`);
+        throw err;
+      }
+    });
   };
 
   // Available Filter Options

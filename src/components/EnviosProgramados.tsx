@@ -128,36 +128,45 @@ export function EnviosProgramados({
     }));
   };
 
-  const handleForcarEnvio = (item: EnvioProgramadoItem) => {
-    triggerSendReaction("email", `A forçar disparo manual imediato: ${item.destinatario_nome} (Fração ${item.fracao_nome})`, () => {
-      setFilaEnvios(prev => prev.map(i => {
-        if (i.id_envio === item.id_envio) {
-          return {
-            ...i,
-            estado: "ENVIADO_SUCESSO",
-            data_envio_real: new Date().toISOString().replace("T", " ").substring(0, 19)
-          };
-        }
-        return i;
-      }));
-      showToast(`🚀 Disparo manual efetuado com sucesso por E-mail & Notificação Push PWA para a Fração ${item.fracao_nome}!`);
+  // Dispara mesmo o job real do backend (server/lib/cronService.js) — antes
+  // disto só marcava o item local como "enviado" sem chamar nada a sério.
+  // O job real corre para todas as frações pendentes desse tipo (não é
+  // possível visar só uma fração isoladamente), por isso o resultado
+  // mostrado é o total real devolvido pela API, não uma simulação do item.
+  const dispararJobReal = (job: "EMISSAO_MENSAL_QUOTAS" | "LEMBRETE_CORDIAL_VENCIMENTO", tituloAnimacao: string, tipoEnvio: EnvioProgramadoItem["tipo_envio"]) => {
+    triggerSendReaction("email", tituloAnimacao, async () => {
+      try {
+        const resp = await fetch("/api/admin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ job })
+        });
+        const resultado = await resp.json();
+        if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao executar o envio");
+
+        const total = resultado.total ?? 0;
+        const agora = new Date().toISOString().replace("T", " ").substring(0, 19);
+        setFilaEnvios(prev => prev.map(i => {
+          if (i.tipo_envio === tipoEnvio && i.estado !== "PAUSADO_MANUAL") {
+            return { ...i, estado: "ENVIADO_SUCESSO", data_envio_real: agora };
+          }
+          return i;
+        }));
+        showToast(`🚀 Envio real concluído — ${total} email(s) enviado(s) com sucesso!`);
+      } catch (err: any) {
+        alert(`❌ Erro ao disparar o envio: ${err?.message || "erro desconhecido"}`);
+        throw err;
+      }
     });
   };
 
+  const handleForcarEnvio = (item: EnvioProgramadoItem) => {
+    const job = item.tipo_envio === "NOTA_COBRANCA_DIA_25" ? "EMISSAO_MENSAL_QUOTAS" : "LEMBRETE_CORDIAL_VENCIMENTO";
+    dispararJobReal(job, `A forçar disparo real: ${item.destinatario_nome} (Fração ${item.fracao_nome})`, item.tipo_envio);
+  };
+
   const handleDispararTodosDia25 = () => {
-    triggerSendReaction("email", "A disparar todas as Notas de Cobrança do Dia 25", () => {
-      setFilaEnvios(prev => prev.map(i => {
-        if (i.tipo_envio === "NOTA_COBRANCA_DIA_25" && i.estado !== "PAUSADO_MANUAL") {
-          return {
-            ...i,
-            estado: "ENVIADO_SUCESSO",
-            data_envio_real: new Date().toISOString().replace("T", " ").substring(0, 19)
-          };
-        }
-        return i;
-      }));
-      showToast("🚀 Todas as Notas de Cobrança do Dia 25 foram enviadas com sucesso com PDF e Push PWA!");
-    });
+    dispararJobReal("EMISSAO_MENSAL_QUOTAS", "A disparar todas as Notas de Cobrança do Dia 25", "NOTA_COBRANCA_DIA_25");
   };
 
   const filteredQueue = filaEnvios.filter(item => {

@@ -191,75 +191,61 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
     }));
   };
 
-  // Simulates the execution of a scheduled cron job immediately
+  // Dispara mesmo o job real do backend (server/lib/cronService.js, o mesmo
+  // que corre automaticamente todos os dias via /api/cron) — antes disto
+  // fabricava resultados falsos localmente sem chamar nada.
   const executarJobAgora = async (job: CronJobConfig, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+
+    if (job.tipo === "VISTORIA_PERIODICA") {
+      alert("Este tipo de rotina (vistorias periódicas) ainda não está automatizado no backend.");
+      return;
+    }
+
     setSimulatingJobId(job.id_job);
 
-    triggerSendReaction("email", `A disparar rotina: ${job.titulo}`, () => {
-      const nowStr = new Date().toISOString().replace("T", " ").substring(0, 19);
-      let itensProcessados = 0;
-      let detalhesStr = "";
-
-      if (job.tipo === "EMISSAO_MENSAL_QUOTAS") {
-        const mesAtual = new Date().toLocaleString("pt-PT", { month: "long" });
-        const novosAvisos: Aviso[] = [];
-        predioFracoes.forEach(f => {
-          const idOrd = `av-cron-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-          const valorOrd = Math.round(45 * (f.permilagem / 50) * 100) / 100;
-          novosAvisos.push({
-            id_aviso: idOrd,
-            id_predio: predio.id_predio,
-            id_fracao: f.id_fracao,
-            tipo: "Cota Ordinária",
-            data: new Date().toISOString().split("T")[0],
-            vencimento: "2026-09-15",
-            descricao: `Quota Ordinária - ${mesAtual} 2026`,
-            valor: valorOrd,
-            estado: "Pendente"
-          });
+    triggerSendReaction("email", `A disparar rotina: ${job.titulo}`, async () => {
+      try {
+        const resp = await fetch("/api/admin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ job: job.tipo })
         });
-        if (setAvisos) {
-          setAvisos(prev => [...prev, ...novosAvisos]);
-        }
-        itensProcessados = predioFracoes.length;
-        detalhesStr = `Execução manual bem-sucedida: Geradas ${novosAvisos.length} notas de cobrança e disparados ${predioFracoes.length} e-mails automáticos com dados de IBAN.`;
-      } else if (job.tipo === "LEMBRETE_CORDIAL_VENCIMENTO") {
-        const pendentes = predioAvisos.filter(a => a.estado === "Pendente");
-        itensProcessados = pendentes.length || 2;
-        detalhesStr = `Enviados lembretes cordiais por e-mail e notificação PWA para ${itensProcessados} condóminos com pagamentos pendentes.`;
-      } else if (job.tipo === "AVISO_MORA_INCUMPRIMENTO") {
-        const atrasados = predioAvisos.filter(a => a.estado === "Pendente");
-        itensProcessados = Math.max(1, atrasados.length);
-        detalhesStr = `Avisos formais de regularização emitidos e enviados para ${itensProcessados} condóminos em mora.`;
-      } else {
-        itensProcessados = 1;
-        detalhesStr = "Verificação diária de aniversários concluída. Felicitações enviadas.";
+        const resultado = await resp.json();
+        if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao executar a rotina");
+
+        const nowStr = new Date().toISOString().replace("T", " ").substring(0, 19);
+        const itensProcessados = resultado.total ?? 0;
+        const detalhesStr = `Execução real concluída: ${itensProcessados} email(s) enviado(s).`;
+
+        const novaExecucao = {
+          id: `exec-${Date.now()}`,
+          data_hora: nowStr,
+          sucesso: true,
+          itens_processados: itensProcessados,
+          emails_enviados: itensProcessados,
+          detalhes: detalhesStr
+        };
+
+        setJobs(prev => prev.map(j => {
+          if (j.id_job === job.id_job) {
+            return {
+              ...j,
+              ultima_execucao: nowStr,
+              ultimo_status: "SUCESSO",
+              historico_execucoes: [novaExecucao, ...(j.historico_execucoes || [])]
+            };
+          }
+          return j;
+        }));
+
+        showToast(`✅ Tarefa "${job.titulo}" executada com sucesso! ${itensProcessados} email(s) enviado(s).`);
+      } catch (err: any) {
+        alert(`❌ Erro ao executar a rotina: ${err?.message || "erro desconhecido"}`);
+        throw err;
+      } finally {
+        setSimulatingJobId(null);
       }
-
-      const novaExecucao = {
-        id: `exec-${Date.now()}`,
-        data_hora: nowStr,
-        sucesso: true,
-        itens_processados: itensProcessados,
-        emails_enviados: itensProcessados,
-        detalhes: detalhesStr
-      };
-
-      setJobs(prev => prev.map(j => {
-        if (j.id_job === job.id_job) {
-          return {
-            ...j,
-            ultima_execucao: nowStr,
-            ultimo_status: "SUCESSO",
-            historico_execucoes: [novaExecucao, ...(j.historico_execucoes || [])]
-          };
-        }
-        return j;
-      }));
-
-      setSimulatingJobId(null);
-      showToast(`✅ Tarefa "${job.titulo}" executada com sucesso! ${itensProcessados} condóminos notificados.`);
     });
   };
 

@@ -1,5 +1,12 @@
 import { gerarDocumentoPDF, guardarNoArquivo, registarDocumento, enviarEmailPDF } from "../server/lib/pdfService.js";
-import { generateCondominoPwaManualPDF, gerarPdfRegistoFornecedorHomologado } from "../server/lib/pdfDocs.js";
+import {
+  generateCondominoPwaManualPDF,
+  gerarPdfRegistoFornecedorHomologado,
+  gerarConvocatoriaOficialPDF,
+  gerarNotificacaoDividaPDF,
+  gerarAtaAprovadaOficialPDF,
+  gerarParticipacaoSinistroPDF
+} from "../server/lib/pdfDocs.js";
 
 const TIPOS = {
   convocatoria: { tema: "Assembleias", tipo: "Convocatória", fluxo: "convocatoria", categoria: "Atas & Convocatórias" },
@@ -11,33 +18,85 @@ const TIPOS = {
   "boas-vindas": { tema: "Comunicações", tipo: "Boas-vindas", fluxo: "boas_vindas" },
   "registo-fornecedor": { tema: "Fornecedores", tipo: "Registo de Fornecedor", fluxo: "registo_fornecedor" },
   sinistro: { tema: "Seguros", tipo: "Sinistro", fluxo: "sinistro", categoria: "Seguros & Apólices" },
-  scie: { tema: "SCIE", tipo: "Relatório SCIE", fluxo: "scie" }
+  scie: { tema: "SCIE", tipo: "Relatório SCIE", fluxo: "scie" },
+  "convocatoria-oficial": { tema: "Assembleias", tipo: "Convocatória", fluxo: "convocatoria_oficial", categoria: "Atas & Convocatórias" },
+  "notificacao-divida": { tema: "Comunicações", tipo: "Notificação de Dívida", fluxo: "notificacao_divida" },
+  "ata-aprovada": { tema: "Assembleias", tipo: "Ata", fluxo: "ata_aprovada", categoria: "Atas & Convocatórias" },
+  "participacao-sinistro": { tema: "Seguros", tipo: "Participação de Sinistro", fluxo: "participacao_sinistro", categoria: "Seguros & Apólices" }
 };
 
+const TIPOS_ESPECIAIS = new Set([
+  "boas-vindas",
+  "registo-fornecedor",
+  "convocatoria-oficial",
+  "notificacao-divida",
+  "ata-aprovada",
+  "participacao-sinistro"
+]);
+
 /**
- * "boas-vindas" e "registo-fornecedor" têm documento próprio já desenhado
- * (guia PWA com credenciais / instruções de acesso do fornecedor — ver
+ * Estes tipos têm documento próprio já desenhado (layout legal/oficial em
  * src/utils.ts) em vez do PDF de texto genérico usado pelos outros tipos.
  */
-async function gerarDocumentoEspecial(tipo, config, body) {
-  const ano = body.ano || new Date().getFullYear();
-  let doc;
-  let nomeFicheiro;
-  let assunto;
-  let mensagem;
-
+function gerarDocEspecial(tipo, body) {
   if (tipo === "boas-vindas") {
-    doc = generateCondominoPwaManualPDF(body.nome, body.buildingName, body.password, true);
-    nomeFicheiro = "Instrucoes_Site_e_PWA_Condomino.pdf";
-    assunto = `Bem-vindo(a) ao ${body.buildingName || "Condomínio"} — Acesso à Área do Condómino`;
-    mensagem = `É com muito gosto que lhe damos as boas-vindas ao <strong>${body.buildingName || "condomínio"}</strong>. Segue em anexo o guia oficial com os seus dados de acesso à área reservada do condómino e as instruções de instalação da aplicação (PWA) no telemóvel.`;
-  } else {
-    doc = gerarPdfRegistoFornecedorHomologado(body.fornecedor || {}, body.predioObj || undefined, true);
-    nomeFicheiro = "Instrucoes_Acesso_Perfil_Fornecedor.pdf";
-    assunto = "Registo como Fornecedor Homologado — Instruções de Acesso";
-    mensagem = `O seu registo como fornecedor homologado foi concluído com sucesso. Segue em anexo o documento com as instruções de acesso ao seu perfil.`;
+    return {
+      doc: generateCondominoPwaManualPDF(body.nome, body.buildingName, body.password, true),
+      nomeFicheiro: "Instrucoes_Site_e_PWA_Condomino.pdf",
+      assunto: `Bem-vindo(a) ao ${body.buildingName || "Condomínio"} — Acesso à Área do Condómino`,
+      mensagem: `É com muito gosto que lhe damos as boas-vindas ao <strong>${body.buildingName || "condomínio"}</strong>. Segue em anexo o guia oficial com os seus dados de acesso à área reservada do condómino e as instruções de instalação da aplicação (PWA) no telemóvel.`,
+      categoria: "Instruções PWA & Desktop"
+    };
   }
 
+  if (tipo === "registo-fornecedor") {
+    return {
+      doc: gerarPdfRegistoFornecedorHomologado(body.fornecedor || {}, body.predioObj || undefined, true),
+      nomeFicheiro: "Instrucoes_Acesso_Perfil_Fornecedor.pdf",
+      assunto: "Registo como Fornecedor Homologado — Instruções de Acesso",
+      mensagem: `O seu registo como fornecedor homologado foi concluído com sucesso. Segue em anexo o documento com as instruções de acesso ao seu perfil.`
+    };
+  }
+
+  if (tipo === "convocatoria-oficial") {
+    return {
+      doc: gerarConvocatoriaOficialPDF(body.predioObj, body.reuniao, body.fracoes || [], body.administradorNome, true),
+      nomeFicheiro: `Convocatoria_${(body.reuniao?.data || "assembleia").replace(/\//g, "-")}.pdf`,
+      assunto: `Convocatória de Assembleia Geral — ${body.predioObj?.nome || "Condomínio"}`,
+      mensagem: `Segue em anexo a convocatória oficial para a Assembleia Geral de Condóminos, nos termos e para os efeitos do Artigo 1432.º do Código Civil.`
+    };
+  }
+
+  if (tipo === "notificacao-divida") {
+    return {
+      doc: gerarNotificacaoDividaPDF(body.proprietarioNome, body.fracaoNome, body.valorDivida, body.predioNome, body.predioNif, body.ibanPagamento, true),
+      nomeFicheiro: `Notificacao_Divida_${(body.fracaoNome || "fracao").replace(/\s+/g, "_")}.pdf`,
+      assunto: `Notificação Formal de Dívida — Fração ${body.fracaoNome || ""}`,
+      mensagem: `Segue em anexo notificação formal referente à dívida em aberto da sua fração junto do condomínio.`
+    };
+  }
+
+  if (tipo === "ata-aprovada") {
+    return {
+      doc: gerarAtaAprovadaOficialPDF(body.ataNumero, body.dataAssembleia, body.predioNome, body.predioNif, true),
+      nomeFicheiro: `Ata_N${body.ataNumero || ""}_Assinada.pdf`,
+      assunto: `Ata Aprovada n.º ${body.ataNumero || ""} — ${body.predioNome || "Condomínio"}`,
+      mensagem: `Segue em anexo a ata aprovada e assinada pela mesa da Assembleia Geral.`
+    };
+  }
+
+  // participacao-sinistro
+  return {
+    doc: gerarParticipacaoSinistroPDF(body.numeroSinistro, body.apoliceNumero, body.seguradoraNome, body.predioNome, body.predioNif, true),
+    nomeFicheiro: `Participacao_Sinistro_${body.numeroSinistro || ""}.pdf`,
+    assunto: `Participação Urgente de Sinistro — Apólice n.º ${body.apoliceNumero || ""} — ${body.predioNome || ""}`,
+    mensagem: `Vimos por este meio formalizar a participação de sinistro ocorrido nas partes comuns do condomínio. Segue em anexo o auto de vistoria com registo fotográfico para efeitos de marcação de peritagem técnica.`
+  };
+}
+
+async function gerarDocumentoEspecial(tipo, config, body) {
+  const ano = body.ano || new Date().getFullYear();
+  const { doc, nomeFicheiro, assunto, mensagem, categoria } = gerarDocEspecial(tipo, body);
   const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
 
   const caminho = await guardarNoArquivo({
@@ -61,25 +120,33 @@ async function gerarDocumentoEspecial(tipo, config, body) {
     fluxo: config.fluxo,
     origem: `pdf_${tipo.replace(/-/g, "_")}`,
     nomeFicheiro,
-    // O Arquivo Digital identifica os manuais/guias PWA por esta categoria
-    // (ver GestaoDocumentos.tsx, isManualDoc) — sem isto o guia de
-    // boas-vindas não aparecia na pasta certa.
-    categoria: tipo === "boas-vindas" ? "Instruções PWA & Desktop" : undefined,
+    categoria: categoria || config.categoria,
     visibilidade: "Público"
   });
 
-  if (body.email) {
+  // "convocatoria-oficial" vai para todos os condóminos (destinatarios[]);
+  // os restantes tipos especiais vão para um único destinatário (email)
+  const destinatarios = Array.isArray(body.destinatarios) && body.destinatarios.length
+    ? body.destinatarios
+    : body.email
+      ? [{ email: body.email, nome: body.nome || body.fornecedor?.nome || body.proprietarioNome }]
+      : [];
+
+  let enviados = 0;
+  for (const dest of destinatarios) {
+    if (!dest?.email) continue;
     await enviarEmailPDF({
-      to: body.email,
-      nomeDestinatario: body.nome || body.fornecedor?.nome,
+      to: dest.email,
+      nomeDestinatario: dest.nome,
       assunto,
       mensagem,
       pdfBuffer,
       nome: nomeFicheiro
     });
+    enviados += 1;
   }
 
-  return { caminho, email_enviado: Boolean(body.email) };
+  return { caminho, email_enviado: enviados > 0, total_enviados: enviados };
 }
 
 export default async function handler(req, res) {
@@ -107,7 +174,7 @@ export default async function handler(req, res) {
   try {
     const body = req.body || {};
 
-    if (tipo === "boas-vindas" || tipo === "registo-fornecedor") {
+    if (TIPOS_ESPECIAIS.has(tipo)) {
       const resultado = await gerarDocumentoEspecial(tipo, config, body);
       return res.status(200).json({ ok: true, ...resultado });
     }

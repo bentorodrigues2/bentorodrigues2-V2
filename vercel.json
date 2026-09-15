@@ -25,6 +25,10 @@
     { "source": "/api/pdf/carta-n2", "destination": "/api/pdf?tipo=carta-n2" },
     { "source": "/api/pdf/boas-vindas", "destination": "/api/pdf?tipo=boas-vindas" },
     { "source": "/api/pdf/registo-fornecedor", "destination": "/api/pdf?tipo=registo-fornecedor" },
+    { "source": "/api/pdf/convocatoria-oficial", "destination": "/api/pdf?tipo=convocatoria-oficial" },
+    { "source": "/api/pdf/notificacao-divida", "destination": "/api/pdf?tipo=notificacao-divida" },
+    { "source": "/api/pdf/ata-aprovada", "destination": "/api/pdf?tipo=ata-aprovada" },
+    { "source": "/api/pdf/participacao-sinistro", "destination": "/api/pdf?tipo=participacao-sinistro" },
     { "source": "/api/pdf/sinistro", "destination": "/api/pdf?tipo=sinistro" },
     { "source": "/api/pdf/scie", "destination": "/api/pdf?tipo=scie" }
   ]

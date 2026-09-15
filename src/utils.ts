@@ -2547,7 +2547,8 @@ export function gerarConvocatoriaOficialPDF(
   predio: Predio,
   reuniao: Reuniao,
   fracoes: Fracao[],
-  administradorNome: string = "A Administração do Condomínio"
+  administradorNome: string = "A Administração do Condomínio",
+  devolverDoc?: boolean
 ) {
   try {
     const doc = new jsPDF({
@@ -2817,12 +2818,13 @@ export function gerarConvocatoriaOficialPDF(
     doc.text(`CONDOMANAGER AI - SISTEMA INTEGRADO DE GESTÃO DE CONDOMÍNIOS | CONVOCATÓRIA OFICIAL`, 105, 288, { align: "center" });
 
     const fileName = `Convocatoria_Assembleia_${predio.nome.replace(/\s+/g, "_")}_${reuniao.data.replace(/\//g, "-")}.pdf`;
+    if (devolverDoc) return doc;
     const blob = doc.output("blob");
     downloadBlob(blob, fileName);
     return true;
   } catch (err) {
     console.error("Erro ao gerar Convocatória em PDF:", err);
-    alert("Ocorreu um erro ao gerar a Convocatória em PDF.");
+    if (typeof alert !== "undefined") alert("Ocorreu um erro ao gerar a Convocatória em PDF.");
     return false;
   }
 }
@@ -2981,7 +2983,8 @@ export function gerarNotificacaoDividaPDF(
   valorDivida: string = "247,50",
   predioNome: string = "Condomínio Edifício Estrela da Barra",
   predioNif: string = "900 123 456",
-  ibanPagamento: string = "PT50 0035 0123 4567 8901 2344 5"
+  ibanPagamento: string = "PT50 0035 0123 4567 8901 2344 5",
+  devolverDoc?: boolean
 ) {
   try {
     const doc = new jsPDF({
@@ -3104,12 +3107,13 @@ export function gerarNotificacaoDividaPDF(
     doc.setTextColor(148, 163, 184);
     doc.text("CondoManager AI • Documento Oficial com Certificação Digital e Força Executiva", 105, 285, { align: "center" });
 
+    if (devolverDoc) return doc;
     const blob = doc.output("blob");
     downloadBlob(blob, "notificacao_formal_divida_titulo_executivo.pdf");
     return true;
   } catch (err) {
     console.error("Erro ao gerar Notificação de Dívida PDF:", err);
-    alert("Ocorreu um erro ao gerar o documento de dívida.");
+    if (typeof alert !== "undefined") alert("Ocorreu um erro ao gerar o documento de dívida.");
     return false;
   }
 }
@@ -3122,7 +3126,8 @@ export function gerarAtaAprovadaOficialPDF(
   ataNumero: string = "42",
   dataAssembleia: string = "15/09/2026",
   predioNome: string = "Condomínio Edifício Estrela da Barra",
-  predioNif: string = "900 123 456"
+  predioNif: string = "900 123 456",
+  devolverDoc?: boolean
 ) {
   try {
     const doc = new jsPDF({
@@ -3237,12 +3242,13 @@ export function gerarAtaAprovadaOficialPDF(
     doc.setTextColor(148, 163, 184);
     doc.text("CondoManager AI • Ata Aprovada e Certificada Digitalmente • Registada no Arquivo Permanente", 105, 285, { align: "center" });
 
+    if (devolverDoc) return doc;
     const blob = doc.output("blob");
     downloadBlob(blob, `ata_n${ataNumero}_assinada_mesa.pdf`);
     return true;
   } catch (err) {
     console.error("Erro ao gerar Ata PDF:", err);
-    alert("Ocorreu um erro ao gerar a Ata.");
+    if (typeof alert !== "undefined") alert("Ocorreu um erro ao gerar a Ata.");
     return false;
   }
 }
@@ -3256,7 +3262,8 @@ export function gerarParticipacaoSinistroPDF(
   apoliceNumero: string = "847291039",
   seguradoraNome: string = "Fidelidade - Companhia de Seguros, S.A.",
   predioNome: string = "Condomínio Edifício Estrela da Barra",
-  predioNif: string = "900 123 456"
+  predioNif: string = "900 123 456",
+  devolverDoc?: boolean
 ) {
   try {
     const doc = new jsPDF({
@@ -3379,12 +3386,13 @@ export function gerarParticipacaoSinistroPDF(
     doc.setTextColor(148, 163, 184);
     doc.text("CondoManager AI • Participação de Sinistro Registada no Módulo Jurídico e de Seguros", 105, 285, { align: "center" });
 
+    if (devolverDoc) return doc;
     const blob = doc.output("blob");
     downloadBlob(blob, "participacao_sinistro_peritagem_fotos.pdf");
     return true;
   } catch (err) {
     console.error("Erro ao gerar Participação de Sinistro PDF:", err);
-    alert("Ocorreu um erro ao gerar o documento de sinistro.");
+    if (typeof alert !== "undefined") alert("Ocorreu um erro ao gerar o documento de sinistro.");
     return false;
   }
 }
