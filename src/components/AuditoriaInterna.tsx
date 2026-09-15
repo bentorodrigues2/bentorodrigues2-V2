@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Predio, Conta, Fracao, Movimento, Documento, AuditLogEntry, LoggedUser } from "../types";
+import { fetchRegistoAuditoria } from "../lib/supabaseService";
 
 interface AuditoriaInternaProps {
   predio: Predio;
@@ -58,26 +59,35 @@ export function AuditoriaInterna({
     }
   ]);
   
-  // Audit Logs State
-  const [logs, setLogs] = useState<AuditLogEntry[]>(() => {
-    const saved = localStorage.getItem(`audit_logs_${predio.id_predio}`);
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { return initialAuditLogs; }
-    }
-    return initialAuditLogs;
-  });
+  // Registo de auditoria — real, partilhado entre dispositivos e inalterável
+  // (tabela auditoria_plataforma via /api/data, só select/insert). Antes
+  // vivia só em localStorage E permitia inserir entradas manualmente
+  // fabricadas (com IP/dispositivo sempre fixos) através do formulário
+  // "Simular Log" — removido, porque um registo de auditoria que qualquer
+  // pessoa pode forjar não serve para auditorias externas.
+  const [logs, setLogs] = useState<AuditLogEntry[]>(initialAuditLogs);
+
+  useEffect(() => {
+    if (!predio.id_predio) return;
+    fetchRegistoAuditoria(predio.id_predio).then(registos => {
+      setLogs(registos.map(r => ({
+        id_log: r.id,
+        id_predio: r.id_predio || predio.id_predio,
+        usuario: r.usuario || "Sistema",
+        email: r.email_usuario || "—",
+        role: r.role_usuario || "—",
+        data_hora: new Date(r.criado_em).toLocaleString("pt-PT").replace(",", ""),
+        seccao: r.seccao,
+        descricao: r.descricao,
+        valores_posteriores: r.detalhes || undefined
+      })));
+    });
+  }, [predio.id_predio]);
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSeccao, setSelectedSeccao] = useState<string>("Todas");
   const [selectedRole, setSelectedRole] = useState<string>("Todos");
-  
-  // Custom log simulation form
-  const [isSimulateOpen, setIsSimulateOpen] = useState(false);
-  const [simSeccao, setSimSeccao] = useState<AuditLogEntry["seccao"]>("Financeiro");
-  const [simDescricao, setSimDescricao] = useState("");
-  const [simAntes, setSimAntes] = useState("");
-  const [simDepois, setSimDepois] = useState("");
 
   // Compliance Scan States
   const [isScanning, setIsScanning] = useState(false);
@@ -87,45 +97,6 @@ export function AuditoriaInterna({
 
   // Detail Modal State
   const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
-
-  useEffect(() => {
-    localStorage.setItem(`audit_logs_${predio.id_predio}`, JSON.stringify(logs));
-  }, [logs, predio.id_predio]);
-
-  // Handle adding log
-  const handleAddLog = (newLog: AuditLogEntry) => {
-    setLogs(prev => [newLog, ...prev]);
-    if (onAddAuditLog) {
-      onAddAuditLog(newLog);
-    }
-  };
-
-  // Simulate change submit
-  const handleSimulateSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!simDescricao) return;
-
-    const newLog: AuditLogEntry = {
-      id_log: `log-${Date.now()}`,
-      id_predio: predio.id_predio,
-      usuario: loggedUser.nome,
-      email: loggedUser.email,
-      role: loggedUser.role,
-      data_hora: new Date().toISOString().replace("T", " ").slice(0, 19),
-      seccao: simSeccao,
-      descricao: simDescricao,
-      valores_anteriores: simAntes || "-",
-      valores_posteriores: simDepois || "-",
-      ip: "192.168.1.100",
-      dispositivo: "Chrome 128 - Backoffice Console"
-    };
-
-    handleAddLog(newLog);
-    setIsSimulateOpen(false);
-    setSimDescricao("");
-    setSimAntes("");
-    setSimDepois("");
-  };
 
   // Run Compliance Audit Simulator
   const runComplianceAudit = () => {
@@ -273,13 +244,6 @@ export function AuditoriaInterna({
             Executar Auditoria Geral
           </button>
           
-          <button 
-            onClick={() => setIsSimulateOpen(true)}
-            className="px-3.5 py-2 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
-          >
-            <i className="fa-solid fa-terminal"></i>
-            Simular Alteração
-          </button>
         </div>
       </div>
 
@@ -1147,10 +1111,10 @@ export function AuditoriaInterna({
 
               <div className="grid grid-cols-2 gap-4 border-t border-slate-100 dark:border-slate-800/80 pt-3 text-[10px] text-slate-400 font-mono">
                 <div>
-                  <span>IP DE ORIGEM:</span> <span className="font-bold text-slate-600 dark:text-slate-300">{selectedLog.ip || "127.0.0.1"}</span>
+                  <span>IP DE ORIGEM:</span> <span className="font-bold text-slate-600 dark:text-slate-300">{selectedLog.ip || "Não registado"}</span>
                 </div>
                 <div>
-                  <span>BROWSER/DISP:</span> <span className="font-bold text-slate-600 dark:text-slate-300">{selectedLog.dispositivo || "Chrome - Mac"}</span>
+                  <span>BROWSER/DISP:</span> <span className="font-bold text-slate-600 dark:text-slate-300">{selectedLog.dispositivo || "Não registado"}</span>
                 </div>
               </div>
             </div>
@@ -1167,106 +1131,6 @@ export function AuditoriaInterna({
         </div>
       )}
 
-      {/* SIMULATE NEW LOG MODAL */}
-      {isSimulateOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 flex items-center justify-center p-4 z-50">
-          <form onSubmit={handleSimulateSubmit} className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl border border-slate-100 dark:border-slate-800 p-6 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h4 className="font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
-                <i className="fa-solid fa-terminal text-emerald-500"></i>
-                Simular Operação de Backoffice
-              </h4>
-              <button 
-                type="button"
-                onClick={() => setIsSimulateOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-              >
-                <i className="fa-solid fa-xmark text-lg"></i>
-              </button>
-            </div>
-
-            <div className="space-y-3.5 text-xs">
-              <div>
-                <label className="block text-slate-400 font-bold mb-1 uppercase text-[10px]">Utilizador Activo</label>
-                <input 
-                  type="text" 
-                  disabled 
-                  value={`${loggedUser.nome} (${loggedUser.role})`}
-                  className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 font-bold mb-1 uppercase text-[10px]">Secção / Categoria</label>
-                <select 
-                  value={simSeccao}
-                  onChange={(e) => setSimSeccao(e.target.value as any)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-700 dark:text-white focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="Financeiro">Financeiro</option>
-                  <option value="Documental">Documental</option>
-                  <option value="Assembleias">Assembleias</option>
-                  <option value="Frações">Frações</option>
-                  <option value="Ocorrências">Ocorrências</option>
-                  <option value="Configurações">Configurações</option>
-                  <option value="Reservas">Reservas</option>
-                  <option value="Geral">Geral</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-slate-400 font-bold mb-1 uppercase text-[10px]">O Que Alterou (Descrição)</label>
-                <input 
-                  type="text" 
-                  required
-                  placeholder="Ex: Emissão de aviso de débito para Fração B..."
-                  value={simDescricao}
-                  onChange={(e) => setSimDescricao(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-700 dark:text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1 uppercase text-[10px]">Valor Anterior (Antes)</label>
-                  <textarea 
-                    placeholder="Opcional..."
-                    value={simAntes}
-                    onChange={(e) => setSimAntes(e.target.value)}
-                    className="w-full h-16 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-700 dark:text-white focus:outline-none focus:border-emerald-500 resize-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1 uppercase text-[10px]">Valor Novo (Depois)</label>
-                  <textarea 
-                    placeholder="Opcional..."
-                    value={simDepois}
-                    onChange={(e) => setSimDepois(e.target.value)}
-                    className="w-full h-16 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-700 dark:text-white focus:outline-none focus:border-emerald-500 resize-none"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-2 flex justify-end gap-2 text-xs">
-              <button 
-                type="button"
-                onClick={() => setIsSimulateOpen(false)}
-                className="px-4 py-2 font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button 
-                type="submit"
-                className="border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 active:scale-95 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all cursor-pointer shadow-md active:ring-2 active:ring-emerald-400 select-none flex items-center gap-1.5"
-              >
-                <img src="/estados-acoes/12-adicionar.png" alt="Gravar" className="h-4 w-4 object-contain" />
-                <span>Gravar</span>
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
     </div>
   );
 }

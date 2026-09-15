@@ -215,7 +215,8 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
         file_hash: fileHash || null,
         id_movimento: movimento?.id_movimento || null,
         id_pagamento: pagamento?.id || null,
-        raw_json: dadosExtraidos || null
+        raw_json: dadosExtraidos || null,
+        id_predio: contexto?.id_predio || null
       });
     } catch (errAud) {
       console.warn("[inboundProcessor] Aviso ao gravar ai_auditoria:", errAud?.message || errAud);

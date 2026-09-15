@@ -24,9 +24,9 @@ async function jaExecutadoHoje(origem, referencia) {
   return Boolean(data && data.length);
 }
 
-async function marcarExecutadoHoje(origem, referencia, entidade) {
+async function marcarExecutadoHoje(origem, referencia, entidade, idPredio) {
   try {
-    await supabase.from("ai_auditoria").insert({ origem, referencia, entidade: entidade || null });
+    await supabase.from("ai_auditoria").insert({ origem, referencia, entidade: entidade || null, id_predio: idPredio || null });
   } catch (err) {
     console.warn(`[cronService] Aviso ao marcar "${origem}" como executado:`, err?.message || err);
   }
@@ -235,7 +235,7 @@ export async function emitirQuotasMensais() {
           nome: nomeFicheiro
         });
 
-        await marcarExecutadoHoje("cron_emissao_quotas", f.id_fracao, f.fracao_nome);
+        await marcarExecutadoHoje("cron_emissao_quotas", f.id_fracao, f.fracao_nome, predio.id_predio);
         resultados.push({ predio: predio.nome, fracao: f.fracao_nome, email: proprietario.email, valor: valorTotal });
       } catch (errFracao) {
         console.error(`[cronService] Erro ao emitir quota da fração ${f.fracao_nome}:`, errFracao);
@@ -291,7 +291,7 @@ export async function enviarLembretesQuotas() {
       });
 
       if (enviado) {
-        await marcarExecutadoHoje("cron_lembrete_quotas", aviso.id_fracao, fracaoNome);
+        await marcarExecutadoHoje("cron_lembrete_quotas", aviso.id_fracao, fracaoNome, aviso.id_predio);
         resultados.push({ fracao: fracaoNome, email: proprietario.email });
       }
     } catch (errAviso) {
@@ -349,7 +349,7 @@ export async function avisarQuotasEmMora() {
       });
 
       if (enviado) {
-        await marcarExecutadoHoje("cron_aviso_mora", aviso.id_fracao, fracaoNome);
+        await marcarExecutadoHoje("cron_aviso_mora", aviso.id_fracao, fracaoNome, aviso.id_predio);
         resultados.push({ fracao: fracaoNome, email: proprietario.email });
       }
     } catch (errAviso) {
@@ -413,7 +413,7 @@ export async function enviarFelicitacoesAniversario() {
       });
 
       if (enviado) {
-        await marcarExecutadoHoje("cron_aniversario", proprietario.id_proprietario, proprietario.nome);
+        await marcarExecutadoHoje("cron_aniversario", proprietario.id_proprietario, proprietario.nome, proprietario.id_predio);
         resultados.push({ proprietario: proprietario.nome, email: proprietario.email });
       }
     } catch (errAniv) {

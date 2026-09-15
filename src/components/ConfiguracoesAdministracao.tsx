@@ -3,7 +3,7 @@ import { jsPDF } from "jspdf";
 import { Predio, LoggedUser, Documento, Movimento, Fracao, RespostaIAPendente } from "../types";
 import { downloadBlob, exportToXLS, addPdfHeaderWithLogo } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
-import { dbUpdate, fetchRespostasIAPendentes } from "../lib/supabaseService";
+import { dbUpdate, fetchRespostasIAPendentes, fetchRegistoAuditoria, registarAuditoria } from "../lib/supabaseService";
 import { 
   Settings, Mail, Shield, Bell, ListTodo, FileDown, CheckCircle, 
   AlertTriangle, Play, RefreshCw, FileText, Check, Database, Sparkles, Trash2, ArrowRight,
@@ -563,14 +563,24 @@ export function ConfiguracoesAdministracao({
   const [notifCanalEmail, setNotifCanalEmail] = useState(true);
   const [notifCanalPush, setNotifCanalPush] = useState(true);
 
-  // Activity logs state (limpo para testes com Supabase)
-  const [logs, setLogs] = useState<AuditLogEntry[]>(() => {
-    const saved = localStorage.getItem(`system_activity_logs_${predioId}`);
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { }
-    }
-    return [];
-  });
+  // Registo de auditoria — real, partilhado entre dispositivos e inalterável
+  // (tabela auditoria_plataforma, só select/insert mesmo pelo proxy /api/data;
+  // antes vivia só em localStorage, apesar de rotulado "Auditoria Inalterável").
+  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
+
+  useEffect(() => {
+    if (!predio?.id_predio) return;
+    fetchRegistoAuditoria(predio.id_predio).then(registos => {
+      setLogs(registos.map(r => ({
+        id: r.id,
+        timestamp: new Date(r.criado_em).toLocaleString("pt-PT").replace(",", ""),
+        seccao: r.seccao as AuditLogEntry["seccao"],
+        descricao: r.descricao,
+        usuario: r.usuario || "Sistema",
+        detalhes: r.detalhes || undefined
+      })));
+    });
+  }, [predio?.id_predio]);
 
   const [logSearch, setLogSearch] = useState("");
   const [logFilter, setLogFilter] = useState<string>("Todas");
@@ -647,12 +657,9 @@ export function ConfiguracoesAdministracao({
     triggerSendReaction("email", `E-mail para ${targetName} (${targetEmail})`);
   };
 
-  // Save logs to localStorage on change
-  useEffect(() => {
-    localStorage.setItem(`system_activity_logs_${predioId}`, JSON.stringify(logs));
-  }, [logs, predioId]);
-
-  // Method to insert logs
+  // Method to insert logs — grava já no Supabase (real, inalterável); só
+  // depois de confirmado é que aparece na lista local para não mostrar uma
+  // entrada que afinal falhou a gravar.
   const addLog = (seccao: AuditLogEntry["seccao"], descricao: string, detalhes?: string) => {
     const newEntry: AuditLogEntry = {
       id: "act-" + Date.now(),
@@ -663,6 +670,17 @@ export function ConfiguracoesAdministracao({
       detalhes
     };
     setLogs(prev => [newEntry, ...prev]);
+    registarAuditoria({
+      id: newEntry.id,
+      id_predio: predio?.id_predio || null,
+      seccao,
+      descricao,
+      detalhes: detalhes || null,
+      usuario: loggedUser?.nome || "Administrador",
+      email_usuario: loggedUser?.email || null,
+      role_usuario: loggedUser?.role || null,
+      origem: "web"
+    });
   };
 
   const getTemplatePreview = (subject: string, body: string, fractionId: string) => {
@@ -3126,21 +3144,8 @@ export function ConfiguracoesAdministracao({
             <div className="flex justify-between items-start flex-wrap gap-4">
               <div>
                 <h3 className="text-sm font-black uppercase tracking-wider text-slate-400">Log de Sistema (Registo Integral de Atividade)</h3>
-                <p className="text-xs text-slate-500">Histórico detalhado e inalterável de auditoria contínua, alterações e intervenções da IA.</p>
+                <p className="text-xs text-slate-500">Histórico detalhado e inalterável de auditoria contínua, alterações e intervenções da IA. Gravado no Supabase — sem opção de eliminar, mesmo por um administrador.</p>
               </div>
-
-            <button
-              onClick={() => {
-                const clearOk = confirm("Tem a certeza que deseja limpar o registo de logs simulados de auditoria local?");
-                if (clearOk) {
-                  setLogs([]);
-                  localStorage.removeItem(`system_activity_logs_${predioId}`);
-                }
-              }}
-              className="text-[10px] text-red-500 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 px-2.5 py-1.5 rounded-lg border border-red-200 font-bold cursor-pointer"
-            >
-              Limpar Registo
-            </button>
           </div>
 
           {/* Search filters */}

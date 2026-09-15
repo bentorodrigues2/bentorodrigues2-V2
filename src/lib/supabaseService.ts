@@ -498,6 +498,38 @@ export async function fetchRespostasIAPendentes(idPredio: string): Promise<Respo
 }
 
 // ============================================================================
+// REGISTO DE AUDITORIA (inalterável — só select/insert, ver api/data.js)
+// ============================================================================
+
+export interface RegistoAuditoria {
+  id: string;
+  id_predio?: string | null;
+  seccao: string;
+  descricao: string;
+  detalhes?: string | null;
+  usuario?: string | null;
+  email_usuario?: string | null;
+  role_usuario?: string | null;
+  origem?: "web" | "ia" | "cron";
+  criado_em: string;
+}
+
+export async function fetchRegistoAuditoria(idPredio: string): Promise<RegistoAuditoria[]> {
+  if (!isSupabaseConfigured() || !idPredio) return [];
+  const data = await dbSelect("auditoria_plataforma", {
+    filtros: [["id_predio", "eq", idPredio]],
+    order: { coluna: "criado_em", asc: false },
+    limit: 300
+  });
+  return (data || []) as RegistoAuditoria[];
+}
+
+export async function registarAuditoria(entry: Omit<RegistoAuditoria, "criado_em">): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbInsert("auditoria_plataforma", { ...entry, origem: entry.origem || "web" });
+}
+
+// ============================================================================
 // GESTÃO DE CHAVES (CLAVICULÁRIO / CHAVEIRO)
 // ============================================================================
 

@@ -46,8 +46,14 @@ const TABELAS_PERMITIDAS = new Set([
   "profiles",
   "empresa_gestora_config",
   "gestores_carteira",
-  "respostas_ia_pendentes"
+  "respostas_ia_pendentes",
+  "auditoria_plataforma",
+  "ai_auditoria"
 ]);
+
+// Registos de auditoria: só select e insert, mesmo por este proxy — para
+// serem mesmo inalteráveis, não só "sem botão para editar na interface".
+const TABELAS_SO_LEITURA_E_INSERCAO = new Set(["auditoria_plataforma", "ai_auditoria"]);
 
 const OPERADORES_PERMITIDOS = new Set(["eq", "neq", "gt", "gte", "lt", "lte", "in", "is"]);
 
@@ -70,6 +76,10 @@ export default async function handler(req, res) {
 
     if (!tabela || !TABELAS_PERMITIDAS.has(tabela)) {
       return res.status(400).json({ error: "Tabela inválida ou não permitida" });
+    }
+
+    if (TABELAS_SO_LEITURA_E_INSERCAO.has(tabela) && !["select", "insert"].includes(acao)) {
+      return res.status(403).json({ error: "Esta tabela é um registo de auditoria — só permite leitura e inserção, nunca alteração nem eliminação." });
     }
 
     if (acao === "select") {
