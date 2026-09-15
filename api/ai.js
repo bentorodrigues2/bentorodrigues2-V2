@@ -2,6 +2,7 @@ import {
   processAIChat,
   generateWithFallback
 } from "../server/geminiService.js";
+import { extrairDadosDocumento } from "../server/lib/multimodalService.js";
 
 export default async function handler(req, res) {
   const acao = req.query?.acao || req.body?.acao;
@@ -320,6 +321,37 @@ Devolve JSON com formato:
     }
   }
 
+  // 9.5. RECONHECER ANEXO REAL POR IA MULTIMODAL (?acao=reconhecer-anexo)
+  // Usado por LeitorAnexosIA.tsx — lê mesmo o ficheiro (imagem/PDF) enviado,
+  // ao contrário de "reconhecer-recibo" acima, que só analisa texto.
+  // Reaproveita extrairDadosDocumento, o mesmo motor já usado para anexos
+  // recebidos por email (server/lib/inboundProcessor.js).
+  if (acao === "reconhecer-anexo") {
+    if (req.method === "GET") {
+      return res.status(200).json({ status: "online", endpoint: "/api/ai?acao=reconhecer-anexo" });
+    }
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
+
+    try {
+      const { base64, mimeType } = req.body || {};
+      if (!base64 || !mimeType) {
+        return res.status(400).json({ error: "base64 e mimeType são obrigatórios" });
+      }
+
+      const dados = await extrairDadosDocumento([{ base64, mimeType }]);
+      if (!dados) {
+        return res.status(502).json({ error: "A IA não conseguiu extrair dados deste documento." });
+      }
+
+      return res.status(200).json({ ok: true, dados });
+    } catch (err) {
+      console.error("[api/ai?acao=reconhecer-anexo] Erro:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao reconhecer o anexo." });
+    }
+  }
+
   // 10. HUMANIZAR CONVOCATÓRIA (/api/humanize-convocatoria -> ?acao=humanize-convocatoria)
   if (acao === "humanize-convocatoria") {
     if (req.method === "GET") {
@@ -457,6 +489,6 @@ Analisa o pedido face ao regulamento e à lei aplicável e devolve APENAS um JSO
   }
 
   return res.status(400).json({
-    error: "Ação não especificada ou inválida. Use ?acao=chat|generate-legal-notice|ai-query|predict-budget|predict-reserve-fund|compare-proposals|generate-minutes|parse-import|reconhecer-recibo|humanize-convocatoria|validar-regulamento"
+    error: "Ação não especificada ou inválida. Use ?acao=chat|generate-legal-notice|ai-query|predict-budget|predict-reserve-fund|compare-proposals|generate-minutes|parse-import|reconhecer-recibo|reconhecer-anexo|humanize-convocatoria|validar-regulamento"
   });
 }

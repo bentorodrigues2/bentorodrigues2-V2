@@ -40,7 +40,7 @@ interface DocumentoAnalisado {
   tipo: "FATURA_DESPESA" | "COMPROVATIVO_TRANSFERENCIA" | "ORCAMENTO_OBRA" | "CONTRATO_MANUTENCAO";
   dataUpload: string;
   status: "ANALISANDO" | "CONCLUIDO" | "LANCADO" | "ERRO";
-  confiancaIa: number;
+  confiancaIa?: number;
   remetenteEmail?: string;
   dadosExtraidos: {
     fornecedorNome?: string;
@@ -61,81 +61,11 @@ interface DocumentoAnalisado {
 }
 
 export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimentoCriado }: LeitorAnexosIAProps) {
-  const [documentos, setDocumentos] = useState<DocumentoAnalisado[]>([
-    {
-      id: "doc-1",
-      nomeArquivo: "Fatura_Elevadores_Otis_Maio2026.pdf",
-      tamanho: "1.2 MB",
-      tipo: "FATURA_DESPESA",
-      dataUpload: "2026-05-18 10:30",
-      status: "CONCLUIDO",
-      confiancaIa: 98,
-      remetenteEmail: "faturas@otis-elevadores.pt",
-      dadosExtraidos: {
-        fornecedorNome: "Otis Elevadores Lda.",
-        nif: "501234567",
-        numeroFatura: "FT 2026/90432",
-        dataDocumento: "2026-05-15",
-        dataVencimento: "2026-06-15",
-        valorTotal: 184.50,
-        valorIva: 34.50,
-        taxaIva: "23%",
-        ibanDestino: "PT50 0033 0000 1234 5678 9012 3",
-        categoriaRubrica: "Manutenção de Elevadores",
-        descricaoDespesa: "Manutenção preventiva mensal ordinária aos elevadores do edifício.",
-        resumoIa: "Fatura regular de manutenção dos 2 ascensores. Valores conferem com o contrato de manutenção anual."
-      }
-    },
-    {
-      id: "doc-2",
-      nomeArquivo: "Comprovativo_Transf_Fracao_B_Maio.jpeg",
-      tamanho: "840 KB",
-      tipo: "COMPROVATIVO_TRANSFERENCIA",
-      dataUpload: "2026-05-18 11:15",
-      status: "CONCLUIDO",
-      confiancaIa: 95,
-      remetenteEmail: "bentorodrigues2@gmail.com",
-      dadosExtraidos: {
-        fornecedorNome: "Maria Santos (Fração B)",
-        nif: "210987654",
-        numeroFatura: "TRF-BPI-88741",
-        dataDocumento: "2026-05-18",
-        valorTotal: 65.00,
-        ibanDestino: predio.iban || "PT50 0018 0000 9876 5432 1012 4",
-        categoriaRubrica: "Quotas de Condomínio",
-        fracaoReferenciada: "Fração B (1º Dto)",
-        descricaoDespesa: "Pagamento quota mensal Maio 2026 Fração B via transferência direta.",
-        resumoIa: "Transferência bancária de 65,00€ correspondente à quota ordinária de Maio da Fração B.",
-        sugestaoRespostaEmail: "Estimada D. Maria Santos, acusamos com apreço a receção do comprovativo de transferência bancária relativo à quota de Maio da Fração B (65,00€). O recibo de quitação foi gerado e emitido na contabilidade. Com os melhores cumprimentos, Administração do Condomínio."
-      }
-    },
-    {
-      id: "doc-3",
-      nomeArquivo: "Fatura_EDP_Comercial_Abril2026.pdf",
-      tamanho: "620 KB",
-      tipo: "FATURA_DESPESA",
-      dataUpload: "2026-05-14 09:20",
-      status: "LANCADO",
-      confiancaIa: 99,
-      remetenteEmail: "faturas@edp.pt",
-      dadosExtraidos: {
-        fornecedorNome: "EDP Comercial S.A.",
-        nif: "503504564",
-        numeroFatura: "FT 2026/883921",
-        dataDocumento: "2026-05-10",
-        dataVencimento: "2026-05-30",
-        valorTotal: 96.40,
-        valorIva: 18.03,
-        taxaIva: "23%",
-        ibanDestino: "PT50 0033 0000 4567 8901 2345 6",
-        categoriaRubrica: "Eletricidade (Partes Comuns)",
-        descricaoDespesa: "Consumo elétrico nas escadas e áreas comuns do condomínio.",
-        resumoIa: "Fatura de fornecimento elétrico do contador comum do prédio."
-      }
-    }
-  ]);
+  // Sem documentos de exemplo fixos — a lista só mostra o que for mesmo
+  // carregado e lido pela IA nesta sessão.
+  const [documentos, setDocumentos] = useState<DocumentoAnalisado[]>([]);
 
-  const [docSelecionado, setDocSelecionado] = useState<DocumentoAnalisado | null>(documentos[0]);
+  const [docSelecionado, setDocSelecionado] = useState<DocumentoAnalisado | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [filtroTipo, setFiltroTipo] = useState<string>("TODOS");
@@ -147,60 +77,67 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const handleFileUpload = (files: FileList | null) => {
+  const lerFicheiroComoBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const resultado = reader.result as string;
+        // reader.result vem como "data:<mime>;base64,<dados>" — só o Gemini
+        // precisa da parte depois da vírgula.
+        resolve(resultado.split(",")[1] || "");
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
     setIsProcessing(true);
     const file = files[0];
 
-    setTimeout(() => {
-      const isComprovativo = file.name.toLowerCase().includes("transf") || 
-        file.name.toLowerCase().includes("pagamento") || 
-        file.name.toLowerCase().includes("comprovativo") ||
-        file.name.toLowerCase().includes("recibo");
+    try {
+      const base64 = await lerFicheiroComoBase64(file);
+      const resp = await fetch("/api/ai?acao=reconhecer-anexo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base64, mimeType: file.type || "application/octet-stream" })
+      });
+      const resultado = await resp.json();
+      if (!resp.ok || !resultado.ok) {
+        throw new Error(resultado?.error || "A IA não conseguiu ler este documento.");
+      }
+
+      const dados = resultado.dados || {};
+      const tipoDoc = (dados.tipo_documento || "").toLowerCase();
+      const ehComprovativo = tipoDoc === "comprovativo" || tipoDoc === "recibo";
 
       const novoDoc: DocumentoAnalisado = {
         id: `doc-${Date.now()}`,
         nomeArquivo: file.name,
         tamanho: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-        tipo: isComprovativo ? "COMPROVATIVO_TRANSFERENCIA" : "FATURA_DESPESA",
+        tipo: ehComprovativo ? "COMPROVATIVO_TRANSFERENCIA" : "FATURA_DESPESA",
         dataUpload: new Date().toISOString().replace("T", " ").substring(0, 16),
         status: "CONCLUIDO",
-        confiancaIa: 97,
-        remetenteEmail: isComprovativo ? "morador@condomanagerai.com" : "contabilidade@fornecedor.pt",
-        dadosExtraidos: isComprovativo ? {
-          fornecedorNome: "Condómino Titular",
-          nif: "234567890",
-          numeroFatura: `TRF-${Math.floor(100000 + Math.random() * 900000)}`,
-          dataDocumento: new Date().toISOString().split("T")[0],
-          valorTotal: 75.00,
-          ibanDestino: predio.iban || "PT50 0018 0000 9876 5432 1012 4",
-          categoriaRubrica: "Quotas de Condomínio",
-          fracaoReferenciada: "Fração Referenciada",
-          descricaoDespesa: "Pagamento quota mensal via transferência bancária",
-          resumoIa: "Leitura ótica e OCR do comprovativo: valor identificado de 75,00€ para a conta do condomínio.",
-          sugestaoRespostaEmail: "Estimado Condómino, confirmamos com sucesso a receção da sua transferência de 75,00€ e emitimos o respetivo recibo. Muito obrigado, Administração."
-        } : {
-          fornecedorNome: "Serviço / Fornecedor Identificado",
-          nif: "503504564",
-          numeroFatura: `FT 2026/${Math.floor(10000 + Math.random() * 90000)}`,
-          dataDocumento: new Date().toISOString().split("T")[0],
-          dataVencimento: new Date(Date.now() + 20 * 86400000).toISOString().split("T")[0],
-          valorTotal: 142.30,
-          valorIva: 26.61,
-          taxaIva: "23%",
-          ibanDestino: "PT50 0033 0000 4567 8901 2345 6",
-          categoriaRubrica: "Serviços Gerais & Manutenção",
-          descricaoDespesa: "Fatura de prestação de serviços para as partes comuns do edifício.",
-          resumoIa: "Fatura validada com leitura completa dos campos fiscais e retenção."
+        dadosExtraidos: {
+          fornecedorNome: dados.entidade || undefined,
+          numeroFatura: dados.referencia || undefined,
+          dataDocumento: dados.data_documento || new Date().toISOString().split("T")[0],
+          valorTotal: Number(dados.valor_total) || 0,
+          categoriaRubrica: dados.categoria_contabilistica || "Por classificar",
+          descricaoDespesa: `${tipoDoc || "Documento"} de ${dados.entidade || "entidade não identificada"}`,
+          resumoIa: `Leitura real por IA (Gemini Vision): ${dados.entidade || "entidade não identificada"}, ${Number(dados.valor_total || 0).toFixed(2)}€, tipo "${dados.tipo_documento || "não classificado"}".`
         }
       };
 
       setDocumentos(prev => [novoDoc, ...prev]);
       setDocSelecionado(novoDoc);
-      setIsProcessing(false);
       showToast(`Documento "${file.name}" processado com sucesso pelo Gemini Vision!`);
-    }, 1200);
+    } catch (err: any) {
+      showToast(`❌ Erro ao processar "${file.name}": ${err?.message || "erro desconhecido"}`);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const lancarComoMovimento = (doc: DocumentoAnalisado) => {
@@ -208,13 +145,15 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
     const novoMov: Movimento = {
       id_mov: `mov-${Date.now()}`,
       id_predio: predio.id_predio,
-      id_conta: "c1",
+      id_conta: "",
       data: doc.dadosExtraidos.dataDocumento || new Date().toISOString().split("T")[0],
-      descricao: `${doc.dadosExtraidos.fornecedorNome}: ${doc.dadosExtraidos.descricaoDespesa}`,
-      tipo: isReceita ? "RECEITA" : "DESPESA",
+      descricao: `${doc.dadosExtraidos.fornecedorNome || "Documento lido por IA"}: ${doc.dadosExtraidos.descricaoDespesa}`,
+      tipo: isReceita ? "Receita" : "Despesa",
       valor: doc.dadosExtraidos.valorTotal,
       categoria: doc.dadosExtraidos.categoriaRubrica,
-      metodo_pagamento: "TRANSFERENCIA_BANCARIA"
+      metodo_pagamento: "Transferência",
+      estado: "Movimento Cego / Por Justificar",
+      is_movimento_cego: true
     };
 
     setDocumentos(prev => prev.map(d => d.id === doc.id ? { ...d, status: "LANCADO" } : d));
@@ -484,7 +423,7 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-[9px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                            <Sparkles className="h-2.5 w-2.5" /> {doc.confiancaIa}% IA
+                            <Sparkles className="h-2.5 w-2.5" /> Lido por IA
                           </span>
                         )}
                       </div>
