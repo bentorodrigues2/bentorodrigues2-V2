@@ -123,6 +123,42 @@ async function obterAnexosDoPredio(id_predio) {
 }
 
 /**
+ * Buscar o recibo de quitação mais recente da fração do remetente, para
+ * anexar de facto na resposta da categoria "quotas" — antes o template
+ * dizia sempre "Enviamos em anexo o recibo" sem nunca ir buscar nenhum
+ * ficheiro real (ver server/lib/receiptGenerator.js / api_handlers_backup
+ * /confirmar-pagamento.js, que é quem gera e arquiva o recibo oficial).
+ */
+async function obterReciboMaisRecente(contexto) {
+  try {
+    if (!contexto?.id_fracao) return null;
+
+    const { data, error } = await supabase
+      .from("documentos")
+      .select("nome, caminho")
+      .eq("fracao", contexto.id_fracao)
+      .eq("tema", "Financeiro")
+      .eq("tipo", "Recibo")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data?.caminho) return null;
+
+    const { data: signed, error: errSigned } = await supabase.storage
+      .from("documentos")
+      .createSignedUrl(data.caminho, 3600);
+
+    if (errSigned || !signed?.signedUrl) return null;
+
+    return { filename: data.nome || "Recibo.pdf", path: signed.signedUrl };
+  } catch (e) {
+    console.warn("[inboundProcessor] Aviso ao obter recibo mais recente:", e?.message || e);
+    return null;
+  }
+}
+
+/**
  * Lançar comprovativo pendente diretamente em pagamentos e movimentos
  * Mantém conformidade com o frontend (GestaoMovimentos.tsx / GestaoPagamentos.tsx)
  */
@@ -629,6 +665,19 @@ export async function processInboundEmail(payload) {
       comprovativoUrl: null,
       remetenteEmail: cleanFrom
     });
+  }
+
+  // 7.1 Categoria "quotas": ir buscar mesmo o recibo real da fração para
+  // anexar — sem isto a resposta afirmava "enviamos em anexo o recibo" sem
+  // nunca anexar nada. Sem recibo emitido, a mensagem é corrigida para não
+  // afirmar um anexo que não existe.
+  if (categoria === "quotas") {
+    const reciboReal = await obterReciboMaisRecente(contexto);
+    if (reciboReal) {
+      anexosParaEnviar.push(reciboReal);
+    } else if (aiData?.message) {
+      aiData.message = `Ainda não temos nenhum recibo emitido para a sua fração no nosso sistema.<br><br>Assim que o seu pagamento for confirmado pela administração, o recibo oficial de quitação ser-lhe-á enviado automaticamente por email. Se já efetuou o pagamento e ainda não recebeu confirmação, contacte a administração do condomínio.`;
+    }
   }
 
   // 8. Enviar (ou colocar em fila de aprovação) a resposta institucional

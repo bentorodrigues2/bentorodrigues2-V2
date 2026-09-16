@@ -245,7 +245,7 @@ export async function emitirQuotasMensais() {
             : `Nota de Cobrança — Quota de ${mesRefLabel} / ${anoRef} — Fração ${f.fracao_nome}`,
           mensagem: modeloCobranca
             ? interpolarModeloEmail(modeloCobranca.body, valoresCobranca).replace(/\n/g, "<br>")
-            : `Segue em anexo a nota de cobrança referente à quota de condomínio de <strong>${mesRefLabel} de ${anoRef}</strong>, no valor de <strong>${valorTotal.toFixed(2)} €</strong>, com vencimento a <strong>${formatarDataPT(vencimento)}</strong>.<br><br>Assim que o pagamento for confirmado pela administração, receberá o respetivo recibo de quitação oficial. Para um rápido cruzamento de dados, envie o comprovativo do pagamento para o email <strong>bentorodrgues2@gmail.com</strong>.`,
+            : `Segue em anexo a nota de cobrança referente à quota de condomínio de <strong>${mesRefLabel} de ${anoRef}</strong>, no valor de <strong>${valorTotal.toFixed(2)} €</strong>, com vencimento a <strong>${formatarDataPT(vencimento)}</strong>.<br><br>Assim que o pagamento for confirmado pela administração, receberá o respetivo recibo de quitação oficial. Para um rápido cruzamento de dados, envie o comprovativo do pagamento para o email <strong>bentorodrigues2@gmail.com</strong>.`,
           pdfBuffer,
           nome: nomeFicheiro
         });
@@ -309,7 +309,7 @@ export async function enviarLembretesQuotas() {
         : `Lembrete: Quota de Condomínio por Regularizar — Fração ${fracaoNome}`;
       const corpoLembrete = modeloLembrete
         ? interpolarModeloEmail(modeloLembrete.body, valoresLembrete).replace(/\n/g, "<br>")
-        : `Relembramos que a quota de condomínio referente à fração <strong>${fracaoNome}</strong>, no valor de <strong>${Number(aviso.valor).toFixed(2)} €</strong>, se encontra ainda por regularizar, com vencimento a <strong>${formatarDataPT(aviso.vencimento)}</strong>.<br><br>Se já efetuou o pagamento, pode ignorar esta mensagem — basta enviar o comprovativo por email para que seja validado pela administração e o respetivo recibo lhe seja enviado.`;
+        : `Relembramos que a quota de condomínio referente à fração <strong>${fracaoNome}</strong>, no valor de <strong>${Number(aviso.valor).toFixed(2)} €</strong>, se encontra ainda por regularizar, com vencimento a <strong>${formatarDataPT(aviso.vencimento)}</strong>.<br><br>Se já efetuou o pagamento, pode ignorar esta mensagem — basta enviar o comprovativo para o email <strong>bentorodrigues2@gmail.com</strong> de forma a que seja validado pela administração e o respetivo recibo lhe seja enviado.`;
 
       const html = gerarHtmlResposta(proprietario.nome, corpoLembrete);
 
@@ -388,7 +388,7 @@ export async function avisarQuotasEmMora() {
         : `Aviso de Mora — Quota de Condomínio em Atraso — Fração ${fracaoNome}`;
       const corpoMora = modeloMora
         ? interpolarModeloEmail(modeloMora.body, valoresMora).replace(/\n/g, "<br>")
-        : `A quota de condomínio referente à fração <strong>${fracaoNome}</strong>, no valor de <strong>${Number(aviso.valor).toFixed(2)} €</strong>, encontra-se em mora — o prazo de vencimento (<strong>${formatarDataPT(aviso.vencimento)}</strong>) já foi ultrapassado.<br><br>Solicitamos a regularização o mais breve possível, de forma a evitar o agravamento da dívida nos termos regulamentares. Caso já tenha efetuado o pagamento, agradecemos o envio do comprovativo por email.`;
+        : `A quota de condomínio referente à fração <strong>${fracaoNome}</strong>, no valor de <strong>${Number(aviso.valor).toFixed(2)} €</strong>, encontra-se em mora — o prazo de vencimento (<strong>${formatarDataPT(aviso.vencimento)}</strong>) já foi ultrapassado.<br><br>Solicitamos a regularização o mais breve possível, de forma a evitar o agravamento da dívida nos termos regulamentares. Caso já tenha efetuado o pagamento, agradecemos o envio do comprovativo para o email <strong>bentorodrigues2@gmail.com</strong>.`;
 
       const html = gerarHtmlResposta(proprietario.nome, corpoMora);
 
