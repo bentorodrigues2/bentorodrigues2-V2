@@ -14,7 +14,8 @@ import {
   dbSelect,
   dbInsert,
   dbUpdate,
-  dbDelete
+  dbDelete,
+  registarLogAuditoria
 } from "../lib/supabaseService";
 
 interface GestaoPrediosProps {
@@ -994,6 +995,23 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                             setChaves(updated);
                             const current = updated.find(c => c.id_chave === chave.id_chave);
                             if (current) saveSingleChaveToSupabase(current).catch(() => {});
+
+                            if (newStatus === "perdida") {
+                              registarLogAuditoria("Segurança", `Chave "${current?.area_nome}" (nº ${current?.num_chaveiro}) reportada como perdida`, predioAtivo?.id_predio, loggedUser, current?.responsavel ? `Último responsável: ${current.responsavel}` : undefined);
+                              const emailAdmin = predioAtivo?.email_condominio || predioAtivo?.email;
+                              if (emailAdmin) {
+                                fetch("/api/email?acao=notificar", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    to: emailAdmin,
+                                    nomeDestinatario: "Administração",
+                                    assunto: `🚨 Alerta de Segurança — Chave "${current?.area_nome}" Reportada como Perdida`,
+                                    mensagem: `Foi reportada como <strong>perdida</strong> a chave de "${current?.area_nome}" (nº de chaveiro ${current?.num_chaveiro || "N/D"}, código ${current?.codigo_chave || "N/D"}).<br><br>${current?.responsavel ? `<strong>Último responsável registado:</strong> ${current.responsavel}<br><br>` : ""}Recomenda-se avaliar a necessidade de substituição de fechaduras/cilindros das áreas afetadas.`
+                                  })
+                                }).catch(console.error);
+                              }
+                            }
                           }}
                           className={`text-[11px] font-bold px-2 py-1 rounded-md border ${
                             (chave.status === "disponivel" || chave.no_claviculario)

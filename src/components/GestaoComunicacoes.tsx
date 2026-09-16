@@ -472,6 +472,24 @@ export function GestaoComunicacoes({
                 Será enviado por email a {destinatariosPredio.length} fração(ões) com email registado.
               </p>
 
+              <button
+                type="button"
+                onClick={() => {
+                  const servico = prompt("Serviço afetado (ex: Elevador, Água, Eletricidade):", "Elevador");
+                  if (servico === null) return;
+                  const data = prompt("Data da interrupção:", new Date().toLocaleDateString("pt-PT"));
+                  if (data === null) return;
+                  const periodo = prompt("Período estimado (ex: 09:00 - 13:00):", "09:00 - 13:00");
+                  if (periodo === null) return;
+                  setComunicadoTitulo(`Aviso Urgente: Interrupção Temporária de ${servico}`);
+                  setComunicadoUrgencia("urgente");
+                  setComunicadoMensagem(`Informamos que, por motivos de manutenção inadiável, haverá uma interrupção temporária do seguinte serviço comum:\n\nServiço afetado: ${servico}\nData: ${data}\nPeríodo: ${periodo}\n\nAgradecemos desde já a melhor compreensão para eventuais constrangimentos temporários.`);
+                }}
+                className="w-full text-[10px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg py-2 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <i className="fa-solid fa-triangle-exclamation"></i> Usar Modelo: Interrupção Temporária de Serviços
+              </button>
+
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">Título do Comunicado *</label>
                 <input
