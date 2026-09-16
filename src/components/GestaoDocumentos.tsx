@@ -1872,13 +1872,23 @@ export function GestaoDocumentos({
     setAiMessage(`💾 Ficheiro "${novo.nome}" arquivado com sucesso no repositório de ${novoAno} > ${novoTema} > ${novaSubPasta}!`);
   };
 
-  // AI Auto-Classification Handler
+  // Verificação real de conformidade da indexação: conta documentos com
+  // metadados em falta (Ano, Tema) em vez de fingir "100% de conformidade"
+  // sempre, independentemente do estado real dos documentos.
   const executarClassificacaoIA = () => {
     setAiClassifying(true);
     setAiMessage(null);
     setTimeout(() => {
       setAiClassifying(false);
-      setAiMessage(`🤖 IA concluiu a indexação dinâmica: ${docsDoTipo.length} registos organizados por Ano, Tema e Fornecedor com 100% de conformidade.`);
+      const semAno = docsDoTipo.filter(d => !d.ano).length;
+      const semTema = docsDoTipo.filter(d => !d.tema).length;
+      const incompletos = new Set(docsDoTipo.filter(d => !d.ano || !d.tema).map(d => d.id_doc)).size;
+      const conformidade = docsDoTipo.length > 0 ? Math.round(((docsDoTipo.length - incompletos) / docsDoTipo.length) * 100) : 100;
+      setAiMessage(
+        incompletos === 0
+          ? `✅ Verificação concluída: ${docsDoTipo.length} registos, todos com Ano e Tema preenchidos (100% de conformidade).`
+          : `⚠️ Verificação concluída: ${docsDoTipo.length} registos, ${incompletos} com metadados em falta (${semAno} sem Ano, ${semTema} sem Tema) — ${conformidade}% de conformidade. Edite-os manualmente para completar a indexação.`
+      );
     }, 800);
   };
 
@@ -1976,7 +1986,7 @@ export function GestaoDocumentos({
               className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
             >
               <Sparkles className={`h-3.5 w-3.5 ${aiClassifying ? "animate-spin text-emerald-600" : ""}`} />
-              <span>{aiClassifying ? "Indexando..." : "AI Indexação"}</span>
+              <span>{aiClassifying ? "A verificar..." : "Verificar Indexação"}</span>
             </button>
 
             <button

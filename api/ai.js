@@ -352,6 +352,62 @@ Devolve JSON com formato:
     }
   }
 
+  // 9.6. RECONHECER APÓLICE DE SEGURO POR IA MULTIMODAL (?acao=reconhecer-apolice)
+  // Usado por GestaoSinistrosSeguros.tsx — antes chamava um SDK Gemini
+  // client-side com uma VITE_GEMINI_API_KEY que não existe em lado nenhum
+  // (falhava sempre) e só descrevia à IA o nome/tamanho do ficheiro, nunca
+  // o conteúdo real. Lê agora mesmo o documento, como reconhecer-anexo.
+  if (acao === "reconhecer-apolice") {
+    if (req.method === "GET") {
+      return res.status(200).json({ status: "online", endpoint: "/api/ai?acao=reconhecer-apolice" });
+    }
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
+
+    try {
+      const { base64, mimeType } = req.body || {};
+      if (!base64 || !mimeType) {
+        return res.status(400).json({ error: "base64 e mimeType são obrigatórios" });
+      }
+
+      const prompt = `És um sistema de OCR e extração documental de apólices de seguro obrigatório de condomínio em Portugal.
+Analisa o documento em anexo (a imagem/PDF real da apólice) e extrai os dados reais nele contidos.
+Devolve APENAS JSON estrito com as chaves:
+{
+  "seguradora": "Nome real da companhia de seguros indicado no documento",
+  "apolice_numero": "Número de apólice real indicado no documento",
+  "apolice_validade": "Data de validade/renovação no formato YYYY-MM-DD",
+  "tipo_cobertura": "Tipo de cobertura indicado (ex: Incêndio e Multirriscos)",
+  "capital_seguro": 0,
+  "franquia": 0,
+  "resumo": "Breve resumo real do que consta no documento"
+}
+Se algum campo não constar no documento, usa null nesse campo. Nunca inventes valores que não constem no documento.`;
+
+      const rawResponse = await generateWithFallback({
+        contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType, data: base64 } }] }],
+        responseMimeType: "application/json"
+      });
+
+      let dados = null;
+      try {
+        dados = JSON.parse(rawResponse);
+      } catch {
+        const match = rawResponse.match(/\{[\s\S]*\}/);
+        if (match) dados = JSON.parse(match[0]);
+      }
+
+      if (!dados) {
+        return res.status(502).json({ error: "A IA não conseguiu extrair dados deste documento." });
+      }
+      return res.status(200).json({ ok: true, dados });
+    } catch (err) {
+      console.error("[api/ai?acao=reconhecer-apolice] Erro:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao reconhecer a apólice." });
+    }
+  }
+
   // 10. HUMANIZAR CONVOCATÓRIA (/api/humanize-convocatoria -> ?acao=humanize-convocatoria)
   if (acao === "humanize-convocatoria") {
     if (req.method === "GET") {

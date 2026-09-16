@@ -44,7 +44,6 @@ import {
   dbUpdate
 } from "../lib/supabaseService";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
-import { askAI } from "../ai/ai";
 
 interface GestaoSinistrosSegurosProps {
   predio: Predio;
@@ -256,99 +255,69 @@ export function GestaoSinistrosSeguros({
     setIaExtractSuccess(null);
   };
 
-  // Processamento OCR e leitura IA do documento de seguro
+  // Processamento OCR e leitura IA do documento de seguro — lê mesmo o
+  // ficheiro (imagem/PDF) com o motor real de IA multimodal (Gemini
+  // Vision, /api/ai?acao=reconhecer-apolice). Antes chamava um SDK Gemini
+  // direto do browser com uma VITE_GEMINI_API_KEY que não existe em lado
+  // nenhum do projeto (falhava sempre) e só descrevia à IA o nome/tamanho
+  // do ficheiro; ao falhar, inventava seguradora/apólice/capital a partir
+  // do nome do ficheiro.
+  const lerFicheiroComoBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1] || "");
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
   const handleUploadDocumentoIA = async (file: File, isPartesComuns: boolean = false) => {
     setIsExtractingIA(true);
     setIaExtractSuccess(null);
 
     try {
-      // Ler nome do ficheiro e acionar o Gemini / IA para parsing
-      let resultadoIA: {
-        seguradora: string;
-        apolice_numero: string;
-        apolice_validade: string;
-        tipo_cobertura: string;
-        capital_seguro: number;
-        franquia: number;
-        resumo: string;
-      } | null = null;
-
-      try {
-        const prompt = `És um sistema de OCR e extração documental de apólices de seguro obrigatório de condomínio em Portugal.
-Analisa o ficheiro: "${file.name}" de tamanho ${(file.size / 1024).toFixed(1)} KB.
-Extrai e preenche os campos estritamente em formato JSON com as chaves:
-{
-  "seguradora": "Nome da companhia (ex: Fidelidade, Tranquilidade, Ageas, Zurich, Allianz, Mapfre)",
-  "apolice_numero": "Número de apólice detetado ou sugerido",
-  "apolice_validade": "Data no formato YYYY-MM-DD",
-  "tipo_cobertura": "Incêndio e Multirriscos",
-  "capital_seguro": 120000,
-  "franquia": 100,
-  "resumo": "Breve resumo da apólice"
-}
-Não incluas blocos markdown nem texto adicional, apenas JSON puro.`;
-
-        const respText = await askAI(prompt);
-        const cleanJson = respText.replace(/```json/g, "").replace(/```/g, "").trim();
-        const parsed = JSON.parse(cleanJson);
-        resultadoIA = {
-          seguradora: parsed.seguradora || "Fidelidade",
-          apolice_numero: parsed.apolice_numero || `MR-${Math.floor(1000000 + Math.random() * 9000000)}`,
-          apolice_validade: parsed.apolice_validade || new Date(Date.now() + 365 * 86400000).toISOString().split("T")[0],
-          tipo_cobertura: parsed.tipo_cobertura || "Incêndio e Multirriscos",
-          capital_seguro: Number(parsed.capital_seguro) || 120000,
-          franquia: Number(parsed.franquia) || 100,
-          resumo: parsed.resumo || "Apólice lida com sucesso via OCR Inteligente."
-        };
-      } catch {
-        // Fallback heurístico inteligente caso o Gemini não responda
-        const fname = file.name.toLowerCase();
-        let seg = "Fidelidade";
-        if (fname.includes("tranquilidade")) seg = "Tranquilidade - Generali";
-        else if (fname.includes("ageas")) seg = "Ageas Seguros";
-        else if (fname.includes("allianz")) seg = "Allianz Portugal";
-        else if (fname.includes("zurich")) seg = "Zurich Seguros";
-        else if (fname.includes("mapfre")) seg = "Mapfre";
-        else if (fname.includes("lusitania")) seg = "Lusitania Seguros";
-
-        const validadeFutura = new Date();
-        validadeFutura.setFullYear(validadeFutura.getFullYear() + 1);
-
-        resultadoIA = {
-          seguradora: seg,
-          apolice_numero: `AP-${Math.floor(1000000 + Math.random() * 9000000)}`,
-          apolice_validade: validadeFutura.toISOString().split("T")[0],
-          tipo_cobertura: "Incêndio e Multirriscos",
-          capital_seguro: isPartesComuns ? 850000 : 135000,
-          franquia: 100,
-          resumo: `Documento "${file.name}" analisado via OCR Inteligente.`
-        };
+      const base64 = await lerFicheiroComoBase64(file);
+      const resp = await fetch("/api/ai?acao=reconhecer-apolice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base64, mimeType: file.type || "application/octet-stream" })
+      });
+      const resultado = await resp.json();
+      if (!resp.ok || !resultado.ok) {
+        throw new Error(resultado?.error || "A IA não conseguiu ler este documento.");
       }
+      const dados = resultado.dados || {};
+      const resultadoIA = {
+        seguradora: dados.seguradora || "",
+        apolice_numero: dados.apolice_numero || "",
+        apolice_validade: dados.apolice_validade || "",
+        tipo_cobertura: dados.tipo_cobertura || "Incêndio e Multirriscos",
+        capital_seguro: Number(dados.capital_seguro) || 0,
+        franquia: Number(dados.franquia) || 0,
+        resumo: dados.resumo || ""
+      };
 
-      if (resultadoIA) {
-        if (!isPartesComuns) {
-          setFormSeguradora(resultadoIA.seguradora);
-          setFormApoliceNum(resultadoIA.apolice_numero);
-          setFormValidade(resultadoIA.apolice_validade);
-          setFormTipoCobertura(resultadoIA.tipo_cobertura);
-          setFormCapitalSeguro(resultadoIA.capital_seguro);
-          setFormEstadoValidacao("Valido");
-          setFormDocumentoNome(file.name);
-          setFormDocumentoUrl(`data:application/pdf;base64,mock_${file.name}`);
-          setIaExtractSuccess(`✓ IA extraiu com sucesso: ${resultadoIA.seguradora} • Apólice ${resultadoIA.apolice_numero} (Validade: ${resultadoIA.apolice_validade})`);
-        } else {
-          setFormPCCompanhia(resultadoIA.seguradora);
-          setFormPCApoliceNum(resultadoIA.apolice_numero);
-          setFormPCValidade(resultadoIA.apolice_validade);
-          setFormPCCapitalEdificio(resultadoIA.capital_seguro);
-          setFormPCFranquia(resultadoIA.franquia);
-          setFormPCDocumentoNome(file.name);
-          setIaExtractSuccess(`✓ IA extraiu dados da apólice do edifício: ${resultadoIA.seguradora} • Apólice ${resultadoIA.apolice_numero}`);
-        }
+      if (!isPartesComuns) {
+        setFormSeguradora(resultadoIA.seguradora);
+        setFormApoliceNum(resultadoIA.apolice_numero);
+        setFormValidade(resultadoIA.apolice_validade);
+        setFormTipoCobertura(resultadoIA.tipo_cobertura);
+        setFormCapitalSeguro(resultadoIA.capital_seguro);
+        setFormEstadoValidacao("Valido");
+        setFormDocumentoNome(file.name);
+        setFormDocumentoUrl(`data:${file.type || "application/pdf"};base64,${base64}`);
+        setIaExtractSuccess(`✓ IA extraiu com sucesso: ${resultadoIA.seguradora || "(seguradora não identificada)"} • Apólice ${resultadoIA.apolice_numero || "N/D"} (Validade: ${resultadoIA.apolice_validade || "N/D"}). Confirme os dados antes de gravar.`);
+      } else {
+        setFormPCCompanhia(resultadoIA.seguradora);
+        setFormPCApoliceNum(resultadoIA.apolice_numero);
+        setFormPCValidade(resultadoIA.apolice_validade);
+        setFormPCCapitalEdificio(resultadoIA.capital_seguro);
+        setFormPCFranquia(resultadoIA.franquia);
+        setFormPCDocumentoNome(file.name);
+        setIaExtractSuccess(`✓ IA extraiu dados da apólice do edifício: ${resultadoIA.seguradora || "(seguradora não identificada)"} • Apólice ${resultadoIA.apolice_numero || "N/D"}. Confirme os dados antes de gravar.`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erro no processamento OCR com IA:", err);
-      showToast("Não foi possível ler o documento via OCR. Por favor preencha manualmente.");
+      showToast(err?.message || "Não foi possível ler o documento via OCR. Por favor preencha manualmente.");
     } finally {
       setIsExtractingIA(false);
     }
