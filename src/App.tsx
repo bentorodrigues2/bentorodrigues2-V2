@@ -20,7 +20,10 @@ import {
   saveReservaToSupabase,
   saveContaToSupabase,
   fetchReunioesFromSupabase,
-  saveReuniaoToSupabase
+  saveReuniaoToSupabase,
+  savePredioToSupabase,
+  saveFracaoToSupabase,
+  saveAvisosToSupabase
 } from "./lib/supabaseService";
 import { PainelControlo } from "./components/PainelControlo";
 import { GestaoPredios } from "./components/GestaoPredios";
@@ -515,12 +518,24 @@ export default function App() {
     setActivePredioId(novoPredio.id_predio);
   };
 
-  const handleImportGlobalData = (predioData: Predio, fracoesData: Fracao[], avisosData: Aviso[]) => {
+  const handleImportGlobalData = async (predioData: Predio, fracoesData: Fracao[], avisosData: Aviso[]) => {
     setPredios(prev => [...prev, predioData]);
     setFracoes(prev => [...prev, ...fracoesData]);
     setAvisos(prev => [...prev, ...avisosData]);
     setActivePredioId(predioData.id_predio);
     setActiveSection("painel"); // Redirect to Dashboard of newly imported building!
+
+    // O Assistente de Importação constrói o prédio/frações/dívidas de
+    // transição só em memória — sem isto, a migração inteira desaparecia
+    // ao atualizar a página.
+    const okPredio = await savePredioToSupabase(predioData);
+    const resultadosFracoes = await Promise.all(fracoesData.map(f => saveFracaoToSupabase(f)));
+    const okAvisos = avisosData.length ? await saveAvisosToSupabase(avisosData) : true;
+
+    if (!okPredio || resultadosFracoes.some(ok => !ok) || !okAvisos) {
+      console.error("[handleImportGlobalData] Falha ao gravar a migração no Supabase", { okPredio, resultadosFracoes, okAvisos });
+      alert("⚠️ A migração foi importada mas houve um erro ao gravar alguns dados no Supabase. Verifique o prédio, as frações e os avisos de transição.");
+    }
   };
 
   const handleUpdatePredio = (updatedPredio: Predio) => {
