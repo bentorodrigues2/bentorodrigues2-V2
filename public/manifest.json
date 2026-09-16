@@ -15,24 +15,6 @@
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
-    },
-    {
-      "src": "/marca/04-icone-app.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "any"
-    },
-    {
-      "src": "/marca/04-icone-app.png",
-      "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/marca/04-icone-app.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "maskable"
     }
   ]
 }

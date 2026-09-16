@@ -1,11 +1,11 @@
 // CondoManager AI - Service Worker (Offline Cache, Push Notifications, Background Sync)
 
-const CACHE_NAME = "condomanager-v2.0-cache";
+const CACHE_NAME = "condomanager-v2.1-cache";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/manifest.json",
-  "/src/assets/images/condomanager_logo.webp"
+  "/marca/04-icone-app.png"
 ];
 
 // 1. Install Event - Pre-cache critical offline shell
@@ -36,16 +36,28 @@ self.addEventListener("activate", (event) => {
 
 // 3. Fetch Event - Network First with Offline Fallback
 self.addEventListener("fetch", (event) => {
-  // Ignore non-GET requests or chrome-extension URLs
-  if (event.request.method !== "GET" || !event.request.url.startsWith("http")) {
+  // Ignore non-GET requests, chrome-extension URLs, and cross-origin
+  // requests (ex: Supabase REST API) — só se cacheia o "app shell" do
+  // próprio site, nunca respostas de dados de outro utilizador que
+  // possam ficar presas na cache de um dispositivo partilhado.
+  if (
+    event.request.method !== "GET" ||
+    !event.request.url.startsWith("http") ||
+    new URL(event.request.url).origin !== self.location.origin
+  ) {
     return;
   }
+
+  const isApiRequest = new URL(event.request.url).pathname.startsWith("/api/");
 
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
-        // Cache successful GET responses
-        if (networkResponse && networkResponse.status === 200) {
+        // Cache só o "app shell" estático — nunca respostas de /api/*
+        // (dados reais do condomínio/utilizador), para não haver risco
+        // de um dispositivo partilhado mostrar dados de outra sessão
+        // depois de um logout enquanto offline.
+        if (!isApiRequest && networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
@@ -73,8 +85,8 @@ self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : { title: "CondoManager AI", body: "Nova notificação do condomínio." };
   const options = {
     body: data.body,
-    icon: "/src/assets/images/condomanager_logo.webp",
-    badge: "/src/assets/images/condomanager_logo.webp",
+    icon: "/marca/04-icone-app.png",
+    badge: "/marca/04-icone-app.png",
     vibrate: [100, 50, 100],
     data: {
       url: data.url || "/"
@@ -92,18 +104,4 @@ self.addEventListener("notificationclick", (event) => {
   event.waitUntil(
     clients.openWindow(event.notification.data.url)
   );
-});
-
-// 5. Background Sync Event (Offline -> Online Queue Sync)
-self.addEventListener("sync", (event) => {
-  if (event.tag === "pwa-sync-offline-queue") {
-    console.log("[ServiceWorker] Sincronização em segundo plano ativada: A enviar fila de pedidos offline...");
-    event.waitUntil(
-      fetch("/api/pwa/sync-offline", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: "background-sync-sw" })
-      }).catch((err) => console.error("Erro na sincronização SW:", err))
-    );
-  }
 });
