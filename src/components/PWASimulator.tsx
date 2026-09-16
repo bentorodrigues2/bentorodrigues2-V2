@@ -39,7 +39,7 @@ import { SecurityAuditModal } from "./SecurityAuditModal";
 import { ConfiguracoesAdministracao } from "./ConfiguracoesAdministracao";
 import { FichaEmpresaGestora } from "./FichaEmpresaGestora";
 import { PWASupplierCardsView } from "./PWASupplierCardsView";
-import { saveAvisosToSupabase, saveMovimentoToSupabase, saveContaToSupabase, saveDocumentoToSupabase, saveReuniaoToSupabase, registarLogAuditoria } from "../lib/supabaseService";
+import { saveAvisosToSupabase, saveMovimentoToSupabase, saveContaToSupabase, saveDocumentoToSupabase, saveReuniaoToSupabase, saveOcorrenciaToSupabase, saveReservaToSupabase, registarLogAuditoria } from "../lib/supabaseService";
 import { 
   Smartphone, 
   Wifi, 
@@ -472,21 +472,36 @@ export function PWASimulator({
 
   // Handler for Admin/Gestora approving reservations
   const handleAprovarReserva = (id: string, action: "Aprovado" | "Rejeitado") => {
+    const res = reservas.find(r => r.id_reserva === id);
     const updated = reservas.map(r => r.id_reserva === id ? { ...r, estado: action } : r);
     setReservas(updated);
-    // Push notify
-    const res = reservas.find(r => r.id_reserva === id);
     if (res) {
+      const atualizada = { ...res, estado: action };
+      saveReservaToSupabase(atualizada).catch(console.error);
+      registarLogAuditoria("Reservas", `${action === "Aprovado" ? "Aprovou" : "Rejeitou"} a reserva de "${res.area_comum}"`, predio.id_predio, loggedUser);
+
       const frac = fracoes.find(f => f.id_fracao === res.id_fracao);
       const userMail = frac?.proprietario.email;
       const title = action === "Aprovado" ? "Reserva Aprovada! 🌸" : "Reserva Rejeitada ❌";
       const desc = `A sua reserva de ${res.area_comum} no dia ${res.data} foi ${action.toLowerCase()} pela Administração.`;
-      
+
       setPwaNotifications(prev => [
         { id: "not-auto-" + Date.now(), title, desc, date: "Agora" },
         ...prev
       ]);
-      alert(`Reserva ${action.toLowerCase()} com sucesso! O condómino foi notificado via push.`);
+      if (userMail) {
+        fetch("/api/email?acao=notificar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ to: userMail, nomeDestinatario: frac?.proprietario.nome, assunto: title, mensagem: desc })
+        }).catch(console.error);
+      }
+      fetch("/api/admin?acao=enviar-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_predio: predio.id_predio, id_fracao: res.id_fracao, title, body: desc })
+      }).catch(() => {});
+      alert(`Reserva ${action.toLowerCase()} com sucesso! O condómino foi notificado por email e push.`);
     }
   };
 
@@ -566,6 +581,35 @@ export function PWASimulator({
       fotos: []
     };
     setOcorrencias([nova, ...ocorrencias]);
+    saveOcorrenciaToSupabase(nova).catch(console.error);
+
+    if (condominoFracao?.proprietario?.email) {
+      fetch("/api/email?acao=notificar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: condominoFracao.proprietario.email,
+          nomeDestinatario: condominoFracao.proprietario.nome,
+          assunto: "Registo de Ocorrência Técnica em Curso",
+          mensagem: `Acusamos a receção da ocorrência reportada referente a "${ocorrArea}". A administração foi notificada e irá acompanhar a resolução.`
+        })
+      }).catch(console.error);
+    }
+    const adms = fracoes.filter(f => f.id_predio === predio.id_predio && f.administrador_interno === "Sim");
+    adms.forEach(adm => {
+      if (!adm.proprietario.email) return;
+      fetch("/api/email?acao=notificar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: adm.proprietario.email,
+          nomeDestinatario: adm.proprietario.nome,
+          assunto: `Nova Ocorrência — ${ocorrArea}`,
+          mensagem: `Foi reportada uma nova ocorrência.<br><br><strong>Local:</strong> ${ocorrArea}<br><strong>Descrição:</strong> ${ocorrDesc}`
+        })
+      }).catch(console.error);
+    });
+
     setOcorrDesc("");
     alert("Ocorrência registada com sucesso! Os administradores foram alertados.");
   };
@@ -586,6 +630,8 @@ export function PWASimulator({
       estado: "Pendente"
     };
     setReservas([...reservas, novaRes]);
+    saveReservaToSupabase(novaRes).catch(console.error);
+    registarLogAuditoria("Reservas", `Submeteu pedido de reserva de "${reserveArea}"`, predio.id_predio, loggedUser);
     alert(`Pedido de reserva para ${reserveArea} submetido! A aguardar aprovação administrativa.`);
   };
 
@@ -957,6 +1003,12 @@ export function PWASimulator({
       date: "Agora"
     };
     setPwaNotifications(prev => [nova, ...prev]);
+    fetch("/api/admin?acao=enviar-push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id_predio: predio.id_predio, title: newNotificationTitle, body: newNotificationDesc })
+    }).catch(() => {});
+    registarLogAuditoria("Comunicação", `Enviou uma notificação push: "${newNotificationTitle}"`, predio.id_predio, loggedUser);
     setNewNotificationTitle("");
     setNewNotificationDesc("");
     triggerSendReaction("mensagem", "A Enviar Alerta Push ao Condomínio...");
@@ -982,6 +1034,8 @@ export function PWASimulator({
       categoria: "Estrutura"
     };
     setOcorrencias([newOcorr, ...ocorrencias]);
+    saveOcorrenciaToSupabase(newOcorr).catch(console.error);
+    registarLogAuditoria("Manutenção", `Submeteu relatório técnico de vistoria em "${inspectorLocal}"`, predio.id_predio, loggedUser);
 
     // Push alert
     setPwaNotifications(prev => [

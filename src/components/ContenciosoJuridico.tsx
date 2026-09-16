@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Predio, Fracao, Aviso, LoggedUser, ProcessoJuridico } from "../types";
 import { formatDatePT, generateAndDownloadPdf } from "../utils";
 import { processosJudiciaisIniciais } from "../data";
-import { fetchProcessosJuridicosFromSupabase } from "../lib/supabaseService";
+import { fetchProcessosJuridicosFromSupabase, registarLogAuditoria } from "../lib/supabaseService";
 import { ConstituicaoProcessosJuridicos } from "./ConstituicaoProcessosJuridicos";
 
 interface ContenciosoJuridicoProps {
@@ -1735,15 +1735,21 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                     setTimeout(() => {
                       setIsEmitting(false);
                       const selFrac = predioFracoes.find(f => f.id_fracao === selectedFracaoId) || predioFracoes[0];
+                      const nomeDoc = `${docObrigatorioType} - Fração ${selFrac?.fracao_nome || "N/A"}`;
+                      handlePrintDocument(nomeDoc, "declaracao-certidao-view");
                       if (onAddDocumento) {
                         onAddDocumento({
                           id_doc: `legal-doc-${Date.now()}`,
-                          nome: `${docObrigatorioType} - Fração ${selFrac?.fracao_nome || "N/A"}`,
+                          id_predio: predio.id_predio,
+                          nome: nomeDoc,
                           tipo: "Legal / Judicial",
                           categoria: "Público",
-                          data_upload: new Date().toISOString().split("T")[0]
+                          data_upload: new Date().toISOString().split("T")[0],
+                          autor: loggedUser.nome,
+                          tema: "Contencioso Jurídico"
                         });
-                        alert(`Sucesso! O documento "${docObrigatorioType} - Fração ${selFrac?.fracao_nome}" foi formalmente assinado digitalmente e arquivado com sucesso no Arquivo do Edifício.`);
+                        registarLogAuditoria("Jurídica", `Emitiu "${docObrigatorioType}" para a Fração ${selFrac?.fracao_nome}`, predio.id_predio, loggedUser);
+                        alert(`Sucesso! O documento "${nomeDoc}" foi gerado e arquivado no Arquivo do Edifício.`);
                       } else {
                         alert(`Documento gerado: ${docObrigatorioType}. No entanto, o canal de arquivo não está conectado.`);
                       }
@@ -1773,8 +1779,8 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                 <p className="text-xs">Selecione uma fração para pré-visualizar a certidão jurídica.</p>
               </div>
             ) : (
-              <div className="bg-[#fdfcfb] dark:bg-slate-950 text-slate-900 dark:text-slate-200 p-8 md:p-12 rounded-xl border border-slate-300 dark:border-slate-850 shadow-lg font-sans text-justify text-[11px] leading-relaxed space-y-6 relative overflow-hidden" style={{ color: "#1A1A1A" }}>
-                
+              <div id="declaracao-certidao-view" className="bg-[#fdfcfb] dark:bg-slate-950 text-slate-900 dark:text-slate-200 p-8 md:p-12 rounded-xl border border-slate-300 dark:border-slate-850 shadow-lg font-sans text-justify text-[11px] leading-relaxed space-y-6 relative overflow-hidden" style={{ color: "#1A1A1A" }}>
+
                 {/* 1. Official Watermark (Diagonal ~30º, 11% opacity, centered behind content) */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.06] pointer-events-none text-center select-none z-0" style={{ transform: "translate(-50%, -50%) rotate(-30deg)" }}>
                   <p className="text-[64px] font-black tracking-[10px] uppercase text-[#1A1A1A]">CONDOMANAGER</p>

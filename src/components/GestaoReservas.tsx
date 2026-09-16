@@ -246,13 +246,39 @@ export function GestaoReservas({
     setServicosEscolhidos([]);
   };
 
+  const enviarEmailReserva = async (reserva: Reserva, aprovado: boolean, motivo?: string) => {
+    const frac = predioFracoes.find(f => f.id_fracao === reserva.id_fracao);
+    const email = frac?.proprietario?.email;
+    if (!email) return;
+    try {
+      await fetch("/api/email?acao=notificar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: email,
+          nomeDestinatario: frac?.proprietario?.nome || reserva.responsavel,
+          assunto: aprovado
+            ? `Reserva Confirmada — ${reserva.area_comum} em ${reserva.data}`
+            : `Reserva Não Aprovada — ${reserva.area_comum} em ${reserva.data}`,
+          mensagem: aprovado
+            ? `A sua reserva do espaço <strong>${reserva.area_comum}</strong> no dia <strong>${reserva.data}</strong>, entre as ${reserva.hora_inicio} e as ${reserva.hora_fim}, foi confirmada pela Administração.`
+            : `A sua reserva do espaço <strong>${reserva.area_comum}</strong> no dia <strong>${reserva.data}</strong> não foi aprovada.<br><br><strong>Motivo:</strong> ${motivo || "Não especificado."}`
+        })
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleApproveReserva = (id: string) => {
     if (loggedUser.role !== "ADMIN") return alert("Apenas administradores podem aprovar reservas!");
     const alvo = reservas.find(r => r.id_reserva === id);
     setReservas(prev => prev.map(r => r.id_reserva === id ? { ...r, estado: "Aprovado" } : r));
     if (alvo) {
-      saveReservaToSupabase({ ...alvo, estado: "Aprovado" }).catch(console.error);
+      const atualizada = { ...alvo, estado: "Aprovado" as const };
+      saveReservaToSupabase(atualizada).catch(console.error);
       registarLogAuditoria("Reservas", `Aprovou a reserva de "${alvo.area_comum}"`, predio.id_predio, loggedUser);
+      enviarEmailReserva(atualizada, true);
     }
     alert("Reserva aprovada com sucesso! O condómino foi notificado.");
   };
@@ -264,8 +290,10 @@ export function GestaoReservas({
     const alvo = reservas.find(r => r.id_reserva === id);
     setReservas(prev => prev.map(r => r.id_reserva === id ? { ...r, estado: "Rejeitado" } : r));
     if (alvo) {
-      saveReservaToSupabase({ ...alvo, estado: "Rejeitado" }).catch(console.error);
+      const atualizada = { ...alvo, estado: "Rejeitado" as const };
+      saveReservaToSupabase(atualizada).catch(console.error);
       registarLogAuditoria("Reservas", `Rejeitou a reserva de "${alvo.area_comum}"`, predio.id_predio, loggedUser, motivo);
+      enviarEmailReserva(atualizada, false, motivo);
     }
     alert(`Reserva rejeitada. Motivo comunicado: "${motivo}".`);
   };
@@ -278,6 +306,9 @@ export function GestaoReservas({
       deleteReservaFromSupabase(id).catch(console.error);
       if (alvo) {
         registarLogAuditoria("Reservas", `Eliminou a reserva de "${alvo.area_comum}"`, predio.id_predio, loggedUser);
+        if (alvo.estado === "Aprovado") {
+          enviarEmailReserva(alvo, false, "A reserva foi cancelada pela Administração.");
+        }
       }
     }
   };

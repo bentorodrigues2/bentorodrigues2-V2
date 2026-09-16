@@ -183,6 +183,23 @@ export function CalculoQuotas({
       `Regular: ${regVal}€ / Extra: ${extVal}€`
     );
 
+    if (extVal > 0) {
+      const destinatarios = predioFracoes
+        .filter(f => f.proprietario?.email)
+        .map(f => ({ email: f.proprietario.email, nome: f.proprietario.nome }));
+      if (destinatarios.length > 0) {
+        fetch("/api/email?acao=broadcast", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            destinatarios,
+            assunto: `Aviso de Quota Extraordinária — ${descricaoExtra || predio.nome}`,
+            mensagem: `Foi emitida uma quota extraordinária: <strong>${descricaoExtra}</strong>.<br><br>A liquidar em ${numPrestacoesExtra} prestação(ões), com data limite da primeira prestação a ${dataLimiteExtra}.<br><br>Consulte o valor correspondente à sua fração na plataforma.`
+          })
+        }).catch(console.error);
+      }
+    }
+
     setSucessoEmissao(
       `Emitidos com sucesso ${novosAvisos.length} avisos e guardada configuração no Supabase interligada às contas (${contaOrdinariaSel?.banco || "Conta Principal"} / ${contaExtraSel?.banco || "Conta FCR"}).`
     );

@@ -361,6 +361,21 @@ export function GestaoManutencaoIntervencoes({
     const ocorrenciaConcluida = updated.find(o => o.id_ocorr === id);
     if (ocorrenciaConcluida) saveOcorrenciaToSupabase(ocorrenciaConcluida).catch(console.error);
 
+    // Notifica o proprietário da fração que reportou a ocorrência, quando aplicável
+    const fracaoReportou = fracoes.find(f => f.id_fracao === targetOcorr.id_fracao);
+    if (fracaoReportou?.proprietario?.email) {
+      fetch("/api/email?acao=notificar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: fracaoReportou.proprietario.email,
+          nomeDestinatario: fracaoReportou.proprietario.nome,
+          assunto: "Resolução e Encerramento de Ocorrência",
+          mensagem: `Informamos que a intervenção técnica na ocorrência reportada foi concluída com sucesso.<br><br><strong>Detalhes da resolução:</strong> ${techReport}`
+        })
+      }).catch(console.error);
+    }
+
     // Mover automaticamente com base na classificação
     if (classificacao === "intervencao") {
       // Pequena reparação → mover automaticamente para Intervenções (Pequenas Reparações)
@@ -593,11 +608,27 @@ export function GestaoManutencaoIntervencoes({
     saveDocumentoToSupabase(novoDoc).catch(console.error);
     registarLogAuditoria("Manutenção", `Registou a vistoria de "${targetItem?.equipamento}"`, predio.id_predio, loggedUser, checkStatus);
 
+    // Relatório de vistoria real a todos os condóminos do prédio
+    const destinatariosVistoria = fracoes
+      .filter(f => f.id_predio === predio.id_predio && f.proprietario?.email)
+      .map(f => ({ email: f.proprietario.email, nome: f.proprietario.nome }));
+    if (destinatariosVistoria.length > 0) {
+      fetch("/api/email?acao=broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          destinatarios: destinatariosVistoria,
+          assunto: `Relatório de Vistoria Técnica — ${targetItem?.equipamento}`,
+          mensagem: `Foi concluída a vistoria técnica periódica a "${targetItem?.equipamento}", com o resultado <strong>${checkStatus}</strong>.<br><br>${checkReport ? `<strong>Observações:</strong> ${checkReport}<br><br>` : ""}O relatório encontra-se disponível no Arquivo Documental da plataforma.`
+        })
+      }).catch(console.error);
+    }
+
     setCheckItemId(null);
     setCheckReport("");
     setCheckAvarias("");
     setCheckSign("");
-    alert("Vistoria registada! Relatório técnico em PDF assinado digitalmente e arquivado automaticamente.");
+    alert("Vistoria registada! Relatório técnico em PDF arquivado automaticamente e condóminos notificados por email.");
   };
 
   // Create Small Repair (Intervencao)
@@ -889,7 +920,23 @@ export function GestaoManutencaoIntervencoes({
     saveDocumentoToSupabase(novoDoc).catch(console.error);
     registarLogAuditoria("Manutenção", `Adjudicou a obra extraordinária "${target.descricao}"`, predio.id_predio, loggedUser, `${target.custoTotal.toFixed(2)}€`);
 
-    alert("Obra adjudicada! Lançamento de despesa extraordinária efetuado e plano arquivado.");
+    // Aviso real de obras a todos os condóminos do prédio
+    const destinatarios = fracoes
+      .filter(f => f.id_predio === predio.id_predio && f.proprietario?.email)
+      .map(f => ({ email: f.proprietario.email, nome: f.proprietario.nome }));
+    if (destinatarios.length > 0) {
+      fetch("/api/email?acao=broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          destinatarios,
+          assunto: `Aviso de Obras — ${target.descricao}`,
+          mensagem: `Informamos que terão início obras no edifício:<br><br><strong>Intervenção:</strong> ${target.descricao}<br><strong>Fornecedor:</strong> ${target.fornecedorNome}<br><strong>Data prevista de início:</strong> ${target.dataInicio}<br><strong>Data prevista de conclusão:</strong> ${target.dataFim}<br><br>Agradecemos desde já a melhor compreensão para eventuais constrangimentos temporários.`
+        })
+      }).catch(console.error);
+    }
+
+    alert("Obra adjudicada! Lançamento de despesa extraordinária efetuado, plano arquivado e condóminos notificados por email.");
   };
 
   // Admin verifies & signs off a completed task
