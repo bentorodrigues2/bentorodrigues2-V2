@@ -2,34 +2,41 @@ import { jsPDF } from "jspdf";
 import { supabase } from "./supabaseServer.js";
 import { gerarHtmlResposta } from "./htmlemail.js";
 import { sanitizarSegmentoStorage } from "./storageUtils.js";
+import { addPdfHeaderWithLogo } from "./pdfDocs.js";
 
 /**
  * Gera um PDF real a partir de texto simples (jsPDF funciona em Node sem
  * DOM/canvas para texto). O Gemini gera texto, não PDFs binários — por
- * isso a geração do ficheiro em si é sempre feita aqui.
+ * isso a geração do ficheiro em si é sempre feita aqui. Usa o mesmo
+ * cabeçalho de marca (logótipo CondoManager AI centrado + nome do prédio)
+ * dos restantes documentos oficiais, gerado a partir de src/utils.ts.
  */
-function gerarPDFBuffer(conteudo, titulo) {
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
+function gerarPDFBuffer(conteudo, titulo, predioNome) {
+  // "mm" (não "pt") porque addPdfHeaderWithLogo desenha o logótipo e o
+  // nome do prédio com coordenadas fixas assumindo uma página A4 de 210mm.
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
 
-  const marginX = 48;
-  const marginTop = 56;
-  const marginBottom = 56;
+  const marginX = 14;
+  const marginBottom = 20;
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const maxWidth = pageWidth - marginX * 2;
-  const lineHeight = 16;
+  const lineHeight = 5.5;
+  const marginTop = addPdfHeaderWithLogo(doc, predioNome) + 4;
 
   let y = marginTop;
 
   if (titulo) {
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
+    doc.setFontSize(13);
+    doc.setTextColor(15, 23, 42);
     doc.text(titulo, marginX, y);
-    y += lineHeight * 1.5;
+    y += lineHeight * 1.6;
   }
 
+  doc.setTextColor(30, 41, 59);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
+  doc.setFontSize(10);
 
   const paragrafos = String(conteudo || "").split(/\n+/);
 
@@ -135,19 +142,29 @@ export async function enviarEmailPDF({ to, nomeDestinatario, assunto, mensagem, 
  * (ex. recibo oficial via receiptGenerator.js), monta o buffer à parte e
  * usa só guardarNoArquivo/registarDocumento/enviarEmailPDF diretamente.
  */
-export async function gerarDocumentoPDF({ conteudo, ano, tema, tipo, predio, fracao, fluxo, emailDestino, nomeDestinatario, nomeFicheiro, categoria, visibilidade }) {
-  const pdfBuffer = gerarPDFBuffer(conteudo, tipo);
+export async function gerarDocumentoPDF({ conteudo, ano, tema, tipo, predio, predioNome, fracao, fluxo, emailDestino, nomeDestinatario, nomeFicheiro, categoria, visibilidade }) {
+  // Identificador único do documento — sem isto, o email genérico "Novo
+  // documento: X" não permitia ao destinatário referenciar/localizar o
+  // documento específico (ex. em caso de reclamação sobre o seu conteúdo).
+  const anoRef = ano || new Date().getFullYear();
+  const idDocumento = `${String(tipo || "DOC").toUpperCase().replace(/\s+/g, "-").normalize("NFD").replace(/[̀-ͯ]/g, "")}-${anoRef}-${String(Date.now()).slice(-5)}`;
+
+  const pdfBuffer = gerarPDFBuffer(conteudo, `${tipo} — Documento Nº ${idDocumento}`, predioNome);
 
   const caminho = await guardarNoArquivo({ pdfBuffer, ano, tema, tipo, predio, fracao, fluxo, nomeFicheiro });
 
   await registarDocumento({ caminho, ano, tema, tipo, predio, fracao, fluxo, origem: "gemini_auto_pdf", nomeFicheiro, categoria, visibilidade: visibilidade || "Público" });
 
   if (emailDestino) {
+    const saudacaoNome = nomeDestinatario || "Condómino(a)";
+    const notaSigla = /\bSCIE\b/i.test(tipo || "")
+      ? " (SCIE = Segurança Contra Incêndio em Edifícios)"
+      : "";
     await enviarEmailPDF({
       to: emailDestino,
       nomeDestinatario,
-      assunto: `Novo documento: ${tipo}`,
-      mensagem: `Segue em anexo o seu documento: <strong>${tipo}</strong>.`,
+      assunto: `Novo documento: ${tipo} (Nº ${idDocumento})`,
+      mensagem: `Caro(a) <strong>${saudacaoNome}</strong>, segue em anexo o seu documento <strong>${tipo}</strong>${notaSigla}, identificado com o número <strong>${idDocumento}</strong>.`,
       pdfBuffer,
       nome: nomeFicheiro
     });

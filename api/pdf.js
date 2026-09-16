@@ -167,7 +167,7 @@ async function gerarDocumentoEspecial(tipo, config, body) {
   const destinatarios = Array.isArray(body.destinatarios) && body.destinatarios.length
     ? body.destinatarios
     : body.email
-      ? [{ email: body.email, nome: body.nome || body.fornecedor?.nome || body.proprietarioNome }]
+      ? [{ email: body.email, nome: body.nome || body.fornecedor?.nome || body.proprietarioNome || body.gestor?.nome || body.seguradoraNome }]
       : [];
 
   let enviados = 0;
@@ -223,9 +223,11 @@ export default async function handler(req, res) {
       tema: config.tema,
       tipo: config.tipo,
       predio: body.predio,
+      predioNome: body.predioNome,
       fracao: body.fracao,
       fluxo: config.fluxo,
       emailDestino: body.email,
+      nomeDestinatario: body.nome || body.proprietarioNome,
       nomeFicheiro: `${tipo}_${body.ano}.pdf`,
       categoria: config.categoria
     });
