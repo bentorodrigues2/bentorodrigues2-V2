@@ -1511,3 +1511,127 @@ export async function savePedidoRegulamentoToSupabase(pedido: {
   return dbInsert("pedidos_regulamento", pedido);
 }
 
+// ============================================================================
+// SCIE (SEGURANÇA CONTRA INCÊNDIO), VISTORIAS & LIMPEZAS
+// ============================================================================
+
+export interface EquipamentoSCIERow {
+  id: string;
+  id_predio: string;
+  tipo: string;
+  localizacao: string;
+  quantidade: number;
+  especificacao: string;
+  dataUltimaRevisao: string;
+  dataValidade: string;
+  empresaCertificada: string;
+  observacoes?: string;
+}
+
+export async function fetchEquipamentosScieFromSupabase(idPredio: string): Promise<EquipamentoSCIERow[]> {
+  if (!isSupabaseConfigured() || !idPredio) return [];
+  const data = await dbSelect("equipamentos_scie", { filtros: [["id_predio", "eq", idPredio]] });
+  return (data || []).map((row: any) => ({
+    id: row.id_equipamento,
+    id_predio: row.id_predio,
+    tipo: row.tipo,
+    localizacao: row.localizacao,
+    quantidade: row.quantidade ?? 1,
+    especificacao: row.especificacao || "",
+    dataUltimaRevisao: row.data_ultima_revisao || "",
+    dataValidade: row.data_validade || "",
+    empresaCertificada: row.empresa_certificada || "",
+    observacoes: row.observacoes || undefined
+  }));
+}
+
+export async function saveEquipamentoScieToSupabase(eq: EquipamentoSCIERow): Promise<boolean> {
+  return dbUpsert("equipamentos_scie", {
+    id_equipamento: eq.id,
+    id_predio: eq.id_predio,
+    tipo: eq.tipo,
+    localizacao: eq.localizacao,
+    quantidade: eq.quantidade,
+    especificacao: eq.especificacao,
+    data_ultima_revisao: eq.dataUltimaRevisao || null,
+    data_validade: eq.dataValidade || null,
+    empresa_certificada: eq.empresaCertificada,
+    observacoes: eq.observacoes || null,
+    updated_at: new Date().toISOString()
+  }, { onConflict: "id_equipamento" });
+}
+
+export async function deleteEquipamentoScieFromSupabase(id: string): Promise<boolean> {
+  return dbDelete("equipamentos_scie", [["id_equipamento", "eq", id]]);
+}
+
+export interface VistoriaRow {
+  id_vistoria: string;
+  id_predio: string;
+  data: string;
+  tecnico: string;
+  local: string;
+  anomalia: string;
+  gravidade: "Baixa" | "Média" | "Alta";
+  fotos: string[];
+  estado: "Identificada" | "Em Resolução" | "Resolvida";
+  custo_previsto?: number;
+  periodicidade?: string;
+  impacto_orcamento?: string;
+  alerta_automatico?: boolean;
+}
+
+export async function fetchVistoriasFromSupabase(idPredio: string): Promise<VistoriaRow[]> {
+  if (!isSupabaseConfigured() || !idPredio) return [];
+  const data = await dbSelect("vistorias", { filtros: [["id_predio", "eq", idPredio]], order: { coluna: "created_at", asc: false } });
+  return (data || []) as VistoriaRow[];
+}
+
+export async function saveVistoriaToSupabase(v: VistoriaRow): Promise<boolean> {
+  return dbUpsert("vistorias", v, { onConflict: "id_vistoria" });
+}
+
+export interface LimpezaRow {
+  id_limpeza: string;
+  id_predio: string;
+  data: string;
+  hora: string;
+  executor: string;
+  areas: string[];
+  observacoes?: string;
+  fotos?: string[];
+}
+
+export async function fetchLimpezasFromSupabase(idPredio: string): Promise<LimpezaRow[]> {
+  if (!isSupabaseConfigured() || !idPredio) return [];
+  const data = await dbSelect("limpezas", { filtros: [["id_predio", "eq", idPredio]], order: { coluna: "created_at", asc: false } });
+  return (data || []) as LimpezaRow[];
+}
+
+export async function saveLimpezaToSupabase(l: LimpezaRow): Promise<boolean> {
+  return dbInsert("limpezas", l);
+}
+
+export interface IncidenciaLimpezaRow {
+  id: string;
+  id_predio: string;
+  data: string;
+  hora: string;
+  operador?: string;
+  local: string;
+  descricao: string;
+  gravidade: "Baixa" | "Média" | "Alta";
+  estado: string;
+  foto?: string;
+}
+
+export async function fetchIncidenciasLimpezaFromSupabase(idPredio: string): Promise<IncidenciaLimpezaRow[]> {
+  if (!isSupabaseConfigured() || !idPredio) return [];
+  const data = await dbSelect("incidencias_limpeza", { filtros: [["id_predio", "eq", idPredio]], order: { coluna: "created_at", asc: false } });
+  return (data || []) as IncidenciaLimpezaRow[];
+}
+
+export async function saveIncidenciaLimpezaToSupabase(inc: IncidenciaLimpezaRow): Promise<boolean> {
+  return dbInsert("incidencias_limpeza", inc);
+}
+

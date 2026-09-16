@@ -1,6 +1,17 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Predio, LoggedUser } from "../types";
 import { formatDatePT, exportToXLS } from "../utils";
+import {
+  fetchEquipamentosScieFromSupabase,
+  saveEquipamentoScieToSupabase,
+  deleteEquipamentoScieFromSupabase,
+  fetchVistoriasFromSupabase,
+  saveVistoriaToSupabase,
+  fetchLimpezasFromSupabase,
+  saveLimpezaToSupabase,
+  fetchIncidenciasLimpezaFromSupabase,
+  saveIncidenciaLimpezaToSupabase
+} from "../lib/supabaseService";
 import { 
   ShieldAlert, 
   Flame, 
@@ -143,26 +154,17 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
   const [incFoto, setIncFoto] = useState("");
   const incFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Equipamentos de Segurança & SCIE State with LocalStorage Persistence - Base limpa sem dados de simulação
-  const [equipamentosSCIE, setEquipamentosSCIE] = useState<EquipamentoSegurancaSCIE[]>(() => {
-    const local = localStorage.getItem(`condo_scie_${predio.id_predio}`);
-    if (local) {
-      try {
-        const parsed = JSON.parse(local);
-        if (Array.isArray(parsed)) {
-          // Filtrar quaisquer dados de simulação legados
-          return parsed.filter((item: any) => !item.id?.startsWith("scie-"));
-        }
-      } catch (e) {
-        // fallback
-      }
-    }
-    return [];
-  });
+  // Equipamentos de Segurança & SCIE — real (Supabase), antes só localStorage
+  // (perdia-se ao limpar o browser, não sincronizava entre dispositivos).
+  const [equipamentosSCIE, setEquipamentosSCIE] = useState<EquipamentoSegurancaSCIE[]>([]);
 
   useEffect(() => {
-    localStorage.setItem(`condo_scie_${predio.id_predio}`, JSON.stringify(equipamentosSCIE));
-  }, [equipamentosSCIE, predio.id_predio]);
+    if (!predio.id_predio) return;
+    fetchEquipamentosScieFromSupabase(predio.id_predio).then(setEquipamentosSCIE);
+    fetchVistoriasFromSupabase(predio.id_predio).then(setVistorias);
+    fetchLimpezasFromSupabase(predio.id_predio).then(setLimpezas);
+    fetchIncidenciasLimpezaFromSupabase(predio.id_predio).then(setIncidenciasLimpeza);
+  }, [predio.id_predio]);
 
   // Form State for SCIE Equipment (CRUD)
   const [editingScieId, setEditingScieId] = useState<string | null>(null);
@@ -359,13 +361,18 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
     setShowScieModal(true);
   };
 
-  const handleEliminarScie = (id: string) => {
+  const handleEliminarScie = async (id: string) => {
     if (window.confirm("Deseja realmente eliminar este equipamento de segurança? Esta ação removerá o alerta associado.")) {
-      setEquipamentosSCIE(prev => prev.filter(e => e.id !== id));
+      const ok = await deleteEquipamentoScieFromSupabase(id);
+      if (ok) {
+        setEquipamentosSCIE(prev => prev.filter(e => e.id !== id));
+      } else {
+        alert("❌ Não foi possível eliminar no Supabase. Tente novamente.");
+      }
     }
   };
 
-  const handleGravarScie = (e: React.FormEvent) => {
+  const handleGravarScie = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!scieLocalizacao.trim() || !scieDataValidade) {
       alert("Por favor indique a localização no edifício e a data de validade do equipamento.");
@@ -374,22 +381,23 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
 
     if (editingScieId) {
       // Atualizar existente
-      setEquipamentosSCIE(prev => prev.map(item => {
-        if (item.id === editingScieId) {
-          return {
-            ...item,
-            tipo: scieTipo,
-            localizacao: scieLocalizacao.trim(),
-            quantidade: Math.max(1, parseInt(scieQuantidade) || 1),
-            especificacao: scieEspecificacao.trim() || scieTipo,
-            dataUltimaRevisao: scieDataUltimaRevisao || new Date().toISOString().split("T")[0],
-            dataValidade: scieDataValidade,
-            empresaCertificada: scieEmpresaCertificada.trim() || "Entidade Especializada Certificada",
-            observacoes: scieObservacoes.trim()
-          };
-        }
-        return item;
-      }));
+      const atualizado: EquipamentoSegurancaSCIE = {
+        ...(equipamentosSCIE.find(item => item.id === editingScieId) as EquipamentoSegurancaSCIE),
+        tipo: scieTipo,
+        localizacao: scieLocalizacao.trim(),
+        quantidade: Math.max(1, parseInt(scieQuantidade) || 1),
+        especificacao: scieEspecificacao.trim() || scieTipo,
+        dataUltimaRevisao: scieDataUltimaRevisao || new Date().toISOString().split("T")[0],
+        dataValidade: scieDataValidade,
+        empresaCertificada: scieEmpresaCertificada.trim() || "Entidade Especializada Certificada",
+        observacoes: scieObservacoes.trim()
+      };
+      const ok = await saveEquipamentoScieToSupabase(atualizado);
+      if (!ok) {
+        alert("❌ Não foi possível guardar no Supabase. Tente novamente.");
+        return;
+      }
+      setEquipamentosSCIE(prev => prev.map(item => item.id === editingScieId ? atualizado : item));
     } else {
       // Adicionar novo equipamento
       const novo: EquipamentoSegurancaSCIE = {
@@ -404,6 +412,11 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
         empresaCertificada: scieEmpresaCertificada.trim() || "Entidade Especializada Certificada",
         observacoes: scieObservacoes.trim()
       };
+      const ok = await saveEquipamentoScieToSupabase(novo);
+      if (!ok) {
+        alert("❌ Não foi possível guardar no Supabase. Tente novamente.");
+        return;
+      }
       setEquipamentosSCIE(prev => [...prev, novo]);
     }
 
@@ -573,7 +586,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
   };
 
   // SUBMIT VISTORIA
-  const handleSubmeterVistoria = (e: React.FormEvent) => {
+  const handleSubmeterVistoria = async (e: React.FormEvent) => {
     e.preventDefault();
     if (activeProfile === "LIMPEZAS") {
       alert("Apenas Administradores ou Técnicos de Vistoria credenciados podem registar anomalias.");
@@ -585,7 +598,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
     }
 
     const novaVist: Vistoria = {
-      id_vistoria: "vist-" + (vistorias.length + 1),
+      id_vistoria: "vist-" + Date.now(),
       id_predio: predio.id_predio,
       data: vData,
       tecnico: vTecnico,
@@ -600,9 +613,15 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
       alerta_automatico: vAlertaAutomatico
     };
 
+    const ok = await saveVistoriaToSupabase(novaVist);
+    if (!ok) {
+      alert("❌ Não foi possível guardar a vistoria no Supabase. Tente novamente.");
+      return;
+    }
+
     setVistorias([novaVist, ...vistorias]);
     alert("Vistoria técnica registada com sucesso! Anomalia adicionada ao cadastro e alertas automáticos programados.");
-    
+
     // Reset form
     setVData("");
     setVTecnico("");
@@ -617,7 +636,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
   };
 
   // SUBMIT LIMPEZA
-  const handleSubmeterLimpeza = (e: React.FormEvent) => {
+  const handleSubmeterLimpeza = async (e: React.FormEvent) => {
     e.preventDefault();
     if (activeProfile === "TECNICO") {
       alert("Apenas Administradores ou Empresas de Limpezas autorizadas podem registar execuções de limpeza.");
@@ -632,7 +651,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
     const faltantes = obrigatorias.filter(a => !lAreas.includes(a));
 
     const novaLimp: Limpeza = {
-      id_limpeza: "limp-" + (limpezas.length + 1),
+      id_limpeza: "limp-" + Date.now(),
       id_predio: predio.id_predio,
       data: lData,
       hora: lHora,
@@ -642,12 +661,18 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
       fotos: lFotos
     };
 
+    const okLimp = await saveLimpezaToSupabase(novaLimp);
+    if (!okLimp) {
+      alert("❌ Não foi possível guardar a limpeza no Supabase. Tente novamente.");
+      return;
+    }
     setLimpezas([novaLimp, ...limpezas]);
 
     if (faltantes.length > 0) {
       // Trigger automatic non-compliance alert
       const novaInc = {
-        id: "INC-AUTO-" + (incidenciasLimpeza.length + 100),
+        id: "INC-AUTO-" + Date.now(),
+        id_predio: predio.id_predio,
         data: lData,
         hora: lHora,
         operador: lExecutor,
@@ -657,6 +682,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
         estado: "Pendente" as const,
         foto: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80"
       };
+      await saveIncidenciaLimpezaToSupabase(novaInc);
       setIncidenciasLimpeza(prev => [novaInc, ...prev]);
       alert(`⚠️ Execução registada, MAS gerou um Alerta Automático de Incumprimento para o Gestor! Áreas obrigatórias não limpas: ${faltantes.join(", ")}`);
     } else {
@@ -677,8 +703,16 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
     );
   };
 
-  const alterarEstadoVistoria = (id: string, novoEstado: "Identificada" | "Em Resolução" | "Resolvida") => {
-    setVistorias(vistorias.map(v => v.id_vistoria === id ? { ...v, estado: novoEstado } : v));
+  const alterarEstadoVistoria = async (id: string, novoEstado: "Identificada" | "Em Resolução" | "Resolvida") => {
+    const atual = vistorias.find(v => v.id_vistoria === id);
+    if (!atual) return;
+    const atualizada = { ...atual, estado: novoEstado };
+    const ok = await saveVistoriaToSupabase(atualizada);
+    if (!ok) {
+      alert("❌ Não foi possível atualizar o estado no Supabase. Tente novamente.");
+      return;
+    }
+    setVistorias(vistorias.map(v => v.id_vistoria === id ? atualizada : v));
   };
 
   // EXPORT VISTORIAS TO XLS
@@ -2122,14 +2156,15 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
               </div>
 
               <form
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
                   if (!incLocal || !incDescricao) {
                     alert("Preencha o local e a descrição da incidência!");
                     return;
                   }
                   const nova: any = {
-                    id: `INC-${100 + incidenciasLimpeza.length + 1}`,
+                    id: `INC-${Date.now()}`,
+                    id_predio: predio.id_predio,
                     data: new Date().toLocaleDateString("pt-PT"),
                     hora: new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }),
                     operador: loggedUser.nome || "Equipa de Limpezas",
@@ -2139,6 +2174,11 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                     estado: "Pendente",
                     foto: incFoto || undefined
                   };
+                  const ok = await saveIncidenciaLimpezaToSupabase(nova);
+                  if (!ok) {
+                    alert("❌ Não foi possível guardar a incidência no Supabase. Tente novamente.");
+                    return;
+                  }
                   setIncidenciasLimpeza([nova, ...incidenciasLimpeza]);
                   setIncLocal("");
                   setIncDescricao("");
