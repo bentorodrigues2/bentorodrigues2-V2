@@ -11,23 +11,22 @@ export async function subscribeUserToPush(registration?: ServiceWorkerRegistrati
     let subscription = await swReg.pushManager.getSubscription();
 
     if (!subscription) {
-      // In production, user provides VAPID public key. Here we generate/pass or use raw push
-      const applicationServerKey = 'BEl62iUYgUivxIkv69yViEuiBIa-m9GYZuWK30Mms2F61QGGvS9P6P1jV_T8sXyJp2k1j5g00X3x_demo_key';
+      const applicationServerKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+      if (!applicationServerKey) {
+        console.warn('[WebPush] VITE_VAPID_PUBLIC_KEY não configurada — não é possível subscrever notificações reais.');
+        return null;
+      }
+      // Se a subscrição real falhar (chave inválida, permissão negada pelo
+      // utilizador, etc.), devolve null — nunca uma subscrição fabricada, que
+      // pareceria funcionar mas nunca receberia nenhuma notificação real.
       try {
         subscription = await swReg.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(applicationServerKey)
         });
       } catch (e) {
-        console.info('[WebPush] Utilizando subscrição simulada para ambiente de testes local/container.');
-        // Return simulated subscription object if VAPID key registration fails in sandbox
-        return {
-          endpoint: 'https://fcm.googleapis.com/fcm/send/condomanager-pwa-sub-id',
-          expirationTime: null,
-          options: { userVisibleOnly: true, applicationServerKey: null },
-          getKey: () => new ArrayBuffer(0),
-          toJSON: () => ({ endpoint: 'https://fcm.googleapis.com/fcm/send/condomanager-pwa-sub-id' })
-        } as unknown as PushSubscription;
+        console.error('[WebPush] Falha ao subscrever notificações push:', e);
+        return null;
       }
     }
 

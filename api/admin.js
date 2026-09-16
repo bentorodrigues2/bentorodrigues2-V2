@@ -3,6 +3,14 @@ import { supabase } from "../server/lib/supabaseServer.js";
 import { enviarEmailSemAnexo } from "../server/lib/mailer.js";
 import { gerarHtmlResposta } from "../server/lib/htmlemail.js";
 import { enviarEmailResend } from "../server/lib/inboundProcessor.js";
+import webpush from "web-push";
+
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:administracao@condomanagerai.com";
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+}
 
 const JOBS = {
   EMISSAO_MENSAL_QUOTAS: emitirQuotasMensais,
@@ -164,6 +172,48 @@ export default async function handler(req, res) {
     } catch (err) {
       console.error("Erro em /api/admin?acao=rejeitar-resposta-ia:", err);
       return res.status(500).json({ error: err?.message || String(err) });
+    }
+  }
+
+  if (acao === "enviar-push") {
+    try {
+      if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+        return res.status(500).json({ error: "Chaves VAPID não configuradas no servidor." });
+      }
+      const { id_predio, id_fracao, title, body, url } = req.body || {};
+      if (!id_predio || !title || !body) {
+        return res.status(400).json({ error: "id_predio, title e body são obrigatórios" });
+      }
+
+      let query = supabase.from("push_subscriptions").select("id, endpoint, subscription").eq("id_predio", id_predio);
+      if (id_fracao) query = query.eq("id_fracao", id_fracao);
+      const { data: subs, error: errSubs } = await query;
+      if (errSubs) throw new Error(errSubs.message);
+
+      const payload = JSON.stringify({ title, body, url: url || "/" });
+      let enviados = 0;
+      let expirados = 0;
+
+      for (const row of subs || []) {
+        try {
+          await webpush.sendNotification(row.subscription, payload);
+          enviados += 1;
+        } catch (err) {
+          // 404/410 = subscrição já não existe do lado do browser/fornecedor
+          // de push — deixa de fazer sentido guardá-la, limpa-se sozinha.
+          if (err?.statusCode === 404 || err?.statusCode === 410) {
+            await supabase.from("push_subscriptions").delete().eq("id", row.id);
+            expirados += 1;
+          } else {
+            console.warn("[api/admin?acao=enviar-push] Falha ao enviar para uma subscrição:", err?.message || err);
+          }
+        }
+      }
+
+      return res.status(200).json({ ok: true, total_subscricoes: (subs || []).length, enviados, expirados_removidas: expirados });
+    } catch (err) {
+      console.error("Erro em /api/admin?acao=enviar-push:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao enviar notificações push" });
     }
   }
 

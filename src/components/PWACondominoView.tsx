@@ -31,8 +31,10 @@ import {
   fetchSondagensFromSupabase,
   saveVotoSondagemToSupabase,
   fetchQuestionariosFromSupabase,
-  saveRespostaQuestionarioToSupabase
+  saveRespostaQuestionarioToSupabase,
+  savePushSubscriptionToSupabase
 } from "../lib/supabaseService";
+import { subscribeUserToPush } from "../utils/subscribeUser";
 
 interface TicketMensagem {
   id_conversa: string;
@@ -261,6 +263,48 @@ export default function PWACondominoView({
   const jaVotouSondagem = (s: Sondagem) => (s.votos || []).some(v => v.id_fracao === condominoFracao?.id_fracao);
   const jaRespondeuQuestionario = (q: Questionario) => (q.respostas || []).some(r => r.id_fracao === condominoFracao?.id_fracao);
   const sondagensPorVotar = sondagensFeed.filter(s => s.estado === "ativa" && !jaVotouSondagem(s));
+
+  // Notificações push reais — a subscrição fica gravada no Supabase e passa
+  // a receber os envios reais disparados em Gestão de Comunicações (novo
+  // comunicado, sondagem ou questionário).
+  const [pushAtivo, setPushAtivo] = useState(
+    typeof Notification !== "undefined" && Notification.permission === "granted"
+  );
+  const [ativandoPush, setAtivandoPush] = useState(false);
+
+  const handleAtivarPush = async () => {
+    if (ativandoPush) return;
+    setAtivandoPush(true);
+    try {
+      if (typeof Notification === "undefined") {
+        alert("Este dispositivo/navegador não suporta notificações push.");
+        return;
+      }
+      const permissao = await Notification.requestPermission();
+      if (permissao !== "granted") {
+        alert("Permissão de notificações não concedida.");
+        return;
+      }
+      const subscription = await subscribeUserToPush();
+      if (!subscription) {
+        alert("❌ Não foi possível ativar as notificações neste dispositivo.");
+        return;
+      }
+      const ok = await savePushSubscriptionToSupabase({
+        idPredio: predio.id_predio,
+        idFracao: condominoFracao?.id_fracao,
+        subscription
+      });
+      if (ok) {
+        setPushAtivo(true);
+        alert("✅ Notificações ativadas! Vai receber avisos, sondagens e comunicados urgentes neste dispositivo.");
+      } else {
+        alert("❌ Não foi possível guardar a subscrição no Supabase. Tente novamente.");
+      }
+    } finally {
+      setAtivandoPush(false);
+    }
+  };
 
   const handleVotarSondagemReal = async (idSondagem: string, opcao: string) => {
     if (!condominoFracao?.id_fracao || aEnviarVoto) return;
@@ -2527,6 +2571,28 @@ export default function PWACondominoView({
                     setSimulatingScan={setSimulatingScan}
                     setSimulatingScanProgress={setSimulatingScanProgress}
                   />
+                </div>
+
+                {/* NOTIFICAÇÕES PUSH REAIS */}
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 dark:text-white block">🔔 Notificações Push</span>
+                      <span className="text-[9.5px] text-slate-400">Receba avisos, sondagens e comunicados urgentes neste dispositivo</span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={pushAtivo || ativandoPush}
+                      onClick={handleAtivarPush}
+                      className={`shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
+                        pushAtivo
+                          ? "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 cursor-default"
+                          : "bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
+                      }`}
+                    >
+                      {pushAtivo ? "✓ Ativado" : ativandoPush ? "A ativar..." : "Ativar"}
+                    </button>
+                  </div>
                 </div>
 
               </div>

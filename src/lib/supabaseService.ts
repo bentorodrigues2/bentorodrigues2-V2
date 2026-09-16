@@ -1635,3 +1635,29 @@ export async function saveIncidenciaLimpezaToSupabase(inc: IncidenciaLimpezaRow)
   return dbInsert("incidencias_limpeza", inc);
 }
 
+// ============================================================================
+// NOTIFICAÇÕES PUSH (subscrições reais — ver src/utils/subscribeUser.ts)
+// ============================================================================
+
+export async function savePushSubscriptionToSupabase(params: {
+  idPredio?: string;
+  idFracao?: string;
+  userId?: string;
+  subscription: PushSubscription;
+}): Promise<boolean> {
+  const raw = params.subscription.toJSON();
+  if (!raw.endpoint) return false;
+  return dbUpsert("push_subscriptions", {
+    id_predio: params.idPredio || null,
+    id_fracao: params.idFracao || null,
+    user_id: params.userId || null,
+    endpoint: raw.endpoint,
+    subscription: raw,
+    updated_at: new Date().toISOString()
+  }, { onConflict: "endpoint" });
+}
+
+export async function deletePushSubscriptionFromSupabase(endpoint: string): Promise<boolean> {
+  return dbDelete("push_subscriptions", [["endpoint", "eq", endpoint]]);
+}
+

@@ -106,6 +106,19 @@ export function GestaoComunicacoes({
       setComunicadosList(prev => [{ ...novoComunicado, created_at: new Date().toISOString() }, ...prev]);
       setComunicadoTitulo("");
       setComunicadoMensagem("");
+
+      // Notificação push real (além do email) — silenciosa se ninguém tiver
+      // subscrito ainda neste prédio.
+      fetch("/api/admin?acao=enviar-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_predio: predio.id_predio,
+          title: comunicadoUrgencia === "urgente" ? `🚨 ${novoComunicado.titulo}` : novoComunicado.titulo,
+          body: novoComunicado.mensagem
+        })
+      }).catch(() => {});
+
       alert(`Comunicado enviado com sucesso a ${data.total_enviados} de ${data.total_destinatarios} destinatário(s)!`);
     } catch (err: any) {
       alert("Erro ao enviar o comunicado: " + (err?.message || "erro desconhecido"));
@@ -271,6 +284,16 @@ export function GestaoComunicacoes({
       const ok = await saveSondagemToSupabase(nova);
       if (!ok) throw new Error("Falha ao gravar sondagem");
 
+      fetch("/api/admin?acao=enviar-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_predio: predio.id_predio,
+          title: "🗳️ Nova Sondagem",
+          body: sondagemPergunta
+        })
+      }).catch(() => {});
+
       if (destinatariosPredio.length > 0) {
         await fetch("/api/email?acao=broadcast", {
           method: "POST",
@@ -346,6 +369,16 @@ export function GestaoComunicacoes({
       };
       const ok = await saveQuestionarioToSupabase(novo);
       if (!ok) throw new Error("Falha ao gravar questionário");
+
+      fetch("/api/admin?acao=enviar-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_predio: predio.id_predio,
+          title: "📋 Novo Questionário",
+          body: questTitulo
+        })
+      }).catch(() => {});
 
       if (destinatariosPredio.length > 0) {
         await fetch("/api/email?acao=broadcast", {

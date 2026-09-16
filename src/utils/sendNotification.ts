@@ -27,8 +27,11 @@ export interface SendNotificationResult {
 }
 
 /**
- * Edge Function simulation: Receives user_id, type, category, title, body.
- * Checks user_id notification_preferences and sends notification via WebPush / Notification API.
+ * Mostra uma notificação LOCAL no dispositivo atual (via Service Worker ou
+ * a API Notification do browser) — só funciona enquanto esta aba/app está
+ * aberta neste dispositivo, não chega a outros dispositivos. Para um envio
+ * real (rede, outros dispositivos, app fechada), ver api/admin.js
+ * (?acao=enviar-push) + src/utils/subscribeUser.ts.
  */
 export async function sendNotification(payload: SendNotificationPayload): Promise<SendNotificationResult> {
   const { user_id, category, title, body, url = '/' } = payload;
@@ -60,7 +63,7 @@ export async function sendNotification(payload: SendNotificationPayload): Promis
           data: { url, category, user_id, sentAt: new Date().toISOString() }
         } as NotificationOptions);
 
-        console.log(`[Edge Function sendNotification] WebPush enviado com sucesso via SW para ${user_id} [${category}]`);
+        console.log(`[sendNotification] Notificação local mostrada via Service Worker (só este dispositivo) para ${user_id} [${category}]`);
         return {
           success: true,
           sent: true,
