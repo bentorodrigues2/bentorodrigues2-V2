@@ -254,7 +254,7 @@ export function IAConciliacao({ predio, fracoes, avisos, setAvisos, movements, s
         <div className="space-y-1.5">
           <div className="flex items-center space-x-2">
             <span className="p-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1">
-              <Sparkles className="h-3.5 w-3.5" /> IA & Automação Bancária
+              <Sparkles className="h-3.5 w-3.5" /> Correspondência Automática Bancária
             </span>
             <span className="text-xs text-slate-300 font-mono">OFX / CSV / TXT</span>
           </div>
@@ -329,7 +329,7 @@ export function IAConciliacao({ predio, fracoes, avisos, setAvisos, movements, s
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
           >
             {processando ? (
-              <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> <span>A Analisar com Gemini IA...</span></>
+              <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> <span>A Analisar Extrato...</span></>
             ) : (
               <><Sparkles className="h-3.5 w-3.5" /> <span>Mapear & Conciliar Movimentos</span></>
             )}
@@ -439,7 +439,7 @@ export function IAConciliacao({ predio, fracoes, avisos, setAvisos, movements, s
                           </span>
                         ) : (
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${tx.confianca_percent >= 90 ? "bg-indigo-100 text-indigo-800 border border-indigo-200" : "bg-amber-100 text-amber-800"}`}>
-                            Confiança IA: {tx.confianca_percent}%
+                            Confiança da Correspondência: {tx.confianca_percent}%
                           </span>
                         )}
                       </div>

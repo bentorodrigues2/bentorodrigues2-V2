@@ -1,11 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
-import { LoggedUser, Fornecedor } from "../types";
+import { LoggedUser, Fornecedor, Predio, Documento } from "../types";
 import { formatQuotaReceiptNumber } from "../utils";
+import { saveFornecedorToSupabase, saveDocumentoToSupabase, savePushSubscriptionToSupabase, registarLogAuditoria } from "../lib/supabaseService";
+import { supabase } from "../lib/supabaseClient";
+import { subscribeUserToPush } from "../utils/subscribeUser";
 
 interface PWASupplierCardsViewProps {
   loggedUser: LoggedUser;
   fornecedores: Fornecedor[];
+  predio?: Predio;
   onUpdateFornecedor?: (updated: Fornecedor) => void;
+  onAddDocumento?: (doc: Documento) => void;
   onClose?: () => void;
   initialTab?: "perfil" | "seguranca" | "financeiro";
 }
@@ -13,6 +18,8 @@ interface PWASupplierCardsViewProps {
 export function PWASupplierCardsView({
   loggedUser,
   fornecedores,
+  predio,
+  onAddDocumento,
   onUpdateFornecedor,
   onClose,
   initialTab = "perfil"
@@ -83,6 +90,7 @@ export function PWASupplierCardsView({
       foto: fotoWebp || undefined
     };
     if (onUpdateFornecedor) onUpdateFornecedor(updated);
+    saveFornecedorToSupabase(updated).catch(console.error);
     alert("✅ Perfil profissional do fornecedor atualizado com sucesso!");
   };
 
@@ -90,16 +98,55 @@ export function PWASupplierCardsView({
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [notifEmail, setNotifEmail] = useState(true);
-  const [notifPush, setNotifPush] = useState(true);
-  const [notifSms, setNotifSms] = useState(false);
+  const [pushAtivo, setPushAtivo] = useState(false);
+  const [ativandoPush, setAtivandoPush] = useState(false);
+  const handleAtivarPush = async () => {
+    if (ativandoPush) return;
+    setAtivandoPush(true);
+    try {
+      if (typeof Notification === "undefined") {
+        alert("Este dispositivo/navegador não suporta notificações push.");
+        return;
+      }
+      const permissao = await Notification.requestPermission();
+      if (permissao !== "granted") {
+        alert("Permissão de notificações não concedida.");
+        return;
+      }
+      const subscription = await subscribeUserToPush();
+      if (!subscription) {
+        alert("❌ Não foi possível ativar as notificações neste dispositivo.");
+        return;
+      }
+      const ok = await savePushSubscriptionToSupabase({
+        idPredio: predio?.id_predio,
+        subscription
+      });
+      if (ok) {
+        setPushAtivo(true);
+        alert("✅ Notificações push ativadas neste dispositivo!");
+      } else {
+        alert("❌ Não foi possível guardar a subscrição.");
+      }
+    } finally {
+      setAtivandoPush(false);
+    }
+  };
   const [biometriaAtiva, setBiometriaAtiva] = useState(true);
 
-  const handleUpdatePassword = (e: React.FormEvent) => {
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword.length < 6) return alert("A nova palavra-passe deve conter pelo menos 6 caracteres!");
     if (newPassword !== confirmPassword) return alert("As palavras-passes introduzidas não coincidem!");
-    alert("🔐 Palavra-passe e parâmetros de segurança atualizados com sucesso!");
+    setUpdatingPassword(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setUpdatingPassword(false);
+    if (error) {
+      alert("❌ Erro ao atualizar a palavra-passe: " + error.message);
+      return;
+    }
+    alert("🔐 Palavra-passe atualizada com sucesso!");
     setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
   };
 
@@ -169,53 +216,76 @@ export function PWASupplierCardsView({
     setHasSignature(false);
   };
 
-  // AI Receipt Upload Handler
+  const [aiUploadError, setAiUploadError] = useState<string | null>(null);
+  const lerFicheiroComoBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1] || "");
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  // AI Receipt Upload Handler — lê mesmo o ficheiro com o motor real de IA
+  // multimodal (Gemini Vision), já usado noutros leitores de documentos da
+  // app; antes enviava só o nome do ficheiro para um endpoint que só lê
+  // texto, nunca lia o conteúdo, e mostrava sempre os mesmos dados fixos.
   const handleAiFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploadingAi(true);
     setAiResult(null);
+    setAiUploadError(null);
 
     try {
-      const res = await fetch("/api/reconhecer-recibo", {
+      const base64 = await lerFicheiroComoBase64(file);
+      const res = await fetch("/api/ai?acao=reconhecer-anexo", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-role": loggedUser.role,
-          "x-user-email": loggedUser.email || "fornecedor@empresa.pt"
-        },
-        body: JSON.stringify({
-          fileName: file.name,
-          defaultCategory: myFornecedor.categoria,
-          fornecedorNome: myFornecedor.nome
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base64, mimeType: file.type || "application/octet-stream" })
       });
-      const data = await res.json();
-      setUploadingAi(false);
-      if (data.recibo) {
-        setAiResult(data.recibo);
-      } else {
-        throw new Error("Não foi possível ler o ficheiro.");
+      const resultado = await res.json();
+      if (!res.ok || !resultado.ok) {
+        throw new Error(resultado?.error || "A IA não conseguiu ler este documento.");
       }
-    } catch (err) {
-      setUploadingAi(false);
-      // Fallback
+      const dados = resultado.dados || {};
       setAiResult({
-        nif: myFornecedor.nif || "500112233",
-        valor: 135.00,
-        mes: "07/2026",
-        categoria: myFornecedor.categoria || "Manutenção Elevadores",
-        iban: iban || "PT50003344556677889900112",
-        data: new Date().toLocaleDateString("pt-PT"),
-        fornecedor_nome: myFornecedor.nome,
-        resumo: "Recibo de prestação de serviço mensal analisado e validado por IA."
+        nif: dados.nif || myFornecedor.nif || "",
+        valor: Number(dados.valor_total) || 0,
+        mes: dados.data_documento || "",
+        categoria: dados.categoria_contabilistica || myFornecedor.categoria || "",
+        iban: iban || "",
+        data: dados.data_documento || new Date().toLocaleDateString("pt-PT"),
+        fornecedor_nome: dados.entidade || myFornecedor.nome,
+        resumo: `Leitura real por IA (Gemini Vision): ${dados.entidade || myFornecedor.nome}, ${Number(dados.valor_total || 0).toFixed(2)}€.`
       });
+    } catch (err: any) {
+      setAiUploadError(err?.message || "Não foi possível ler o ficheiro.");
+    } finally {
+      setUploadingAi(false);
     }
   };
 
   const handleConfirmAiReceipt = () => {
     const num = formatQuotaReceiptNumber(Math.floor(100 + Math.random() * 900));
+    if (onAddDocumento && predio) {
+      onAddDocumento({
+        id_doc: `doc-rec-forn-${Date.now()}`,
+        id_predio: predio.id_predio,
+        nome: `Recibo_${myFornecedor.nome.replace(/\s+/g, "_")}_${num}.pdf`,
+        tipo: "Recibo de Fornecedor",
+        data_upload: new Date().toISOString().split("T")[0],
+        tamanho: "",
+        categoria: aiResult.categoria || "Fornecedores",
+        descricao: `Recibo nº ${num} — ${aiResult.resumo || ""}. Valor: ${aiResult.valor}€.`,
+        visibilidade: "Administração",
+        autor: myFornecedor.nome,
+        tema: "Fornecedores",
+        ano: new Date().getFullYear().toString(),
+        fornecedor: myFornecedor.nome
+      });
+      registarLogAuditoria("Financeira", `Fornecedor "${myFornecedor.nome}" submeteu recibo nº ${num}`, predio.id_predio, loggedUser, `${aiResult.valor}€`);
+    }
     alert(`🎉 Recibo de Cobrança emitido com sucesso!\n\nNúmero Oficial: ${num}\nFornecedor: ${myFornecedor.nome}\nValor: ${aiResult.valor}€\nCategoria: ${aiResult.categoria}\n\nEnviado para validação na gestão financeira do condomínio.`);
     setAiResult(null);
   };
@@ -225,6 +295,26 @@ export function PWASupplierCardsView({
     if (!hasSignature) return alert("Por favor assine electronicamente o recibo no quadro abaixo!");
 
     const num = formatQuotaReceiptNumber(Math.floor(100 + Math.random() * 900));
+    const assinaturaBase64 = canvasRef.current?.toDataURL("image/png");
+    if (onAddDocumento && predio) {
+      onAddDocumento({
+        id_doc: `doc-rec-forn-${Date.now()}`,
+        id_predio: predio.id_predio,
+        nome: `Recibo_Manual_${myFornecedor.nome.replace(/\s+/g, "_")}_${num}.pdf`,
+        tipo: "Recibo de Fornecedor",
+        data_upload: new Date().toISOString().split("T")[0],
+        tamanho: "",
+        categoria: reciboCategoria,
+        descricao: `Recibo manual nº ${num} — NIF: ${reciboNif}, IBAN: ${reciboIban}, Mês: ${reciboMes}. Valor: ${reciboValor}€.`,
+        visibilidade: "Administração",
+        autor: myFornecedor.nome,
+        tema: "Fornecedores",
+        ano: new Date().getFullYear().toString(),
+        fornecedor: myFornecedor.nome,
+        url_foto: assinaturaBase64
+      });
+      registarLogAuditoria("Financeira", `Fornecedor "${myFornecedor.nome}" submeteu recibo manual nº ${num}`, predio.id_predio, loggedUser, `${reciboValor}€`);
+    }
     alert(`🎉 Recibo Manual emitido e assinado com sucesso!\n\nNúmero Oficial: ${num}\nNIF: ${reciboNif}\nIBAN: ${reciboIban}\nValor: ${reciboValor}€\nMês: ${reciboMes}\nCategoria: ${reciboCategoria}\n\nAssinatura digital anexada ao documento.`);
     clearCanvas();
   };
@@ -400,18 +490,20 @@ export function PWASupplierCardsView({
               </h3>
 
               <div className="space-y-2">
-                <label className="flex items-center justify-between p-2 bg-slate-900 rounded-lg border border-slate-800 cursor-pointer">
-                  <span>E-mail para novas intervenções</span>
-                  <input type="checkbox" checked={notifEmail} onChange={e => setNotifEmail(e.target.checked)} className="accent-emerald-500 w-4 h-4" />
-                </label>
-                <label className="flex items-center justify-between p-2 bg-slate-900 rounded-lg border border-slate-800 cursor-pointer">
-                  <span>Notificações Push PWA</span>
-                  <input type="checkbox" checked={notifPush} onChange={e => setNotifPush(e.target.checked)} className="accent-emerald-500 w-4 h-4" />
-                </label>
-                <label className="flex items-center justify-between p-2 bg-slate-900 rounded-lg border border-slate-800 cursor-pointer">
-                  <span>Alertas SMS de Emergência</span>
-                  <input type="checkbox" checked={notifSms} onChange={e => setNotifSms(e.target.checked)} className="accent-emerald-500 w-4 h-4" />
-                </label>
+                <div className="flex items-center justify-between p-2 bg-slate-900 rounded-lg border border-slate-800">
+                  <span>Notificações Push neste dispositivo</span>
+                  <button
+                    type="button"
+                    onClick={handleAtivarPush}
+                    disabled={ativandoPush || pushAtivo}
+                    className={`px-3 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
+                      pushAtivo ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" : "bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700"
+                    }`}
+                  >
+                    {pushAtivo ? "✓ Ativas" : ativandoPush ? "A ativar..." : "Ativar"}
+                  </button>
+                </div>
+                <p className="text-[9px] text-slate-500">E-mail e SMS de emergência: em breve.</p>
               </div>
             </div>
 
@@ -487,7 +579,13 @@ export function PWASupplierCardsView({
                 {uploadingAi && (
                   <div className="p-4 bg-slate-900 rounded-xl border border-emerald-500/30 text-center space-y-2 animate-pulse">
                     <div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                    <p className="text-emerald-400 font-bold text-xs">A analisar recibo com Motor Server-Side Gemini IA...</p>
+                    <p className="text-emerald-400 font-bold text-xs">A analisar recibo com Gemini Vision...</p>
+                  </div>
+                )}
+
+                {aiUploadError && (
+                  <div className="p-4 bg-red-950/60 rounded-xl border border-red-700/50 text-xs font-bold text-red-300">
+                    ❌ {aiUploadError}
                   </div>
                 )}
 

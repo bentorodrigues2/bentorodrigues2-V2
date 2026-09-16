@@ -2861,6 +2861,8 @@ export function PWASimulator({
                             <PWASupplierCardsView
                               loggedUser={loggedUser}
                               fornecedores={fornecedores}
+                              predio={predio}
+                              onAddDocumento={(doc) => { setDocumentos(prev => [...prev, doc]); saveDocumentoToSupabase(doc).catch(console.error); }}
                               onUpdateFornecedor={(updated) => {
                                 if (setFornecedores) {
                                   setFornecedores(prev => prev.map(f => f.id_fornecedor === updated.id_fornecedor ? updated : f));
@@ -3048,7 +3050,7 @@ export function PWASimulator({
                         <GestaoDocumentos 
                           predio={predio}
                           documentos={documentos}
-                          onAddDocumento={(doc) => setDocumentos(prev => [...prev, doc])}
+                          onAddDocumento={(doc) => { setDocumentos(prev => [...prev, doc]); saveDocumentoToSupabase(doc).catch(console.error); }}
                           setDocumentos={setDocumentos}
                           loggedUser={loggedUser}
                         />
@@ -3173,7 +3175,7 @@ export function PWASimulator({
                           fracoes={fracoes}
                           avisos={avisos}
                           loggedUser={loggedUser}
-                          onAddDocumento={(doc) => setDocumentos(prev => [...prev, doc])}
+                          onAddDocumento={(doc) => { setDocumentos(prev => [...prev, doc]); saveDocumentoToSupabase(doc).catch(console.error); }}
                           initialTab="geral"
                         />
                       )}
@@ -3216,7 +3218,7 @@ export function PWASimulator({
                           fracoes={fracoes}
                           avisos={avisos}
                           loggedUser={loggedUser}
-                          onAddDocumento={(doc) => setDocumentos(prev => [...prev, doc])}
+                          onAddDocumento={(doc) => { setDocumentos(prev => [...prev, doc]); saveDocumentoToSupabase(doc).catch(console.error); }}
                           initialTab="geral"
                         />
                       )}
