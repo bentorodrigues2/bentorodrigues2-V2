@@ -15,7 +15,10 @@ import {
   fetchOcorrenciasFromSupabase,
   fetchReservasFromSupabase,
   fetchFornecedoresFromSupabase,
-  saveDocumentoToSupabase
+  saveDocumentoToSupabase,
+  saveOcorrenciaToSupabase,
+  saveReservaToSupabase,
+  saveContaToSupabase
 } from "./lib/supabaseService";
 import { PainelControlo } from "./components/PainelControlo";
 import { GestaoPredios } from "./components/GestaoPredios";
@@ -568,12 +571,16 @@ export default function App() {
   };
 
   const handleSetPrincipalConta = (idConta: string) => {
+    const contasAtualizadas = contas
+      .filter(c => c.id_predio === activePredioId)
+      .map(c => ({ ...c, is_principal: c.id_conta === idConta }));
     setContas(contas.map(c => {
       if (c.id_predio === activePredioId) {
         return { ...c, is_principal: c.id_conta === idConta };
       }
       return c;
     }));
+    contasAtualizadas.forEach(c => saveContaToSupabase(c).catch(console.error));
   };
 
   const handleAddReuniao = (novaReuniao: Reuniao) => {
@@ -582,11 +589,33 @@ export default function App() {
 
   const handleAddOcorrencia = (novaOcorrencia: Ocorrencia) => {
     setOcorrencias([novaOcorrencia, ...ocorrencias]);
+    saveOcorrenciaToSupabase(novaOcorrencia).catch(console.error);
+
     // Alarm notification to internal administrators
     const adms = fracoes.filter(f => f.id_predio === activePredioId && f.administrador_interno === "Sim");
     adms.forEach(adm => {
-      console.log(`[Alerta Push & E-mail] Enviado para Administrador Interno: ${adm.proprietario.nome} (${adm.proprietario.email}) - Nova ocorrência registada.`);
+      if (!adm.proprietario.email) return;
+      fetch("/api/email?acao=notificar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: adm.proprietario.email,
+          nomeDestinatario: adm.proprietario.nome,
+          assunto: `Nova Ocorrência Registada — ${novaOcorrencia.categoria || "Condomínio"}`,
+          mensagem: `Foi registada uma nova ocorrência no condomínio.<br><br><strong>Descrição:</strong> ${novaOcorrencia.descricao}<br><strong>Data:</strong> ${novaOcorrencia.data}`
+        })
+      }).catch(console.error);
     });
+    fetch("/api/admin?acao=enviar-push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id_predio: activePredioId,
+        title: "🚨 Nova Ocorrência",
+        body: novaOcorrencia.descricao
+      })
+    }).catch(() => {});
+
     alert(`Alerta PWA disparado! Os Administradores Internos foram notificados por E-mail e Push sobre esta nova ocorrência.`);
   };
 

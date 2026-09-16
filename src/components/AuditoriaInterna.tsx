@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Predio, Conta, Fracao, Movimento, Documento, AuditLogEntry, LoggedUser } from "../types";
-import { fetchRegistoAuditoria, fetchDecisoesIA, DecisaoIA } from "../lib/supabaseService";
+import { fetchRegistoAuditoria, fetchDecisoesIA, DecisaoIA, registarLogAuditoria } from "../lib/supabaseService";
 
 interface AuditoriaInternaProps {
   predio: Predio;
@@ -94,6 +94,32 @@ export function AuditoriaInterna({
       })));
     });
   }, [predio.id_predio]);
+
+  const handleSolicitarApolice = async (fracao: Fracao) => {
+    const email = fracao.proprietario?.email;
+    if (!email) {
+      alert(`A fração ${fracao.fracao_nome} não tem email de proprietário registado.`);
+      return;
+    }
+    try {
+      const resp = await fetch("/api/email?acao=notificar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: email,
+          nomeDestinatario: fracao.proprietario.nome,
+          assunto: `Notificação Legal — Seguro de Incêndio da Fração ${fracao.fracao_nome}`,
+          mensagem: `Nos termos do <strong>Artigo 1429.º do Código Civil</strong>, é obrigatório o seguro contra o risco de incêndio da sua fração e das partes comuns do edifício.<br><br>Solicitamos o envio do comprovativo de apólice em vigor (ou da sua renovação) referente à fração <strong>${fracao.fracao_nome}</strong>, no mais curto espaço de tempo possível.`
+        })
+      });
+      const resultado = await resp.json();
+      if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar notificação");
+      registarLogAuditoria("Seguros", `Solicitou apólice de seguro à Fração ${fracao.fracao_nome}`, predio.id_predio, loggedUser);
+      alert(`Notificação enviada com sucesso para ${fracao.proprietario.nome} (${email}) solicitando envio de apólice de seguro atualizada.`);
+    } catch (err: any) {
+      alert(`Erro ao enviar a notificação: ${err?.message || "erro desconhecido"}`);
+    }
+  };
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState("");
@@ -1014,8 +1040,8 @@ export function AuditoriaInterna({
                       )}
                       
                       {(isExpired || !hasApolice) && (
-                        <button 
-                          onClick={() => alert(`Notificação enviada com sucesso para ${f.proprietario.nome} (${f.proprietario.email}) solicitando envio de apólice de seguro atualizada.`)}
+                        <button
+                          onClick={() => handleSolicitarApolice(f)}
                           className="mt-1.5 w-full py-1 text-[10px] font-bold text-center bg-indigo-50 hover:bg-indigo-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-indigo-600 dark:text-indigo-400 rounded border border-indigo-100 dark:border-slate-700 transition-all cursor-pointer"
                         >
                           <i className="fa-solid fa-envelope mr-1"></i> Solicitar Apólice

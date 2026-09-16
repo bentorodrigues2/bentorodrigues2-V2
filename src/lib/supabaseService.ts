@@ -1244,6 +1244,11 @@ export async function saveReservaToSupabase(reserva: Reserva): Promise<boolean> 
   });
 }
 
+export async function deleteReservaFromSupabase(idReserva: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbDelete("reservas", [["id_reserva", "eq", idReserva]]);
+}
+
 // ============================================================================
 // FORNECEDORES
 // ============================================================================

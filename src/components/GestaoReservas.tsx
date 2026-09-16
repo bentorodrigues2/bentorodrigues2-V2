@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Predio, Fracao, LoggedUser, Reserva, CapacidadeLimite } from "../types";
 import { formatDatePT, formatDateISO } from "../utils";
+import { saveReservaToSupabase, deleteReservaFromSupabase, registarLogAuditoria } from "../lib/supabaseService";
 
 interface GestaoReservasProps {
   predio: Predio;
@@ -225,7 +226,9 @@ export function GestaoReservas({
     };
 
     setReservas([...reservas, nova]);
-    
+    saveReservaToSupabase(nova).catch(console.error);
+    registarLogAuditoria("Reservas", `Criou uma reserva para "${areaComum}"`, predio.id_predio, loggedUser, `${formattedDate} ${horaInicio}-${horaFim}`);
+
     if (needsApproval) {
       alert(`O seu pedido de reserva para o espaço "${areaComum}" foi submetido com sucesso! Como este espaço requer aprovação regulamentar, a reserva aguarda validação por parte da Administração.`);
       setActiveSubTab("aprovacao");
@@ -245,7 +248,12 @@ export function GestaoReservas({
 
   const handleApproveReserva = (id: string) => {
     if (loggedUser.role !== "ADMIN") return alert("Apenas administradores podem aprovar reservas!");
+    const alvo = reservas.find(r => r.id_reserva === id);
     setReservas(prev => prev.map(r => r.id_reserva === id ? { ...r, estado: "Aprovado" } : r));
+    if (alvo) {
+      saveReservaToSupabase({ ...alvo, estado: "Aprovado" }).catch(console.error);
+      registarLogAuditoria("Reservas", `Aprovou a reserva de "${alvo.area_comum}"`, predio.id_predio, loggedUser);
+    }
     alert("Reserva aprovada com sucesso! O condómino foi notificado.");
   };
 
@@ -253,14 +261,24 @@ export function GestaoReservas({
     if (loggedUser.role !== "ADMIN") return alert("Apenas administradores podem rejeitar reservas!");
     const motivo = prompt("Indique o motivo da rejeição regulamentar:", "Conflito regulamentar ou falta de depósito de caução");
     if (motivo === null) return; // cancel
+    const alvo = reservas.find(r => r.id_reserva === id);
     setReservas(prev => prev.map(r => r.id_reserva === id ? { ...r, estado: "Rejeitado" } : r));
+    if (alvo) {
+      saveReservaToSupabase({ ...alvo, estado: "Rejeitado" }).catch(console.error);
+      registarLogAuditoria("Reservas", `Rejeitou a reserva de "${alvo.area_comum}"`, predio.id_predio, loggedUser, motivo);
+    }
     alert(`Reserva rejeitada. Motivo comunicado: "${motivo}".`);
   };
 
   const eliminarReserva = (id: string) => {
     const conf = confirm("Deseja realmente cancelar/remover esta reserva?");
     if (conf) {
+      const alvo = reservas.find(r => r.id_reserva === id);
       setReservas(prev => prev.filter(r => r.id_reserva !== id));
+      deleteReservaFromSupabase(id).catch(console.error);
+      if (alvo) {
+        registarLogAuditoria("Reservas", `Eliminou a reserva de "${alvo.area_comum}"`, predio.id_predio, loggedUser);
+      }
     }
   };
 
@@ -936,6 +954,7 @@ export function GestaoReservas({
                             onClick={() => {
                               if (confirm("Deseja eliminar definitivamente este registo histórico?")) {
                                 setReservas(prev => prev.filter(item => item.id_reserva !== r.id_reserva));
+                                deleteReservaFromSupabase(r.id_reserva).catch(console.error);
                               }
                             }}
                             className="p-1.5 text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-300 rounded-lg transition-all cursor-pointer active:scale-90 active:ring-2 active:ring-red-400 select-none"
