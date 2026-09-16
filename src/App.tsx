@@ -18,7 +18,9 @@ import {
   saveDocumentoToSupabase,
   saveOcorrenciaToSupabase,
   saveReservaToSupabase,
-  saveContaToSupabase
+  saveContaToSupabase,
+  fetchReunioesFromSupabase,
+  saveReuniaoToSupabase
 } from "./lib/supabaseService";
 import { PainelControlo } from "./components/PainelControlo";
 import { GestaoPredios } from "./components/GestaoPredios";
@@ -133,7 +135,8 @@ export default function App() {
         documentosReais,
         ocorrenciasReais,
         reservasReais,
-        fornecedoresReais
+        fornecedoresReais,
+        reunioesReais
       ] = await Promise.all([
         fetchPrediosFromSupabase(),
         fetchFracoesFromSupabase(),
@@ -143,7 +146,8 @@ export default function App() {
         fetchDocumentosFromSupabase(),
         fetchOcorrenciasFromSupabase(),
         fetchReservasFromSupabase(),
-        fetchFornecedoresFromSupabase()
+        fetchFornecedoresFromSupabase(),
+        fetchReunioesFromSupabase()
       ]);
 
       if (prediosReais) setPredios(prediosReais);
@@ -155,6 +159,7 @@ export default function App() {
       if (ocorrenciasReais) setOcorrencias(ocorrenciasReais);
       if (reservasReais) setReservas(reservasReais);
       if (fornecedoresReais) setFornecedores(fornecedoresReais);
+      if (reunioesReais) setReunioes(reunioesReais);
     })();
   }, []);
 
@@ -585,6 +590,7 @@ export default function App() {
 
   const handleAddReuniao = (novaReuniao: Reuniao) => {
     setReunioes([...reunioes, novaReuniao]);
+    saveReuniaoToSupabase(novaReuniao).catch(console.error);
   };
 
   const handleAddOcorrencia = (novaOcorrencia: Ocorrencia) => {

@@ -16,6 +16,7 @@ import {
 } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { VotacaoAssembleiaVirtual } from "./VotacaoAssembleiaVirtual";
+import { saveReuniaoToSupabase, deleteReuniaoFromSupabase, registarLogAuditoria } from "../lib/supabaseService";
 
 interface GestaoAssembleiasProps {
   predio: Predio;
@@ -275,9 +276,10 @@ Com os meus cumprimentos,
     });
 
     if (editingId) {
+      let reuniaoAtualizada: Reuniao | null = null;
       const atualizadas = reunioes.map(r => {
         if (r.id_reuniao === editingId) {
-          return {
+          reuniaoAtualizada = {
             ...r,
             tema,
             data: formatDatePT(data),
@@ -288,10 +290,15 @@ Com os meus cumprimentos,
             plataformaVideoconferencia: plataformaVideo,
             linkVideoconferencia: linkFinal
           };
+          return reuniaoAtualizada;
         }
         return r;
       });
       setReunioes(atualizadas);
+      if (reuniaoAtualizada) {
+        saveReuniaoToSupabase(reuniaoAtualizada).catch(console.error);
+        registarLogAuditoria("Assembleias", `Editou a assembleia "${tema}"`, predio.id_predio, loggedUser);
+      }
       setEditingId(null);
       alert("Assembleia atualizada com sucesso!");
     } else {
@@ -441,6 +448,8 @@ Com os meus cumprimentos,
     const conf = confirm("Deseja realmente cancelar esta assembleia agendada?");
     if (conf) {
       setReunioes(prev => prev.filter(r => r.id_reuniao !== id));
+      deleteReuniaoFromSupabase(id).catch(console.error);
+      registarLogAuditoria("Assembleias", "Cancelou/eliminou uma assembleia", predio.id_predio, loggedUser);
       if (selectedMeetingId === id) setSelectedMeetingId(null);
     }
   };
@@ -530,13 +539,10 @@ Com os meus cumprimentos,
     const currentPresences = activeMeeting.folha_presencas || {};
     const updatedPresences = { ...currentPresences, [fracaoId]: status };
 
-    const updatedReunioes = reunioes.map(r => {
-      if (r.id_reuniao === activeMeeting.id_reuniao) {
-        return { ...r, folha_presencas: updatedPresences };
-      }
-      return r;
-    });
+    const reuniaoAtualizada = { ...activeMeeting, folha_presencas: updatedPresences };
+    const updatedReunioes = reunioes.map(r => r.id_reuniao === activeMeeting.id_reuniao ? reuniaoAtualizada : r);
     setReunioes(updatedReunioes);
+    saveReuniaoToSupabase(reuniaoAtualizada).catch(console.error);
   };
 
   // Update proxy representative name
@@ -545,13 +551,10 @@ Com os meus cumprimentos,
     const currentReps = activeMeeting.representantes || {};
     const updatedReps = { ...currentReps, [fracaoId]: repName };
 
-    const updatedReunioes = reunioes.map(r => {
-      if (r.id_reuniao === activeMeeting.id_reuniao) {
-        return { ...r, representantes: updatedReps };
-      }
-      return r;
-    });
+    const reuniaoAtualizada = { ...activeMeeting, representantes: updatedReps };
+    const updatedReunioes = reunioes.map(r => r.id_reuniao === activeMeeting.id_reuniao ? reuniaoAtualizada : r);
     setReunioes(updatedReunioes);
+    saveReuniaoToSupabase(reuniaoAtualizada).catch(console.error);
   };
 
   // Export attendance list to XLS/CSV
@@ -731,11 +734,10 @@ Com os meus cumprimentos,
     const ataNumero = String(reunioes.filter(r => r.estado === "Realizada").length + 1);
     const anoStr = activeMeeting.data ? (activeMeeting.data.includes("/") ? activeMeeting.data.split("/")[2] : activeMeeting.data.split("-")[0]) : new Date().getFullYear().toString();
 
-    setReunioes(reunioes.map(r =>
-      r.id_reuniao === activeMeeting.id_reuniao
-        ? { ...r, ata: ataTexto, notas_ata: notesToText(), estado: "Realizada" as const, numero_ata: ataNumero }
-        : r
-    ));
+    const reuniaoFinalizada = { ...activeMeeting, ata: ataTexto, notas_ata: notesToText(), estado: "Realizada" as const, numero_ata: ataNumero };
+    setReunioes(reunioes.map(r => r.id_reuniao === activeMeeting.id_reuniao ? reuniaoFinalizada : r));
+    saveReuniaoToSupabase(reuniaoFinalizada).catch(console.error);
+    registarLogAuditoria("Assembleias", `Finalizou e arquivou a ata da assembleia "${activeMeeting.tema}"`, predio.id_predio, loggedUser);
 
     triggerSendReaction("email", `A finalizar, arquivar e enviar a Ata a ${destinatarios.length} condómino(s)...`, async () => {
       try {
@@ -989,14 +991,11 @@ Com os meus cumprimentos,
     const currentAssinaturas = activeMeeting.assinaturas || [];
     const updatedAssinaturas = [...currentAssinaturas.filter(a => a.nome !== nomeSigner), novaAss];
 
-    const updatedReunioes = reunioes.map(r => {
-      if (r.id_reuniao === activeMeeting.id_reuniao) {
-        return { ...r, assinaturas: updatedAssinaturas };
-      }
-      return r;
-    });
+    const reuniaoAtualizada = { ...activeMeeting, assinaturas: updatedAssinaturas };
+    const updatedReunioes = reunioes.map(r => r.id_reuniao === activeMeeting.id_reuniao ? reuniaoAtualizada : r);
 
     setReunioes(updatedReunioes);
+    saveReuniaoToSupabase(reuniaoAtualizada).catch(console.error);
     clearCanvas();
     setSignerNome("");
     setAssistiuVideoSigner(false);
@@ -2465,13 +2464,10 @@ Com os meus cumprimentos,
                                   type="button"
                                   onClick={() => {
                                     const updatedAss = activeMeeting.assinaturas?.filter((_, i) => i !== idx) || [];
-                                    const updatedReunioes = reunioes.map(r => {
-                                      if (r.id_reuniao === activeMeeting.id_reuniao) {
-                                        return { ...r, assinaturas: updatedAss };
-                                      }
-                                      return r;
-                                    });
+                                    const reuniaoAtualizada = { ...activeMeeting, assinaturas: updatedAss };
+                                    const updatedReunioes = reunioes.map(r => r.id_reuniao === activeMeeting.id_reuniao ? reuniaoAtualizada : r);
                                     setReunioes(updatedReunioes);
+                                    saveReuniaoToSupabase(reuniaoAtualizada).catch(console.error);
                                   }}
                                   className="absolute top-1 right-1 text-[10px] text-red-600 hover:text-red-800 border border-red-400 bg-red-50 hover:bg-red-100 active:scale-95 px-1.5 py-0.5 rounded-md cursor-pointer transition-all flex items-center gap-1 active:ring-1 active:ring-red-400 select-none"
                                   title="Eliminar assinatura"

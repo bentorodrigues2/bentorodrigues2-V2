@@ -55,7 +55,8 @@ const TABELAS_PERMITIDAS = new Set([
   "limpezas",
   "incidencias_limpeza",
   "push_subscriptions",
-  "caucoes"
+  "caucoes",
+  "pontos_votacao"
 ]);
 
 // Registos de auditoria: só select e insert, mesmo por este proxy — para

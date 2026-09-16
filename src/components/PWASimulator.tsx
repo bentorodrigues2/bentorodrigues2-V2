@@ -39,7 +39,7 @@ import { SecurityAuditModal } from "./SecurityAuditModal";
 import { ConfiguracoesAdministracao } from "./ConfiguracoesAdministracao";
 import { FichaEmpresaGestora } from "./FichaEmpresaGestora";
 import { PWASupplierCardsView } from "./PWASupplierCardsView";
-import { saveAvisosToSupabase, saveMovimentoToSupabase, saveContaToSupabase, saveDocumentoToSupabase, registarLogAuditoria } from "../lib/supabaseService";
+import { saveAvisosToSupabase, saveMovimentoToSupabase, saveContaToSupabase, saveDocumentoToSupabase, saveReuniaoToSupabase, registarLogAuditoria } from "../lib/supabaseService";
 import { 
   Smartphone, 
   Wifi, 
@@ -3107,7 +3107,7 @@ export function PWASimulator({
                           predio={predio}
                           fracoes={fracoes}
                           reunioes={reunioes}
-                          onAddReuniao={(rn) => setReunioes(prev => [...prev, rn])}
+                          onAddReuniao={(rn) => { setReunioes(prev => [...prev, rn]); saveReuniaoToSupabase(rn).catch(console.error); }}
                           setReunioes={setReunioes}
                           loggedUser={loggedUser}
                         />

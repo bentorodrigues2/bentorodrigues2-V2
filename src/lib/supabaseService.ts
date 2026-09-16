@@ -8,7 +8,8 @@ import {
   Fornecedor, 
   Movimento, 
   Aviso, 
-  Reuniao, 
+  Reuniao,
+  PontoVotacaoAssembleia,
   Documento, 
   Ocorrencia, 
   Reserva,
@@ -994,7 +995,43 @@ export async function deleteContratoFromSupabase(idContrato: string): Promise<bo
 // ============================================================================
 // GESTÃO DE REUNIÕES & ASSEMBLEIAS
 // ============================================================================
-export async function saveReuniaoToSupabase(reuniao: any): Promise<boolean> {
+/**
+ * Corrigido: mapeava para colunas que não existem na tabela real
+ * ("local", "ata_conteudo", "tipo") — todas as gravações falhavam
+ * sempre em silêncio. Além disso, nunca havia nenhum fetch* correspondente,
+ * por isso o módulo de Reuniões/Assembleias nunca chegou sequer a tentar
+ * ler do Supabase.
+ */
+export async function fetchReunioesFromSupabase(idPredio?: string): Promise<Reuniao[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const data = await dbSelect("reunioes", { filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined });
+    if (!data || data.length === 0) return null;
+
+    return data.map((row: any) => ({
+      id_reuniao: row.id_reuniao,
+      id_predio: row.id_predio,
+      data: row.data,
+      hora: row.hora,
+      local_reuniao: row.local_reuniao || undefined,
+      tema: row.tema,
+      ordens_trabalho: row.ordens_trabalho,
+      estado: row.estado || "Agendada",
+      isVideoconferencia: row.is_videoconferencia ?? undefined,
+      linkVideoconferencia: row.link_videoconferencia || undefined,
+      plataformaVideoconferencia: row.plataforma_videoconferencia || undefined,
+      ata: row.ata || undefined,
+      notas_ata: row.notas_ata || undefined,
+      folha_presencas: row.folha_presencas || undefined,
+      representantes: row.representantes || undefined,
+      assinaturas: row.assinaturas || undefined
+    }));
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function saveReuniaoToSupabase(reuniao: Reuniao): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
   return dbUpsert("reunioes", {
     id_reuniao: reuniao.id_reuniao,
@@ -1003,10 +1040,71 @@ export async function saveReuniaoToSupabase(reuniao: any): Promise<boolean> {
     data: reuniao.data,
     hora: reuniao.hora,
     ordens_trabalho: reuniao.ordens_trabalho,
-    local: reuniao.local || null,
+    local_reuniao: reuniao.local_reuniao || null,
     estado: reuniao.estado || "Agendada",
-    ata_conteudo: reuniao.ata_conteudo || null,
-    tipo: reuniao.tipo || "Ordinária"
+    is_videoconferencia: reuniao.isVideoconferencia ?? false,
+    link_videoconferencia: reuniao.linkVideoconferencia || null,
+    plataforma_videoconferencia: reuniao.plataformaVideoconferencia || null,
+    ata: reuniao.ata || null,
+    notas_ata: reuniao.notas_ata || null,
+    folha_presencas: reuniao.folha_presencas || {},
+    representantes: reuniao.representantes || {},
+    assinaturas: reuniao.assinaturas || []
+  });
+}
+
+export async function deleteReuniaoFromSupabase(idReuniao: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbDelete("reunioes", [["id_reuniao", "eq", idReuniao]]);
+}
+
+// ============================================================================
+// PONTOS DE VOTAÇÃO EM ASSEMBLEIA (Votação Virtual)
+// ============================================================================
+export async function fetchPontosVotacaoFromSupabase(idReuniao: string): Promise<PontoVotacaoAssembleia[] | null> {
+  if (!isSupabaseConfigured() || !idReuniao) return null;
+  try {
+    const data = await dbSelect("pontos_votacao", { filtros: [["id_reuniao", "eq", idReuniao]], order: { coluna: "ordem", asc: true } });
+    if (!data || data.length === 0) return null;
+
+    return data.map((row: any) => ({
+      id_ponto: row.id_ponto,
+      id_reuniao: row.id_reuniao,
+      ordem: row.ordem,
+      titulo: row.titulo,
+      descricao: row.descricao,
+      tipo_maioria: row.tipo_maioria,
+      estado: row.estado,
+      votos: row.votos_fracoes?.votos || [],
+      total_favor_permilagem: row.resultado_apurado?.favor,
+      total_contra_permilagem: row.resultado_apurado?.contra,
+      total_abstencao_permilagem: row.resultado_apurado?.abstencao,
+      aprovado: row.resultado_apurado?.aprovado,
+      deliberacao_texto: row.resultado_apurado?.deliberacao_texto
+    }));
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function savePontoVotacaoToSupabase(ponto: PontoVotacaoAssembleia): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("pontos_votacao", {
+    id_ponto: ponto.id_ponto,
+    id_reuniao: ponto.id_reuniao,
+    ordem: ponto.ordem || 1,
+    titulo: ponto.titulo,
+    descricao: ponto.descricao || null,
+    tipo_maioria: ponto.tipo_maioria || "MAIORIA_SIMPLES",
+    estado: ponto.estado || "ABERTA",
+    votos_fracoes: { votos: ponto.votos || [] },
+    resultado_apurado: {
+      favor: ponto.total_favor_permilagem ?? 0,
+      contra: ponto.total_contra_permilagem ?? 0,
+      abstencao: ponto.total_abstencao_permilagem ?? 0,
+      aprovado: ponto.aprovado ?? false,
+      deliberacao_texto: ponto.deliberacao_texto || null
+    }
   });
 }
 

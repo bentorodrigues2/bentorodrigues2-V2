@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import jsPDF from "jspdf";
 import { addPdfHeaderWithLogo, addPdfWatermark, downloadBlob, formatDatePT } from "../utils";
+import { fetchPontosVotacaoFromSupabase, savePontoVotacaoToSupabase, registarLogAuditoria } from "../lib/supabaseService";
 
 interface VotacaoAssembleiaVirtualProps {
   predio: Predio;
@@ -31,8 +32,15 @@ export function VotacaoAssembleiaVirtual({ predio, fracoes, reuniao, loggedUser,
   const predioFracoes = fracoes.filter(f => f.id_predio === predio.id_predio);
   const totalPermilagemPredio = predioFracoes.reduce((acc, f) => acc + f.permilagem, 0) || 1000;
 
-  // Points / Motions for the meeting
+  // Points / Motions for the meeting — carregados do Supabase (tabela real "pontos_votacao")
   const [pontos, setPontos] = useState<PontoVotacaoAssembleia[]>([]);
+
+  React.useEffect(() => {
+    if (!reuniao?.id_reuniao) return;
+    fetchPontosVotacaoFromSupabase(reuniao.id_reuniao).then(dados => {
+      if (dados) setPontos(dados);
+    });
+  }, [reuniao?.id_reuniao]);
 
   const [pontoAtivoId, setPontoAtivoId] = useState<string>("");
   const [novoPontoTitulo, setNovoPontoTitulo] = useState("");
@@ -76,6 +84,7 @@ export function VotacaoAssembleiaVirtual({ predio, fracoes, reuniao, loggedUser,
     const fracao = predioFracoes.find(f => f.id_fracao === fracaoId);
     if (!fracao) return;
 
+    let pontoAtualizado: PontoVotacaoAssembleia | null = null;
     setPontos(prev => prev.map(p => {
       if (p.id_ponto === pontoAtivo.id_ponto) {
         const votosAtuais = p.votos || [];
@@ -89,17 +98,19 @@ export function VotacaoAssembleiaVirtual({ predio, fracoes, reuniao, loggedUser,
           data_hora: new Date().toISOString().replace("T", " ").substring(0, 19),
           canal: "PWA_ONLINE" as const
         };
-        return {
-          ...p,
-          votos: [...semEste, novoVoto]
-        };
+        pontoAtualizado = { ...p, votos: [...semEste, novoVoto] };
+        return pontoAtualizado;
       }
       return p;
     }));
+    if (pontoAtualizado) {
+      savePontoVotacaoToSupabase(pontoAtualizado).catch(console.error);
+    }
   };
 
   // Switch motion status
   const alternarEstadoPonto = (novoEstado: "ABERTA" | "EM_VOTACAO" | "CONCLUIDA") => {
+    let pontoAtualizado: PontoVotacaoAssembleia | null = null;
     setPontos(prev => prev.map(p => {
       if (p.id_ponto === pontoAtivo.id_ponto) {
         const { favor: fv, contra: ct, abstencao: ab, aprovado: ap } = calcularTotais(p);
@@ -109,7 +120,7 @@ export function VotacaoAssembleiaVirtual({ predio, fracoes, reuniao, loggedUser,
         } else {
           textoDelib = `Submetido a votação (Ponto ${p.ordem}), a proposta foi REJEITADA com ${fv}‰ votos a favor, ${ct}‰ contra e ${ab}‰ abstenções.`;
         }
-        return {
+        pontoAtualizado = {
           ...p,
           estado: novoEstado,
           total_favor_permilagem: fv,
@@ -118,9 +129,16 @@ export function VotacaoAssembleiaVirtual({ predio, fracoes, reuniao, loggedUser,
           aprovado: ap,
           deliberacao_texto: textoDelib
         };
+        return pontoAtualizado;
       }
       return p;
     }));
+    if (pontoAtualizado) {
+      savePontoVotacaoToSupabase(pontoAtualizado).catch(console.error);
+      if (novoEstado === "CONCLUIDA") {
+        registarLogAuditoria("Assembleias", `Encerrou a votação do ponto "${pontoAtualizado.titulo}"`, predio.id_predio, loggedUser, pontoAtualizado.aprovado ? "Aprovado" : "Rejeitado");
+      }
+    }
   };
 
   // Add new voting motion
@@ -143,6 +161,8 @@ export function VotacaoAssembleiaVirtual({ predio, fracoes, reuniao, loggedUser,
     };
 
     setPontos(prev => [...prev, novo]);
+    savePontoVotacaoToSupabase(novo).catch(console.error);
+    registarLogAuditoria("Assembleias", `Adicionou o ponto de votação "${novo.titulo}"`, predio.id_predio, loggedUser);
     setPontoAtivoId(novo.id_ponto);
     setNovoPontoTitulo("");
     setNovoPontoDesc("");
