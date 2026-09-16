@@ -10,10 +10,13 @@ export function saveUserPreferences(preferences: NotificationPreferences): Notif
     updated_at: new Date().toISOString()
   };
 
+  // Guardado apenas neste dispositivo (localStorage) — não sincroniza
+  // entre dispositivos do mesmo utilizador. Não existe ainda nenhuma
+  // tabela no Supabase para preferências de notificação por categoria.
   const key = `notification_preferences_${updatedPrefs.user_id}`;
   try {
     localStorage.setItem(key, JSON.stringify(updatedPrefs));
-    console.log('[WebPush] Preferências guardadas no Supabase Local Storage:', updatedPrefs);
+    console.log('[WebPush] Preferências guardadas localmente neste dispositivo:', updatedPrefs);
   } catch (err) {
     console.error('[WebPush] Erro ao guardar preferências de notificação:', err);
   }

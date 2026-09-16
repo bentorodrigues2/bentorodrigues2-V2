@@ -1,4 +1,5 @@
 import { gerarDocumentoPDF, guardarNoArquivo, registarDocumento, enviarEmailPDF } from "../server/lib/pdfService.js";
+import { supabase } from "../server/lib/supabaseServer.js";
 import {
   generateCondominoPwaManualPDF,
   gerarPdfRegistoFornecedorHomologado,
@@ -45,7 +46,7 @@ const TIPOS_ESPECIAIS = new Set([
  * Estes tipos têm documento próprio já desenhado (layout legal/oficial em
  * src/utils.ts) em vez do PDF de texto genérico usado pelos outros tipos.
  */
-function gerarDocEspecial(tipo, body) {
+function gerarDocEspecial(tipo, body, logoWhiteLabel) {
   if (tipo === "boas-vindas") {
     return {
       doc: generateCondominoPwaManualPDF(body.nome, body.buildingName, body.password, true),
@@ -134,7 +135,7 @@ function gerarDocEspecial(tipo, body) {
   const gestor = body.gestor || {};
   const ehAdmin = gestor.perfil === "ADMIN";
   return {
-    doc: gerarPdfBoasVindasGestor(gestor, body.predios || [], body.empresaNome, body.logoUrl, true),
+    doc: gerarPdfBoasVindasGestor(gestor, body.predios || [], body.empresaNome, body.logoUrl || logoWhiteLabel, true),
     nomeFicheiro: ehAdmin ? "Instrucoes_Acesso_Perfil_Administrador.pdf" : "Instrucoes_Acesso_Perfil_Gestor.pdf",
     assunto: ehAdmin ? "Nomeação & Ativação de Acesso à Gestão — Administrador" : "Nomeação & Ativação de Acesso à Gestão — Gestor Operacional",
     mensagem: `Foi ativado o seu perfil de acesso à gestão do condomínio. Segue em anexo o documento com as credenciais provisórias e o guia de acesso à plataforma.`
@@ -143,7 +144,22 @@ function gerarDocEspecial(tipo, body) {
 
 async function gerarDocumentoEspecial(tipo, config, body) {
   const ano = body.ano || new Date().getFullYear();
-  const { doc, nomeFicheiro, assunto, mensagem, categoria } = gerarDocEspecial(tipo, body);
+
+  // Logótipo White-Label institucional: se não vier explícito no pedido,
+  // vai buscar o que o administrador configurou em Ficha da Empresa
+  // Gestora — sem isto, o logótipo só existia no localStorage do browser
+  // e nunca chegava aos PDFs gerados aqui no servidor.
+  let logoWhiteLabel;
+  if (tipo === "boas-vindas-gestor" && !body.logoUrl) {
+    try {
+      const { data } = await supabase.from("empresa_gestora_config").select("logo").eq("id", "default").maybeSingle();
+      logoWhiteLabel = data?.logo || undefined;
+    } catch (err) {
+      console.warn("[api/pdf] Aviso ao obter logótipo white-label:", err?.message || err);
+    }
+  }
+
+  const { doc, nomeFicheiro, assunto, mensagem, categoria } = gerarDocEspecial(tipo, body, logoWhiteLabel);
   const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
 
   const caminho = await guardarNoArquivo({

@@ -170,6 +170,12 @@ export function FichaEmpresaGestora({
         if (onUpdateBrandingLogo) {
           onUpdateBrandingLogo(logoUrl);
         }
+        // Sem isto, o logótipo só existia no localStorage deste dispositivo
+        // e nunca chegava ao servidor — os PDFs oficiais (gerados no
+        // backend, sem acesso ao localStorage do browser) nunca o viam.
+        // empresaConfig.logo entra no mesmo efeito de gravação debounced
+        // já usado para os restantes campos institucionais.
+        setEmpresaConfig(prev => ({ ...prev, logo: logoUrl }));
         showNotification("Logótipo institucional atualizado com sucesso!");
       };
       img.src = event.target?.result as string;
