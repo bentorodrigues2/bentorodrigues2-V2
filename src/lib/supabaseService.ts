@@ -2194,6 +2194,11 @@ export async function saveReservaEspacoMuralToSupabase(reserva: ReservaEspacoCom
   });
 }
 
+export async function deleteReservaEspacoMuralFromSupabase(idReserva: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbDelete("reservas_espacos_mural", [["id_reserva", "eq", idReserva]]);
+}
+
 // ============================================================================
 // EQUIPAS / PRESTADORES DE SERVIÇO (MultiCondominio.tsx)
 // ============================================================================

@@ -3051,9 +3051,10 @@ export function PWASimulator({
                         />
                       )}
                       {activePwaSubMenuDetails === "financas_fundo" && (
-                        <GestaoFundoReserva 
+                        <GestaoFundoReserva
                           predio={predio}
                           loggedUser={loggedUser}
+                          contas={contas}
                         />
                       )}
                       {activePwaSubMenuDetails === "financas_conciliacao" && (

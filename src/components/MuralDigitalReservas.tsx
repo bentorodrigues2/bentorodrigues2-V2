@@ -19,6 +19,11 @@ import {
   Trash2
 } from "lucide-react";
 import { triggerSendReaction } from "./SendingReactionModal";
+import {
+  fetchMuralAvisosFromSupabase, saveMuralAvisoToSupabase, deleteMuralAvisoFromSupabase,
+  fetchReservasEspacosMuralFromSupabase, saveReservaEspacoMuralToSupabase, deleteReservaEspacoMuralFromSupabase,
+  registarLogAuditoria
+} from "../lib/supabaseService";
 
 interface MuralDigitalReservasProps {
   predio: Predio;
@@ -35,35 +40,17 @@ export function MuralDigitalReservas({
   const [activeTab, setActiveTab] = useState<"mural" | "reservas">("mural");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  // Mural Notices State - Base limpa sem dados de simulação, com persistência local
-  const [avisosMural, setAvisosMural] = useState<MuralAviso[]>(() => {
-    try {
-      const saved = localStorage.getItem(`condo_mural_${predio.id_predio}`);
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // fallback
-    }
-    return [];
-  });
+  // Mural Notices State — carregado do Supabase (tabela real mural_avisos)
+  const [avisosMural, setAvisosMural] = useState<MuralAviso[]>([]);
 
-  // Space Reservations State - Base limpa sem dados de simulação, com persistência local
-  const [reservas, setReservas] = useState<ReservaEspacoComum[]>(() => {
-    try {
-      const saved = localStorage.getItem(`condo_reservas_${predio.id_predio}`);
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // fallback
-    }
-    return [];
-  });
+  // Space Reservations State — carregado do Supabase (tabela real reservas_espacos_mural)
+  const [reservas, setReservas] = useState<ReservaEspacoComum[]>([]);
 
   useEffect(() => {
-    localStorage.setItem(`condo_mural_${predio.id_predio}`, JSON.stringify(avisosMural));
-  }, [avisosMural, predio.id_predio]);
-
-  useEffect(() => {
-    localStorage.setItem(`condo_reservas_${predio.id_predio}`, JSON.stringify(reservas));
-  }, [reservas, predio.id_predio]);
+    if (!predio.id_predio) return;
+    fetchMuralAvisosFromSupabase(predio.id_predio).then(dados => { if (dados) setAvisosMural(dados); });
+    fetchReservasEspacosMuralFromSupabase(predio.id_predio).then(dados => { if (dados) setReservas(dados); });
+  }, [predio.id_predio]);
 
   // New notice form modal
   const [novoAvisoModalOpen, setNovoAvisoModalOpen] = useState(false);
@@ -103,6 +90,8 @@ export function MuralDigitalReservas({
 
     triggerSendReaction("email", "A publicar novo aviso no Mural Digital", () => {
       setAvisosMural([novo, ...avisosMural]);
+      saveMuralAvisoToSupabase(novo).catch(console.error);
+      registarLogAuditoria("Comunicação", `Publicou o aviso "${novo.titulo}" no Mural Digital`, predio.id_predio, loggedUser);
       setNovoAvisoModalOpen(false);
       setNovoTitulo("");
       setNovoConteudo("");
@@ -133,13 +122,20 @@ export function MuralDigitalReservas({
     };
 
     setReservas([nova, ...reservas]);
+    saveReservaEspacoMuralToSupabase(nova).catch(console.error);
+    registarLogAuditoria("Reservas", `Submeteu pedido de reserva de "${resEspaco}"`, predio.id_predio, loggedUser, `Fração ${targetFracao.fracao_nome}`);
     setNovaReservaModalOpen(false);
     setResFinalidade("");
     showToast("📅 Pedido de reserva submetido com sucesso! Aguarda validação da administração.");
   };
 
   const handleAprovarReserva = (idReserva: string) => {
+    const alvo = reservas.find(r => r.id_reserva === idReserva);
     setReservas(prev => prev.map(r => r.id_reserva === idReserva ? { ...r, estado: "CONFIRMADA", caucao_paga: true } : r));
+    if (alvo) {
+      saveReservaEspacoMuralToSupabase({ ...alvo, estado: "CONFIRMADA", caucao_paga: true }).catch(console.error);
+      registarLogAuditoria("Reservas", `Aprovou a reserva de "${alvo.espaco}"`, predio.id_predio, loggedUser, `Fração ${alvo.fracao_nome}`);
+    }
     showToast("✓ Reserva confirmada e caução registada com sucesso!");
   };
 
@@ -266,7 +262,9 @@ export function MuralDigitalReservas({
                       <button
                         type="button"
                         onClick={() => {
-                          setAvisosMural(prev => prev.map(a => a.id_aviso_mural === aviso.id_aviso_mural ? { ...a, reacoes_gostos: a.reacoes_gostos + 1 } : a));
+                          const atualizado = { ...aviso, reacoes_gostos: aviso.reacoes_gostos + 1 };
+                          setAvisosMural(prev => prev.map(a => a.id_aviso_mural === aviso.id_aviso_mural ? atualizado : a));
+                          saveMuralAvisoToSupabase(atualizado).catch(console.error);
                         }}
                         className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-red-500 transition-colors cursor-pointer bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700"
                       >
@@ -278,6 +276,7 @@ export function MuralDigitalReservas({
                         onClick={() => {
                           if (confirm("Deseja eliminar este comunicado do mural?")) {
                             setAvisosMural(prev => prev.filter(a => a.id_aviso_mural !== aviso.id_aviso_mural));
+                            deleteMuralAvisoFromSupabase(aviso.id_aviso_mural).catch(console.error);
                           }
                         }}
                         title="Eliminar comunicado"
@@ -394,6 +393,7 @@ export function MuralDigitalReservas({
                       onClick={() => {
                         if (confirm("Deseja cancelar e remover esta reserva?")) {
                           setReservas(prev => prev.filter(r => r.id_reserva !== reserva.id_reserva));
+                          deleteReservaEspacoMuralFromSupabase(reserva.id_reserva).catch(console.error);
                         }
                       }}
                       title="Cancelar Reserva"

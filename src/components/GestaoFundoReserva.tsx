@@ -1,17 +1,32 @@
-import React, { useState } from "react";
-import { Predio, LoggedUser } from "../types";
+import React, { useState, useEffect } from "react";
+import { Predio, LoggedUser, Conta } from "../types";
 
 interface GestaoFundoReservaProps {
   predio: Predio;
   loggedUser: LoggedUser;
+  contas: Conta[];
 }
 
-export function GestaoFundoReserva({ predio, loggedUser }: GestaoFundoReservaProps) {
-  // Financial parameters
-  const [orcamentoAnual, setOrcamentoAnual] = useState<number>(8500);
-  const [saldoAtualFCR, setSaldoAtualFCR] = useState<number>(750); // Starts below the minimum to trigger the alert!
+export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoReservaProps) {
+  // Saldo real da conta do Fundo Comum de Reserva (FCR) do prédio ativo —
+  // antes eram sempre os mesmos números fixos (750€ com um comentário no
+  // código a admitir "Starts below the minimum to trigger the alert!"),
+  // independentemente do prédio selecionado.
+  const contaFCR = contas.find(c => c.id_predio === predio.id_predio && (c.tipo.includes("FCR") || c.tipo.includes("Reserva")));
+  const saldoRealFCR = contaFCR?.saldo || 0;
+  const orcamentoRealAnual = (predio.patrimonio as any)?.orcamento_anual || 0;
+
+  // Financial parameters — pré-preenchidos com dados reais, mas continuam
+  // editáveis: esta é uma ferramenta de simulação/projeção, não um relatório.
+  const [orcamentoAnual, setOrcamentoAnual] = useState<number>(orcamentoRealAnual || 8500);
+  const [saldoAtualFCR, setSaldoAtualFCR] = useState<number>(saldoRealFCR);
   const [contribuicaoMensalExtra, setContribuicaoMensalExtra] = useState<number>(50);
   const [idadePredio, setIdadePredio] = useState<"recente" | "medio" | "antigo" | "historico">("medio");
+
+  useEffect(() => {
+    setOrcamentoAnual(orcamentoRealAnual || 8500);
+    setSaldoAtualFCR(saldoRealFCR);
+  }, [predio.id_predio, orcamentoRealAnual, saldoRealFCR]);
 
   // Legal Minimum: 10% of annual budget (Artigo 4º do Decreto-Lei n.º 268/94)
   const fundoMinimoLegal = orcamentoAnual * 0.1;

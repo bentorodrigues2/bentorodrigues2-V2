@@ -21,6 +21,7 @@ import {
   CheckCircle2
 } from "lucide-react";
 import { formatDatePT } from "../utils";
+import { fetchEquipasPrestadoresFromSupabase, saveEquipaPrestadorToSupabase, deleteEquipaPrestadorFromSupabase, registarLogAuditoria } from "../lib/supabaseService";
 
 interface MultiCondominioProps {
   predios: Predio[];
@@ -59,39 +60,12 @@ export function MultiCondominio({
   const [activeTab, setActiveTab] = useState<"aggregated" | "teams" | "profiles">("aggregated");
   const [selectedPredioId, setSelectedPredioId] = useState<string>(predios[0]?.id_predio || "");
 
-  // Mocked state for team members that can be added/edited locally
-  const [teams, setTeams] = useState<TeamMember[]>([
-    {
-      id: "t-1",
-      id_predio: "predio-1",
-      nome: "Sérgio Pinheiro",
-      funcao: "Técnico de Elevadores",
-      empresa: "Schindler Portugal",
-      telefone: "912 345 678",
-      email: "sergio.pinheiro@schindler.pt",
-      status: "Ativo"
-    },
-    {
-      id: "t-2",
-      id_predio: "predio-1",
-      nome: "Maria do Carmo",
-      funcao: "Empresa de Limpeza",
-      empresa: "Brilho Extremo Lda",
-      telefone: "934 888 222",
-      email: "contacto@brilhoextremo.pt",
-      status: "Ativo"
-    },
-    {
-      id: "t-3",
-      id_predio: "predio-2",
-      nome: "Ana Rodrigues",
-      funcao: "Administrador de Condomínio",
-      empresa: "CondoManager AI",
-      telefone: "911 222 333",
-      email: "ana.rodrigues@condomanager.pt",
-      status: "Ativo"
-    }
-  ]);
+  // Equipas/Prestadores — carregado do Supabase (tabela real equipas_prestadores)
+  const [teams, setTeams] = useState<TeamMember[]>([]);
+
+  React.useEffect(() => {
+    fetchEquipasPrestadoresFromSupabase().then(dados => { if (dados) setTeams(dados); });
+  }, []);
 
   // Form for new team member
   const [showTeamForm, setShowTeamForm] = useState(false);
@@ -203,6 +177,8 @@ export function MultiCondominio({
     };
 
     setTeams([...teams, novo]);
+    saveEquipaPrestadorToSupabase(novo).catch(console.error);
+    registarLogAuditoria("Equipas", `Adicionou "${novo.nome}" (${novo.funcao}) à equipa`, selectedPredioId, loggedUser);
     setNewMember({
       nome: "",
       funcao: "Empresa de Limpeza",
@@ -217,6 +193,7 @@ export function MultiCondominio({
   const handleDeleteTeamMember = (id: string) => {
     if (confirm("Tem a certeza que deseja remover este membro da equipa?")) {
       setTeams(teams.filter(t => t.id !== id));
+      deleteEquipaPrestadorFromSupabase(id).catch(console.error);
     }
   };
 

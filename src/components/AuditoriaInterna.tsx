@@ -843,33 +843,56 @@ export function AuditoriaInterna({
                 Nos termos da legislação portuguesa, cada condomínio deve constituir um fundo comum de reserva para custear despesas de conservação do edifício. A contribuição mínima obrigatória é de 10% da quota regular.
               </p>
 
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase">Saldo em Fundo de Reserva</p>
-                    <p className="text-base font-extrabold text-indigo-500">
-                      {contas.find(c => c.tipo.includes("FCR") || c.tipo.includes("Reserva"))?.saldo.toLocaleString("pt-PT", { style: "currency", currency: "EUR" }) || "12.350,75 €"}
-                    </p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase">Rácio sobre Orçamento</p>
-                    <p className="text-base font-extrabold text-emerald-500">12.5% (Aprovado)</p>
-                  </div>
-                </div>
+              {(() => {
+                const contaFCR = contas.find(c => c.tipo.includes("FCR") || c.tipo.includes("Reserva"));
+                const saldoFCR = contaFCR?.saldo || 0;
+                const orcamentoAnual = (predio.patrimonio as any)?.orcamento_anual || 0;
+                const racio = orcamentoAnual > 0 ? (saldoFCR / orcamentoAnual) * 100 : 0;
+                const isConforme = orcamentoAnual > 0 && racio >= 10;
+                return (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">Saldo em Fundo de Reserva</p>
+                        <p className="text-base font-extrabold text-indigo-500">
+                          {saldoFCR.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
+                        </p>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">Rácio sobre Orçamento</p>
+                        <p className={`text-base font-extrabold ${isConforme ? "text-emerald-500" : "text-red-500"}`}>
+                          {orcamentoAnual > 0 ? `${racio.toFixed(1)}%` : "N/D"} {orcamentoAnual > 0 && (isConforme ? "(Aprovado)" : "(Insuficiente)")}
+                        </p>
+                      </div>
+                    </div>
 
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                  <div className="bg-indigo-600 h-full rounded-full" style={{ width: "85%" }}></div>
-                </div>
-                <div className="flex justify-between text-[10px] text-slate-400 font-bold uppercase">
-                  <span>Contribuição Real: 12.5%</span>
-                  <span>Mínimo de Lei: 10%</span>
-                </div>
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${isConforme ? "bg-indigo-600" : "bg-red-500"}`} style={{ width: `${Math.min(racio * 10, 100)}%` }}></div>
+                    </div>
+                    <div className="flex justify-between text-[10px] text-slate-400 font-bold uppercase">
+                      <span>Contribuição Real: {orcamentoAnual > 0 ? `${racio.toFixed(1)}%` : "N/D"}</span>
+                      <span>Mínimo de Lei: 10%</span>
+                    </div>
 
-                <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs">
-                  <p className="font-bold flex items-center gap-1"><i className="fa-solid fa-circle-check"></i> Condomínio Conforme</p>
-                  <p className="text-[11px] mt-0.5">O rácio de contribuição e o saldo do Fundo Comum de Reserva excedem os requisitos mínimos estipulados no DL 268/94.</p>
-                </div>
-              </div>
+                    {orcamentoAnual === 0 ? (
+                      <div className="p-3 rounded-lg bg-slate-500/10 border border-slate-500/20 text-slate-500 dark:text-slate-400 text-xs">
+                        <p className="font-bold flex items-center gap-1"><i className="fa-solid fa-circle-info"></i> Sem orçamento anual definido</p>
+                        <p className="text-[11px] mt-0.5">Defina o orçamento anual em Emissão de Quotas para calcular o rácio de conformidade legal.</p>
+                      </div>
+                    ) : isConforme ? (
+                      <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs">
+                        <p className="font-bold flex items-center gap-1"><i className="fa-solid fa-circle-check"></i> Condomínio Conforme</p>
+                        <p className="text-[11px] mt-0.5">O rácio de contribuição e o saldo do Fundo Comum de Reserva excedem os requisitos mínimos estipulados no DL 268/94.</p>
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs">
+                        <p className="font-bold flex items-center gap-1"><i className="fa-solid fa-triangle-exclamation"></i> Condomínio Não Conforme</p>
+                        <p className="text-[11px] mt-0.5">O saldo do Fundo Comum de Reserva está abaixo do mínimo legal de 10% do orçamento estipulado no DL 268/94.</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

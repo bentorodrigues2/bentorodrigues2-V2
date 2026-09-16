@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Predio, LoggedUser } from "../types";
 import { Wrench, Plus, Check, MapPin, Sparkles, Building, Landmark, Trash2, ShieldAlert } from "lucide-react";
+import { fetchInventarioTecnicoFromSupabase, saveEquipamentoTecnicoToSupabase, deleteEquipamentoTecnicoFromSupabase, registarLogAuditoria } from "../lib/supabaseService";
 
 export interface EquipamentoTecnico {
   id: string;
@@ -20,19 +21,13 @@ interface InventarioTecnicoProps {
 }
 
 export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps) {
-  // Estado limpo para testes com Supabase
-  const [equipamentos, setEquipamentos] = useState<EquipamentoTecnico[]>(() => {
-    const saved = localStorage.getItem(`inventario_tecnico_${predio.id_predio}`);
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { }
-    }
-    return [];
-  });
+  // Carregado do Supabase (tabela real inventario_tecnico)
+  const [equipamentos, setEquipamentos] = useState<EquipamentoTecnico[]>([]);
 
-  // Save changes to localStorage
   useEffect(() => {
-    localStorage.setItem(`inventario_tecnico_${predio.id_predio}`, JSON.stringify(equipamentos));
-  }, [equipamentos, predio.id_predio]);
+    if (!predio.id_predio) return;
+    fetchInventarioTecnicoFromSupabase(predio.id_predio).then(dados => { if (dados) setEquipamentos(dados); });
+  }, [predio.id_predio]);
 
   // Form states to add custom equipment
   const [nome, setNome] = useState("");
@@ -59,6 +54,8 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
     };
 
     setEquipamentos([...equipamentos, newEquipment]);
+    saveEquipamentoTecnicoToSupabase(predio.id_predio, newEquipment).catch(console.error);
+    registarLogAuditoria("Manutenção", `Adicionou "${nome}" ao inventário técnico`, predio.id_predio, loggedUser);
     setNome("");
     setFabricante("");
     setDetalhes("");
@@ -69,6 +66,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
     const confirmRemove = confirm("Tem a certeza que deseja remover este equipamento do inventário do prédio?");
     if (confirmRemove) {
       setEquipamentos(equipamentos.filter(e => e.id !== id));
+      deleteEquipamentoTecnicoFromSupabase(id).catch(console.error);
     }
   };
 

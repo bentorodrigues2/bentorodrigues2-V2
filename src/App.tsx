@@ -2446,9 +2446,10 @@ export default function App() {
           )}
 
           {activeSection === "fundo_reserva" && (
-            <GestaoFundoReserva 
-              predio={predioAtivo} 
+            <GestaoFundoReserva
+              predio={predioAtivo}
               loggedUser={loggedUser}
+              contas={contas}
             />
           )}
 

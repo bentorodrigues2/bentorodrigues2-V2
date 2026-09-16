@@ -23,6 +23,7 @@ import {
   Layers 
 } from "lucide-react";
 import { triggerSendReaction } from "./SendingReactionModal";
+import { fetchPlanoManutencaoFromSupabase, savePlanoManutencaoItemToSupabase, registarLogAuditoria } from "../lib/supabaseService";
 
 interface AgendaManutencaoProps {
   predio: Predio;
@@ -34,8 +35,13 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
   const [filterStatus, setFilterStatus] = useState<"TODOS" | "CONFORME" | "A_EXPIRAR" | "EXPIRADO_ALERTA">("TODOS");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  // Maintenance plan items - Base limpa sem dados de simulação
+  // Maintenance plan items — carregados do Supabase (tabela real plano_manutencao_obrigatoria)
   const [itensManutencao, setItensManutencao] = useState<ItemPlanoManutencao[]>([]);
+
+  React.useEffect(() => {
+    if (!predio.id_predio) return;
+    fetchPlanoManutencaoFromSupabase(predio.id_predio).then(dados => { if (dados) setItensManutencao(dados); });
+  }, [predio.id_predio]);
 
   // Modal / Form states for new inspection registration
   const [selectedItemForAction, setSelectedItemForAction] = useState<ItemPlanoManutencao | null>(null);
@@ -44,6 +50,49 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
   const [novoTecnico, setNovoTecnico] = useState<string>("");
   const [novoNumCertificado, setNovoNumCertificado] = useState<string>("");
   const [novasObservacoes, setNovasObservacoes] = useState<string>("");
+
+  // New plan item form state
+  const [showNovoItemModal, setShowNovoItemModal] = useState(false);
+  const [novoItemTitulo, setNovoItemTitulo] = useState("");
+  const [novoItemTipo, setNovoItemTipo] = useState<TipoInspecaoObrigatoria>("ELEVADORES_DGEG");
+  const [novoItemEntidade, setNovoItemEntidade] = useState("");
+  const [novoItemPeriodicidade, setNovoItemPeriodicidade] = useState("12");
+  const [novoItemBaseLegal, setNovoItemBaseLegal] = useState("");
+  const [novoItemUltimaData, setNovoItemUltimaData] = useState(new Date().toISOString().split("T")[0]);
+
+  const handleAdicionarItemPlano = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!novoItemTitulo.trim()) return;
+
+    const periodicidade = parseInt(novoItemPeriodicidade) || 12;
+    const proxima = new Date(novoItemUltimaData);
+    proxima.setMonth(proxima.getMonth() + periodicidade);
+
+    const novoItem: ItemPlanoManutencao = {
+      id_item: `plano-${Date.now()}`,
+      id_predio: predio.id_predio,
+      tipo: novoItemTipo,
+      titulo: novoItemTitulo,
+      entidade_responsavel: novoItemEntidade || "A definir",
+      periodicidade_meses: periodicidade,
+      base_legal_dgeg: novoItemBaseLegal || "",
+      ultima_inspecao_data: novoItemUltimaData,
+      proxima_inspecao_data: proxima.toISOString().split("T")[0],
+      dias_alerta_antecedencia: 30,
+      estado_conformidade: "CONFORME",
+      historico_vistorias: []
+    };
+
+    setItensManutencao(prev => [novoItem, ...prev]);
+    savePlanoManutencaoItemToSupabase(novoItem).catch(console.error);
+    registarLogAuditoria("Manutenção", `Adicionou "${novoItemTitulo}" ao plano de manutenção obrigatória`, predio.id_predio, loggedUser);
+
+    setShowNovoItemModal(false);
+    setNovoItemTitulo("");
+    setNovoItemEntidade("");
+    setNovoItemBaseLegal("");
+    showToast("Item adicionado ao Plano de Manutenção Obrigatória!");
+  };
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -99,9 +148,10 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
         observacoes: novasObservacoes || "Vistoria concluída com sucesso e em conformidade legal."
       };
 
+      let itemAtualizado: ItemPlanoManutencao | null = null;
       setItensManutencao(prev => prev.map(item => {
         if (item.id_item === selectedItemForAction.id_item) {
-          return {
+          itemAtualizado = {
             ...item,
             ultima_inspecao_data: novaDataVistoria,
             proxima_inspecao_data: proximaDataStr,
@@ -109,9 +159,14 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
             num_certificado_relatorio: novoNumCertificado || item.num_certificado_relatorio,
             historico_vistorias: [novaVistoria, ...(item.historico_vistorias || [])]
           };
+          return itemAtualizado;
         }
         return item;
       }));
+      if (itemAtualizado) {
+        savePlanoManutencaoItemToSupabase(itemAtualizado).catch(console.error);
+        registarLogAuditoria("Manutenção", `Registou vistoria legal de "${selectedItemForAction.titulo}"`, predio.id_predio, loggedUser);
+      }
 
       setActionModalType(null);
       setSelectedItemForAction(null);
@@ -285,6 +340,13 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
                 }`}
               >
                 Conformes ({countConformes})
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowNovoItemModal(true)}
+                className="px-3 py-1 text-xs rounded-lg font-bold cursor-pointer transition-all bg-emerald-600 text-white hover:bg-emerald-700 flex items-center gap-1"
+              >
+                <Plus className="h-3.5 w-3.5" /> Adicionar Item
               </button>
             </div>
           </div>
@@ -560,6 +622,116 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
                   className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl cursor-pointer shadow-md transition-all"
                 >
                   Guardar Vistoria
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showNovoItemModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 animate-zoom-in">
+            <div className="bg-slate-900 p-5 text-white flex justify-between items-center border-b border-emerald-500/30">
+              <h3 className="font-bold text-sm">Adicionar Item ao Plano de Manutenção Obrigatória</h3>
+              <button
+                type="button"
+                onClick={() => setShowNovoItemModal(false)}
+                className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAdicionarItemPlano} className="p-6 space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 dark:text-slate-300">Título *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Inspeção Periódica de Elevadores"
+                  value={novoItemTitulo}
+                  onChange={e => setNovoItemTitulo(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Tipo de Inspeção</label>
+                  <select
+                    value={novoItemTipo}
+                    onChange={e => setNovoItemTipo(e.target.value as TipoInspecaoObrigatoria)}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:border-emerald-500"
+                  >
+                    <option value="ELEVADORES_DGEG">Elevadores (DGEG)</option>
+                    <option value="LIMPEZA_CHAMINES_CONDUTAS">Limpeza de Chaminés/Condutas</option>
+                    <option value="RECARGA_EXTINTORES">Recarga de Extintores</option>
+                    <option value="INSPECAO_REDE_GAS">Inspeção Rede de Gás</option>
+                    <option value="LIMPEZA_CISTERNA_BOMBAS">Limpeza Cisterna/Bombas</option>
+                    <option value="SISTEMA_SOLAR_TERMICO">Sistema Solar Térmico</option>
+                    <option value="PORTAO_GARAGEM_AUTOMATICO">Portão de Garagem Automático</option>
+                    <option value="COLUNA_SECA_INCENDIO">Coluna Seca de Incêndio</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Periodicidade (meses)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={novoItemPeriodicidade}
+                    onChange={e => setNovoItemPeriodicidade(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl font-mono text-xs focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 dark:text-slate-300">Entidade Responsável</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Empresa Certificada de Manutenção"
+                  value={novoItemEntidade}
+                  onChange={e => setNovoItemEntidade(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Base Legal / DGEG</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Decreto-Lei n.º 96/2019"
+                    value={novoItemBaseLegal}
+                    onChange={e => setNovoItemBaseLegal(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:border-emerald-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Última Inspeção</label>
+                  <input
+                    type="date"
+                    value={novoItemUltimaData}
+                    onChange={e => setNovoItemUltimaData(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl font-mono text-xs focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNovoItemModal(false)}
+                  className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl cursor-pointer shadow-md transition-all"
+                >
+                  Adicionar ao Plano
                 </button>
               </div>
             </form>
