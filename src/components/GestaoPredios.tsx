@@ -65,26 +65,12 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
   // Status de Aprovação das Regras & Estatutos em Assembleia
   const [regumentoAprovado, setRegumentoAprovado] = useState(false);
 
-  // Módulo de Gestão de Chaves do Prédio (Iniciam por selecionar e contadores a 0)
-  const [chaves, setChaves] = useState<ChaveItem[]>(() => [
-    { id_chave: "chv-1", id_predio: "predio-1", area_nome: "Caixa de correio Adm.", codigo_chave: "BR2PP 001", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Chave mestre da caixa de correio da Administração" },
-    { id_chave: "chv-2", id_predio: "predio-1", area_nome: "Porta Principal", codigo_chave: "BR2PP 002", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Porta principal de entrada do edifício" },
-    { id_chave: "chv-3", id_predio: "predio-1", area_nome: "Arrecadação Comum", codigo_chave: "BR2PP 003", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Arrecadação de material de limpeza e manutenção" },
-    { id_chave: "chv-4", id_predio: "predio-1", area_nome: "Arrecadação Escadas", codigo_chave: "BR2PP 004", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Arrecadação sob as escadas do rés-do-chão" },
-    { id_chave: "chv-5", id_predio: "predio-1", area_nome: "Elevadores", codigo_chave: "BR2PP 005", num_chaveiro: "2", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Chaves de serviço e emergência dos elevadores" },
-    { id_chave: "chv-6", id_predio: "predio-1", area_nome: "Sótão", codigo_chave: "BR2PP 006", num_chaveiro: "2", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Acesso à zona técnica do sótão" },
-    { id_chave: "chv-7", id_predio: "predio-1", area_nome: "Vitrine", codigo_chave: "BR2PP 007", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Vitrine de avisos do hall de entrada" },
-    { id_chave: "chv-8", id_predio: "predio-1", area_nome: "Casa Bomba de Água", codigo_chave: "BR2PP 008", num_chaveiro: "2", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Central de bombagem de água do edifício" },
-    { id_chave: "chv-9", id_predio: "predio-1", area_nome: "Garagem", codigo_chave: "BR2PP 009", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Portão pedonal e comandos da garagem" },
-    { id_chave: "chv-10", id_predio: "predio-1", area_nome: "Ginásio", codigo_chave: "BR2PP 010", num_chaveiro: "3", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Porta de acesso ao ginásio do condomínio" },
-    { id_chave: "chv-11", id_predio: "predio-1", area_nome: "SPA", codigo_chave: "BR2PP 011", num_chaveiro: "3", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Acesso à zona de SPA e sauna" },
-    { id_chave: "chv-12", id_predio: "predio-1", area_nome: "Casa de Máquinas Piscina", codigo_chave: "BR2PP 012", num_chaveiro: "3", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Casa de máquinas de filtragem da piscina" },
-    { id_chave: "chv-13", id_predio: "predio-1", area_nome: "WC Piscina", codigo_chave: "BR2PP 013", num_chaveiro: "3", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Instalações sanitárias do balneário da piscina" },
-    { id_chave: "chv-14", id_predio: "predio-1", area_nome: "Quadro Elétrico Geral", codigo_chave: "BR2PP 014", num_chaveiro: "2", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Quadro de colunas e contador geral de eletricidade" },
-    { id_chave: "chv-15", id_predio: "predio-1", area_nome: "Central de Deteção de Incêndio", codigo_chave: "BR2PP 015", num_chaveiro: "2", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Painel central do sistema de segurança contra incêndios" },
-    { id_chave: "chv-16", id_predio: "predio-1", area_nome: "Coletor de Resíduos / Lixo", codigo_chave: "BR2PP 016", num_chaveiro: "1", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Compartimento estanque de contentores de lixo" },
-    { id_chave: "chv-17", id_predio: "predio-1", area_nome: "Acesso ao Telhado / Cobertura", codigo_chave: "BR2PP 017", num_chaveiro: "2", local_sugerido: "Edifício Estrela da Barra", quantidade: 0, no_claviculario: false, observacoes: "Alçapão / porta de acesso à cobertura superior" }
-  ]);
+  // Módulo de Gestão de Chaves do Prédio — arranca vazio; as chaves reais
+  // vêm sempre do Supabase (useEffect abaixo). Antes arrancava com 17
+  // registos fictícios fixos (id_predio "predio-1", "Edifício Estrela da
+  // Barra") que ficavam permanentemente visíveis para qualquer prédio real
+  // sem chaves ainda registadas, passando por dados reais.
+  const [chaves, setChaves] = useState<ChaveItem[]>([]);
 
   // Prédio selecionado
   const [selectedPredioId, setSelectedPredioId] = useState<string | null>(predios[0]?.id_predio || null);
@@ -112,8 +98,8 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
       if (!predioIdParaCarregar) return;
 
       const chavesCarregadas = await fetchChavesFromSupabase(predioIdParaCarregar);
-      if (!cancelado && chavesCarregadas && chavesCarregadas.length > 0) {
-        setChaves(chavesCarregadas);
+      if (!cancelado) {
+        setChaves(chavesCarregadas || []);
       }
     };
 

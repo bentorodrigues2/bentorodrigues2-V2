@@ -26,32 +26,36 @@ export function PWASupplierCardsView({
 }: PWASupplierCardsViewProps) {
   const [activeTab, setActiveTab] = useState<"perfil" | "seguranca" | "financeiro">(initialTab);
 
-  // Find supplier matching logged user name or first supplier as default
+  // Find supplier matching logged user name or first supplier as default.
+  // Sem correspondência real, usa uma ficha vazia (não dados fictícios de
+  // uma empresa fabricada) — antes caía numa "OTIS Elevadores Lda" completa
+  // e fictícia, que preenchia o perfil como se fosse real e podia ser
+  // gravada por engano no Supabase.
   const myFornecedor = fornecedores.find(
     f => f.nome.toLowerCase().includes((loggedUser.nome || "").toLowerCase()) ||
          (loggedUser.email && f.email_contacto === loggedUser.email)
   ) || fornecedores[0] || {
-    id_fornecedor: "forn-1",
-    id_predio: "predio-1",
-    nome: loggedUser.nome || "OTIS Elevadores Lda",
-    nif: "500112233",
-    iban: "PT50003344556677889900112",
-    categoria: "Manutenção Elevadores",
-    morada: "Av. da Liberdade 120, Lisboa",
-    contacto: "214156000",
-    pessoa_contacto: "Eng. João Costa",
-    telemovel_direto: "912345678",
-    email_contacto: loggedUser.email || "joao.costa@otis.pt",
-    data_nascimento: "1985-04-12",
-    perfis_pwa: ["TECNICO"]
+    id_fornecedor: "",
+    id_predio: predio?.id_predio || "",
+    nome: loggedUser.nome || "",
+    nif: "",
+    iban: "",
+    categoria: "",
+    morada: "",
+    contacto: "",
+    pessoa_contacto: "",
+    telemovel_direto: "",
+    email_contacto: loggedUser.email || "",
+    data_nascimento: "",
+    perfis_pwa: []
   };
 
   // --- PERFIL STATE ---
-  const [iban, setIban] = useState(myFornecedor.iban || "PT50003344556677889900112");
-  const [email, setEmail] = useState(myFornecedor.email_contacto || myFornecedor.contacto || "joao.costa@otis.pt");
-  const [telemovel, setTelemovel] = useState(myFornecedor.telemovel_direto || myFornecedor.contacto || "912345678");
-  const [morada, setMorada] = useState(myFornecedor.morada || "Av. da Liberdade 120, Lisboa");
-  const [dataNascimento, setDataNascimento] = useState(myFornecedor.data_nascimento || "1985-04-12");
+  const [iban, setIban] = useState(myFornecedor.iban || "");
+  const [email, setEmail] = useState(myFornecedor.email_contacto || myFornecedor.contacto || "");
+  const [telemovel, setTelemovel] = useState(myFornecedor.telemovel_direto || myFornecedor.contacto || "");
+  const [morada, setMorada] = useState(myFornecedor.morada || "");
+  const [dataNascimento, setDataNascimento] = useState(myFornecedor.data_nascimento || "");
   const [fotoWebp, setFotoWebp] = useState<string | null>(myFornecedor.foto || null);
 
   // Handle Photo WebP Upload

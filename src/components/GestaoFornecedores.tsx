@@ -563,18 +563,18 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
                     <div className="space-y-1 text-slate-700 font-sans">
                       <p><strong>De:</strong> {(predio as any).email_administracao || (predio as any).email || "administracao@condomanagerai.com"}</p>
                       <p><strong>Para:</strong> {welcomeModalFornecedor.email_contacto || welcomeModalFornecedor.contacto || "fornecedor@empresa.pt"}</p>
-                      <p><strong>Assunto:</strong> Registo de Fornecedor Homologado - Condomínio Edifício Estrela da Barra</p>
+                      <p><strong>Assunto:</strong> Registo de Fornecedor Homologado - Condomínio {predio.nome || "Edifício"}</p>
                     </div>
                     <hr className="border-emerald-100" />
                     <div className="space-y-3 text-slate-700 font-sans leading-relaxed relative z-10">
                       <p>Exmos. Senhores <strong>{welcomeModalFornecedor.nome}</strong>,</p>
-                      <p>Confirmamos a conclusão do registo da vossa empresa no catálogo de fornecedores e prestadores homologados do <strong>Condomínio Edifício Estrela da Barra</strong>.</p>
-                      
+                      <p>Confirmamos a conclusão do registo da vossa empresa no catálogo de fornecedores e prestadores homologados do <strong>Condomínio {predio.nome || "Edifício"}</strong>.</p>
+
                       <div className="bg-white/90 border border-slate-200 p-3 rounded-lg text-[11px] text-slate-800 space-y-1">
                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Dados Fiscais para Faturação :</p>
-                        <p>• <strong>Designação:</strong> Condomínio Edifício Estrela da Barra</p>
-                        <p>• <strong>NIF:</strong> 900123456</p>
-                        <p>• <strong>Morada de Faturação:</strong> Rua Bento Rodrigues</p>
+                        <p>• <strong>Designação:</strong> Condomínio {predio.nome || "Edifício"}</p>
+                        <p>• <strong>NIF:</strong> {predio.nif || "—"}</p>
+                        <p>• <strong>Morada de Faturação:</strong> {predio.morada_linha1 || "—"}{predio.num_porta ? `, ${predio.num_porta}` : ""}{predio.localidade ? `, ${predio.localidade}` : ""}</p>
                         <p>• <strong>E-mail para Envio de Faturas/Recibos:</strong> {(predio as any).email_administracao || (predio as any).email || "administracao@condomanagerai.com"}</p>
                       </div>
 
