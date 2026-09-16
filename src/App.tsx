@@ -2455,11 +2455,12 @@ export default function App() {
           )}
 
           {activeSection === "relatorios_automaticos" && (
-            <GestaoRelatorios 
-              predio={predioAtivo} 
+            <GestaoRelatorios
+              predio={predioAtivo}
               loggedUser={loggedUser}
               movimentos={movements}
               fracoes={fracoes}
+              onAddDocumento={handleAddDocumento}
             />
           )}
 

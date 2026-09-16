@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getSecurityLogs, SecurityLog, getSimulatedClientIp } from "../lib/authSecurity";
+import { getSecurityLogs, SecurityLog } from "../lib/authSecurity";
 import { getDocumentAccessLogs, DocumentAccessLog, ACL_ROLE_MATRIX } from "../lib/documentSecurity";
 
 interface SecurityAuditModalProps {
@@ -112,7 +112,7 @@ export function SecurityAuditModal({
         {activeTab === "auth" && (
           <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
             <div className="flex justify-between items-center text-[10px] uppercase font-extrabold text-slate-400 px-1 pt-1">
-              <span>Registo de Eventos Recentes (Supabase user_metadata)</span>
+              <span>Registo de Eventos Recentes (auditoria_plataforma)</span>
               <span>Total: {logs.length} logs</span>
             </div>
 
@@ -159,28 +159,34 @@ export function SecurityAuditModal({
                 <span>Status de Row Level Security (RLS) no Supabase Engine</span>
               </div>
               <p className="text-slate-300 leading-relaxed text-[10px]">
-                Todas as tabelas possuem <strong>ALTER TABLE ... ENABLE ROW LEVEL SECURITY</strong>. O isolamento por condomínio é verificado obrigatoriamente através do token JWT do utilizador (<code>auth.jwt() -&gt;&gt; &apos;condominio_id&apos;</code>).
+                Todas as tabelas abaixo têm <strong>ALTER TABLE ... ENABLE ROW LEVEL SECURITY</strong> aplicado e as suas policies removidas — o único acesso possível é através deste servidor, autenticado com a <code>service_role key</code>, nunca exposta ao browser. O acesso direto com a chave pública (anon) é estruturalmente bloqueado para todas estas tabelas.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {[
-                { name: "utilizadores", status: "RLS Ativo", policy: "SELECT, UPDATE por JWT Email & Admin Role" },
-                { name: "condominios", status: "RLS Ativo", policy: "Isolamento por condominio_id = auth.jwt()" },
-                { name: "fracoes", status: "RLS Ativo", policy: "Restrito ao condomínio ativo do condómino" },
-                { name: "ocorrencias", status: "RLS Ativo", policy: "Permissões de SELECT, INSERT, UPDATE por Role" },
-                { name: "atas", status: "RLS Ativo", policy: "Leitura geral do condomínio, Escrita Admin/Jurídico" },
-                { name: "contratos", status: "RLS Ativo", policy: "Acesso restrito Admin, Gestor, Jurídico & Contabilista" },
-                { name: "faturas", status: "RLS Ativo", policy: "Proteção de OCR e Faturas por Role e Condomínio" },
-                { name: "movimentos_bancarios", status: "RLS Ativo", policy: "Restrito à Administração e Contabilidade" },
-                { name: "logs_auditoria", status: "RLS Ativo", policy: "Trigger Automático para Ações Sensíveis" },
-                { name: "storage.objects", status: "RLS Ativo", policy: "Bucket condo_documentos_protegidos isolado" },
+                { name: "predios", policy: "Só via proxy /api/data com service_role" },
+                { name: "fracoes", policy: "Só via proxy /api/data com service_role" },
+                { name: "proprietarios", policy: "Só via proxy /api/data com service_role" },
+                { name: "contas", policy: "Só via proxy /api/data com service_role" },
+                { name: "movimentos", policy: "Só via proxy /api/data com service_role" },
+                { name: "avisos", policy: "Só via proxy /api/data com service_role" },
+                { name: "documentos", policy: "Só via proxy /api/data com service_role" },
+                { name: "ocorrencias", policy: "Só via proxy /api/data com service_role" },
+                { name: "reservas", policy: "Só via proxy /api/data com service_role" },
+                { name: "fornecedores", policy: "Só via proxy /api/data com service_role" },
+                { name: "contratos", policy: "Só via proxy /api/data com service_role" },
+                { name: "reunioes", policy: "Só via proxy /api/data com service_role" },
+                { name: "auditoria_plataforma", policy: "Só leitura e inserção — sem update/delete, nem pelo servidor" },
+                { name: "ai_auditoria", policy: "Só leitura e inserção — sem update/delete, nem pelo servidor" },
+                { name: "seguros_fracoes / sinistros", policy: "Só via proxy /api/data com service_role" },
+                { name: "push_subscriptions", policy: "Só via proxy /api/data com service_role" },
               ].map((t) => (
                 <div key={t.name} className="bg-slate-950 border border-slate-800 p-2.5 rounded-xl flex flex-col justify-between">
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-mono text-emerald-400 font-bold text-xs">{t.name}</span>
                     <span className="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold uppercase">
-                      {t.status}
+                      RLS Ativo
                     </span>
                   </div>
                   <span className="text-[10px] text-slate-400 leading-snug">{t.policy}</span>

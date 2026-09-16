@@ -1,16 +1,19 @@
 import React, { useState } from "react";
-import { Predio, LoggedUser, Movimento, Fracao } from "../types";
+import { Predio, LoggedUser, Movimento, Fracao, Documento } from "../types";
 import { generateAndDownloadPdf, exportarBalanceteMapaAnualXLS } from "../utils";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
+import { registarLogAuditoria } from "../lib/supabaseService";
 
 interface GestaoRelatoriosProps {
   predio: Predio;
   loggedUser: LoggedUser;
   movimentos?: Movimento[];
   fracoes?: Fracao[];
+  onAddDocumento?: (doc: Documento) => void;
 }
 
-export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes = [] }: GestaoRelatoriosProps) {
+export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes = [], onAddDocumento }: GestaoRelatoriosProps) {
+  const [isPublicando, setIsPublicando] = useState(false);
   const [tipoRelatorio, setTipoRelatorio] = useState<"mensal" | "trimestral" | "anual">("mensal");
   const [mesSelecionado, setMesSelecionado] = useState<string>("07");
   const [trimestreSelecionado, setTrimestreSelecionado] = useState<string>("T2");
@@ -73,29 +76,50 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
         despesasPorCategoria[m.categoria] = (despesasPorCategoria[m.categoria] || 0) + m.valor;
       });
 
-      // Generate simulated attachments automatically
-      const anexosGerados = [
-        { nome: `Extrato_Bancario_Integrado_${tipoRelatorio === "mensal" ? mesSelecionado : trimestreSelecionado}_${anoSelecionado}.pdf`, tamanho: "342 KB", hash: "SHA-256: 8FA3B9C2" },
-        { nome: `Ata_Assembleia_Geral_Reconciliada.pdf`, tamanho: "1.2 MB", hash: "SHA-256: 4C2F98AB" },
-        { nome: `Comprovativos_Despesas_Consolidados.zip`, tamanho: "4.8 MB", hash: "SHA-256: D9A3E481" }
-      ];
+      const periodo = tipoRelatorio === "mensal" ? `${getMonthName(mesSelecionado)} de ${anoSelecionado}` : tipoRelatorio === "trimestral" ? `${trimestreSelecionado} de ${anoSelecionado}` : `Ano de ${anoSelecionado}`;
 
       setCompiledReport({
         id: `REP-${anoSelecionado}-${tipoRelatorio.slice(0,1).toUpperCase()}-${tipoRelatorio === "mensal" ? mesSelecionado : tipoRelatorio === "trimestral" ? trimestreSelecionado : "CONSOL"}`,
         titulo: `Relatório de Gestão ${tipoRelatorio === "mensal" ? `Mensal - Mes ${mesSelecionado}` : tipoRelatorio === "trimestral" ? `Trimestral - ${trimestreSelecionado}` : "Anual Consolidado"}`,
+        periodo,
         dataEmissao: new Date().toLocaleDateString("pt-PT"),
         movimentos: filtered,
         totalReceitas,
         totalDespesas,
         saldoPeriodo,
+        resultadoLiquido: saldoPeriodo,
         despesasPorCategoria,
-        anexos: anexosGerados,
-        totalFracoes: defaultFracoes.length,
-        taxaInadimplencia: 8.5 // 8.5% de quotas em atraso
+        totalFracoes: defaultFracoes.length
       });
 
       setIsCompiling(false);
     }, 1200);
+  };
+
+  const handlePublicarNoPortal = () => {
+    if (!compiledReport || !onAddDocumento) {
+      alert("Não é possível publicar: gere primeiro um relatório.");
+      return;
+    }
+    setIsPublicando(true);
+    const novoDoc: Documento = {
+      id_doc: `doc-rel-${Date.now()}`,
+      id_predio: predio.id_predio,
+      nome: `${compiledReport.titulo}.pdf`,
+      tipo: "Relatório de Gestão",
+      data_upload: new Date().toISOString().split("T")[0],
+      tamanho: "",
+      categoria: "Relatórios de Gestão",
+      descricao: `Receitas: ${formatCurrency(compiledReport.totalReceitas)} | Despesas: ${formatCurrency(compiledReport.totalDespesas)} | Saldo: ${formatCurrency(compiledReport.saldoPeriodo)}`,
+      visibilidade: "Público",
+      autor: loggedUser.nome || "Administração",
+      tema: "Relatórios de Gestão",
+      ano: anoSelecionado
+    };
+    onAddDocumento(novoDoc);
+    registarLogAuditoria("Financeira", `Publicou o relatório "${compiledReport.titulo}" no Portal`, predio.id_predio, loggedUser);
+    setIsPublicando(false);
+    alert(`Relatório publicado com sucesso no Arquivo Documental — visível aos condóminos em "Relatórios de Gestão".`);
   };
 
   const formatCurrency = (val: number) => `${val.toFixed(2)}€`;
@@ -119,7 +143,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
           <div>
             <h3 className="text-base font-bold text-slate-800">Emissão de Relatórios Financeiros Automáticos</h3>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-              Compile relatórios de prestação de contas com gráficos agregados e fechos de saldos mensais, trimestrais ou anuais. O sistema consolida movimentos, gera relatórios em tempo real e anexa automaticamente comprovativos e atas reconciliadas.
+              Compile relatórios de prestação de contas com gráficos agregados e fechos de saldos mensais, trimestrais ou anuais. O sistema consolida os movimentos reais do período e permite publicar o relatório no Arquivo Documental, visível aos condóminos.
             </p>
           </div>
         </div>
@@ -219,8 +243,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                 <i className="fa-solid fa-gears mr-1.5 text-blue-500"></i>Configurações de Automatização
               </div>
               <div className="flex items-center"><i className="fa-solid fa-circle-check text-emerald-600 mr-1.5"></i>Gráficos agregados automáticos</div>
-              <div className="flex items-center"><i className="fa-solid fa-circle-check text-emerald-600 mr-1.5"></i>Consolidação de comprovativos digitais</div>
-              <div className="flex items-center"><i className="fa-solid fa-circle-check text-emerald-600 mr-1.5"></i>Assinatura digital do Administrador</div>
+              <div className="flex items-center"><i className="fa-solid fa-circle-check text-emerald-600 mr-1.5"></i>Publicação real no Arquivo Documental</div>
             </div>
 
             <button
@@ -289,13 +312,13 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                   </p>
                 </div>
                 <div className="flex space-x-2 no-print">
-                  <button 
+                  <button
                     onClick={() => {
                       generateAndDownloadPdf(
                         compiledReport.titulo,
                         [
                           { heading: "Resumo Executivo Financeiro", content: `Total de Receitas: ${formatCurrency(compiledReport.totalReceitas)}\nTotal de Despesas: ${formatCurrency(compiledReport.totalDespesas)}\nResultado Líquido do Período: ${formatCurrency(compiledReport.resultadoLiquido)}` },
-                          { heading: "Indicadores de Cobrança & Taxa de Execução", content: `Taxa de Execução Orçamental: ${compiledReport.taxaExecucao}\nTaxa de Cobrança de Quotas: ${compiledReport.taxaCobranca}` }
+                          { heading: "Despesas por Categoria", content: Object.entries(compiledReport.despesasPorCategoria).map(([cat, val]: any) => `${cat}: ${formatCurrency(val)}`).join("\n") || "Sem despesas registadas neste período." }
                         ],
                         `Relatorio_Financeiro_${predio.nome.replace(/\s+/g, '_')}.pdf`,
                         [{ label: "Edifício", value: predio.nome }, { label: "Período", value: compiledReport.periodo }]
@@ -305,11 +328,12 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                   >
                     <img src="/marca/18-pdf.png" alt="PDF" className="w-4 h-4 object-contain shrink-0" /> Descarregar PDF
                   </button>
-                  <button 
-                    onClick={() => alert("Relatório assinado digitalmente com certificado CondoManager AI e arquivado no histórico de documentos do edifício.")}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg transition-colors shadow-sm cursor-pointer"
+                  <button
+                    onClick={handlePublicarNoPortal}
+                    disabled={isPublicando}
+                    className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg transition-colors shadow-sm cursor-pointer"
                   >
-                    <i className="fa-solid fa-file-signature mr-1"></i> Publicar no Portal
+                    <i className="fa-solid fa-file-signature mr-1"></i> {isPublicando ? "A publicar..." : "Publicar no Portal"}
                   </button>
                 </div>
               </div>
@@ -413,38 +437,6 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                 </div>
               </div>
 
-              {/* AUTOMATIC ATTACHMENTS (ANEXOS AUTOMÁTICOS) */}
-              <div className="space-y-2 border-t border-slate-100 pt-4">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  <i className="fa-solid fa-paperclip mr-1.5 text-blue-500"></i> Anexos Compilados Automaticamente
-                </span>
-                <p className="text-[10px] text-slate-500">Estes documentos foram auditados, reconciliados com os movimentos bancários e anexados à ata contábil:</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  {compiledReport.anexos.map((anexo: any, idx: number) => (
-                    <div key={idx} className="bg-slate-50 p-3 rounded-lg border border-slate-150 flex items-center justify-between">
-                      <div className="flex items-center space-x-2 shrink overflow-hidden">
-                        <div className="text-rose-600 text-xs shrink-0"><i className="fa-solid fa-file-pdf"></i></div>
-                        <div className="truncate">
-                          <span className="text-[10px] font-bold text-slate-700 block truncate">{anexo.nome}</span>
-                          <span className="text-[8px] text-slate-400 font-mono block">{anexo.tamanho} | {anexo.hash}</span>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => generateAndDownloadPdf(
-                          anexo.nome,
-                          [{ heading: "Anexo de Auditoria Financeira", content: `Ficheiro certificado: ${anexo.nome}\nHash de Segurança SHA-256: ${anexo.hash}\nDocumento autenticado no fecho de contas.` }],
-                          anexo.nome,
-                          [{ label: "Edifício", value: predio.nome }, { label: "Segurança", value: "Audit-Verified" }]
-                        )}
-                        className="text-blue-500 hover:text-blue-700 text-xs p-1 cursor-pointer"
-                        title="Descarregar"
-                      >
-                        <i className="fa-solid fa-download"></i>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
               </div>
             </div>
           )}

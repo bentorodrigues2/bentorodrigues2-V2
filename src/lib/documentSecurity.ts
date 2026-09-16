@@ -1,4 +1,5 @@
 // Document Security, ACL, RGPD/GDPR Protection, OCR & Digital Signatures Guard
+import { getRealClientIp } from "./authSecurity";
 
 export type UserRole = 
   | "ADMIN" 
@@ -203,7 +204,7 @@ export function validateDocumentAccess(
 }
 
 // Log Document Access to Audit Trail
-export function logDocumentAccess(
+export async function logDocumentAccess(
   userEmail: string,
   userRole: UserRole,
   condominioId: string,
@@ -212,7 +213,8 @@ export function logDocumentAccess(
   action: SecurityAction,
   granted: boolean,
   reason: string
-): DocumentAccessLog {
+): Promise<DocumentAccessLog> {
+  const ip = await getRealClientIp();
   const log: DocumentAccessLog = {
     id: `doclog-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     timestamp: new Date().toISOString().replace("T", " ").substring(0, 19),
@@ -224,7 +226,7 @@ export function logDocumentAccess(
     action,
     granted,
     reason,
-    ip: "193.137.21.108"
+    ip
   };
 
   try {
@@ -233,7 +235,7 @@ export function logDocumentAccess(
     existing.unshift(log);
     localStorage.setItem("supabase_document_access_logs", JSON.stringify(existing.slice(0, 150)));
   } catch (e) {
-    console.error("Erro ao guardar log de acesso a documento no Supabase:", e);
+    console.error("Erro ao guardar log de acesso a documento localmente:", e);
   }
 
   return log;
@@ -242,38 +244,7 @@ export function logDocumentAccess(
 export function getDocumentAccessLogs(): DocumentAccessLog[] {
   try {
     const existingStr = localStorage.getItem("supabase_document_access_logs");
-    if (!existingStr) {
-      const defaultLogs: DocumentAccessLog[] = [
-        {
-          id: "doclog-init-1",
-          timestamp: new Date(Date.now() - 1800000).toISOString().replace("T", " ").substring(0, 19),
-          userEmail: "carlos.adm@condomanager.pt",
-          userRole: "ADMIN",
-          condominioId: "PREDIO-001",
-          documentId: "doc-ata-2026-01",
-          docType: "ata",
-          action: "signature_verify",
-          granted: true,
-          reason: "Validação de assinatura digital PKCS#7 / SHA-256 concluída com sucesso.",
-          ip: "193.137.21.108"
-        },
-        {
-          id: "doclog-init-2",
-          timestamp: new Date(Date.now() - 3600000).toISOString().replace("T", " ").substring(0, 19),
-          userEmail: "antonio.costa@contabilidade.pt",
-          userRole: "CONTABILISTA",
-          condominioId: "PREDIO-001",
-          documentId: "doc-fatura-8842",
-          docType: "fatura",
-          action: "ocr_process",
-          granted: true,
-          reason: "Processamento de OCR e extração de NIF/IBAN executado via Supabase Edge Function.",
-          ip: "193.137.21.108"
-        }
-      ];
-      localStorage.setItem("supabase_document_access_logs", JSON.stringify(defaultLogs));
-      return defaultLogs;
-    }
+    if (!existingStr) return [];
     return JSON.parse(existingStr);
   } catch {
     return [];
