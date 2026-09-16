@@ -1183,24 +1183,23 @@ export async function classifyEmailCategory(input: ClassifyEmailInput): Promise<
 
 /**
  * AI STUDIO — REGRAS INTELIGENTES POR CATEGORIA (SYSTEM PROMPT)
- * Instruções oficiais integrando o logotipo e as 13 categorias exatas.
+ * Instruções oficiais para as 13 categorias exatas.
+ *
+ * Nota: o logotipo e a assinatura NÃO fazem parte desta mensagem — são
+ * adicionados uma única vez pelo template que envolve o corpo do email
+ * (gerarHtmlResposta, em server/lib/htmlemail.js). Se a IA os incluísse
+ * aqui também, apareceriam duplicados no email final.
  */
 export const REGRAS_INTELIGENTES_CATEGORIA_SYSTEM_PROMPT = `A tua função é gerar respostas profissionais e institucionais para emails recebidos pelo condomínio, com base no prompt oficial e nas 13 categorias estipuladas.
 
-⭐ REGRA CRÍTICA DE LOGOTIPO:
-Todas as mensagens DEVEM começar obrigatoriamente pelo HTML:
-<div style="text-align:center;margin-bottom:25px;">
-  <img src="https://bentorodrigues2.condomanagerai.com/email/20-logotipo.webp" style="width:240px;opacity:0.95;" />
-</div>
-
-⭐ REGRA CRÍTICA DE ASSINATURA:
-Todas as mensagens DEVEM terminar obrigatoriamente por:
-<br><br>
-Com os meus cumprimentos,
-<br>A administração do condomínio
-<br>José Carlos Guerra
-<br>📞 919 943 465
-<br>✉️ bentorodrgues2@gmail.com
+⭐ REGRA CRÍTICA DE FORMATO:
+Devolves APENAS o corpo da mensagem (o texto entre a saudação e a assinatura).
+NUNCA incluas logotipo, imagem, saudação ("Exmo. Sr...") nem assinatura —
+isso é adicionado automaticamente pelo sistema de envio. Podes usar "<br><br>"
+para separar parágrafos, mas nada mais de HTML.
+Usa os dados reais em "contexto" (proprietário, fração, prédio, quotas,
+seguros) para personalizar a resposta sempre que existirem; nunca inventes
+dados que não estejam no contexto.
 
 AS 13 CATEGORIAS OFICIAIS:
 1. "ruido": subject "Registo de ocorrência de ruído"
@@ -1220,8 +1219,15 @@ AS 13 CATEGORIAS OFICIAIS:
 DEVOLVES SEMPRE EM JSON ESTRITO:
 {
   "subject": "Assunto da categoria",
-  "message": "Mensagem formatada em HTML com logo, Exmo. Sr./Sra. \${nome}, texto e assinatura",
+  "message": "Só o corpo da resposta, sem saudação nem assinatura, personalizado com o contexto real",
   "categoria": "categoria"
+}
+
+Se o remetente for fornecedor ou email automático, devolves:
+{
+  "subject": null,
+  "message": null,
+  "categoria": "ignorar"
 }`;
 
 export interface CategoryResponseInput {
@@ -1278,11 +1284,49 @@ export async function generateCategoryResponse(input: CategoryResponseInput): Pr
     };
   }
 
-  // Se corresponder exatamente a uma das 13 categorias oficiais, fornecer diretamente o modelo oficial com substituição de nome
   const nome = (contexto.proprietario?.nome && String(contexto.proprietario.nome).trim())
     ? String(contexto.proprietario.nome).trim()
     : (from ? from.split("@")[0].replace(/[._-]/g, " ") : "Condómino(a)");
 
+  // Gera a resposta com o Gemini, personalizada com o contexto real
+  // (fração, prédio, quotas, seguros) — só cai no modelo fixo por
+  // categoria se a chamada à IA falhar.
+  try {
+    const userPayload = JSON.stringify(
+      { email: { from, subject: sub, bodyText: body }, contexto },
+      null,
+      2
+    );
+    const rawResponse = await generateWithFallback({
+      contents: [{ role: "user", parts: [{ text: userPayload }] }],
+      systemInstruction: REGRAS_INTELIGENTES_CATEGORIA_SYSTEM_PROMPT,
+      responseMimeType: "application/json"
+    });
+
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(rawResponse);
+    } catch {
+      const match = rawResponse.match(/\{[\s\S]*\}/);
+      if (match) parsed = JSON.parse(match[0]);
+    }
+
+    if (parsed && typeof parsed.message === "string" && parsed.message.trim()) {
+      const catFinal = normalizeCategoryKey(parsed.categoria || normalizedCat);
+      return {
+        subject: (parsed.subject && String(parsed.subject).trim()) || OFFICIAL_EMAIL_ROUTER_TEMPLATES[catFinal]?.subject || sub || "Resposta da Administração",
+        message: String(parsed.message).trim(),
+        categoria: catFinal
+      };
+    }
+    if (parsed && parsed.categoria === "ignorar") {
+      return { subject: null, message: null, categoria: "ignorar", filtrado: true, motivoFiltro: "IA identificou remetente como fornecedor ou automático." };
+    }
+  } catch (err) {
+    console.error("[generateCategoryResponse] Erro na chamada ao Gemini, a usar modelo fixo:", err);
+  }
+
+  // Fallback: modelo fixo por categoria (só corre se a IA falhar)
   const template = OFFICIAL_EMAIL_ROUTER_TEMPLATES[normalizedCat];
   if (template) {
     const fullMessage = buildOfficialEmailMessage(template.corpo, nome);
@@ -1293,7 +1337,6 @@ export async function generateCategoryResponse(input: CategoryResponseInput): Pr
     };
   }
 
-  // Fallback geral com logotipo e assinatura
   return getFallbackCategoryResponse(normalizedCat, sub, body, contexto);
 }
 
