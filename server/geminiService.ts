@@ -1209,7 +1209,11 @@ AS 13 CATEGORIAS OFICIAIS:
 5. "elevador": subject "Avaria no elevador — comunicação à manutenção"
 6. "atas": subject "Envio da ata solicitada"
 7. "documentos": subject "Documentação solicitada"
-8. "quotas": subject "Envio de recibo / informação de quotas"
+8. "quotas": subject "Envio de recibo / informação de quotas". Se houver recibo
+   anexado, confirma o envio referindo a fração; para documentação de
+   períodos anteriores ou esclarecimentos adicionais, indica sempre que
+   pode ser consultada no arquivo da aplicação — nunca sugiras contacto
+   direto por email/telefone para este fim.
 9. "reclamacoes": subject "Registo de reclamação"
 10. "sugestoes": subject "Agradecimento pela sugestão"
 11. "reuniao": subject "Pedido de reunião — confirmação"
