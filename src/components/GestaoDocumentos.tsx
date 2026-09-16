@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { jsPDF } from "jspdf";
 import { Predio, Documento, LoggedUser, DocumentoVersao } from "../types";
 import { formatDatePT, downloadBlob, addPdfHeaderWithLogo, downloadReceiptPDF, downloadNotaCobrancaPDF } from "../utils";
@@ -34,6 +34,7 @@ import {
   Building2,
   Check,
   RotateCcw,
+  RefreshCw,
   ChevronRight,
   FolderTree,
   Folder,
@@ -77,6 +78,29 @@ export function GestaoDocumentos({
 
   // PDF Viewer Modal
   const [activePdfViewerDoc, setActivePdfViewerDoc] = useState<Documento | null>(null);
+  const [pdfViewerRealUrl, setPdfViewerRealUrl] = useState<string | null>(null);
+
+  // Ficheiro real do documento em pré-visualização — sem isto, o iframe
+  // mostrava sempre uma reconstrução em HTML a partir dos metadados
+  // (generateDocumentHtml), nunca o PDF verdadeiramente arquivado.
+  useEffect(() => {
+    let cancelado = false;
+    setPdfViewerRealUrl(null);
+    if (!activePdfViewerDoc?.caminho) return;
+
+    fetch("/api/documento?acao=descarregar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ caminho: activePdfViewerDoc.caminho })
+    })
+      .then(resp => resp.json())
+      .then(resultado => {
+        if (!cancelado && resultado?.url) setPdfViewerRealUrl(resultado.url);
+      })
+      .catch(err => console.error("Erro ao obter pré-visualização real do documento:", err));
+
+    return () => { cancelado = true; };
+  }, [activePdfViewerDoc]);
 
   // Edit & Re-emit Test Document Modal State
   const [editingDoc, setEditingDoc] = useState<Documento | null>(null);
@@ -1067,9 +1091,48 @@ export function GestaoDocumentos({
     URL.revokeObjectURL(url);
   };
 
-  const handleDownloadPdf = (docItem: Documento) => {
+  const handleDownloadPdf = async (docItem: Documento) => {
+    // Documento com ficheiro real arquivado no Supabase Storage — vai
+    // sempre buscar esse ficheiro em vez de regenerar um PDF a partir de
+    // padrões no nome/categoria. Antes, o download ignorava sempre o
+    // ficheiro real: para recibos chegava a mostrar dados fictícios de uma
+    // pessoa completamente diferente da do documento realmente clicado.
+    if (docItem.caminho) {
+      try {
+        const resp = await fetch("/api/documento?acao=descarregar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ caminho: docItem.caminho })
+        });
+        const resultado = await resp.json();
+        if (resp.ok && resultado?.url) {
+          const fileResp = await fetch(resultado.url);
+          const blob = await fileResp.blob();
+          downloadBlob(blob, docItem.nome.endsWith(".pdf") ? docItem.nome : `${docItem.nome}.pdf`);
+          setActivePdfViewerDoc(docItem);
+          return;
+        }
+        console.error("Não foi possível obter o documento real do arquivo:", resultado?.error);
+      } catch (err) {
+        console.error("Erro ao descarregar documento real do arquivo:", err);
+      }
+      // Se a obtenção do ficheiro real falhar, cai no comportamento de
+      // reconstrução abaixo como último recurso, em vez de bloquear o
+      // download por completo.
+    } else if (docItem.url_foto) {
+      try {
+        const fileResp = await fetch(docItem.url_foto);
+        const blob = await fileResp.blob();
+        downloadBlob(blob, docItem.nome);
+        setActivePdfViewerDoc(docItem);
+        return;
+      } catch (err) {
+        console.error("Erro ao descarregar foto/documento do arquivo:", err);
+      }
+    }
+
     try {
-      const isRecibo = 
+      const isRecibo =
         docItem.tipo.toLowerCase().includes("recibo") ||
         (docItem.categoria && docItem.categoria.toLowerCase().includes("recibo")) ||
         docItem.nome.toLowerCase().includes("recibo") ||
@@ -3044,11 +3107,20 @@ export function GestaoDocumentos({
 
             {/* Modal Embedded Preview Frame */}
             <div className="flex-1 bg-white relative p-2">
-              <iframe
-                title={activePdfViewerDoc.nome}
-                srcDoc={generateDocumentHtml(activePdfViewerDoc)}
-                className="w-full h-full border-0 rounded-xl"
-              />
+              {activePdfViewerDoc.caminho && !pdfViewerRealUrl ? (
+                <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs gap-2">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span>A carregar documento real do arquivo...</span>
+                </div>
+              ) : (
+                <iframe
+                  title={activePdfViewerDoc.nome}
+                  {...(pdfViewerRealUrl
+                    ? { src: pdfViewerRealUrl }
+                    : { srcDoc: generateDocumentHtml(activePdfViewerDoc) })}
+                  className="w-full h-full border-0 rounded-xl"
+                />
+              )}
             </div>
 
             {/* Modal Footer */}

@@ -37,6 +37,25 @@ export default async function handler(req, res) {
   try {
     const body = req.body || {};
 
+    // Devolve um URL temporário assinado para o ficheiro real já arquivado
+    // no Storage — usado pelo botão "Descarregar" do Arquivo Digital, que
+    // antes nunca ia buscar o ficheiro real e regenerava sempre um PDF novo
+    // a partir de padrões no nome/categoria (para recibos, chegava a mostrar
+    // dados fictícios de uma pessoa diferente da do documento clicado).
+    if (acao === "descarregar") {
+      const { caminho } = body;
+      if (!caminho) {
+        return res.status(400).json({ error: "caminho é obrigatório" });
+      }
+
+      const { data, error } = await supabase.storage.from("documentos").createSignedUrl(caminho, 300);
+      if (error || !data?.signedUrl) {
+        return res.status(404).json({ error: error?.message || "Documento não encontrado no arquivo" });
+      }
+
+      return res.status(200).json({ ok: true, url: data.signedUrl });
+    }
+
     if (acao === "enviar") {
       const { caminho, nome, email, assunto, mensagem, nomeDestinatario, cc } = body;
       if (!caminho || !email) {
@@ -85,7 +104,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, caminho });
     }
 
-    return res.status(400).json({ error: "Ação inválida. Use acao=enviar|anexar" });
+    return res.status(400).json({ error: "Ação inválida. Use acao=descarregar|enviar|anexar" });
   } catch (err) {
     console.error("Erro em /api/documento:", err);
     return res.status(500).json({ error: err?.message || String(err) });
