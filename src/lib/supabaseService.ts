@@ -1094,7 +1094,7 @@ export async function savePontoVotacaoToSupabase(ponto: PontoVotacaoAssembleia):
     id_reuniao: ponto.id_reuniao,
     ordem: ponto.ordem || 1,
     titulo: ponto.titulo,
-    descricao: ponto.descricao || null,
+    descricao: ponto.descricao || "",
     tipo_maioria: ponto.tipo_maioria || "MAIORIA_SIMPLES",
     estado: ponto.estado || "ABERTA",
     votos_fracoes: { votos: ponto.votos || [] },
