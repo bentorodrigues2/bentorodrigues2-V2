@@ -296,7 +296,7 @@ async function obterContextoEnvio(contexto) {
   const modoAutoresponder = predioRow?.autoresponder_modo || "confirmacao_previa";
 
   let modoRemetente = "CONDOMINIO";
-  let empresaNome = "Condomínio";
+  let empresaNome = "CondoManager AI Condomínio";
   let empresaEmail = null;
   try {
     const { data: config } = await supabase
@@ -323,13 +323,13 @@ async function obterContextoEnvio(contexto) {
   // (consistente com os restantes emails da app), Reply-To do prédio em causa.
   if (predioRow) {
     return {
-      fromAddress: `Condomínio <${fromEmailBase}>`,
+      fromAddress: `CondoManager AI Condomínio <${fromEmailBase}>`,
       replyTo: predioRow.email || predioRow.email_condominio || undefined,
       modoAutoresponder
     };
   }
 
-  return { fromAddress: `Condomínio <${fromEmailBase}>`, replyTo: undefined, modoAutoresponder };
+  return { fromAddress: `CondoManager AI Condomínio <${fromEmailBase}>`, replyTo: undefined, modoAutoresponder };
 }
 
 /**
@@ -344,7 +344,7 @@ export async function enviarEmailResend({ to, subject, html, attachments = [], f
 
   try {
     const fromEmail = process.env.EMAIL_FROM_ADDRESS || "administracao@condomanagerai.com";
-    const fromFinal = fromAddress || (fromEmail.includes("<") ? fromEmail : `Condomínio <${fromEmail}>`);
+    const fromFinal = fromAddress || (fromEmail.includes("<") ? fromEmail : `CondoManager AI Condomínio <${fromEmail}>`);
 
     const payload = {
       from: fromFinal,

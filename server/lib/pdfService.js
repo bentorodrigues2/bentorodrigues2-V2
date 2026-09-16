@@ -113,7 +113,7 @@ export async function enviarEmailPDF({ to, nomeDestinatario, assunto, mensagem, 
   if (!resendApiKey || !to) return;
 
   const fromEmail = process.env.EMAIL_FROM_ADDRESS || "administracao@condomanagerai.com";
-  const fromAddress = fromEmail.includes("<") ? fromEmail : `Condomínio <${fromEmail}>`;
+  const fromAddress = fromEmail.includes("<") ? fromEmail : `CondoManager AI Condomínio <${fromEmail}>`;
 
   const html = gerarHtmlResposta(nomeDestinatario || "Condómino(a)", mensagem);
 
