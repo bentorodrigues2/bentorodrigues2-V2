@@ -148,6 +148,7 @@ export function ModalFichaCondominoEditavel({
           <div class="grid">
             <div class="box"><div class="box-title">E-mail Oficial</div><div class="box-val">${formData.prop_email}</div></div>
             <div class="box" style="flex: 2;"><div class="box-title">IBAN de Origem</div><div class="box-val">${formData.prop_iban}</div></div>
+            <div class="box"><div class="box-title">Data de Nascimento</div><div class="box-val">${formData.prop_data_nascimento || "—"}</div></div>
           </div>
 
           <div class="section-title">3. COPROPRIETÁRIOS ADICIONAIS</div>
@@ -156,6 +157,7 @@ export function ModalFichaCondominoEditavel({
             <div class="box"><div class="box-title">NIF</div><div class="box-val">${formData.coprop_nif || "—"}</div></div>
             <div class="box"><div class="box-title">E-mail</div><div class="box-val">${formData.coprop_email || "—"}</div></div>
             <div class="box"><div class="box-title">Telemóvel</div><div class="box-val">${formData.coprop_tlm || "—"}</div></div>
+            <div class="box"><div class="box-title">Data de Nascimento</div><div class="box-val">${formData.coprop_data_nascimento || "—"}</div></div>
           </div>
 
           <div class="section-title">4. DADOS DE ARRENDAMENTO E INQUILINO</div>
@@ -167,6 +169,7 @@ export function ModalFichaCondominoEditavel({
           <div class="grid">
             <div class="box"><div class="box-title">E-mail Inquilino</div><div class="box-val">${formData.inq_email || "—"}</div></div>
             <div class="box"><div class="box-title">Telemóvel Inquilino</div><div class="box-val">${formData.inq_tlm || "—"}</div></div>
+            <div class="box"><div class="box-title">Data de Nascimento</div><div class="box-val">${formData.inq_data_nascimento || "—"}</div></div>
           </div>
 
           <div class="footer-rgpd">

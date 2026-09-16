@@ -405,8 +405,9 @@ export function downloadFichaCondominoVaziaPDF(
     ]);
 
     drawBoxWithFields("", [
-      { label: "E-mail Oficial *", key: "prop_email", placeholder: "Ex: jose@email.com", widthPct: 40 },
-      { label: "IBAN de Origem", key: "prop_iban", placeholder: "PT50...", widthPct: 60 }
+      { label: "E-mail Oficial *", key: "prop_email", placeholder: "Ex: jose@email.com", widthPct: 35 },
+      { label: "IBAN de Origem", key: "prop_iban", placeholder: "PT50...", widthPct: 40 },
+      { label: "Data de Nascimento", key: "prop_data_nascimento", placeholder: "DD/MM/AAAA", widthPct: 25 }
     ]);
 
     drawBoxWithFields("", [
@@ -417,10 +418,11 @@ export function downloadFichaCondominoVaziaPDF(
 
     // 3. COPROPRIETÁRIOS ADICIONAIS
     drawBoxWithFields("3. COPROPRIETÁRIOS ADICIONAIS (SE APLICÁVEL)", [
-      { label: "Nome Completo do Coproprietário", key: "coprop_nome", placeholder: "Ex: Ana Maria Guerra", widthPct: 45 },
-      { label: "NIF Fiscal", key: "coprop_nif", placeholder: "Ex: 234567890", widthPct: 20 },
-      { label: "E-mail", key: "coprop_email", placeholder: "ana@email.com", widthPct: 20 },
-      { label: "Telemóvel", key: "coprop_tlm", placeholder: "919888777", widthPct: 15 }
+      { label: "Nome Completo do Coproprietário", key: "coprop_nome", placeholder: "Ex: Ana Maria Guerra", widthPct: 35 },
+      { label: "NIF Fiscal", key: "coprop_nif", placeholder: "Ex: 234567890", widthPct: 16 },
+      { label: "E-mail", key: "coprop_email", placeholder: "ana@email.com", widthPct: 19 },
+      { label: "Telemóvel", key: "coprop_tlm", placeholder: "919888777", widthPct: 15 },
+      { label: "Data de Nascimento", key: "coprop_data_nascimento", placeholder: "DD/MM/AAAA", widthPct: 15 }
     ]);
 
     // 4. A FRAÇÃO ENCONTRA-SE ARRENDADA? (S / N) + INQUILINO
@@ -430,9 +432,10 @@ export function downloadFichaCondominoVaziaPDF(
     ]);
 
     drawBoxWithFields("", [
-      { label: "NIF Fiscal do Arrendatário", key: "inq_nif", placeholder: "NIF...", widthPct: 25 },
-      { label: "E-mail do Arrendatário", key: "inq_email", placeholder: "email@arrendatario.pt", widthPct: 40 },
-      { label: "Telemóvel do Arrendatário", key: "inq_tlm", placeholder: "929887766", widthPct: 35 }
+      { label: "NIF Fiscal do Arrendatário", key: "inq_nif", placeholder: "NIF...", widthPct: 20 },
+      { label: "E-mail do Arrendatário", key: "inq_email", placeholder: "email@arrendatario.pt", widthPct: 32 },
+      { label: "Telemóvel do Arrendatário", key: "inq_tlm", placeholder: "929887766", widthPct: 28 },
+      { label: "Data de Nascimento", key: "inq_data_nascimento", placeholder: "DD/MM/AAAA", widthPct: 20 }
     ]);
 
     drawBoxWithFields("", [
