@@ -702,6 +702,7 @@ export function downloadFichaCondominoPreenchidaPDF(predioNome: string = "Condom
 
     const prop = fracao?.proprietario || {};
     const inq = fracao?.inquilino || {};
+    const coprop = fracao?.proprietarios_adicionais?.[0] || {};
 
     doc.setTextColor(15, 23, 42);
     doc.setFont("helvetica", "bold");
@@ -768,24 +769,27 @@ export function downloadFichaCondominoPreenchidaPDF(predioNome: string = "Condom
     renderBoxValue("2. PROPRIETÁRIO PRINCIPAL REGISTADO", [
       { label: "Nome Completo *", val: prop.nome || "Não atribuído", widthPct: 50 },
       { label: "NIF Fiscal *", val: prop.nif || "—", widthPct: 25 },
-      { label: "Telemóvel *", val: prop.telefone || "—", widthPct: 25 }
+      { label: "Telemóvel *", val: prop.tlm || "—", widthPct: 25 }
     ]);
 
     renderBoxValue("", [
-      { label: "E-mail Oficial *", val: prop.email || "—", widthPct: 40 },
-      { label: "IBAN de Origem", val: prop.iban || "—", widthPct: 60 }
+      { label: "E-mail Oficial *", val: prop.email || "—", widthPct: 35 },
+      { label: "IBAN de Origem", val: prop.iban || "—", widthPct: 40 },
+      { label: "Data de Nascimento", val: prop.data_nascimento || "—", widthPct: 25 }
     ]);
 
     renderBoxValue("", [
-      { label: "Titular da Conta Bancária", val: prop.titular_iban || prop.nome || "—", widthPct: 40 },
-      { label: "Entidade Bancária", val: prop.banco || "BPI / CGD", widthPct: 35 },
+      { label: "Titular da Conta Bancária", val: prop.titular_conta || prop.nome || "—", widthPct: 40 },
+      { label: "Entidade Bancária", val: prop.entidade_bancaria || "—", widthPct: 35 },
       { label: "Fotografia de Perfil", val: prop.foto ? "📷 Foto Carregada" : "Sem foto", widthPct: 25 }
     ]);
 
     renderBoxValue("3. COPROPRIETÁRIOS ADICIONAIS", [
-      { label: "Nome do Coproprietário", val: prop.co_nome || "Nenhum coproprietário adicional", widthPct: 50 },
-      { label: "NIF Fiscal", val: prop.co_nif || "—", widthPct: 25 },
-      { label: "Telemóvel", val: prop.co_tlm || "—", widthPct: 25 }
+      { label: "Nome do Coproprietário", val: coprop.nome || "Nenhum coproprietário adicional", widthPct: 35 },
+      { label: "NIF Fiscal", val: coprop.nif || "—", widthPct: 16 },
+      { label: "E-mail", val: coprop.email || "—", widthPct: 19 },
+      { label: "Telemóvel", val: coprop.tlm || "—", widthPct: 15 },
+      { label: "Data de Nascimento", val: coprop.data_nascimento || "—", widthPct: 15 }
     ]);
 
     renderBoxValue("4. FRAÇÃO ARRENDADA? (DADOS DO ARRENDATÁRIO / INQUILINO)", [
@@ -795,13 +799,14 @@ export function downloadFichaCondominoPreenchidaPDF(predioNome: string = "Condom
 
     if (fracao?.is_arrendada) {
       renderBoxValue("", [
-        { label: "NIF Fiscal do Arrendatário", val: inq.nif || "—", widthPct: 25 },
-        { label: "E-mail do Arrendatário", val: inq.email || "—", widthPct: 40 },
-        { label: "Telemóvel do Arrendatário", val: inq.telefone || "—", widthPct: 35 }
+        { label: "NIF Fiscal do Arrendatário", val: inq.nif || "—", widthPct: 20 },
+        { label: "E-mail do Arrendatário", val: inq.email || "—", widthPct: 32 },
+        { label: "Telemóvel do Arrendatário", val: inq.tlm || "—", widthPct: 28 },
+        { label: "Data de Nascimento", val: inq.data_nascimento || "—", widthPct: 20 }
       ]);
 
       renderBoxValue("", [
-        { label: "Morada de Residência Alternativa do Proprietário (Se Arrendada)", val: prop.morada_alt || "Registada no sistema", widthPct: 100 }
+        { label: "Morada de Residência Alternativa do Proprietário (Se Arrendada)", val: prop.morada_alternativa || "Registada no sistema", widthPct: 100 }
       ]);
     }
 
@@ -2922,7 +2927,10 @@ export function gerarNotificacaoDividaPDF(
   predioNome: string = "Condomínio Edifício Estrela da Barra",
   predioNif: string = "900 123 456",
   ibanPagamento: string = "PT50 0035 0123 4567 8901 2344 5",
-  devolverDoc?: boolean
+  devolverDoc?: boolean,
+  incluirJurosMora?: boolean,
+  taxaJurosMora?: number,
+  valorJurosMora?: number
 ) {
   try {
     const doc = new jsPDF({
@@ -2979,11 +2987,27 @@ export function gerarNotificacaoDividaPDF(
     doc.text("DISCRIMINAÇÃO DAS QUOTAS E VALORES EM MORA", 18, y + 5);
     y += 10;
 
-    const linhas = [
-      { desc: "Quotas Ordinárias de Condomínio (Meses de Maio, Junho, Julho e Agosto de 2026)", val: "180,00 €" },
-      { desc: "Fundo Comum de Reserva Legal (10% sobre quotas vencidas)", val: "18,00 €" },
-      { desc: "Despesas Administrativas de Notificação e Juros de Mora legais", val: "49,50 €" }
+    // valorDivida pode chegar como número (chamador real) ou string em
+    // formato PT "1.234,56" (vírgula decimal) — só quando há vírgula é que
+    // o ponto conta como separador de milhares; caso contrário é o próprio
+    // separador decimal (ex.: "150.00" vindo de Number.toFixed(2)).
+    const valorDividaStr = String(valorDivida).trim();
+    const valorBaseNum = valorDividaStr.includes(",")
+      ? parseFloat(valorDividaStr.replace(/\./g, "").replace(",", ".")) || 0
+      : parseFloat(valorDividaStr) || 0;
+    const jurosNum = incluirJurosMora ? (valorJurosMora || 0) : 0;
+    const totalNum = valorBaseNum + jurosNum;
+    const formatarEuro = (v: number) => v.toFixed(2).replace(".", ",");
+
+    const linhas: { desc: string; val: string }[] = [
+      { desc: "Quotas de Condomínio em Mora (capital em dívida)", val: `${formatarEuro(valorBaseNum)} €` }
     ];
+    if (incluirJurosMora) {
+      linhas.push({
+        desc: `Despesas Administrativas de Notificação e Juros de Mora Legais (${taxaJurosMora || 0}% ao ano)`,
+        val: `${formatarEuro(jurosNum)} €`
+      });
+    }
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
@@ -3003,7 +3027,7 @@ export function gerarNotificacaoDividaPDF(
     doc.setTextColor(15, 23, 42);
     doc.text("MONTANTE TOTAL PENDENTE:", 18, y);
     doc.setTextColor(185, 28, 28); // Red 700
-    doc.text(`${valorDivida} €`, 190, y, { align: "right" });
+    doc.text(`${formatarEuro(totalNum)} €`, 190, y, { align: "right" });
     y += 10;
 
     // Texto Legal & Interpelação

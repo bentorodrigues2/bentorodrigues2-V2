@@ -45,6 +45,7 @@ export function ContenciosoJuridico({
   }, [predio.id_predio]);
   const [selectedFracaoId, setSelectedFracaoId] = useState<string>("");
   const [interestRate, setInterestRate] = useState<number>(4.0); // Default 4% annual interest
+  const [incluirJurosMoraNotificacao, setIncluirJurosMoraNotificacao] = useState<boolean>(true);
 
   // --- ENVIO REAL DE NOTIFICAÇÕES (Interpelação em Mora / Obras Irregulares / Acordo de Pagamento) ---
   const [tipoCartaEnvio, setTipoCartaEnvio] = useState<"mora" | "obras" | "acordo">("mora");
@@ -306,7 +307,12 @@ export function ContenciosoJuridico({
           valorDivida: selectedFracaoInfo?.totalDebt || 0,
           predioNome: predio.nome,
           predioNif: predio.nif,
-          ibanPagamento: predioContasIBAN(predio.id_predio)
+          ibanPagamento: predioContasIBAN(predio.id_predio),
+          incluirJurosMora: incluirJurosMoraNotificacao,
+          taxaJurosMora: interestRate,
+          valorJurosMora: incluirJurosMoraNotificacao
+            ? getCalculatedTotalInterest(selectedFracaoInfo?.unpaidAvisos || [])
+            : 0
         };
       } else if (tipoCartaEnvio === "obras") {
         tipo = "notificacao-obras-irregulares";
@@ -1111,6 +1117,16 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   className="mt-1 w-full border border-slate-200 dark:border-slate-800 p-2 text-xs rounded bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-mono-custom"
                 />
               </div>
+
+              <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-slate-400 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={incluirJurosMoraNotificacao}
+                  onChange={e => setIncluirJurosMoraNotificacao(e.target.checked)}
+                  className="cursor-pointer"
+                />
+                <span>Incluir despesas administrativas e juros de mora no PDF de notificação</span>
+              </label>
 
               <div className="pt-2">
                 <button

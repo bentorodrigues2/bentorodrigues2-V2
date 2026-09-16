@@ -16,8 +16,6 @@ const TIPOS = {
   ata: { tema: "Assembleias", tipo: "Ata", fluxo: "ata", categoria: "Atas & Convocatórias" },
   aviso: { tema: "Avisos", tipo: "Aviso", fluxo: "aviso" },
   recibo: { tema: "Financeiro", tipo: "Recibo", fluxo: "recibo", categoria: "Pasta Paga. Quotas" },
-  "carta-n1": { tema: "Comunicações", tipo: "Carta N1", fluxo: "carta_n1" },
-  "carta-n2": { tema: "Comunicações", tipo: "Carta N2", fluxo: "carta_n2" },
   "boas-vindas": { tema: "Comunicações", tipo: "Boas-vindas", fluxo: "boas_vindas" },
   "registo-fornecedor": { tema: "Fornecedores", tipo: "Registo de Fornecedor", fluxo: "registo_fornecedor" },
   sinistro: { tema: "Seguros", tipo: "Sinistro", fluxo: "sinistro", categoria: "Seguros & Apólices" },
@@ -78,7 +76,18 @@ function gerarDocEspecial(tipo, body) {
 
   if (tipo === "notificacao-divida") {
     return {
-      doc: gerarNotificacaoDividaPDF(body.proprietarioNome, body.fracaoNome, body.valorDivida, body.predioNome, body.predioNif, body.ibanPagamento, true),
+      doc: gerarNotificacaoDividaPDF(
+        body.proprietarioNome,
+        body.fracaoNome,
+        body.valorDivida,
+        body.predioNome,
+        body.predioNif,
+        body.ibanPagamento,
+        true,
+        Boolean(body.incluirJurosMora),
+        Number(body.taxaJurosMora) || 0,
+        Number(body.valorJurosMora) || 0
+      ),
       nomeFicheiro: `Notificacao_Divida_${(body.fracaoNome || "fracao").replace(/\s+/g, "_")}.pdf`,
       assunto: `Notificação Formal de Dívida — Fração ${body.fracaoNome || ""}`,
       mensagem: `Segue em anexo notificação formal referente à dívida em aberto da sua fração junto do condomínio.`
