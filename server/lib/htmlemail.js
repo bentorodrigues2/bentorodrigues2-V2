@@ -98,8 +98,8 @@ export function gerarHtmlAniversario({ nome, predioNome, adminNome, adminSignatu
     <span style="position: absolute; bottom: 1px; left: 1px; width: 6px; height: 6px; border-radius: 50%; background-color: ${corTeal};"></span>
     <span style="position: absolute; bottom: 1px; right: 1px; width: 6px; height: 6px; border-radius: 50%; background-color: ${corTeal};"></span>
 
-    <div style="border: 1px solid ${corTeal}; border-radius: 7px; padding: 26px 24px; background-image: url('https://bentorodrigues2.condomanagerai.com/email/birthday-watermark.jpg'); background-size: cover; background-position: center; background-repeat: no-repeat; background-color: #ffffff;">
-      <p style="margin: 0; text-align: center; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: ${corNavy};">${nomeEdificio.toUpperCase()}</p>
+    <div style="border: 1px solid ${corTeal}; border-radius: 7px; padding: 42px 24px; background-image: url('https://bentorodrigues2.condomanagerai.com/email/birthday-watermark.jpg'); background-size: cover; background-position: center; background-repeat: no-repeat; background-color: #ffffff;">
+      <p style="margin: 0; text-align: center; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: ${corNavy}; text-shadow: 0 0 6px #ffffff, 0 0 6px #ffffff;">${nomeEdificio.toUpperCase()}</p>
 
       <div style="text-align: center; margin: 8px 0 16px;">
         <span style="display: inline-block; width: 55px; height: 1px; background-color: ${corTeal}; vertical-align: middle;"></span>
@@ -110,7 +110,7 @@ export function gerarHtmlAniversario({ nome, predioNome, adminNome, adminSignatu
       <h1 style="margin: 0; text-align: center; font-size: 28px; color: ${corNavy};">FELIZ ANIVERSÁRIO!</h1>
       <p style="margin: 6px 0 20px; text-align: center; font-size: 11.5px; color: #475569;">Hoje é um dia de celebração muito especial para a nossa comunidade</p>
 
-      <div style="background-color: #f0fdfa; border: 1px solid ${corTeal}; border-radius: 8px; padding: 12px; text-align: center; margin-bottom: 18px;">
+      <div style="background-color: rgba(240, 253, 250, 0.88); border: 1px solid ${corTeal}; border-radius: 8px; padding: 12px; text-align: center; margin-bottom: 18px;">
         <p style="margin: 0; font-size: 15px; font-weight: 700; color: ${corNavy};">Exmo.(a) Sr.(a) ${nomeDestinatario},</p>
       </div>
 
