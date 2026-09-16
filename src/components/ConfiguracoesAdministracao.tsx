@@ -3,7 +3,7 @@ import { jsPDF } from "jspdf";
 import { Predio, LoggedUser, Documento, Movimento, Fracao, RespostaIAPendente } from "../types";
 import { downloadBlob, exportToXLS, addPdfHeaderWithLogo } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
-import { dbUpdate, fetchRespostasIAPendentes, fetchRegistoAuditoria, registarAuditoria, fetchEmailTemplateOverrides, saveEmailTemplateOverride } from "../lib/supabaseService";
+import { dbUpdate, fetchRespostasIAPendentes, fetchRegistoAuditoria, registarAuditoria, fetchEmailTemplateOverrides, saveEmailTemplateOverride, savePredioToSupabase, deletePredioFromSupabase } from "../lib/supabaseService";
 import { 
   Settings, Mail, Shield, Bell, ListTodo, FileDown, CheckCircle, 
   AlertTriangle, Play, RefreshCw, FileText, Check, Database, Sparkles, Trash2, ArrowRight,
@@ -411,6 +411,7 @@ export interface ConfiguracoesAdministracaoProps {
   predio?: Predio;
   predios?: Predio[];
   onUpdatePredio?: (updated: Predio) => void;
+  onDeletePredio?: (idPredio: string) => void;
   loggedUser: LoggedUser;
   documentos: Documento[];
   movimentos: Movimento[];
@@ -424,6 +425,7 @@ export function ConfiguracoesAdministracao({
   predio,
   predios = [],
   onUpdatePredio,
+  onDeletePredio,
   loggedUser,
   documentos,
   movimentos,
@@ -1115,7 +1117,7 @@ export function ConfiguracoesAdministracao({
   };
 
   // Handle general settings submission
-  const handleSaveGerais = (e: React.FormEvent) => {
+  const handleSaveGerais = async (e: React.FormEvent) => {
     e.preventDefault();
     if (onUpdatePredio) {
       const updated = {
@@ -1125,8 +1127,13 @@ export function ConfiguracoesAdministracao({
         num_porta: numPorta,
         localidade: localidade,
         nif: nif
-      };
+      } as Predio;
       onUpdatePredio(updated);
+      const ok = await savePredioToSupabase(updated);
+      if (!ok) {
+        alert("❌ Erro ao gravar as Configurações Gerais no Supabase.");
+        return;
+      }
       alert("Configurações Gerais gravadas e atualizadas com sucesso!");
       addLog("Configuração", "Gravação de parâmetros gerais do condomínio", `NIF: ${nif}, Nome: ${nomePredio}`);
     }
@@ -1562,19 +1569,20 @@ export function ConfiguracoesAdministracao({
               {loggedUser?.role === "ADMIN" && (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (confirm(`Tem a certeza que deseja eliminar o prédio "${predioNome}" do sistema?`)) {
-                      const stored = localStorage.getItem("condo_predios");
-                      if (stored) {
-                        try {
-                          const list = JSON.parse(stored);
-                          const updated = list.filter((p: any) => p.id_predio !== predioId);
-                          localStorage.setItem("condo_predios", JSON.stringify(updated));
-                        } catch (err) {}
-                      }
-                      alert(`O prédio "${predioNome}" foi removido com sucesso.`);
-                      window.location.reload();
+                  onClick={async () => {
+                    if (predios.length <= 1) {
+                      alert("Não é possível remover o único prédio cadastrado no sistema.");
+                      return;
                     }
+                    if (!confirm(`Tem a certeza que deseja eliminar o prédio "${predioNome}" do sistema? Esta ação é irreversível.`)) return;
+                    const ok = await deletePredioFromSupabase(predioId);
+                    if (!ok) {
+                      alert(`❌ Não foi possível eliminar o prédio "${predioNome}". Verifique se ainda tem frações, movimentos ou documentos associados — têm de ser removidos primeiro.`);
+                      return;
+                    }
+                    onDeletePredio?.(predioId);
+                    addLog("Configuração", `Eliminou o prédio "${predioNome}" do sistema`);
+                    alert(`✅ O prédio "${predioNome}" foi removido com sucesso.`);
                   }}
                   className="border-2 border-red-500 bg-red-50 hover:bg-red-100 active:bg-red-200 active:scale-95 text-red-700 dark:text-red-300 font-bold px-4 py-2 rounded-xl text-xs transition-all cursor-pointer shadow-xs hover:shadow-md active:ring-2 active:ring-red-400 select-none flex items-center gap-2"
                   title="Eliminar este prédio do sistema"

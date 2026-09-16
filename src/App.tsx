@@ -2674,6 +2674,7 @@ export default function App() {
                 else setActiveSection("configuracoes_gerais");
               }}
               onUpdatePredio={handleUpdatePredio}
+              onDeletePredio={handleDeletePredio}
               onAddDocumento={handleAddDocumento}
             />
           )}
