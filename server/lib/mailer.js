@@ -8,7 +8,7 @@ export async function enviarEmailSemAnexo({ to, subject, html }) {
   if (!resendApiKey || !to) return false;
 
   const fromEmail = process.env.EMAIL_FROM_ADDRESS || "administracao@condomanagerai.com";
-  const fromAddress = fromEmail.includes("<") ? fromEmail : `CondoManager AI Condomínio <${fromEmail}>`;
+  const fromAddress = fromEmail.includes("<") ? fromEmail : `Condomínio <${fromEmail}>`;
 
   try {
     const resp = await fetch("https://api.resend.com/emails", {

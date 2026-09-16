@@ -296,7 +296,7 @@ async function obterContextoEnvio(contexto) {
   const modoAutoresponder = predioRow?.autoresponder_modo || "confirmacao_previa";
 
   let modoRemetente = "CONDOMINIO";
-  let empresaNome = "CondoManager AI Condomínio";
+  let empresaNome = "Condomínio";
   let empresaEmail = null;
   try {
     const { data: config } = await supabase
@@ -319,10 +319,11 @@ async function obterContextoEnvio(contexto) {
     };
   }
 
-  // Modo CONDOMINIO (predefinição): usa o nome e o email do prédio em causa.
+  // Modo CONDOMINIO (predefinição): nome de apresentação fixo "Condomínio"
+  // (consistente com os restantes emails da app), Reply-To do prédio em causa.
   if (predioRow) {
     return {
-      fromAddress: `${predioRow.nome || "Condomínio"} <${fromEmailBase}>`,
+      fromAddress: `Condomínio <${fromEmailBase}>`,
       replyTo: predioRow.email || predioRow.email_condominio || undefined,
       modoAutoresponder
     };
