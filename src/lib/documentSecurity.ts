@@ -1,5 +1,6 @@
 // Document Security, ACL, RGPD/GDPR Protection, OCR & Digital Signatures Guard
 import { getRealClientIp } from "./authSecurity";
+import { registarAuditoria } from "./supabaseService";
 
 export type UserRole = 
   | "ADMIN" 
@@ -237,6 +238,22 @@ export async function logDocumentAccess(
   } catch (e) {
     console.error("Erro ao guardar log de acesso a documento localmente:", e);
   }
+
+  // O registo local (acima) é só cache de exibição rápida — o rasto de
+  // auditoria RGPD que conta é este, na tabela imutável auditoria_plataforma
+  // (só select/insert), para o próprio utilizador auditado não conseguir
+  // apagar o seu rasto de acesso limpando o localStorage do browser.
+  registarAuditoria({
+    id: log.id,
+    id_predio: condominioId || null,
+    seccao: "Segurança Documental (RGPD)",
+    descricao: `[${action.toUpperCase()}] ${granted ? "Acesso concedido" : "Acesso negado"} a documento "${documentId}" (${docType}).`,
+    detalhes: `${reason} | IP: ${ip}`,
+    usuario: null,
+    email_usuario: userEmail,
+    role_usuario: userRole,
+    origem: "web"
+  }).catch((err) => console.error("Erro ao registar log de acesso a documento no Supabase:", err));
 
   return log;
 }

@@ -3,6 +3,7 @@ import { Shield, Lock, Fingerprint, Volume2, VolumeX, Bell, Smartphone, Mail, Me
 import { ActionIcon } from "./ActionIcon";
 import { playNotificationTone } from "../lib/soundService";
 import { createSecurityLog } from "../lib/authSecurity";
+import { supabase } from "../lib/supabaseClient";
 
 interface UserSecuritySubmenuProps {
   userEmail: string;
@@ -73,7 +74,9 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
     }
   };
 
-  const handleUpdatePassword = (e: React.FormEvent) => {
+  const [updatingPassword, setUpdatingPassword] = useState<boolean>(false);
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPassMsg(null);
 
@@ -99,6 +102,15 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
     }
     if (newPass !== confirmPass) {
       setPassMsg({ type: "error", text: "A confirmação da password não coincide com a nova password!" });
+      return;
+    }
+
+    setUpdatingPassword(true);
+    const { error } = await supabase.auth.updateUser({ password: newPass });
+    setUpdatingPassword(false);
+
+    if (error) {
+      setPassMsg({ type: "error", text: `❌ Erro ao atualizar a password: ${error.message}` });
       return;
     }
 
@@ -238,9 +250,10 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-[10px] uppercase tracking-wider transition-all cursor-pointer shadow-xs"
+                disabled={updatingPassword}
+                className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold rounded-xl text-[10px] uppercase tracking-wider transition-all cursor-pointer shadow-xs"
               >
-                Atualizar Password de Acesso
+                {updatingPassword ? "A atualizar..." : "Atualizar Password de Acesso"}
               </button>
             </form>
           </div>
