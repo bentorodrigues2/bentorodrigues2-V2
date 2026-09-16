@@ -1311,6 +1311,16 @@ export function GestaoSinistrosSeguros({
 
               {/* FORMULÁRIO MANUAL / CAMPOS EXTRAÍDOS */}
               <div className="space-y-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                    Fração Associada
+                  </label>
+                  <div className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-950 bg-slate-50 px-3 py-2 text-xs rounded-xl font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                    <Building2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Fração {modalSeguroFracao.fracao.fracao_nome} — {modalSeguroFracao.fracao.proprietario?.nome || "Sem proprietário"}</span>
+                  </div>
+                </div>
+
                 <h4 className="font-bold text-slate-800 dark:text-white uppercase tracking-wider text-[10px]">
                   Dados da Apólice (Preenchimento Manual ou Revisto)
                 </h4>

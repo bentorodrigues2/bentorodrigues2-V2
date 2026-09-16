@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Download, Save } from "lucide-react";
+import { Download, Save, FileText } from "lucide-react";
 import { Predio, Fornecedor, LoggedUser } from "../types";
 import { exportToXLS, generateSupplierPwaManualPDF, gerarPdfRegistoFornecedorHomologado, gerarCartaoAniversarioCondominoPDF } from "../utils";
 import { saveFornecedorToSupabase, saveContratoToSupabase, fetchContratosFromSupabase, deleteContratoFromSupabase } from "../lib/supabaseService";
@@ -960,7 +960,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
                     onClick={() => document.getElementById("contract-file-selector")?.click()}
                     className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold border border-slate-250 cursor-pointer flex items-center space-x-1.5"
                   >
-                    <img src="/marca/18-pdf.png" alt="PDF" className="w-4 h-4 object-contain shrink-0" />
+                    <FileText className="w-4 h-4 shrink-0 text-red-600" />
                     <span>Selecionar Documento Contratual</span>
                   </button>
                   <input
