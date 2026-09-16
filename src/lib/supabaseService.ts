@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
+import type { Caucao } from '../components/FinanceiroAvancado';
 import { 
   Predio, 
   Fracao, 
@@ -1247,6 +1248,60 @@ export async function saveReservaToSupabase(reserva: Reserva): Promise<boolean> 
 export async function deleteReservaFromSupabase(idReserva: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
   return dbDelete("reservas", [["id_reserva", "eq", idReserva]]);
+}
+
+// ============================================================================
+// CAUÇÕES
+// ============================================================================
+export async function fetchCaucoesFromSupabase(idPredio?: string): Promise<Caucao[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const data = await dbSelect("caucoes", { filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined });
+    if (!data || data.length === 0) return null;
+
+    return data.map((row: any) => ({
+      id_caucao: row.id_caucao,
+      id_predio: row.id_predio,
+      id_fracao: row.id_fracao,
+      fracao_nome: row.fracao_nome,
+      titular: row.titular,
+      finalidade: row.finalidade,
+      valor: Number(row.valor) || 0,
+      data_deposito: row.data_deposito,
+      metodo_pagamento: row.metodo_pagamento,
+      comprovativo_ref: row.comprovativo_ref || undefined,
+      estado: row.estado,
+      data_resolucao: row.data_resolucao || undefined,
+      comprovativo_devolucao: row.comprovativo_devolucao || undefined,
+      justificacao_retencao: row.justificacao_retencao || undefined,
+      valor_retido: row.valor_retido != null ? Number(row.valor_retido) : undefined,
+      valor_devolvido: row.valor_devolvido != null ? Number(row.valor_devolvido) : undefined
+    }));
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function saveCaucaoToSupabase(caucao: Caucao): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("caucoes", {
+    id_caucao: caucao.id_caucao,
+    id_predio: caucao.id_predio,
+    id_fracao: caucao.id_fracao,
+    fracao_nome: caucao.fracao_nome,
+    titular: caucao.titular,
+    finalidade: caucao.finalidade,
+    valor: caucao.valor,
+    data_deposito: caucao.data_deposito,
+    metodo_pagamento: caucao.metodo_pagamento,
+    comprovativo_ref: caucao.comprovativo_ref || null,
+    estado: caucao.estado,
+    data_resolucao: caucao.data_resolucao || null,
+    comprovativo_devolucao: caucao.comprovativo_devolucao || null,
+    justificacao_retencao: caucao.justificacao_retencao || null,
+    valor_retido: caucao.valor_retido ?? null,
+    valor_devolvido: caucao.valor_devolvido ?? null
+  });
 }
 
 // ============================================================================

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Predio, Fracao, Aviso, Movimento, LoggedUser, Documento } from "../types";
 import { formatDatePT, formatQuotaReceiptNumber, downloadReceiptPDF, exportarBalanceteMapaAnualXLS } from "../utils";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
+import { fetchCaucoesFromSupabase, saveCaucaoToSupabase, registarLogAuditoria } from "../lib/supabaseService";
 
 export interface Caucao {
   id_caucao: string;
@@ -73,38 +74,15 @@ export function FinanceiroAvancado({
   const predioFracoes = useMemo(() => fracoes.filter(f => f.id_predio === predio.id_predio), [fracoes, predio.id_predio]);
   const predioAvisos = useMemo(() => avisos.filter(a => a.id_predio === predio.id_predio), [avisos, predio.id_predio]);
 
-  // Cauções State
-  const [caucoes, setCaucoes] = useState<Caucao[]>([
-    {
-      id_caucao: "cau-1",
-      id_predio: predio.id_predio,
-      id_fracao: fracoes[0]?.id_fracao || "frac-1",
-      fracao_nome: fracoes[0]?.fracao_nome || "Fração A",
-      titular: "João Silva",
-      finalidade: "Reserva de Salão de Festas",
-      valor: 150.00,
-      data_deposito: "2026-07-01",
-      metodo_pagamento: "MBWay",
-      comprovativo_ref: "MBW-99882211",
-      estado: "Ativa (Retida)"
-    },
-    {
-      id_caucao: "cau-2",
-      id_predio: predio.id_predio,
-      id_fracao: fracoes[1]?.id_fracao || "frac-2",
-      fracao_nome: fracoes[1]?.fracao_nome || "Fração B",
-      titular: "Maria Santos",
-      finalidade: "Acesso de Obras e Mudanças",
-      valor: 300.00,
-      data_deposito: "2026-06-15",
-      metodo_pagamento: "Transferência Bancária",
-      comprovativo_ref: "TRF-882291",
-      estado: "Devolvida",
-      data_resolucao: "2026-06-25",
-      comprovativo_devolucao: "DEV-TRF-00122",
-      valor_devolvido: 300.00
-    }
-  ]);
+  // Cauções State — carregadas do Supabase (tabela real "caucoes")
+  const [caucoes, setCaucoes] = useState<Caucao[]>([]);
+
+  React.useEffect(() => {
+    if (!predio.id_predio) return;
+    fetchCaucoesFromSupabase(predio.id_predio).then(dados => {
+      if (dados) setCaucoes(dados);
+    });
+  }, [predio.id_predio]);
 
   // Cauções Form State
   const [cFracaoId, setCFracaoId] = useState("");
@@ -143,6 +121,8 @@ export function FinanceiroAvancado({
     };
 
     setCaucoes([nova, ...caucoes]);
+    saveCaucaoToSupabase(nova).catch(console.error);
+    registarLogAuditoria("Financeira", `Registou uma caução de ${nova.valor.toFixed(2)}€ para "${nova.finalidade}"`, predio.id_predio, loggedUser, `Fração ${nova.fracao_nome} — ${nova.titular}`);
     showToast(`✅ Caução de ${nova.valor}€ registada com sucesso para Fração ${nova.fracao_nome}!`);
     CTitularSet(""); setCRef("");
   };
@@ -150,28 +130,34 @@ export function FinanceiroAvancado({
   const confirmarAcaoCaucao = () => {
     if (!selectedCaucaoId || !actionType) return;
 
-    setCaucoes(prev => prev.map(c => {
-      if (c.id_caucao === selectedCaucaoId) {
-        if (actionType === "DEVOLVER") {
-          return {
-            ...c,
-            estado: "Devolvida",
-            data_resolucao: actionData,
-            comprovativo_devolucao: actionRef || "DEV-" + Math.floor(Math.random() * 100000),
-            valor_devolvido: parseFloat(actionValor) || c.valor
-          };
-        } else {
-          return {
-            ...c,
-            estado: "Retida (Danos/Penalização)",
-            data_resolucao: actionData,
-            valor_retido: parseFloat(actionValor) || c.valor,
-            justificacao_retencao: actionMotivo || "Danos causados nas instalações comuns durante o período de caução."
-          };
+    const alvo = caucoes.find(c => c.id_caucao === selectedCaucaoId);
+    if (!alvo) return;
+
+    const atualizada: Caucao = actionType === "DEVOLVER"
+      ? {
+          ...alvo,
+          estado: "Devolvida",
+          data_resolucao: actionData,
+          comprovativo_devolucao: actionRef || "DEV-" + Math.floor(Math.random() * 100000),
+          valor_devolvido: parseFloat(actionValor) || alvo.valor
         }
-      }
-      return c;
-    }));
+      : {
+          ...alvo,
+          estado: "Retida (Danos/Penalização)",
+          data_resolucao: actionData,
+          valor_retido: parseFloat(actionValor) || alvo.valor,
+          justificacao_retencao: actionMotivo || "Danos causados nas instalações comuns durante o período de caução."
+        };
+
+    setCaucoes(prev => prev.map(c => c.id_caucao === selectedCaucaoId ? atualizada : c));
+    saveCaucaoToSupabase(atualizada).catch(console.error);
+    registarLogAuditoria(
+      "Financeira",
+      actionType === "DEVOLVER" ? `Devolveu a caução de "${alvo.finalidade}"` : `Reteve a caução de "${alvo.finalidade}"`,
+      predio.id_predio,
+      loggedUser,
+      `Fração ${alvo.fracao_nome} — ${alvo.titular}`
+    );
 
     showToast(actionType === "DEVOLVER" ? "✅ Caução devolvida com sucesso!" : "⚠️ Caução retida por danos com registo justificativo.");
     setSelectedCaucaoId(null);
@@ -244,9 +230,25 @@ export function FinanceiroAvancado({
     });
   };
 
-  const handleSendEmail = () => {
-    showToast(`✅ Documento "${emailModal.docTitle}" enviado com sucesso por email para ${emailModal.recipient}`);
-    setEmailModal(prev => ({ ...prev, isOpen: false }));
+  const handleSendEmail = async () => {
+    try {
+      const resp = await fetch("/api/email?acao=notificar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: emailModal.recipient,
+          nomeDestinatario: emailModal.recipient,
+          assunto: emailModal.subject || emailModal.docTitle,
+          mensagem: (emailModal.bodyText || "").replace(/\n/g, "<br>")
+        })
+      });
+      const resultado = await resp.json();
+      if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar email");
+      showToast(`✅ Documento "${emailModal.docTitle}" enviado com sucesso por email para ${emailModal.recipient}`);
+      setEmailModal(prev => ({ ...prev, isOpen: false }));
+    } catch (err: any) {
+      showToast(`❌ Erro ao enviar email: ${err?.message || "erro desconhecido"}`);
+    }
   };
 
   // Helper: calculate balance for a fraction (Negative if they have unpaid notices, Positive/Zero if in good standing)

@@ -87,61 +87,82 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
   ]);
 
   const [validatingOCR, setValidatingOCR] = useState(false);
+  const [ocrError, setOcrError] = useState<string | null>(null);
   const [ocrResult, setOcrResult] = useState<{
-    nif_emissor: string;
     fornecedor: string;
     num_fatura: string;
     data_emissao: string;
     valor_total: number;
-    iva_valor: number;
-    valido_nif: boolean;
-    valido_matematica: boolean;
     movimento_correspondente?: string;
-    pasta_arquivo: string;
   } | null>(null);
 
-  const handleUploadValidarRecibo = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const lerFicheiroComoBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1] || "");
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const handleUploadValidarRecibo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setValidatingOCR(true);
     setOcrResult(null);
+    setOcrError(null);
 
-    setTimeout(() => {
-      setValidatingOCR(false);
+    try {
+      const base64 = await lerFicheiroComoBase64(file);
+      const resp = await fetch("/api/ai?acao=reconhecer-anexo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base64, mimeType: file.type || "application/octet-stream" })
+      });
+      const resultado = await resp.json();
+      if (!resp.ok || !resultado.ok) {
+        throw new Error(resultado?.error || "A IA não conseguiu ler este documento.");
+      }
+
+      const dados = resultado.dados || {};
       const res = {
-        nif_emissor: "508123991",
-        fornecedor: file.name.toLowerCase().includes("limp") ? "Empresa Estrela Limpezas Lda" : "Empresa de Manutenção TecnoElevadores S.A.",
-        num_fatura: "FT 2026/" + Math.floor(1000 + Math.random() * 9000),
-        data_emissao: "2026-07-28",
-        valor_total: 160.00,
-        iva_valor: 36.80,
-        valido_nif: true,
-        valido_matematica: true,
-        movimento_correspondente: "rec-mov-1 (160.00€ em 2026-07-12)",
-        pasta_arquivo: "Financeiro → Extratos e Recibos Validados / 2026"
+        fornecedor: dados.entidade || "Entidade não identificada",
+        num_fatura: dados.referencia || "N/D",
+        data_emissao: dados.data_documento || new Date().toISOString().split("T")[0],
+        valor_total: Number(dados.valor_total) || 0
       };
-      setOcrResult(res);
 
-      // Add to pending documents as Reconciled & Validated by IA
+      const matchMovimento = movimentosReconciliacao.find(m => m.valor === res.valor_total && m.estado !== "Reconciliado");
+      setOcrResult({
+        ...res,
+        movimento_correspondente: matchMovimento ? `${matchMovimento.id_mov} (${matchMovimento.valor.toFixed(2)}€ em ${matchMovimento.data})` : undefined
+      });
+
+      // Add to pending documents — real leitura por IA (Gemini Vision), sem validações fiscais inventadas
       const newDoc: ComprovativoPendente = {
         id_comprovativo: "doc-rec-" + (comprovativosPendentes.length + 1),
         nome_ficheiro: file.name,
         data_sugerida: res.data_emissao,
         valor_sugerido: res.valor_total,
-        descricao_sugerida: res.fornecedor + " (" + res.num_fatura + ")",
-        estado: "Reconciliado"
+        descricao_sugerida: res.fornecedor + (res.num_fatura !== "N/D" ? ` (${res.num_fatura})` : ""),
+        estado: matchMovimento ? "Reconciliado" : "Sugerido"
       };
       setComprovativosPendentes(prev => [newDoc, ...prev]);
 
-      // Auto reconcile corresponding movement if found
-      setMovimentosReconciliacao(prev => prev.map(m => {
-        if (m.valor === res.valor_total && m.estado !== "Reconciliado") {
-          return { ...m, estado: "Reconciliado", descricao: `${m.descricao} [✓ Validado via IA & Arquivado: ${file.name}]` };
-        }
-        return m;
-      }));
-    }, 1800);
+      // Reconcile corresponding movement only if a real match was found
+      if (matchMovimento) {
+        setMovimentosReconciliacao(prev => prev.map(m => {
+          if (m.id_mov === matchMovimento.id_mov) {
+            return { ...m, estado: "Reconciliado", descricao: `${m.descricao} [✓ Lido por IA & Arquivado: ${file.name}]` };
+          }
+          return m;
+        }));
+      }
+    } catch (err: any) {
+      setOcrError(err?.message || "Erro ao processar o documento.");
+    } finally {
+      setValidatingOCR(false);
+    }
   };
 
   const triggerReconciliacaoAutomatica = () => {
@@ -390,8 +411,14 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
               <div className="p-4 bg-violet-950/60 rounded-xl border border-violet-700/50 flex items-center gap-3 animate-pulse">
                 <i className="fa-solid fa-spinner fa-spin text-xl text-violet-400"></i>
                 <span className="text-xs font-bold text-violet-200">
-                  O CondoManager AI está a analisar a imagem/PDF: a extrair NIF, validar cálculos de IVA, comparar com extrato bancário e a guardar no repositório...
+                  O CondoManager AI está a analisar a imagem/PDF com o Gemini Vision...
                 </span>
+              </div>
+            )}
+
+            {ocrError && (
+              <div className="p-4 bg-red-950/60 rounded-xl border border-red-700/50 text-xs font-bold text-red-300">
+                ❌ {ocrError}
               </div>
             )}
 
@@ -400,18 +427,14 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <span className="text-xs font-black text-emerald-400 flex items-center gap-1.5">
                     <i className="fa-solid fa-circle-check"></i>
-                    <span>RECIBO / FATURA VALIDADA COM SUCESSO PELA IA</span>
-                  </span>
-                  <span className="text-[10px] font-mono text-slate-400">
-                    Pasta de Arquivo: <strong className="text-violet-300">{ocrResult.pasta_arquivo}</strong>
+                    <span>DOCUMENTO LIDO PELA IA (GEMINI VISION)</span>
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs font-mono">
                   <div className="p-2.5 bg-slate-800/80 rounded-lg">
                     <span className="text-[9px] text-slate-400 uppercase block">Fornecedor / Emitente</span>
                     <span className="font-bold text-white text-[11px] block">{ocrResult.fornecedor}</span>
-                    <span className="text-[9px] text-slate-400">NIF: {ocrResult.nif_emissor} (Validado ✓)</span>
                   </div>
 
                   <div className="p-2.5 bg-slate-800/80 rounded-lg">
@@ -421,15 +444,20 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                   </div>
 
                   <div className="p-2.5 bg-slate-800/80 rounded-lg">
-                    <span className="text-[9px] text-slate-400 uppercase block">Valor Total com IVA</span>
+                    <span className="text-[9px] text-slate-400 uppercase block">Valor Total</span>
                     <span className="font-bold text-emerald-400 text-sm block">€{ocrResult.valor_total.toFixed(2)}</span>
-                    <span className="text-[9px] text-slate-400">IVA (23%): €{ocrResult.iva_valor.toFixed(2)}</span>
                   </div>
 
-                  <div className="p-2.5 bg-slate-800/80 rounded-lg">
+                  <div className="p-2.5 bg-slate-800/80 rounded-lg col-span-2 md:col-span-3">
                     <span className="text-[9px] text-slate-400 uppercase block">Cruzamento Bancário</span>
-                    <span className="font-bold text-cyan-300 text-[10px] block truncate">{ocrResult.movimento_correspondente}</span>
-                    <span className="text-[9px] text-emerald-400 font-bold block mt-0.5">Emparelhado Auto ✓</span>
+                    {ocrResult.movimento_correspondente ? (
+                      <>
+                        <span className="font-bold text-cyan-300 text-[10px] block truncate">{ocrResult.movimento_correspondente}</span>
+                        <span className="text-[9px] text-emerald-400 font-bold block mt-0.5">Emparelhado Auto ✓</span>
+                      </>
+                    ) : (
+                      <span className="text-[9px] text-amber-400 font-bold block mt-0.5">Sem movimento com o mesmo valor por reconciliar — requer confirmação manual.</span>
+                    )}
                   </div>
                 </div>
               </div>
