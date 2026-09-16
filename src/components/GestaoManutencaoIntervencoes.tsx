@@ -2,6 +2,12 @@ import React, { useState, useRef, useEffect } from "react";
 import { Predio, Fracao, Ocorrencia, Movimento, Conta, Documento, LoggedUser, Fornecedor, OcorrenciaFoto } from "../types";
 import { formatDatePT, exportToXLS } from "../utils";
 import { motion, AnimatePresence } from "motion/react";
+import {
+  fetchAgendaVistoriasFromSupabase, saveAgendaVistoriaToSupabase,
+  fetchIntervencoesFromSupabase, saveIntervencaoToSupabase,
+  fetchObrasExtraFromSupabase, saveObraExtraToSupabase,
+  saveDocumentoToSupabase, saveMovimentoToSupabase, saveOcorrenciaToSupabase, saveContaToSupabase, registarLogAuditoria
+} from "../lib/supabaseService";
 import { 
   Wrench, Calendar, TriangleAlert, Hammer, CheckSquare, FolderArchive, 
   Plus, Upload, ShieldAlert, Check, RefreshCw, Sparkles, Send, 
@@ -92,37 +98,19 @@ export function GestaoManutencaoIntervencoes({
   setActiveSubSection
 }: GestaoManutencaoIntervencoesProps) {
 
-  // Local Simulated States for Vistorias (Agenda) and Intervencoes/Obras
-  const [agenda, setAgenda] = useState<AgendaItem[]>(() => {
-    const saved = localStorage.getItem(`agenda_manutencao_${predio.id_predio}`);
-    if (saved) return JSON.parse(saved);
-    return [];
-  });
-
-  const [intervencoes, setIntervencoes] = useState<Intervencao[]>(() => {
-    const saved = localStorage.getItem(`intervencoes_${predio.id_predio}`);
-    if (saved) return JSON.parse(saved);
-    return [];
-  });
-
-  const [obrasExtra, setObrasExtra] = useState<ObraExtraordinaria[]>(() => {
-    const saved = localStorage.getItem(`obras_extra_${predio.id_predio}`);
-    if (saved) return JSON.parse(saved);
-    return [];
-  });
-
-  // Persist states
-  useEffect(() => {
-    localStorage.setItem(`agenda_manutencao_${predio.id_predio}`, JSON.stringify(agenda));
-  }, [agenda, predio.id_predio]);
+  // Estado carregado do Supabase (tabelas reais agenda_vistorias_tecnicas,
+  // intervencoes_tecnicas, obras_extraordinarias) — antes vivia só em
+  // localStorage ("Local Simulated States"), perdido a cada dispositivo.
+  const [agenda, setAgenda] = useState<AgendaItem[]>([]);
+  const [intervencoes, setIntervencoes] = useState<Intervencao[]>([]);
+  const [obrasExtra, setObrasExtra] = useState<ObraExtraordinaria[]>([]);
 
   useEffect(() => {
-    localStorage.setItem(`intervencoes_${predio.id_predio}`, JSON.stringify(intervencoes));
-  }, [intervencoes, predio.id_predio]);
-
-  useEffect(() => {
-    localStorage.setItem(`obras_extra_${predio.id_predio}`, JSON.stringify(obrasExtra));
-  }, [obrasExtra, predio.id_predio]);
+    if (!predio.id_predio) return;
+    fetchAgendaVistoriasFromSupabase(predio.id_predio).then(dados => { if (dados) setAgenda(dados); });
+    fetchIntervencoesFromSupabase(predio.id_predio).then(dados => { if (dados) setIntervencoes(dados); });
+    fetchObrasExtraFromSupabase(predio.id_predio).then(dados => { if (dados) setObrasExtra(dados); });
+  }, [predio.id_predio]);
 
   // Selected Profile for Testing maintenance flow
   const [activeProfile, setActiveProfile] = useState<LoggedUser["role"]>(loggedUser.role);
@@ -277,6 +265,7 @@ export function GestaoManutencaoIntervencoes({
     };
 
     setOcorrencias([nova, ...ocorrencias]);
+    saveOcorrenciaToSupabase(nova).catch(console.error);
     setOcDescricao("");
     setOcFotos([]);
     alert("Ocorrência reportada com sucesso e enviada para a administração!");
@@ -284,20 +273,23 @@ export function GestaoManutencaoIntervencoes({
 
   // Administration dispatches Ocorrência
   const handleDispatchOcorr = (id: string) => {
+    let ocorrenciaAtualizada: Ocorrencia | null = null;
     const updated = ocorrencias.map(o => {
       if (o.id_ocorr === id) {
-        return {
+        ocorrenciaAtualizada = {
           ...o,
           estado: "Em Reparação",
           tecnico_atribuido: dispTecnico || "Técnico Geral",
           classificacao: dispClassificacao,
           medidas_tomadas: `[Classificação: ${dispClassificacao.toUpperCase()}] Despachado com prioridade ${dispPrioridade}. Notas: ${dispNotas}`
         };
+        return ocorrenciaAtualizada;
       }
       return o;
     });
 
     setOcorrencias(updated);
+    if (ocorrenciaAtualizada) saveOcorrenciaToSupabase(ocorrenciaAtualizada).catch(console.error);
 
     // If classified as maintenance or repair, auto-create a small repair (Intervencao)
     if (dispClassificacao === "manutencao" || dispClassificacao === "intervencao") {
@@ -314,6 +306,7 @@ export function GestaoManutencaoIntervencoes({
         validadoAdmin: false
       };
       setIntervencoes([novaInt, ...intervencoes]);
+      saveIntervencaoToSupabase(predio.id_predio, novaInt).catch(console.error);
     } else if (dispClassificacao === "obra") {
       // If classified as Obra, auto-create Extraordinary Work
       const targetOcorr = ocorrencias.find(o => o.id_ocorr === id);
@@ -332,10 +325,11 @@ export function GestaoManutencaoIntervencoes({
         impactoFundoReserva: 500,
         impactoSaldoAnual: -3000,
         estado: "Planeada",
-        orcamentos: ["Orcamento_Preliminar_Automático.pdf"],
+        orcamentos: [],
         documentosArquivados: false
       };
       setObrasExtra([novaObra, ...obrasExtra]);
+      saveObraExtraToSupabase(predio.id_predio, novaObra).catch(console.error);
     }
 
     setDispatchOcorrId(null);
@@ -364,6 +358,8 @@ export function GestaoManutencaoIntervencoes({
     });
 
     setOcorrencias(updated);
+    const ocorrenciaConcluida = updated.find(o => o.id_ocorr === id);
+    if (ocorrenciaConcluida) saveOcorrenciaToSupabase(ocorrenciaConcluida).catch(console.error);
 
     // Mover automaticamente com base na classificação
     if (classificacao === "intervencao") {
@@ -387,6 +383,7 @@ export function GestaoManutencaoIntervencoes({
         const filtered = prev.filter(i => !i.descricao.includes(`[Origem ${id}]`));
         return [novaInt, ...filtered];
       });
+      saveIntervencaoToSupabase(predio.id_predio, novaInt).catch(console.error);
 
     } else if (classificacao === "manutencao") {
       // Vistoria → mover automaticamente para Agenda de Manutenção
@@ -403,6 +400,7 @@ export function GestaoManutencaoIntervencoes({
         assinatura: techSign || "Assinatura Eletrónica"
       };
       setAgenda(prev => [novaAgenda, ...prev]);
+      saveAgendaVistoriaToSupabase(predio.id_predio, novaAgenda).catch(console.error);
 
     } else if (classificacao === "obra") {
       // Obra → mover automaticamente para Intervenções Extraordinárias
@@ -424,13 +422,14 @@ export function GestaoManutencaoIntervencoes({
         impactoFundoReserva: 900,
         impactoSaldoAnual: -3600,
         estado: "Concluída",
-        orcamentos: [`Orcamento_Ocorrência_${id}.pdf`],
-        documentosArquivados: true
+        orcamentos: [],
+        documentosArquivados: false
       };
       setObrasExtra(prev => {
         const filtered = prev.filter(o => !o.descricao.includes(`[Origem ${id}]`));
         return [novaObra, ...filtered];
       });
+      saveObraExtraToSupabase(predio.id_predio, novaObra).catch(console.error);
     }
 
     // Auto-create document archive entry of this technical intervention
@@ -449,6 +448,8 @@ export function GestaoManutencaoIntervencoes({
       tema: "Manutenção"
     };
     setDocumentos([novoDoc, ...documentos]);
+    saveDocumentoToSupabase(novoDoc).catch(console.error);
+    registarLogAuditoria("Manutenção", `Concluiu a tarefa técnica da ocorrência ${id}`, predio.id_predio, loggedUser, techReport);
 
     setTechOcorrId(null);
     setTechReport("");
@@ -527,6 +528,7 @@ export function GestaoManutencaoIntervencoes({
     });
 
     setAgenda([...agenda, ...checks]);
+    checks.forEach(item => saveAgendaVistoriaToSupabase(predio.id_predio, item).catch(console.error));
     alert("IA analisou o património do prédio e gerou a agenda preventiva ideal de vistorias técnicas obrigatórias!");
   };
 
@@ -548,6 +550,8 @@ export function GestaoManutencaoIntervencoes({
     });
 
     setAgenda(updated);
+    const itemAtualizado = updated.find(i => i.id === id);
+    if (itemAtualizado) saveAgendaVistoriaToSupabase(predio.id_predio, itemAtualizado).catch(console.error);
 
     // If an anomaly/avaria was found, auto-report an occurrence!
     if (checkAvarias.trim()) {
@@ -565,9 +569,10 @@ export function GestaoManutencaoIntervencoes({
         tecnico_atribuido: loggedUser.nome
       };
       setOcorrencias(prev => [novaOc, ...prev]);
+      saveOcorrenciaToSupabase(novaOc).catch(console.error);
     }
 
-    // Generate IA automatic PDF report & archive
+    // Generate PDF report & archive
     const targetItem = agenda.find(i => i.id === id);
     const docId = "doc-vist-" + Date.now();
     const novoDoc: Documento = {
@@ -585,6 +590,8 @@ export function GestaoManutencaoIntervencoes({
       tema: "Manutenção"
     };
     setDocumentos(prev => [novoDoc, ...prev]);
+    saveDocumentoToSupabase(novoDoc).catch(console.error);
+    registarLogAuditoria("Manutenção", `Registou a vistoria de "${targetItem?.equipamento}"`, predio.id_predio, loggedUser, checkStatus);
 
     setCheckItemId(null);
     setCheckReport("");
@@ -611,6 +618,8 @@ export function GestaoManutencaoIntervencoes({
     };
 
     setIntervencoes([nova, ...intervencoes]);
+    saveIntervencaoToSupabase(predio.id_predio, nova).catch(console.error);
+    registarLogAuditoria("Manutenção", `Criou uma ordem de reparação: "${newIntDesc}"`, predio.id_predio, loggedUser);
     setNewIntDesc("");
     setNewIntForn("");
     setNewIntCusto("");
@@ -634,6 +643,8 @@ export function GestaoManutencaoIntervencoes({
     });
 
     setIntervencoes(updated);
+    const intervencaoAtualizada = updated.find(i => i.id === id);
+    if (intervencaoAtualizada) saveIntervencaoToSupabase(predio.id_predio, intervencaoAtualizada).catch(console.error);
     setExecIntId(null);
     setExecReport("");
     setExecFotos([]);
@@ -659,13 +670,16 @@ export function GestaoManutencaoIntervencoes({
     });
 
     setIntervencoes(updated);
+    const intervencaoValidada = updated.find(i => i.id === id);
+    if (intervencaoValidada) saveIntervencaoToSupabase(predio.id_predio, intervencaoValidada).catch(console.error);
 
     // Launch automatically in movements
     const lancamentoCusto = finalCost > 0 ? finalCost : target.custoPrevisto;
+    const contaAlvo = contas[0];
     const novoMov: Movimento = {
       id_mov: "mov-int-" + Date.now(),
       id_predio: predio.id_predio,
-      id_conta: contas[0]?.id_conta || "cnt-1",
+      id_conta: contaAlvo?.id_conta || "cnt-1",
       data: new Date().toISOString().split("T")[0],
       tipo: "DESPESA",
       valor: lancamentoCusto,
@@ -674,6 +688,11 @@ export function GestaoManutencaoIntervencoes({
       fotos: []
     };
     setMovements([novoMov, ...movements]);
+    saveMovimentoToSupabase(novoMov).catch(console.error);
+    if (contaAlvo) {
+      contaAlvo.saldo = (contaAlvo.saldo || 0) - lancamentoCusto;
+      saveContaToSupabase(contaAlvo).catch(console.error);
+    }
 
     // Create automatic Document Archive entry
     const novoDoc: Documento = {
@@ -691,6 +710,8 @@ export function GestaoManutencaoIntervencoes({
       tema: "Manutenção"
     };
     setDocumentos([novoDoc, ...documentos]);
+    saveDocumentoToSupabase(novoDoc).catch(console.error);
+    registarLogAuditoria("Manutenção", `Validou a intervenção "${target.descricao}"`, predio.id_predio, loggedUser, `${lancamentoCusto.toFixed(2)}€`);
 
     setValIntId(null);
     setValCustoFinal("");
@@ -718,13 +739,16 @@ export function GestaoManutencaoIntervencoes({
         return i;
       });
       setIntervencoes(updated);
+      const intervencaoHomologada = updated.find(i => i.id === taskId);
+      if (intervencaoHomologada) saveIntervencaoToSupabase(predio.id_predio, intervencaoHomologada).catch(console.error);
 
       // Launch despesa in movements automatically
       const lancamentoCusto = costNum > 0 ? costNum : target.custoPrevisto;
+      const contaAlvo = contas[0];
       const novoMov: Movimento = {
         id_mov: "mov-int-" + Date.now(),
         id_predio: predio.id_predio,
-        id_conta: contas[0]?.id_conta || "cnt-1",
+        id_conta: contaAlvo?.id_conta || "cnt-1",
         data: new Date().toISOString().split("T")[0],
         tipo: "DESPESA",
         valor: lancamentoCusto,
@@ -733,6 +757,11 @@ export function GestaoManutencaoIntervencoes({
         fotos: []
       };
       setMovements([novoMov, ...movements]);
+      saveMovimentoToSupabase(novoMov).catch(console.error);
+      if (contaAlvo) {
+        contaAlvo.saldo = (contaAlvo.saldo || 0) - lancamentoCusto;
+        saveContaToSupabase(contaAlvo).catch(console.error);
+      }
 
       // Archive document
       const novoDoc: Documento = {
@@ -750,6 +779,8 @@ export function GestaoManutencaoIntervencoes({
         tema: "Manutenção"
       };
       setDocumentos([novoDoc, ...documentos]);
+      saveDocumentoToSupabase(novoDoc).catch(console.error);
+      registarLogAuditoria("Manutenção", `Homologou a reparação "${target.descricao}"`, predio.id_predio, loggedUser, `${lancamentoCusto.toFixed(2)}€`);
     } else {
       alert("Esta tarefa já se encontra validada ou não requer validação de custos.");
     }
@@ -786,11 +817,13 @@ export function GestaoManutencaoIntervencoes({
       impactoFundoReserva: cost * 0.1, // recommended legal reserve fund contribution
       impactoSaldoAnual: -cost,
       estado: "Planeada",
-      orcamentos: ["Orcamento_Principal_Obra_Validado.pdf"],
+      orcamentos: [],
       documentosArquivados: false
     };
 
     setObrasExtra([nova, ...obrasExtra]);
+    saveObraExtraToSupabase(predio.id_predio, nova).catch(console.error);
+    registarLogAuditoria("Manutenção", `Criou a obra extraordinária "${newObraDesc}"`, predio.id_predio, loggedUser, `${cost.toFixed(2)}€`);
     setShowNewObraForm(false);
     setNewObraDesc("");
     setNewObraForn("");
@@ -814,12 +847,15 @@ export function GestaoManutencaoIntervencoes({
     setObrasExtra(updated);
     const target = obrasExtra.find(o => o.id === id);
     if (!target) return;
+    const obraAtualizada = updated.find(o => o.id === id);
+    if (obraAtualizada) saveObraExtraToSupabase(predio.id_predio, obraAtualizada).catch(console.error);
 
     // Post to movements automatically as Despesa
+    const contaAlvo = contas[0];
     const novoMov: Movimento = {
       id_mov: "mov-obr-" + Date.now(),
       id_predio: predio.id_predio,
-      id_conta: contas[0]?.id_conta || "cnt-1",
+      id_conta: contaAlvo?.id_conta || "cnt-1",
       data: new Date().toISOString().split("T")[0],
       tipo: "DESPESA",
       valor: target.custoTotal,
@@ -828,6 +864,11 @@ export function GestaoManutencaoIntervencoes({
       fotos: []
     };
     setMovements([novoMov, ...movements]);
+    saveMovimentoToSupabase(novoMov).catch(console.error);
+    if (contaAlvo) {
+      contaAlvo.saldo = (contaAlvo.saldo || 0) - target.custoTotal;
+      saveContaToSupabase(contaAlvo).catch(console.error);
+    }
 
     // Auto-archive in extraordinary works
     const novoDoc: Documento = {
@@ -845,6 +886,8 @@ export function GestaoManutencaoIntervencoes({
       tema: "Obras"
     };
     setDocumentos([novoDoc, ...documentos]);
+    saveDocumentoToSupabase(novoDoc).catch(console.error);
+    registarLogAuditoria("Manutenção", `Adjudicou a obra extraordinária "${target.descricao}"`, predio.id_predio, loggedUser, `${target.custoTotal.toFixed(2)}€`);
 
     alert("Obra adjudicada! Lançamento de despesa extraordinária efetuado e plano arquivado.");
   };
@@ -852,10 +895,17 @@ export function GestaoManutencaoIntervencoes({
   // Admin verifies & signs off a completed task
   const handleVerifyCompletedTask = (id: string, isInt = true) => {
     if (isInt) {
-      setIntervencoes(intervencoes.map(i => i.id === id ? { ...i, validadoAdmin: true } : i));
+      const atualizadas = intervencoes.map(i => i.id === id ? { ...i, validadoAdmin: true } : i);
+      setIntervencoes(atualizadas);
+      const alvo = atualizadas.find(i => i.id === id);
+      if (alvo) saveIntervencaoToSupabase(predio.id_predio, alvo).catch(console.error);
     } else {
-      setObrasExtra(obrasExtra.map(o => o.id === id ? { ...o, estado: "Concluída" } : o));
+      const atualizadas = obrasExtra.map(o => o.id === id ? { ...o, estado: "Concluída" as const } : o);
+      setObrasExtra(atualizadas);
+      const alvo = atualizadas.find(o => o.id === id);
+      if (alvo) saveObraExtraToSupabase(predio.id_predio, alvo).catch(console.error);
     }
+    registarLogAuditoria("Manutenção", "Verificou e homologou um trabalho concluído", predio.id_predio, loggedUser);
     alert("Trabalho verificado e homologado pela administração com sucesso!");
   };
 

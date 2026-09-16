@@ -34,7 +34,7 @@ interface MultiCondominioProps {
   onUpdatePredio: (updatedPredio: Predio) => void;
 }
 
-interface TeamMember {
+export interface TeamMember {
   id: string;
   id_predio: string;
   nome: string;

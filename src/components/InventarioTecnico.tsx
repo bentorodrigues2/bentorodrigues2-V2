@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Predio, LoggedUser } from "../types";
 import { Wrench, Plus, Check, MapPin, Sparkles, Building, Landmark, Trash2, ShieldAlert } from "lucide-react";
 
-interface EquipamentoTecnico {
+export interface EquipamentoTecnico {
   id: string;
   nome: string;
   categoria: string;

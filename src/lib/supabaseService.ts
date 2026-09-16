@@ -1,5 +1,8 @@
 import { supabase } from '@/lib/supabaseClient';
 import type { Caucao } from '../components/FinanceiroAvancado';
+import type { AgendaItem, Intervencao, ObraExtraordinaria } from '../components/GestaoManutencaoIntervencoes';
+import type { EquipamentoTecnico } from '../components/InventarioTecnico';
+import type { TeamMember } from '../components/MultiCondominio';
 import { 
   Predio, 
   Fracao, 
@@ -27,7 +30,10 @@ import {
   RespostaQuestionario,
   EmpresaGestoraConfig,
   GestorCarteira,
-  RespostaIAPendente
+  RespostaIAPendente,
+  ItemPlanoManutencao,
+  MuralAviso,
+  ReservaEspacoComum
 } from "../types";
 
 /**
@@ -1869,5 +1875,360 @@ export async function savePushSubscriptionToSupabase(params: {
 
 export async function deletePushSubscriptionFromSupabase(endpoint: string): Promise<boolean> {
   return dbDelete("push_subscriptions", [["endpoint", "eq", endpoint]]);
+}
+
+// ============================================================================
+// AGENDA DE VISTORIAS TÉCNICAS (Gestão de Manutenção e Intervenções)
+// ============================================================================
+export async function fetchAgendaVistoriasFromSupabase(idPredio: string): Promise<AgendaItem[] | null> {
+  if (!isSupabaseConfigured() || !idPredio) return null;
+  const data = await dbSelect("agenda_vistorias_tecnicas", { filtros: [["id_predio", "eq", idPredio]] });
+  if (!data || data.length === 0) return null;
+  return data.map((row: any) => ({
+    id: row.id,
+    equipamento: row.equipamento,
+    tipo: row.tipo,
+    dataPlaneada: row.data_planeada,
+    periodicidade: row.periodicidade,
+    estado: row.estado,
+    dataVerificacao: row.data_verificacao || undefined,
+    tecnico: row.tecnico || undefined,
+    relatorio: row.relatorio || undefined,
+    avariasEncontradas: row.avarias_encontradas || undefined,
+    fotos: row.fotos || [],
+    assinatura: row.assinatura || undefined
+  }));
+}
+
+export async function saveAgendaVistoriaToSupabase(idPredio: string, item: AgendaItem): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("agenda_vistorias_tecnicas", {
+    id: item.id,
+    id_predio: idPredio,
+    equipamento: item.equipamento,
+    tipo: item.tipo,
+    data_planeada: item.dataPlaneada || null,
+    periodicidade: item.periodicidade || null,
+    estado: item.estado,
+    data_verificacao: item.dataVerificacao || null,
+    tecnico: item.tecnico || null,
+    relatorio: item.relatorio || null,
+    avarias_encontradas: item.avariasEncontradas || null,
+    fotos: item.fotos || [],
+    assinatura: item.assinatura || null
+  });
+}
+
+// ============================================================================
+// INTERVENÇÕES TÉCNICAS (Gestão de Manutenção e Intervenções)
+// ============================================================================
+export async function fetchIntervencoesFromSupabase(idPredio: string): Promise<Intervencao[] | null> {
+  if (!isSupabaseConfigured() || !idPredio) return null;
+  const data = await dbSelect("intervencoes_tecnicas", { filtros: [["id_predio", "eq", idPredio]] });
+  if (!data || data.length === 0) return null;
+  return data.map((row: any) => ({
+    id: row.id,
+    descricao: row.descricao,
+    id_fracao: row.id_fracao || "common",
+    prioridade: row.prioridade,
+    fornecedor: row.fornecedor || "",
+    custoPrevisto: Number(row.custo_previsto) || 0,
+    custoFinal: row.custo_final != null ? Number(row.custo_final) : undefined,
+    estado: row.estado,
+    relatorioTecnico: row.relatorio_tecnico || undefined,
+    dataHoraInicio: row.data_hora_inicio || undefined,
+    dataHoraFim: row.data_hora_fim || undefined,
+    fotos: row.fotos || [],
+    faturaAnexa: row.fatura_anexa || undefined,
+    anoExercicio: row.ano_exercicio || "",
+    validadoAdmin: Boolean(row.validado_admin)
+  }));
+}
+
+export async function saveIntervencaoToSupabase(idPredio: string, item: Intervencao): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("intervencoes_tecnicas", {
+    id: item.id,
+    id_predio: idPredio,
+    descricao: item.descricao,
+    id_fracao: item.id_fracao || null,
+    prioridade: item.prioridade,
+    fornecedor: item.fornecedor || null,
+    custo_previsto: item.custoPrevisto || 0,
+    custo_final: item.custoFinal ?? null,
+    estado: item.estado,
+    relatorio_tecnico: item.relatorioTecnico || null,
+    data_hora_inicio: item.dataHoraInicio || null,
+    data_hora_fim: item.dataHoraFim || null,
+    fotos: item.fotos || [],
+    fatura_anexa: item.faturaAnexa || null,
+    ano_exercicio: item.anoExercicio || null,
+    validado_admin: Boolean(item.validadoAdmin)
+  });
+}
+
+// ============================================================================
+// OBRAS EXTRAORDINÁRIAS (Gestão de Manutenção e Intervenções)
+// ============================================================================
+export async function fetchObrasExtraFromSupabase(idPredio: string): Promise<ObraExtraordinaria[] | null> {
+  if (!isSupabaseConfigured() || !idPredio) return null;
+  const data = await dbSelect("obras_extraordinarias", { filtros: [["id_predio", "eq", idPredio]] });
+  if (!data || data.length === 0) return null;
+  return data.map((row: any) => ({
+    id: row.id,
+    descricao: row.descricao,
+    fornecedorId: row.fornecedor_id || "",
+    fornecedorNome: row.fornecedor_nome || "",
+    dataInicio: row.data_inicio,
+    dataFim: row.data_fim,
+    custoTotal: Number(row.custo_total) || 0,
+    necessitaCotaExtra: Boolean(row.necessita_cota_extra),
+    mesesFracionamento: Number(row.meses_fracionamento) || 1,
+    valoresPorFracao: row.valores_por_fracao || {},
+    impactoFundoReserva: Number(row.impacto_fundo_reserva) || 0,
+    impactoSaldoAnual: Number(row.impacto_saldo_anual) || 0,
+    estado: row.estado,
+    orcamentos: row.orcamentos || [],
+    documentosArquivados: Boolean(row.documentos_arquivados)
+  }));
+}
+
+export async function saveObraExtraToSupabase(idPredio: string, item: ObraExtraordinaria): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("obras_extraordinarias", {
+    id: item.id,
+    id_predio: idPredio,
+    descricao: item.descricao,
+    fornecedor_id: item.fornecedorId || null,
+    fornecedor_nome: item.fornecedorNome || null,
+    data_inicio: item.dataInicio || null,
+    data_fim: item.dataFim || null,
+    custo_total: item.custoTotal || 0,
+    necessita_cota_extra: Boolean(item.necessitaCotaExtra),
+    meses_fracionamento: item.mesesFracionamento || 1,
+    valores_por_fracao: item.valoresPorFracao || {},
+    impacto_fundo_reserva: item.impactoFundoReserva || 0,
+    impacto_saldo_anual: item.impactoSaldoAnual || 0,
+    estado: item.estado,
+    orcamentos: item.orcamentos || [],
+    documentos_arquivados: Boolean(item.documentosArquivados)
+  });
+}
+
+// ============================================================================
+// PLANO DE MANUTENÇÃO OBRIGATÓRIA (AgendaManutencao.tsx)
+// ============================================================================
+export async function fetchPlanoManutencaoFromSupabase(idPredio: string): Promise<ItemPlanoManutencao[] | null> {
+  if (!isSupabaseConfigured() || !idPredio) return null;
+  const data = await dbSelect("plano_manutencao_obrigatoria", { filtros: [["id_predio", "eq", idPredio]] });
+  if (!data || data.length === 0) return null;
+  return data.map((row: any) => ({
+    id_item: row.id_item,
+    id_predio: row.id_predio,
+    tipo: row.tipo,
+    titulo: row.titulo,
+    entidade_responsavel: row.entidade_responsavel || "",
+    contacto_entidade: row.contacto_entidade || undefined,
+    periodicidade_meses: Number(row.periodicidade_meses) || 12,
+    base_legal_dgeg: row.base_legal_dgeg || "",
+    ultima_inspecao_data: row.ultima_inspecao_data,
+    proxima_inspecao_data: row.proxima_inspecao_data,
+    dias_alerta_antecedencia: Number(row.dias_alerta_antecedencia) || 30,
+    estado_conformidade: row.estado_conformidade,
+    num_certificado_relatorio: row.num_certificado_relatorio || undefined,
+    custo_estimado: row.custo_estimado != null ? Number(row.custo_estimado) : undefined,
+    historico_vistorias: row.historico_vistorias || []
+  }));
+}
+
+export async function savePlanoManutencaoItemToSupabase(item: ItemPlanoManutencao): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("plano_manutencao_obrigatoria", {
+    id_item: item.id_item,
+    id_predio: item.id_predio,
+    tipo: item.tipo,
+    titulo: item.titulo,
+    entidade_responsavel: item.entidade_responsavel || null,
+    contacto_entidade: item.contacto_entidade || null,
+    periodicidade_meses: item.periodicidade_meses || 12,
+    base_legal_dgeg: item.base_legal_dgeg || null,
+    ultima_inspecao_data: item.ultima_inspecao_data || null,
+    proxima_inspecao_data: item.proxima_inspecao_data || null,
+    dias_alerta_antecedencia: item.dias_alerta_antecedencia || 30,
+    estado_conformidade: item.estado_conformidade,
+    num_certificado_relatorio: item.num_certificado_relatorio || null,
+    custo_estimado: item.custo_estimado ?? null,
+    historico_vistorias: item.historico_vistorias || []
+  });
+}
+
+// ============================================================================
+// INVENTÁRIO TÉCNICO
+// ============================================================================
+export async function fetchInventarioTecnicoFromSupabase(idPredio: string): Promise<EquipamentoTecnico[] | null> {
+  if (!isSupabaseConfigured() || !idPredio) return null;
+  const data = await dbSelect("inventario_tecnico", { filtros: [["id_predio", "eq", idPredio]] });
+  if (!data || data.length === 0) return null;
+  return data.map((row: any) => ({
+    id: row.id,
+    nome: row.nome,
+    categoria: row.categoria || "",
+    andar: row.andar || "",
+    estado: row.estado,
+    ultimaInspecao: row.ultima_inspecao,
+    frequenciaInspecao: row.frequencia_inspecao || "",
+    fabricante: row.fabricante || undefined,
+    detalhes: row.detalhes || undefined
+  }));
+}
+
+export async function saveEquipamentoTecnicoToSupabase(idPredio: string, eq: EquipamentoTecnico): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("inventario_tecnico", {
+    id: eq.id,
+    id_predio: idPredio,
+    nome: eq.nome,
+    categoria: eq.categoria || null,
+    andar: eq.andar || null,
+    estado: eq.estado,
+    ultima_inspecao: eq.ultimaInspecao || null,
+    frequencia_inspecao: eq.frequenciaInspecao || null,
+    fabricante: eq.fabricante || null,
+    detalhes: eq.detalhes || null
+  });
+}
+
+export async function deleteEquipamentoTecnicoFromSupabase(id: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbDelete("inventario_tecnico", [["id", "eq", id]]);
+}
+
+// ============================================================================
+// MURAL DIGITAL DE AVISOS
+// ============================================================================
+export async function fetchMuralAvisosFromSupabase(idPredio: string): Promise<MuralAviso[] | null> {
+  if (!isSupabaseConfigured() || !idPredio) return null;
+  const data = await dbSelect("mural_avisos", { filtros: [["id_predio", "eq", idPredio]] });
+  if (!data || data.length === 0) return null;
+  return data.map((row: any) => ({
+    id_aviso_mural: row.id_aviso_mural,
+    id_predio: row.id_predio,
+    titulo: row.titulo,
+    conteudo: row.conteudo || "",
+    autor: row.autor || "",
+    tipo: row.tipo,
+    data_publicacao: row.data_publicacao,
+    data_expiracao: row.data_expiracao || undefined,
+    fixado_topo: Boolean(row.fixado_topo),
+    anexos_fotos: row.anexos_fotos || [],
+    reacoes_gostos: Number(row.reacoes_gostos) || 0
+  }));
+}
+
+export async function saveMuralAvisoToSupabase(aviso: MuralAviso): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("mural_avisos", {
+    id_aviso_mural: aviso.id_aviso_mural,
+    id_predio: aviso.id_predio,
+    titulo: aviso.titulo,
+    conteudo: aviso.conteudo || null,
+    autor: aviso.autor || null,
+    tipo: aviso.tipo,
+    data_publicacao: aviso.data_publicacao || null,
+    data_expiracao: aviso.data_expiracao || null,
+    fixado_topo: Boolean(aviso.fixado_topo),
+    anexos_fotos: aviso.anexos_fotos || [],
+    reacoes_gostos: aviso.reacoes_gostos || 0
+  });
+}
+
+export async function deleteMuralAvisoFromSupabase(id: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbDelete("mural_avisos", [["id_aviso_mural", "eq", id]]);
+}
+
+// ============================================================================
+// RESERVAS DE ESPAÇOS (Mural Digital / vista do condómino)
+// ============================================================================
+export async function fetchReservasEspacosMuralFromSupabase(idPredio: string): Promise<ReservaEspacoComum[] | null> {
+  if (!isSupabaseConfigured() || !idPredio) return null;
+  const data = await dbSelect("reservas_espacos_mural", { filtros: [["id_predio", "eq", idPredio]] });
+  if (!data || data.length === 0) return null;
+  return data.map((row: any) => ({
+    id_reserva: row.id_reserva,
+    id_predio: row.id_predio,
+    id_fracao: row.id_fracao || "",
+    fracao_nome: row.fracao_nome || "",
+    solicitante_nome: row.solicitante_nome || "",
+    espaco: row.espaco,
+    data_evento: row.data_evento,
+    hora_inicio: row.hora_inicio || "",
+    hora_fim: row.hora_fim || "",
+    finalidade: row.finalidade || "",
+    num_pessoas_estimado: Number(row.num_pessoas_estimado) || 0,
+    caucao_paga: Boolean(row.caucao_paga),
+    valor_caucao: row.valor_caucao != null ? Number(row.valor_caucao) : undefined,
+    termo_responsabilidade_aceite: Boolean(row.termo_responsabilidade_aceite),
+    estado: row.estado
+  }));
+}
+
+export async function saveReservaEspacoMuralToSupabase(reserva: ReservaEspacoComum): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("reservas_espacos_mural", {
+    id_reserva: reserva.id_reserva,
+    id_predio: reserva.id_predio,
+    id_fracao: reserva.id_fracao || null,
+    fracao_nome: reserva.fracao_nome || null,
+    solicitante_nome: reserva.solicitante_nome || null,
+    espaco: reserva.espaco,
+    data_evento: reserva.data_evento || null,
+    hora_inicio: reserva.hora_inicio || null,
+    hora_fim: reserva.hora_fim || null,
+    finalidade: reserva.finalidade || null,
+    num_pessoas_estimado: reserva.num_pessoas_estimado || 0,
+    caucao_paga: Boolean(reserva.caucao_paga),
+    valor_caucao: reserva.valor_caucao ?? null,
+    termo_responsabilidade_aceite: Boolean(reserva.termo_responsabilidade_aceite),
+    estado: reserva.estado
+  });
+}
+
+// ============================================================================
+// EQUIPAS / PRESTADORES DE SERVIÇO (MultiCondominio.tsx)
+// ============================================================================
+export async function fetchEquipasPrestadoresFromSupabase(idPredio?: string): Promise<TeamMember[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  const data = await dbSelect("equipas_prestadores", { filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined });
+  if (!data || data.length === 0) return null;
+  return data.map((row: any) => ({
+    id: row.id,
+    id_predio: row.id_predio,
+    nome: row.nome,
+    funcao: row.funcao || "",
+    empresa: row.empresa || "",
+    telefone: row.telefone || "",
+    email: row.email || "",
+    status: row.status
+  }));
+}
+
+export async function saveEquipaPrestadorToSupabase(membro: TeamMember): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("equipas_prestadores", {
+    id: membro.id,
+    id_predio: membro.id_predio,
+    nome: membro.nome,
+    funcao: membro.funcao || null,
+    empresa: membro.empresa || null,
+    telefone: membro.telefone || null,
+    email: membro.email || null,
+    status: membro.status
+  });
+}
+
+export async function deleteEquipaPrestadorFromSupabase(id: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbDelete("equipas_prestadores", [["id", "eq", id]]);
 }
 
