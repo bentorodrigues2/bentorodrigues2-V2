@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Predio, Fracao, Aviso, LoggedUser, Documento } from "../types";
 import { formatDatePT, generateAndDownloadPdf, formatQuotaReceiptNumber, downloadReceiptPDF, gerarReferenciaBR23E } from "../utils";
 import { isSupabaseConfigured } from "@/lib/supabaseClient";
-import { dbUpdate } from "../lib/supabaseService";
+import { dbUpdate, saveAvisosToSupabase, registarLogAuditoria } from "../lib/supabaseService";
 
 interface GestaoEmissaoProps {
   predio: Predio;
@@ -109,6 +109,13 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
     });
 
     setAvisos([...avisos, ...novosAvisos]);
+    saveAvisosToSupabase(novosAvisos).catch(console.error);
+    registarLogAuditoria(
+      "Financeira",
+      `Emitiu ${novosAvisos.length} notas de cobrança (Quotas + FCR) - ${mes}/2026`,
+      predio.id_predio,
+      loggedUser
+    );
 
     if (setDocumentos) {
       const novosDocs: Documento[] = novosAvisos.map(a => {
@@ -172,6 +179,8 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
     if (selectedAviso && selectedAviso.id_aviso === id) {
       setSelectedAviso(prev => prev ? { ...prev, estado: novoEstado } : null);
     }
+    dbUpdate("avisos", { estado: novoEstado }, [["id_aviso", "eq", id]]).catch(console.error);
+    registarLogAuditoria("Financeira", `Alterou o estado do aviso ${id} para "${novoEstado}"`, predio.id_predio, loggedUser);
   };
 
   const fecharModal = () => {

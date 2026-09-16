@@ -529,6 +529,31 @@ export async function registarAuditoria(entry: Omit<RegistoAuditoria, "criado_em
   return dbInsert("auditoria_plataforma", { ...entry, origem: entry.origem || "web" });
 }
 
+/**
+ * Atalho para os módulos que só precisam de registar "quem fez o quê" sem
+ * repetir o id/origem em cada sítio — usar em vez de registarAuditoria
+ * diretamente sempre que não seja preciso controlar esses detalhes.
+ */
+export async function registarLogAuditoria(
+  seccao: string,
+  descricao: string,
+  idPredio: string | undefined,
+  loggedUser: { nome?: string; email?: string; role?: string } | undefined,
+  detalhes?: string
+): Promise<boolean> {
+  return registarAuditoria({
+    id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    id_predio: idPredio || null,
+    seccao,
+    descricao,
+    detalhes: detalhes || null,
+    usuario: loggedUser?.nome || null,
+    email_usuario: loggedUser?.email || null,
+    role_usuario: loggedUser?.role || null,
+    origem: "web"
+  });
+}
+
 export interface DecisaoIA {
   id_log: number;
   id_predio?: string | null;
@@ -1124,6 +1149,33 @@ export async function fetchDocumentosFromSupabase(idPredio?: string): Promise<Do
   } catch (err) {
     return null;
   }
+}
+
+export async function saveDocumentoToSupabase(doc: Documento): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbInsert("documentos", {
+    id_doc: doc.id_doc,
+    id_predio: doc.id_predio,
+    nome: doc.nome,
+    tipo: doc.tipo,
+    data_upload: doc.data_upload,
+    tamanho: doc.tamanho || null,
+    categoria: doc.categoria || null,
+    descricao: doc.descricao || null,
+    visibilidade: doc.visibilidade || null,
+    autor: doc.autor || null,
+    tema: doc.tema || null,
+    ano: doc.ano || null,
+    url_foto: doc.url_foto || null,
+    relevancia_perfis: doc.relevancia_perfis || null,
+    caminho: doc.caminho || null,
+    sub_pasta: doc.sub_pasta || null,
+    fornecedor: doc.fornecedor || null,
+    arquivado: doc.arquivado ?? null,
+    data_arquivamento: doc.data_arquivamento || null,
+    versao_atual: doc.versao_atual || 1,
+    versoes: doc.versoes || []
+  });
 }
 
 export async function updateDocumentoMetadataToSupabase(doc: Documento): Promise<boolean> {

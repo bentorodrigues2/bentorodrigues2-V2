@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Predio, Fracao, Conta, Movimento, Aviso, LoggedUser } from "../types";
+import { saveContaToSupabase, saveAvisosToSupabase, saveMovimentoToSupabase, registarLogAuditoria } from "../lib/supabaseService";
 import { 
   Sliders, 
   Wallet, 
@@ -282,6 +283,7 @@ export function ConfiguracaoArranqueSaldos({
     }));
 
     setContas(novasContas);
+    novasContas.forEach(c => saveContaToSupabase(c).catch(console.error));
 
     // 2. Criar Avisos de Débito para as Frações com Dívida Inicial
     const novosAvisos: Aviso[] = [];
@@ -303,6 +305,7 @@ export function ConfiguracaoArranqueSaldos({
 
     if (novosAvisos.length > 0) {
       setAvisos(prev => [...novosAvisos, ...prev]);
+      saveAvisosToSupabase(novosAvisos).catch(console.error);
     }
 
     // 3. Criar Movimentos de Abertura de Saldo para cada conta
@@ -336,6 +339,14 @@ export function ConfiguracaoArranqueSaldos({
     });
 
     setMovements(prev => [...novosMovs, ...prev]);
+    novosMovs.forEach(m => saveMovimentoToSupabase(m).catch(console.error));
+    registarLogAuditoria(
+      "Financeira",
+      "Configurou o arranque inicial do condomínio (contas, saldos e dívidas transitadas)",
+      predio.id_predio,
+      loggedUser,
+      `${novasContas.length} contas, ${novosAvisos.length} avisos de dívida, ${novosMovs.length} movimentos de abertura`
+    );
 
     setTimeout(() => {
       triggerSendReaction("email", "✅ Arranque Inicial e Contas (incluindo Contas de Intervenção) configuradas com sucesso!");

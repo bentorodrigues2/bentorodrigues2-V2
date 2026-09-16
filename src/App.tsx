@@ -14,7 +14,8 @@ import {
   fetchDocumentosFromSupabase,
   fetchOcorrenciasFromSupabase,
   fetchReservasFromSupabase,
-  fetchFornecedoresFromSupabase
+  fetchFornecedoresFromSupabase,
+  saveDocumentoToSupabase
 } from "./lib/supabaseService";
 import { PainelControlo } from "./components/PainelControlo";
 import { GestaoPredios } from "./components/GestaoPredios";
@@ -591,6 +592,7 @@ export default function App() {
 
   const handleAddDocumento = (novoDoc: Documento) => {
     setDocumentos([novoDoc, ...documentos]);
+    saveDocumentoToSupabase(novoDoc).catch(console.error);
   };
 
   const handleToggleUserRole = () => {
@@ -2676,6 +2678,7 @@ export default function App() {
               movements={movements}
               setMovements={setMovements}
               contas={contas}
+              setContas={setContas}
               loggedUser={loggedUser}
               setLoggedUser={setLoggedUser}
             />

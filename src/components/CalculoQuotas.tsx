@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { Predio, Fracao, Conta, Aviso, LoggedUser } from "../types";
 import { jsPDF } from "jspdf";
-import { saveConfiguracaoQuotasToSupabase, saveAvisosToSupabase } from "../lib/supabaseService";
+import { saveConfiguracaoQuotasToSupabase, saveAvisosToSupabase, registarLogAuditoria } from "../lib/supabaseService";
 
 interface CalculoQuotasProps {
   predio: Predio;
@@ -174,6 +174,14 @@ export function CalculoQuotas({
     }).catch(console.error);
 
     saveAvisosToSupabase(novosAvisos).catch(console.error);
+
+    registarLogAuditoria(
+      "Financeira",
+      `Emitiu ${novosAvisos.length} avisos de quotas em lote`,
+      predio.id_predio,
+      loggedUser,
+      `Regular: ${regVal}€ / Extra: ${extVal}€`
+    );
 
     setSucessoEmissao(
       `Emitidos com sucesso ${novosAvisos.length} avisos e guardada configuração no Supabase interligada às contas (${contaOrdinariaSel?.banco || "Conta Principal"} / ${contaExtraSel?.banco || "Conta FCR"}).`

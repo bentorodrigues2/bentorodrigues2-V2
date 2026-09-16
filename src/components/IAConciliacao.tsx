@@ -3,6 +3,7 @@ import { Predio, Fracao, Aviso, Movimento, Conta, LoggedUser, ExtratoTransacao, 
 import { formatDatePT } from "../utils";
 import { parseOFXContent, parseCSVContent, matchBankTransactions } from "../utils/bankStatementParser";
 import { generateOfficialReceiptPDF, downloadOfficialReceiptPDF } from "../utils/receiptGenerator";
+import { saveAvisosToSupabase, saveMovimentoToSupabase, saveContaToSupabase, registarLogAuditoria } from "../lib/supabaseService";
 import { 
   FileSpreadsheet, 
   Upload, 
@@ -141,7 +142,16 @@ export function IAConciliacao({ predio, fracoes, avisos, setAvisos, movements, s
 
     // 1. Mark associated notices as paid
     if (tx.avisos_pendentes_ids && tx.avisos_pendentes_ids.length > 0) {
-      setAvisos(prev => prev.map(a => tx.avisos_pendentes_ids.includes(a.id_aviso) ? { ...a, estado: "Paga" } : a));
+      const avisosPagos: Aviso[] = [];
+      setAvisos(prev => prev.map(a => {
+        if (tx.avisos_pendentes_ids.includes(a.id_aviso)) {
+          const atualizado = { ...a, estado: "Paga" };
+          avisosPagos.push(atualizado);
+          return atualizado;
+        }
+        return a;
+      }));
+      saveAvisosToSupabase(avisosPagos).catch(console.error);
     }
 
     // 2. Update account balance
@@ -151,6 +161,7 @@ export function IAConciliacao({ predio, fracoes, avisos, setAvisos, movements, s
       } else {
         contaCorrente.saldo -= tx.valor;
       }
+      saveContaToSupabase(contaCorrente).catch(console.error);
     }
 
     // 3. Register accounting movement
@@ -169,6 +180,8 @@ export function IAConciliacao({ predio, fracoes, avisos, setAvisos, movements, s
     };
 
     setMovements(prev => [novoMov, ...prev]);
+    saveMovimentoToSupabase(novoMov).catch(console.error);
+    registarLogAuditoria("Financeira", "Conciliou uma transação bancária via IA", predio.id_predio, loggedUser, novoMov.descricao);
 
     // 4. Generate official Quota Receipt if it's a credit for a fraction
     let novoRecibo: ReciboQuitacao | null = null;

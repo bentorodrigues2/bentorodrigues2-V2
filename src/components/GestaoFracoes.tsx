@@ -5,7 +5,7 @@ import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCon
 import { ModalFichaCondominoEditavel } from "./ModalFichaCondominoEditavel";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
-import { saveFracaoToSupabase, deleteFracaoFromSupabase, saveProprietarioToSupabase, deleteProprietarioFromSupabase, dbSelect, dbUpdate, dbInsert, dbDelete, dbUpsert } from "../lib/supabaseService";
+import { saveFracaoToSupabase, deleteFracaoFromSupabase, saveProprietarioToSupabase, deleteProprietarioFromSupabase, dbSelect, dbUpdate, dbInsert, dbDelete, dbUpsert, saveAvisosToSupabase, registarLogAuditoria } from "../lib/supabaseService";
 
 interface GestaoFracoesProps {
   predio: Predio;
@@ -1111,6 +1111,13 @@ export function GestaoFracoes({
     });
 
     setAvisos([...avisos, ...novosAvisos]);
+    saveAvisosToSupabase(novosAvisos).catch(console.error);
+    registarLogAuditoria(
+      "Financeira",
+      `Emitiu ${novosAvisos.length} avisos via calculador de permilagens`,
+      predio.id_predio,
+      loggedUser
+    );
     alert(`Emissão em Lote Concluída! Foram emitidos com sucesso os avisos de pagamento para as ${predioFracoes.length} frações do prédio.`);
   };
 

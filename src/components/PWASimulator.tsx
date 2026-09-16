@@ -39,6 +39,7 @@ import { SecurityAuditModal } from "./SecurityAuditModal";
 import { ConfiguracoesAdministracao } from "./ConfiguracoesAdministracao";
 import { FichaEmpresaGestora } from "./FichaEmpresaGestora";
 import { PWASupplierCardsView } from "./PWASupplierCardsView";
+import { saveAvisosToSupabase, saveMovimentoToSupabase, saveContaToSupabase, saveDocumentoToSupabase, registarLogAuditoria } from "../lib/supabaseService";
 import { 
   Smartphone, 
   Wifi, 
@@ -493,17 +494,20 @@ export function PWASimulator({
   const handleAprovarPagamento = (idAviso: string) => {
     // 1. Set aviso to Pago
     setAvisos(prev => prev.map(a => a.id_aviso === idAviso ? { ...a, estado: "Pago" } : a));
-    
+
     // 2. Insert Movimento (Receita)
     const targetAviso = avisos.find(a => a.id_aviso === idAviso);
     const targetFrac = fracoes.find(f => f.id_fracao === targetAviso?.id_fracao);
     const numRecibo = `REC-PWA-${Math.floor(Math.random() * 900) + 100}`;
-    
+
     if (targetAviso) {
+      saveAvisosToSupabase([{ ...targetAviso, estado: "Pago" }]).catch(console.error);
+
+      const contaAlvo = contas.find(c => c.is_principal && c.id_predio === predio.id_predio) || contas.find(c => c.id_predio === predio.id_predio) || contas[0];
       const novoMov: Movimento = {
         id_mov: "mov-pwa-" + Date.now(),
         id_predio: predio.id_predio,
-        id_conta: "cta-1",
+        id_conta: contaAlvo?.id_conta || "cta-1",
         data: new Date().toLocaleDateString("pt-PT").replace(/\//g, "-"),
         tipo: "Receita",
         valor: targetAviso.valor,
@@ -512,7 +516,16 @@ export function PWASimulator({
         estado: "Conciliado"
       };
       setMovements(prev => [...prev, novoMov]);
-      
+      saveMovimentoToSupabase(novoMov).catch(console.error);
+
+      if (contaAlvo) {
+        const contaAtualizada = { ...contaAlvo, saldo: (contaAlvo.saldo || 0) + targetAviso.valor };
+        setContas(prev => prev.map(c => c.id_conta === contaAlvo.id_conta ? contaAtualizada : c));
+        saveContaToSupabase(contaAtualizada).catch(console.error);
+      }
+
+      registarLogAuditoria("Financeira", `Aprovou o pagamento da quota ${idAviso} via PWA`, predio.id_predio, loggedUser, `Fração ${targetFrac?.fracao_nome || "F"} — ${targetAviso.valor}€`);
+
       // Notify
       setPwaNotifications(prev => [
         { id: "not-auto-" + Date.now(), title: "Pagamento Confirmado! 🪙", desc: `Recebemos o pagamento de ${targetAviso.valor}€ da Fração ${targetFrac?.fracao_nome}. Recibo ${numRecibo} emitido.`, date: "Agora" },
@@ -707,14 +720,19 @@ export function PWASimulator({
 
   const handleConfirmSubmitProof = () => {
     if (!targetAvisoId) return;
-    
-    setAvisos(prev => prev.map(a => a.id_aviso === targetAvisoId ? {
-      ...a,
-      estado: "Pendente",
-      // Attach metadata inside description for the admin backoffice to view
-      descricao: `${a.descricao} (Aguardando IA - ${extractedPayValor}€ | IBAN: ${extractedPayIban} | Ref: ${extractedPayRef})`
-    } : a));
-    
+
+    const avisoAlvo = avisos.find(a => a.id_aviso === targetAvisoId);
+    if (avisoAlvo) {
+      const avisoAtualizado = {
+        ...avisoAlvo,
+        estado: "Pendente",
+        // Attach metadata inside description for the admin backoffice to view
+        descricao: `${avisoAlvo.descricao} (Aguardando IA - ${extractedPayValor}€ | IBAN: ${extractedPayIban} | Ref: ${extractedPayRef})`
+      };
+      setAvisos(prev => prev.map(a => a.id_aviso === targetAvisoId ? avisoAtualizado : a));
+      saveAvisosToSupabase([avisoAtualizado]).catch(console.error);
+    }
+
     // Create an automated PWA contact/receipt submission so admin sees it clearly too
     const newContact = {
       id: "rcpt-c-" + Date.now(),
@@ -737,13 +755,18 @@ export function PWASimulator({
 
   // Backoffice validates receipt and emits official PDF document
   const handleApprovePendingReceipt = (idAviso: string, extractedVals: { valor: number, data: string, fracao: string, descricao: string, ref: string, iban: string }) => {
+    const avisoAlvo = avisos.find(a => a.id_aviso === idAviso);
     setAvisos(prev => prev.map(a => a.id_aviso === idAviso ? { ...a, estado: "Pago" } : a));
-    
+    if (avisoAlvo) {
+      saveAvisosToSupabase([{ ...avisoAlvo, estado: "Pago" }]).catch(console.error);
+    }
+
     const numRecibo = `REC-PWA-${Math.floor(Math.random() * 900) + 100}`;
+    const contaAlvo = contas.find(c => c.is_principal && c.id_predio === predio.id_predio) || contas.find(c => c.id_predio === predio.id_predio) || contas[0];
     const novoMov: Movimento = {
       id_mov: "mov-pwa-" + Date.now(),
       id_predio: predio.id_predio,
-      id_conta: "cta-1",
+      id_conta: contaAlvo?.id_conta || "cta-1",
       data: extractedVals.data,
       tipo: "Receita",
       valor: extractedVals.valor,
@@ -752,7 +775,16 @@ export function PWASimulator({
       estado: "Conciliado"
     };
     setMovements(prev => [...prev, novoMov]);
-    
+    saveMovimentoToSupabase(novoMov).catch(console.error);
+
+    if (contaAlvo) {
+      const contaAtualizada = { ...contaAlvo, saldo: (contaAlvo.saldo || 0) + extractedVals.valor };
+      setContas(prev => prev.map(c => c.id_conta === contaAlvo.id_conta ? contaAtualizada : c));
+      saveContaToSupabase(contaAtualizada).catch(console.error);
+    }
+
+    registarLogAuditoria("Financeira", `Validou por IA o pagamento da quota ${idAviso}`, predio.id_predio, loggedUser, `Fração ${extractedVals.fracao} — ${extractedVals.valor}€`);
+
     const novoDoc: Documento = {
       id_doc: "doc-rec-" + Date.now(),
       id_predio: predio.id_predio,
@@ -764,6 +796,7 @@ export function PWASimulator({
       visibilidade: "Público"
     };
     setDocumentos(prev => [novoDoc, ...prev]);
+    saveDocumentoToSupabase(novoDoc).catch(console.error);
 
     setPwaNotifications(prev => [
       {
@@ -3064,6 +3097,7 @@ export function PWASimulator({
                           movements={movements}
                           setMovements={setMovements}
                           contas={contas}
+                          setContas={setContas}
                           loggedUser={loggedUser}
                           setLoggedUser={setLoggedUser}
                         />

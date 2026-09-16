@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso } from "../types";
 import { formatDatePT } from "../utils";
-import { saveMovimentoToSupabase } from "../lib/supabaseService";
+import { saveMovimentoToSupabase, saveContaToSupabase, saveAvisosToSupabase, registarLogAuditoria } from "../lib/supabaseService";
 import { Save, CheckCircle2 } from "lucide-react";
 
 interface GestaoMovimentosProps {
@@ -144,6 +144,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       }
 
       setMovements(prev => prev.map(m => m.id_mov === mov.id_mov ? { ...m, estado: "Justificado", is_movimento_cego: false } : m));
+      registarLogAuditoria("Financeira", "Confirmou pagamento e emitiu recibo de quitação", predio.id_predio, loggedUser, mov.descricao);
       alert(data.email_enviado
         ? "✅ Pagamento confirmado! O recibo oficial de quitação foi gerado e enviado por email ao condómino."
         : "✅ Pagamento confirmado e recibo gerado. (O condómino não tem email registado, por isso o recibo não foi enviado por email — está disponível no Arquivo Digital.)");
@@ -180,17 +181,23 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
         const webpDataUrl = canvas.toDataURL("image/webp", 0.8);
         
         // Update the movement with the justification photo and change state to Justificado
+        let movimentoAtualizado: Movimento | null = null;
         setMovements(prev => prev.map(m => {
           if (m.id_mov === movId) {
-            return {
+            movimentoAtualizado = {
               ...m,
               estado: "Justificado",
               fotos: [...(m.fotos || []), webpDataUrl],
               is_movimento_cego: false
             };
+            return movimentoAtualizado;
           }
           return m;
         }));
+        if (movimentoAtualizado) {
+          saveMovimentoToSupabase(movimentoAtualizado).catch(console.error);
+          registarLogAuditoria("Financeira", "Justificou um movimento cego com comprovativo", predio.id_predio, loggedUser, movimentoAtualizado.descricao);
+        }
         setJustifyingMovId(null);
         alert("Fatura/Comprovativo em WebP anexado com sucesso! O Movimento Cego foi devidamente justificado.");
       };
@@ -225,10 +232,12 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     if (contaAlvo) {
       if (tipo === 'Receita') contaAlvo.saldo += Number(valor);
       else contaAlvo.saldo -= Number(valor);
+      saveContaToSupabase(contaAlvo).catch(console.error);
     }
 
     setMovements([novo, ...movements]);
     saveMovimentoToSupabase(novo).catch(console.error);
+    registarLogAuditoria("Financeira", `Lançou manualmente um movimento de ${tipo.toLowerCase()}`, predio.id_predio, loggedUser, `${descricao} — ${Number(valor).toFixed(2)}€`);
     setValor("");
     setDescricao("");
     setUploadedFotos([]);
@@ -313,27 +322,38 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     // 2. Creditar o saldo da conta selecionada
     if (contaAlvo) {
       contaAlvo.saldo = (contaAlvo.saldo || 0) + val;
+      saveContaToSupabase(contaAlvo).catch(console.error);
     }
 
     // 3. Se existirem avisos de dívida transitada, atualizar/liquidar
     if (setAvisos && avisos.length > 0) {
       let restanteParaAbater = val;
+      const avisosAtualizados: Aviso[] = [];
       setAvisos(prev => prev.map(aviso => {
         if (aviso.id_fracao === dividaFracaoId && aviso.estado === "Pendente" && (aviso.tipo?.includes("Dívida") || aviso.tipo?.includes("Transição") || aviso.tipo?.includes("Anterior") || aviso.descricao?.includes("Anterior") || aviso.descricao?.includes("Transição"))) {
           if (restanteParaAbater >= aviso.valor) {
             restanteParaAbater -= aviso.valor;
-            return { ...aviso, estado: "Paga" as const };
+            const atualizado = { ...aviso, estado: "Paga" as const };
+            avisosAtualizados.push(atualizado);
+            return atualizado;
           } else if (restanteParaAbater > 0) {
             const novoValorRestante = aviso.valor - restanteParaAbater;
             restanteParaAbater = 0;
-            return { ...aviso, valor: novoValorRestante, descricao: `${aviso.descricao} (Parcialmente regularizado: ${val.toFixed(2)}€)` };
+            const atualizado = { ...aviso, valor: novoValorRestante, descricao: `${aviso.descricao} (Parcialmente regularizado: ${val.toFixed(2)}€)` };
+            avisosAtualizados.push(atualizado);
+            return atualizado;
           }
         }
         return aviso;
       }));
+      if (avisosAtualizados.length > 0) {
+        saveAvisosToSupabase(avisosAtualizados).catch(console.error);
+      }
     }
 
     setMovements([novoMov, ...movements]);
+    saveMovimentoToSupabase(novoMov).catch(console.error);
+    registarLogAuditoria("Financeira", "Regularizou dívida de exercício anterior", predio.id_predio, loggedUser, novoMov.descricao);
     setModalDividaAnteriorOpen(false);
     setDividaValor("");
     setDividaRef("");
@@ -369,9 +389,12 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     const contaAlvo = contas.find(c => c.id_conta === targetContaId);
     if (contaAlvo) {
       contaAlvo.saldo -= email.extractedData.valor;
+      saveContaToSupabase(contaAlvo).catch(console.error);
     }
 
     setMovements([novo, ...movements]);
+    saveMovimentoToSupabase(novo).catch(console.error);
+    registarLogAuditoria("Financeira", "Validou e lançou uma fatura importada", predio.id_predio, loggedUser, novo.descricao);
     setEmails(prev => prev.map(e => e.id === emailId ? { ...e, imported: true } : e));
     alert(`Fatura de ${email.extractedData.fornecedor} validada pelo utilizador e lançada como Despesa!`);
   };
@@ -498,9 +521,12 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     if (contaAlvo) {
       if (item.tipo === "Receita") contaAlvo.saldo += item.valor;
       else contaAlvo.saldo -= item.valor;
+      saveContaToSupabase(contaAlvo).catch(console.error);
     }
 
     setMovements([novo, ...movements]);
+    saveMovimentoToSupabase(novo).catch(console.error);
+    registarLogAuditoria("Financeira", "Lançou um item extraído do extrato bancário", predio.id_predio, loggedUser, novo.descricao);
     setExtractedItems(prev => prev.filter(x => x.descricao !== item.descricao));
     alert(`Movimento financeiro de ${item.valor.toFixed(2)}€ lançado com sucesso!`);
   };

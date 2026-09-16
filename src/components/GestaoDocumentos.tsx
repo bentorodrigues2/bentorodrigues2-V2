@@ -4,7 +4,7 @@ import { Predio, Documento, LoggedUser, DocumentoVersao } from "../types";
 import { formatDatePT, downloadBlob, addPdfHeaderWithLogo, downloadReceiptPDF, downloadNotaCobrancaPDF } from "../utils";
 import { getIllustratedManualHtml } from "../utils/manualIllustratedTemplates";
 import { triggerSendReaction } from "./SendingReactionModal";
-import { updateDocumentoMetadataToSupabase, deleteDocumentoFromSupabase } from "../lib/supabaseService";
+import { updateDocumentoMetadataToSupabase, deleteDocumentoFromSupabase, registarLogAuditoria } from "../lib/supabaseService";
 import { EnciclopediaPlataforma } from "./EnciclopediaPlataforma";
 import { 
   FileText, 
@@ -141,6 +141,7 @@ export function GestaoDocumentos({
       if (setDocumentos) {
         setDocumentos(prev => prev.map(d => d.id_doc === editingDoc.id_doc ? docAtualizado : d));
       }
+      registarLogAuditoria("Documental", `Editou o documento "${docAtualizado.nome}"`, predio.id_predio, loggedUser, houveAlteracao ? `Nova versão v${docAtualizado.versao_atual}` : undefined);
       setEditingDoc(null);
       handleDownloadPdf(docAtualizado);
     } finally {
@@ -1817,6 +1818,7 @@ export function GestaoDocumentos({
         setDocumentos(prev => prev.map(d => d.id_doc === archiveTargetDoc.id_doc ? docAtualizado : d));
       }
 
+      registarLogAuditoria("Documental", `Arquivou o documento "${docAtualizado.nome}"`, predio.id_predio, loggedUser, `${targetAno} > ${targetTema} > ${targetSubPasta}`);
       setAiMessage(`💾 Ficheiro "${archiveTargetDoc.nome}" arquivado com sucesso no repositório de ${targetAno} > ${targetTema} > ${targetSubPasta}!`);
       setArchiveTargetDoc(null);
     } finally {
@@ -1862,6 +1864,7 @@ export function GestaoDocumentos({
     };
 
     onAddDocumento(novo);
+    registarLogAuditoria("Documental", `Adicionou o documento "${novo.nome}"`, predio.id_predio, loggedUser, `${novo.tema} / ${novo.ano}`);
     setShowUploadModal(false);
     setNovoNome("");
     setNovaDescricao("");
@@ -1886,12 +1889,14 @@ export function GestaoDocumentos({
 
     if (!confirm("Tem a certeza de que pretende eliminar este ficheiro permanentemente?")) return;
 
+    const docAlvo = documentos.find(d => d.id_doc === docId);
     const ok = await deleteDocumentoFromSupabase(docId);
     if (!ok) {
       alert("Erro ao eliminar o ficheiro no Supabase — tente novamente.");
       return;
     }
     setDocumentos(prev => prev.filter(d => d.id_doc !== docId));
+    registarLogAuditoria("Documental", `Eliminou o documento "${docAlvo?.nome || docId}"`, predio.id_predio, loggedUser);
     alert("Ficheiro removido do Arquivo com sucesso.");
   };
 
@@ -1908,6 +1913,7 @@ export function GestaoDocumentos({
       return;
     }
     setDocumentos(prev => prev.map(d => d.id_doc === doc.id_doc ? docAtualizado : d));
+    registarLogAuditoria("Documental", `Alterou a visibilidade de "${doc.nome}" para ${novaVis}`, predio.id_predio, loggedUser);
   };
 
   return (

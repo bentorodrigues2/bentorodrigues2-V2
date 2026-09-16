@@ -39,7 +39,11 @@ import {
   fetchSondagensFromSupabase,
   saveVotoSondagemToSupabase,
   fetchQuestionariosFromSupabase,
-  saveRespostaQuestionarioToSupabase
+  saveRespostaQuestionarioToSupabase,
+  saveAvisosToSupabase,
+  saveMovimentoToSupabase,
+  saveContaToSupabase,
+  registarLogAuditoria
 } from "../lib/supabaseService";
 
 // Inner Interfaces
@@ -91,6 +95,7 @@ interface PortalCondominoProps {
   movements: Movimento[];
   setMovements: React.Dispatch<React.SetStateAction<Movimento[]>>;
   contas: Conta[];
+  setContas: React.Dispatch<React.SetStateAction<Conta[]>>;
   loggedUser: LoggedUser;
   setLoggedUser: (user: LoggedUser) => void;
 }
@@ -104,6 +109,7 @@ export function PortalCondomino({
   movements,
   setMovements,
   contas,
+  setContas,
   loggedUser,
   setLoggedUser,
 }: PortalCondominoProps) {
@@ -706,6 +712,7 @@ export function PortalCondomino({
   // Backoffice admin actions
   const handleConfirmPayment = (comp: ComprovativoSubmetido) => {
     // 1. Mark Aviso as Pago
+    const avisoAlvo = avisos.find((a) => a.id_aviso === comp.id_aviso);
     const updatedAvisos = avisos.map((a) => {
       if (a.id_aviso === comp.id_aviso) {
         return { ...a, estado: "Pago" };
@@ -713,6 +720,9 @@ export function PortalCondomino({
       return a;
     });
     setAvisos(updatedAvisos);
+    if (avisoAlvo) {
+      saveAvisosToSupabase([{ ...avisoAlvo, estado: "Pago" }]).catch(console.error);
+    }
 
     // 2. Add New Movimento (Receita)
     const principalConta = contas.find((c) => c.is_principal && c.id_predio === predio.id_predio) || contas[0];
@@ -729,6 +739,15 @@ export function PortalCondomino({
       estado: "Conciliado",
     };
     setMovements((prev) => [...prev, novoMov]);
+    saveMovimentoToSupabase(novoMov).catch(console.error);
+
+    if (principalConta) {
+      const contaAtualizada = { ...principalConta, saldo: (principalConta.saldo || 0) + comp.valorExtraido };
+      setContas((prev) => prev.map((c) => (c.id_conta === principalConta.id_conta ? contaAtualizada : c)));
+      saveContaToSupabase(contaAtualizada).catch(console.error);
+    }
+
+    registarLogAuditoria("Financeira", `Confirmou o pagamento da quota da Fração ${comp.nome_fracao}`, predio.id_predio, loggedUser, `${numRecibo} — ${comp.valorExtraido}€`);
 
     // 3. Update Comprovativo state
     setComprovativos((prev) =>
