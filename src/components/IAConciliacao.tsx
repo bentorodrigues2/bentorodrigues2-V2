@@ -3,7 +3,7 @@ import { Predio, Fracao, Aviso, Movimento, Conta, LoggedUser, ExtratoTransacao, 
 import { formatDatePT } from "../utils";
 import { parseOFXContent, parseCSVContent, matchBankTransactions } from "../utils/bankStatementParser";
 import { generateOfficialReceiptPDF, downloadOfficialReceiptPDF } from "../utils/receiptGenerator";
-import { saveAvisosToSupabase, saveMovimentoToSupabase, saveContaToSupabase, registarLogAuditoria } from "../lib/supabaseService";
+import { saveAvisosToSupabase, saveMovimentoToSupabase, saveContaToSupabase, registarLogAuditoria, dbInsert } from "../lib/supabaseService";
 import { 
   FileSpreadsheet, 
   Upload, 
@@ -133,7 +133,8 @@ export function IAConciliacao({ predio, fracoes, avisos, setAvisos, movements, s
   };
 
   // Conciliate a single transaction
-  const conciliarTransacao = (txId: string) => {
+  const [emitindoReciboTx, setEmitindoReciboTx] = useState<string | null>(null);
+  const conciliarTransacao = async (txId: string) => {
     const tx = transacoes.find(t => t.id_transacao === txId);
     if (!tx) return;
 
@@ -175,50 +176,87 @@ export function IAConciliacao({ predio, fracoes, avisos, setAvisos, movements, s
       descricao: `Conciliação Automática: ${tx.descricao}`,
       categoria: tx.tipo === "CREDITO" ? "Quotas Ordinárias" : "Manutenção & Serviços",
       id_fracao: tx.fracao_sugerida_id || undefined,
-      metodo_pagamento: "Transferência Bancária",
-      referencia_recibo: `REC-2026/${Math.floor(1000 + Math.random() * 9000)}`
+      metodo_pagamento: "Transferência Bancária"
     };
 
     setMovements(prev => [novoMov, ...prev]);
     saveMovimentoToSupabase(novoMov).catch(console.error);
     registarLogAuditoria("Financeira", "Conciliou uma transação bancária via IA", predio.id_predio, loggedUser, novoMov.descricao);
 
-    // 4. Generate official Quota Receipt if it's a credit for a fraction
+    // 4. Emitir o recibo de quitação a sério — antes este bloco só
+    // fabricava um objeto em memória com um "hash de verificação" que era
+    // apenas Math.random() rotulado como SHA256, uma numeração aleatória, e
+    // nunca chegava a gerar PDF, arquivar ou enviar email nenhum. Passa a
+    // usar o mesmo pipeline real (criar um pagamento + confirmar) já usado
+    // e testado em GestaoMovimentos.tsx, que gera o PDF oficial, arquiva-o
+    // no Storage, e envia o email ao condómino.
     let novoRecibo: ReciboQuitacao | null = null;
+    let idReciboReal: string | undefined;
     if (tx.tipo === "CREDITO" && fracao) {
-      const seq = Math.floor(10 + Math.random() * 90);
-      novoRecibo = {
-        id_recibo: `REC-2026/00${seq}`,
-        numero_sequencial: seq,
-        ano: 2026,
-        id_predio: predio.id_predio,
-        id_fracao: fracao.id_fracao,
-        nome_condomino: fracao.proprietario?.nome || "Condómino Registado",
-        nif_condomino: fracao.proprietario?.nif || "999999990",
-        fracao_nome: fracao.fracao_nome,
-        permilagem: fracao.permilagem,
-        data_emissao: new Date().toISOString().split("T")[0],
-        data_pagamento: tx.data,
-        metodo_pagamento: "Transferência Bancária",
-        valor_total: tx.valor,
-        rubricas: [
-          {
-            descricao: `Quota de Condomínio Ordinária - Fração ${fracao.fracao_nome}`,
-            valor: Math.round(tx.valor * 0.9 * 100) / 100,
-            tipo: "Quota Ordinária"
-          },
-          {
-            descricao: `Fundo Comum de Reserva (FCR 10%) - Fração ${fracao.fracao_nome}`,
-            valor: Math.round(tx.valor * 0.1 * 100) / 100,
-            tipo: "Fundo Comum de Reserva"
-          }
-        ],
-        iban_predio: predio.iban || "PT50 0033 0000 12345678901 23",
-        codigo_verificacao_hash: `SHA256-${Math.random().toString(36).substring(2, 10).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`,
-        emitido_por: loggedUser.nome || "Administração do Condomínio"
-      };
+      setEmitindoReciboTx(txId);
+      try {
+        const idPagamento = `pag-ia-${Date.now().toString(36)}-${Math.floor(Math.random() * 1000)}`;
+        const okPagamento = await dbInsert("pagamentos", {
+          id: idPagamento,
+          referencia: `IA-${tx.id_transacao}`,
+          id_proprietario: fracao.proprietario?.id_proprietario || null,
+          id_fracao: fracao.id_fracao,
+          valor: tx.valor,
+          descricao: `Conciliação bancária automática: ${tx.descricao}`,
+          estado: "pendente",
+          data_pagamento: tx.data
+        });
 
-      setRecibosGerados(prev => [novoRecibo!, ...prev]);
+        if (okPagamento) {
+          const resp = await fetch("/api/pagamento?acao=confirmar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id_pagamento: idPagamento })
+          });
+          const resultado = await resp.json();
+
+          if (resp.ok && resultado?.status === "ok") {
+            idReciboReal = resultado.recibo_caminho?.split("/").pop()?.replace(/\.pdf$/i, "");
+            const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${idPagamento}-${tx.valor}-${tx.data}`));
+            const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("").toUpperCase();
+
+            novoRecibo = {
+              id_recibo: idReciboReal || idPagamento,
+              numero_sequencial: 0,
+              ano: new Date(tx.data).getFullYear() || new Date().getFullYear(),
+              id_predio: predio.id_predio,
+              id_fracao: fracao.id_fracao,
+              nome_condomino: fracao.proprietario?.nome || "Condómino Registado",
+              nif_condomino: fracao.proprietario?.nif || "",
+              fracao_nome: fracao.fracao_nome,
+              permilagem: fracao.permilagem,
+              data_emissao: new Date().toISOString().split("T")[0],
+              data_pagamento: tx.data,
+              metodo_pagamento: "Transferência Bancária",
+              valor_total: tx.valor,
+              rubricas: [
+                { descricao: `Quota de Condomínio Ordinária - Fração ${fracao.fracao_nome}`, valor: Math.round(tx.valor * 0.9 * 100) / 100, tipo: "Quota Ordinária" },
+                { descricao: `Fundo Comum de Reserva (FCR 10%) - Fração ${fracao.fracao_nome}`, valor: Math.round(tx.valor * 0.1 * 100) / 100, tipo: "Fundo Comum de Reserva" }
+              ],
+              iban_predio: predio.iban || "",
+              codigo_verificacao_hash: `SHA256-${hashHex.substring(0, 16)}`,
+              emitido_por: loggedUser.nome || "Administração do Condomínio"
+            };
+            setRecibosGerados(prev => [novoRecibo!, ...prev]);
+          } else {
+            alert(`⚠️ A transação foi conciliada mas houve um erro ao emitir o recibo oficial: ${resultado?.error || "erro desconhecido"}`);
+          }
+        }
+      } catch (err: any) {
+        console.error("Erro ao emitir recibo real na conciliação IA:", err);
+        alert(`⚠️ A transação foi conciliada mas houve um erro ao emitir o recibo oficial: ${err?.message || "erro desconhecido"}`);
+      } finally {
+        setEmitindoReciboTx(null);
+      }
+    }
+
+    if (idReciboReal) {
+      setMovements(prev => prev.map(m => m.id_mov === novoMov.id_mov ? { ...m, referencia_recibo: idReciboReal } : m));
     }
 
     // 5. Update transaction state in local view
@@ -226,14 +264,19 @@ export function IAConciliacao({ predio, fracoes, avisos, setAvisos, movements, s
   };
 
   // Conciliate all high-confidence credit transactions in 1 click
-  const conciliarTudo = () => {
+  const [conciliandoTudo, setConciliandoTudo] = useState(false);
+  const conciliarTudo = async () => {
     const pendentes = transacoes.filter(t => t.estado_conciliacao === "PENDENTE" && t.tipo === "CREDITO" && t.fracao_sugerida_id);
     if (pendentes.length === 0) {
       alert("Não existem transações de crédito com fração sugerida prontas a conciliar.");
       return;
     }
 
-    pendentes.forEach(t => conciliarTransacao(t.id_transacao));
+    setConciliandoTudo(true);
+    for (const t of pendentes) {
+      await conciliarTransacao(t.id_transacao);
+    }
+    setConciliandoTudo(false);
     alert(`🎉 ${pendentes.length} pagamentos foram conciliados com sucesso e os respetivos recibos oficiais foram gerados!`);
   };
 
@@ -410,10 +453,11 @@ export function IAConciliacao({ predio, fracoes, avisos, setAvisos, movements, s
             <button
               type="button"
               onClick={conciliarTudo}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+              disabled={conciliandoTudo}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <CheckCheck className="h-4 w-4" />
-              <span>Conciliar Todas as Quotas & Emitir Recibos (1-Clique)</span>
+              <span>{conciliandoTudo ? "A conciliar e a emitir recibos..." : "Conciliar Todas as Quotas & Emitir Recibos (1-Clique)"}</span>
             </button>
           </div>
 
@@ -497,8 +541,8 @@ export function IAConciliacao({ predio, fracoes, avisos, setAvisos, movements, s
                                   { descricao: `Quota Ordinária Fração ${fracao?.fracao_nome || "A"}`, valor: tx.valor * 0.9, tipo: "Quota Ordinária" },
                                   { descricao: `FCR (10%) Fração ${fracao?.fracao_nome || "A"}`, valor: tx.valor * 0.1, tipo: "Fundo Comum de Reserva" }
                                 ],
-                                iban_predio: predio.iban || "PT50 0033 0000 12345678901 23",
-                                codigo_verificacao_hash: "SHA256-QUITA-VERIFIED",
+                                iban_predio: predio.iban || "",
+                                codigo_verificacao_hash: "N/D — sessão anterior, código não disponível",
                                 emitido_por: loggedUser.nome
                               };
                               downloadOfficialReceiptPDF(r, predio, fracao);
@@ -512,10 +556,11 @@ export function IAConciliacao({ predio, fracoes, avisos, setAvisos, movements, s
                           <button
                             type="button"
                             onClick={() => conciliarTransacao(tx.id_transacao)}
-                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                            disabled={emitindoReciboTx === tx.id_transacao}
+                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer"
                           >
                             <CheckCircle2 className="h-3.5 w-3.5" />
-                            <span>Aprovar & Emitir Recibo</span>
+                            <span>{emitindoReciboTx === tx.id_transacao ? "A emitir..." : "Aprovar & Emitir Recibo"}</span>
                           </button>
                         )}
                       </div>
