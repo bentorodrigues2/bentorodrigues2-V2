@@ -5,7 +5,7 @@ import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCon
 import { ModalFichaCondominoEditavel } from "./ModalFichaCondominoEditavel";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
-import { saveFracaoToSupabase, deleteFracaoFromSupabase, saveProprietarioToSupabase, deleteProprietarioFromSupabase, dbSelect, dbUpdate, dbInsert, dbDelete, dbUpsert, saveAvisosToSupabase, registarLogAuditoria } from "../lib/supabaseService";
+import { saveFracaoToSupabase, deleteFracaoFromSupabase, saveProprietarioToSupabase, deleteProprietarioFromSupabase, dbSelect, dbUpdate, dbInsert, dbDelete, dbUpsert, saveAvisosToSupabase, registarLogAuditoria, fetchResidentesInquilinosFromSupabase, saveResidenteInquilinoToSupabase } from "../lib/supabaseService";
 
 interface GestaoFracoesProps {
   predio: Predio;
@@ -211,60 +211,14 @@ export function GestaoFracoes({
     }
   }, [activeSubSection]);
 
-  // Task 12: Gestão de Residentes & Inquilinos States
-  const [residentesHistorico, setResidentesHistorico] = useState([
-    {
-      id: "res-1",
-      fracao: "Fração H (3º Dto)",
-      nome: "Maria Antónia Santos",
-      nif: "234567890",
-      email: "maria.santos@gmail.com",
-      telefone: "912345678",
-      tipo: "Inquilino (Habitação Tradicional)",
-      data_entrada: "2024-01-15",
-      data_saida: null,
-      contrato_fim: "2026-09-30",
-      valor_renda: 850.00,
-      caucao: 1700.00,
-      chaves_entregues: "2 Comandos + 3 Chaves de Entrada",
-      estado: "Ativo",
-      documentos: ["Contrato_Arrendamento_Registado_AT.pdf", "Copia_CC_Inquilino.pdf"]
-    },
-    {
-      id: "res-2",
-      fracao: "Fração F (2º Esq)",
-      nome: "Luís Pereira",
-      nif: "211222333",
-      email: "luis.pereira@outlook.com",
-      telefone: "961112233",
-      tipo: "Inquilino (Habitação Tradicional)",
-      data_entrada: "2023-06-01",
-      data_saida: null,
-      contrato_fim: "2026-08-31",
-      valor_renda: 900.00,
-      caucao: 1800.00,
-      chaves_entregues: "1 Comando + 2 Chaves",
-      estado: "Alerta Caducidade (30 dias)",
-      documentos: ["Contrato_Arrendamento_2023.pdf"]
-    },
-    {
-      id: "res-3",
-      fracao: "Fração A (1º Esq)",
-      nome: "João Silva (Antigo Inquilino)",
-      nif: "198765432",
-      email: "joao.silva.antigo@sapo.pt",
-      telefone: "934567890",
-      tipo: "Inquilino (Histórico Ex-Residente)",
-      data_entrada: "2021-02-01",
-      data_saida: "2023-12-31",
-      contrato_fim: "2023-12-31",
-      valor_renda: 750.00,
-      caucao: 1500.00,
-      chaves_entregues: "Devolvidas integralmente",
-      estado: "Saída Concluída",
-      documentos: ["Termo_Devolucao_Chaves_Caucao.pdf"]
-    }
-  ]);
+  // Task 12: Gestão de Residentes & Inquilinos States — arranca vazio;
+  // antes tinha 3 residentes fictícios fixos (incluindo um "ex-residente"
+  // histórico) que apareciam sempre, para qualquer prédio real. O fetch
+  // real está mais abaixo, depois de predioFracoes estar definido.
+  const [residentesHistorico, setResidentesHistorico] = useState<any[]>([]);
+  const [carregandoResidentes, setCarregandoResidentes] = useState(true);
+  const [registandoEntrada, setRegistandoEntrada] = useState(false);
+  const [registandoSaida, setRegistandoSaida] = useState<string | null>(null);
 
   // Fire insurance email modal state
   const [fireInsuranceModalFracao, setFireInsuranceModalFracao] = useState<Fracao | null>(null);
@@ -306,7 +260,7 @@ export function GestaoFracoes({
   };
 
   // Resident Form States
-  const [resFracaoTarget, setResFracaoTarget] = useState("Fração H (3º Dto)");
+  const [resFracaoTarget, setResFracaoTarget] = useState("");
   const [resNome, setResNome] = useState("");
   const [resNif, setResNif] = useState("");
   const [resEmail, setResEmail] = useState("");
@@ -340,6 +294,24 @@ export function GestaoFracoes({
 
   const predioFracoes = useMemo(() => fracoes.filter(f => f.id_predio === predio.id_predio), [fracoes, predio.id_predio]);
   const totalPermilagem = useMemo(() => predioFracoes.reduce((acc, curr) => acc + (Number(curr.permilagem) || 0), 0), [predioFracoes]);
+
+  useEffect(() => {
+    let cancelado = false;
+    setCarregandoResidentes(true);
+    fetchResidentesInquilinosFromSupabase(predio.id_predio).then(dados => {
+      if (cancelado) return;
+      setResidentesHistorico((dados || []).map(r => ({
+        ...r,
+        fracao: (() => {
+          const f = predioFracoes.find(pf => pf.id_fracao === r.id_fracao);
+          return f ? `Fração ${f.fracao_nome} (${f.piso})` : r.id_fracao;
+        })(),
+        tipo: r.data_saida ? "Inquilino (Histórico Ex-Residente)" : "Inquilino (Habitação Tradicional)"
+      })));
+      setCarregandoResidentes(false);
+    });
+    return () => { cancelado = true; };
+  }, [predio.id_predio, predioFracoes]);
 
   // Lista unificada de todos os proprietários registados no prédio
   const todosProprietarios: Proprietario[] = useMemo(() => {
@@ -2347,8 +2319,9 @@ export function GestaoFracoes({
               <div>
                 <label className="font-semibold text-slate-600 block mb-1">Fração *</label>
                 <select value={resFracaoTarget} onChange={e => setResFracaoTarget(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 bg-white">
+                  <option value="">-- Escolher Fração --</option>
                   {predioFracoes.map(f => (
-                    <option key={f.id_fracao} value={`Fração ${f.fracao_nome} (${f.piso})`}>Fração {f.fracao_nome} ({f.piso})</option>
+                    <option key={f.id_fracao} value={f.id_fracao}>Fração {f.fracao_nome} ({f.piso})</option>
                   ))}
                 </select>
               </div>
@@ -2386,11 +2359,17 @@ export function GestaoFracoes({
             </div>
             <button
               type="button"
-              onClick={() => {
+              disabled={registandoEntrada}
+              onClick={async () => {
+                if (!resFracaoTarget) return alert("Selecione a fração.");
                 if (!resNome || !resNif) return alert("Preencha Nome e NIF do residente.");
+                const fracaoInfo = predioFracoes.find(f => f.id_fracao === resFracaoTarget);
+                const idNovo = "res-" + Date.now();
                 const novoRes = {
-                  id: "res-" + Date.now(),
-                  fracao: resFracaoTarget,
+                  id: idNovo,
+                  id_predio: predio.id_predio,
+                  id_fracao: resFracaoTarget,
+                  fracao: fracaoInfo ? `Fração ${fracaoInfo.fracao_nome} (${fracaoInfo.piso})` : resFracaoTarget,
                   nome: resNome,
                   nif: resNif,
                   email: resEmail || "residente@email.pt",
@@ -2402,16 +2381,20 @@ export function GestaoFracoes({
                   valor_renda: Number(resValorRenda) || 800,
                   caucao: Number(resCaucao) || 1600,
                   chaves_entregues: resChaves,
-                  estado: "Ativo",
-                  documentos: ["Contrato_Arrendamento_Novo.pdf"]
+                  estado: "Ativo"
                 };
+                setRegistandoEntrada(true);
+                const ok = await saveResidenteInquilinoToSupabase(novoRes);
+                setRegistandoEntrada(false);
+                if (!ok) return alert("❌ Erro ao gravar o registo de entrada no Supabase.");
                 setResidentesHistorico([novoRes, ...residentesHistorico]);
                 setResNome(""); setResNif(""); setResEmail(""); setResTlm("");
+                registarLogAuditoria("Frações", `Registou a entrada do residente "${resNome}" na ${novoRes.fracao}`, predio.id_predio, loggedUser);
                 alert("Entrada do residente registada com sucesso!");
               }}
-              className="bg-violet-600 hover:bg-violet-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5"
+              className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <i className="fa-solid fa-check"></i> Registo de Entrada & Ficha do Inquilino
+              <i className="fa-solid fa-check"></i> {registandoEntrada ? "A registar..." : "Registo de Entrada & Ficha do Inquilino"}
             </button>
           </div>
 
@@ -2467,15 +2450,36 @@ export function GestaoFracoes({
                       <td className="p-3 text-center space-x-1">
                         {res.data_saida === null ? (
                           <button
-                            onClick={() => {
+                            disabled={registandoSaida === res.id}
+                            onClick={async () => {
                               const dt = prompt("Informe a Data de Saída do Inquilino (AAAA-MM-DD):", new Date().toISOString().split('T')[0]);
                               if (!dt) return;
+                              setRegistandoSaida(res.id);
+                              const ok = await saveResidenteInquilinoToSupabase({
+                                id: res.id,
+                                id_predio: predio.id_predio,
+                                id_fracao: res.id_fracao,
+                                nome: res.nome,
+                                nif: res.nif,
+                                email: res.email,
+                                telefone: res.telefone,
+                                data_entrada: res.data_entrada,
+                                data_saida: dt,
+                                contrato_fim: res.contrato_fim,
+                                valor_renda: res.valor_renda,
+                                caucao: res.caucao,
+                                chaves_entregues: res.chaves_entregues,
+                                estado: "Saída Concluída"
+                              });
+                              setRegistandoSaida(null);
+                              if (!ok) return alert("❌ Erro ao gravar a saída no Supabase.");
                               setResidentesHistorico(prev => prev.map(r => r.id === res.id ? { ...r, data_saida: dt, estado: "Saída Concluída" } : r));
+                              registarLogAuditoria("Frações", `Registou a saída do residente "${res.nome}" (${res.fracao})`, predio.id_predio, loggedUser);
                               alert("Saída do residente registada e caução libertada para processo de devolução!");
                             }}
-                            className="px-2.5 py-1 text-[10px] font-bold bg-rose-600 hover:bg-rose-700 text-white rounded transition-all cursor-pointer"
+                            className="px-2.5 py-1 text-[10px] font-bold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded transition-all cursor-pointer"
                           >
-                            <i className="fa-solid fa-door-open mr-1"></i> Registar Saída
+                            <i className="fa-solid fa-door-open mr-1"></i> {registandoSaida === res.id ? "A registar..." : "Registar Saída"}
                           </button>
                         ) : (
                           <span className="text-[10px] text-slate-400 font-mono">Desvinculado</span>

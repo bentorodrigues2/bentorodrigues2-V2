@@ -2354,3 +2354,56 @@ export async function uploadPropostaFicheiro(file: File, idRfp: string, idPropos
   }
 }
 
+// ============================================================================
+// FICHA DE RESIDENTES / INQUILINOS (GestaoFracoes.tsx)
+// ============================================================================
+
+export async function fetchResidentesInquilinosFromSupabase(idPredio?: string): Promise<any[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  const data = await dbSelect("residentes_inquilinos", {
+    filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined,
+    order: { coluna: "created_at", asc: false }
+  });
+  if (!data) return null;
+  return data.map((row: any) => ({
+    id: row.id_residente,
+    id_fracao: row.id_fracao,
+    nome: row.nome,
+    nif: row.nif || "",
+    email: row.email || "",
+    telefone: row.telefone || "",
+    data_entrada: row.data_entrada || "",
+    data_saida: row.data_saida || null,
+    contrato_fim: row.contrato_fim || "",
+    valor_renda: Number(row.valor_renda) || 0,
+    caucao: Number(row.valor_caucao) || 0,
+    chaves_entregues: row.chaves_entregues || "",
+    estado: row.estado || "Ativo"
+  }));
+}
+
+export async function saveResidenteInquilinoToSupabase(residente: {
+  id: string; id_predio: string; id_fracao: string; nome: string; nif: string; email: string;
+  telefone: string; data_entrada: string; data_saida: string | null; contrato_fim?: string;
+  valor_renda: number; caucao: number; chaves_entregues: string; estado: string;
+}): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("residentes_inquilinos", {
+    id_residente: residente.id,
+    id_predio: residente.id_predio,
+    id_fracao: residente.id_fracao,
+    nome: residente.nome,
+    nif: residente.nif,
+    email: residente.email,
+    telefone: residente.telefone,
+    data_entrada: residente.data_entrada || null,
+    data_saida: residente.data_saida || null,
+    contrato_fim: residente.contrato_fim || null,
+    valor_renda: residente.valor_renda,
+    valor_caucao: residente.caucao,
+    chaves_entregues: residente.chaves_entregues,
+    estado: residente.estado,
+    updated_at: new Date().toISOString()
+  }, { onConflict: "id_residente" });
+}
+
