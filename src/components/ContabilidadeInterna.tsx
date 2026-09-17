@@ -72,19 +72,20 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
     setNovaDesc("");
   };
 
-  // 2. Reconciliação Automática: State variables
-  const [movimentosReconciliacao, setMovimentosReconciliacao] = useState<Movimento[]>([
-    { id_mov: "rec-mov-1", id_predio: predio.id_predio, id_conta: "c-1", data: "2026-07-12", tipo: "DESPESA", valor: 160.00, descricao: "EMPRESA ESTRELA LIMPEZAS", categoria: "Serviços de Limpeza", estado: "Pendente" },
-    { id_mov: "rec-mov-2", id_predio: predio.id_predio, id_conta: "c-1", data: "2026-07-10", tipo: "DESPESA", valor: 45.12, descricao: "EPAL AGUA JULHO", categoria: "Consumos de Água", estado: "Pendente" },
-    { id_mov: "rec-mov-3", id_predio: predio.id_predio, id_conta: "c-1", data: "2026-07-08", tipo: "RECEITA", valor: 350.00, descricao: "PAGAMENTO QUOTA FRACAO A", categoria: "Rendimentos de Quotas", estado: "Pendente" },
-    { id_mov: "rec-mov-4", id_predio: predio.id_predio, id_conta: "c-1", data: "2026-07-05", tipo: "DESPESA", valor: 85.00, descricao: "MANUTENCAO ELEVADOR OTIS", categoria: "Manutenção Elevadores", estado: "Pendente" }
-  ]);
+  // 2. Reconciliação Automática: movimentos reais recebidos por prop, não
+  // uma lista fixa fabricada — antes ignorava sempre os movimentos reais
+  // do prédio e mostrava os mesmos 4 movimentos fictícios.
+  const [movimentosReconciliacao, setMovimentosReconciliacao] = useState<Movimento[]>(() =>
+    movimentos.filter(m => m.id_predio === predio.id_predio && (m.is_movimento_cego || m.estado === "Movimento Cego / Por Justificar"))
+  );
 
-  const [comprovativosPendentes, setComprovativosPendentes] = useState<ComprovativoPendente[]>([
-    { id_comprovativo: "doc-rec-1", nome_ficheiro: "Fatura_Estrela_Limp_429.pdf", data_sugerida: "2026-07-12", valor_sugerido: 160.00, descricao_sugerida: "EMPRESA ESTRELA LIMPEZAS", estado: "Não Reconciliado" },
-    { id_comprovativo: "doc-rec-2", nome_ficheiro: "Agua_EPAL_Comum.pdf", data_sugerida: "2026-07-10", valor_sugerido: 45.12, descricao_sugerida: "EPAL AGUA JULHO", estado: "Não Reconciliado" },
-    { id_comprovativo: "doc-rec-3", nome_ficheiro: "Ref_BR23E_FracaoA.png", data_sugerida: "2026-07-08", valor_sugerido: 350.00, descricao_sugerida: "PAGAMENTO QUOTA FRACAO A", estado: "Não Reconciliado" }
-  ]);
+  React.useEffect(() => {
+    setMovimentosReconciliacao(
+      movimentos.filter(m => m.id_predio === predio.id_predio && (m.is_movimento_cego || m.estado === "Movimento Cego / Por Justificar"))
+    );
+  }, [movimentos, predio.id_predio]);
+
+  const [comprovativosPendentes, setComprovativosPendentes] = useState<ComprovativoPendente[]>([]);
 
   const [validatingOCR, setValidatingOCR] = useState(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
