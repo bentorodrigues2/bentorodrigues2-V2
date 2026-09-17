@@ -38,56 +38,50 @@ function extrairEmailLimpo(fromStr) {
 }
 
 /**
- * Obter contexto da fração ou proprietário através do email
+ * Obter contexto da fração/pessoa através do email do remetente.
+ *
+ * Lê sempre diretamente do JSONB de fracoes.proprietario /
+ * proprietarios_adicionais / inquilino — a única cópia destes dados que a
+ * app efetivamente mantém atualizada (GestaoFracoes.tsx via
+ * saveFracaoToSupabase / saveProprietarioToSupabase). Antes também se
+ * consultava uma tabela "proprietarios" paralela e a coluna
+ * "fracoes.email", mas nenhuma das duas é escrita de forma fiável (a
+ * escrita em "proprietarios" falha sempre por incompatibilidade de tipos
+ * com colunas enum/boolean, em silêncio) — o que fazia com que a
+ * identificação do remetente falhasse silenciosamente na maior parte dos
+ * casos reais.
  */
 async function obterContexto(email) {
   try {
-    const cleanEmail = extrairEmailLimpo(email);
+    const cleanEmail = extrairEmailLimpo(email).trim().toLowerCase();
+    if (!cleanEmail) return null;
 
-    // 1. Procurar diretamente na tabela proprietarios (é lá que vive o nome real)
-    const { data: prop, error: errProp } = await supabase
-      .from("proprietarios")
-      .select("*, fracoes(*)")
-      .ilike("email", cleanEmail)
-      .maybeSingle();
-
-    if (prop && !errProp) {
-      return {
-        ...prop,
-        fracao: prop.fracoes?.fracao_nome || prop.fracao || prop.id_fracao || "Fração",
-        id_predio: prop.id_predio || prop.fracoes?.id_predio || null,
-        nome: prop.nome || null
-      };
-    }
-
-    // 2. Procurar na tabela fracoes (a tabela fracoes não tem coluna de nome do
-    // proprietário — se encontrarmos a fração pelo email, vamos ainda buscar o
-    // nome à proprietarios pela fracao_id, para não devolver nome vazio)
-    const { data: fracao, error: errFracao } = await supabase
+    const { data: todasFracoes, error } = await supabase
       .from("fracoes")
-      .select("*, predios(*)")
-      .ilike("email", cleanEmail)
-      .maybeSingle();
+      .select("*, predios(*)");
 
-    if (fracao && !errFracao) {
-      let nomeProprietario = null;
-      try {
-        const { data: propDaFracao } = await supabase
-          .from("proprietarios")
-          .select("nome")
-          .eq("fracao_id", fracao.id_fracao)
-          .maybeSingle();
-        nomeProprietario = propDaFracao?.nome || null;
-      } catch {
-        // sem proprietário associado a esta fração, segue sem nome
+    if (error || !Array.isArray(todasFracoes)) return null;
+
+    for (const fracao of todasFracoes) {
+      const candidatos = [
+        fracao.proprietario,
+        ...(Array.isArray(fracao.proprietarios_adicionais) ? fracao.proprietarios_adicionais : []),
+        fracao.inquilino
+      ];
+
+      const encontrado = candidatos.find(
+        (pessoa) => pessoa?.email && String(pessoa.email).trim().toLowerCase() === cleanEmail
+      );
+
+      if (encontrado) {
+        return {
+          ...fracao,
+          fracao: fracao.fracao_nome || fracao.id_fracao || "Fração",
+          id_predio: fracao.id_predio || fracao.predios?.id_predio || null,
+          nome: encontrado.nome || null,
+          id_proprietario: encontrado.nif || null
+        };
       }
-
-      return {
-        ...fracao,
-        fracao: fracao.fracao_nome || fracao.id_fracao || "Fração",
-        id_predio: fracao.id_predio || fracao.predios?.id || null,
-        nome: nomeProprietario
-      };
     }
 
     return null;
