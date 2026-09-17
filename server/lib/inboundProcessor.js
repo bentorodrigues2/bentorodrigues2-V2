@@ -519,6 +519,25 @@ export async function processInboundEmail(payload) {
   // 2. Obter contexto da fração/proprietário no Supabase
   const contexto = await obterContexto(cleanFrom);
 
+  // 2b. Respeitar a pausa do Sincronizador de Caixa de Entrada & Auto-Responder
+  // (toggle "Ligar/Pausar Sincronizador" em Configurações → predios.autoresponder_ativo).
+  // Quando pausado para este prédio, não processar nem responder automaticamente.
+  if (contexto?.id_predio) {
+    try {
+      const { data: predioPausa } = await supabase
+        .from("predios")
+        .select("autoresponder_ativo")
+        .eq("id_predio", contexto.id_predio)
+        .maybeSingle();
+      if (predioPausa && predioPausa.autoresponder_ativo === false) {
+        console.log(`[inboundProcessor] Sincronizador pausado para o prédio ${contexto.id_predio}; email de ${cleanFrom} não processado.`);
+        return { ok: true, status: 200, autoresponder: false, motivo: "sincronizador_pausado_para_este_predio" };
+      }
+    } catch (err) {
+      console.warn("[inboundProcessor] Aviso ao verificar autoresponder_ativo, a assumir ativo:", err?.message || err);
+    }
+  }
+
   // 3. Classificar categoria com IA (in-process)
   let categoria = "outro";
   try {

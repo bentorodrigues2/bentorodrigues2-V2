@@ -457,17 +457,22 @@ export function ConfiguracoesAdministracao({
   }, [predio]);
 
   // State for AI configuration (email)
-  const [adminEmail, setAdminEmail] = useState(() => {
-    return localStorage.getItem(`admin_email_ia_${predioId}`) || "CPSN_RuaBentoRodrigues8@gmail.com";
-  });
+  const [adminEmail, setAdminEmail] = useState(() => predio?.email_condominio || predio?.email || "");
   const [emailError, setEmailError] = useState<string | null>(null);
   const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
 
-  // Sincronizador de Caixa de Entrada & Autoresponder
-  const [syncEmailActive, setSyncEmailActive] = useState<boolean>(() => {
-    const saved = localStorage.getItem(`sync_email_active_${predioId}`);
-    return saved !== null ? saved === "true" : true;
-  });
+  useEffect(() => {
+    setAdminEmail(predio?.email_condominio || predio?.email || "");
+  }, [predio?.email_condominio, predio?.email]);
+
+  // Sincronizador de Caixa de Entrada & Autoresponder — persistido a sério em
+  // predios.autoresponder_ativo (server/lib/inboundProcessor.js respeita este
+  // valor: quando pausado, o email recebido não é processado nem respondido).
+  const [syncEmailActive, setSyncEmailActive] = useState<boolean>(predio?.autoresponder_ativo ?? true);
+
+  useEffect(() => {
+    setSyncEmailActive(predio?.autoresponder_ativo ?? true);
+  }, [predio?.autoresponder_ativo]);
 
   const [autoresponderMode, setAutoresponderMode] = useState<"confirmacao_previa" | "totalmente_autonomo">(
     predio?.autoresponder_modo || "confirmacao_previa"
@@ -514,10 +519,6 @@ export function ConfiguracoesAdministracao({
       setResolvendoRespostaId(null);
     }
   };
-
-  const [syncInterval, setSyncInterval] = useState<string>(() => {
-    return localStorage.getItem(`sync_interval_${predioId}`) || "5";
-  });
 
   const [autoArchiveActive, setAutoArchiveActive] = useState(true);
   const [autoNotifyActive, setAutoNotifyActive] = useState(true);
@@ -766,7 +767,7 @@ export function ConfiguracoesAdministracao({
   };
 
   // Validate IA Administration Email according to strict rules in DOCUMENTO D
-  const handleSaveEmailIA = (e: React.FormEvent) => {
+  const handleSaveEmailIA = async (e: React.FormEvent) => {
     e.preventDefault();
     setEmailError(null);
     setEmailSuccess(null);
@@ -799,16 +800,28 @@ export function ConfiguracoesAdministracao({
       return;
     }
 
-    // If validations pass
-    localStorage.setItem(`admin_email_ia_${predioId}`, adminEmail);
+    // Se as validações passarem, grava a sério como email oficial do prédio
+    // (predios.email / email_condominio) — o mesmo campo já usado como
+    // Reply-To real nas respostas automáticas (server/lib/inboundProcessor.js).
+    if (predio?.id_predio) {
+      const ok = await dbUpdate("predios", { email: adminEmail, email_condominio: adminEmail }, [["id_predio", "eq", predio.id_predio]]);
+      if (!ok) {
+        setEmailError("Não foi possível gravar o email — tenta novamente.");
+        return;
+      }
+      onUpdatePredio?.({ ...predio, email: adminEmail, email_condominio: adminEmail });
+    }
     setEmailSuccess("Email da Administração para integração de IA configurado e homologado com sucesso!");
     addLog("Configuração", "Atualização do email de integração com a IA", `Novo email oficial registado: ${adminEmail}`);
   };
 
-  const handleToggleSyncEmail = (active: boolean) => {
+  const handleToggleSyncEmail = async (active: boolean) => {
     setSyncEmailActive(active);
-    localStorage.setItem(`sync_email_active_${predioId}`, String(active));
-    addLog("IA", "Sincronizador de Caixa de Entrada", active ? "Sincronização de e-mails ativada." : "Sincronização de e-mails pausada.");
+    if (predio?.id_predio) {
+      await dbUpdate("predios", { autoresponder_ativo: active }, [["id_predio", "eq", predio.id_predio]]);
+      onUpdatePredio?.({ ...predio, autoresponder_ativo: active });
+    }
+    addLog("IA", "Sincronizador de Caixa de Entrada", active ? "Sincronização de e-mails ativada." : "Sincronização de e-mails pausada — os emails recebidos deixam de ser processados/respondidos automaticamente.");
   };
 
   const handleSelectAutoresponderMode = async (mode: "confirmacao_previa" | "totalmente_autonomo") => {
@@ -1909,25 +1922,12 @@ export function ConfiguracoesAdministracao({
 
                 {/* Sincronizador Status Bar */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between" title="O canal real (webhook do Resend) é sempre em tempo real — não existe um intervalo de varredura configurável por prédio.">
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Frequência de Varredura</span>
-                      <strong className="text-slate-200 font-mono">
-                        {syncInterval === "5" ? "A cada 5 minutos" : syncInterval === "15" ? "A cada 15 minutos" : "Webhook em Tempo Real"}
-                      </strong>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Frequência de Receção</span>
+                      <strong className="text-slate-200 font-mono">Tempo Real (Webhook)</strong>
                     </div>
-                    <select
-                      value={syncInterval}
-                      onChange={(e) => {
-                        setSyncInterval(e.target.value);
-                        localStorage.setItem(`sync_interval_${predioId}`, e.target.value);
-                      }}
-                      className="text-xs bg-slate-900 border border-slate-700 rounded px-2 py-1 font-bold text-slate-200"
-                    >
-                      <option value="5">5 min</option>
-                      <option value="15">15 min</option>
-                      <option value="webhook">Webhook Instantâneo</option>
-                    </select>
+                    <CheckCircle className="h-4 w-4 text-emerald-400" />
                   </div>
 
                   <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
@@ -1938,11 +1938,11 @@ export function ConfiguracoesAdministracao({
                     <CheckCircle className="h-4 w-4 text-emerald-400" />
                   </div>
 
-                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between" title="Cada email recebido é associado automaticamente à fração pelo endereço do remetente — não existe uma única caixa de correio monitorizada.">
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Caixa de Correio Conectada</span>
-                      <span className="text-emerald-400 font-mono font-bold truncate max-w-[150px] inline-block" title={adminEmail}>
-                        {adminEmail}
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Identificação de Remetentes</span>
+                      <span className="text-emerald-400 font-mono font-bold truncate max-w-[150px] inline-block">
+                        Por Fração (automático)
                       </span>
                     </div>
                     <Mail className="h-4 w-4 text-emerald-400 shrink-0" />
