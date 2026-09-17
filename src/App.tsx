@@ -125,8 +125,13 @@ export default function App() {
 
   // tabela ainda estiver vazia — nesse caso os dados de demonstração
   // mantêm-se, para a app nunca ficar em branco.
+  const [browserIsLoggedOut, setBrowserIsLoggedOut] = useState<boolean>(true);
+
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
+    // Só faz sentido carregar dados reais do condomínio depois de haver
+    // sessão — antes disso (ecrã de login), /api/data exige autenticação
+    // (ver api/data.js) e estas chamadas falhavam sempre com 401.
+    if (!isSupabaseConfigured() || browserIsLoggedOut) return;
 
     (async () => {
       const [
@@ -164,7 +169,7 @@ export default function App() {
       if (fornecedoresReais) setFornecedores(fornecedoresReais);
       if (reunioesReais) setReunioes(reunioesReais);
     })();
-  }, []);
+  }, [browserIsLoggedOut]);
 
   const [capacidades, setCapacidades] = useState<CapacidadeLimite[]>([
     { area_comum: "Ginásio", limite: 5 },
@@ -179,7 +184,6 @@ export default function App() {
     role: "ADMIN"
   });
 
-  const [browserIsLoggedOut, setBrowserIsLoggedOut] = useState<boolean>(true);
   const [needsPasswordSetup, setNeedsPasswordSetup] = useState<{ email?: string } | null>(null);
   const [browserEmail, setBrowserEmail] = useState<string>("condomanagerai@gmail.com");
   const [browserPassword, setBrowserPassword] = useState<string>("••••••••");
