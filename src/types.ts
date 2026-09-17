@@ -60,6 +60,13 @@ export interface Predio {
   pisos?: number;
   elevadores?: number;
   garagens?: number;
+  notificacoes_config?: {
+    notif_ocorrencia?: boolean;
+    notif_financeiro?: boolean;
+    notif_vistorias?: boolean;
+    notif_canal_email?: boolean;
+    notif_canal_push?: boolean;
+  };
 }
 
 export interface Conta {

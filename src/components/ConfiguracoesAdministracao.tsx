@@ -558,12 +558,45 @@ export function ConfiguracoesAdministracao({
   } | null>(null);
   const [selectedCatTest, setSelectedCatTest] = useState<string>("quotas");
 
-  // States for notifications
+  // States for notifications — carregados de predio.notificacoes_config
+  // (Supabase) quando o prédio muda, em vez de sempre "true" fixo.
   const [notifOcorrencia, setNotifOcorrencia] = useState(true);
   const [notifFinanceiro, setNotifFinanceiro] = useState(true);
   const [notifVistorias, setNotifVistorias] = useState(true);
   const [notifCanalEmail, setNotifCanalEmail] = useState(true);
   const [notifCanalPush, setNotifCanalPush] = useState(true);
+  const [gravandoNotificacoes, setGravandoNotificacoes] = useState(false);
+
+  useEffect(() => {
+    const cfg = predio?.notificacoes_config;
+    if (!cfg) return;
+    setNotifOcorrencia(cfg.notif_ocorrencia !== false);
+    setNotifFinanceiro(cfg.notif_financeiro !== false);
+    setNotifVistorias(cfg.notif_vistorias !== false);
+    setNotifCanalEmail(cfg.notif_canal_email !== false);
+    setNotifCanalPush(cfg.notif_canal_push !== false);
+  }, [predio?.id_predio, predio?.notificacoes_config]);
+
+  const handleGravarNotificacoes = async () => {
+    if (!predio?.id_predio) return;
+    setGravandoNotificacoes(true);
+    const ok = await dbUpdate("predios", {
+      notificacoes_config: {
+        notif_ocorrencia: notifOcorrencia,
+        notif_financeiro: notifFinanceiro,
+        notif_vistorias: notifVistorias,
+        notif_canal_email: notifCanalEmail,
+        notif_canal_push: notifCanalPush
+      }
+    }, [["id_predio", "eq", predio.id_predio]]);
+    setGravandoNotificacoes(false);
+    if (!ok) {
+      alert("❌ Erro ao gravar as preferências de notificação no Supabase.");
+      return;
+    }
+    addLog("Configuração", "Atualizou as preferências de Canais de Notificação");
+    alert("Canais de Notificação gravados com sucesso!");
+  };
 
   // Registo de auditoria — real, partilhado entre dispositivos e inalterável
   // (tabela auditoria_plataforma, só select/insert mesmo pelo proxy /api/data;
@@ -3158,11 +3191,12 @@ export function ConfiguracoesAdministracao({
 
             <div className="pt-2">
               <button
-                onClick={() => alert("Canais de Notificação gravados com sucesso!")}
-                className="border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 active:scale-95 text-white font-bold py-2 px-4 rounded-xl text-xs cursor-pointer shadow transition-all flex items-center gap-1.5 active:ring-2 active:ring-emerald-400 select-none"
+                onClick={handleGravarNotificacoes}
+                disabled={gravandoNotificacoes}
+                className="border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 active:scale-95 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-xl text-xs cursor-pointer shadow transition-all flex items-center gap-1.5 active:ring-2 active:ring-emerald-400 select-none"
               >
                 <img src="/estados-acoes/12-adicionar.png" alt="Gravar" className="h-4 w-4 object-contain" />
-                <span>Gravar</span>
+                <span>{gravandoNotificacoes ? "A gravar..." : "Gravar"}</span>
               </button>
             </div>
           </div>
