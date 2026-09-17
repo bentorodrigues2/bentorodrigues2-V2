@@ -172,21 +172,45 @@ Elabora uma análise técnica:
 
     try {
       const { requestDescription, proposals } = req.body || {};
+      if (!Array.isArray(proposals) || proposals.length < 2) {
+        return res.status(400).json({ error: "São necessárias pelo menos 2 propostas para comparar." });
+      }
+
+      const nomesFornecedores = proposals.map(p => p.name || "Fornecedor");
       const prompt = `Como perito em contratação e manutenção de condomínios, analisa e compara as seguintes propostas de orçamento recebidas:
 Necessidade / Descrição: ${requestDescription || "Sem descrição"}
-Propostas recebidas: ${JSON.stringify(proposals || [])}
+Propostas recebidas (nome, NIF, valor, prazo, garantia, descrição técnica): ${JSON.stringify(proposals)}
 
-Elabora uma matriz comparativa com:
-1. Análise de Preço e Relação Custo-Benefício.
-2. Prazos de Execução e Garantia dos Trabalhos.
-3. Reputação e Conformidade Técnica.
-4. Parecer Final e Recomendação fundamentada para a Assembleia de Condóminos.`;
+Devolve APENAS um objeto JSON estrito com esta forma exata, sem texto fora do JSON:
+{
+  "comparisonMatrix": [
+    { "criterion": "Preço", "supplierA": "resumo curto", "supplierB": "resumo curto", "winner": "nome do fornecedor vencedor neste critério" },
+    { "criterion": "Prazo de Execução", "supplierA": "...", "supplierB": "...", "winner": "..." },
+    { "criterion": "Garantia", "supplierA": "...", "supplierB": "...", "winner": "..." },
+    { "criterion": "Conformidade Técnica", "supplierA": "...", "supplierB": "...", "winner": "..." }
+  ],
+  "analysis": {
+    ${nomesFornecedores.map(n => `"${n}": { "pros": ["..."], "cons": ["..."], "score": 0 }`).join(",\n    ")}
+  },
+  "recommendation": "Parecer final fundamentado, com recomendação de adjudicação para a Assembleia de Condóminos."
+}
+Usa exatamente os nomes dos fornecedores fornecidos como chaves em "analysis". "score" é de 0 a 100. Se houver mais de 2 propostas, inclui todas nas colunas do comparisonMatrix (supplierA, supplierB, supplierC, ...) e em "analysis". Nunca inventes dados que não estejam nas propostas fornecidas.`;
 
       const responseText = await generateWithFallback({
-        contents: [{ role: "user", parts: [{ text: prompt }] }]
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        responseMimeType: "application/json"
       });
 
-      return res.status(200).json({ comparison: responseText });
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        const match = responseText.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error("A IA não devolveu um JSON válido.");
+        result = JSON.parse(match[0]);
+      }
+
+      return res.status(200).json(result);
     } catch (err) {
       console.error("[api/ai?acao=compare-proposals] Erro:", err);
       return res.status(500).json({ error: err?.message || "Erro ao comparar propostas." });

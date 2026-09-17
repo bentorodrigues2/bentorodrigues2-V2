@@ -1,6 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Predio, Fornecedor, LoggedUser } from "../types";
 import { Loader2, ShieldCheck, BadgeAlert, Sparkles, Building, Coins, Calendar, Plus, ExternalLink, ThumbsUp, Table, FileText, CheckCircle2 } from "lucide-react";
+import {
+  fetchRfpsFromSupabase,
+  saveRfpToSupabase,
+  fetchPropostasFromSupabase,
+  savePropostaToSupabase,
+  uploadPropostaFicheiro,
+  saveFornecedorToSupabase
+} from "../lib/supabaseService";
 
 interface RequestForProposal {
   id_rfp: string;
@@ -27,6 +35,7 @@ interface Proposal {
   garantia_anos: number;
   descricao_tecnica: string;
   ficheiro_nome: string;
+  ficheiro_caminho?: string;
   data_submissao: string;
 }
 
@@ -61,63 +70,25 @@ export function PortalOrcamentos({
   onAddFornecedor,
   loggedUser,
 }: PortalOrcamentosProps) {
-  // RFPs in the current building
-  const [rfps, setRfps] = useState<RequestForProposal[]>([
-    {
-      id_rfp: "rfp-1",
-      id_predio: predio.id_predio,
-      titulo: "Pintura Exterior de Fachadas e Reparação de Fissuras",
-      categoria: "Conservação Exterior",
-      estimativa: 15000,
-      data_publicacao: "2026-07-01",
-      data_limite: "2026-08-15",
-      descricao: "Pintura integral de todas as superfícies exteriores, tratamento de fissuras de dilatação térmica e reparação pontual de betão degradado nas varandas.",
-      estado: "Aberto"
-    },
-    {
-      id_rfp: "rfp-2",
-      id_predio: predio.id_predio,
-      titulo: "Substituição do Grupo Hidropressor (Bombas de Água)",
-      categoria: "Equipamento Técnico",
-      estimativa: 3000,
-      data_publicacao: "2026-07-10",
-      data_limite: "2026-07-30",
-      descricao: "Substituição das duas bombas de água coletivas por bombas de alta eficiência energética, incluindo pressostato digital, vasos de expansão e válvulas de segurança.",
-      estado: "Aberto"
-    }
-  ]);
+  // RFPs (concursos) do prédio — carregados do Supabase, nunca fictícios.
+  const [rfps, setRfps] = useState<RequestForProposal[]>([]);
+  const [carregandoRfps, setCarregandoRfps] = useState(true);
 
-  // Proposals submitted so far
-  const [proposals, setProposals] = useState<Proposal[]>([
-    {
-      id_proposal: "prop-1",
-      id_rfp: "rfp-1",
-      nome_empresa: "Pinturas LusoPort, Lda.",
-      nif: "502938475",
-      email: "geral@lusoport-pinturas.pt",
-      contacto: "914829302",
-      valor: 14200,
-      prazo_dias: 45,
-      garantia_anos: 5,
-      descricao_tecnica: "Aplicação de membrana acrílica elástica anti-fissuras de marca CIN. Inclui lavagem prévia a alta pressão com biocidas e montagem de andaime multidirecional certificado.",
-      ficheiro_nome: "proposta_financeira_lusoport_rev1.pdf",
-      data_submissao: "2026-07-10"
-    },
-    {
-      id_proposal: "prop-2",
-      id_rfp: "rfp-1",
-      nome_empresa: "Fachadas Seguras Engenharia, S.A.",
-      nif: "509876543",
-      email: "orcamentos@fachadasseguras.com",
-      contacto: "210459820",
-      valor: 15800,
-      prazo_dias: 30,
-      garantia_anos: 10,
-      descricao_tecnica: "Tratamento estrutural de betão com argamassas tixotrópicas Sika. Pintura com revestimento siloxânico auto-lavável contra poluição. Inclui seguro de responsabilidade civil de 250.000€.",
-      ficheiro_nome: "fachadas_seguras_proposta_assinado.pdf",
-      data_submissao: "2026-07-12"
-    }
-  ]);
+  useEffect(() => {
+    let cancelado = false;
+    setCarregandoRfps(true);
+    fetchRfpsFromSupabase(predio.id_predio).then(dados => {
+      if (!cancelado) {
+        setRfps(dados || []);
+        setCarregandoRfps(false);
+      }
+    });
+    return () => { cancelado = true; };
+  }, [predio.id_predio]);
+
+  // Propostas — carregadas sob pedido para o concurso selecionado.
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [carregandoPropostas, setCarregandoPropostas] = useState(false);
 
   // Form states for new RFP (Admin only)
   const [showRfpForm, setShowRfpForm] = useState(false);
@@ -142,15 +113,39 @@ export function PortalOrcamentos({
   // IA comparative analysis states
   const [isComparing, setIsComparing] = useState(false);
   const [compareLog, setCompareLog] = useState<string[]>([]);
-  const [selectedRfpForAnalysis, setSelectedRfpForAnalysis] = useState<string>("rfp-1");
+  const [selectedRfpForAnalysis, setSelectedRfpForAnalysis] = useState<string>("");
   const [aiResult, setAiResult] = useState<ComparativeResponse | null>(null);
 
   const predioRfps = rfps.filter(r => r.id_predio === predio.id_predio);
   const activeRfp = rfps.find(r => r.id_rfp === selectedRfpForAnalysis);
   const activeRfpProposals = proposals.filter(p => p.id_rfp === selectedRfpForAnalysis);
 
+  // Seleciona automaticamente o primeiro concurso assim que os reais chegam.
+  useEffect(() => {
+    if (!selectedRfpForAnalysis && predioRfps.length > 0) {
+      setSelectedRfpForAnalysis(predioRfps[0].id_rfp);
+    }
+  }, [predioRfps, selectedRfpForAnalysis]);
+
+  // Carrega as propostas reais do concurso selecionado.
+  useEffect(() => {
+    let cancelado = false;
+    if (!selectedRfpForAnalysis) return;
+    setCarregandoPropostas(true);
+    fetchPropostasFromSupabase(selectedRfpForAnalysis).then(dados => {
+      if (cancelado) return;
+      setProposals(prev => [
+        ...prev.filter(p => p.id_rfp !== selectedRfpForAnalysis),
+        ...(dados || [])
+      ]);
+      setCarregandoPropostas(false);
+    });
+    return () => { cancelado = true; };
+  }, [selectedRfpForAnalysis]);
+
   // Submit New RFP
-  const handleLancarRfp = (e: React.FormEvent) => {
+  const [publicandoRfp, setPublicandoRfp] = useState(false);
+  const handleLancarRfp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loggedUser.role !== "ADMIN") return alert("Apenas administradores podem lançar pedidos de orçamento.");
     if (!rfpTitulo || !rfpCategoria || !rfpEstimativa || !rfpLimite || !rfpDescricao) {
@@ -158,7 +153,7 @@ export function PortalOrcamentos({
     }
 
     const novoRfp: RequestForProposal = {
-      id_rfp: "rfp-" + (rfps.length + 1) + "-" + Math.floor(Math.random() * 100),
+      id_rfp: "rfp-" + Date.now() + "-" + Math.floor(Math.random() * 100),
       id_predio: predio.id_predio,
       titulo: rfpTitulo,
       categoria: rfpCategoria,
@@ -169,9 +164,19 @@ export function PortalOrcamentos({
       estado: "Aberto"
     };
 
+    setPublicandoRfp(true);
+    const ok = await saveRfpToSupabase({ ...novoRfp, criado_por: loggedUser.nome });
+    setPublicandoRfp(false);
+
+    if (!ok) {
+      alert("❌ Erro ao publicar o concurso no Supabase. Tente novamente.");
+      return;
+    }
+
     setRfps([...rfps, novoRfp]);
+    setSelectedRfpForAnalysis(novoRfp.id_rfp);
     alert(`Concurso Público/RFP "${rfpTitulo}" publicado no portal de orçamentos com sucesso!`);
-    
+
     // Reset Form
     setRfpTitulo("");
     setRfpCategoria("");
@@ -182,15 +187,23 @@ export function PortalOrcamentos({
   };
 
   // Submit Proposal from Supplier
-  const handleSubmeterProposta = (e: React.FormEvent) => {
+  const [submetendoProposta, setSubmetendoProposta] = useState(false);
+  const handleSubmeterProposta = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRfpId) return alert("Selecione primeiro o pedido de orçamento correspondente.");
     if (!propEmpresa || !propNif || !propEmail || !propContacto || !propValor || !propPrazo || !propGarantia || !propDescricao) {
       return alert("Preencha todos os campos obrigatórios (*) para submeter a proposta.");
     }
 
+    setSubmetendoProposta(true);
+
+    const idProposal = "prop-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+    const ficheiroCaminho = propFicheiro
+      ? await uploadPropostaFicheiro(propFicheiro, selectedRfpId, idProposal)
+      : undefined;
+
     const novaProposta: Proposal = {
-      id_proposal: "prop-" + (proposals.length + 1) + "-" + Math.floor(Math.random() * 1000),
+      id_proposal: idProposal,
       id_rfp: selectedRfpId,
       nome_empresa: propEmpresa,
       nif: propNif,
@@ -201,10 +214,20 @@ export function PortalOrcamentos({
       garantia_anos: Number(propGarantia),
       descricao_tecnica: propDescricao,
       ficheiro_nome: propFicheiro ? propFicheiro.name : "proposta_assinada_eletronicamente.pdf",
+      ficheiro_caminho: ficheiroCaminho || undefined,
       data_submissao: new Date().toISOString().split("T")[0]
     };
 
+    const ok = await savePropostaToSupabase(novaProposta);
+    setSubmetendoProposta(false);
+
+    if (!ok) {
+      alert("❌ Erro ao submeter a proposta no Supabase. Tente novamente.");
+      return;
+    }
+
     setProposals([...proposals, novaProposta]);
+    setSelectedRfpForAnalysis(selectedRfpId);
     alert(`Parabéns! A proposta da empresa "${propEmpresa}" foi registada com sucesso para análise.\nNIF: ${propNif}\nValor: ${Number(propValor).toLocaleString("pt-PT")} €`);
 
     // Reset Form
@@ -289,36 +312,50 @@ export function PortalOrcamentos({
   };
 
   // Accept and Adjudicate Proposal
-  const handleAdjudicarProposta = (proposal: Proposal) => {
+  const [adjudicando, setAdjudicando] = useState(false);
+  const handleAdjudicarProposta = async (proposal: Proposal) => {
     const confirmAdjudicacao = window.confirm(
       `Deseja adjudicar formalmente esta obra/serviço à empresa "${proposal.nome_empresa}" pelo valor de ${proposal.valor.toLocaleString("pt-PT")} €?\n` +
       `Isso irá encerrar o concurso público, registar a empresa como fornecedor ativo do condomínio e criar as diretivas financeiras correspondentes.`
     );
 
     if (!confirmAdjudicacao) return;
+    const rfpAlvo = rfps.find(r => r.id_rfp === proposal.id_rfp);
+    if (!rfpAlvo) return;
 
-    // 1. Mark RFP as Adjudicated
-    setRfps(prev => prev.map(r => r.id_rfp === proposal.id_rfp ? { ...r, estado: "Adjudicado", fornecedor_adjudicado: proposal.nome_empresa } : r));
+    setAdjudicando(true);
+
+    // 1. Mark RFP as Adjudicated (Supabase real, não só estado local)
+    const rfpAtualizado: RequestForProposal = { ...rfpAlvo, estado: "Adjudicado", fornecedor_adjudicado: proposal.nome_empresa };
+    const okRfp = await saveRfpToSupabase({ ...rfpAtualizado, criado_por: loggedUser.nome });
+    if (!okRfp) {
+      setAdjudicando(false);
+      alert("❌ Erro ao registar a adjudicação no Supabase. Tente novamente.");
+      return;
+    }
+    setRfps(prev => prev.map(r => r.id_rfp === proposal.id_rfp ? rfpAtualizado : r));
 
     // 2. Auto-register supplier as active Fornecedor in the system
     const alreadyRegistered = fornecedores.some(f => f.nif === proposal.nif && f.id_predio === predio.id_predio);
     if (!alreadyRegistered) {
       const novoFornecedor: Fornecedor = {
-        id_fornecedor: "forn-auto-" + Math.floor(Math.random() * 1000),
+        id_fornecedor: "forn-auto-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
         id_predio: predio.id_predio,
         nome: proposal.nome_empresa,
         nif: proposal.nif,
-        categoria: activeRfp?.categoria || "Serviços Gerais",
+        categoria: rfpAlvo.categoria || "Serviços Gerais",
         email_contacto: proposal.email,
         contacto: proposal.contacto
       };
       onAddFornecedor(novoFornecedor);
+      saveFornecedorToSupabase(novoFornecedor).catch(console.error);
     }
 
+    setAdjudicando(false);
     alert(
       `CONTRATO ADJUDICADO COM SUCESSO!\n\n` +
       `Fornecedor: ${proposal.nome_empresa}\n` +
-      `Serviço: ${activeRfp?.titulo}\n` +
+      `Serviço: ${rfpAlvo.titulo}\n` +
       `Valor: ${proposal.valor.toLocaleString("pt-PT")} €\n` +
       `Prazo: ${proposal.prazo_dias} dias\n\n` +
       `O concurso foi fechado e o fornecedor integrado no registo oficial do condomínio.`
@@ -425,16 +462,25 @@ export function PortalOrcamentos({
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded shadow transition-all cursor-pointer"
+                  disabled={publicandoRfp}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-2 rounded shadow transition-all cursor-pointer"
                 >
-                  Publicar Concurso Público
+                  {publicandoRfp ? "A publicar..." : "Publicar Concurso Público"}
                 </button>
               </form>
             )}
 
             {/* List RFPs */}
             <div className="space-y-3">
-              {predioRfps.map(r => (
+              {carregandoRfps ? (
+                <p className="text-xs text-slate-400 text-center py-6 flex items-center justify-center gap-2">
+                  <Loader2 className="animate-spin" size={13} /> A carregar concursos...
+                </p>
+              ) : predioRfps.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-6">
+                  Ainda não existem concursos publicados para este prédio.
+                </p>
+              ) : predioRfps.map(r => (
                 <div
                   key={r.id_rfp}
                   onClick={() => {
@@ -623,9 +669,10 @@ export function PortalOrcamentos({
 
               <button
                 type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded shadow transition-all cursor-pointer flex items-center justify-center space-x-1"
+                disabled={submetendoProposta}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-2 rounded shadow transition-all cursor-pointer flex items-center justify-center space-x-1"
               >
-                <span>Submeter Proposta Comercial</span>
+                <span>{submetendoProposta ? "A submeter..." : "Submeter Proposta Comercial"}</span>
               </button>
             </form>
           </div>
@@ -699,7 +746,11 @@ export function PortalOrcamentos({
                   </div>
                 )}
 
-                {activeRfpProposals.length === 0 ? (
+                {carregandoPropostas ? (
+                  <p className="text-xs text-slate-400 text-center py-8 flex items-center justify-center gap-2">
+                    <Loader2 className="animate-spin" size={13} /> A carregar propostas...
+                  </p>
+                ) : activeRfpProposals.length === 0 ? (
                   <p className="text-xs text-slate-400 text-center py-8">
                     Não existem propostas submetidas para este concurso. Preencha o formulário "Submeter Proposta" ao lado para adicionar.
                   </p>
@@ -732,7 +783,28 @@ export function PortalOrcamentos({
                           <div className="space-y-1.5 bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-150 dark:border-slate-800/80 font-mono-custom text-[10px]">
                             <p>Prazo de Execução: <strong className="text-slate-800 dark:text-slate-300">{prop.prazo_dias} dias</strong></p>
                             <p>Garantia da Obra: <strong className="text-slate-800 dark:text-slate-300">{prop.garantia_anos} anos</strong></p>
-                            <p className="truncate">Documento: <span className="text-indigo-500 hover:underline cursor-pointer"><FileText size={10} className="inline mr-0.5" />{prop.ficheiro_nome}</span></p>
+                            <p className="truncate">
+                              Documento:{" "}
+                              {prop.ficheiro_caminho ? (
+                                <span
+                                  className="text-indigo-500 hover:underline cursor-pointer"
+                                  onClick={async () => {
+                                    const resp = await fetch("/api/documento?acao=descarregar", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ caminho: prop.ficheiro_caminho })
+                                    });
+                                    const resultado = await resp.json();
+                                    if (resultado?.url) window.open(resultado.url, "_blank");
+                                    else alert("❌ Não foi possível abrir o documento.");
+                                  }}
+                                >
+                                  <FileText size={10} className="inline mr-0.5" />{prop.ficheiro_nome}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400"><FileText size={10} className="inline mr-0.5" />{prop.ficheiro_nome} (sem ficheiro anexado)</span>
+                              )}
+                            </p>
                           </div>
                         </div>
 
@@ -740,10 +812,11 @@ export function PortalOrcamentos({
                           <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
                             <button
                               onClick={() => handleAdjudicarProposta(prop)}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1 px-3 text-[11px] rounded transition-colors cursor-pointer flex items-center space-x-1"
+                              disabled={adjudicando}
+                              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-1 px-3 text-[11px] rounded transition-colors cursor-pointer flex items-center space-x-1"
                             >
                               <CheckCircle2 size={11} />
-                              <span>Adjudicar Contrato</span>
+                              <span>{adjudicando ? "A adjudicar..." : "Adjudicar Contrato"}</span>
                             </button>
                           </div>
                         )}

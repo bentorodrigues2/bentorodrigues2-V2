@@ -2237,3 +2237,120 @@ export async function deleteEquipaPrestadorFromSupabase(id: string): Promise<boo
   return dbDelete("equipas_prestadores", [["id", "eq", id]]);
 }
 
+// ============================================================================
+// PORTAL DE ORÇAMENTOS — CONCURSOS (RFPs) E PROPOSTAS DE FORNECEDORES
+// ============================================================================
+
+export async function fetchRfpsFromSupabase(idPredio?: string): Promise<any[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  const data = await dbSelect("rfps", {
+    filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined,
+    order: { coluna: "created_at", asc: false }
+  });
+  if (!data) return null;
+  return data.map((row: any) => ({
+    id_rfp: row.id_rfp,
+    id_predio: row.id_predio,
+    titulo: row.titulo,
+    categoria: row.categoria || "",
+    estimativa: Number(row.estimativa) || 0,
+    data_publicacao: row.data_publicacao || "",
+    data_limite: row.data_limite || "",
+    descricao: row.descricao || "",
+    estado: row.estado || "Aberto",
+    fornecedor_adjudicado: row.fornecedor_adjudicado || undefined
+  }));
+}
+
+export async function saveRfpToSupabase(rfp: {
+  id_rfp: string; id_predio: string; titulo: string; categoria: string; estimativa: number;
+  data_publicacao: string; data_limite: string; descricao: string; estado: string;
+  fornecedor_adjudicado?: string; criado_por?: string;
+}): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("rfps", {
+    id_rfp: rfp.id_rfp,
+    id_predio: rfp.id_predio,
+    titulo: rfp.titulo,
+    categoria: rfp.categoria,
+    estimativa: rfp.estimativa,
+    data_publicacao: rfp.data_publicacao,
+    data_limite: rfp.data_limite,
+    descricao: rfp.descricao,
+    estado: rfp.estado,
+    fornecedor_adjudicado: rfp.fornecedor_adjudicado || null,
+    criado_por: rfp.criado_por || null,
+    updated_at: new Date().toISOString()
+  });
+}
+
+export async function fetchPropostasFromSupabase(idRfp: string): Promise<any[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  const data = await dbSelect("propostas", {
+    filtros: [["id_rfp", "eq", idRfp]],
+    order: { coluna: "created_at", asc: true }
+  });
+  if (!data) return null;
+  return data.map((row: any) => ({
+    id_proposal: row.id_proposal,
+    id_rfp: row.id_rfp,
+    nome_empresa: row.nome_empresa,
+    nif: row.nif || "",
+    email: row.email || "",
+    contacto: row.contacto || "",
+    valor: Number(row.valor) || 0,
+    prazo_dias: Number(row.prazo_dias) || 0,
+    garantia_anos: Number(row.garantia_anos) || 0,
+    descricao_tecnica: row.descricao_tecnica || "",
+    ficheiro_nome: row.ficheiro_nome || "",
+    ficheiro_caminho: row.ficheiro_caminho || undefined,
+    data_submissao: row.data_submissao || ""
+  }));
+}
+
+export async function savePropostaToSupabase(proposta: {
+  id_proposal: string; id_rfp: string; nome_empresa: string; nif: string; email: string; contacto: string;
+  valor: number; prazo_dias: number; garantia_anos: number; descricao_tecnica: string;
+  ficheiro_nome: string; ficheiro_caminho?: string; data_submissao: string;
+}): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbInsert("propostas", {
+    id_proposal: proposta.id_proposal,
+    id_rfp: proposta.id_rfp,
+    nome_empresa: proposta.nome_empresa,
+    nif: proposta.nif,
+    email: proposta.email,
+    contacto: proposta.contacto,
+    valor: proposta.valor,
+    prazo_dias: proposta.prazo_dias,
+    garantia_anos: proposta.garantia_anos,
+    descricao_tecnica: proposta.descricao_tecnica,
+    ficheiro_nome: proposta.ficheiro_nome,
+    ficheiro_caminho: proposta.ficheiro_caminho || null,
+    data_submissao: proposta.data_submissao
+  });
+}
+
+/**
+ * Upload do PDF de uma proposta comercial para o bucket privado
+ * "documentos" — devolve o caminho no Storage (não um URL público, o
+ * bucket é privado), para abrir depois com um URL assinado, tal como o
+ * resto do Arquivo Digital (ver /api/documento?acao=descarregar).
+ */
+export async function uploadPropostaFicheiro(file: File, idRfp: string, idProposal: string): Promise<string | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const extensao = file.name.includes(".") ? file.name.split(".").pop() : "pdf";
+    const caminho = `propostas/${idRfp}/${idProposal}.${extensao}`;
+    const { error } = await supabase.storage.from("documentos").upload(caminho, file, { upsert: true });
+    if (error) {
+      console.warn("[uploadPropostaFicheiro] Erro no upload:", error.message);
+      return null;
+    }
+    return caminho;
+  } catch (err) {
+    console.warn("[uploadPropostaFicheiro] Exceção:", err);
+    return null;
+  }
+}
+
