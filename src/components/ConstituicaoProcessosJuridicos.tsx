@@ -118,43 +118,43 @@ export function ConstituicaoProcessosJuridicos({
     if (presetType === "RECIBO_RECECAO_CARTA_AR") {
       setNovaProvaTitulo("Aviso de Receção CTT (AR) Notificação de Quotas com Assinatura");
       setNovaProvaDescricao("Comprovativo do registo postal CTT e recibo de aviso de receção assinado presencialmente pelo réu, atestando a tomada de conhecimento da mora.");
-      setNovaProvaCodigoCtt("RH849203920PT");
-      setNovaProvaDataEntrega("2026-02-18");
-      setNovaProvaFileNome("recibo_aviso_rececao_ctt_assinado.png");
+      setNovaProvaCodigoCtt("[SUBSTITUIR PELO CÓDIGO DE RASTREIO CTT REAL]");
+      setNovaProvaDataEntrega("");
+      setNovaProvaFileNome("");
       setNovaProvaTipoFicheiro("imagem");
-      setNovaProvaUrlPreview("/documentos/08-aviso-de-rececao.png");
+      setNovaProvaUrlPreview("");
       setNovaProvaObsJuridica("Prova plena da interpelação admonitória para efeitos do art. 805.º n.º 1 do Código Civil.");
     } else if (presetType === "PRINT_CONVERSA_WHATSAPP") {
       setNovaProvaTitulo("Print de Conversa WhatsApp com Confissão de Dívida e Recusa de Pagamento");
       setNovaProvaDescricao("Captura de ecrã certificada de troca de mensagens via WhatsApp com o número oficial do condómino réu onde assume os valores e adia o cumprimento.");
-      setNovaProvaFileNome("print_conversa_whatsapp_divida_fracao.png");
+      setNovaProvaFileNome("");
       setNovaProvaTipoFicheiro("imagem");
-      setNovaProvaUrlPreview("/documentos/16-print-conversa-whatsapp.png");
+      setNovaProvaUrlPreview("");
       setNovaProvaObsJuridica("Documento eletrónico nos termos do art. 368.º do Código Civil, corroborando a recusa ilegítima.");
     } else if (presetType === "PRINT_EMAIL_COMUNICACAO") {
       setNovaProvaTitulo("Print de E-mail de Notificação de Saldo Devedor com Confirmação de Leitura");
       setNovaProvaDescricao("Cópia e print do correio eletrónico enviado pela Administração para o endereço registado do condómino com recibo de entrega.");
-      setNovaProvaFileNome("print_email_notificacao_saldo_devedor.png");
+      setNovaProvaFileNome("");
       setNovaProvaTipoFicheiro("imagem");
-      setNovaProvaUrlPreview("/documentos/08-aviso-de-rececao.png");
+      setNovaProvaUrlPreview("");
       setNovaProvaObsJuridica("Comunicação formal enviada em cumprimento do Art. 1432.º do Código Civil.");
     } else if (presetType === "FOTOGRAFIA_DANO_INFRACAO") {
       setNovaProvaTitulo("Relatório Fotográfico de Danos / Obras não Autorizadas");
       setNovaProvaDescricao("Fotografia de alta resolução comprovando as alterações na fachada ou danos causados em partes comuns do edifício.");
-      setNovaProvaFileNome("relatorio_fotografico_danos_partes_comuns.png");
+      setNovaProvaFileNome("");
       setNovaProvaTipoFicheiro("imagem");
-      setNovaProvaUrlPreview("/documentos/17-fotografia-dano-fachada.png");
+      setNovaProvaUrlPreview("");
       setNovaProvaObsJuridica("Peritagem visual e registo da infração ao regulamento de condomínio.");
     } else if (presetType === "ATA_ASSEMBLEIA_TITULO_EXECUTIVO") {
-      setNovaProvaTitulo("Ata da Assembleia de Condóminos n.º 24 com Força Executiva (Art. 6.º DL 268/94)");
+      setNovaProvaTitulo("Ata da Assembleia de Condóminos com Força Executiva (Art. 6.º DL 268/94)");
       setNovaProvaDescricao("Extrato da ata da reunião magna onde foi aprovado o orçamento, quotas e liquidado o montante em dívida, constituindo título executivo.");
-      setNovaProvaFileNome("ata_24_titulo_executivo_aprovacao_quotas.pdf");
+      setNovaProvaFileNome("");
       setNovaProvaTipoFicheiro("pdf");
       setNovaProvaObsJuridica("Título executivo extrajudicial bastante para instauração imediata de Ação Executiva.");
     } else if (presetType === "EXTRATO_CONTA_CORRENTE_DIVIDA") {
-      setNovaProvaTitulo("Extrato de Conta-Corrente Atualizado com Juros de Mora Calculados a 4.00%");
+      setNovaProvaTitulo("Extrato de Conta-Corrente Atualizado com Juros de Mora");
       setNovaProvaDescricao("Demonstração detalhada mês a mês das quotas vencidas, débitos de conservação e juros de mora legais.");
-      setNovaProvaFileNome("extrato_conta_corrente_discriminado_divida.pdf");
+      setNovaProvaFileNome("");
       setNovaProvaTipoFicheiro("pdf");
       setNovaProvaObsJuridica("Liquidação aritmética da dívida nos termos do art. 716.º do Código de Processo Civil.");
     }
@@ -237,7 +237,7 @@ export function ConstituicaoProcessosJuridicos({
       ficheiro_nome: novaProvaFileNome || `${novaProvaTipo.toLowerCase()}_${Date.now()}.png`,
       tamanho: "245 KB",
       tipo_ficheiro: novaProvaTipoFicheiro,
-      url_preview: novaProvaUrlPreview || (novaProvaTipoFicheiro === "imagem" ? "/documentos/16-print-conversa-whatsapp.png" : undefined),
+      url_preview: novaProvaUrlPreview || undefined,
       codigo_rastreio_ctt: novaProvaCodigoCtt || undefined,
       data_entrega_ctt: novaProvaDataEntrega || undefined,
       destinatario: novaProvaDestinatario || undefined,
@@ -288,7 +288,7 @@ export function ConstituicaoProcessosJuridicos({
         arquivado: true,
         data_arquivamento: new Date().toISOString().split("T")[0],
         tipo_arquivo: novaProva.tipo_ficheiro === "imagem" ? "fotografia" : "documento",
-        url_foto: novaProva.url_preview || "/documentos/16-print-conversa-whatsapp.png",
+        url_foto: novaProva.url_preview || undefined,
         fornecedor: currentProcesso.tribunal_competente,
         ano: new Date().getFullYear().toString(),
         relevancia_perfis: ["ADMIN", "JURIDICO"]
@@ -1028,6 +1028,9 @@ export function ConstituicaoProcessosJuridicos({
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
                   1. Selecione o Tipo de Prova ou Modelo Pré-Configurado:
                 </label>
+                <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+                  Os modelos só preenchem o título, a descrição e o enquadramento jurídico — tem sempre de anexar o ficheiro real e preencher os dados de rastreio abaixo antes de submeter.
+                </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {[
                     { type: "RECIBO_RECECAO_CARTA_AR" as TipoProvaJuridica, label: "✉️ Recibo AR CTT", icon: "fa-envelope-circle-check" },
