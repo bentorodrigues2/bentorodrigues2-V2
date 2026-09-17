@@ -3136,7 +3136,7 @@ export function GestaoFracoes({
         isOpen={isFichaEditavelOpen}
         onClose={() => setIsFichaEditavelOpen(false)}
         predio={predio}
-        fracaoAtual={predioFracoes.find(f => f.id_fracao === selectedFracaoId) || null}
+        fracaoAtual={null}
         onSaveFracaoData={(fracaoId, updatedData) => {
           const updatedList = fracoes.map(f => f.id_fracao === fracaoId ? { ...f, ...updatedData } : f);
           onUpdateFracoes(updatedList);

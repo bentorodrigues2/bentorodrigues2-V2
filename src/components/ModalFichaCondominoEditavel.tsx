@@ -22,8 +22,8 @@ export function ModalFichaCondominoEditavel({
     morada_edificio: predio?.morada_linha1 || "",
     piso: fracaoAtual?.piso || "",
     letra: fracaoAtual?.fracao_nome || "",
-    permilagem: fracaoAtual ? String(fracaoAtual.permilagem) : "125",
-    tipologia: fracaoAtual?.tipologia || "T2",
+    permilagem: fracaoAtual ? String(fracaoAtual.permilagem) : "",
+    tipologia: fracaoAtual?.tipologia || "",
     
     // Proprietário
     prop_nome: fracaoAtual?.proprietario?.nome || "",
@@ -63,8 +63,8 @@ export function ModalFichaCondominoEditavel({
         ...prev,
         piso: fracaoAtual.piso || "",
         letra: fracaoAtual.fracao_nome || "",
-        permilagem: String(fracaoAtual.permilagem || 125),
-        tipologia: fracaoAtual.tipologia || "T2",
+        permilagem: fracaoAtual.permilagem ? String(fracaoAtual.permilagem) : "",
+        tipologia: fracaoAtual.tipologia || "",
         prop_nome: fracaoAtual.proprietario?.nome || "",
         prop_nif: fracaoAtual.proprietario?.nif || "",
         prop_tlm: fracaoAtual.proprietario?.tlm || "",
