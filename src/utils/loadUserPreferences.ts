@@ -1,5 +1,3 @@
-import { dbSelect } from "../lib/supabaseService";
-
 export interface NotificationPreferences {
   user_id: string;
   critical_occurrences: boolean;
@@ -31,17 +29,33 @@ export function getDefaultNotificationPreferences(userId: string = 'user-default
  * reais e sincronizadas entre dispositivos: gravadas em profiles.notificacoes_preferencias
  * (identificado pelo email, tal como o resto da app faz para condóminos/proprietários).
  * Antes ficavam só em localStorage, sem sincronizar entre dispositivos.
+ *
+ * Usa fetch("/api/data") diretamente (em vez de importar supabaseService/
+ * supabaseClient) de propósito: este ficheiro é reexportado por src/utils.ts,
+ * que também é empacotado para o servidor (server/lib/pdfDocs.js,
+ * receiptGenerator.js via esbuild) — importar supabaseClient.ts ali rebenta
+ * no arranque, porque lê import.meta.env, que só existe no browser/Vite. O
+ * token de sessão é anexado automaticamente pelo interceptor global de fetch
+ * (src/lib/authFetch.ts).
  */
 export async function loadUserPreferences(userId: string = 'user-default'): Promise<NotificationPreferences> {
   const defaults = getDefaultNotificationPreferences(userId);
   if (!userId || userId === 'user-default') return defaults;
 
   try {
-    const rows = await dbSelect("profiles", {
-      colunas: "notificacoes_preferencias",
-      filtros: [["email", "eq", userId]],
-      limit: 1
+    const resp = await fetch("/api/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tabela: "profiles",
+        acao: "select",
+        colunas: "notificacoes_preferencias",
+        filtros: [["email", "eq", userId]],
+        limit: 1
+      })
     });
+    const resultado = await resp.json();
+    const rows = resultado?.ok ? resultado.data : null;
     const gravadas = rows?.[0]?.notificacoes_preferencias;
     if (gravadas && typeof gravadas === "object") {
       return {
