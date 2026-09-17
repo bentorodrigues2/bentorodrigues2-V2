@@ -528,14 +528,6 @@ export function ConfiguracoesAdministracao({
     return localStorage.getItem(`last_sync_time_${predioId}`) || "Hoje às " + new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
   });
 
-  const [simulationState, setSimulationState] = useState<{
-    status: "idle" | "reading" | "recognized" | "confirmed";
-    docName?: string;
-    fracao?: string;
-    valor?: number;
-    condomino?: string;
-  }>({ status: "idle" });
-
   // Estados do Motor Oficial de Resposta Automática (Autoresponder)
   const [testAutoSender, setTestAutoSender] = useState("carlos.silva@gmail.com");
   const [testAutoSubject, setTestAutoSubject] = useState("Comprovativo de pagamento - Quota de Setembro Fração 2º Dto");
@@ -854,19 +846,6 @@ export function ConfiguracoesAdministracao({
     }
   };
 
-  const handleRunSimulation = () => {
-    setSimulationState({ status: "reading" });
-    setTimeout(() => {
-      setSimulationState({
-        status: "recognized",
-        docName: "Comprovativo_Transf_Quota_Setembro.pdf",
-        fracao: fracoes?.[0]?.id_fracao || "Fração A",
-        valor: 45.00,
-        condomino: fracoes?.[0]?.proprietario?.nome || "Maria Silva"
-      });
-      addLog("IA", "Leitura de Comprovativo por E-mail", `Documento recebido para a fração ${fracoes?.[0]?.id_fracao || "A"}: 45,00 €. Aguarda confirmação.`);
-    }, 1200);
-  };
 
   const handleRunAutoresponderTest = async (senderOverride?: string, subjectOverride?: string, bodyOverride?: string) => {
     const s = senderOverride !== undefined ? senderOverride : testAutoSender;
@@ -1126,27 +1105,6 @@ export function ConfiguracoesAdministracao({
     } finally {
       setRegrasCategoriaLoading(false);
     }
-  };
-
-  const handleConfirmSimulation = () => {
-    if (onAddDocumento && simulationState.docName) {
-      onAddDocumento({
-        id_doc: `doc-recibo-${Date.now()}`,
-        id_predio: predioId,
-        nome: `Recibo de Quota - ${simulationState.fracao}`,
-        tipo: "PDF",
-        tamanho: "124 KB",
-        data_upload: new Date().toISOString().split("T")[0],
-        categoria: "Recibos",
-        tema: "Contabilidade",
-        sub_pasta: "Recibos e Quotas",
-        visibilidade: "Público",
-        arquivado: true
-      });
-    }
-    setSimulationState({ ...simulationState, status: "confirmed" });
-    addLog("Financeira", "Confirmação de Pagamento & Emissão de Recibo", `Recibo oficial emitido e enviado automaticamente por e-mail para ${simulationState.condomino}.`);
-    alert(`🎉 Pagamento confirmado com sucesso! O Recibo Oficial foi arquivado e enviado por e-mail para ${simulationState.condomino}.`);
   };
 
   // Handle general settings submission
