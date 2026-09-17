@@ -3,6 +3,7 @@ import { supabase } from "../server/lib/supabaseServer.js";
 import { enviarEmailSemAnexo } from "../server/lib/mailer.js";
 import { gerarHtmlResposta } from "../server/lib/htmlemail.js";
 import { enviarEmailResend } from "../server/lib/inboundProcessor.js";
+import { exigirSessaoValida, exigirSessaoComPapel } from "../server/lib/verificarSessao.js";
 import webpush from "web-push";
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
@@ -122,6 +123,15 @@ export default async function handler(req, res) {
   }
 
   const acao = req.query?.acao;
+
+  // "recuperar-password" tem de continuar acessível sem sessão — é chamado
+  // a partir do ecrã de login, antes de existir qualquer sessão. Todas as
+  // outras ações (aprovar/rejeitar respostas de IA, enviar push, convidar
+  // novos utilizadores, forçar jobs internos) exigem sessão válida.
+  if (acao !== "recuperar-password") {
+    const utilizador = await exigirSessaoValida(req, res);
+    if (!utilizador) return;
+  }
 
   if (acao === "aprovar-resposta-ia") {
     try {
@@ -253,6 +263,13 @@ export default async function handler(req, res) {
   }
 
   if (acao === "convidar") {
+    // Quem convida escolhe o "role" do novo utilizador (podendo ser
+    // "ADMIN") — sem esta verificação, qualquer conta autenticada, mesmo a
+    // de um condómino comum, conseguia convidar-se a si própria como
+    // administrador.
+    const chamador = await exigirSessaoComPapel(req, res, ["ADMIN", "GESTOR", "EMPRESA_GESTORA"]);
+    if (!chamador) return;
+
     try {
       const { email, nome, role, id_predio, id_fracao, assunto, mensagem } = req.body || {};
       const { actionLink, reenvio } = await convidarUtilizador({ email, nome, role, id_predio, id_fracao });

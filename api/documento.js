@@ -1,6 +1,7 @@
 import { supabase } from "../server/lib/supabaseServer.js";
 import { enviarEmailPDF } from "../server/lib/pdfService.js";
 import { arquivarAnexoOriginal } from "../server/lib/multimodalService.js";
+import { exigirSessaoValida } from "../server/lib/verificarSessao.js";
 
 /**
  * Reenvia por email um documento já arquivado no Supabase Storage (Arquivo
@@ -33,6 +34,9 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método não permitido" });
   }
+
+  const utilizador = await exigirSessaoValida(req, res);
+  if (!utilizador) return;
 
   try {
     const body = req.body || {};

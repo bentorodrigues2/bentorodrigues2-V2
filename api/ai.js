@@ -3,9 +3,18 @@ import {
   generateWithFallback
 } from "../server/geminiService.js";
 import { extrairDadosDocumento } from "../server/lib/multimodalService.js";
+import { exigirSessaoValida } from "../server/lib/verificarSessao.js";
 
 export default async function handler(req, res) {
   const acao = req.query?.acao || req.body?.acao;
+
+  // Todas as ações reais deste endpoint (chamadas ao Gemini, com custo real)
+  // exigem sessão válida — os GETs de "status: online" de cada ação
+  // continuam públicos (não fazem nenhum trabalho real).
+  if (req.method === "POST") {
+    const utilizador = await exigirSessaoValida(req, res);
+    if (!utilizador) return;
+  }
 
   // 1. CHAT COM IA (/api/ai-assistant/chat -> ?acao=chat)
   if (acao === "chat" || acao === "ai-assistant/chat") {

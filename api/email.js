@@ -11,9 +11,24 @@ import {
 import { gerarHtmlResposta } from "../server/lib/htmlemail.js";
 import { enviarEmailSemAnexo } from "../server/lib/mailer.js";
 import { supabase } from "../server/lib/supabaseServer.js";
+import { exigirSessaoValida } from "../server/lib/verificarSessao.js";
 
 export default async function handler(req, res) {
   const acao = req.query?.acao || req.body?.acao;
+
+  // Todas as ações reais (envio real de email, IA, diagnóstico da caixa de
+  // entrada) exigem sessão válida — só a listagem pública de templates
+  // (sem dados nem custo) fica aberta.
+  const ehPedidoDeTemplatesPublico =
+    acao === "router-templates" ||
+    acao === "templates" ||
+    req.query?.templates !== undefined ||
+    (typeof req.url === "string" && req.url.includes("templates"));
+
+  if (!ehPedidoDeTemplatesPublico) {
+    const utilizador = await exigirSessaoValida(req, res);
+    if (!utilizador) return;
+  }
 
   // ENVIO REAL DE TESTE DO CATÁLOGO DE MODELOS (/api/email?acao=enviar-preview)
   // O botão "Enviar E-mail" da Central de Documentos & Minutas só animava

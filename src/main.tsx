@@ -4,6 +4,11 @@ import App from './App.tsx';
 import './index.css';
 import { purgeProvisionalDemoData } from './utils/cleanupProvisionalData';
 import { registerServiceWorker } from './utils/registerServiceWorker';
+import { installAuthFetchInterceptor } from './lib/authFetch';
+
+// Anexa a sessão real do utilizador a todas as chamadas fetch("/api/...") —
+// tem de ser instalado antes de qualquer outro código correr.
+installAuthFetchInterceptor();
 
 // Garantir que a base de dados local começa limpa para testes com Supabase
 purgeProvisionalDemoData();

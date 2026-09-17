@@ -1,6 +1,10 @@
 import { supabase } from "../server/lib/supabaseServer.js";
+import { exigirSessaoValida } from "../server/lib/verificarSessao.js";
 
 export default async function handler(req, res) {
+  const utilizador = await exigirSessaoValida(req, res);
+  if (!utilizador) return;
+
   try {
     const { tipo, fracao, proprietario } = req.query;
 

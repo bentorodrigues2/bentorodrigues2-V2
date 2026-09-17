@@ -1,5 +1,6 @@
 import { gerarDocumentoPDF, guardarNoArquivo, registarDocumento, enviarEmailPDF } from "../server/lib/pdfService.js";
 import { supabase } from "../server/lib/supabaseServer.js";
+import { exigirSessaoValida } from "../server/lib/verificarSessao.js";
 import {
   generateCondominoPwaManualPDF,
   gerarPdfRegistoFornecedorHomologado,
@@ -227,6 +228,9 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método não permitido" });
   }
+
+  const utilizador = await exigirSessaoValida(req, res);
+  if (!utilizador) return;
 
   if (!config) {
     return res.status(400).json({

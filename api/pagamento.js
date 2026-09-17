@@ -1,5 +1,10 @@
+import { exigirSessaoValida } from "../server/lib/verificarSessao.js";
+
 export default async function handler(req, res) {
   const { acao } = req.query;
+
+  const utilizador = await exigirSessaoValida(req, res);
+  if (!utilizador) return;
 
   try {
     if (acao === "lancar") {
