@@ -205,7 +205,7 @@ export function EnviosProgramados({
             Envios Programados
           </h2>
           <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-            Painel visual onde a administração monitoriza antecipadamente a lista de e-mails e notificações Push PWA programadas para disparar no <strong>Dia 25</strong> (Emissão de Notas de Cobrança com prazo até dia 08) e no <strong>Dia 5</strong> (Lembretes Cordiais de Vencimento), com controlo individual de pausa ou disparo forçado.
+            Painel visual onde a administração antevê a lista de e-mails e notificações Push PWA que serão gerados no <strong>Dia 25</strong> (Emissão de Notas de Cobrança com prazo até dia 08) e no <strong>Dia 5</strong> (Lembretes Cordiais de Vencimento) — uma pré-visualização calculada aqui, os valores reais de quota são só confirmados no dia do envio. O botão "Forçar Disparo" dispara mesmo a rotina real; o "Pausar" por item é só um filtro visual nesta pré-visualização e não impede o envio real desse dia.
           </p>
         </div>
 
@@ -401,9 +401,10 @@ export function EnviosProgramados({
                   <button
                     type="button"
                     onClick={() => handleTogglePausa(item.id_envio)}
+                    title="Filtro visual nesta pré-visualização — não impede o envio real do dia"
                     className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      isPausado 
-                        ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" 
+                      isPausado
+                        ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
                         : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
                     }`}
                   >
