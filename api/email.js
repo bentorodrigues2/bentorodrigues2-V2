@@ -15,6 +15,34 @@ import { supabase } from "../server/lib/supabaseServer.js";
 export default async function handler(req, res) {
   const acao = req.query?.acao || req.body?.acao;
 
+  // ENVIO REAL DE TESTE DO CATÁLOGO DE MODELOS (/api/email?acao=enviar-preview)
+  // O botão "Enviar E-mail" da Central de Documentos & Minutas só animava
+  // uma "confirmação de envio" falsa (setTimeout + texto fixo), sem nenhum
+  // fetch por trás — nunca saía email nenhum. Os modelos já trazem o corpo
+  // completo (De/Para/Assunto/saudação/assinatura), por isso este envio é
+  // literal — sem passar por gerarHtmlResposta, que duplicaria a saudação e
+  // a assinatura já incluídas no texto do modelo.
+  if (acao === "enviar-preview") {
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
+    try {
+      const { to, subject, texto } = req.body || {};
+      if (!to || !texto) {
+        return res.status(400).json({ error: "to e texto são obrigatórios" });
+      }
+      const html = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #1e293b; white-space: pre-wrap;">${String(texto).replace(/</g, "&lt;")}</div>`;
+      const enviado = await enviarEmailSemAnexo({ to, subject: subject || "Pré-visualização de Modelo", html });
+      if (!enviado) {
+        return res.status(500).json({ error: "Falha ao enviar através do Resend" });
+      }
+      return res.status(200).json({ ok: true });
+    } catch (err) {
+      console.error("Erro em /api/email?acao=enviar-preview:", err);
+      return res.status(500).json({ error: err?.message || String(err) });
+    }
+  }
+
   // SINCRONIZAÇÃO REAL DA CAIXA DE ENTRADA (/api/email?acao=sincronizar-caixa-entrada)
   // O processamento em si já é automático e em tempo real via webhook do
   // Resend (api/webhooks/resend.js) — este botão não "liga" nada que esteja

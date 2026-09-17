@@ -278,12 +278,26 @@ export function CentralDocumentosMinutas({
   };
 
   // --- DISPARAR EMAIL OFICIAL ---
-  const handleDispararEmailSimulado = (tipo: string) => {
-    triggerSendReaction("email", `A enviar e-mail oficial "${tipo}" para ${testEmailRecipient}...`);
-    setTimeout(() => {
-      triggerSendReaction("email", `E-mail oficial [${tipo}] enviado com sucesso para ${testEmailRecipient}!`);
-      setEmailSentStatus(`Envio de "${tipo}" registado com sucesso para ${testEmailRecipient} em ${new Date().toLocaleTimeString()}`);
-    }, 900);
+  // Este catálogo mostra o texto exato de cada modelo (corpoTexto, já com
+  // De/Para/Assunto/saudação/assinatura) — o botão "Enviar" passa a
+  // despachar mesmo esse texto para o endereço de teste via Resend
+  // (/api/email?acao=enviar-preview), em vez de só animar um "enviado com
+  // sucesso" sem nada por trás.
+  const handleDispararEmailSimulado = (tipo: string, assunto: string, corpoTexto: string) => {
+    if (!testEmailRecipient || !testEmailRecipient.includes("@")) {
+      alert("Indique um endereço de email de teste válido.");
+      return;
+    }
+    triggerSendReaction("email", `A enviar e-mail oficial "${tipo}" para ${testEmailRecipient}...`, async () => {
+      const resp = await fetch("/api/email?acao=enviar-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: testEmailRecipient, subject: assunto, texto: corpoTexto })
+      });
+      const resultado = await resp.json();
+      if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar o email de teste");
+      setEmailSentStatus(`"${tipo}" enviado a sério para ${testEmailRecipient} em ${new Date().toLocaleTimeString()}`);
+    });
   };
 
   // --- DESCARREGAR ANEXO DO E-MAIL SIMULADO ---
@@ -1449,7 +1463,7 @@ A Administração do Condomínio`
                     setEmailSentStatus("Resposta à solicitação enviada via mensagem interna na aplicação (sem envio de e-mail).");
                     setTimeout(() => setEmailSentStatus(null), 4000);
                   } else {
-                    handleDispararEmailSimulado(activeEmailTemplate.titulo);
+                    handleDispararEmailSimulado(activeEmailTemplate.titulo, activeEmailTemplate.assunto, activeEmailTemplate.corpoTexto);
                   }
                 }}
                 className={`px-3.5 py-1.5 rounded-xl text-white text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer shadow-md hover:scale-105 ${
@@ -1713,7 +1727,7 @@ A Administração do Condomínio`
                 </button>
 
                 <button
-                  onClick={() => handleDispararEmailSimulado(activeEmailTemplate.titulo)}
+                  onClick={() => handleDispararEmailSimulado(activeEmailTemplate.titulo, activeEmailTemplate.assunto, activeEmailTemplate.corpoTexto)}
                   className="px-4 py-1.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center space-x-1.5 shadow-sm cursor-pointer"
                 >
                   <Send className="h-3.5 w-3.5" />
