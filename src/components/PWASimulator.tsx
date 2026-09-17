@@ -338,57 +338,11 @@ export function PWASimulator({
   ]);
   const [newMsgText, setNewMsgText] = useState("");
 
-  // Push notifications simulator state
-  const [pwaNotifications, setPwaNotifications] = useState<Array<{ id: string; title: string; desc: string; date: string; category: string; isArchived?: boolean }>>([
-    { 
-      id: "not-seg-exp-1", 
-      title: "🛡️ Prazo de Seguro a Expirar", 
-      desc: "Alerta de Validade: O seguro da Fração A expira a 15-08-2026. Por favor carregue a nova apólice.", 
-      date: "Há 1 hora",
-      category: "Seguro",
-      isArchived: false
-    },
-    { 
-      id: "not-pag-atraso-1", 
-      title: "🪙 Quotas Mensais em Atraso", 
-      desc: "Aviso de Pagamento: Tem uma quota extraordinária de 20.00€ pendente de liquidação.", 
-      date: "Há 2 horas",
-      category: "Pagamento",
-      isArchived: false
-    },
-    { 
-      id: "not-msg-nova-1", 
-      title: "💬 Nova Resposta da Administração", 
-      desc: "Mensagem Nova: 'O portão da garagem será intervencionado amanhã de manhã. Obrigado.'", 
-      date: "Ontem",
-      category: "Mensagem",
-      isArchived: false
-    },
-    { 
-      id: "not-aprov-pend-1", 
-      title: "⏳ Reserva Aguardando Aprovação", 
-      desc: "Aprovação Pendente: A sua reserva do Salão de Festas para 25-07-2026 está a ser validada.", 
-      date: "Há 1 dia",
-      category: "Aprovação",
-      isArchived: false
-    },
-    { 
-      id: "not-doc-novo-1", 
-      title: "📂 Novo Documento Disponível", 
-      desc: "Regulamento de Condomínio: O documento 'Regulamento Geral Interno 2026.pdf' foi adicionado.", 
-      date: "Há 2 dias",
-      category: "Documento",
-      isArchived: false
-    },
-    { 
-      id: "not-ocorr-upd-1", 
-      title: "🔧 Ocorrência #OCR-402 Atualizada", 
-      desc: "Atualização de Estado: A reparação do elevador foi atribuída ao técnico Carlos Morais.", 
-      date: "Há 3 dias",
-      category: "Ocorrência",
-      isArchived: false
-    }
-  ]);
+  // Push notifications simulator state — arranca vazio; antes tinha 6
+  // notificações fictícias fixas (seguro, quota, mensagem, etc.) que
+  // apareciam sempre, mesmo para um utilizador ou prédio real sem nenhum
+  // evento por trás delas.
+  const [pwaNotifications, setPwaNotifications] = useState<Array<{ id: string; title: string; desc: string; date: string; category: string; isArchived?: boolean }>>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [newNotificationTitle, setNewNotificationTitle] = useState("");
   const [newNotificationDesc, setNewNotificationDesc] = useState("");
