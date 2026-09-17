@@ -99,7 +99,7 @@ export default function AuthForm({
       <div className="flex flex-col items-center justify-center pt-1">
         <div className="h-16 sm:h-20 w-full flex items-center justify-center overflow-visible my-1">
           <img
-            src="/marca/02-versao-horizontal.png"
+            src="/marca/02-versao-horizontal.webp"
             alt="CondoManager AI"
             className="h-14 sm:h-18 w-auto max-w-[280px] object-contain select-none drop-shadow-2xl"
             referrerPolicy="no-referrer"

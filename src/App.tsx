@@ -86,7 +86,7 @@ import {
   isTabAllowedForRole,
   isMenuAllowedForRole
 } from "./lib/sessionManager";
-const condoManagerLogo = "/marca/02-versao-horizontal.png";
+const condoManagerLogo = "/marca/02-versao-horizontal.webp";
 const logoutIcon = "/estados-acoes/17-desligar.png";
 const terminarSessaoIcon = "/estados-acoes/16-terminar-sessao.png";
 
@@ -745,7 +745,7 @@ export default function App() {
               title="Ir para a Página Inicial (Dashboard)"
             >
               <img 
-                src={sidebarCollapsed ? "/marca/04-icone-app.png" : (whiteLabelLogo || "/marca/18-versao-horizontal-1.png")} 
+                src={sidebarCollapsed ? "/marca/04-icone-app.png" : (whiteLabelLogo || "/marca/18-versao-horizontal-1.webp")}
                 alt="CondoManager AI" 
                 className={`w-full h-full object-contain select-none transition-transform duration-300 drop-shadow-xl ${sidebarCollapsed ? "max-h-12 max-w-12 p-1" : "scale-145 sm:scale-155 max-w-[290px]"}`} 
                 referrerPolicy="no-referrer"

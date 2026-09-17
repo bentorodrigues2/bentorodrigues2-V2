@@ -20,8 +20,23 @@
     <meta name="application-name" content="Condomínio" />
     <meta name="theme-color" content="#10b981" />
 
-    <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Preconnect a origens externas críticas, para poupar a latência de ligação (DNS/TLS) quando o pedido real chega -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+
+    <!-- Google Fonts: carregado diretamente aqui (não via @import em CSS) para ser descoberto de imediato
+         pelo preload scanner do browser, em vez de só depois do CSS/JS principal serem processados -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+
+    <!-- Pré-carregar a imagem de LCP (logo do ecrã de login) diretamente do HTML: como está dentro de um
+         componente React, o browser só a descobriria depois de carregar e executar o bundle JS principal -->
+    <link rel="preload" as="image" href="/marca/02-versao-horizontal.webp" fetchpriority="high" />
+
+    <!-- Font Awesome Icons: carregado de forma assíncrona (media="print" + onload) para não bloquear o
+         primeiro render — são só ícones decorativos, não conteúdo crítico -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" /></noscript>
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bento Rodrigues2</title>

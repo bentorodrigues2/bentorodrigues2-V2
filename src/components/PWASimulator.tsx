@@ -81,7 +81,7 @@ import { motion } from "motion/react";
 import { formatDatePT } from "../utils";
 import PWACondominoView from "./PWACondominoView";
 import { DraggableAIFloatingButton } from "./DraggableAIFloatingButton";
-const condoLogo = "/marca/02-versao-horizontal.png";
+const condoLogo = "/marca/02-versao-horizontal.webp";
 const logoutIcon = "/estados-acoes/17-desligar.png";
 const terminarSessaoIcon = "/estados-acoes/16-terminar-sessao.png";
 const condomanagerLogo = condoLogo;

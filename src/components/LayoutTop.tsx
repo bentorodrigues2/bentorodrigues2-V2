@@ -25,9 +25,9 @@ export default function LayoutTop({ onLoginSuccess }: LayoutTopProps) {
         </button>
       </div>
 
-      <img src="/skyline.png" alt="Skyline" className="skyline-img" />
+      <img src="/skyline.webp" alt="Skyline" className="skyline-img" />
 
-      <img src="/marca/02-versao-horizontal.png" alt="Logo CondoManager" className="logo-img" />
+      <img src="/marca/02-versao-horizontal.webp" alt="Logo CondoManager" className="logo-img" fetchPriority="high" />
 
       <div className="video-frame">
         <video
