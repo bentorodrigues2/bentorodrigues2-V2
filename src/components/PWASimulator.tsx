@@ -39,7 +39,7 @@ import { SecurityAuditModal } from "./SecurityAuditModal";
 import { ConfiguracoesAdministracao } from "./ConfiguracoesAdministracao";
 import { FichaEmpresaGestora } from "./FichaEmpresaGestora";
 import { PWASupplierCardsView } from "./PWASupplierCardsView";
-import { saveAvisosToSupabase, saveMovimentoToSupabase, saveContaToSupabase, saveDocumentoToSupabase, saveReuniaoToSupabase, saveOcorrenciaToSupabase, saveReservaToSupabase, registarLogAuditoria } from "../lib/supabaseService";
+import { saveAvisosToSupabase, saveMovimentoToSupabase, saveContaToSupabase, saveDocumentoToSupabase, saveReuniaoToSupabase, saveOcorrenciaToSupabase, saveReservaToSupabase, registarLogAuditoria, saveConversaToSupabase, saveMensagemConversaToSupabase, saveProprietarioToSupabase, saveFracaoToSupabase, saveLimpezaToSupabase } from "../lib/supabaseService";
 import { 
   Smartphone, 
   Wifi, 
@@ -505,9 +505,9 @@ export function PWASimulator({
   };
 
   // Send message to administration
-  const handleEnviarMensagem = (e: React.FormEvent) => {
+  const handleEnviarMensagem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMsgText) return;
+    if (!newMsgText || !condominoFracao) return;
     const remetente = loggedUser.role === "USER" ? `${loggedUser.nome} (Fração ${condominoFracao?.fracao_nome})` : loggedUser.nome;
     const nova: any = {
       id: "msg-user-" + Date.now(),
@@ -516,8 +516,32 @@ export function PWASimulator({
       date: new Date().toLocaleDateString("pt-PT")
     };
     setCustomMessages(prev => [nova, ...prev]);
+    const textoEnviado = newMsgText;
     setNewMsgText("");
-    alert("Mensagem enviada com sucesso ao servidor da administração!");
+
+    // Uma conversa por fração — sem isto, a mensagem só existia no estado
+    // React local e desaparecia ao atualizar a página, apesar do alert
+    // afirmar que tinha chegado "ao servidor da administração".
+    const idConversa = `conv-${condominoFracao.id_fracao}`;
+    const okConversa = await saveConversaToSupabase({
+      id_conversa: idConversa,
+      id_predio: predio.id_predio,
+      id_fracao: condominoFracao.id_fracao,
+      proprietario_nome: condominoFracao.proprietario?.nome,
+      estado: "pendente"
+    });
+    const okMensagem = okConversa && await saveMensagemConversaToSupabase({
+      id_mensagem: `msg-${Date.now()}`,
+      id_conversa: idConversa,
+      autor: "condomino",
+      texto: textoEnviado
+    });
+
+    if (!okMensagem) {
+      alert("❌ Não foi possível enviar a mensagem à administração. Tente novamente.");
+      return;
+    }
+    alert("Mensagem enviada com sucesso à administração!");
   };
 
   // Owner submits new occurrence
@@ -635,66 +659,98 @@ export function PWASimulator({
     setProfileEditModalOpen(true);
   };
 
-  const handleSaveProfileEdit = (e: React.FormEvent) => {
+  const handleSaveProfileEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFracoes(prev => prev.map(f => f.proprietario.email === loggedUser.email ? {
-      ...f,
-      proprietario: {
-        ...f.proprietario,
-        nome: editProfileNome,
-        email: editProfileEmail,
-        tlm: editProfileTelefone,
-        nif: editProfileNif,
-        iban: editProfileIban,
-        data_nascimento: editProfileNascimento
-      }
-    } : f));
+    if (!condominoFracao) return;
+    const proprietarioAtualizado = {
+      ...condominoFracao.proprietario,
+      nome: editProfileNome,
+      email: editProfileEmail,
+      tlm: editProfileTelefone,
+      nif: editProfileNif,
+      iban: editProfileIban,
+      data_nascimento: editProfileNascimento
+    };
+    setFracoes(prev => prev.map(f => f.proprietario.email === loggedUser.email ? { ...f, proprietario: proprietarioAtualizado } : f));
     setProfileEditModalOpen(false);
+
+    const ok = await saveProprietarioToSupabase(proprietarioAtualizado, condominoFracao.id_fracao);
+    if (!ok) {
+      alert("❌ Não foi possível gravar os dados pessoais no Supabase.");
+      return;
+    }
     alert("Dados pessoais atualizados com sucesso!");
   };
 
   // Send message/contact form from floating button
-  const handleSendPwaContact = (e: React.FormEvent) => {
+  const handleSendPwaContact = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!contactAssunto || (!contactMensagem && !contactAudioBase64)) return;
     setContactSending(true);
-    
-    setTimeout(() => {
-      const newContact = {
-        id: "cont-" + Date.now(),
-        nome: loggedUser.nome,
-        email: loggedUser.email,
-        telefone: condominoFracao?.proprietario.tlm || "",
-        fracao: condominoFracao?.fracao_nome || "A",
-        piso: condominoFracao?.piso || "R/C",
-        assunto: contactAssunto,
-        mensagem: contactMensagem || "(Mensagem de voz em áudio anexada)",
-        documentoName: contactDocumentoName || undefined,
-        fotoBase64: contactFotoBase64 || undefined,
-        fotoIsWebp: contactFotoIsWebp,
-        audioBase64: contactAudioBase64 || undefined,
-        audioDuration: contactAudioDuration || undefined,
-        estado: "Pendente" as const,
-        data: new Date().toLocaleDateString("pt-PT").replace(/\//g, "-")
-      };
-      
-      setPwaContacts(prev => [newContact, ...prev]);
-      
-      setContactAssunto("");
-      setContactMensagem("");
-      setContactDocumentoName("");
-      setContactFotoBase64("");
-      setContactFotoIsWebp(false);
-      setContactAudioBase64(null);
-      setContactAudioDuration(0);
-      setIsRecordingContactAudio(false);
-      setContactAudioRecordTimer(0);
-      setContactSending(false);
-      setContactModalOpen(false);
-      setPwaSendingModal({ isOpen: true, type: "mensagem", title: "A Enviar Mensagem PWA..." });
-      
-      alert("Solicitação de contacto enviada com sucesso para a Administração! O Backoffice recebeu a notificação com os seus anexos/áudios.");
-    }, 1200);
+
+    const newContact = {
+      id: "cont-" + Date.now(),
+      nome: loggedUser.nome,
+      email: loggedUser.email,
+      telefone: condominoFracao?.proprietario.tlm || "",
+      fracao: condominoFracao?.fracao_nome || "A",
+      piso: condominoFracao?.piso || "R/C",
+      assunto: contactAssunto,
+      mensagem: contactMensagem || "(Mensagem de voz em áudio anexada)",
+      documentoName: contactDocumentoName || undefined,
+      fotoBase64: contactFotoBase64 || undefined,
+      fotoIsWebp: contactFotoIsWebp,
+      audioBase64: contactAudioBase64 || undefined,
+      audioDuration: contactAudioDuration || undefined,
+      estado: "Pendente" as const,
+      data: new Date().toLocaleDateString("pt-PT").replace(/\//g, "-")
+    };
+
+    // Notifica mesmo os administradores por email — antes só entrava em
+    // estado React local (pwaContacts) e o alert afirmava falsamente que
+    // "o Backoffice recebeu a notificação".
+    const admsContacto = fracoes.filter(f => f.id_predio === predio.id_predio && f.administrador_interno === "Sim");
+    const notificacoes = admsContacto
+      .filter(adm => adm.proprietario?.email)
+      .map(adm =>
+        fetch("/api/email?acao=notificar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: adm.proprietario.email,
+            nomeDestinatario: adm.proprietario.nome,
+            assunto: `Novo Contacto PWA — ${contactAssunto}`,
+            mensagem: `<strong>${newContact.nome}</strong> (Fração ${newContact.fracao}) enviou um novo contacto pela aplicação.<br><br><strong>Assunto:</strong> ${contactAssunto}<br><strong>Mensagem:</strong> ${newContact.mensagem}${contactDocumentoName ? `<br><strong>Documento anexado:</strong> ${contactDocumentoName}` : ""}${contactAudioBase64 ? `<br><strong>Inclui mensagem de voz anexada (${contactAudioDuration}s).</strong>` : ""}`
+          })
+        })
+      );
+
+    try {
+      await Promise.all(notificacoes);
+    } catch (err) {
+      console.error("Erro ao notificar administração do contacto PWA:", err);
+    }
+
+    setPwaContacts(prev => [newContact, ...prev]);
+
+    setContactAssunto("");
+    setContactMensagem("");
+    setContactDocumentoName("");
+    setContactFotoBase64("");
+    setContactFotoIsWebp(false);
+    setContactAudioBase64(null);
+    setContactAudioDuration(0);
+    setIsRecordingContactAudio(false);
+    setContactAudioRecordTimer(0);
+    setContactSending(false);
+    setContactModalOpen(false);
+    setPwaSendingModal({ isOpen: true, type: "mensagem", title: "A Enviar Mensagem PWA..." });
+
+    alert(
+      notificacoes.length > 0
+        ? "Solicitação de contacto enviada com sucesso para a Administração! O Backoffice recebeu a notificação."
+        : "Solicitação de contacto registada. Nenhum administrador com email configurado foi encontrado para notificar."
+    );
   };
 
   // Simulate capture receipt camera with IA extraction
@@ -811,33 +867,51 @@ export function PWASimulator({
     alert(`Pagamento validado por IA! Movimento lançado e Recibo ${numRecibo} arquivado automaticamente no Arquivo de documentos.`);
   };
 
-  // Insurance workflow
+  // Insurance workflow — leitura real por IA (Gemini Vision), antes
+  // fabricava sempre a mesma seguradora e um número de apólice aleatório,
+  // independentemente do documento real carregado.
   const triggerInsuranceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setInsuranceDocumentName(file.name);
-      setIsExtractingInsurance(true);
-      
-      // Simulate IA OCR reading the policy document
-      setTimeout(() => {
-        setExtractedInsSeguradora("Tranquilidade Multirrisco");
-        setExtractedInsValidade("2027-08-15");
-        setExtractedInsApolice(`TRQ-${Math.floor(Math.random() * 90000) + 10000}`);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setInsuranceDocumentName(file.name);
+    setIsExtractingInsurance(true);
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const base64 = (reader.result as string).split(",")[1] || "";
+        const resp = await fetch("/api/ai?acao=reconhecer-apolice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ base64, mimeType: file.type || "application/octet-stream" })
+        });
+        const resultado = await resp.json();
+        if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "A IA não conseguiu ler a apólice.");
+        const dados = resultado.dados || {};
+        setExtractedInsSeguradora(dados.seguradora || "");
+        setExtractedInsValidade(dados.apolice_validade || "");
+        setExtractedInsApolice(dados.apolice_numero || "");
         setExtractedInsTitular(loggedUser.nome);
         setExtractedInsFracao(condominoFracao?.fracao_nome || "A");
+      } catch (err: any) {
+        alert(`❌ Erro ao ler a apólice: ${err?.message || "erro desconhecido"}`);
+      } finally {
         setIsExtractingInsurance(false);
-      }, 1500);
-    }
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
-  const handleConfirmInsurance = () => {
-    setFracoes(prev => prev.map(f => f.proprietario.email === loggedUser.email ? {
-      ...f,
+  const handleConfirmInsurance = async () => {
+    if (!condominoFracao) return;
+    const fracaoAtualizada: Fracao = {
+      ...condominoFracao,
       seguradora: extractedInsSeguradora,
       apolice_num: extractedInsApolice,
       apolice_validade: extractedInsValidade,
       apolice_doc: insuranceDocumentName || "apolice_seguro.pdf"
-    } : f));
+    };
+    setFracoes(prev => prev.map(f => f.proprietario.email === loggedUser.email ? fracaoAtualizada : f));
 
     const novoDoc: Documento = {
       id_doc: "doc-seg-" + Date.now(),
@@ -851,6 +925,9 @@ export function PWASimulator({
     };
     setDocumentos(prev => [novoDoc, ...prev]);
 
+    const okFracao = await saveFracaoToSupabase(fracaoAtualizada);
+    saveDocumentoToSupabase(novoDoc).catch(console.error);
+
     setPwaNotifications(prev => [
       {
         id: "not-seg-ok-" + Date.now(),
@@ -858,36 +935,35 @@ export function PWASimulator({
         desc: `A apólice nº ${extractedInsApolice} da seguradora ${extractedInsSeguradora} foi guardada e arquivada com sucesso.`,
         date: "Agora"
       },
-      {
-        id: "not-seg-exp-" + Date.now(),
-        title: "Aviso de Expirabilidade (30 dias) ⚠️",
-        desc: `Alerta automático: O seguro da Fração ${condominoFracao?.fracao_nome || "A"} expira a ${extractedInsValidade}. Notificação enviada por Push e E-mail para condómino e administração.`,
-        date: "Automático"
-      },
       ...prev
     ]);
 
     setInsuranceModalOpen(false);
+    if (!okFracao) {
+      alert("⚠️ O seguro foi lido mas houve um erro ao gravar no Supabase. Tente novamente.");
+      return;
+    }
     alert("Seguro da fração registado com sucesso via leitura IA! O documento foi arquivado no Arquivo de documentos.");
   };
 
-  const handleManualInsuranceSubmit = (e: React.FormEvent) => {
+  const handleManualInsuranceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualInsFracaoId || !manualInsSeguradora || !manualInsApolice || !manualInsValidade) {
       alert("Por favor preencha todos os campos do seguro.");
       return;
     }
-    
+
     const targetFrac = fracoes.find(f => f.id_fracao === manualInsFracaoId);
     if (!targetFrac) return;
 
-    setFracoes(prev => prev.map(f => f.id_fracao === manualInsFracaoId ? {
-      ...f,
+    const fracaoAtualizada: Fracao = {
+      ...targetFrac,
       seguradora: manualInsSeguradora,
       apolice_num: manualInsApolice,
       apolice_validade: manualInsValidade,
       apolice_doc: `manual_ins_${targetFrac.fracao_nome}.pdf`
-    } : f));
+    };
+    setFracoes(prev => prev.map(f => f.id_fracao === manualInsFracaoId ? fracaoAtualizada : f));
 
     const novoDoc: Documento = {
       id_doc: "doc-seg-man-" + Date.now(),
@@ -900,6 +976,9 @@ export function PWASimulator({
       visibilidade: "Público"
     };
     setDocumentos(prev => [novoDoc, ...prev]);
+
+    const okFracao = await saveFracaoToSupabase(fracaoAtualizada);
+    saveDocumentoToSupabase(novoDoc).catch(console.error);
 
     setPwaNotifications(prev => [
       {
@@ -915,22 +994,45 @@ export function PWASimulator({
     setManualInsSeguradora("");
     setManualInsApolice("");
     setManualInsValidade("");
+    if (!okFracao) {
+      alert("⚠️ Erro ao gravar o seguro no Supabase. Tente novamente.");
+      return;
+    }
     alert("Seguro da fração inserido manualmente com sucesso! Documento arquivado no Arquivo.");
   };
 
   const handleSendAdminPwaReply = (id: string) => {
     const replyText = adminReplyTexts[id];
     if (!replyText) return;
-
-    setPwaContacts(prev => prev.map(c => c.id === id ? {
-      ...c,
-      estado: "Respondido",
-      resposta: replyText,
-      dataResposta: new Date().toLocaleDateString("pt-PT").replace(/\//g, "-")
-    } : c));
-
     const contactObj = pwaContacts.find(c => c.id === id);
-    if (contactObj) {
+    if (!contactObj) return;
+
+    triggerSendReaction("mensagem", "A Enviar Resposta ao Condómino...", async () => {
+      // Resposta real por email ao condómino — antes só atualizava
+      // estado React local e mostrava a animação de envio sem "action"
+      // (modo puramente decorativo), a resposta nunca chegava a sair.
+      if (contactObj.email) {
+        const resp = await fetch("/api/email?acao=notificar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: contactObj.email,
+            nomeDestinatario: contactObj.nome,
+            assunto: `Resposta ao seu contacto: ${contactObj.assunto}`,
+            mensagem: replyText.replace(/\n/g, "<br>")
+          })
+        });
+        const resultado = await resp.json();
+        if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar a resposta");
+      }
+
+      setPwaContacts(prev => prev.map(c => c.id === id ? {
+        ...c,
+        estado: "Respondido",
+        resposta: replyText,
+        dataResposta: new Date().toLocaleDateString("pt-PT").replace(/\//g, "-")
+      } : c));
+
       setPwaNotifications(prev => [
         {
           id: "not-rep-" + Date.now(),
@@ -940,10 +1042,9 @@ export function PWASimulator({
         },
         ...prev
       ]);
-    }
 
-    setAdminReplyTexts(prev => ({ ...prev, [id]: "" }));
-    triggerSendReaction("mensagem", "A Enviar Resposta ao Condómino...");
+      setAdminReplyTexts(prev => ({ ...prev, [id]: "" }));
+    });
   };
 
   // Admin triggers a notification broadcast
@@ -1006,12 +1107,36 @@ export function PWASimulator({
   };
 
   // Cleaning submits schedule
-  const handleCleaningSubmit = (e: React.FormEvent) => {
+  const handleCleaningSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const timestamp = new Date().toLocaleString("pt-PT");
-    setLimpezasSubmittalTimestamp(timestamp);
 
-    // Push alert
+    const areas = [
+      cleaningChecklist.atrioEntrada && "Átrio de Entrada Principal",
+      cleaningChecklist.cabineElevador && "Cabine Elevador Principal",
+      cleaningChecklist.escadarias && "Escadaria do Prédio",
+      cleaningChecklist.areaLixo && "Área de Contentores Lixo"
+    ].filter(Boolean) as string[];
+
+    // Regista mesmo a intervenção no Supabase (tabela limpezas) — antes só
+    // mostrava um timestamp local e uma notificação PWA fabricada,
+    // desaparecia tudo ao atualizar a página.
+    const ok = await saveLimpezaToSupabase({
+      id_limpeza: "limp-" + Date.now(),
+      id_predio: predio.id_predio,
+      data: limpezasDate,
+      hora: new Date().toTimeString().slice(0, 5),
+      executor: loggedUser.nome,
+      areas,
+      observacoes: cleaningObs || undefined
+    });
+
+    if (!ok) {
+      alert("❌ Erro ao gravar o registo de limpeza no Supabase.");
+      return;
+    }
+
+    setLimpezasSubmittalTimestamp(timestamp);
     setPwaNotifications(prev => [
       {
         id: "not-cln-" + Date.now(),
