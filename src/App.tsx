@@ -185,8 +185,8 @@ export default function App() {
   });
 
   const [needsPasswordSetup, setNeedsPasswordSetup] = useState<{ email?: string } | null>(null);
-  const [browserEmail, setBrowserEmail] = useState<string>("condomanagerai@gmail.com");
-  const [browserPassword, setBrowserPassword] = useState<string>("••••••••");
+  const [browserEmail, setBrowserEmail] = useState<string>("");
+  const [browserPassword, setBrowserPassword] = useState<string>("");
   const [browserSelectedRole, setBrowserSelectedRole] = useState<LoggedUser["role"]>("ADMIN");
   const [browserBiometricScan, setBrowserBiometricScan] = useState<boolean>(false);
   const [browserBiometricProgress, setBrowserBiometricProgress] = useState<number>(0);
