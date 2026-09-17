@@ -1935,7 +1935,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 />
                 <button
                   type="button"
-                  onClick={() => alert("O pedido digital foi encriptado e enviado para 5 fornecedores registados na Bolsa de Condomínios.")}
+                  onClick={() => alert("A Bolsa de Condomínios (rede partilhada de fornecedores entre edifícios) ainda não está disponível. Para lançar um concurso real e receber propostas de fornecedores, use o Portal de Orçamentos.")}
                   className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 px-3 rounded-xl text-xs transition-colors flex items-center justify-center cursor-pointer"
                 >
                   <i className="fa-solid fa-share-nodes mr-2"></i>Enviar Pedidos Digitais
@@ -3233,43 +3233,28 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                   <button
                     type="button"
                     onClick={() => {
-                      setIsSendingSimulated(true);
-                      setSendSuccessMessage("");
-                      setTimeout(() => {
-                        setIsSendingSimulated(false);
-                        const documents = [];
-                        if (enviarPdfAnual) documents.push("PDF Anual do Orçamento");
-                        if (enviarResumoMensal) documents.push("Resumo Financeiro Mensal");
-                        if (enviarResumoTrimestral) documents.push("Balanço Trimestral IA");
-                        
-                        if (documents.length === 0) {
-                          alert("Selecione pelo menos um documento para enviar.");
-                          return;
-                        }
+                      const documents = [];
+                      if (enviarPdfAnual) documents.push("PDF Anual do Orçamento");
+                      if (enviarResumoMensal) documents.push("Resumo Financeiro Mensal");
+                      if (enviarResumoTrimestral) documents.push("Balanço Trimestral IA");
 
-                        setSendSuccessMessage(
-                          `Sucesso! Os documentos [${documents.join(", ")}] foram compilados por IA e enviados para os condóminos selecionados.`
-                        );
-                      }, 1800);
+                      if (documents.length === 0) {
+                        alert("Selecione pelo menos um documento para enviar.");
+                        return;
+                      }
+
+                      // Estes documentos são previsões/relatórios gerados por
+                      // IA (não dados oficiais aprovados) — o envio em massa
+                      // real aos condóminos ainda não está implementado,
+                      // fica para trabalho dedicado. Antes esta ação
+                      // afirmava falsamente "enviados" sem nenhum envio real.
+                      alert(`Pré-visualização gerada para: ${documents.join(", ")}.\n\nO envio automático em massa aos condóminos ainda não está disponível — use "Central de Documentos & Minutas" para enviar manualmente a cada destinatário.`);
                     }}
-                    disabled={isSendingSimulated}
                     className="w-full bg-slate-800 hover:bg-slate-900 disabled:bg-slate-300 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-colors shadow-sm flex items-center justify-center cursor-pointer"
                   >
-                    {isSendingSimulated ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                        A Compilar e Enviar...
-                      </>
-                    ) : (
-                      <>
-                        <i className="fa-solid fa-paper-plane mr-2"></i>Enviar Notificação de Relatório Agora
-                      </>
-                    )}
+                    <i className="fa-solid fa-paper-plane mr-2"></i>Compilar Documentos Selecionados
                   </button>
-                  
+
                   <button
                     type="button"
                     onClick={() => setShowPdfModal(true)}
@@ -4027,7 +4012,12 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 <button
                   type="button"
                   onClick={() => {
-                    alert("Notificação de envio em lote agendada. O relatório de orçamento será enviado por email registado a todos os proprietários.");
+                    // Este relatório é uma previsão gerada por IA, não o
+                    // orçamento oficial aprovado — o envio automático em
+                    // massa a todos os condóminos ainda não está
+                    // implementado. Antes esta ação afirmava falsamente
+                    // "agendada" sem nenhum envio real por trás.
+                    alert("O envio automático em massa deste relatório de previsão ainda não está disponível. Use 'Imprimir / Guardar PDF' e partilhe manualmente através da Central de Documentos & Minutas.");
                   }}
                   className="bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
