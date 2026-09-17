@@ -89,6 +89,27 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Método não permitido" });
   }
 
+  // Exige uma sessão real e válida do Supabase Auth. Sem isto, este proxy
+  // (que corre com a service_role key, sem RLS) ficava acessível a qualquer
+  // pessoa na internet sem conta nenhuma — bastava chamar /api/data
+  // diretamente para ler ou escrever todos os dados de todas as tabelas
+  // permitidas. auth.getUser() valida o token de acesso do utilizador
+  // contra o servidor de autenticação do Supabase.
+  const authHeader = req.headers.authorization || "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  if (!token) {
+    return res.status(401).json({ error: "Sessão não autenticada." });
+  }
+  try {
+    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !authData?.user) {
+      return res.status(401).json({ error: "Sessão inválida ou expirada." });
+    }
+  } catch (err) {
+    console.error("Erro ao validar sessão em /api/data:", err);
+    return res.status(401).json({ error: "Não foi possível validar a sessão." });
+  }
+
   try {
     const { tabela, acao, colunas, filtros, orFiltro, order, limit, dados, opcoesUpsert } = req.body || {};
 

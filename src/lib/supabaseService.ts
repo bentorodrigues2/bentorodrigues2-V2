@@ -63,9 +63,16 @@ type Filtro = [string, "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "in" | "is",
 
 async function dbCall(body: Record<string, unknown>): Promise<{ ok: boolean; data?: any; error?: string }> {
   try {
+    // /api/data exige uma sessão real do Supabase Auth — anexa sempre o
+    // token de acesso da sessão atual (ver api/data.js).
+    const { data: sessionData } = await supabase.auth.getSession();
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (sessionData?.session?.access_token) {
+      headers["Authorization"] = `Bearer ${sessionData.session.access_token}`;
+    }
     const resp = await fetch("/api/data", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body)
     });
     if (!resp.ok) return { ok: false, error: `HTTP ${resp.status}` };
