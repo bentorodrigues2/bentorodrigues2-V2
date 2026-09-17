@@ -1,5 +1,5 @@
 import { Shield, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ActionIcon } from "./components/ActionIcon";
 import { LoggedUser, Predio, Conta, Fornecedor, Fracao, Aviso, Movimento, Reuniao, Documento, Ocorrencia, Reserva, CapacidadeLimite } from "./types";
 import { initialPredios, initialContas, initialFornecedores, initialFracoes, initialAvisos, initialMovements, initialReunioes, initialDocumentos, initialOcorrencias, defaultEmptyPredio } from "./data";
@@ -127,49 +127,63 @@ export default function App() {
   // mantêm-se, para a app nunca ficar em branco.
   const [browserIsLoggedOut, setBrowserIsLoggedOut] = useState<boolean>(true);
 
+  const carregarDadosReais = useCallback(async () => {
+    const [
+      prediosReais,
+      fracoesReais,
+      contasReais,
+      movimentosReais,
+      avisosReais,
+      documentosReais,
+      ocorrenciasReais,
+      reservasReais,
+      fornecedoresReais,
+      reunioesReais
+    ] = await Promise.all([
+      fetchPrediosFromSupabase(),
+      fetchFracoesFromSupabase(),
+      fetchContasFromSupabase(),
+      fetchMovimentosFromSupabase(),
+      fetchAvisosFromSupabase(),
+      fetchDocumentosFromSupabase(),
+      fetchOcorrenciasFromSupabase(),
+      fetchReservasFromSupabase(),
+      fetchFornecedoresFromSupabase(),
+      fetchReunioesFromSupabase()
+    ]);
+
+    if (prediosReais) setPredios(prediosReais);
+    if (fracoesReais) setFracoes(fracoesReais);
+    if (contasReais) setContas(contasReais);
+    if (movimentosReais) setMovements(movimentosReais);
+    if (avisosReais) setAvisos(avisosReais);
+    if (documentosReais) setDocumentos(documentosReais);
+    if (ocorrenciasReais) setOcorrencias(ocorrenciasReais);
+    if (reservasReais) setReservas(reservasReais);
+    if (fornecedoresReais) setFornecedores(fornecedoresReais);
+    if (reunioesReais) setReunioes(reunioesReais);
+  }, []);
+
   useEffect(() => {
     // Só faz sentido carregar dados reais do condomínio depois de haver
     // sessão — antes disso (ecrã de login), /api/data exige autenticação
     // (ver api/data.js) e estas chamadas falhavam sempre com 401.
     if (!isSupabaseConfigured() || browserIsLoggedOut) return;
 
-    (async () => {
-      const [
-        prediosReais,
-        fracoesReais,
-        contasReais,
-        movimentosReais,
-        avisosReais,
-        documentosReais,
-        ocorrenciasReais,
-        reservasReais,
-        fornecedoresReais,
-        reunioesReais
-      ] = await Promise.all([
-        fetchPrediosFromSupabase(),
-        fetchFracoesFromSupabase(),
-        fetchContasFromSupabase(),
-        fetchMovimentosFromSupabase(),
-        fetchAvisosFromSupabase(),
-        fetchDocumentosFromSupabase(),
-        fetchOcorrenciasFromSupabase(),
-        fetchReservasFromSupabase(),
-        fetchFornecedoresFromSupabase(),
-        fetchReunioesFromSupabase()
-      ]);
+    carregarDadosReais();
 
-      if (prediosReais) setPredios(prediosReais);
-      if (fracoesReais) setFracoes(fracoesReais);
-      if (contasReais) setContas(contasReais);
-      if (movimentosReais) setMovements(movimentosReais);
-      if (avisosReais) setAvisos(avisosReais);
-      if (documentosReais) setDocumentos(documentosReais);
-      if (ocorrenciasReais) setOcorrencias(ocorrenciasReais);
-      if (reservasReais) setReservas(reservasReais);
-      if (fornecedoresReais) setFornecedores(fornecedoresReais);
-      if (reunioesReais) setReunioes(reunioesReais);
-    })();
-  }, [browserIsLoggedOut]);
+    // Antes, dados criados noutro separador/dispositivo (ex: telemóvel) só
+    // apareciam depois de fechar e reabrir o separador — a lista só era
+    // pedida uma vez, ao entrar. Passa a atualizar-se sozinha sempre que se
+    // volta a este separador (troca de app, ecrã bloqueado, outro separador).
+    const aoVoltarAoSeparador = () => {
+      if (document.visibilityState === "visible") {
+        carregarDadosReais();
+      }
+    };
+    document.addEventListener("visibilitychange", aoVoltarAoSeparador);
+    return () => document.removeEventListener("visibilitychange", aoVoltarAoSeparador);
+  }, [browserIsLoggedOut, carregarDadosReais]);
 
   const [capacidades, setCapacidades] = useState<CapacidadeLimite[]>([
     { area_comum: "Ginásio", limite: 5 },
