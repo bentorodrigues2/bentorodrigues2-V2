@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Pencil, Trash2, Plus } from "lucide-react";
 import { Predio, Fracao, LoggedUser, Aviso, Proprietario } from "../types";
-import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCondominoVaziaPDF, downloadFichaCondominoPreenchidaPDF, downloadListaCondominosPDF, generateCondominoPwaManualPDF, gerarReferenciaBR23E } from "../utils";
+import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCondominoVaziaPDF, downloadFichaCondominoPreenchidaPDF, downloadListaCondominosPDF, gerarReferenciaBR23E } from "../utils";
 import { ModalFichaCondominoEditavel } from "./ModalFichaCondominoEditavel";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
@@ -902,9 +902,6 @@ export function GestaoFracoes({
           await saveProprietarioToSupabase(novoProprietarioObj, selectedFracaoId);
 
           if (isNewEmail || !targetFracao.proprietario) {
-            try {
-              generateCondominoPwaManualPDF(propNome.trim(), predio.nome);
-            } catch (err) {}
             // Cria o acesso real (Supabase Auth) e envia um email com um
             // link seguro de ativação — a pessoa define a sua própria
             // password, nunca uma password gerada pelo sistema.
@@ -926,8 +923,32 @@ export function GestaoFracoes({
             } catch (err) {
               console.warn("[GestaoFracoes] Aviso ao enviar convite de ativação:", err);
             }
+
+            // Segundo email, real e separado: guia de boas-vindas com o PDF
+            // de instruções do site & instalação da PWA em anexo. Antes só
+            // descarregava o PDF para o computador de quem estava a
+            // registar (o administrador) — o condómino nunca o recebia.
+            let boasVindasEnviado = false;
+            try {
+              const respBV = await fetch("/api/pdf?tipo=boas-vindas", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  nome: propNome.trim(),
+                  buildingName: predio.nome,
+                  email: propEmail.trim(),
+                  predio: predio.id_predio,
+                  fracao: selectedFracaoId
+                })
+              });
+              const dataBV = await respBV.json();
+              boasVindasEnviado = respBV.ok && dataBV.ok;
+            } catch (err) {
+              console.warn("[GestaoFracoes] Aviso ao enviar email de boas-vindas:", err);
+            }
+
             alert(convidado
-              ? `✅ Proprietário associado com sucesso à Fração ${targetFracao.fracao_nome}!\n\n📧 Foi enviado um email para ${propEmail.trim()} com um link seguro para o condómino ativar o seu acesso e definir a própria password.`
+              ? `✅ Proprietário associado com sucesso à Fração ${targetFracao.fracao_nome}!\n\n📧 Foi enviado um email para ${propEmail.trim()} com um link seguro para o condómino ativar o seu acesso e definir a própria password.${boasVindasEnviado ? "\n📧 Foi também enviado o guia de boas-vindas com as instruções de acesso ao site e instalação da PWA." : "\n⚠️ Não foi possível enviar o guia de boas-vindas — pode reenviá-lo mais tarde."}`
               : `✅ Proprietário associado com sucesso à Fração ${targetFracao.fracao_nome} no Supabase, mas houve um erro a enviar o email de ativação. Pode reenviá-lo mais tarde.`);
           } else {
             alert(`✅ Dados do proprietário da Fração ${targetFracao.fracao_nome} (${propNome.trim()}) gravados com sucesso no Supabase!`);
