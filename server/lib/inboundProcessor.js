@@ -91,6 +91,63 @@ async function obterContexto(email) {
   }
 }
 
+function limparIban(iban) {
+  return String(iban || "").replace(/\s+/g, "").toUpperCase();
+}
+
+/**
+ * Segunda tentativa de identificação, usada quando o email do remetente não
+ * corresponde a nenhum condómino/inquilino registado (ex: um comprovativo
+ * chega de uma conta de email pessoal diferente da registada, mas a
+ * transferência em si foi feita a partir de uma conta bancária conhecida).
+ * Cruza o IBAN do ordenante (extraído do comprovativo por IA multimodal)
+ * contra o IBAN principal e as contas bancárias adicionais de cada
+ * proprietário/coproprietário de todas as frações.
+ */
+async function obterContextoPorIban(ibanOrdenante) {
+  try {
+    const ibanLimpo = limparIban(ibanOrdenante);
+    if (!ibanLimpo) return null;
+
+    const { data: todasFracoes, error } = await supabase
+      .from("fracoes")
+      .select("*, predios(*)");
+
+    if (error || !Array.isArray(todasFracoes)) return null;
+
+    for (const fracao of todasFracoes) {
+      const pessoas = [
+        fracao.proprietario,
+        ...(Array.isArray(fracao.proprietarios_adicionais) ? fracao.proprietarios_adicionais : [])
+      ];
+
+      for (const pessoa of pessoas) {
+        if (!pessoa) continue;
+        const ibansDaPessoa = [
+          pessoa.iban,
+          ...((pessoa.contas_bancarias_adicionais || []).map((c) => c.iban))
+        ].map(limparIban).filter(Boolean);
+
+        if (ibansDaPessoa.includes(ibanLimpo)) {
+          return {
+            ...fracao,
+            fracao: fracao.fracao_nome || fracao.id_fracao || "Fração",
+            id_predio: fracao.id_predio || fracao.predios?.id_predio || null,
+            nome: pessoa.nome || null,
+            id_proprietario: pessoa.nif || null,
+            identificado_por: "iban"
+          };
+        }
+      }
+    }
+
+    return null;
+  } catch (e) {
+    console.warn("[inboundProcessor] Aviso ao buscar contexto por IBAN:", e?.message || e);
+    return null;
+  }
+}
+
 /**
  * Buscar documentos gerais do condomínio para anexar
  */
@@ -511,7 +568,7 @@ export async function processInboundEmail(payload) {
   console.log(`[inboundProcessor] A processar email de ${cleanFrom} | Assunto: ${subject}`);
 
   // 2. Obter contexto da fração/proprietário no Supabase
-  const contexto = await obterContexto(cleanFrom);
+  let contexto = await obterContexto(cleanFrom);
 
   // 2b. Respeitar a pausa do Sincronizador de Caixa de Entrada & Auto-Responder
   // (toggle "Ligar/Pausar Sincronizador" em Configurações → predios.autoresponder_ativo).
@@ -628,6 +685,19 @@ export async function processInboundEmail(payload) {
           );
         } catch (err) {
           console.warn("[inboundProcessor] Aviso na extração multimodal:", err?.message || err);
+        }
+
+        // Segunda tentativa de identificar a fração: o email de quem enviou
+        // pode não corresponder a nenhum condómino registado, mas o
+        // comprovativo em si (extraído por IA) traz o IBAN de quem pagou —
+        // cruza-se contra o IBAN principal e as contas adicionais de cada
+        // proprietário/coproprietário.
+        if (!contexto?.id_fracao && dadosExtraidos?.ordenante_iban) {
+          const contextoPorIban = await obterContextoPorIban(dadosExtraidos.ordenante_iban);
+          if (contextoPorIban) {
+            contexto = contextoPorIban;
+            console.log(`[inboundProcessor] Fração identificada pelo IBAN do ordenante (${contexto.fracao}), o email do remetente não correspondia a nenhum condómino registado.`);
+          }
         }
 
         const principal = anexosComConteudo[0];

@@ -416,6 +416,14 @@ export function downloadFichaCondominoVaziaPDF(
       { label: "Fotografia de Perfil", key: "foto", placeholder: "[ Espaço p/ Foto ]", widthPct: 25 }
     ]);
 
+    // 2b. CONTA BANCÁRIA ADICIONAL (opcional — para conciliação quando o
+    // pagamento pode vir de outra conta, ex: cônjuge ou conta conjunta)
+    drawBoxWithFields("2b. CONTA BANCÁRIA ADICIONAL (SE APLICÁVEL)", [
+      { label: "IBAN Adicional", key: "prop_iban_2", placeholder: "PT50...", widthPct: 40 },
+      { label: "Titular", key: "prop_titular_2", placeholder: "Nome do titular...", widthPct: 35 },
+      { label: "Entidade Bancária", key: "prop_banco_2", placeholder: "Ex: BPI, CGD, ActivoBank", widthPct: 25 }
+    ]);
+
     // 3. COPROPRIETÁRIOS ADICIONAIS
     drawBoxWithFields("3. COPROPRIETÁRIOS ADICIONAIS (SE APLICÁVEL)", [
       { label: "Nome Completo do Coproprietário", key: "coprop_nome", placeholder: "Ex: Ana Maria Guerra", widthPct: 35 },
@@ -792,6 +800,17 @@ export function downloadFichaCondominoPreenchidaPDF(predioNome: string = "Condom
       { label: "Entidade Bancária", val: prop.entidade_bancaria || "—", widthPct: 35 },
       { label: "Fotografia de Perfil", val: prop.foto ? "📷 Foto Carregada" : "Sem foto", widthPct: 25 }
     ]);
+
+    const contasAdicionais = prop.contas_bancarias_adicionais || [];
+    if (contasAdicionais.length > 0) {
+      contasAdicionais.forEach((conta, idx) => {
+        renderBoxValue(idx === 0 ? "2b. CONTAS BANCÁRIAS ADICIONAIS (usadas na conciliação de pagamentos)" : "", [
+          { label: `IBAN Adicional #${idx + 1}`, val: conta.iban || "—", widthPct: 40 },
+          { label: "Titular", val: conta.titular || "—", widthPct: 35 },
+          { label: "Banco", val: conta.entidade_bancaria || "—", widthPct: 25 }
+        ]);
+      });
+    }
 
     renderBoxValue("3. COPROPRIETÁRIOS ADICIONAIS", [
       { label: "Nome do Coproprietário", val: coprop.nome || "Nenhum coproprietário adicional", widthPct: 35 },

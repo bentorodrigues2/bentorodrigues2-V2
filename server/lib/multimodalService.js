@@ -11,6 +11,9 @@ Extrai:
 - referencia (nº fatura, nº recibo, etc.)
 - tipo_documento (um de: "comprovativo", "fatura", "recibo", "extrato")
 - categoria_contabilistica (categoria de despesa/receita mais provável)
+- ordenante_nome (nome de quem ordenou/pagou a transferência — campo "Cliente" ou "Ordenante", só em comprovativos de transferência bancária; null se não aplicável)
+- ordenante_iban (IBAN de quem ordenou/pagou, do campo "Dados do Ordenante"/"IBAN" — remove espaços; null se não aplicável)
+- descritivo_transferencia (o texto exato do campo "Descritivo"/"Descritivo para a conta destino"/referência que o ordenante escreveu na transferência — costuma identificar a fração, ex: "1esq"; null se não aplicável)
 Responde em JSON estrito, sem texto à volta.
 `.trim();
 

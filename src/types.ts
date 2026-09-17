@@ -115,6 +115,11 @@ export interface Proprietario {
   iban?: string;
   titular_conta?: string;
   entidade_bancaria?: string;
+  // Contas bancárias adicionais (para além da principal acima) — permite
+  // registar mais do que um IBAN por proprietário, para cruzamento na
+  // conciliação (ex: transferência feita a partir de uma conta conjunta ou
+  // de um cônjuge).
+  contas_bancarias_adicionais?: { titular: string; iban: string; entidade_bancaria?: string }[];
   morada_alternativa?: string | null;
   foto?: string | null;
   data_nascimento?: string;

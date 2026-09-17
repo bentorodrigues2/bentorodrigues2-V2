@@ -50,6 +50,10 @@ export function GestaoFracoes({
   const [propIban, setPropIban] = useState("");
   const [propTitular, setPropTitular] = useState("");
   const [propBanco, setPropBanco] = useState("");
+  // Contas bancárias adicionais (além da principal acima) — para cruzamento
+  // na conciliação quando o pagamento vem de uma conta diferente (cônjuge,
+  // conta conjunta, etc.)
+  const [propContasAdicionais, setPropContasAdicionais] = useState<{ titular: string; iban: string; entidade_bancaria?: string }[]>([]);
   const [propMoradaAlt, setPropMoradaAlt] = useState("");
   const [propFoto, setPropFoto] = useState<string | null>(null);
 
@@ -424,6 +428,7 @@ export function GestaoFracoes({
     setPropIban(prop.iban || "");
     setPropTitular(prop.titular_conta || prop.nome || "");
     setPropBanco(prop.entidade_bancaria || "");
+    setPropContasAdicionais(prop.contas_bancarias_adicionais || []);
     setPropMoradaAlt(prop.morada_alternativa || "");
     setPropFoto(prop.foto || null);
     setAdminInterno(prop.administrador_interno || "Não");
@@ -480,6 +485,7 @@ export function GestaoFracoes({
     setPropIban("");
     setPropTitular("");
     setPropBanco("");
+    setPropContasAdicionais([]);
     setPropMoradaAlt("");
     setPropFoto(null);
     setAdminInterno("Não");
@@ -811,6 +817,7 @@ export function GestaoFracoes({
       iban: propIban.trim() || "",
       titular_conta: propTitular.trim() || propNome.trim(),
       entidade_bancaria: propBanco.trim() || "",
+      contas_bancarias_adicionais: propContasAdicionais.filter(c => c.iban.trim()),
       morada_alternativa: arrendada ? propMoradaAlt || null : null,
       foto: propFoto,
       administrador_interno: adminInterno,
@@ -1894,6 +1901,59 @@ export function GestaoFracoes({
                   <label className="text-xs font-semibold text-slate-600 mb-1">Entidade Bancária</label>
                   <input type="text" value={propBanco} onChange={e => setPropBanco(e.target.value)} placeholder="Ex: BPI, CGD, ActivoBank" className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white" />
                 </div>
+
+                <div className="flex flex-col col-span-2 sm:col-span-3 bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-600">Contas Bancárias Adicionais</label>
+                    <button
+                      type="button"
+                      onClick={() => setPropContasAdicionais(prev => [...prev, { titular: "", iban: "", entidade_bancaria: "" }])}
+                      className="text-[10px] font-bold text-emerald-700 hover:text-emerald-800 cursor-pointer flex items-center gap-1"
+                    >
+                      <i className="fa-solid fa-plus"></i> Adicionar Conta
+                    </button>
+                  </div>
+                  <p className="text-[9.5px] text-slate-400">Útil quando o pagamento pode vir de outra conta (ex: cônjuge, conta conjunta) — usado na conciliação para identificar a fração automaticamente pelo IBAN de quem pagou.</p>
+                  {propContasAdicionais.length === 0 && (
+                    <p className="text-[10px] text-slate-400 italic">Nenhuma conta adicional registada.</p>
+                  )}
+                  {propContasAdicionais.map((conta, idx) => (
+                    <div key={idx} className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center bg-white border border-slate-200 rounded-lg p-2">
+                      <input
+                        type="text"
+                        value={conta.iban}
+                        onChange={e => setPropContasAdicionais(prev => prev.map((c, i) => i === idx ? { ...c, iban: e.target.value } : c))}
+                        placeholder="IBAN adicional (PT50...)"
+                        className="border border-slate-300 px-2.5 py-1.5 text-xs rounded-lg focus:outline-emerald-500 font-mono bg-white"
+                      />
+                      <input
+                        type="text"
+                        value={conta.titular}
+                        onChange={e => setPropContasAdicionais(prev => prev.map((c, i) => i === idx ? { ...c, titular: e.target.value } : c))}
+                        placeholder="Titular"
+                        className="border border-slate-300 px-2.5 py-1.5 text-xs rounded-lg focus:outline-emerald-500 bg-white"
+                      />
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={conta.entidade_bancaria || ""}
+                          onChange={e => setPropContasAdicionais(prev => prev.map((c, i) => i === idx ? { ...c, entidade_bancaria: e.target.value } : c))}
+                          placeholder="Banco"
+                          className="border border-slate-300 px-2.5 py-1.5 text-xs rounded-lg focus:outline-emerald-500 bg-white flex-1"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setPropContasAdicionais(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-red-500 hover:text-red-600 cursor-pointer shrink-0"
+                          title="Remover esta conta"
+                        >
+                          <i className="fa-solid fa-trash text-xs"></i>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-slate-600 mb-1">Fotografia de Perfil</label>
                   <div className="flex items-center space-x-2">
