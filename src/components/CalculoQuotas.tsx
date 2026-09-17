@@ -51,8 +51,11 @@ export function CalculoQuotas({
     [predioFracoes]
   );
 
-  // Estados dos Orçamentos (Base limpa sem dados de simulação)
-  const [orcamentoRegular, setOrcamentoRegular] = useState<string>("");
+  // Quota ordinária mensal: só de leitura, derivada do mesmo Orçamento Anual
+  // que já alimenta a emissão automática real (dia 25, ver cronService.js /
+  // Gestão de Emissão) — não editável aqui, para não criar uma segunda fonte
+  // de verdade que duplicasse quotas ordinárias no mesmo mês.
+  const orcamentoRegular = String(Math.round(((Number((predio.patrimonio as any)?.orcamento_anual) || 0) / 12) * 100) / 100);
   const [dataLimiteRegular, setDataLimiteRegular] = useState<string>(() => {
     const d = new Date();
     d.setDate(8);
@@ -96,7 +99,10 @@ export function CalculoQuotas({
   // Cálculo individual da parcela extraordinária por mês se tiver prestações
   const extraPorMesTotal = (Number(orcamentoExtra) || 0) / (numPrestacoesExtra || 1);
 
-  // Emitir Quotas em Lote diretamente para Avisos
+  // Emitir Quotas Extraordinárias em Lote diretamente para Avisos.
+  // A quota ordinária mensal NÃO se emite aqui — é sempre a emissão
+  // automática real (dia 25, cronService.js) que trata disso, para nunca
+  // haver duas fontes a criar avisos de quota ordinária para o mesmo mês.
   const handleEmitirQuotasEmLote = () => {
     if (totalPermilagem !== 1000) {
       alert(
@@ -111,11 +117,10 @@ export function CalculoQuotas({
       return;
     }
 
-    const regVal = Number(orcamentoRegular) || 0;
     const extVal = Number(orcamentoExtra) || 0;
 
-    if (regVal <= 0 && extVal <= 0) {
-      alert("Por favor defina um orçamento regular ou extraordinário superior a 0€!");
+    if (extVal <= 0) {
+      alert("Por favor defina um orçamento extraordinário superior a 0€!");
       return;
     }
 
@@ -124,23 +129,7 @@ export function CalculoQuotas({
     const novosAvisos: Aviso[] = [];
 
     predioFracoes.forEach((f) => {
-      // 1. Quota Ordinária
-      if (regVal > 0) {
-        const valorOrdinario = Math.round(regVal * (f.permilagem / 1000) * 100) / 100;
-        novosAvisos.push({
-          id_aviso: `av-ord-${Date.now()}-${f.id_fracao}`,
-          id_predio: predio.id_predio,
-          id_fracao: f.id_fracao,
-          tipo: "Cota Ordinária",
-          data: dataEmissao,
-          vencimento: dataLimiteRegular,
-          descricao: `Quota Ordinária Mensal - Permilagem ${f.permilagem}‰ (IBAN: ${contaOrdinariaSel?.iban || "Conta à Ordem"})`,
-          valor: valorOrdinario,
-          estado: "Pendente",
-        });
-      }
-
-      // 2. Quota Extraordinária
+      // Quota Extraordinária
       if (extVal > 0) {
         const valorExtraMensal = Math.round((extraPorMesTotal * (f.permilagem / 1000)) * 100) / 100;
         novosAvisos.push({
@@ -159,11 +148,12 @@ export function CalculoQuotas({
 
     setAvisos((prev) => [...novosAvisos, ...prev]);
 
-    // Persistir configuração no Supabase
+    // Persistir configuração no Supabase (orcamento_regular fica só como
+    // registo informativo do valor real em vigor, não é usado para emitir)
     saveConfiguracaoQuotasToSupabase({
       id_predio: predio.id_predio,
       ano_exercicio: new Date().getFullYear(),
-      orcamento_regular: regVal,
+      orcamento_regular: Number(orcamentoRegular) || 0,
       data_limite_regular: dataLimiteRegular,
       id_conta_ordinaria: contaOrdinariaId,
       orcamento_extra: extVal,
@@ -177,10 +167,10 @@ export function CalculoQuotas({
 
     registarLogAuditoria(
       "Financeira",
-      `Emitiu ${novosAvisos.length} avisos de quotas em lote`,
+      `Emitiu ${novosAvisos.length} avisos de quota extraordinária em lote`,
       predio.id_predio,
       loggedUser,
-      `Regular: ${regVal}€ / Extra: ${extVal}€`
+      `Extra: ${extVal}€`
     );
 
     if (extVal > 0) {
@@ -318,7 +308,7 @@ export function CalculoQuotas({
             <span>Cálculo & Emissão de Quotas</span>
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Calculadora de quotas ordinárias mensais e quotas extraordinárias interligadas diretamente com as contas bancárias do edifício.
+            Mapa de repartição da quota ordinária mensal (automática, ver Gestão de Emissão) e emissão de quotas extraordinárias, interligadas diretamente com as contas bancárias do edifício.
           </p>
         </div>
 
@@ -337,10 +327,12 @@ export function CalculoQuotas({
               type="button"
               id="btn-guardar-quotas-supabase"
               onClick={handleEmitirQuotasEmLote}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer shadow-md"
+              disabled={(Number(orcamentoExtra) || 0) <= 0}
+              title={(Number(orcamentoExtra) || 0) <= 0 ? "Define um Orçamento Extraordinário para emitir — a quota ordinária é sempre automática (dia 25)." : undefined}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer shadow-md"
             >
               <Save className="w-3.5 h-3.5" />
-              <span>Guardar Configuração e Emitir Quotas no Supabase</span>
+              <span>Emitir Quota Extraordinária</span>
             </button>
           )}
         </div>
@@ -416,15 +408,17 @@ export function CalculoQuotas({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Orçamento Mensal Global (€) *
+                Orçamento Mensal Global (€)
               </label>
               <input
                 type="number"
                 value={orcamentoRegular}
-                onChange={(e) => setOrcamentoRegular(e.target.value)}
-                className="w-full border border-slate-200 px-3 py-2 text-xs rounded-xl focus:outline-emerald-500 bg-slate-50/50 font-mono font-bold"
-                placeholder="Ex: 1200"
+                readOnly
+                disabled
+                title="Valor real em vigor, vindo do Orçamento Anual definido em Gestão de Emissão — não editável aqui para nunca duplicar a emissão automática mensal (dia 25)."
+                className="w-full border border-slate-200 px-3 py-2 text-xs rounded-xl bg-slate-100 font-mono font-bold text-slate-500 cursor-not-allowed"
               />
+              <p className="text-[9.5px] text-slate-400 mt-1">Vem do Orçamento Anual em Gestão de Emissão. A quota ordinária é sempre emitida automaticamente no dia 25 — aqui só se emite a extraordinária.</p>
             </div>
 
             <div>
