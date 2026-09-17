@@ -28,7 +28,8 @@
     { "source": "/api/pdf/ata-aprovada", "destination": "/api/pdf?tipo=ata-aprovada" },
     { "source": "/api/pdf/participacao-sinistro", "destination": "/api/pdf?tipo=participacao-sinistro" },
     { "source": "/api/pdf/sinistro", "destination": "/api/pdf?tipo=sinistro" },
-    { "source": "/api/pdf/scie", "destination": "/api/pdf?tipo=scie" }
+    { "source": "/api/pdf/scie", "destination": "/api/pdf?tipo=scie" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [
     { "path": "/api/cron", "schedule": "0 7 * * *" }
