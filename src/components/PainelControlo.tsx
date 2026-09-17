@@ -3,7 +3,7 @@ import { Predio, Conta, Fracao, Movimento, Aviso } from "../types";
 import { exportToXLS } from "../utils";
 import { 
   Building, DoorOpen, Users, FileText, Hammer, Brush, 
-  Wallet, Truck, MessageSquare, Brain, Sparkles, 
+  Wallet, Truck, MessageSquare, Sparkles,
   AlertTriangle, BarChart2
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
@@ -105,6 +105,68 @@ export function PainelControlo({
 
     return baseMeses;
   }, [predioMovements]);
+
+  // Quotas em atraso reais (avisos pendentes cujo vencimento já passou)
+  const quotasEmAtraso = useMemo(() => {
+    const hoje = new Date();
+    const porFracao = new Map<string, { fracao: string; valor: number }>();
+    predioAvisos
+      .filter(a => a.estado === "Pendente" && a.vencimento && new Date(a.vencimento) < hoje)
+      .forEach(a => {
+        const frac = predioFracoes.find(f => f.id_fracao === a.id_fracao);
+        const nomeFracao = frac?.fracao_nome || a.id_fracao;
+        const atual = porFracao.get(a.id_fracao) || { fracao: nomeFracao, valor: 0 };
+        atual.valor += Number(a.valor) || 0;
+        porFracao.set(a.id_fracao, atual);
+      });
+    return Array.from(porFracao.values()).sort((a, b) => b.valor - a.valor);
+  }, [predioAvisos, predioFracoes]);
+
+  const [gerandoResumoIA, setGerandoResumoIA] = React.useState(false);
+
+  const handleGerarResumoIA = async () => {
+    setGerandoResumoIA(true);
+    try {
+      const respIA = await fetch("/api/ai?acao=resumo-painel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          predioNome: predio?.nome,
+          saldoCaixa: totalSaldoCaixa,
+          fundoReserva: totalFundoReserva,
+          quotasEmAtraso,
+          ocorrenciasAbertas: ocorrenciasCount,
+          totalFracoes: predioFracoes.length
+        })
+      });
+      const dadosIA = await respIA.json();
+      if (!respIA.ok || !dadosIA.resumo) throw new Error(dadosIA?.error || "Falha ao gerar o resumo.");
+
+      const emailAdmin = (predio as any)?.email_administracao || (predio as any)?.email;
+      if (emailAdmin) {
+        const respEmail = await fetch("/api/email?acao=enviar-preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: emailAdmin,
+            subject: `Resumo Executivo IA — ${predio?.nome || "Condomínio"}`,
+            texto: dadosIA.resumo
+          })
+        });
+        if (!respEmail.ok) {
+          alert(`Resumo gerado, mas não foi possível enviar por email:\n\n${dadosIA.resumo}`);
+          return;
+        }
+        alert(`Resumo IA gerado e enviado para ${emailAdmin}:\n\n${dadosIA.resumo}`);
+      } else {
+        alert(`Resumo IA gerado (sem email de administração configurado para envio):\n\n${dadosIA.resumo}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Erro ao gerar o relatório de IA: ${err?.message || "erro desconhecido"}`);
+    } finally {
+      setGerandoResumoIA(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -320,28 +382,37 @@ export function PainelControlo({
             <p className="text-xs text-slate-400 mb-4">Reconciliação e alertas pendentes de validação.</p>
             
             <div className="space-y-3">
-              <div className="flex items-start space-x-2 text-xs bg-amber-50 border border-amber-100 p-2.5 rounded-lg text-amber-800">
-                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
-                <div>
-                  <span className="font-bold block">Quotas em Atraso</span>
-                  <span>A fração D possui 3 quotas em falta. Cobrança extrajudicial recomendada.</span>
+              {quotasEmAtraso.length === 0 ? (
+                <div className="flex items-start space-x-2 text-xs bg-emerald-50 border border-emerald-100 p-2.5 rounded-lg text-emerald-800">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                  <div>
+                    <span className="font-bold block">Quotas em Dia</span>
+                    <span>Não existem quotas em atraso registadas neste momento.</span>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-start space-x-2 text-xs bg-indigo-50 border border-indigo-100 p-2.5 rounded-lg text-indigo-800">
-                <Brain className="h-4 w-4 shrink-0 text-indigo-500 mt-0.5" />
-                <div>
-                  <span className="font-bold block">Análise de Contratos</span>
-                  <span>O contrato de Limpeza expira em 30 dias. IA sugere rever o reajuste de 2%.</span>
-                </div>
-              </div>
+              ) : (
+                quotasEmAtraso.slice(0, 2).map((q) => (
+                  <div key={q.fracao} className="flex items-start space-x-2 text-xs bg-amber-50 border border-amber-100 p-2.5 rounded-lg text-amber-800">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
+                    <div>
+                      <span className="font-bold block">Quotas em Atraso</span>
+                      <span>A fração {q.fracao} tem {q.valor.toFixed(2)} € em quotas por regularizar.</span>
+                    </div>
+                  </div>
+                ))
+              )}
+              {quotasEmAtraso.length > 2 && (
+                <p className="text-[10px] text-slate-400">+ {quotasEmAtraso.length - 2} outra(s) fração(ões) com quotas em atraso.</p>
+              )}
             </div>
           </div>
-          <button 
-            onClick={() => alert("Resumo IA gerado e enviado para a caixa de correio da administração.")}
-            className="mt-4 w-full bg-[#1A1A1A] hover:bg-[#333] text-white font-bold py-2 rounded-lg text-xs cursor-pointer flex items-center justify-center space-x-1.5 transition-colors"
+          <button
+            disabled={gerandoResumoIA}
+            onClick={handleGerarResumoIA}
+            className="mt-4 w-full bg-[#1A1A1A] hover:bg-[#333] disabled:opacity-50 text-white font-bold py-2 rounded-lg text-xs cursor-pointer flex items-center justify-center space-x-1.5 transition-colors"
           >
             <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
-            <span>Gerar Relatório de IA</span>
+            <span>{gerandoResumoIA ? "A gerar..." : "Gerar Relatório de IA"}</span>
           </button>
         </div>
       </div>

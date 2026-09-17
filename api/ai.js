@@ -102,6 +102,36 @@ Redige o documento formal e estruturado com:
     }
   }
 
+  // 3b. RESUMO EXECUTIVO DO PAINEL DE CONTROLO (?acao=resumo-painel)
+  if (acao === "resumo-painel") {
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
+
+    try {
+      const { predioNome, saldoCaixa, fundoReserva, quotasEmAtraso, ocorrenciasAbertas, totalFracoes } = req.body || {};
+
+      const prompt = `Gera um resumo executivo curto (máx. 6 linhas, em português de Portugal) para a administração do condomínio "${predioNome || "Edifício"}", com base nestes dados reais:
+- Saldo de caixa atual: ${Number(saldoCaixa || 0).toFixed(2)} €
+- Fundo de reserva: ${Number(fundoReserva || 0).toFixed(2)} €
+- Frações com quotas em atraso: ${Array.isArray(quotasEmAtraso) ? quotasEmAtraso.length : 0} de ${totalFracoes || 0}
+${Array.isArray(quotasEmAtraso) && quotasEmAtraso.length > 0 ? quotasEmAtraso.map(q => `  • Fração ${q.fracao}: ${Number(q.valor).toFixed(2)} € em atraso`).join("\n") : ""}
+- Ocorrências abertas: ${ocorrenciasAbertas || 0}
+
+Escreve em tom profissional e direto, destacando apenas o que exige atenção da administração. Não inventes dados que não constam acima.`;
+
+      const responseText = await generateWithFallback({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        systemInstruction: "És um assistente de gestão de condomínios em Portugal. Resumes dados financeiros e operacionais reais de forma clara e objetiva, sem inventar factos."
+      });
+
+      return res.status(200).json({ resumo: responseText });
+    } catch (err) {
+      console.error("[api/ai?acao=resumo-painel] Erro:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao gerar o resumo executivo." });
+    }
+  }
+
   // 4. PREVISÃO ORÇAMENTAL (/api/predict-budget -> ?acao=predict-budget)
   if (acao === "predict-budget") {
     if (req.method === "GET") {
