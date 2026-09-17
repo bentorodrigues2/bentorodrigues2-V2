@@ -533,7 +533,7 @@ export interface DynamicReportOptions {
   incluirAssinatura?: boolean;
 }
 
-export function generateDynamicReportPDF(opts: DynamicReportOptions) {
+export async function generateDynamicReportPDF(opts: DynamicReportOptions) {
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const bName = opts.predio?.nome || opts.predio?.morada_linha1 || "Condomínio";
@@ -667,23 +667,32 @@ export function generateDynamicReportPDF(opts: DynamicReportOptions) {
 
     y += 16;
 
-    // Official Stamp / Signature block if requested
+    // Bloco de código de verificação digital real (hash SHA-256 do conteúdo do relatório) + campo para assinatura física
     if (opts.incluirAssinatura && y < 250) {
+      const timestampEmissao = new Date();
+      const hashBuffer = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(`${opts.predio.nome}|${opts.tipoRelatorio}|${opts.ambito}|${opts.exercicio}|${totalQuotas}|${totalDividas}|${timestampEmissao.toISOString()}`)
+      );
+      const codigoVerificacao = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 16).toUpperCase();
+
       doc.setDrawColor(203, 213, 225);
-      doc.rect(14, y, 182, 18, "S");
+      doc.rect(14, y, 182, 23, "S");
       doc.setFont("helvetica", "bold");
       doc.setFontSize(7);
       doc.setTextColor(100, 116, 139);
-      doc.text("EMISSÃO OFICIAL E CARIMBO DIGITAL DA ADMINISTRAÇÃO DO CONDOMÍNIO", 18, y + 4.5);
+      doc.text("EMISSÃO OFICIAL DA ADMINISTRAÇÃO DO CONDOMÍNIO", 18, y + 4.5);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(6.5);
-      doc.text(`Plataforma CondoManager AI — Certificação Digital Edifício ${opts.predio.nome}`, 18, y + 9);
-      doc.text(`Carimbo Autenticado em: ${new Date().toLocaleString("pt-PT")}`, 18, y + 13.5);
+      doc.text(`Plataforma CondoManager AI — Edifício ${opts.predio.nome}`, 18, y + 9);
+      doc.text(`Emitido em: ${timestampEmissao.toLocaleString("pt-PT")}`, 18, y + 13.5);
+      doc.setFont("helvetica", "bold");
+      doc.text(`Código de Verificação: ${codigoVerificacao}`, 18, y + 18.5);
 
       doc.setFont("helvetica", "bold");
       doc.text("ASSINATURA DA ADMINISTRAÇÃO", 130, y + 4.5);
       doc.setFont("helvetica", "italic");
-      doc.text("__________________________________", 130, y + 13.5);
+      doc.text("__________________________________", 130, y + 15.5);
     }
 
     const blob = doc.output("blob");

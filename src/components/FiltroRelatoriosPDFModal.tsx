@@ -47,8 +47,8 @@ export function FiltroRelatoriosPDFModal({
   const predioFracoes = fracoes.filter(f => f.id_predio === predio.id_predio);
   const fracaoSelecionada = predioFracoes.find(f => f.id_fracao === selectedFracaoId) || predioFracoes[0];
 
-  const handleGeneratePDF = () => {
-    generateDynamicReportPDF({
+  const handleGeneratePDF = async () => {
+    await generateDynamicReportPDF({
       predio,
       ambito,
       fracaoId: selectedFracaoId,
