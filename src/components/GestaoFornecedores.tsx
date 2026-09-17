@@ -63,6 +63,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
 
   // Modals for supplier automated emails
   const [welcomeModalFornecedor, setWelcomeModalFornecedor] = useState<Fornecedor | null>(null);
+  const [enviandoBoasVindasFornecedor, setEnviandoBoasVindasFornecedor] = useState<boolean>(false);
   const [birthdayModalFornecedor, setBirthdayModalFornecedor] = useState<Fornecedor | null>(null);
 
   const togglePerfilPwa = (perfil: "LIMPEZAS" | "TECNICO" | "JURIDICO" | "AUDITOR" | "CONTABILISTA") => {
@@ -607,13 +608,40 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
                     </div>
                   </div>
                   <button
-                    onClick={() => {
-                      setWelcomeModalFornecedor(null);
-                      alert("E-mail de boas-vindas e credenciais PWA enviados com sucesso!");
+                    disabled={enviandoBoasVindasFornecedor}
+                    onClick={async () => {
+                      const destino = welcomeModalFornecedor.email_contacto || welcomeModalFornecedor.contacto;
+                      if (!destino) {
+                        alert("Este fornecedor não tem email de contacto registado.");
+                        return;
+                      }
+                      setEnviandoBoasVindasFornecedor(true);
+                      try {
+                        const resp = await fetch("/api/pdf?tipo=registo-fornecedor", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            fornecedor: welcomeModalFornecedor,
+                            predioObj: predio,
+                            email: destino,
+                            nome: welcomeModalFornecedor.nome,
+                            predio: predio.id_predio,
+                            ano: new Date().getFullYear()
+                          })
+                        });
+                        const resultado = await resp.json();
+                        if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar o email de boas-vindas");
+                        setWelcomeModalFornecedor(null);
+                        alert("E-mail de boas-vindas e credenciais PWA enviados com sucesso!");
+                      } catch (err: any) {
+                        alert(`❌ Erro ao enviar o email de boas-vindas: ${err?.message || "erro desconhecido"}`);
+                      } finally {
+                        setEnviandoBoasVindasFornecedor(false);
+                      }
                     }}
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors cursor-pointer shadow-md text-center"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors cursor-pointer shadow-md text-center"
                   >
-                    Confirmar Envio Automático de Boas-Vindas
+                    {enviandoBoasVindasFornecedor ? "A enviar..." : "Confirmar Envio Automático de Boas-Vindas"}
                   </button>
                 </div>
               </div>
