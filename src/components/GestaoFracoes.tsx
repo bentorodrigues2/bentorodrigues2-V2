@@ -74,6 +74,7 @@ export function GestaoFracoes({
     data_nascimento?: string;
     foto: string | null;
   }[]>([]);
+  const [gravandoCoproprietario, setGravandoCoproprietario] = useState(false);
 
   const [arrendada, setArrendada] = useState(false);
   const [inqNome, setInqNome] = useState("");
@@ -2035,9 +2036,20 @@ export function GestaoFracoes({
                             </p>
                           </div>
                         </div>
-                        <button 
-                          type="button" 
-                          onClick={() => setProprietariosAdicionais(prev => prev.filter((_, i) => i !== idx))} 
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const novaLista = proprietariosAdicionais.filter((_, i) => i !== idx);
+                            setProprietariosAdicionais(novaLista);
+                            const targetFracaoAtual = selectedFracaoId ? predioFracoes.find(f => f.id_fracao === selectedFracaoId) : null;
+                            if (targetFracaoAtual) {
+                              const ok = await dbUpdate('fracoes', { proprietarios_adicionais: novaLista }, [['id_fracao', 'eq', selectedFracaoId]]);
+                              if (ok) {
+                                const updatedFracao: Fracao = { ...targetFracaoAtual, proprietarios_adicionais: novaLista };
+                                onUpdateFracoes(fracoes.map(f => f.id_fracao === selectedFracaoId ? updatedFracao : f));
+                              }
+                            }
+                          }}
                           className="text-red-500 hover:text-red-700 p-1 text-xs cursor-pointer"
                           title="Remover Coproprietário"
                         >
@@ -2109,9 +2121,10 @@ export function GestaoFracoes({
                     </div>
                   </div>
 
-                  <button 
-                    type="button" 
-                    onClick={() => {
+                  <button
+                    type="button"
+                    disabled={gravandoCoproprietario}
+                    onClick={async () => {
                       if (!coNome.trim()) {
                         alert("Insira pelo menos o nome do coproprietário.");
                         return;
@@ -2121,20 +2134,42 @@ export function GestaoFracoes({
                         alert("Limite atingido! Máximo de 2 proprietários com fotografia por fração.");
                         return;
                       }
-                      setProprietariosAdicionais(prev => [...prev, {
+                      const novaLista = [...proprietariosAdicionais, {
                         nome: coNome,
                         nif: coNif,
                         email: coEmail,
                         tlm: coTlm,
                         data_nascimento: coDataNascimento || undefined,
                         foto: coFoto
-                      }]);
+                      }];
+                      setProprietariosAdicionais(novaLista);
                       // Clear inputs
                       setCoNome(""); setCoNif(""); setCoEmail(""); setCoTlm(""); setCoDataNascimento(""); setCoFoto(null);
+
+                      // Grava logo a sério na fração já existente, em vez de
+                      // ficar só na lista local à espera que o admin clique
+                      // depois em "Gravar Dados do Proprietário" — era fácil
+                      // esquecer esse segundo passo e o coproprietário
+                      // parecer adicionado sem nunca chegar a ser guardado.
+                      const targetFracaoAtual = selectedFracaoId ? predioFracoes.find(f => f.id_fracao === selectedFracaoId) : null;
+                      if (targetFracaoAtual) {
+                        setGravandoCoproprietario(true);
+                        try {
+                          const ok = await dbUpdate('fracoes', { proprietarios_adicionais: novaLista }, [['id_fracao', 'eq', selectedFracaoId]]);
+                          if (ok) {
+                            const updatedFracao: Fracao = { ...targetFracaoAtual, proprietarios_adicionais: novaLista };
+                            onUpdateFracoes(fracoes.map(f => f.id_fracao === selectedFracaoId ? updatedFracao : f));
+                          } else {
+                            alert("⚠️ O coproprietário ficou na lista, mas houve um erro a gravar no Supabase. Tenta novamente ou clica em \"Gravar Dados do Proprietário\".");
+                          }
+                        } finally {
+                          setGravandoCoproprietario(false);
+                        }
+                      }
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors cursor-pointer"
+                    className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors cursor-pointer"
                   >
-                    <i className="fa-solid fa-plus mr-1"></i> Adicionar Coproprietário
+                    <i className="fa-solid fa-plus mr-1"></i> {gravandoCoproprietario ? "A gravar..." : "Adicionar Coproprietário"}
                   </button>
                 </div>
               </div>
