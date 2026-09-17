@@ -115,7 +115,9 @@ export function GestaoComunicacoes({
         body: JSON.stringify({
           id_predio: predio.id_predio,
           title: comunicadoUrgencia === "urgente" ? `🚨 ${novoComunicado.titulo}` : novoComunicado.titulo,
-          body: novoComunicado.mensagem
+          body: novoComunicado.mensagem,
+          // Comunicados urgentes saem sempre; os normais respeitam a preferência "Comunicados Gerais"
+          categoria: comunicadoUrgencia === "urgente" ? undefined : "optional_general"
         })
       }).catch(() => {});
 
@@ -290,7 +292,8 @@ export function GestaoComunicacoes({
         body: JSON.stringify({
           id_predio: predio.id_predio,
           title: "🗳️ Nova Sondagem",
-          body: sondagemPergunta
+          body: sondagemPergunta,
+          categoria: "optional_general"
         })
       }).catch(() => {});
 
@@ -376,7 +379,8 @@ export function GestaoComunicacoes({
         body: JSON.stringify({
           id_predio: predio.id_predio,
           title: "📋 Novo Questionário",
-          body: questTitulo
+          body: questTitulo,
+          categoria: "optional_general"
         })
       }).catch(() => {});
 

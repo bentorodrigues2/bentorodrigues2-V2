@@ -35,6 +35,8 @@ import {
   savePushSubscriptionToSupabase
 } from "../lib/supabaseService";
 import { subscribeUserToPush } from "../utils/subscribeUser";
+import { loadUserPreferences, NotificationPreferences } from "../utils/loadUserPreferences";
+import { saveUserPreferences } from "../utils/saveUserPreferences";
 
 interface TicketMensagem {
   id_conversa: string;
@@ -272,6 +274,29 @@ export default function PWACondominoView({
   );
   const [ativandoPush, setAtivandoPush] = useState(false);
 
+  // Preferências de notificação por categoria — reais, gravadas em
+  // profiles.notificacoes_preferencias (sincronizam entre dispositivos).
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPreferences | null>(null);
+  const [guardandoPref, setGuardandoPref] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!loggedUser?.email) return;
+    loadUserPreferences(loggedUser.email).then(setNotifPrefs);
+  }, [loggedUser?.email]);
+
+  const handleTogglePref = async (categoria: "optional_finances" | "optional_reservations" | "optional_cleaning" | "optional_general") => {
+    if (!notifPrefs || guardandoPref) return;
+    setGuardandoPref(categoria);
+    const atualizado = { ...notifPrefs, [categoria]: !notifPrefs[categoria] };
+    setNotifPrefs(atualizado);
+    try {
+      const salvo = await saveUserPreferences(atualizado);
+      setNotifPrefs(salvo);
+    } finally {
+      setGuardandoPref(null);
+    }
+  };
+
   const handleAtivarPush = async () => {
     if (ativandoPush) return;
     setAtivandoPush(true);
@@ -293,6 +318,7 @@ export default function PWACondominoView({
       const ok = await savePushSubscriptionToSupabase({
         idPredio: predio.id_predio,
         idFracao: condominoFracao?.id_fracao,
+        userId: loggedUser.email,
         subscription
       });
       if (ok) {
@@ -2593,6 +2619,30 @@ export default function PWACondominoView({
                       {pushAtivo ? "✓ Ativado" : ativandoPush ? "A ativar..." : "Ativar"}
                     </button>
                   </div>
+
+                  {notifPrefs && (
+                    <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2">
+                      <span className="text-[9.5px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide block mb-1">Categorias Opcionais</span>
+                      {([
+                        { key: "optional_finances", label: "Financeiro" },
+                        { key: "optional_reservations", label: "Reservas" },
+                        { key: "optional_cleaning", label: "Limpezas" },
+                        { key: "optional_general", label: "Comunicados Gerais, Sondagens e Questionários" }
+                      ] as const).map(cat => (
+                        <label key={cat.key} className="flex items-center justify-between gap-2 cursor-pointer">
+                          <span className="text-[11px] text-slate-700 dark:text-slate-300 font-medium">{cat.label}</span>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(notifPrefs[cat.key])}
+                            disabled={guardandoPref === cat.key}
+                            onChange={() => handleTogglePref(cat.key)}
+                            className="h-4 w-4 accent-emerald-600 cursor-pointer disabled:opacity-50"
+                          />
+                        </label>
+                      ))}
+                      <p className="text-[9px] text-slate-400 pt-1">As notificações de ocorrências, documentos e assembleias são sempre enviadas.</p>
+                    </div>
+                  )}
                 </div>
 
               </div>

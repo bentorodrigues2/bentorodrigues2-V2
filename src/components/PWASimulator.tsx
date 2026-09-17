@@ -453,7 +453,7 @@ export function PWASimulator({
       fetch("/api/admin?acao=enviar-push", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_predio: predio.id_predio, id_fracao: res.id_fracao, title, body: desc })
+        body: JSON.stringify({ id_predio: predio.id_predio, id_fracao: res.id_fracao, title, body: desc, categoria: "optional_reservations" })
       }).catch(() => {});
       alert(`Reserva ${action.toLowerCase()} com sucesso! O condómino foi notificado por email e push.`);
     }
@@ -1061,7 +1061,7 @@ export function PWASimulator({
     fetch("/api/admin?acao=enviar-push", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id_predio: predio.id_predio, title: newNotificationTitle, body: newNotificationDesc })
+      body: JSON.stringify({ id_predio: predio.id_predio, title: newNotificationTitle, body: newNotificationDesc, categoria: "optional_general" })
     }).catch(() => {});
     registarLogAuditoria("Comunicação", `Enviou uma notificação push: "${newNotificationTitle}"`, predio.id_predio, loggedUser);
     setNewNotificationTitle("");

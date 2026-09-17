@@ -35,7 +35,7 @@ export interface SendNotificationResult {
  */
 export async function sendNotification(payload: SendNotificationPayload): Promise<SendNotificationResult> {
   const { user_id, category, title, body, url = '/' } = payload;
-  const prefs = loadUserPreferences(user_id);
+  const prefs = await loadUserPreferences(user_id);
 
   // Check if notification category is enabled for this user
   const isEnabled = Boolean(prefs[category]);
