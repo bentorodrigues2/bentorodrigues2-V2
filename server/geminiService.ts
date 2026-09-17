@@ -98,7 +98,7 @@ export interface AIChatPayload {
 }
 
 export async function processAIChat(payload: AIChatPayload): Promise<{ reply: string; sources?: Array<{ title: string; uri: string }> }> {
-  const { messages, predioInfo, userRole } = payload;
+  const { messages, predioInfo, userRole, enableWebSearch } = payload;
 
   const predioContext = predioInfo
     ? `Condomínio Ativo: ${predioInfo.nome || "Não especificado"} | Morada: ${predioInfo.morada || "Não especificada"} | NIF: ${predioInfo.nif || "Não especificado"}`
@@ -168,6 +168,37 @@ Diretrizes de Atuação:
     }
 
     formattedContents.push({ role, parts });
+  }
+
+  // Pesquisa Web (Google Search grounding): a UI já tem o botão/flag
+  // "enableWebSearch" há muito tempo, mas o backend nunca a lia — a
+  // resposta saía sempre só do conhecimento interno do modelo, nunca com
+  // fontes da web. generateWithFallback só devolve texto (usado por muitos
+  // outros chamadores), por isso a pesquisa com fontes usa aqui uma
+  // chamada direta ao Gemini para poder ler groundingMetadata; se falhar,
+  // cai sempre no caminho normal sem pesquisa.
+  if (enableWebSearch) {
+    try {
+      const ai = getGenAI();
+      const response = await ai.models.generateContent({
+        model: "gemini-flash-latest",
+        config: {
+          systemInstruction: `${systemInstruction}\n\nTens acesso a pesquisa Web em tempo real — usa-a sempre que a pergunta precisar de informação atual ou externa (ex.: legislação recente, preços de mercado, notícias).`,
+          tools: [{ googleSearch: {} }]
+        },
+        contents: formattedContents
+      });
+
+      if (response?.text) {
+        const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+        const sources = chunks
+          .map((c: any) => ({ title: c.web?.title || c.web?.uri || "Fonte", uri: c.web?.uri }))
+          .filter((s: any) => s.uri);
+        return { reply: response.text, sources: sources.length ? sources : undefined };
+      }
+    } catch (err) {
+      console.warn("[processAIChat] Pesquisa Web falhou, a responder sem fontes externas:", (err as any)?.message || err);
+    }
   }
 
   const replyText = await generateWithFallback({
