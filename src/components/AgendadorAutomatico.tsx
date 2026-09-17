@@ -427,14 +427,16 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
                         </span>
                       </div>
 
-                      {/* Active Toggle */}
+                      {/* Active Toggle — só marca a preferência neste ecrã; a
+                          rotina real do servidor corre sempre, para todos os
+                          prédios, nos dias fixos indicados abaixo. */}
                       <button
                         type="button"
                         onClick={(e) => toggleJobStatus(job.id_job, e)}
                         className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                           job.ativo ? "bg-emerald-600" : "bg-slate-300 dark:bg-slate-700"
                         }`}
-                        title={job.ativo ? "Pausar rotina" : "Ativar rotina"}
+                        title="Apenas visual — não desativa o envio real no servidor"
                       >
                         <span
                           className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
@@ -492,8 +494,9 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
                                     min={1}
                                     max={31}
                                     value={job.dia_mes || 1}
-                                    onChange={(e) => updateJobField(job.id_job, { dia_mes: parseInt(e.target.value) || 1 })}
-                                    className="w-full bg-slate-50 dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white"
+                                    disabled
+                                    title="Fixo no calendário real do servidor — ver nota abaixo"
+                                    className="w-full bg-slate-100 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-500 dark:text-slate-400 cursor-not-allowed"
                                   />
                                 </div>
                                 <div>
@@ -501,8 +504,9 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
                                   <input
                                     type="time"
                                     value={job.hora_execucao}
-                                    onChange={(e) => updateJobField(job.id_job, { hora_execucao: e.target.value })}
-                                    className="w-full bg-slate-50 dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white"
+                                    disabled
+                                    title="Fixo no calendário real do servidor — ver nota abaixo"
+                                    className="w-full bg-slate-100 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-500 dark:text-slate-400 cursor-not-allowed"
                                   />
                                 </div>
                               </div>
@@ -512,8 +516,9 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
                                 <input
                                   type="time"
                                   value={job.hora_execucao}
-                                  onChange={(e) => updateJobField(job.id_job, { hora_execucao: e.target.value })}
-                                  className="w-full bg-slate-50 dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white"
+                                  disabled
+                                  title="Fixo no calendário real do servidor — ver nota abaixo"
+                                  className="w-full bg-slate-100 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-500 dark:text-slate-400 cursor-not-allowed"
                                 />
                               </div>
                             )}
@@ -521,6 +526,9 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
                             <div className="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/70 p-2.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60 font-mono">
                               Cron: <span className="font-bold text-emerald-600 dark:text-emerald-400">{job.frequencia_cron}</span> ({job.descricao_legivel})
                             </div>
+                            <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold leading-relaxed">
+                              Dia e hora são fixos no calendário real do servidor (<code>vercel.json</code>/<code>api/cron.js</code>), iguais para todos os prédios — mudar aqui não altera quando o envio real acontece. Use "Executar Agora" para disparar a rotina real imediatamente.
+                            </p>
                           </div>
                         </div>
 
