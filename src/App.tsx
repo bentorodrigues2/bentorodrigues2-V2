@@ -2619,6 +2619,7 @@ export default function App() {
               avisos={avisos}
               setAvisos={setAvisos}
               fornecedores={fornecedores}
+              setFornecedores={setFornecedores}
               loggedUser={loggedUser}
             />
           )}

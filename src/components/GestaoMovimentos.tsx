@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso, Fornecedor } from "../types";
 import { formatDatePT } from "../utils";
-import { saveMovimentoToSupabase, saveContaToSupabase, saveAvisosToSupabase, registarLogAuditoria } from "../lib/supabaseService";
+import { saveMovimentoToSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria } from "../lib/supabaseService";
 import { cruzarMovimentoComFornecedor } from "../lib/fornecedorMatching";
 import { Save, CheckCircle2 } from "lucide-react";
 
@@ -14,6 +14,7 @@ interface GestaoMovimentosProps {
   avisos?: Aviso[];
   setAvisos?: React.Dispatch<React.SetStateAction<Aviso[]>>;
   fornecedores?: Fornecedor[];
+  setFornecedores?: React.Dispatch<React.SetStateAction<Fornecedor[]>>;
   loggedUser: LoggedUser;
 }
 
@@ -33,7 +34,7 @@ interface SimulatedEmail {
   imported: boolean;
 }
 
-export function GestaoMovimentos({ predio, contas, movements, setMovements, fracoes = [], avisos = [], setAvisos, fornecedores = [], loggedUser }: GestaoMovimentosProps) {
+export function GestaoMovimentos({ predio, contas, movements, setMovements, fracoes = [], avisos = [], setAvisos, fornecedores = [], setFornecedores, loggedUser }: GestaoMovimentosProps) {
   // Lançamento Manual / Movimento Cego Form States
   const [contaId, setContaId] = useState("");
   const [valor, setValor] = useState("");
@@ -488,7 +489,13 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
           categoria: m.categoria || "Outro",
           id_fornecedor: resultado?.fornecedor.id_fornecedor,
           fornecedor_nome_sugerido: resultado?.fornecedor.nome,
-          metodo_cruzamento: resultado?.metodo
+          metodo_cruzamento: resultado?.metodo,
+          // Guardados para, se o admin associar manualmente um fornecedor a
+          // um movimento sem correspondência automática, aprendermos essa
+          // referência/IBAN para a próxima vez (ver handleAssociarFornecedorAprendido).
+          numero_adc: m.numero_adc || undefined,
+          iban_credor: m.iban_credor || undefined,
+          entidade_credora: m.entidade_credora || undefined
         };
       });
 
@@ -503,12 +510,13 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     }
   };
 
-  const lancarItemExtraido = (item: any, selectedContaId: string, fornecedorIdOverride?: string) => {
+  const lancarItemExtraido = async (item: any, selectedContaId: string, fornecedorIdOverride?: string) => {
     if (!selectedContaId) {
       alert("Escolha a conta bancária para receber ou pagar este movimento!");
       return;
     }
 
+    const idFornecedorFinal = fornecedorIdOverride || item.id_fornecedor || undefined;
     const novo: Movimento = {
       id_mov: "mov-" + (movements.length + 1),
       id_predio: predio.id_predio,
@@ -521,7 +529,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       fotos: [],
       estado: "Justificado",
       is_movimento_cego: false,
-      id_fornecedor: fornecedorIdOverride || item.id_fornecedor || undefined
+      id_fornecedor: idFornecedorFinal
     };
 
     const contaAlvo = contas.find(c => c.id_conta === selectedContaId);
@@ -534,8 +542,33 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     setMovements([novo, ...movements]);
     saveMovimentoToSupabase(novo).catch(console.error);
     registarLogAuditoria("Financeira", "Lançou um item extraído do extrato bancário", predio.id_predio, loggedUser, novo.descricao);
+
+    // Aprendizagem: se o admin associou manualmente um fornecedor a um
+    // movimento que a IA não tinha conseguido cruzar sozinha, guarda a
+    // referência/ADC (ou o IBAN, se a ficha ainda não tiver nenhum) nessa
+    // ficha — da próxima vez que aparecer o mesmo débito direto, o
+    // cruzamento automático já reconhece.
+    if (fornecedorIdOverride && !item.id_fornecedor && setFornecedores) {
+      const fornecedorEscolhido = fornecedores.find(f => f.id_fornecedor === fornecedorIdOverride);
+      if (fornecedorEscolhido) {
+        const jaTemReferencia = (fornecedorEscolhido.referencias_contrato || []).some(rc => rc.referencia === item.numero_adc);
+        const referenciasAtualizadas = item.numero_adc && !jaTemReferencia
+          ? [...(fornecedorEscolhido.referencias_contrato || []), { referencia: String(item.numero_adc), descricao: item.entidade_credora || undefined }]
+          : fornecedorEscolhido.referencias_contrato;
+        const ibanAtualizado = !fornecedorEscolhido.iban && item.iban_credor ? item.iban_credor : fornecedorEscolhido.iban;
+
+        if (referenciasAtualizadas !== fornecedorEscolhido.referencias_contrato || ibanAtualizado !== fornecedorEscolhido.iban) {
+          const fornecedorAtualizado: Fornecedor = { ...fornecedorEscolhido, referencias_contrato: referenciasAtualizadas, iban: ibanAtualizado };
+          const okAprendizagem = await saveFornecedorToSupabase(fornecedorAtualizado);
+          if (okAprendizagem) {
+            setFornecedores(prev => prev.map(f => f.id_fornecedor === fornecedorAtualizado.id_fornecedor ? fornecedorAtualizado : f));
+          }
+        }
+      }
+    }
+
     setExtractedItems(prev => prev.filter(x => x.descricao !== item.descricao));
-    alert(`Movimento financeiro de ${item.valor.toFixed(2)}€ lançado com sucesso!`);
+    alert(`Movimento financeiro de ${item.valor.toFixed(2)}€ lançado com sucesso!${fornecedorIdOverride && !item.id_fornecedor ? "\n\n🧠 A associação a este fornecedor foi memorizada — da próxima vez o mesmo débito é reconhecido automaticamente." : ""}`);
   };
 
   // Contabilizar movimentos cegos não justificados

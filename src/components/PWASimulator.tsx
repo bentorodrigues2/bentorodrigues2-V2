@@ -3178,6 +3178,7 @@ export function PWASimulator({
                           movements={movements}
                           setMovements={setMovements}
                           fornecedores={fornecedores}
+                          setFornecedores={setFornecedores}
                           loggedUser={loggedUser}
                         />
                       )}
@@ -3336,6 +3337,7 @@ export function PWASimulator({
                           movements={movements}
                           setMovements={setMovements}
                           fornecedores={fornecedores}
+                          setFornecedores={setFornecedores}
                           loggedUser={loggedUser}
                         />
                       )}
