@@ -2,7 +2,7 @@ import {
   processAIChat,
   generateWithFallback
 } from "../server/geminiService.js";
-import { extrairDadosDocumento } from "../server/lib/multimodalService.js";
+import { extrairDadosDocumento, extrairMovimentosExtrato } from "../server/lib/multimodalService.js";
 import { exigirSessaoValida } from "../server/lib/verificarSessao.js";
 
 export default async function handler(req, res) {
@@ -415,6 +415,38 @@ Devolve JSON com formato:
     }
   }
 
+  // 9.6. EXTRAIR MOVIMENTOS DE UM EXTRATO BANCÁRIO (?acao=extrair-movimentos-historicos)
+  // Usado pelo Assistente de Arranque (Passo 3) — lê um extrato bancário
+  // (PDF/foto e/ou texto de CSV/Excel/TXT já convertido para texto no
+  // cliente) e devolve uma lista de movimentos para pré-preencher o
+  // histórico de transição, em vez do administrador ter de os transcrever
+  // um a um à mão.
+  if (acao === "extrair-movimentos-historicos") {
+    if (req.method === "GET") {
+      return res.status(200).json({ status: "online", endpoint: "/api/ai?acao=extrair-movimentos-historicos" });
+    }
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
+
+    try {
+      const { anexos, textoExtrato } = req.body || {};
+      if ((!anexos || anexos.length === 0) && !textoExtrato) {
+        return res.status(400).json({ error: "Envie pelo menos um anexo (PDF/imagem) ou o texto de um ficheiro CSV/Excel/TXT." });
+      }
+
+      const movimentos = await extrairMovimentosExtrato({ anexos, textoExtrato });
+      if (!movimentos) {
+        return res.status(502).json({ error: "A IA não conseguiu identificar movimentos neste extrato. Verifique o ficheiro ou lance os movimentos manualmente." });
+      }
+
+      return res.status(200).json({ ok: true, movimentos });
+    } catch (err) {
+      console.error("[api/ai?acao=extrair-movimentos-historicos] Erro:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao extrair movimentos do extrato." });
+    }
+  }
+
   // 9.6. RECONHECER APÓLICE DE SEGURO POR IA MULTIMODAL (?acao=reconhecer-apolice)
   // Usado por GestaoSinistrosSeguros.tsx — antes chamava um SDK Gemini
   // client-side com uma VITE_GEMINI_API_KEY que não existe em lado nenhum
@@ -601,6 +633,8 @@ Analisa o pedido face ao regulamento e à lei aplicável e devolve APENAS um JSO
         "generate-minutes",
         "parse-import",
         "reconhecer-recibo",
+        "reconhecer-anexo",
+        "extrair-movimentos-historicos",
         "humanize-convocatoria",
         "validar-regulamento"
       ]
@@ -608,6 +642,6 @@ Analisa o pedido face ao regulamento e à lei aplicável e devolve APENAS um JSO
   }
 
   return res.status(400).json({
-    error: "Ação não especificada ou inválida. Use ?acao=chat|generate-legal-notice|ai-query|predict-budget|predict-reserve-fund|compare-proposals|generate-minutes|parse-import|reconhecer-recibo|reconhecer-anexo|humanize-convocatoria|validar-regulamento"
+    error: "Ação não especificada ou inválida. Use ?acao=chat|generate-legal-notice|ai-query|predict-budget|predict-reserve-fund|compare-proposals|generate-minutes|parse-import|reconhecer-recibo|reconhecer-anexo|extrair-movimentos-historicos|humanize-convocatoria|validar-regulamento"
   });
 }

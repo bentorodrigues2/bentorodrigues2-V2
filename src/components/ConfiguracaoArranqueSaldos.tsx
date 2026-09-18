@@ -222,6 +222,115 @@ export function ConfiguracaoArranqueSaldos({
     setMovimentosHistoricos(prev => prev.filter(m => m.id !== id));
   };
 
+  // --- ANEXO DE EXTRATO BANCÁRIO & RECONHECIMENTO POR IA ---
+  // Em vez de transcrever manualmente cada movimento do período de
+  // transição, o administrador pode anexar o extrato bancário real
+  // (PDF, foto, Excel, CSV ou TXT exportado do homebanking) e a IA
+  // devolve os movimentos já identificados, para rever/corrigir antes
+  // de confirmar — tal como já acontece para comprovativos avulsos.
+  const [extratoContaId, setExtratoContaId] = useState<string>("");
+  const [extratoFicheiros, setExtratoFicheiros] = useState<File[]>([]);
+  const [analisandoExtrato, setAnalisandoExtrato] = useState(false);
+  const [erroExtrato, setErroExtrato] = useState<string | null>(null);
+  const extratoFileRef = React.useRef<HTMLInputElement>(null);
+
+  const lerFicheiroComoBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const lerFicheiroComoTexto = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
+  };
+
+  // Converte uma folha Excel (.xlsx/.xls) para texto tabular simples (CSV),
+  // para a IA conseguir ler tal como leria um extrato colado em texto.
+  const lerFicheiroExcelComoTexto = async (file: File): Promise<string> => {
+    const XLSX = await import("xlsx");
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "array" });
+    return workbook.SheetNames.map((nomeFolha) => {
+      const folha = workbook.Sheets[nomeFolha];
+      const csv = XLSX.utils.sheet_to_csv(folha);
+      return `--- Folha: ${nomeFolha} ---\n${csv}`;
+    }).join("\n\n");
+  };
+
+  const handleAnalisarExtratoIA = async () => {
+    if (!extratoContaId) {
+      setErroExtrato("Selecione primeiro a conta bancária a que este extrato pertence.");
+      return;
+    }
+    if (extratoFicheiros.length === 0) {
+      setErroExtrato("Anexe pelo menos um ficheiro (PDF, foto, Excel, CSV ou TXT).");
+      return;
+    }
+    setAnalisandoExtrato(true);
+    setErroExtrato(null);
+    try {
+      const anexos: { base64: string; mimeType: string }[] = [];
+      const textosExtrato: string[] = [];
+
+      for (const file of extratoFicheiros) {
+        const nomeExt = file.name.toLowerCase();
+        if (nomeExt.endsWith(".xlsx") || nomeExt.endsWith(".xls")) {
+          textosExtrato.push(await lerFicheiroExcelComoTexto(file));
+        } else if (nomeExt.endsWith(".csv") || nomeExt.endsWith(".txt") || file.type === "text/csv" || file.type === "text/plain") {
+          textosExtrato.push(await lerFicheiroComoTexto(file));
+        } else {
+          const base64 = await lerFicheiroComoBase64(file);
+          anexos.push({ base64, mimeType: file.type || "application/pdf" });
+        }
+      }
+
+      const resp = await fetch("/api/ai?acao=extrair-movimentos-historicos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          anexos,
+          textoExtrato: textosExtrato.length > 0 ? textosExtrato.join("\n\n") : undefined
+        })
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) {
+        throw new Error(data?.error || "Não foi possível analisar o extrato.");
+      }
+
+      const contaSelecionada = contasArranque.find(c => c.id_conta === extratoContaId);
+      const novosMovimentos: MovimentoHistoricoTransitor[] = (data.movimentos || []).map((m: any, idx: number) => ({
+        id: `hist-ia-${Date.now()}-${idx}`,
+        data: m.data || new Date().toISOString().split("T")[0],
+        descricao: m.descricao || "Movimento sem descrição",
+        categoria: m.categoria || "Outro",
+        tipo: String(m.tipo || "").toLowerCase().startsWith("rec") ? "RECEITA" : "DESPESA",
+        valor: Math.abs(Number(m.valor) || 0),
+        id_conta: extratoContaId,
+        nome_conta: contaSelecionada?.nome
+      }));
+
+      if (novosMovimentos.length === 0) {
+        setErroExtrato("A IA não identificou nenhum movimento neste ficheiro. Pode lançá-los manualmente abaixo.");
+      } else {
+        setMovimentosHistoricos(prev => [...novosMovimentos, ...prev]);
+        setExtratoFicheiros([]);
+        if (extratoFileRef.current) extratoFileRef.current.value = "";
+      }
+    } catch (err: any) {
+      setErroExtrato(err?.message || "Erro ao analisar o extrato.");
+    } finally {
+      setAnalisandoExtrato(false);
+    }
+  };
+
   // --- TOTAIS E CONTADORES CALCULADOS DINAMICAMENTE ---
   const totalBancosCaixa = useMemo(() => {
     return contasArranque.reduce((acc, curr) => acc + (Number(curr.saldo) || 0), 0);
@@ -853,7 +962,62 @@ export function ConfiguracaoArranqueSaldos({
             </span>
           </div>
 
-          {/* FORMULÁRIO DE ADIÇÃO RÁPIDA */}
+          {/* ANEXO DE EXTRATO BANCÁRIO & RECONHECIMENTO POR IA */}
+          <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40 space-y-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-indigo-800 dark:text-indigo-300">Anexar Extrato Bancário & Reconhecer com IA</h3>
+            </div>
+            <p className="text-xs text-indigo-700/80 dark:text-indigo-300/70">
+              Em vez de escrever cada movimento à mão, anexe o extrato bancário do período de transição (PDF, foto, Excel, CSV ou TXT exportado do homebanking) — a IA identifica os movimentos e pré-preenche a lista abaixo para reveres e corrigires antes de confirmar.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-indigo-700 dark:text-indigo-400 uppercase mb-1">Conta a que pertence este extrato *</label>
+                <select
+                  value={extratoContaId}
+                  onChange={(e) => setExtratoContaId(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-slate-900 font-bold"
+                >
+                  <option value="">— Selecione a conta —</option>
+                  {contasArranque.map(c => (
+                    <option key={c.id_conta} value={c.id_conta}>{c.nome}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-[10px] font-bold text-indigo-700 dark:text-indigo-400 uppercase mb-1">Ficheiro(s) do Extrato</label>
+                <input
+                  ref={extratoFileRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.jpg,.jpeg,.png,.webp,.csv,.txt,.xlsx,.xls"
+                  onChange={(e) => setExtratoFicheiros(Array.from(e.target.files || []))}
+                  className="w-full text-xs file:mr-2 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-indigo-600 file:text-white file:font-bold file:cursor-pointer file:text-xs cursor-pointer text-indigo-800 dark:text-indigo-200"
+                />
+                {extratoFicheiros.length > 0 && (
+                  <span className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1 block">{extratoFicheiros.length} ficheiro(s) selecionado(s)</span>
+                )}
+              </div>
+            </div>
+
+            {erroExtrato && (
+              <p className="text-[10px] text-red-600 dark:text-red-400 font-bold flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> {erroExtrato}</p>
+            )}
+
+            <button
+              type="button"
+              onClick={handleAnalisarExtratoIA}
+              disabled={analisandoExtrato}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center gap-2"
+            >
+              <UploadCloud className="h-4 w-4" />
+              <span>{analisandoExtrato ? "A analisar com IA..." : "Analisar Extrato com IA"}</span>
+            </button>
+          </div>
+
+          {/* FORMULÁRIO DE ADIÇÃO RÁPIDA (MANUAL) */}
           <form onSubmit={handleAddMovimentoHistorico} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-6 gap-3">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Data</label>

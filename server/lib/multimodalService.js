@@ -44,6 +44,65 @@ export async function extrairDadosDocumento(anexos) {
   }
 }
 
+const PROMPT_EXTRATO = `
+És o assistente financeiro da administração de um condomínio. Foi-te dado um
+extrato bancário (documento anexo em PDF/imagem e/ou texto colado de um
+ficheiro CSV/Excel/TXT exportado do homebanking). O objetivo é ajudar a
+lançar rapidamente o histórico de movimentos de um condomínio na
+transição/arranque da gestão, sem erros de transcrição manual.
+
+Extrai TODOS os movimentos/transações que conseguires identificar no
+documento, um por linha do extrato (não agregues nem resumas). Para cada
+movimento devolve:
+- data (formato YYYY-MM-DD; se só houver dia/mês, assume o ano mais plausível pelo contexto do documento)
+- descricao (o texto da transação tal como aparece, o mais fiel possível — nome do beneficiário/ordenante, referência, etc.)
+- valor (número positivo, sem símbolo de moeda, sem sinal negativo)
+- tipo ("Receita" se for uma entrada/crédito na conta, "Despesa" se for uma saída/débito)
+- categoria (a categoria de despesa/receita mais provável a partir da descrição, ex: "Manutenção", "Limpeza", "Quotas", "Seguros", "Eletricidade", "Água", "Honorários", "Outro")
+
+Ignora linhas que sejam só cabeçalhos, saldos de abertura/fecho ou totais —
+extrai apenas movimentos individuais reais.
+
+Responde em JSON estrito, sem texto à volta, no formato:
+{ "movimentos": [ { "data": "AAAA-MM-DD", "descricao": "...", "valor": 0.00, "tipo": "Receita", "categoria": "..." } ] }
+`.trim();
+
+/**
+ * Lê um extrato bancário (PDF/imagem anexados e/ou texto de CSV/Excel/TXT já
+ * convertido para texto no cliente) e devolve uma lista de movimentos
+ * estruturados, para pré-preencher o Passo 3 (Movimentos Históricos) do
+ * Assistente de Arranque em vez de o administrador ter de os transcrever
+ * um a um à mão.
+ */
+export async function extrairMovimentosExtrato({ anexos, textoExtrato }) {
+  const parts = [{ text: PROMPT_EXTRATO }];
+  if (textoExtrato && String(textoExtrato).trim()) {
+    parts.push({ text: `\n--- CONTEÚDO DO FICHEIRO (CSV/Excel/TXT) ---\n${String(textoExtrato).slice(0, 100000)}` });
+  }
+  if (Array.isArray(anexos)) {
+    for (const ax of anexos) {
+      if (ax?.base64 && ax?.mimeType) {
+        parts.push({ inlineData: { mimeType: ax.mimeType, data: ax.base64 } });
+      }
+    }
+  }
+  if (parts.length === 1) return null;
+
+  const content = await generateWithFallback({
+    contents: [{ role: "user", parts }],
+    responseMimeType: "application/json"
+  });
+
+  try {
+    const parsed = typeof content === "string" ? JSON.parse(content) : content;
+    if (!parsed || !Array.isArray(parsed.movimentos)) return null;
+    return parsed.movimentos;
+  } catch (e) {
+    console.warn("[multimodalService] Resposta do Gemini (extrato) não é JSON válido:", content);
+    return null;
+  }
+}
+
 /**
  * Arquiva o ficheiro ORIGINAL recebido (não gerado por nós) no bucket
  * "documentos" e regista-o na tabela documentos, tal como pdfService.js
