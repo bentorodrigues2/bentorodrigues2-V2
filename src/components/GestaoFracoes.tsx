@@ -76,6 +76,7 @@ export function GestaoFracoes({
   }[]>([]);
   const [gravandoCoproprietario, setGravandoCoproprietario] = useState(false);
   const [editingCoIndex, setEditingCoIndex] = useState<number | null>(null);
+  const [enviandoConvites, setEnviandoConvites] = useState(false);
 
   const [arrendada, setArrendada] = useState(false);
   const [inqNome, setInqNome] = useState("");
@@ -904,6 +905,35 @@ export function GestaoFracoes({
           await saveProprietarioToSupabase(novoProprietarioObj, selectedFracaoId);
 
           if (isNewEmail || !targetFracao.proprietario) {
+            // Ordem deliberada: primeiro o email de boas-vindas (com o PDF
+            // de instruções do site & instalação da PWA em anexo), só depois
+            // o email de ativação — para a pessoa abrir o 1º email, ler o
+            // anexo e perceber o que tem de fazer, em vez de receber os dois
+            // juntos e arriscar ver primeiro o link de ativação. Entre os
+            // dois há um intervalo real de 60 segundos (não é decorativo:
+            // este pedido só é feito depois de a Promise abaixo resolver).
+            setEnviandoConvites(true);
+            let boasVindasEnviado = false;
+            try {
+              const respBV = await fetch("/api/pdf?tipo=boas-vindas", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  nome: propNome.trim(),
+                  buildingName: predio.nome,
+                  email: propEmail.trim(),
+                  predio: predio.id_predio,
+                  fracao: selectedFracaoId
+                })
+              });
+              const dataBV = await respBV.json();
+              boasVindasEnviado = respBV.ok && dataBV.ok;
+            } catch (err) {
+              console.warn("[GestaoFracoes] Aviso ao enviar email de boas-vindas:", err);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 60000));
+
             // Cria o acesso real (Supabase Auth) e envia um email com um
             // link seguro de ativação — a pessoa define a sua própria
             // password, nunca uma password gerada pelo sistema.
@@ -925,32 +955,10 @@ export function GestaoFracoes({
             } catch (err) {
               console.warn("[GestaoFracoes] Aviso ao enviar convite de ativação:", err);
             }
-
-            // Segundo email, real e separado: guia de boas-vindas com o PDF
-            // de instruções do site & instalação da PWA em anexo. Antes só
-            // descarregava o PDF para o computador de quem estava a
-            // registar (o administrador) — o condómino nunca o recebia.
-            let boasVindasEnviado = false;
-            try {
-              const respBV = await fetch("/api/pdf?tipo=boas-vindas", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  nome: propNome.trim(),
-                  buildingName: predio.nome,
-                  email: propEmail.trim(),
-                  predio: predio.id_predio,
-                  fracao: selectedFracaoId
-                })
-              });
-              const dataBV = await respBV.json();
-              boasVindasEnviado = respBV.ok && dataBV.ok;
-            } catch (err) {
-              console.warn("[GestaoFracoes] Aviso ao enviar email de boas-vindas:", err);
-            }
+            setEnviandoConvites(false);
 
             alert(convidado
-              ? `✅ Proprietário associado com sucesso à Fração ${targetFracao.fracao_nome}!\n\n📧 Foi enviado um email para ${propEmail.trim()} com um link seguro para o condómino ativar o seu acesso e definir a própria password.${boasVindasEnviado ? "\n📧 Foi também enviado o guia de boas-vindas com as instruções de acesso ao site e instalação da PWA." : "\n⚠️ Não foi possível enviar o guia de boas-vindas — pode reenviá-lo mais tarde."}`
+              ? `✅ Proprietário associado com sucesso à Fração ${targetFracao.fracao_nome}!\n\n${boasVindasEnviado ? `📧 Foi enviado o email de boas-vindas para ${propEmail.trim()} com o guia de instruções de acesso ao site e instalação da PWA.` : "⚠️ Não foi possível enviar o guia de boas-vindas — pode reenviá-lo mais tarde."}\n📧 60 segundos depois, foi enviado o email com o link seguro para o condómino ativar o seu acesso e definir a própria password.`
               : `✅ Proprietário associado com sucesso à Fração ${targetFracao.fracao_nome} no Supabase, mas houve um erro a enviar o email de ativação. Pode reenviá-lo mais tarde.`);
           } else {
             alert(`✅ Dados do proprietário da Fração ${targetFracao.fracao_nome} (${propNome.trim()}) gravados com sucesso no Supabase!`);
@@ -2282,18 +2290,20 @@ export function GestaoFracoes({
             </div>
 
             <div className="flex items-center gap-3 pt-2">
-              <button 
-                type="submit" 
-                className="border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 active:scale-95 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-md hover:shadow-lg active:ring-2 active:ring-emerald-400 select-none"
+              <button
+                type="submit"
+                disabled={enviandoConvites}
+                className="border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 active:scale-95 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-md hover:shadow-lg active:ring-2 active:ring-emerald-400 select-none disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <img src="/estados-acoes/12-adicionar.png" alt="Guardar" className="h-4 w-4 object-contain" />
-                <span>{editingOwnerKey ? "Guardar Alterações do Proprietário" : "Guardar Proprietário"}</span>
+                <span>{enviandoConvites ? "A enviar emails (não feche esta janela)..." : editingOwnerKey ? "Guardar Alterações do Proprietário" : "Guardar Proprietário"}</span>
               </button>
 
               <button
                 type="button"
                 onClick={limparFormProprietario}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                disabled={enviandoConvites}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 Limpar Campos / Novo
               </button>
