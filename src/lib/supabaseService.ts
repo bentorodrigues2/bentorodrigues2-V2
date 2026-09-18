@@ -368,7 +368,8 @@ export async function fetchMovimentosFromSupabase(idPredio?: string): Promise<Mo
       estado: row.estado || "Confirmado",
       is_movimento_cego: Boolean(row.is_movimento_cego),
       id_fracao: row.fracao_id,
-      metodo_pagamento: row.forma_pagamento
+      metodo_pagamento: row.forma_pagamento,
+      id_fornecedor: row.id_fornecedor || undefined
     }));
   } catch (err) {
     return null;
@@ -387,7 +388,8 @@ export async function saveMovimentoToSupabase(mov: Movimento): Promise<boolean> 
     descricao: mov.descricao,
     valor: mov.valor,
     fracao_id: mov.id_fracao || null,
-    forma_pagamento: mov.metodo_pagamento || "Transferência"
+    forma_pagamento: mov.metodo_pagamento || "Transferência",
+    id_fornecedor: mov.id_fornecedor || null
   });
 }
 
@@ -939,7 +941,8 @@ export async function saveFornecedorToSupabase(forn: any): Promise<boolean> {
     data_nascimento: forn.data_nascimento || null,
     perfis_pwa: forn.perfis_pwa || null,
     pwa_acesso_enviado: forn.pwa_acesso_enviado || false,
-    pwa_password_provisoria: forn.pwa_password_provisoria || null
+    pwa_password_provisoria: forn.pwa_password_provisoria || null,
+    referencias_contrato: forn.referencias_contrato || null
   });
 }
 
@@ -1420,13 +1423,6 @@ export async function saveCaucaoToSupabase(caucao: Caucao): Promise<boolean> {
 // ============================================================================
 // FORNECEDORES
 // ============================================================================
-// A tabela real "fornecedores" ainda não tem as colunas id_predio,
-// pessoa_contacto, telemovel_direto, email_contacto, data_nascimento,
-// perfis_pwa, pwa_acesso_enviado, pwa_password_provisoria — ver
-// supabase_fornecedores_missing_columns.sql para as adicionar (ALTER TABLE
-// aditivo). Até essa migração ser aplicada, estes campos ficam undefined
-// nos dados lidos e as gravações desses campos são ignoradas pelo Supabase
-// (mas o resto do fornecedor grava-se e lê-se normalmente).
 export async function fetchFornecedoresFromSupabase(idPredio?: string): Promise<Fornecedor[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
@@ -1449,7 +1445,8 @@ export async function fetchFornecedoresFromSupabase(idPredio?: string): Promise<
       perfis_pwa: row.perfis_pwa || undefined,
       pwa_acesso_enviado: row.pwa_acesso_enviado || false,
       pwa_password_provisoria: row.pwa_password_provisoria || undefined,
-      foto: row.foto || null
+      foto: row.foto || null,
+      referencias_contrato: row.referencias_contrato || undefined
     }));
   } catch (err) {
     return null;

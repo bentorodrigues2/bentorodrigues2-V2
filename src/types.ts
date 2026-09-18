@@ -99,6 +99,17 @@ export interface RevisaoOrcamento {
   created_at?: string;
 }
 
+// Referência de contrato/cliente com este fornecedor (ex: "Número da ADC" de
+// um débito direto de eletricidade/água/gás) — necessário para cruzar
+// automaticamente movimentos bancários com o fornecedor certo quando o IBAN
+// do credor é partilhado por milhares de clientes (ex: todos os clientes da
+// mesma utility têm o mesmo IBAN de cobrança, só a referência/ADC identifica
+// o contrato específico deste condomínio).
+export interface ReferenciaContratoFornecedor {
+  referencia: string;
+  descricao?: string;
+}
+
 export interface Fornecedor {
   id_fornecedor: string;
   id_predio: string;
@@ -116,6 +127,7 @@ export interface Fornecedor {
   pwa_acesso_enviado?: boolean;
   pwa_password_provisoria?: string;
   foto?: string | null;
+  referencias_contrato?: ReferenciaContratoFornecedor[];
 }
 
 // Dívida/fatura a um fornecedor ainda por pagar — permite lançar um passivo
@@ -224,6 +236,7 @@ export interface Movimento {
   id_fracao?: string;
   metodo_pagamento?: string;
   referencia_recibo?: string;
+  id_fornecedor?: string;
 }
 
 export interface ReuniaoAssinatura {

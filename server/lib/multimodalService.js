@@ -3,17 +3,22 @@ import { supabase } from "./supabaseServer.js";
 import { sanitizarSegmentoStorage, sanitizarNomeFicheiro } from "./storageUtils.js";
 
 const PROMPT_EXTRACAO = `
-Analisa o(s) documento(s) anexo(s) (comprovativos, faturas, recibos, extratos).
+Analisa o(s) documento(s) anexo(s) (comprovativos, faturas, recibos, extratos,
+avisos de débito direto).
 Extrai:
 - entidade (quem emitiu)
 - valor_total (número, sem símbolo de moeda)
 - data_documento (YYYY-MM-DD)
 - referencia (nº fatura, nº recibo, etc.)
-- tipo_documento (um de: "comprovativo", "fatura", "recibo", "extrato")
+- tipo_documento (um de: "comprovativo", "fatura", "recibo", "extrato", "debito_direto")
 - categoria_contabilistica (categoria de despesa/receita mais provável)
 - ordenante_nome (nome de quem ordenou/pagou a transferência — campo "Cliente" ou "Ordenante", só em comprovativos de transferência bancária; null se não aplicável)
 - ordenante_iban (IBAN de quem ordenou/pagou, do campo "Dados do Ordenante"/"IBAN" — remove espaços; null se não aplicável)
 - descritivo_transferencia (o texto exato do campo "Descritivo"/"Descritivo para a conta destino"/referência que o ordenante escreveu na transferência — costuma identificar a fração, ex: "1esq"; null se não aplicável)
+- entidade_credora (nome da entidade credora/beneficiária, campo "Entidade credora" — só em avisos de débito direto; null se não aplicável)
+- iban_credor (IBAN da entidade credora, remove espaços — só em avisos de débito direto; null se não aplicável)
+- referencia_credor (o campo "Referência do credor" tal como aparece; null se não aplicável)
+- numero_adc (o campo "Número da ADC" — identifica o contrato/cliente específico deste débito direto, é o dado mais fiável para saber a que fornecedor/contrato pertence, já que o IBAN do credor costuma ser partilhado por todos os clientes dessa entidade; null se não aplicável)
 Responde em JSON estrito, sem texto à volta.
 `.trim();
 
@@ -59,12 +64,15 @@ movimento devolve:
 - valor (número positivo, sem símbolo de moeda, sem sinal negativo)
 - tipo ("Receita" se for uma entrada/crédito na conta, "Despesa" se for uma saída/débito)
 - categoria (a categoria de despesa/receita mais provável a partir da descrição, ex: "Manutenção", "Limpeza", "Quotas", "Seguros", "Eletricidade", "Água", "Honorários", "Outro")
+- entidade_credora (nome da entidade credora/beneficiária de uma despesa/débito direto, se identificável separadamente da descrição; null se não aplicável)
+- iban_credor (IBAN da entidade credora, remove espaços, só se o documento o mostrar explicitamente — ex: avisos de débito direto; null se não aplicável)
+- numero_adc (o "Número da ADC"/referência de contrato que identifica este cliente específico junto da entidade credora, ex: em débitos diretos de eletricidade/água/gás — é mais fiável que o IBAN para saber a que fornecedor/contrato pertence, já que o IBAN de uma utility é partilhado por todos os clientes; null se não aplicável)
 
 Ignora linhas que sejam só cabeçalhos, saldos de abertura/fecho ou totais —
 extrai apenas movimentos individuais reais.
 
 Responde em JSON estrito, sem texto à volta, no formato:
-{ "movimentos": [ { "data": "AAAA-MM-DD", "descricao": "...", "valor": 0.00, "tipo": "Receita", "categoria": "..." } ] }
+{ "movimentos": [ { "data": "AAAA-MM-DD", "descricao": "...", "valor": 0.00, "tipo": "Receita", "categoria": "...", "entidade_credora": null, "iban_credor": null, "numero_adc": null } ] }
 `.trim();
 
 /**

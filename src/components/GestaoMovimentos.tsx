@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso } from "../types";
+import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso, Fornecedor } from "../types";
 import { formatDatePT } from "../utils";
 import { saveMovimentoToSupabase, saveContaToSupabase, saveAvisosToSupabase, registarLogAuditoria } from "../lib/supabaseService";
+import { cruzarMovimentoComFornecedor } from "../lib/fornecedorMatching";
 import { Save, CheckCircle2 } from "lucide-react";
 
 interface GestaoMovimentosProps {
@@ -12,6 +13,7 @@ interface GestaoMovimentosProps {
   fracoes?: Fracao[];
   avisos?: Aviso[];
   setAvisos?: React.Dispatch<React.SetStateAction<Aviso[]>>;
+  fornecedores?: Fornecedor[];
   loggedUser: LoggedUser;
 }
 
@@ -31,7 +33,7 @@ interface SimulatedEmail {
   imported: boolean;
 }
 
-export function GestaoMovimentos({ predio, contas, movements, setMovements, fracoes = [], avisos = [], setAvisos, loggedUser }: GestaoMovimentosProps) {
+export function GestaoMovimentos({ predio, contas, movements, setMovements, fracoes = [], avisos = [], setAvisos, fornecedores = [], loggedUser }: GestaoMovimentosProps) {
   // Lançamento Manual / Movimento Cego Form States
   const [contaId, setContaId] = useState("");
   const [valor, setValor] = useState("");
@@ -72,10 +74,14 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     }
   }, [predio.id_predio, contas]);
 
-  // Extrator de Extratos States
-  const [statementText, setStatementText] = useState("");
+  // Extrator de Extratos States — lê ficheiros reais (PDF/foto/Excel/CSV/TXT)
+  // com o mesmo motor de IA já usado no Assistente de Arranque, em vez do
+  // simulador anterior (setTimeout com dados inventados por palavra-chave).
+  const [extratoFicheiros, setExtratoFicheiros] = useState<File[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedItems, setExtractedItems] = useState<any[]>([]);
+  const [erroExtrato, setErroExtrato] = useState<string | null>(null);
+  const extratoFileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Caixa de Entrada IA (Gmail) States - Base limpa sem dados de simulação
   const [emails, setEmails] = useState<SimulatedEmail[]>([]);
@@ -399,105 +405,105 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     alert(`Fatura de ${email.extractedData.fornecedor} validada pelo utilizador e lançada como Despesa!`);
   };
 
-  // Extrair transações com IA do Extrato de Texto
-  const extrairExtratoIA = () => {
-    if (!statementText.trim()) {
-      alert("Introduza o texto do extrato ou selecione um exemplo.");
-      return;
-    }
-
-    setIsExtracting(true);
-
-    // Simulated parsing of statement items powered by NLP / Gemini heuristics
-    setTimeout(() => {
-      const textLower = statementText.toLowerCase();
-      const detected: any[] = [];
-
-      // Look for quotas payment patterns
-      if (textLower.includes("quota") || textLower.includes("fracao") || textLower.includes("fraçao") || textLower.includes("transferencia") || textLower.includes("trf")) {
-        // Let's create smart candidates
-        if (textLower.includes("ana") || textLower.includes("silva") || textLower.includes("1a")) {
-          detected.push({
-            data: "2026-07-10",
-            descricao: "TRF ANA SILVA QUOTA JULHO FRAC-1",
-            valor: 55.00,
-            tipo: "Receita",
-            categoria: "Quotas",
-            identificacao: "Pagamento de Quota Fracção 1º Esquerdo (Ana Silva)"
-          });
-        }
-        if (textLower.includes("bento") || textLower.includes("bruno") || textLower.includes("2b")) {
-          detected.push({
-            data: "2026-07-12",
-            descricao: "QUOTA BRUNO BENTO FRAC-2",
-            valor: 45.00,
-            tipo: "Receita",
-            categoria: "Quotas",
-            identificacao: "Pagamento de Quota Fracção 2º Direito (Bruno Bento)"
-          });
-        }
-      }
-
-      // Look for suppliers invoice patterns
-      if (textLower.includes("edp") || textLower.includes("luz") || textLower.includes("eletricidade")) {
-        detected.push({
-          data: "2026-07-08",
-          descricao: "DEB.DIRECTO EDP COMERCIAL",
-          valor: 92.30,
-          tipo: "Despesa",
-          categoria: "Eletricidade",
-          identificacao: "Fatura EDP Escadas Comuns"
-        });
-      }
-
-      if (textLower.includes("otis") || textLower.includes("elevador")) {
-        detected.push({
-          data: "2026-07-09",
-          descricao: "PAG.SERVICO OTIS ELEVADORES",
-          valor: 185.00,
-          tipo: "Despesa",
-          categoria: "Manutenção",
-          identificacao: "Fatura Mensal de Assistência OTIS"
-        });
-      }
-
-      if (textLower.includes("limpeza") || textLower.includes("brilho")) {
-        detected.push({
-          data: "2026-07-11",
-          descricao: "CHQ 882012 LIMPEZAS BRILHO",
-          valor: 120.00,
-          tipo: "Despesa",
-          categoria: "Limpezas",
-          identificacao: "Serviço Limpeza Comum"
-        });
-      }
-
-      // If nothing detected, make up an illustrative mixed set
-      if (detected.length === 0) {
-        detected.push({
-          data: "2026-07-14",
-          descricao: "TRF SEBASTIAO COSTA QUOTA FRAC-3",
-          valor: 60.00,
-          tipo: "Receita",
-          categoria: "Quotas",
-          identificacao: "Pagamento de Quota Fracção 3º Esquerdo (Sebastião Costa)"
-        });
-        detected.push({
-          data: "2026-07-13",
-          descricao: "EPAL CONSUMO AGUA CONDOMINIO",
-          valor: 42.15,
-          tipo: "Despesa",
-          categoria: "Água",
-          identificacao: "Fatura Água Comum (EPAL)"
-        });
-      }
-
-      setExtractedItems(detected);
-      setIsExtracting(false);
-    }, 1200);
+  const lerFicheiroComoBase64Movimentos = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   };
 
-  const lancarItemExtraido = (item: any, selectedContaId: string) => {
+  const lerFicheiroComoTextoMovimentos = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
+  };
+
+  const lerFicheiroExcelComoTextoMovimentos = async (file: File): Promise<string> => {
+    const XLSX = await import("xlsx");
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "array" });
+    return workbook.SheetNames.map((nomeFolha) => {
+      const folha = workbook.Sheets[nomeFolha];
+      return `--- Folha: ${nomeFolha} ---\n${XLSX.utils.sheet_to_csv(folha)}`;
+    }).join("\n\n");
+  };
+
+  // Extrai transações reais com IA (PDF/foto/Excel/CSV/TXT) — antes disto
+  // era uma simulação por palavras-chave com dados inventados (Ana Silva,
+  // EDP, OTIS...), sem ligação nenhuma a IA real nem aos fornecedores
+  // registados. Cada movimento extraído tenta agora cruzar-se sozinho com
+  // um fornecedor já registado (por IBAN, referência de contrato/ADC ou
+  // nome), para não teres de transcrever nem associar tudo à mão.
+  const extrairExtratoIA = async () => {
+    if (extratoFicheiros.length === 0) {
+      setErroExtrato("Anexe pelo menos um ficheiro (PDF, foto, Excel, CSV ou TXT).");
+      return;
+    }
+    setIsExtracting(true);
+    setErroExtrato(null);
+    try {
+      const anexos: { base64: string; mimeType: string }[] = [];
+      const textosExtrato: string[] = [];
+
+      for (const file of extratoFicheiros) {
+        const nomeExt = file.name.toLowerCase();
+        if (nomeExt.endsWith(".xlsx") || nomeExt.endsWith(".xls")) {
+          textosExtrato.push(await lerFicheiroExcelComoTextoMovimentos(file));
+        } else if (nomeExt.endsWith(".csv") || nomeExt.endsWith(".txt") || file.type === "text/csv" || file.type === "text/plain") {
+          textosExtrato.push(await lerFicheiroComoTextoMovimentos(file));
+        } else {
+          anexos.push({ base64: await lerFicheiroComoBase64Movimentos(file), mimeType: file.type || "application/pdf" });
+        }
+      }
+
+      const resp = await fetch("/api/ai?acao=extrair-movimentos-historicos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          anexos,
+          textoExtrato: textosExtrato.length > 0 ? textosExtrato.join("\n\n") : undefined
+        })
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) throw new Error(data?.error || "Não foi possível analisar o(s) ficheiro(s).");
+
+      const predioFornecedores = fornecedores.filter(f => f.id_predio === predio.id_predio);
+      const comCruzamento = (data.movimentos || []).map((m: any) => {
+        const resultado = cruzarMovimentoComFornecedor(predioFornecedores, {
+          iban_credor: m.iban_credor,
+          numero_adc: m.numero_adc,
+          entidade_credora: m.entidade_credora,
+          descricao: m.descricao
+        });
+        return {
+          data: m.data,
+          descricao: m.descricao,
+          valor: Math.abs(Number(m.valor) || 0),
+          tipo: String(m.tipo || "").toLowerCase().startsWith("rec") ? "Receita" : "Despesa",
+          categoria: m.categoria || "Outro",
+          id_fornecedor: resultado?.fornecedor.id_fornecedor,
+          fornecedor_nome_sugerido: resultado?.fornecedor.nome,
+          metodo_cruzamento: resultado?.metodo
+        };
+      });
+
+      if (comCruzamento.length === 0) {
+        setErroExtrato("Não foram identificados movimentos neste ficheiro.");
+      }
+      setExtractedItems(comCruzamento);
+    } catch (err: any) {
+      setErroExtrato(err?.message || "Erro ao analisar o(s) ficheiro(s).");
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  const lancarItemExtraido = (item: any, selectedContaId: string, fornecedorIdOverride?: string) => {
     if (!selectedContaId) {
       alert("Escolha a conta bancária para receber ou pagar este movimento!");
       return;
@@ -514,7 +520,8 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       categoria: item.categoria,
       fotos: [],
       estado: "Justificado",
-      is_movimento_cego: false
+      is_movimento_cego: false,
+      id_fornecedor: fornecedorIdOverride || item.id_fornecedor || undefined
     };
 
     const contaAlvo = contas.find(c => c.id_conta === selectedContaId);
@@ -946,26 +953,33 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
             <span>Assistente de Extração Inteligente de Extratos / Faturas</span>
           </h3>
           <div className="flex items-center space-x-1">
-            <span className="text-[10px] font-bold bg-violet-100 text-violet-800 px-2 py-0.5 rounded uppercase font-mono-custom">Powered by Gemini 3.5</span>
+            <span className="text-[10px] font-bold bg-violet-100 text-violet-800 px-2 py-0.5 rounded uppercase font-mono-custom">Powered by Gemini</span>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-600 block">Texto do Extrato / Anexo a Analisar</label>
-              <span className="text-[10px] text-slate-400 font-mono">Formatos: PDF, TXT ou CSV bancário</span>
+              <label className="text-xs font-bold text-slate-600 block">Ficheiro(s) do Extrato / Aviso a Analisar</label>
+              <span className="text-[10px] text-slate-400 font-mono">PDF, foto, Excel, CSV ou TXT</span>
             </div>
-            
-            <textarea 
-              value={statementText}
-              onChange={e => setStatementText(e.target.value)}
-              placeholder="Cole aqui o extrato bancário PDF copiado (com as transferências de quotas dos condóminos ou débitos de fornecedores)..."
-              rows={6}
-              className="w-full border border-slate-200 p-3 text-xs rounded-lg focus:outline-violet-500 font-mono-custom"
-            />
 
-            <button 
+            <input
+              ref={extratoFileInputRef}
+              type="file"
+              multiple
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.csv,.txt,.xlsx,.xls"
+              onChange={e => setExtratoFicheiros(Array.from(e.target.files || []))}
+              className="w-full text-xs file:mr-2 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-violet-600 file:text-white file:font-bold file:cursor-pointer file:text-xs cursor-pointer text-slate-700 border border-slate-200 rounded-lg p-2"
+            />
+            {extratoFicheiros.length > 0 && (
+              <span className="text-[10px] text-violet-600 block">{extratoFicheiros.length} ficheiro(s) selecionado(s)</span>
+            )}
+            {erroExtrato && (
+              <p className="text-[10px] text-red-600 font-bold flex items-center gap-1"><i className="fa-solid fa-triangle-exclamation"></i> {erroExtrato}</p>
+            )}
+
+            <button
               onClick={extrairExtratoIA}
               disabled={isExtracting}
               className="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
@@ -973,12 +987,12 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
               {isExtracting ? (
                 <>
                   <i className="fa-solid fa-spinner animate-spin"></i>
-                  <span>A extrair parcelas e associar faturas...</span>
+                  <span>A extrair movimentos e cruzar com fornecedores...</span>
                 </>
               ) : (
                 <>
                   <i className="fa-solid fa-wand-magic-sparkles"></i>
-                  <span>Extrair Parcelas e Reconhecer Movimentos</span>
+                  <span>Extrair Movimentos e Cruzar Fornecedores</span>
                 </>
               )}
             </button>
@@ -990,12 +1004,12 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                 <i className="fa-solid fa-list-check text-slate-500"></i>
                 <span>Movimentos Detetados pela IA</span>
               </h4>
-              <p className="text-[11px] text-slate-500 mb-3">Reconhecemos faturas de fornecedores e pagamentos de quotas de condóminos. Valide os dados abaixo antes de lançar:</p>
+              <p className="text-[11px] text-slate-500 mb-3">Cada movimento tenta cruzar-se sozinho com um fornecedor já registado (IBAN, referência de contrato/ADC ou nome). Valide antes de lançar:</p>
 
-              <div className="space-y-2 overflow-y-auto max-h-[190px] pr-1">
+              <div className="space-y-2 overflow-y-auto max-h-[280px] pr-1">
                 {extractedItems.length === 0 ? (
                   <div className="text-center py-8 text-slate-400 text-xs font-medium">
-                    Nenhuma parcela ou transação extraída pendente. Use o editor à esquerda.
+                    Nenhuma parcela ou transação extraída pendente. Anexe um ficheiro à esquerda.
                   </div>
                 ) : (
                   extractedItems.map((item, index) => (
@@ -1003,20 +1017,36 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                       <div className="flex justify-between items-center">
                         <span className="font-mono-custom text-[10px] text-slate-500">{item.data}</span>
                         <span className={`text-[10px] font-bold px-1.5 rounded ${item.tipo === "Receita" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>
-                          {item.tipo === "Receita" ? "Quota Recebida" : "Fatura Fornecedor"}
+                          {item.tipo === "Receita" ? "Receita" : "Despesa"}
                         </span>
                       </div>
                       <div>
                         <p className="font-semibold text-slate-800">{item.descricao}</p>
-                        <p className="text-[10px] text-violet-700 font-bold flex items-center mt-1">
-                          <i className="fa-solid fa-lightbulb mr-1"></i>
-                          <span>{item.identificacao}</span>
-                        </p>
+                        {item.id_fornecedor ? (
+                          <p className="text-[10px] text-emerald-700 font-bold flex items-center mt-1">
+                            <i className="fa-solid fa-circle-check mr-1"></i>
+                            <span>Fornecedor identificado: {item.fornecedor_nome_sugerido} ({item.metodo_cruzamento === "iban" ? "por IBAN" : item.metodo_cruzamento === "referencia_contrato" ? "por referência de contrato" : "por nome"})</span>
+                          </p>
+                        ) : (
+                          <div className="mt-1.5">
+                            <label className="text-[9px] font-bold text-amber-600 uppercase block mb-0.5">Sem correspondência — associar fornecedor (opcional)</label>
+                            <select
+                              id={`extract-forn-select-${index}`}
+                              className="bg-amber-50 border border-amber-200 text-[10px] rounded px-1.5 py-1 focus:outline-none focus:border-violet-500 w-full"
+                              defaultValue=""
+                            >
+                              <option value="">— Sem fornecedor associado —</option>
+                              {fornecedores.filter(f => f.id_predio === predio.id_predio).map(f => (
+                                <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
                       <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                         <span className="font-bold text-slate-800 font-mono-custom text-sm">{item.tipo === "Receita" ? "+" : "-"}{item.valor.toFixed(2)}€</span>
                         <div className="flex items-center space-x-1">
-                          <select 
+                          <select
                             id={`extract-cta-select-${index}`}
                             className="bg-slate-50 border text-[10px] rounded px-1.5 py-0.5 focus:outline-none focus:border-violet-500"
                           >
@@ -1025,10 +1055,11 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                               <option key={c.id_conta} value={c.id_conta}>{c.banco} ({c.tipo.split(" ")[0]})</option>
                             ))}
                           </select>
-                          <button 
+                          <button
                             onClick={() => {
                               const sel = document.getElementById(`extract-cta-select-${index}`) as HTMLSelectElement;
-                              lancarItemExtraido(item, sel?.value);
+                              const fornSel = document.getElementById(`extract-forn-select-${index}`) as HTMLSelectElement | null;
+                              lancarItemExtraido(item, sel?.value, fornSel?.value || undefined);
                             }}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white p-1 rounded transition-colors cursor-pointer"
                             title="Lançar Movimento Validado"

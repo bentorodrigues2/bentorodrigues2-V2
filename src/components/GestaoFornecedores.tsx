@@ -79,6 +79,20 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
   const [perfisPwa, setPerfisPwa] = useState<("LIMPEZAS" | "TECNICO" | "JURIDICO" | "AUDITOR" | "CONTABILISTA")[]>([]);
   const [editingFornecedorId, setEditingFornecedorId] = useState<string | null>(null);
 
+  // Referências de contrato/ADC (débito direto) — o dado que realmente
+  // identifica ESTE contrato com o fornecedor, já que o IBAN do credor em
+  // utilities (eletricidade, água, gás) é partilhado por todos os clientes.
+  const [referenciasContrato, setReferenciasContrato] = useState<{ referencia: string; descricao?: string }[]>([]);
+  const [novaReferenciaValor, setNovaReferenciaValor] = useState("");
+  const [novaReferenciaDescricao, setNovaReferenciaDescricao] = useState("");
+
+  const handleAdicionarReferenciaContrato = () => {
+    if (!novaReferenciaValor.trim()) return;
+    setReferenciasContrato(prev => [...prev, { referencia: novaReferenciaValor.trim(), descricao: novaReferenciaDescricao.trim() || undefined }]);
+    setNovaReferenciaValor("");
+    setNovaReferenciaDescricao("");
+  };
+
   const handleEditarFornecedor = (f: Fornecedor) => {
     setEditingFornecedorId(f.id_fornecedor);
     setNome(f.nome);
@@ -92,12 +106,14 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     setEmailContacto(f.email_contacto || "");
     setDataNascimento(f.data_nascimento || "");
     setPerfisPwa(f.perfis_pwa || []);
+    setReferenciasContrato(f.referencias_contrato || []);
     document.getElementById("btn-guardar-fornecedor-supabase")?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   const handleCancelarEdicaoFornecedor = () => {
     setEditingFornecedorId(null);
     setNome(""); setNif(""); setIban(""); setCategoria(""); setMorada(""); setContacto(""); setPessoaContacto(""); setTelemovelDireto(""); setEmailContacto(""); setDataNascimento(""); setPerfisPwa([]);
+    setReferenciasContrato([]); setNovaReferenciaValor(""); setNovaReferenciaDescricao("");
   };
 
   const handleEliminarFornecedor = async (f: Fornecedor) => {
@@ -351,7 +367,8 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       perfis_pwa: perfisPwa.length > 0 ? perfisPwa : undefined,
       // Ao editar, mantém o que já lá estava — não se reenvia o acesso PWA
       // só porque se corrigiu, por exemplo, um número de telefone.
-      pwa_acesso_enviado: isEditing ? (fornecedorOriginal?.pwa_acesso_enviado ?? perfisPwa.length > 0) : perfisPwa.length > 0
+      pwa_acesso_enviado: isEditing ? (fornecedorOriginal?.pwa_acesso_enviado ?? perfisPwa.length > 0) : perfisPwa.length > 0,
+      referencias_contrato: referenciasContrato.length > 0 ? referenciasContrato : undefined
     };
     onAddFornecedor(novo);
     const okSave = await saveFornecedorToSupabase(novo);
@@ -391,7 +408,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       }
     }
 
-    setNome(""); setNif(""); setIban(""); setCategoria(""); setMorada(""); setContacto(""); setPessoaContacto(""); setTelemovelDireto(""); setEmailContacto(""); setDataNascimento(""); setPerfisPwa([]);
+    setNome(""); setNif(""); setIban(""); setCategoria(""); setMorada(""); setContacto(""); setPessoaContacto(""); setTelemovelDireto(""); setEmailContacto(""); setDataNascimento(""); setPerfisPwa([]); setReferenciasContrato([]);
     alert("Fornecedor registado com sucesso!");
   };
 
@@ -556,6 +573,64 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-slate-500 mb-1">Morada de Operações / Sede</label>
                   <input type="text" value={morada} onChange={e => setMorada(e.target.value)} placeholder="Morada física do fornecedor" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+                </div>
+              </div>
+
+              {/* Referências de Contrato / ADC — usadas para cruzar
+                  automaticamente débitos diretos (eletricidade, água, gás)
+                  com este fornecedor, já que o IBAN de credor de uma utility
+                  é o mesmo para todos os clientes. */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wide text-slate-700 flex items-center gap-2">
+                    <i className="fa-solid fa-link text-emerald-600"></i>
+                    Referências de Contrato / ADC (Débito Direto)
+                  </label>
+                  <span className="text-[10px] text-slate-400 max-w-xs text-right">Ex: "Número da ADC" de eletricidade/água/gás — identifica o contrato certo mesmo quando o IBAN do credor é partilhado por todos os clientes da mesma entidade.</span>
+                </div>
+
+                {referenciasContrato.length > 0 && (
+                  <div className="space-y-1.5">
+                    {referenciasContrato.map((rc, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+                        <div>
+                          <span className="font-mono font-bold text-slate-700">{rc.referencia}</span>
+                          {rc.descricao && <span className="text-slate-400 ml-2">— {rc.descricao}</span>}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setReferenciasContrato(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-slate-400 hover:text-red-500 cursor-pointer"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    value={novaReferenciaValor}
+                    onChange={e => setNovaReferenciaValor(e.target.value)}
+                    placeholder="Ex: 219702983000"
+                    className="border border-slate-200 px-2.5 py-1.5 text-xs rounded-lg focus:outline-emerald-500 font-mono flex-1"
+                  />
+                  <input
+                    type="text"
+                    value={novaReferenciaDescricao}
+                    onChange={e => setNovaReferenciaDescricao(e.target.value)}
+                    placeholder="Descrição (opcional, ex: Eletricidade partes comuns)"
+                    className="border border-slate-200 px-2.5 py-1.5 text-xs rounded-lg focus:outline-emerald-500 flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAdicionarReferenciaContrato}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0"
+                  >
+                    Adicionar
+                  </button>
                 </div>
               </div>
 

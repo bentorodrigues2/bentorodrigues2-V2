@@ -2610,14 +2610,15 @@ export default function App() {
           )}
 
           {activeSection === "movimentos" && (
-            <GestaoMovimentos 
-              predio={predioAtivo} 
-              contas={contas} 
-              movements={movements} 
+            <GestaoMovimentos
+              predio={predioAtivo}
+              contas={contas}
+              movements={movements}
               setMovements={setMovements}
               fracoes={fracoes}
               avisos={avisos}
               setAvisos={setAvisos}
+              fornecedores={fornecedores}
               loggedUser={loggedUser}
             />
           )}
