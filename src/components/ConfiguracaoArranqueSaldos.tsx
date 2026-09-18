@@ -435,7 +435,7 @@ export function ConfiguracaoArranqueSaldos({
                 Passo 1: Data de Início & Saldos Iniciais das Contas
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Configure todas as contas bancárias (Conta à Ordem, Fundo de Reserva, Contas específicas de Intervenção/Obras e Caixa). Pode adicionar tantas contas quantas as existentes no condomínio.
+                Configure todas as contas bancárias (Conta à Ordem, Fundo de Reserva / Depósito a Prazo e Contas específicas de Intervenção/Obras). Pode adicionar tantas contas quantas as existentes no condomínio.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -470,7 +470,9 @@ export function ConfiguracaoArranqueSaldos({
             </div>
           </div>
 
-          {/* CONTADORES DE SALDOS ADAPTATIVOS */}
+          {/* CONTADORES DE SALDOS ADAPTATIVOS — Intervenções & Caixa só aparecem
+              se houver mesmo contas desse tipo (hoje em dia raramente há caixa
+              de numerário, é tudo eletrónico) */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
               <span className="text-[10px] font-bold text-slate-400 uppercase block">Total Bancos & Caixa</span>
@@ -496,21 +498,25 @@ export function ConfiguracaoArranqueSaldos({
               <span className="text-[9.5px] text-slate-500 mt-0.5 block">FCR legal (Art. 4º)</span>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40">
-              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase block">Intervenções & Obras</span>
-              <span className="text-base font-black text-amber-700 dark:text-amber-300 font-mono mt-0.5 block">
-                {totalIntervencoes.toFixed(2)} €
-              </span>
-              <span className="text-[9.5px] text-slate-500 mt-0.5 block">Contas de intervenção</span>
-            </div>
+            {contasArranque.some(c => c.categoriaConta === "INTERVENCOES") && (
+              <div className="p-3.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40">
+                <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase block">Intervenções & Obras</span>
+                <span className="text-base font-black text-amber-700 dark:text-amber-300 font-mono mt-0.5 block">
+                  {totalIntervencoes.toFixed(2)} €
+                </span>
+                <span className="text-[9.5px] text-slate-500 mt-0.5 block">Contas de intervenção</span>
+              </div>
+            )}
 
-            <div className="p-3.5 rounded-xl bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block">Caixa de Numerário</span>
-              <span className="text-base font-black text-slate-700 dark:text-slate-200 font-mono mt-0.5 block">
-                {totalCaixa.toFixed(2)} €
-              </span>
-              <span className="text-[9.5px] text-slate-500 mt-0.5 block">Dinheiro físico</span>
-            </div>
+            {contasArranque.some(c => c.categoriaConta === "CAIXA") && (
+              <div className="p-3.5 rounded-xl bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block">Caixa de Numerário</span>
+                <span className="text-base font-black text-slate-700 dark:text-slate-200 font-mono mt-0.5 block">
+                  {totalCaixa.toFixed(2)} €
+                </span>
+                <span className="text-[9.5px] text-slate-500 mt-0.5 block">Dinheiro físico</span>
+              </div>
+            )}
           </div>
 
           {/* LISTA EDITÁVEL DE TODAS AS CONTAS DO CONDOMÍNIO */}
@@ -521,7 +527,16 @@ export function ConfiguracaoArranqueSaldos({
                 Discriminação de Contas Bancárias & de Intervenção
               </h3>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => handleAddNovaConta("POUPANCA")}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700/50 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>+ Depósito a Prazo / Fundo de Reserva</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => handleAddNovaConta("INTERVENCOES")}
@@ -534,10 +549,10 @@ export function ConfiguracaoArranqueSaldos({
                 <button
                   type="button"
                   onClick={() => handleAddNovaConta("ORDEM")}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700/50 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 border border-indigo-300 dark:border-indigo-700/50 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  <span>+ Outra Conta Bancária</span>
+                  <span>+ Outra Conta à Ordem</span>
                 </button>
               </div>
             </div>
