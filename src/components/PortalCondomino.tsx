@@ -18,14 +18,11 @@ import {
   FileCheck,
   FileSpreadsheet,
   AlertTriangle,
-  Cake,
-  Mail,
-  Upload,
-  Download
+  Upload
 } from "lucide-react";
 import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondagem, Questionario } from "../types";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
-import { generateCondominoPwaManualPDF, gerarCartaoAniversarioCondominoPDF } from "../utils";
+import { generateCondominoPwaManualPDF } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { playVoiceNoteSimulation } from "../lib/soundService";
 import { supabase } from "../lib/supabaseClient";
@@ -148,7 +145,6 @@ export function PortalCondomino({
     "frac-1": "Cnd-X3y9B",
     "frac-2": "Cnd-W1z7A",
   });
-  const [pwaSentMsg, setPwaSentMsg] = useState(false);
   const [recoveryEmail, setRecoveryEmail] = useState("");
   const [recoveryStatus, setRecoveryStatus] = useState("");
   const [biometricsActive, setBiometricsActive] = useState(false);
@@ -203,7 +199,6 @@ export function PortalCondomino({
   const [adminReplyTexts, setAdminReplyTexts] = useState<{ [msgId: string]: string }>({});
 
   // Birthday modal
-  const [birthdayModalOpen, setBirthdayModalOpen] = useState(false);
   const [welcomeMailModal, setWelcomeMailModal] = useState<{ fracao: Fracao; pass: string } | null>(null);
 
   // Refs
@@ -419,13 +414,24 @@ export function PortalCondomino({
 
   // Send PWA Link Simulator
   const handleSendPwaLink = () => {
-    setPwaSentMsg(true);
-    setTimeout(() => setPwaSentMsg(false), 5000);
-  };
-
-  // Birthday simulation
-  const simulateBirthdayEmail = () => {
-    setBirthdayModalOpen(true);
+    if (!loggedUser.email) {
+      alert("Sem email registado para enviar o link.");
+      return;
+    }
+    triggerSendReaction("email", "A enviar o link da PWA...", async () => {
+      const resp = await fetch("/api/email?acao=notificar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: loggedUser.email,
+          nomeDestinatario: loggedUser.nome,
+          assunto: `Aceda à sua Área Reservada — ${predio.nome || "CondoManager AI"}`,
+          mensagem: `Aqui tem o link direto para aceder à sua área reservada do condómino:<br><br><a href="https://bentorodrigues2.condomanagerai.com" style="display:inline-block;background-color:#0f766e;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Aceder à Área do Condómino</a><br><br>Para instalar a aplicação (PWA) no telemóvel: abra este link no browser, toque no menu de partilha/opções e selecione "Adicionar ao ecrã principal".`
+        })
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.email_enviado) throw new Error(data?.error || "Falha ao enviar o email");
+    });
   };
 
   // Timer effect for voice recording
@@ -998,23 +1004,9 @@ export function PortalCondomino({
           >
             <i className="fa-solid fa-share-nodes mr-1.5"></i> Enviar link da PWA
           </button>
-          <button
-            onClick={simulateBirthdayEmail}
-            className="bg-purple-50 border border-purple-200 text-purple-700 font-semibold px-3 py-1.5 rounded-lg text-xs hover:bg-purple-100 transition-all cursor-pointer"
-          >
-            <i className="fa-solid fa-cake-candles mr-1.5"></i> Simular Aniversário
-          </button>
         </div>
       </div>
 
-      {pwaSentMsg && (
-        <div className="bg-emerald-50 border-l-4 border-emerald-500 p-3 rounded-lg text-emerald-800 text-xs font-medium animate-fade-in flex items-center shadow-sm">
-          <i className="fa-solid fa-check-circle mr-2 text-emerald-500 text-sm"></i>
-          <span>
-            PWA link de instalação enviado com sucesso! O condómino recebeu instruções via SMS e E-mail de download direto.
-          </span>
-        </div>
-      )}
 
       {/* --- PORTAL DO CONDÓMINO (PWA SCREEN) --- */}
       {activeTab === "portal" && (
@@ -2312,140 +2304,6 @@ export function PortalCondomino({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* --- BIRTHDAY SIMULATION EMAIL DIALOG --- */}
-      {/* --- BIRTHDAY EMAIL SIMULATION DIALOG --- */}
-      {birthdayModalOpen && (
-        <div 
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setBirthdayModalOpen(false);
-          }}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-        >
-          <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden animate-zoom-in border border-purple-200">
-            <div className="bg-purple-950 px-6 py-4 text-white flex justify-between items-center">
-              <div className="flex items-center space-x-2">
-                <i className="fa-solid fa-cake-candles text-purple-400 text-lg"></i>
-                <div>
-                  <h3 className="font-bold text-sm uppercase">Simulador de E-mail de Aniversário</h3>
-                  <p className="text-[10px] text-purple-200">Envio automatizado com base na data de nascimento</p>
-                </div>
-              </div>
-              <button 
-                type="button"
-                onClick={() => setBirthdayModalOpen(false)} 
-                className="flex items-center gap-1 px-2.5 py-1 bg-purple-900/80 hover:bg-red-600 active:scale-95 text-purple-200 hover:text-white rounded-lg text-xs font-bold transition-colors cursor-pointer border border-purple-800"
-                title="Fechar e Sair"
-                aria-label="Fechar"
-              >
-                <X className="h-4 w-4" />
-                <span>Sair</span>
-              </button>
-            </div>
-            <div className="p-6 space-y-4 max-h-[85vh] overflow-y-auto relative">
-              {/* Envelope / Header do E-mail */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1 font-mono text-slate-700">
-                <p><strong>De:</strong> {(predio as any).email_administracao || (predio as any).email || "administracao@estreladabarra.pt"}</p>
-                <p><strong>Para:</strong> {loggedUser.email || "condomino@estreladabarra.pt"}</p>
-                <p><strong>Assunto:</strong> 🎉 Feliz Aniversário, {loggedUser.nome}! - Os votos do seu Condomínio</p>
-                <p className="text-[10px] text-slate-500 font-sans mt-1">
-                  <strong>Anexo:</strong> Cartao_Aniversario_Condomino.pdf (Postal Oficial A5)
-                </p>
-              </div>
-
-              {/* POSTAL OFICIAL DE ANIVERSÁRIO (Conforme Postal Definido) */}
-              <div className="w-full bg-white border-2 border-slate-800 shadow-lg p-2.5 relative">
-                <div className="border border-sky-600 p-6 relative text-center space-y-4 bg-white">
-                  {/* 4 Pontos de Canto Decorativos */}
-                  <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-sky-600 rounded-full"></div>
-                  <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-sky-600 rounded-full"></div>
-                  <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-sky-600 rounded-full"></div>
-                  <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-sky-600 rounded-full"></div>
-
-                  {/* Topo: Nome do Edifício */}
-                  <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-                    {predio.nome ? predio.nome.toUpperCase() : "EDIFÍCIO ESTRELA DA BARRA"}
-                  </h4>
-
-                  {/* Divisória com Ponto Central */}
-                  <div className="relative flex items-center justify-center max-w-xs mx-auto">
-                    <div className="w-full border-t border-sky-600"></div>
-                    <div className="w-2 h-2 bg-sky-600 rounded-full mx-2 shrink-0"></div>
-                    <div className="w-full border-t border-sky-600"></div>
-                  </div>
-
-                  {/* Título Principal */}
-                  <div className="space-y-1">
-                    <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                      FELIZ ANIVERSÁRIO!
-                    </h3>
-                    <p className="text-[11px] text-slate-600">
-                      Hoje é um dia de celebração muito especial para a nossa comunidade
-                    </p>
-                  </div>
-
-                  {/* Caixa de Destinatário */}
-                  <div className="inline-block px-6 py-2 bg-sky-50 border border-sky-600 rounded-lg text-sm font-bold text-slate-900 shadow-xs">
-                    Exmo.(a) Sr.(a) {loggedUser.nome},
-                  </div>
-
-                  {/* Mensagem de Votos e Cordialidade */}
-                  <div className="text-xs text-slate-800 space-y-2 max-w-md mx-auto leading-relaxed">
-                    <p>
-                      A Administração e a equipa do <strong>{predio.nome || "Condomínio Edifício Estrela da Barra"}</strong> têm o enorme gosto de lhe desejar um Feliz Aniversário, com muita saúde, alegria e realizações pessoais junto de quem mais estima.
-                    </p>
-                    <p>
-                      Agradecemos o seu contributo diário para a harmonia e bom convívio no nosso edifício.
-                    </p>
-                  </div>
-
-                  {/* Destaque Parabéns */}
-                  <div className="text-sm font-bold text-sky-600 pt-1">
-                    Parabéns pelo seu dia! 🎂🥂
-                  </div>
-
-                  {/* Badge Selo Decorativo */}
-                  <div className="inline-block px-3 py-1 bg-slate-100 border border-sky-200 rounded text-[9px] font-bold text-sky-600 uppercase tracking-widest">
-                    VOTOS DE FELICIDADES & HARMONIA
-                  </div>
-
-                  {/* Despedida e Assinatura */}
-                  <div className="pt-2 space-y-0.5 text-center">
-                    <p className="text-[11px] text-slate-500">Com as mais calorosas saudações,</p>
-                    <p className="text-xs font-bold text-slate-900">José Carlos Guerra</p>
-                    <p className="text-[11px] text-slate-600">A Administração do {predio.nome || "Edifício Estrela da Barra"}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    gerarCartaoAniversarioCondominoPDF(loggedUser.nome, predio.nome, "José Carlos Guerra");
-                  }}
-                  className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
-                >
-                  <Download className="h-4 w-4 text-sky-400" />
-                  <span>Descarregar Postal PDF (A5)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const targetName = loggedUser.nome;
-                    setBirthdayModalOpen(false);
-                    triggerSendReaction("email", `E-mail de Aniversário enviado para ${targetName}`);
-                  }}
-                  className="flex-1 bg-sky-600 hover:bg-sky-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
-                >
-                  <i className="fa-solid fa-paper-plane"></i>
-                  <span>Confirmar Envio Simulador</span>
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}

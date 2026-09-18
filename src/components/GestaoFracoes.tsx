@@ -3026,15 +3026,6 @@ export function GestaoFracoes({
                           </span>
                         </div>
                       </div>
-
-                      <button
-                        type="button"
-                        onClick={() => setFireInsuranceModalFracao(selectedFracao)}
-                        className="bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-xs px-3.5 py-1.5 rounded-lg shadow-xs transition-all shrink-0 cursor-pointer flex items-center gap-1.5 self-start sm:self-center"
-                      >
-                        <i className="fa-solid fa-paper-plane text-xs"></i>
-                        <span>Notificar Condómino</span>
-                      </button>
                     </div>
                   )}
 
