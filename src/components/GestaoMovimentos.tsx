@@ -222,7 +222,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     const isCego = tipo === "Despesa" && isCegoChecked;
 
     const novo: Movimento = {
-      id_mov: "mov-" + (movements.length + 1),
+      id_mov: "mov-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
       id_predio: predio.id_predio,
       id_conta: contaId,
       data: new Date().toISOString().split('T')[0],
@@ -380,7 +380,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
     // Criar movimento financeiro validado
     const novo: Movimento = {
-      id_mov: "mov-" + (movements.length + 1),
+      id_mov: "mov-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
       id_predio: predio.id_predio,
       id_conta: targetContaId,
       data: new Date().toISOString().split('T')[0],
@@ -518,7 +518,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
     const idFornecedorFinal = fornecedorIdOverride || item.id_fornecedor || undefined;
     const novo: Movimento = {
-      id_mov: "mov-" + (movements.length + 1),
+      id_mov: "mov-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
       id_predio: predio.id_predio,
       id_conta: selectedContaId,
       data: item.data,

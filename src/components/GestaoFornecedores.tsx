@@ -78,6 +78,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
   const [dataNascimento, setDataNascimento] = useState("");
   const [perfisPwa, setPerfisPwa] = useState<("LIMPEZAS" | "TECNICO" | "JURIDICO" | "AUDITOR" | "CONTABILISTA")[]>([]);
   const [editingFornecedorId, setEditingFornecedorId] = useState<string | null>(null);
+  const [expandedFornecedorId, setExpandedFornecedorId] = useState<string | null>(null);
 
   // Referências de contrato/ADC (débito direto) — o dado que realmente
   // identifica ESTE contrato com o fornecedor, já que o IBAN do credor em
@@ -384,7 +385,11 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
 
     const isEditing = editingFornecedorId !== null;
     const fornecedorOriginal = isEditing ? fornecedoresList.find(f => f.id_fornecedor === editingFornecedorId) : null;
-    const idFinal = isEditing && fornecedorOriginal ? fornecedorOriginal.id_fornecedor : "forn-" + (fornecedores.length + 1);
+    // "forn-" + contagem gerava o mesmo id para fornecedores criados em
+    // sucessão rápida (o prop "fornecedores" ainda não tinha atualizado
+    // entre submissões) — o segundo apagava silenciosamente o primeiro no
+    // Supabase, porque a gravação é sempre um upsert pelo id_fornecedor.
+    const idFinal = isEditing && fornecedorOriginal ? fornecedorOriginal.id_fornecedor : "forn-" + Date.now();
     const novo: Fornecedor = {
       id_fornecedor: idFinal,
       id_predio: predio.id_predio,
@@ -734,98 +739,117 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
             </form>
           )}
 
-          {/* Lista de Fornecedores */}
+          {/* Lista de Fornecedores — acordeão em vez de tabela larga, para
+              caber muitos fornecedores sem ficar impossível de percorrer. */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-                  <th className="p-3">Nome / Empresa</th>
-                  <th className="p-3">NIF</th>
-                  <th className="p-3">IBAN de Cobrança</th>
-                  <th className="p-3">Contactos & Morada</th>
-                  <th className="p-3">Categoria & Aniversário</th>
-                  <th className="p-3">Perfis PWA</th>
-                  <th className="p-3 text-right">Ações Automáticas</th>
-                </tr>
-              </thead>
-              <tbody>
-                {predioForn.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="p-4 text-center text-slate-400 italic">Nenhum fornecedor cadastrado.</td>
-                  </tr>
-                ) : (
-                  predioForn.map(f => (
-                    <tr key={f.id_fornecedor} className="border-b border-slate-100 hover:bg-slate-50/50">
-                      <td className="p-3 font-bold text-slate-800">
-                        {f.nome}
-                        {f.data_nascimento && (
-                          <span className="block text-[10px] font-normal text-slate-400 font-mono">
-                            🎂 Nasc: {f.data_nascimento}
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-3 font-mono">{f.nif}</td>
-                      <td className="p-3 font-mono text-slate-600">{f.iban || <span className="text-slate-400 italic">Não Fornecido</span>}</td>
-                      <td className="p-3 text-slate-600 space-y-1">
-                        {f.contacto && <p className="font-mono"><i className="fa-solid fa-phone mr-1.5 text-slate-400"></i><span className="font-semibold text-slate-500">Geral:</span> {f.contacto}</p>}
-                        {f.pessoa_contacto && <p><i className="fa-solid fa-user-tie mr-1.5 text-slate-400"></i><span className="font-semibold text-slate-500">Pessoa:</span> {f.pessoa_contacto}</p>}
-                        {f.email_contacto && <p className="font-mono"><i className="fa-solid fa-envelope mr-1.5 text-slate-400"></i><span className="font-semibold text-slate-500">E-mail:</span> {f.email_contacto}</p>}
-                        {f.telemovel_direto && <p className="font-mono"><i className="fa-solid fa-mobile-screen-button mr-1.5 text-slate-400"></i><span className="font-semibold text-slate-500">Telemóvel Direto:</span> {f.telemovel_direto}</p>}
-                        {f.morada && <p><i className="fa-solid fa-location-dot mr-1.5 text-slate-400"></i>{f.morada}</p>}
-                      </td>
-                      <td className="p-3 text-slate-500 font-semibold">{f.categoria}</td>
-                      <td className="p-3">
-                        {f.perfis_pwa && f.perfis_pwa.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {f.perfis_pwa.map(p => (
-                              <span key={p} className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                {p === "LIMPEZAS" && "🧹 Limpezas"}
-                                {p === "TECNICO" && "🔍 Técnico"}
-                                {p === "JURIDICO" && "⚖️ Jurídico"}
-                                {p === "AUDITOR" && "🕵️ Auditor"}
-                                {p === "CONTABILISTA" && "📈 Contabilista"}
-                              </span>
-                            ))}
+            <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-600">Fornecedores Registados</span>
+              <span className="text-[10px] font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">{predioForn.length}</span>
+            </div>
+            {predioForn.length === 0 ? (
+              <div className="p-6 text-center text-slate-400 italic text-xs">Nenhum fornecedor cadastrado.</div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {predioForn.map(f => {
+                  const isExpanded = expandedFornecedorId === f.id_fornecedor;
+                  return (
+                    <div key={f.id_fornecedor}>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedFornecedorId(isExpanded ? null : f.id_fornecedor)}
+                        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50/70 transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <i className={`fa-solid fa-chevron-right text-slate-400 text-[10px] transition-transform shrink-0 ${isExpanded ? "rotate-90" : ""}`}></i>
+                          <div className="min-w-0">
+                            <span className="font-bold text-slate-800 text-xs block truncate">{f.nome}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">NIF {f.nif || "—"}</span>
                           </div>
-                        ) : (
-                          <span className="text-slate-400 italic text-[10px]">Sem perfil PWA</span>
-                        )}
-                      </td>
-                      <td className="p-3 text-right space-y-1">
-                        <button
-                          onClick={() => handleEditarFornecedor(f)}
-                          className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 w-full text-center"
-                          title="Editar Fornecedor"
-                        >
-                          <Pencil className="h-2.5 w-2.5" />
-                          <span>Editar</span>
-                        </button>
-                        <button
-                          onClick={() => setWelcomeModalFornecedor(f)}
-                          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer block w-full text-center"
-                        >
-                          <i className="fa-solid fa-paper-plane mr-1 text-[8px]"></i> Acessos PWA & Manual
-                        </button>
-                        <button
-                          onClick={() => setBirthdayModalFornecedor(f)}
-                          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer block w-full text-center"
-                        >
-                          <i className="fa-solid fa-cake-candles mr-1 text-[8px]"></i> E-mail Aniversário
-                        </button>
-                        <button
-                          onClick={() => handleEliminarFornecedor(f)}
-                          className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 w-full text-center"
-                          title="Eliminar Fornecedor"
-                        >
-                          <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="h-2.5 w-2.5 object-contain" />
-                          <span>Eliminar</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {f.perfis_pwa && f.perfis_pwa.length > 0 && (
+                            <span className="text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full hidden sm:inline-block">PWA</span>
+                          )}
+                          <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{f.categoria}</span>
+                        </div>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="px-4 pb-4 pt-1 bg-slate-50/40 text-xs space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="space-y-1 text-slate-600">
+                              <p className="font-mono"><span className="font-semibold text-slate-500">IBAN:</span> {f.iban || <span className="text-slate-400 italic">Não fornecido</span>}</p>
+                              {f.contacto && <p className="font-mono"><i className="fa-solid fa-phone mr-1.5 text-slate-400"></i><span className="font-semibold text-slate-500">Geral:</span> {f.contacto}</p>}
+                              {f.pessoa_contacto && <p><i className="fa-solid fa-user-tie mr-1.5 text-slate-400"></i><span className="font-semibold text-slate-500">Pessoa:</span> {f.pessoa_contacto}</p>}
+                              {f.email_contacto && <p className="font-mono"><i className="fa-solid fa-envelope mr-1.5 text-slate-400"></i><span className="font-semibold text-slate-500">E-mail:</span> {f.email_contacto}</p>}
+                              {f.telemovel_direto && <p className="font-mono"><i className="fa-solid fa-mobile-screen-button mr-1.5 text-slate-400"></i><span className="font-semibold text-slate-500">Telemóvel Direto:</span> {f.telemovel_direto}</p>}
+                              {f.morada && <p><i className="fa-solid fa-location-dot mr-1.5 text-slate-400"></i>{f.morada}</p>}
+                              {f.data_nascimento && <p className="font-mono">🎂 Nasc: {f.data_nascimento}</p>}
+                              {f.referencias_contrato && f.referencias_contrato.length > 0 && (
+                                <div className="pt-1">
+                                  <span className="font-semibold text-slate-500 block mb-0.5">Referências de Contrato / ADC:</span>
+                                  {f.referencias_contrato.map((rc, i) => (
+                                    <p key={i} className="font-mono text-[10px]">{rc.referencia}{rc.descricao ? ` — ${rc.descricao}` : ""}</p>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              {f.perfis_pwa && f.perfis_pwa.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {f.perfis_pwa.map(p => (
+                                    <span key={p} className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                      {p === "LIMPEZAS" && "🧹 Limpezas"}
+                                      {p === "TECNICO" && "🔍 Técnico"}
+                                      {p === "JURIDICO" && "⚖️ Jurídico"}
+                                      {p === "AUDITOR" && "🕵️ Auditor"}
+                                      {p === "CONTABILISTA" && "📈 Contabilista"}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 italic text-[10px]">Sem perfil PWA</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-200">
+                            <button
+                              onClick={() => handleEditarFornecedor(f)}
+                              className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                              title="Editar Fornecedor"
+                            >
+                              <Pencil className="h-2.5 w-2.5" />
+                              <span>Editar</span>
+                            </button>
+                            <button
+                              onClick={() => setWelcomeModalFornecedor(f)}
+                              className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                            >
+                              <i className="fa-solid fa-paper-plane text-[8px]"></i> Acessos PWA & Manual
+                            </button>
+                            <button
+                              onClick={() => setBirthdayModalFornecedor(f)}
+                              className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                            >
+                              <i className="fa-solid fa-cake-candles text-[8px]"></i> E-mail Aniversário
+                            </button>
+                            <button
+                              onClick={() => handleEliminarFornecedor(f)}
+                              className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                              title="Eliminar Fornecedor"
+                            >
+                              <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="h-2.5 w-2.5 object-contain" />
+                              <span>Eliminar</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* --- SUPPLIER WELCOME EMAIL & PWA MANUAL MODAL --- */}
