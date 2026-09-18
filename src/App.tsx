@@ -349,7 +349,7 @@ export default function App() {
 
   // Sincronização automática para manter aberto o menu Área Financeira quando uma das suas secções está ativa
   useEffect(() => {
-    if (["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "saldos_iniciais"].includes(activeSection)) {
+    if (["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "saldos_iniciais", "contas", "fundo_reserva"].includes(activeSection)) {
       setOpenMenuFinanceiro(true);
     }
   }, [activeSection]);
@@ -1242,14 +1242,14 @@ export default function App() {
               id="sidebar-item-financeiro"
               onClick={() => {
                 setOpenMenuFinanceiro(!openMenuFinanceiro);
-                if (!["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos"].includes(activeSection)) {
+                if (!["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection)) {
                   setActiveSection("configuracao_arranque");
                 }
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                ["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos"].includes(activeSection) 
+                ["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection) 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
                   : "text-slate-400 hover:text-white hover:bg-slate-800/30"
               }`}
@@ -1263,7 +1263,8 @@ export default function App() {
 
             {openMenuFinanceiro && (
               <div className="pl-6 space-y-1 border-l-2 border-emerald-500/40 ml-3.5 my-1">
-                {/* Sub-menu Arranque & Saldos Iniciais (Na Área Financeira) */}
+                {/* --- CONFIGURAÇÃO --- */}
+                <span className="block px-3 pt-1.5 pb-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500">Configuração</span>
                 {["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role) && (
                   <button
                     id="submenu-financeiro-arranque"
@@ -1274,7 +1275,7 @@ export default function App() {
                     }}
                     className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                       activeSection === "configuracao_arranque" || activeSection === "predios_arranque" || activeSection === "arranque_saldos" || activeSection === "saldos_iniciais"
-                        ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
+                        ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                         : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                     }`}
                   >
@@ -1287,10 +1288,6 @@ export default function App() {
                     </span>
                   </button>
                 )}
-                {/* Sub-menu Orçamento Anual & Emissão — sem isto não havia
-                    NENHUM botão no menu que levasse a activeSection="emissao",
-                    o ecrã onde o orçamento anual é definido (usado depois no
-                    Cálculo de Quotas e na emissão automática do dia 25). */}
                 <button
                   id="submenu-financeiro-emissao"
                   onClick={() => {
@@ -1307,7 +1304,27 @@ export default function App() {
                   <img src="/modulos/62-calculadora.png" alt="Orçamento Anual" className="w-4 h-4 object-contain shrink-0" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
                   <span>Orçamento Anual & Emissão</span>
                 </button>
-                {/* Sub-menu Cálculo de Quotas */}
+                {/* Antes sem nenhum botão em lado nenhum que lá levasse —
+                    GestaoContas.tsx estava completamente órfão. */}
+                <button
+                  id="submenu-financeiro-contas"
+                  onClick={() => {
+                    setActiveSection("contas");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "contas"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <i className="fa-solid fa-building-columns text-emerald-400 text-xs"></i>
+                  <span>Contas Bancárias</span>
+                </button>
+
+                {/* --- COBRANÇA --- */}
+                <span className="block px-3 pt-2.5 pb-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500">Cobrança</span>
                 <button
                   id="submenu-financeiro-calculo-quotas"
                   onClick={() => {
@@ -1316,8 +1333,8 @@ export default function App() {
                     setIaInitialTab(undefined);
                   }}
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
-                    activeSection === "calculo_quotas" 
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
+                    activeSection === "calculo_quotas"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
@@ -1336,8 +1353,8 @@ export default function App() {
                     setIaInitialTab(undefined);
                   }}
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "financeiro_recibos" 
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
+                    activeSection === "financeiro_recibos"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
@@ -1346,13 +1363,31 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => {
+                    setActiveSection("financeiro_relatorios");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "financeiro_relatorios"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <img src="/modulos/25-relatorio.png" alt="Relatórios" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Relatórios de Dívidas</span>
+                </button>
+
+                {/* --- MOVIMENTOS --- */}
+                <span className="block px-3 pt-2.5 pb-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500">Movimentos</span>
+                <button
+                  onClick={() => {
                     setActiveSection("movimentos");
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "movimentos" 
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
+                    activeSection === "movimentos"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
@@ -1361,43 +1396,13 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => {
-                    setActiveSection("financeiro_relatorios");
-                    setViewMode("BROWSER");
-                    setIaInitialTab(undefined);
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "financeiro_relatorios" 
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
-                  }`}
-                >
-                  <img src="/modulos/25-relatorio.png" alt="Relatórios" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Relatórios de Dívidas</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveSection("financeiro_extratos");
-                    setViewMode("BROWSER");
-                    setIaInitialTab(undefined);
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "financeiro_extratos" 
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
-                  }`}
-                >
-                  <img src="/modulos/64-saldo.png" alt="Extrato" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Extrato de Dívidas e Saldo</span>
-                </button>
-                <button
-                  onClick={() => {
                     setActiveSection("conciliacao");
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "conciliacao" 
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
+                    activeSection === "conciliacao"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
@@ -1411,13 +1416,69 @@ export default function App() {
                     setIaInitialTab(undefined);
                   }}
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "ocr_faturas" 
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
+                    activeSection === "ocr_faturas"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-file-invoice-dollar text-emerald-400 text-xs"></i>
                   <span>Leitor IA de Faturas & Anexos</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveSection("fornecedores");
+                    setFornecedoresTab("dividas");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "fornecedores" && fornecedoresTab === "dividas"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <i className="fa-solid fa-file-invoice-dollar text-emerald-400 text-xs"></i>
+                  <span>Dívidas a Fornecedores</span>
+                </button>
+
+                {/* --- FUNDO DE RESERVA --- */}
+                <span className="block px-3 pt-2.5 pb-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500">Fundo de Reserva</span>
+                {/* Antes só se chegava aqui por um separador de "IA Avançada"
+                    que continha uma versão duplicada com dados inventados —
+                    ver commit anterior. Esta é a ferramenta real, ligada ao
+                    saldo verdadeiro das contas do tipo Poupança/Reserva. */}
+                <button
+                  onClick={() => {
+                    setActiveSection("fundo_reserva");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "fundo_reserva"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <i className="fa-solid fa-piggy-bank text-emerald-400 text-xs"></i>
+                  <span>Fundo de Reserva</span>
+                </button>
+
+                {/* --- EXTRATOS --- */}
+                <span className="block px-3 pt-2.5 pb-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500">Extratos</span>
+                <button
+                  onClick={() => {
+                    setActiveSection("financeiro_extratos");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "financeiro_extratos"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <img src="/modulos/64-saldo.png" alt="Extrato" className="w-4 h-4 object-contain shrink-0" />
+                  <span>Extrato de Dívidas e Saldo</span>
                 </button>
               </div>
             )}
