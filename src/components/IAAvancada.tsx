@@ -11,7 +11,7 @@ interface IAAvancadaProps {
   movements: Movimento[];
   fornecedores: Fornecedor[];
   loggedUser: LoggedUser;
-  initialTab?: "juridico" | "fundo_reserva" | "orcamentos" | "orcamento_anual_ia" | "cerebro_ia";
+  initialTab?: "juridico" | "orcamentos" | "orcamento_anual_ia" | "cerebro_ia";
 }
 
 interface Proposal {
@@ -729,7 +729,7 @@ const TABLES_DATA = {
 
 export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, loggedUser, initialTab }: IAAvancadaProps) {
   // Tabs for the IA Avançada Dashboard
-  const [activeTab, setActiveTab] = useState<"juridico" | "fundo_reserva" | "orcamentos" | "orcamento_anual_ia" | "cerebro_ia">(initialTab || "orcamento_anual_ia");
+  const [activeTab, setActiveTab] = useState<"juridico" | "orcamentos" | "orcamento_anual_ia" | "cerebro_ia">(initialTab || "orcamento_anual_ia");
 
   const [sendingReaction, setSendingReaction] = useState<{ isOpen: boolean; type: "email" | "mensagem"; title?: string } | null>(null);
 
@@ -1203,16 +1203,6 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
   const [legalNoticeText, setLegalNoticeText] = useState<string>("");
   const [isGeneratingNotice, setIsGeneratingNotice] = useState<boolean>(false);
 
-  // State for Reserve Fund Simulation
-  const [orcamentoAnual, setOrcamentoAnual] = useState<number>(12000); // Default €12,000 annual budget
-  const [poupancaMensal, setPoupancaMensal] = useState<number>(150); // Default €150/month reserve contribution
-  const [isSimulatingReserve, setIsSimulatingReserve] = useState<boolean>(false);
-  const [reserveAnalysis, setReserveAnalysis] = useState<{
-    projections: Array<{ month: string; currentReserve: number; predictedExpenses: number; predictedRevenue: number; finalReserve: number }>;
-    alerts: Array<{ level: string; message: string }>;
-    recommendations: Array<string>;
-  } | null>(null);
-
   // State for Bolsa de Orçamentos
   const [selectedRequest, setSelectedRequest] = useState<string>("pintura_fachada");
   const [isComparingProposals, setIsComparingProposals] = useState<boolean>(false);
@@ -1310,74 +1300,6 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
       </html>
     `);
     printWindow.document.close();
-  };
-
-  // 2. SIMULATE RESERVE FUND PROJECTIVE CURVE
-  // Static mathematical simulation before AI analysis triggers
-  const basePrevisaoMeses = [
-    { month: "Jul 26", currentReserve: 2150, predictedExpenses: 120, predictedRevenue: poupancaMensal, finalReserve: 2150 - 120 + poupancaMensal },
-    { month: "Ago 26", currentReserve: 2180, predictedExpenses: 120, predictedRevenue: poupancaMensal, finalReserve: 2180 - 120 + poupancaMensal },
-    { month: "Set 26", currentReserve: 2210, predictedExpenses: 540, predictedRevenue: poupancaMensal, finalReserve: 2210 - 540 + poupancaMensal }, // Elevator yearly fee
-    { month: "Out 26", currentReserve: 1820, predictedExpenses: 150, predictedRevenue: poupancaMensal, finalReserve: 1820 - 150 + poupancaMensal },
-    { month: "Nov 26", currentReserve: 1820, predictedExpenses: 180, predictedRevenue: poupancaMensal, finalReserve: 1820 - 180 + poupancaMensal },
-    { month: "Dez 26", currentReserve: 1790, predictedExpenses: 350, predictedRevenue: poupancaMensal, finalReserve: 1790 - 350 + poupancaMensal }, // Lights and gutters
-    { month: "Jan 27", currentReserve: 1590, predictedExpenses: 120, predictedRevenue: poupancaMensal, finalReserve: 1590 - 120 + poupancaMensal },
-    { month: "Fev 27", currentReserve: 1620, predictedExpenses: 120, predictedRevenue: poupancaMensal, finalReserve: 1620 - 120 + poupancaMensal },
-    { month: "Mar 27", currentReserve: 1650, predictedExpenses: 800, predictedRevenue: poupancaMensal, finalReserve: 1650 - 800 + poupancaMensal }, // Water pump check
-    { month: "Abr 27", currentReserve: 1000, predictedExpenses: 150, predictedRevenue: poupancaMensal, finalReserve: 1000 - 150 + poupancaMensal },
-    { month: "Mai 27", currentReserve: 1000, predictedExpenses: 120, predictedRevenue: poupancaMensal, finalReserve: 1000 - 120 + poupancaMensal },
-    { month: "Jun 27", currentReserve: 1030, predictedExpenses: 120, predictedRevenue: poupancaMensal, finalReserve: 1030 - 120 + poupancaMensal }
-  ];
-
-  // Dynamic recalculation of base projection based on input sliders
-  const dynamicProjections: any[] = [];
-  basePrevisaoMeses.forEach((item, index) => {
-    const current = index === 0 ? 2150 : dynamicProjections[index - 1].finalReserve;
-    const final = current - item.predictedExpenses + poupancaMensal;
-    dynamicProjections.push({
-      ...item,
-      currentReserve: current,
-      predictedRevenue: poupancaMensal,
-      finalReserve: final
-    });
-  });
-
-  const legalMinFund = orcamentoAnual * 0.10; // 10% legal limit in Portugal
-
-  const handleRunReserveFundAIPrediction = async () => {
-    setIsSimulatingReserve(true);
-    setReserveAnalysis(null);
-
-    try {
-      const response = await fetch("/api/predict-reserve-fund", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          movements: movements.slice(0, 15),
-          saldoAtual: 2150,
-          orcamentoAnual: orcamentoAnual,
-          patrimonio: predio.patrimonio,
-          predioNome: predio.nome
-        })
-      });
-
-      if (!response.ok) throw new Error("Falha ao comunicar com o modelo de IA.");
-      const data = await response.json();
-      setReserveAnalysis({
-        projections: data.projections || dynamicProjections,
-        alerts: data.alerts || [
-          { level: "warning", message: "Projeção estática: Fundo de reserva periga descer abaixo de 10% legal (€" + legalMinFund + ") no primeiro trimestre de 2027." }
-        ],
-        recommendations: data.recommendations || [
-          "Recomenda-se aprovação de cota extraordinária temporária na próxima assembleia para salvaguarda do Fundo de Reserva."
-        ]
-      });
-    } catch (err: any) {
-      console.error(err);
-      alert("Erro na simulação por IA: " + err.message);
-    } finally {
-      setIsSimulatingReserve(false);
-    }
   };
 
 
@@ -1478,7 +1400,6 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 <span>
                   {activeTab === "orcamento_anual_ia" && "🪄 Orçamentos & Projeções (IA)"}
                   {activeTab === "juridico" && "⚖️ Assistente Jurídico (IA)"}
-                  {activeTab === "fundo_reserva" && "📈 Simulador Fundo Reserva (IA)"}
                   {activeTab === "orcamentos" && "🤝 Bolsa de Orçamentos (IA)"}
                   {activeTab === "cerebro_ia" && "🧠 Analista IA (DocFG)"}
                 </span>
@@ -1514,17 +1435,6 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
               </span>
               <p className="text-[11px] text-emerald-100/90 leading-relaxed">
                 Aqui pode consultar o detetor de contencioso de frações em atraso e redigir automaticamente minutas de cartas de interpelação extrajudicial e avisos de cobrança em conformidade com o Código Civil português.
-              </p>
-            </div>
-          )}
-
-          {activeTab === "fundo_reserva" && (
-            <div className="space-y-1">
-              <span className="font-black text-emerald-300 uppercase tracking-wider block text-[11px]">
-                <i className="fa-solid fa-circle-info mr-1.5"></i>Nota Explicativa: Simulador Fundo de Reserva
-              </span>
-              <p className="text-[11px] text-emerald-100/90 leading-relaxed">
-                Aqui pode consultar o simulador de sustentabilidade financeira a longo prazo. Permite verificar a garantia dos 10% mínimos legais do Fundo Comum de Reserva e simular cenários de obras extraordinárias futuras.
               </p>
             </div>
           )}
@@ -1702,183 +1612,6 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {/* 2. SIMULADOR PREVENTIVO DO FUNDO DE RESERVA */}
-      {activeTab === "fundo_reserva" && (
-        <div className="space-y-6 animate-fadeIn">
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Simulador Preditivo do Fundo de Reserva Comum</h4>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              O Fundo de Reserva Comum é obrigatório por lei portuguesa e deve conter no mínimo 10% do orçamento anual do condomínio para acudir a obras de conservação periódicas. Configure as variáveis abaixo e cruze com as estimativas matemáticas ou ative a IA para uma projeção preditiva profunda.
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
-              {/* Sliders and inputs */}
-              <div className="space-y-4">
-                <div className="flex flex-col bg-slate-50 p-4 rounded-xl border border-slate-150">
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Orçamento Ordinário Anual</label>
-                    <span className="text-xs font-bold text-slate-800">€{orcamentoAnual.toLocaleString()}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="5000"
-                    max="50000"
-                    step="500"
-                    value={orcamentoAnual}
-                    onChange={e => setOrcamentoAnual(Number(e.target.value))}
-                    className="w-full accent-violet-600 h-1 bg-slate-200 rounded-lg cursor-pointer"
-                  />
-                  <div className="flex justify-between text-[9px] text-slate-400 mt-1.5 font-bold">
-                    <span>Mín: €5.000</span>
-                    <span className="text-violet-600">Limite Legal (10%): €{legalMinFund.toLocaleString()}</span>
-                    <span>Máx: €50.000</span>
-                  </div>
-                </div>
-
-                <div className="flex flex-col bg-slate-50 p-4 rounded-xl border border-slate-150">
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Poupança Mensal do Fundo</label>
-                    <span className="text-xs font-bold text-slate-800">€{poupancaMensal} / mês</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="50"
-                    max="1000"
-                    step="25"
-                    value={poupancaMensal}
-                    onChange={e => setPoupancaMensal(Number(e.target.value))}
-                    className="w-full accent-violet-600 h-1 bg-slate-200 rounded-lg cursor-pointer"
-                  />
-                  <div className="flex justify-between text-[9px] text-slate-400 mt-1.5 font-bold">
-                    <span>Mín: €50</span>
-                    <span>Máx: €1.000</span>
-                  </div>
-                </div>
-
-                <div className="bg-slate-900 text-slate-100 p-4 rounded-xl border border-slate-800 space-y-3">
-                  <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Cálculo de Reserva Predial Ativa</p>
-                  <div className="flex justify-between text-xs">
-                    <span>Saldo Inicial do Fundo:</span>
-                    <span className="font-bold">€2.150,00</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span>Poupança 12 Meses:</span>
-                    <span className="font-bold text-emerald-400">+ €{(poupancaMensal * 12).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span>Despesas Previsíveis:</span>
-                    <span className="font-bold text-red-400">- €3.560,00</span>
-                  </div>
-                  <hr className="border-slate-800" />
-                  <div className="flex justify-between text-xs font-bold">
-                    <span>Projeção Limite Final:</span>
-                    <span className={2150 + (poupancaMensal * 12) - 3560 < legalMinFund ? "text-red-400" : "text-emerald-400"}>
-                      €{(2150 + (poupancaMensal * 12) - 3560).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleRunReserveFundAIPrediction}
-                  className="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-colors shadow flex items-center justify-center cursor-pointer"
-                >
-                  {isSimulatingReserve ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      A Correr Simulação IA...
-                    </>
-                  ) : (
-                    <>
-                      <i className="fa-solid fa-wand-magic-sparkles mr-2"></i>Executar Auditoria de Risco IA
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Chart of future simulation */}
-              <div className="md:col-span-2 space-y-4">
-                <div className="h-64 bg-slate-50 p-4 rounded-xl border border-slate-150">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={reserveAnalysis?.projections || dynamicProjections} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="colorReserve" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.2}/>
-                          <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis dataKey="month" tick={{ fontSize: 9, fontWeight: "bold" }} />
-                      <YAxis tick={{ fontSize: 9, fontWeight: "bold" }} />
-                      <Tooltip formatter={(value: any) => [`€${value.toFixed(2)}`, "Fundo de Reserva"]} />
-                      <Legend wrapperStyle={{ fontSize: 9, fontWeight: "bold" }} />
-                      <Area type="monotone" dataKey="finalReserve" name="Volume do Fundo (€)" stroke="#8b5cf6" strokeWidth={2.5} fillOpacity={1} fill="url(#colorReserve)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-                
-                <div className="flex items-center space-x-2 text-[10px] font-bold text-slate-400 px-1">
-                  <span className="h-2 w-4 bg-violet-500 rounded inline-block"></span>
-                  <span>Volume do Fundo de Reserva Comum (Predição de Próximos 12 meses)</span>
-                  <span className="h-px bg-red-200 flex-grow border-t border-dashed border-red-500"></span>
-                  <span className="text-red-500">Mínimo Legal: €{legalMinFund.toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* AI Simulation Results and warnings */}
-          {reserveAnalysis && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
-              {/* Alertas preventivos */}
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">Alertas Preventivos de Risco Predial</h5>
-                <div className="space-y-3">
-                  {reserveAnalysis.alerts.map((al, idx) => (
-                    <div
-                      key={idx}
-                      className={`p-4 rounded-xl border text-xs flex items-start space-x-3 ${
-                        al.level === "danger"
-                          ? "bg-red-50 border-red-200 text-red-800"
-                          : al.level === "warning"
-                          ? "bg-amber-50 border-amber-200 text-amber-800"
-                          : "bg-blue-50 border-blue-200 text-blue-800"
-                      }`}
-                    >
-                      <div className="shrink-0 text-sm mt-0.5">
-                        {al.level === "danger" && <i className="fa-solid fa-triangle-exclamation text-red-500"></i>}
-                        {al.level === "warning" && <i className="fa-solid fa-circle-exclamation text-amber-500"></i>}
-                        {al.level === "info" && <i className="fa-solid fa-circle-info text-blue-500"></i>}
-                      </div>
-                      <div className="leading-relaxed">
-                        <span className="font-bold block uppercase tracking-wide text-[9px] mb-0.5">Risco de Grau {al.level === "danger" ? "Alto" : al.level === "warning" ? "Médio" : "Informativo"}</span>
-                        {al.message}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Recomendações */}
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">Recomendações e Plano de Mitigação Financeira</h5>
-                <ul className="space-y-2.5">
-                  {reserveAnalysis.recommendations.map((rec, idx) => (
-                    <li key={idx} className="text-xs text-slate-600 flex items-start leading-relaxed">
-                      <span className="h-5 w-5 rounded-full bg-violet-100 border border-violet-200 text-violet-600 font-bold text-[10px] flex items-center justify-center shrink-0 mr-2.5 mt-0.5">{idx + 1}</span>
-                      <span className="font-medium">{rec}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
         </div>
       )}
 

@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { Predio, Fracao, Aviso, LoggedUser, Documento } from "../types";
+import { Predio, Fracao, Aviso, LoggedUser, Documento, RevisaoOrcamento } from "../types";
 import { formatDatePT, generateAndDownloadPdf, formatQuotaReceiptNumber, downloadReceiptPDF, gerarReferenciaBR23E } from "../utils";
 import { isSupabaseConfigured } from "@/lib/supabaseClient";
-import { dbUpdate, saveAvisosToSupabase, registarLogAuditoria } from "../lib/supabaseService";
+import {
+  dbUpdate,
+  saveAvisosToSupabase,
+  registarLogAuditoria,
+  fetchRevisoesOrcamentoFromSupabase,
+  saveRevisaoOrcamentoToSupabase,
+  deleteRevisaoOrcamentoFromSupabase,
+  orcamentoVigente
+} from "../lib/supabaseService";
 
 interface GestaoEmissaoProps {
   predio: Predio;
@@ -36,6 +44,71 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
     } catch (err) {
       console.warn("[Supabase] Erro ao guardar orçamento anual:", err);
     }
+  };
+
+  // Histórico de adendas/revisões ao orçamento anual — permite registar que
+  // a partir de uma certa data (ex: aprovada em assembleia a meio do ano)
+  // passa a vigorar um novo valor, sem perder o histórico do anterior. A
+  // sincronização diária (server/lib/cronService.js) aplica sozinha a
+  // revisão certa quando a sua data de vigência chega; ao gravar uma
+  // revisão já em vigor hoje, aplica-se de imediato aqui também.
+  const [revisoesOrcamento, setRevisoesOrcamento] = useState<RevisaoOrcamento[]>([]);
+  const [novaRevisaoValor, setNovaRevisaoValor] = useState("");
+  const [novaRevisaoData, setNovaRevisaoData] = useState(() => new Date().toISOString().split("T")[0]);
+  const [novaRevisaoAssembleia, setNovaRevisaoAssembleia] = useState(false);
+  const [novaRevisaoMotivo, setNovaRevisaoMotivo] = useState("");
+
+  useEffect(() => {
+    fetchRevisoesOrcamentoFromSupabase(predio.id_predio).then(r => setRevisoesOrcamento(r || []));
+  }, [predio.id_predio]);
+
+  const revisaoEmVigor = orcamentoVigente(revisoesOrcamento);
+
+  const handleAddRevisaoOrcamento = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loggedUser.role !== "ADMIN" && loggedUser.role !== "EMPRESA_GESTORA") {
+      return alert("Apenas administradores podem registar revisões ao orçamento!");
+    }
+    if (!novaRevisaoValor || !novaRevisaoData) return alert("Preencha o novo valor e a data de vigência.");
+
+    const nova: RevisaoOrcamento = {
+      id_revisao: "rev-" + Date.now(),
+      id_predio: predio.id_predio,
+      valor: Number(novaRevisaoValor),
+      data_vigencia: novaRevisaoData,
+      aprovado_em_assembleia: novaRevisaoAssembleia,
+      motivo: novaRevisaoMotivo || undefined
+    };
+    const ok = await saveRevisaoOrcamentoToSupabase(nova);
+    if (!ok) return alert("❌ Não foi possível gravar a revisão no Supabase. Tente novamente.");
+
+    const novaLista = [nova, ...revisoesOrcamento];
+    setRevisoesOrcamento(novaLista);
+    registarLogAuditoria("Financeira", "Registou uma revisão ao orçamento anual", predio.id_predio, loggedUser, `Novo valor: ${nova.valor.toFixed(2)} € a partir de ${formatDatePT(nova.data_vigencia)}`);
+
+    // Se a revisão já entra em vigor hoje (ou no passado), aplica de imediato
+    // em vez de esperar pela sincronização diária do cron.
+    const maisRecenteVigente = orcamentoVigente(novaLista);
+    if (maisRecenteVigente && maisRecenteVigente.id_revisao === nova.id_revisao) {
+      setOrcamentoAnual(String(nova.valor));
+      await persistirOrcamentoNoSupabase(nova.valor);
+    }
+
+    setNovaRevisaoValor("");
+    setNovaRevisaoMotivo("");
+    setNovaRevisaoAssembleia(false);
+    alert(
+      maisRecenteVigente?.id_revisao === nova.id_revisao
+        ? "✅ Revisão registada e já aplicada — o orçamento anual em vigor foi atualizado."
+        : "✅ Revisão registada — entra em vigor automaticamente em " + formatDatePT(nova.data_vigencia) + "."
+    );
+  };
+
+  const handleRemoverRevisaoOrcamento = async (revisao: RevisaoOrcamento) => {
+    if (!window.confirm(`Eliminar a revisão de ${revisao.valor.toFixed(2)} € (vigência ${formatDatePT(revisao.data_vigencia)})?`)) return;
+    const ok = await deleteRevisaoOrcamentoFromSupabase(revisao.id_revisao);
+    if (!ok) return alert("❌ Não foi possível eliminar a revisão no Supabase.");
+    setRevisoesOrcamento(prev => prev.filter(r => r.id_revisao !== revisao.id_revisao));
   };
 
   // Document Viewer modal states
@@ -394,6 +467,95 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
 
   return (
     <div className="space-y-6">
+      {(loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA') && (
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4 no-print">
+          <div className="flex items-center space-x-2">
+            <span className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
+              <i className="fa-solid fa-file-signature text-sm"></i>
+            </span>
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">Adendas & Revisões ao Orçamento Anual</h3>
+              <p className="text-xs text-slate-500">Regista uma revisão aprovada em assembleia a meio do ano (mantém o histórico do valor anterior, entra em vigor sozinha na data indicada).</p>
+            </div>
+          </div>
+
+          {revisaoEmVigor && (
+            <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-800">
+              <strong>Em vigor desde {formatDatePT(revisaoEmVigor.data_vigencia)}:</strong> {revisaoEmVigor.valor.toFixed(2)} € /ano
+              {revisaoEmVigor.aprovado_em_assembleia ? " (aprovado em assembleia)" : ""}
+              {revisaoEmVigor.motivo ? ` — ${revisaoEmVigor.motivo}` : ""}
+            </div>
+          )}
+
+          <form onSubmit={handleAddRevisaoOrcamento} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            <div className="flex flex-col">
+              <label className="text-xs font-semibold text-slate-500 mb-1">Novo Valor Anual (€) *</label>
+              <input type="number" min="1" step="0.01" value={novaRevisaoValor} onChange={e => setNovaRevisaoValor(e.target.value)} placeholder="Ex: 12000" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
+            </div>
+            <div className="flex flex-col">
+              <label className="text-xs font-semibold text-slate-500 mb-1">Vigência a partir de *</label>
+              <input type="date" value={novaRevisaoData} onChange={e => setNovaRevisaoData(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+            </div>
+            <div className="flex flex-col">
+              <label className="text-xs font-semibold text-slate-500 mb-1">Motivo / Ata</label>
+              <input type="text" value={novaRevisaoMotivo} onChange={e => setNovaRevisaoMotivo(e.target.value)} placeholder="Ex: Ata da AG de 12/06" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 cursor-pointer">
+                <input type="checkbox" checked={novaRevisaoAssembleia} onChange={e => setNovaRevisaoAssembleia(e.target.checked)} className="cursor-pointer" />
+                Aprovado em assembleia
+              </label>
+              <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0">
+                Registar Revisão
+              </button>
+            </div>
+          </form>
+
+          {revisoesOrcamento.length > 0 && (
+            <div className="overflow-x-auto border border-slate-150 rounded-xl">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
+                    <th className="p-2.5">Vigência</th>
+                    <th className="p-2.5 text-right">Valor Anual</th>
+                    <th className="p-2.5">Motivo</th>
+                    <th className="p-2.5 text-center">Assembleia</th>
+                    <th className="p-2.5 text-center">Estado</th>
+                    <th className="p-2.5"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {revisoesOrcamento.map(r => (
+                    <tr key={r.id_revisao} className={`border-b border-slate-100 hover:bg-slate-50/50 ${r.id_revisao === revisaoEmVigor?.id_revisao ? "bg-indigo-50/40" : ""}`}>
+                      <td className="p-2.5 font-mono text-slate-600">{formatDatePT(r.data_vigencia)}</td>
+                      <td className="p-2.5 text-right font-bold font-mono text-slate-800">{r.valor.toFixed(2)} €</td>
+                      <td className="p-2.5 text-slate-500">{r.motivo || "—"}</td>
+                      <td className="p-2.5 text-center">{r.aprovado_em_assembleia ? "✅" : "—"}</td>
+                      <td className="p-2.5 text-center">
+                        {r.id_revisao === revisaoEmVigor?.id_revisao ? (
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-bold">Em Vigor</span>
+                        ) : r.data_vigencia > new Date().toISOString().split("T")[0] ? (
+                          <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[9px] font-bold">Agendada</span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[9px] font-bold">Histórico</span>
+                        )}
+                      </td>
+                      <td className="p-2.5 text-right">
+                        {loggedUser.role === "ADMIN" && (
+                          <button onClick={() => handleRemoverRevisaoOrcamento(r)} className="text-slate-400 hover:text-red-500 cursor-pointer" title="Eliminar">
+                            <i className="fa-solid fa-trash-can"></i>
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA' ? (
         <form onSubmit={gerarOrcamentoMensal} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4 no-print">
           <div className="flex items-center space-x-2">

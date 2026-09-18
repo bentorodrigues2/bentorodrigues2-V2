@@ -84,6 +84,21 @@ export interface Conta {
   is_principal?: boolean;
 }
 
+// Adenda/revisão ao orçamento anual — permite registar que a partir de uma
+// certa data passa a vigorar um novo valor (ex: revisão aprovada em
+// assembleia a meio do ano), sem perder o histórico do valor anterior. O
+// valor efetivamente em vigor é sempre o da revisão mais recente cuja
+// data_vigencia já tenha passado.
+export interface RevisaoOrcamento {
+  id_revisao: string;
+  id_predio: string;
+  valor: number;
+  data_vigencia: string;
+  aprovado_em_assembleia: boolean;
+  motivo?: string;
+  created_at?: string;
+}
+
 export interface Fornecedor {
   id_fornecedor: string;
   id_predio: string;

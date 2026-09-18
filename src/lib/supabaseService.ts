@@ -10,6 +10,7 @@ import {
   Conta,
   Fornecedor,
   DividaFornecedor,
+  RevisaoOrcamento,
   Movimento,
   Aviso, 
   Reuniao,
@@ -1510,6 +1511,54 @@ export async function saveDividaFornecedorToSupabase(divida: DividaFornecedor): 
 
 export async function deleteDividaFornecedorFromSupabase(idDivida: string): Promise<boolean> {
   return dbDelete("dividas_fornecedores", [["id_divida", "eq", idDivida]]);
+}
+
+// ============================================================================
+// REVISÕES/ADENDAS AO ORÇAMENTO ANUAL
+// ============================================================================
+export async function fetchRevisoesOrcamentoFromSupabase(idPredio?: string): Promise<RevisaoOrcamento[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const data = await dbSelect("revisoes_orcamento", {
+      filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined,
+      order: { coluna: "data_vigencia", asc: false }
+    });
+    if (!data) return null;
+    return data.map((row: any) => ({
+      id_revisao: row.id_revisao,
+      id_predio: row.id_predio,
+      valor: Number(row.valor) || 0,
+      data_vigencia: row.data_vigencia,
+      aprovado_em_assembleia: Boolean(row.aprovado_em_assembleia),
+      motivo: row.motivo || undefined,
+      created_at: row.created_at || undefined
+    }));
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function saveRevisaoOrcamentoToSupabase(revisao: RevisaoOrcamento): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("revisoes_orcamento", {
+    id_revisao: revisao.id_revisao,
+    id_predio: revisao.id_predio,
+    valor: revisao.valor,
+    data_vigencia: revisao.data_vigencia,
+    aprovado_em_assembleia: revisao.aprovado_em_assembleia,
+    motivo: revisao.motivo || null
+  });
+}
+
+export async function deleteRevisaoOrcamentoFromSupabase(idRevisao: string): Promise<boolean> {
+  return dbDelete("revisoes_orcamento", [["id_revisao", "eq", idRevisao]]);
+}
+
+/** Devolve o valor da revisão mais recente cuja data_vigencia já passou (ou hoje). */
+export function orcamentoVigente(revisoes: RevisaoOrcamento[], dataRef: Date = new Date()): RevisaoOrcamento | null {
+  const hojeISO = dataRef.toISOString().split("T")[0];
+  const vigentes = revisoes.filter(r => r.data_vigencia <= hojeISO).sort((a, b) => b.data_vigencia.localeCompare(a.data_vigencia));
+  return vigentes[0] || null;
 }
 
 // ============================================================================

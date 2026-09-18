@@ -80,9 +80,13 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
             <i className="fa-solid fa-piggy-bank text-xl"></i>
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-800">Cálculo e Planeamento do Fundo Comum de Reserva</h3>
+            <h3 className="text-base font-bold text-slate-800">Fundo de Reserva — Conformidade Legal & Projeção</h3>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
               De acordo com o <strong>Artigo 4.º do Decreto-Lei n.º 268/94, de 25 de outubro</strong>, é obrigatória a constituição de um fundo comum de reserva para custear as despesas de conservação do edifício. O montante mínimo legal é de <strong>10% do orçamento anual aprovado</strong>.
+            </p>
+            <p className="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-2.5 py-1.5 mt-2 inline-block">
+              <i className="fa-solid fa-circle-info mr-1"></i>
+              Esta é uma calculadora de conformidade legal e projeção — não é o registo da conta bancária. O saldo real do Fundo de Reserva gere-se em <strong>Contas Bancárias</strong>; os campos abaixo vêm pré-preenchidos com esse valor real, mas podem ser alterados aqui só para simular cenários.
             </p>
           </div>
         </div>

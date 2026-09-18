@@ -86,6 +86,47 @@ async function obterProprietarioDaFracao(id_fracao) {
 }
 
 /**
+ * Todos os dias: se algum prédio tiver uma adenda/revisão ao orçamento anual
+ * (tabela revisoes_orcamento) cuja data de vigência já chegou e que ainda não
+ * foi aplicada, atualiza predios.patrimonio.orcamento_anual para esse valor.
+ * É esta sincronização diária que faz uma revisão agendada para uma data
+ * futura (ex: "a partir de 1 de julho") entrar mesmo em vigor sozinha nessa
+ * data, sem o administrador ter de voltar a mexer em nada — o cálculo de
+ * quotas e a emissão automática do dia 25 continuam só a ler
+ * patrimonio.orcamento_anual, agora sempre com o valor certo.
+ */
+export async function sincronizarOrcamentosVigentes() {
+  const hojeISO = new Date().toISOString().split("T")[0];
+  const predios = await obterPredios();
+  const resultados = [];
+
+  for (const predio of predios) {
+    const { data: revisoes } = await supabase
+      .from("revisoes_orcamento")
+      .select("*")
+      .eq("id_predio", predio.id_predio)
+      .lte("data_vigencia", hojeISO)
+      .order("data_vigencia", { ascending: false })
+      .limit(1);
+
+    const revisaoVigente = (revisoes || [])[0];
+    if (!revisaoVigente) continue;
+
+    const valorAtual = Number(predio.patrimonio?.orcamento_anual || 0);
+    if (Number(revisaoVigente.valor) === valorAtual) continue;
+
+    await supabase
+      .from("predios")
+      .update({ patrimonio: { ...(predio.patrimonio || {}), orcamento_anual: Number(revisaoVigente.valor) } })
+      .eq("id_predio", predio.id_predio);
+
+    resultados.push({ id_predio: predio.id_predio, novo_orcamento: revisaoVigente.valor, data_vigencia: revisaoVigente.data_vigencia });
+  }
+
+  return { job: "SINCRONIZAR_ORCAMENTOS_VIGENTES", prédios_atualizados: resultados.length, detalhe: resultados };
+}
+
+/**
  * Dia 25: emite a nota de cobrança das quotas do mês seguinte para todas as
  * frações de todos os prédios (Quota Ordinária + 10% Fundo Comum de Reserva,
  * DL 268/94). Cria os avisos ("Pendente") e envia a nota de cobrança por

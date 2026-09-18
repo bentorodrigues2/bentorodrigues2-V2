@@ -293,7 +293,7 @@ export default function App() {
   const [openMenuFornecedores, setOpenMenuFornecedores] = useState(false);
   const [openMenuConfiguracoesIA, setOpenMenuConfiguracoesIA] = useState(false);
   const [fornecedoresTab, setFornecedoresTab] = useState<"fornecedores" | "contratos" | "dividas">("fornecedores");
-  const [iaInitialTab, setIaInitialTab] = useState<"juridico" | "fundo_reserva" | "orcamentos" | "orcamento_anual_ia" | "cerebro_ia" | undefined>(undefined);
+  const [iaInitialTab, setIaInitialTab] = useState<"juridico" | "orcamentos" | "orcamento_anual_ia" | "cerebro_ia" | undefined>(undefined);
   const [viewMode, setViewMode] = useState<"BROWSER" | "PWA">("BROWSER");
   const [brandingColor, setBrandingColorState] = useState<string>(() => {
     return localStorage.getItem("brandingColor") || "emerald";
@@ -1935,21 +1935,12 @@ export default function App() {
                   <i className="fa-solid fa-scale-balanced text-emerald-400 text-xs"></i>
                   <span>Assistente Jurídico</span>
                 </button>
-                <button
-                  onClick={() => {
-                    setActiveSection("ia_avancada");
-                    setIaInitialTab("fundo_reserva");
-                    setViewMode("BROWSER");
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "ia_avancada" && iaInitialTab === "fundo_reserva" 
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
-                  }`}
-                >
-                  <i className="fa-solid fa-chart-line text-emerald-400 text-xs"></i>
-                  <span>Simulador Fundo Reserva</span>
-                </button>
+                {/* "Simulador Fundo Reserva" saiu daqui — apontava para um
+                    separador (ia_avancada + fundo_reserva) que continha uma
+                    versão duplicada e com dados inventados (saldo fixo de
+                    2150€, despesas fictícias mês a mês). A ferramenta real,
+                    já ligada ao saldo verdadeiro das contas, vive agora só
+                    em Financeiro → Fundo de Reserva. */}
                 <button
                   onClick={() => {
                     setActiveSection("ia_avancada");
