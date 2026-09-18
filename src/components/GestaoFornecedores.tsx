@@ -150,7 +150,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     fetchDividasFornecedoresFromSupabase(predio.id_predio).then(d => setDividas(d || []));
   }, [predio.id_predio]);
 
-  // Novo lançamento de dívida
+  // Novo lançamento de dívida (ou edição de uma já lançada)
   const [dividaFornecedorId, setDividaFornecedorId] = useState("");
   const [dividaFornecedorNome, setDividaFornecedorNome] = useState("");
   const [dividaDescricao, setDividaDescricao] = useState("");
@@ -158,6 +158,24 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
   const [dividaValor, setDividaValor] = useState("");
   const [dividaDataEmissao, setDividaDataEmissao] = useState(() => new Date().toISOString().split("T")[0]);
   const [dividaDataVencimento, setDividaDataVencimento] = useState("");
+  const [editingDividaId, setEditingDividaId] = useState<string | null>(null);
+
+  const handleEditarDivida = (d: DividaFornecedor) => {
+    setEditingDividaId(d.id_divida);
+    setDividaFornecedorId(d.id_fornecedor || "");
+    setDividaFornecedorNome(d.fornecedor_nome);
+    setDividaDescricao(d.descricao);
+    setDividaCategoria(d.categoria || "");
+    setDividaValor(String(d.valor));
+    setDividaDataEmissao(d.data_emissao || "");
+    setDividaDataVencimento(d.data_vencimento || "");
+    document.getElementById("form-lancar-divida")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleCancelarEdicaoDivida = () => {
+    setEditingDividaId(null);
+    setDividaFornecedorId(""); setDividaFornecedorNome(""); setDividaDescricao(""); setDividaCategoria(""); setDividaValor(""); setDividaDataVencimento(""); setDividaDataEmissao(new Date().toISOString().split("T")[0]);
+  };
 
   // Marcar dívida como paga
   const [pagandoDividaId, setPagandoDividaId] = useState<string | null>(null);
@@ -177,8 +195,11 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     if (!dividaFornecedorNome.trim() || !dividaDescricao.trim() || !dividaValor) {
       return alert("Preencha o fornecedor, a descrição e o valor da dívida!");
     }
-    const nova: DividaFornecedor = {
-      id_divida: "div-" + Date.now(),
+
+    const isEditing = editingDividaId !== null;
+    const dividaOriginal = isEditing ? dividasPredio.find(d => d.id_divida === editingDividaId) : null;
+    const dividaAtualizada: DividaFornecedor = {
+      id_divida: isEditing && dividaOriginal ? dividaOriginal.id_divida : "div-" + Date.now(),
       id_predio: predio.id_predio,
       id_fornecedor: dividaFornecedorId || undefined,
       fornecedor_nome: dividaFornecedorNome.trim(),
@@ -187,12 +208,25 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       valor: Number(dividaValor) || 0,
       data_emissao: dividaDataEmissao || undefined,
       data_vencimento: dividaDataVencimento || undefined,
-      estado: "Pendente"
+      // Editar não mexe no estado de pagamento — mantém o que já lá estava.
+      estado: dividaOriginal?.estado || "Pendente",
+      data_pagamento: dividaOriginal?.data_pagamento,
+      id_conta_pagamento: dividaOriginal?.id_conta_pagamento,
+      id_movimento_pagamento: dividaOriginal?.id_movimento_pagamento
     };
-    const ok = await saveDividaFornecedorToSupabase(nova);
+    const ok = await saveDividaFornecedorToSupabase(dividaAtualizada);
     if (!ok) return alert("❌ Não foi possível gravar a dívida no Supabase. Tente novamente.");
-    setDividas(prev => [nova, ...prev]);
-    registarLogAuditoria("Financeira", "Lançou uma dívida a fornecedor", predio.id_predio, loggedUser, `${nova.fornecedor_nome} — ${nova.descricao} (${nova.valor.toFixed(2)} €)`);
+
+    if (isEditing) {
+      setDividas(prev => prev.map(d => d.id_divida === dividaAtualizada.id_divida ? dividaAtualizada : d));
+      registarLogAuditoria("Financeira", "Editou uma dívida a fornecedor", predio.id_predio, loggedUser, `${dividaAtualizada.fornecedor_nome} — ${dividaAtualizada.descricao} (${dividaAtualizada.valor.toFixed(2)} €)`);
+      handleCancelarEdicaoDivida();
+      alert("✅ Dívida atualizada com sucesso!");
+      return;
+    }
+
+    setDividas(prev => [dividaAtualizada, ...prev]);
+    registarLogAuditoria("Financeira", "Lançou uma dívida a fornecedor", predio.id_predio, loggedUser, `${dividaAtualizada.fornecedor_nome} — ${dividaAtualizada.descricao} (${dividaAtualizada.valor.toFixed(2)} €)`);
     setDividaFornecedorId(""); setDividaFornecedorNome(""); setDividaDescricao(""); setDividaCategoria(""); setDividaValor(""); setDividaDataVencimento("");
     alert("Dívida lançada com sucesso! Já entra no cálculo do saldo líquido do prédio.");
   };
@@ -1429,8 +1463,20 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
           </div>
 
           {(loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA') && (
-            <form onSubmit={handleLancarDivida} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-              <h3 className="text-sm font-bold text-slate-800">Lançar Dívida / Fatura Pendente</h3>
+            <form id="form-lancar-divida" onSubmit={handleLancarDivida} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-800">{editingDividaId ? "Editar Dívida / Fatura" : "Lançar Dívida / Fatura Pendente"}</h3>
+                {editingDividaId && (
+                  <button
+                    type="button"
+                    onClick={handleCancelarEdicaoDivida}
+                    className="text-xs font-semibold text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Cancelar</span>
+                  </button>
+                )}
+              </div>
               <p className="text-xs text-slate-500">Registe faturas recebidas de fornecedores ainda não pagas — entram logo no saldo líquido real do prédio, sem precisar de já ter saído dinheiro de nenhuma conta.</p>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1485,8 +1531,8 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
               </div>
 
               <button type="submit" className="bg-amber-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-amber-700 transition-colors cursor-pointer flex items-center space-x-1.5 shadow-xs">
-                <Save className="w-3.5 h-3.5" />
-                <span>Lançar Dívida</span>
+                {editingDividaId ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
+                <span>{editingDividaId ? "Guardar Alterações" : "Lançar Dívida"}</span>
               </button>
             </form>
           )}
@@ -1523,6 +1569,15 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                       </td>
                       <td className="p-3">
                         <div className="flex items-center justify-end gap-1.5">
+                          {d.estado === "Pendente" && (loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA') && (
+                            <button
+                              onClick={() => handleEditarDivida(d)}
+                              className="p-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-lg transition-all cursor-pointer"
+                              title="Editar Dívida"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           {d.estado === "Pendente" && (loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA') && (
                             <button
                               onClick={() => setPagandoDividaId(pagandoDividaId === d.id_divida ? null : d.id_divida)}
