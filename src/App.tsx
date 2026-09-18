@@ -23,7 +23,12 @@ import {
   saveReuniaoToSupabase,
   savePredioToSupabase,
   saveFracaoToSupabase,
-  saveAvisosToSupabase
+  saveAvisosToSupabase,
+  fetchObrasExtraFromSupabase,
+  fetchLimpezasFromSupabase,
+  fetchProcessosJuridicosFromSupabase,
+  fetchSondagensFromSupabase,
+  fetchConversasFromSupabase
 } from "./lib/supabaseService";
 import { PainelControlo } from "./components/PainelControlo";
 import { GestaoPredios } from "./components/GestaoPredios";
@@ -526,6 +531,44 @@ export default function App() {
   });
 
   const predioAtivo = predios.find(p => p.id_predio === activePredioId) || predios[0] || defaultEmptyPredio;
+
+  // Contagens reais para os indicadores do painel de administração que antes
+  // estavam sempre fixos a 0 (obras, limpezas, alertas jurídicos, sondagens
+  // e mensagens) — pedidas apenas para o prédio ativo em vez de todos os
+  // prédios, porque é o único que o PainelControlo mostra de cada vez.
+  const [obrasAtivasCount, setObrasAtivasCount] = useState<number>(0);
+  const [limpezaAreasCount, setLimpezaAreasCount] = useState<number>(0);
+  const [alertasJuridicosAtivosCount, setAlertasJuridicosAtivosCount] = useState<number>(0);
+  const [sondagensAtivasCount, setSondagensAtivasCount] = useState<number>(0);
+  const [mensagensPendentesCount, setMensagensPendentesCount] = useState<number>(0);
+
+  useEffect(() => {
+    const idPredio = predioAtivo?.id_predio;
+    if (!isSupabaseConfigured() || browserIsLoggedOut || !idPredio || idPredio === "predio-temp") {
+      setObrasAtivasCount(0);
+      setLimpezaAreasCount(0);
+      setAlertasJuridicosAtivosCount(0);
+      setSondagensAtivasCount(0);
+      setMensagensPendentesCount(0);
+      return;
+    }
+    (async () => {
+      const [obrasReais, limpezasReais, juridicosReais, sondagensReais, conversasReais] = await Promise.all([
+        fetchObrasExtraFromSupabase(idPredio),
+        fetchLimpezasFromSupabase(idPredio),
+        fetchProcessosJuridicosFromSupabase(idPredio),
+        fetchSondagensFromSupabase(idPredio),
+        fetchConversasFromSupabase(idPredio)
+      ]);
+      setObrasAtivasCount((obrasReais || []).filter(o => o.estado !== "Concluída").length);
+      const areasUnicas = new Set<string>();
+      (limpezasReais || []).forEach(l => (l.areas || []).forEach(a => areasUnicas.add(a)));
+      setLimpezaAreasCount(areasUnicas.size);
+      setAlertasJuridicosAtivosCount((juridicosReais || []).filter(p => p.fase_processual !== "CONCLUIDO_EXTINTO").length);
+      setSondagensAtivasCount((sondagensReais || []).filter(s => s.estado === "ativa").length);
+      setMensagensPendentesCount((conversasReais || []).filter(c => c.estado === "pendente").length);
+    })();
+  }, [predioAtivo?.id_predio, browserIsLoggedOut]);
 
   const toggleSidebarSub = (menu: "administracao" | "operacoes" | "financeiro" | "condomino" | "documentacao" | "juridico" | "manutencao") => {
     setSidebarExpanded(prev => ({ ...prev, [menu]: !prev[menu] }));
@@ -2366,13 +2409,13 @@ export default function App() {
                   avisos={avisos}
                   documentosCount={predioAtivo?.id_predio && predioAtivo.id_predio !== "predio-temp" ? documentos.filter(d => d.id_predio === predioAtivo.id_predio).length : 0}
                   fornecedoresCount={predioAtivo?.id_predio && predioAtivo.id_predio !== "predio-temp" ? fornecedores.filter(f => f.id_predio === predioAtivo.id_predio).length : 0}
-                  obrasCount={0}
-                  limpezasCount={0}
-                  alertasJuridicosCount={0}
-                  sondagensCount={0}
+                  obrasCount={obrasAtivasCount}
+                  limpezasCount={limpezaAreasCount}
+                  alertasJuridicosCount={alertasJuridicosAtivosCount}
+                  sondagensCount={sondagensAtivasCount}
                   ocorrenciasCount={predioAtivo?.id_predio && predioAtivo.id_predio !== "predio-temp" ? ocorrencias.filter(o => o.id_predio === predioAtivo.id_predio).length : 0}
                   reservasCount={predioAtivo?.id_predio && predioAtivo.id_predio !== "predio-temp" ? reservas.filter(r => r.id_predio === predioAtivo.id_predio).length : 0}
-                  mensagensCount={0}
+                  mensagensCount={mensagensPendentesCount}
                   notificacoesCount={0}
                   onSelectSection={selectSection}
                 />

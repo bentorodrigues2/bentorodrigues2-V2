@@ -170,110 +170,159 @@ export function PainelControlo({
 
   return (
     <div className="space-y-6">
-      {/* 13 MANDATORY INDICATORS (FROM DOCUMENT I, PAGE 2 & 3) */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h4 className="text-xs font-bold text-[#333] uppercase tracking-wider">Módulo de Administração: Os 13 Indicadores Ativos</h4>
-          <span className="text-[10px] text-slate-400 font-medium">Clique em qualquer indicador para navegar para o módulo</span>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
-          {[
-            { 
-              name: "Prédios Ativos", 
-              val: totalPrediosReais === 1 ? "1 Edifício" : `${totalPrediosReais} Edifícios`, 
-              icon: "/modulos/01-predio.png", 
-              section: "predios" 
-            },
-            { 
-              name: "Condóminos", 
-              val: `${predioFracoes.length} Frações`, 
-              icon: "/modulos/07-fracao.png", 
-              section: "fracoes" 
-            },
-            { 
-              name: "Inquilinos", 
-              val: `${predioFracoes.filter(f => f.is_arrendada).length} Ativos`, 
-              icon: "/modulos/12-inquilino.png", 
-              section: "fracoes_perfis" 
-            },
-            { 
-              name: "Intervenções", 
-              val: `${ocorrenciasCount} Registadas`, 
-              icon: "/modulos/28-intervencao.png", 
-              section: "manutencao_intervencoes" 
-            },
-            { 
-              name: "Obras Gerais", 
-              val: obrasCount === 1 ? "1 Ativa" : `${obrasCount} Ativas`, 
-              icon: "/modulos/41-obra.png", 
-              section: "manutencao_extraordinarias" 
-            },
-            { 
-              name: "Escala Limpeza", 
-              val: limpezasCount === 1 ? "1 Área" : `${limpezasCount} Áreas`, 
-              icon: "/modulos/50-limpeza.png", 
-              section: "vistorias_limpezas" 
-            },
-            { 
-              name: "Documentos IA", 
-              val: `${documentosCount} Arquivados`, 
-              icon: "/modulos/27-arquivo-automatico.png", 
-              section: "documentos" 
-            },
-            { 
-              name: "Cobranças", 
-              val: `${predioAvisos.filter(a => a.estado === 'Pendente').length} Pendentes`, 
-              icon: "/modulos/60-nota-de-cobranca.png", 
-              section: "financeiro_relatorios" 
-            },
-            { 
-              name: "Alertas Jurídicos", 
-              val: alertasJuridicosCount === 1 ? "1 Ativo" : `${alertasJuridicosCount} Ativos`, 
-              icon: "/modulos/23-contrato.png", 
-              section: "contencioso_juridico" 
-            },
-            { 
-              name: "Contratos Fornecedores", 
-              val: fornecedoresCount === 1 ? "1 Ativo" : `${fornecedoresCount} Ativos`, 
-              icon: "/modulos/67-fornecedor.png", 
-              section: "fornecedores" 
-            },
-            { 
-              name: "Sondagens IA", 
-              val: sondagensCount === 1 ? "1 Ativa" : `${sondagensCount} Ativas`, 
-              icon: "/modulos/76-sondagem.png", 
-              section: "comunicacao_sondagens" 
-            },
-            { 
-              name: "Fundo Reserva", 
-              val: `${totalFundoReserva.toLocaleString("pt-PT")} €`, 
-              icon: "/modulos/64-saldo.png", 
-              section: "financeiro_extratos" 
-            },
-            { 
-              name: "Saldo em Caixa", 
-              val: `${totalSaldoCaixa.toLocaleString("pt-PT")} €`, 
-              icon: "/modulos/57-quota.png", 
-              section: "movimentos" 
-            }
-          ].map((ind, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => onSelectSection?.(ind.section)}
-              className="w-full h-[115px] bg-[#ECFDF5] hover:bg-[#D1FAE5] text-[#064E3B] border border-[#A7F3D0] rounded-2xl flex flex-col items-center justify-between text-center p-2.5 relative select-none hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-xs"
-            >
-              <img src={ind.icon} alt={ind.name} className="h-9 w-9 object-contain mb-0.5 shrink-0 rounded-lg drop-shadow-xs" />
-              <div className="flex flex-col items-center leading-none">
-                <span className="text-[10px] font-black text-[#064E3B] leading-tight block truncate max-w-full text-center uppercase tracking-tight">{ind.name}</span>
-              </div>
-              <span className="bg-white/95 text-[#064E3B] border border-[#6EE7B7] text-[8.5px] font-black px-2.5 py-0.5 rounded-full shadow-xs uppercase tracking-wider truncate max-w-[92%] leading-none">
-                {ind.val}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* INDICADORES DO PRÉDIO — 4 fixos (Prédios, Condóminos, Fundo de
+          Reserva, Saldo em Caixa) + os restantes só aparecem quando há dados
+          reais que os justifiquem (ex: só há cartão de "Inquilinos" se
+          houver pelo menos 1 fração arrendada) */}
+      {(() => {
+        const indicadores = [
+          {
+            name: "Prédios Ativos",
+            val: totalPrediosReais === 1 ? "1 Edifício" : `${totalPrediosReais} Edifícios`,
+            icon: "/modulos/01-predio.png",
+            section: "predios",
+            fixo: true,
+            contagem: 1
+          },
+          {
+            name: "Condóminos",
+            val: `${predioFracoes.length} Frações`,
+            icon: "/modulos/07-fracao.png",
+            section: "fracoes",
+            fixo: true,
+            contagem: 1
+          },
+          {
+            name: "Inquilinos",
+            val: `${predioFracoes.filter(f => f.is_arrendada).length} Ativos`,
+            icon: "/modulos/12-inquilino.png",
+            section: "fracoes_perfis",
+            fixo: false,
+            contagem: predioFracoes.filter(f => f.is_arrendada).length
+          },
+          {
+            name: "Intervenções",
+            val: `${ocorrenciasCount} Registadas`,
+            icon: "/modulos/28-intervencao.png",
+            section: "manutencao_intervencoes",
+            fixo: false,
+            contagem: ocorrenciasCount
+          },
+          {
+            name: "Obras Gerais",
+            val: obrasCount === 1 ? "1 Ativa" : `${obrasCount} Ativas`,
+            icon: "/modulos/41-obra.png",
+            section: "manutencao_extraordinarias",
+            fixo: false,
+            contagem: obrasCount
+          },
+          {
+            name: "Escala Limpeza",
+            val: limpezasCount === 1 ? "1 Área" : `${limpezasCount} Áreas`,
+            icon: "/modulos/50-limpeza.png",
+            section: "vistorias_limpezas",
+            fixo: false,
+            contagem: limpezasCount
+          },
+          {
+            name: "Documentos IA",
+            val: `${documentosCount} Arquivados`,
+            icon: "/modulos/27-arquivo-automatico.png",
+            section: "documentos",
+            fixo: false,
+            contagem: documentosCount
+          },
+          {
+            name: "Mensagens",
+            val: mensagensCount === 1 ? "1 Pendente" : `${mensagensCount} Pendentes`,
+            icon: "/modulos/75-mensagem.png",
+            section: "comunicacao_chat",
+            fixo: false,
+            contagem: mensagensCount
+          },
+          {
+            name: "Cobranças",
+            val: `${predioAvisos.filter(a => a.estado === 'Pendente').length} Pendentes`,
+            icon: "/modulos/60-nota-de-cobranca.png",
+            section: "financeiro_relatorios",
+            fixo: false,
+            contagem: predioAvisos.filter(a => a.estado === 'Pendente').length
+          },
+          {
+            name: "Alertas Jurídicos",
+            val: alertasJuridicosCount === 1 ? "1 Ativo" : `${alertasJuridicosCount} Ativos`,
+            icon: "/modulos/23-contrato.png",
+            section: "contencioso_juridico",
+            fixo: false,
+            contagem: alertasJuridicosCount
+          },
+          {
+            name: "Contratos Fornecedores",
+            val: fornecedoresCount === 1 ? "1 Ativo" : `${fornecedoresCount} Ativos`,
+            icon: "/modulos/67-fornecedor.png",
+            section: "fornecedores",
+            fixo: false,
+            contagem: fornecedoresCount
+          },
+          {
+            name: "Sondagens IA",
+            val: sondagensCount === 1 ? "1 Ativa" : `${sondagensCount} Ativas`,
+            icon: "/modulos/76-sondagem.png",
+            section: "comunicacao_sondagens",
+            fixo: false,
+            contagem: sondagensCount
+          },
+          {
+            name: "Fundo Reserva",
+            val: `${totalFundoReserva.toLocaleString("pt-PT")} €`,
+            icon: "/modulos/64-saldo.png",
+            section: "financeiro_extratos",
+            fixo: true,
+            destaque: true,
+            contagem: 1
+          },
+          {
+            name: "Saldo em Caixa",
+            val: `${totalSaldoCaixa.toLocaleString("pt-PT")} €`,
+            icon: "/modulos/57-quota.png",
+            section: "movimentos",
+            fixo: true,
+            destaque: true,
+            contagem: 1
+          }
+        ].filter(ind => ind.fixo || ind.contagem > 0);
+
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-[#333] uppercase tracking-wider">Módulo de Administração: Indicadores do Prédio</h4>
+              <span className="text-[10px] text-slate-400 font-medium">Clique em qualquer indicador para navegar para o módulo</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
+              {indicadores.map((ind, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => onSelectSection?.(ind.section)}
+                  className={`w-full h-[115px] rounded-2xl flex flex-col items-center justify-between text-center p-2.5 relative select-none hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-xs ${
+                    ind.destaque
+                      ? "bg-[#A7F3D0] hover:bg-[#6EE7B7] text-[#022c22] border border-[#34D399]"
+                      : "bg-[#ECFDF5] hover:bg-[#D1FAE5] text-[#064E3B] border border-[#A7F3D0]"
+                  }`}
+                >
+                  <img src={ind.icon} alt={ind.name} className="h-9 w-9 object-contain mb-0.5 shrink-0 rounded-lg drop-shadow-xs" />
+                  <div className="flex flex-col items-center leading-none">
+                    <span className={`text-[10px] font-black leading-tight block truncate max-w-full text-center uppercase tracking-tight ${ind.destaque ? "text-[#022c22]" : "text-[#064E3B]"}`}>{ind.name}</span>
+                  </div>
+                  <span className={`bg-white/95 border text-[8.5px] font-black px-2.5 py-0.5 rounded-full shadow-xs uppercase tracking-wider truncate max-w-[92%] leading-none ${ind.destaque ? "text-[#022c22] border-[#34D399]" : "text-[#064E3B] border-[#6EE7B7]"}`}>
+                    {ind.val}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Destaques de Arranque & Pasta Provisória */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
