@@ -5,6 +5,7 @@ import { LoggedUser, Predio, Conta, Fornecedor, Fracao, Aviso, Movimento, Reunia
 import { initialPredios, initialContas, initialFornecedores, initialFracoes, initialAvisos, initialMovements, initialReunioes, initialDocumentos, initialOcorrencias, defaultEmptyPredio } from "./data";
 import { isSupabaseConfigured, fetchUserProfileByEmail } from "./lib/supabaseService";
 import { supabase } from "./lib/supabaseClient";
+import { encontrarFotoDoUtilizador } from "./lib/condominoUtils";
 import {
   fetchPrediosFromSupabase,
   fetchFracoesFromSupabase,
@@ -2309,7 +2310,18 @@ export default function App() {
           <div className="flex items-center justify-between pt-1 border-t border-slate-800/60">
             <div className="flex items-center space-x-2 overflow-hidden">
               <div className="h-7 w-7 rounded-lg bg-slate-800 flex items-center justify-center border border-slate-700 shrink-0 overflow-hidden" title={loggedUser.nome}>
-                <img src="/marca/04-icone-app.png" alt="CondoManager App Icon" className="h-full w-full object-contain p-0.5" />
+                {(() => {
+                  // Antes mostrava sempre o ícone genérico da app — procura
+                  // a fotografia real de quem está autenticado (proprietário,
+                  // coproprietário, inquilino ou um admin que também seja
+                  // proprietário registado de alguma fração).
+                  const fotoUtilizador = encontrarFotoDoUtilizador(fracoes, loggedUser);
+                  return fotoUtilizador ? (
+                    <img src={fotoUtilizador} alt={loggedUser.nome} className="h-full w-full object-cover" />
+                  ) : (
+                    <img src="/marca/04-icone-app.png" alt="CondoManager App Icon" className="h-full w-full object-contain p-0.5" />
+                  );
+                })()}
               </div>
               {!sidebarCollapsed && (
                 <div className="overflow-hidden">

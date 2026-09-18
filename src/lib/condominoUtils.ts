@@ -24,3 +24,22 @@ export function encontrarFracaoDoCondomino(fracoes: Fracao[], loggedUser: Logged
     f.inquilino?.email?.toLowerCase() === emailLower
   );
 }
+
+/**
+ * Encontra a fotografia de perfil de quem está autenticado — procura em
+ * TODOS os prédios/frações (não só na fração associada ao login) porque um
+ * ADMIN é muitas vezes também o proprietário registado de alguma fração
+ * (ex: administrador a testar a própria conta), e é essa foto que deve
+ * aparecer junto ao nome na barra lateral em vez do ícone genérico da app.
+ */
+export function encontrarFotoDoUtilizador(fracoes: Fracao[], loggedUser: LoggedUser): string | null {
+  const emailLower = (loggedUser.email || "").trim().toLowerCase();
+  if (!emailLower) return null;
+  for (const f of fracoes) {
+    if (f.proprietario?.email?.toLowerCase() === emailLower && f.proprietario.foto) return f.proprietario.foto;
+    const co = (f.proprietarios_adicionais || []).find(p => p.email?.toLowerCase() === emailLower && p.foto);
+    if (co?.foto) return co.foto;
+    if (f.inquilino?.email?.toLowerCase() === emailLower && f.inquilino.foto) return f.inquilino.foto;
+  }
+  return null;
+}
