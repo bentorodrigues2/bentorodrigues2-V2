@@ -142,6 +142,17 @@ export default function PWACondominoView({
   // Mobile app navigation: handles both bottom quick tabs and the 10 modules
   const [activeTab, setActiveTab] = useState<string>("home");
 
+  // Rede de segurança: mesmo que o atalho fique escondido, um coproprietário
+  // ou inquilino nunca deve conseguir ficar num separador com dados
+  // financeiros (ex: sessão antiga, navegação programática). Devolve sempre
+  // ao ecrã principal.
+  useEffect(() => {
+    const acessoRestrito = loggedUser.role === "INQUILINO" || loggedUser.role === "COPROPRIETARIO";
+    if (acessoRestrito && (activeTab === "financeiro" || activeTab === "documentos" || activeTab === "arquivo")) {
+      setActiveTab("home");
+    }
+  }, [activeTab, loggedUser.role]);
+
   // Contagem real de respostas por ler no botão flutuante — só decrescia
   // na aparência, nunca de facto ("Pendente" nunca refletia se já tinha
   // sido lida). Guarda localmente quais respostas já foram vistas (chave =
@@ -893,7 +904,17 @@ export default function PWACondominoView({
                   { id: "fornecedores", label: "Fornecedores", desc: "Prestadores Ativos", image: "/modulos/67-fornecedor.png" },
                   { id: "sondagens", label: "Sondagens", desc: "Decisões e Votos", image: "/modulos/70-pessoa-de-contacto.png" },
                   { id: "obras", label: "Obras", desc: "Melhorias Prédio", image: "/modulos/41-obra.png" }
-                ].filter(card => !((loggedUser.role === "INQUILINO" || loggedUser.role === "COPROPRIETARIO") && card.id === "financas")).map(card => {
+                ].filter(card => {
+                  // Coproprietário e inquilino têm acesso básico: mensagens,
+                  // alertas, incidências (podem reportar e seguir a
+                  // resolução), sondagens e obras (só para saberem que vão
+                  // acontecer e se preparem — nunca orçamentos/pagamentos).
+                  // Sem acesso a finanças, documentos financeiros, reservas
+                  // ou fornecedores.
+                  const acessoRestrito = loggedUser.role === "INQUILINO" || loggedUser.role === "COPROPRIETARIO";
+                  if (!acessoRestrito) return true;
+                  return !["financas", "documentos", "reservas_limpezas", "fornecedores"].includes(card.id);
+                }).map(card => {
                   const notifCount = getNotificationCount(card.id);
                   return (
                     <button
@@ -1560,23 +1581,29 @@ export default function PWACondominoView({
                     <span className="text-[8px] bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400 px-2 py-0.5 rounded font-bold uppercase">Adjudicada</span>
                     <h4 className="font-extrabold text-slate-800 dark:text-slate-200 mt-1">Pintura e Tratamento de Escadas</h4>
                   </div>
-                  <span className="font-bold text-indigo-600 font-mono">18,500.00 €</span>
+                  {/* Coproprietário/inquilino sabem que a obra vai acontecer,
+                      mas não têm acesso a orçamentos/valores adjudicados. */}
+                  {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && (
+                    <span className="font-bold text-indigo-600 font-mono">18,500.00 €</span>
+                  )}
                 </div>
                 <p className="text-slate-500 leading-tight">Previsão de arranque em Agosto 2026. Orçamentos aprovados na Assembleia Geral de Maio de 2026.</p>
-                
+
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-850/60 flex justify-between text-[9px] text-slate-400 font-bold">
                   <span>Fiscalização: IA Técnico</span>
-                  <button 
-                    onClick={() => generateAndDownloadPdf(
-                      "Caderno de Encargos e Orçamentos - Pintura de Escadas",
-                      [{ heading: "Memória Descritiva & Propostas Adjudicadas", content: "Documentação oficial de concursos de empreitada, cadernos de encargos de lavagem e tinta impermeável, e orçamentos apresentados pelas empresas qualificadas." }],
-                      "Orcamentos_Memoria_Descritiva_Pintura.pdf",
-                      [{ label: "Edifício", value: predio.nome }, { label: "Valor Adjudicado", value: "18,500.00 €" }]
-                    )}
-                    className="text-indigo-600 hover:underline cursor-pointer"
-                  >
-                    Ver Orçamentos (3 docs)
-                  </button>
+                  {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && (
+                    <button
+                      onClick={() => generateAndDownloadPdf(
+                        "Caderno de Encargos e Orçamentos - Pintura de Escadas",
+                        [{ heading: "Memória Descritiva & Propostas Adjudicadas", content: "Documentação oficial de concursos de empreitada, cadernos de encargos de lavagem e tinta impermeável, e orçamentos apresentados pelas empresas qualificadas." }],
+                        "Orcamentos_Memoria_Descritiva_Pintura.pdf",
+                        [{ label: "Edifício", value: predio.nome }, { label: "Valor Adjudicado", value: "18,500.00 €" }]
+                      )}
+                      className="text-indigo-600 hover:underline cursor-pointer"
+                    >
+                      Ver Orçamentos (3 docs)
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1587,7 +1614,9 @@ export default function PWACondominoView({
                     <span className="text-[8px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 px-2 py-0.5 rounded font-bold uppercase">Concluída</span>
                     <h4 className="font-extrabold text-slate-800 dark:text-slate-200 mt-1">Impermeabilização do Telhado / Cobertura</h4>
                   </div>
-                  <span className="font-bold text-slate-400 font-mono">9,820.00 €</span>
+                  {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && (
+                    <span className="font-bold text-slate-400 font-mono">9,820.00 €</span>
+                  )}
                 </div>
                 <p className="text-slate-500 leading-tight">Concluída em Fevereiro de 2026. Garantia total da obra ativa até Fevereiro de 2031.</p>
                 
@@ -2845,20 +2874,23 @@ export default function PWACondominoView({
                 </div>
               </button>
 
-              {/* Módulo 2 */}
-              <button 
-                id="pwa-hub-link-docs"
-                onClick={() => setActiveTab("documentos")}
-                className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3 rounded-xl shadow-xs hover:border-emerald-500 hover:scale-[1.02] transition-all text-left space-y-1.5 cursor-pointer"
-              >
-                <div className="flex justify-between items-center">
-                  <FileText className="h-5 w-5 text-emerald-500" />
-                </div>
-                <div>
-                  <span className="font-extrabold text-slate-800 dark:text-slate-200 block">Arquivo</span>
-                  <span className="text-[8px] text-slate-400">Arquivo digital de documentos e faturas</span>
-                </div>
-              </button>
+              {/* Módulo 2 — escondido para coproprietário/inquilino: arquivo
+                  inclui documentos financeiros/faturas. */}
+              {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && (
+                <button
+                  id="pwa-hub-link-docs"
+                  onClick={() => setActiveTab("documentos")}
+                  className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3 rounded-xl shadow-xs hover:border-emerald-500 hover:scale-[1.02] transition-all text-left space-y-1.5 cursor-pointer"
+                >
+                  <div className="flex justify-between items-center">
+                    <FileText className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  <div>
+                    <span className="font-extrabold text-slate-800 dark:text-slate-200 block">Arquivo</span>
+                    <span className="text-[8px] text-slate-400">Arquivo digital de documentos e faturas</span>
+                  </div>
+                </button>
+              )}
 
               {/* Módulo 3 */}
               <button 
@@ -2905,20 +2937,23 @@ export default function PWACondominoView({
                 </div>
               </button>
 
-              {/* Módulo 6 */}
-              <button 
-                id="pwa-hub-link-fin"
-                onClick={() => setActiveTab("financeiro")}
-                className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3 rounded-xl shadow-xs hover:border-emerald-500 hover:scale-[1.02] transition-all text-left space-y-1.5 cursor-pointer border-emerald-500/30"
-              >
-                <div className="flex justify-between items-center">
-                  <CreditCard className="h-5 w-5 text-emerald-500" />
-                </div>
-                <div>
-                  <span className="font-extrabold text-slate-800 dark:text-slate-200 block">Financeiro</span>
-                  <span className="text-[8px] text-slate-400">IBAN, Quotas, Comprovativos IA</span>
-                </div>
-              </button>
+              {/* Módulo 6 — sem acesso a dados financeiros para
+                  coproprietário/inquilino. */}
+              {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && (
+                <button
+                  id="pwa-hub-link-fin"
+                  onClick={() => setActiveTab("financeiro")}
+                  className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3 rounded-xl shadow-xs hover:border-emerald-500 hover:scale-[1.02] transition-all text-left space-y-1.5 cursor-pointer border-emerald-500/30"
+                >
+                  <div className="flex justify-between items-center">
+                    <CreditCard className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  <div>
+                    <span className="font-extrabold text-slate-800 dark:text-slate-200 block">Financeiro</span>
+                    <span className="text-[8px] text-slate-400">IBAN, Quotas, Comprovativos IA</span>
+                  </div>
+                </button>
+              )}
 
               {/* Módulo 7 */}
               <button 
