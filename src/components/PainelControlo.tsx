@@ -25,15 +25,16 @@ interface PainelControloProps {
   reservasCount?: number;
   mensagensCount?: number;
   notificacoesCount?: number;
+  dividasPendentesValor?: number;
   onSelectSection?: (section: string) => void;
 }
 
-export function PainelControlo({ 
-  predio, 
+export function PainelControlo({
+  predio,
   predios = [],
-  contas, 
-  fracoes, 
-  movements, 
+  contas,
+  fracoes,
+  movements,
   avisos,
   documentosCount = 0,
   fornecedoresCount = 0,
@@ -45,6 +46,7 @@ export function PainelControlo({
   reservasCount = 0,
   mensagensCount = 0,
   notificacoesCount = 0,
+  dividasPendentesValor = 0,
   onSelectSection
 }: PainelControloProps) {
 
@@ -52,17 +54,26 @@ export function PainelControlo({
   const predioFracoes = fracoes.filter(f => f.id_predio === predio?.id_predio);
   const predioMovements = movements.filter(m => m.id_predio === predio?.id_predio);
   const predioAvisos = avisos.filter(a => a.id_predio === predio?.id_predio);
+  const predioContas = contas.filter(c => c.id_predio === predio?.id_predio);
 
   // Dynamic buildings count (0 if empty or provisional temporary placeholder)
   const totalPrediosReais = predios.filter(p => p.id_predio && p.id_predio !== "predio-temp").length;
 
-  // Calculate dynamic stats
-  const totalFundoReserva = predioMovements
-    .filter(m => m.categoria === "Fundo de Reserva")
-    .reduce((acc, curr) => acc + (curr.tipo === "Receita" || curr.tipo === "RECEITA" ? curr.valor : -curr.valor), 0);
-
-  const totalSaldoCaixa = predioMovements
-    .reduce((acc, curr) => acc + (curr.tipo === "Receita" || curr.tipo === "RECEITA" ? curr.valor : -curr.valor), 0);
+  // Saldos reais das contas bancárias (não somados a partir dos movimentos —
+  // o saldo de cada Conta já é a verdade mantida atualizada pelo saldo de
+  // abertura do arranque + cada movimento posterior; recalcular a partir dos
+  // movimentos ignorava sempre o saldo de abertura). Classificação por
+  // palavras-chave no "tipo" da conta, cobrindo tanto o texto produzido em
+  // GestaoContas.tsx como no Assistente de Arranque.
+  const classificarContaComoReserva = (tipo: string) => /reserva|poupan|prazo|fcr/i.test(tipo || "");
+  const totalFundoReserva = predioContas
+    .filter(c => classificarContaComoReserva(c.tipo))
+    .reduce((acc, c) => acc + (Number(c.saldo) || 0), 0);
+  const totalContaOrdem = predioContas
+    .filter(c => !classificarContaComoReserva(c.tipo))
+    .reduce((acc, c) => acc + (Number(c.saldo) || 0), 0);
+  const totalDisponibilidades = totalContaOrdem + totalFundoReserva;
+  const totalLiquido = totalDisponibilidades - dividasPendentesValor;
 
   // Gráfico inicial dinâmico gerado conforme os saldos vs despesas reais do prédio (a zero se sem movimentos)
   const chartData = useMemo(() => {
@@ -132,8 +143,10 @@ export function PainelControlo({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           predioNome: predio?.nome,
-          saldoCaixa: totalSaldoCaixa,
+          saldoCaixa: totalContaOrdem,
           fundoReserva: totalFundoReserva,
+          dividasPendentes: dividasPendentesValor,
+          totalLiquido,
           quotasEmAtraso,
           ocorrenciasAbertas: ocorrenciasCount,
           totalFracoes: predioFracoes.length
@@ -273,7 +286,16 @@ export function PainelControlo({
             contagem: sondagensCount
           },
           {
-            name: "Fundo Reserva",
+            name: "Conta(s) à Ordem",
+            val: `${totalContaOrdem.toLocaleString("pt-PT")} €`,
+            icon: "/modulos/57-quota.png",
+            section: "financeiro_extratos",
+            fixo: true,
+            destaque: true,
+            contagem: 1
+          },
+          {
+            name: "Fundo de Reserva",
             val: `${totalFundoReserva.toLocaleString("pt-PT")} €`,
             icon: "/modulos/64-saldo.png",
             section: "financeiro_extratos",
@@ -282,12 +304,13 @@ export function PainelControlo({
             contagem: 1
           },
           {
-            name: "Saldo em Caixa",
-            val: `${totalSaldoCaixa.toLocaleString("pt-PT")} €`,
+            name: "Total Líquido",
+            val: `${totalLiquido.toLocaleString("pt-PT")} €`,
             icon: "/modulos/57-quota.png",
-            section: "movimentos",
+            section: "fornecedores",
             fixo: true,
-            destaque: true,
+            corSinal: true,
+            positivo: totalLiquido >= 0,
             contagem: 1
           }
         ].filter(ind => ind.fixo || ind.contagem > 0);
@@ -299,27 +322,41 @@ export function PainelControlo({
               <span className="text-[10px] text-slate-400 font-medium">Clique em qualquer indicador para navegar para o módulo</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
-              {indicadores.map((ind, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => onSelectSection?.(ind.section)}
-                  className={`w-full h-[115px] rounded-2xl flex flex-col items-center justify-between text-center p-2.5 relative select-none hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-xs ${
-                    ind.destaque
-                      ? "bg-[#A7F3D0] hover:bg-[#6EE7B7] text-[#022c22] border border-[#34D399]"
-                      : "bg-[#ECFDF5] hover:bg-[#D1FAE5] text-[#064E3B] border border-[#A7F3D0]"
-                  }`}
-                >
-                  <img src={ind.icon} alt={ind.name} className="h-9 w-9 object-contain mb-0.5 shrink-0 rounded-lg drop-shadow-xs" />
-                  <div className="flex flex-col items-center leading-none">
-                    <span className={`text-[10px] font-black leading-tight block truncate max-w-full text-center uppercase tracking-tight ${ind.destaque ? "text-[#022c22]" : "text-[#064E3B]"}`}>{ind.name}</span>
-                  </div>
-                  <span className={`bg-white/95 border text-[8.5px] font-black px-2.5 py-0.5 rounded-full shadow-xs uppercase tracking-wider truncate max-w-[92%] leading-none ${ind.destaque ? "text-[#022c22] border-[#34D399]" : "text-[#064E3B] border-[#6EE7B7]"}`}>
-                    {ind.val}
-                  </span>
-                </button>
-              ))}
+              {indicadores.map((ind, idx) => {
+                const corVerde = ind.destaque || (ind.corSinal && ind.positivo);
+                const corVermelha = ind.corSinal && !ind.positivo;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => onSelectSection?.(ind.section)}
+                    title={ind.corSinal ? "Total = Saldos Bancários (Ordem + Fundo de Reserva) − Dívidas Pendentes a Fornecedores" : undefined}
+                    className={`w-full h-[115px] rounded-2xl flex flex-col items-center justify-between text-center p-2.5 relative select-none hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-xs ${
+                      corVermelha
+                        ? "bg-red-100 hover:bg-red-200 text-red-950 border border-red-400"
+                        : corVerde
+                        ? "bg-[#A7F3D0] hover:bg-[#6EE7B7] text-[#022c22] border border-[#34D399]"
+                        : "bg-[#ECFDF5] hover:bg-[#D1FAE5] text-[#064E3B] border border-[#A7F3D0]"
+                    }`}
+                  >
+                    <img src={ind.icon} alt={ind.name} className="h-9 w-9 object-contain mb-0.5 shrink-0 rounded-lg drop-shadow-xs" />
+                    <div className="flex flex-col items-center leading-none">
+                      <span className={`text-[10px] font-black leading-tight block truncate max-w-full text-center uppercase tracking-tight ${corVermelha ? "text-red-950" : corVerde ? "text-[#022c22]" : "text-[#064E3B]"}`}>{ind.name}</span>
+                    </div>
+                    <span className={`bg-white/95 border text-[8.5px] font-black px-2.5 py-0.5 rounded-full shadow-xs uppercase tracking-wider truncate max-w-[92%] leading-none ${
+                      corVermelha ? "text-red-700 border-red-400" : corVerde ? "text-[#022c22] border-[#34D399]" : "text-[#064E3B] border-[#6EE7B7]"
+                    }`}>
+                      {ind.val}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
+            {dividasPendentesValor > 0 && (
+              <p className="text-[10px] text-slate-400">
+                O "Total Líquido" já desconta {dividasPendentesValor.toLocaleString("pt-PT")} € em dívidas pendentes a fornecedores (ver Fornecedores → Dívidas a Fornecedores).
+              </p>
+            )}
           </div>
         );
       })()}

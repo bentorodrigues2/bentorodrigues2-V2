@@ -1,15 +1,30 @@
 import React, { useState, useEffect } from "react";
-import { Download, Save, FileText } from "lucide-react";
-import { Predio, Fornecedor, LoggedUser } from "../types";
+import { Download, Save, FileText, Trash2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Predio, Fornecedor, DividaFornecedor, LoggedUser, Conta, Movimento } from "../types";
 import { exportToXLS, generateSupplierPwaManualPDF, gerarPdfRegistoFornecedorHomologado, gerarCartaoAniversarioCondominoPDF } from "../utils";
-import { saveFornecedorToSupabase, saveContratoToSupabase, fetchContratosFromSupabase, deleteContratoFromSupabase } from "../lib/supabaseService";
+import {
+  saveFornecedorToSupabase,
+  saveContratoToSupabase,
+  fetchContratosFromSupabase,
+  deleteContratoFromSupabase,
+  fetchDividasFornecedoresFromSupabase,
+  saveDividaFornecedorToSupabase,
+  deleteDividaFornecedorFromSupabase,
+  saveContaToSupabase,
+  saveMovimentoToSupabase,
+  registarLogAuditoria
+} from "../lib/supabaseService";
 
 interface GestaoFornecedoresProps {
   predio: Predio;
   fornecedores: Fornecedor[];
   onAddFornecedor: (novoFornecedor: Fornecedor) => void;
   loggedUser: LoggedUser;
-  initialTab?: "fornecedores" | "contratos";
+  initialTab?: "fornecedores" | "contratos" | "dividas";
+  contas: Conta[];
+  setContas: React.Dispatch<React.SetStateAction<Conta[]>>;
+  movements: Movimento[];
+  setMovements: React.Dispatch<React.SetStateAction<Movimento[]>>;
 }
 
 export interface Contrato {
@@ -33,9 +48,9 @@ export interface Contrato {
   documento_base64?: string;
 }
 
-export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, loggedUser, initialTab }: GestaoFornecedoresProps) {
+export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, loggedUser, initialTab, contas, setContas, movements, setMovements }: GestaoFornecedoresProps) {
   // Navigation tabs
-  const [activeTab, setActiveTab] = useState<"fornecedores" | "contratos">(initialTab || "fornecedores");
+  const [activeTab, setActiveTab] = useState<"fornecedores" | "contratos" | "dividas">(initialTab || "fornecedores");
   const [fornecedoresList, setFornecedoresList] = useState<Fornecedor[]>(fornecedores);
 
   useEffect(() => {
@@ -79,6 +94,108 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
   useEffect(() => {
     fetchContratosFromSupabase(predio.id_predio).then(setContratos);
   }, [predio.id_predio]);
+
+  // Dívidas a fornecedores (faturas recebidas ainda não pagas)
+  const [dividas, setDividas] = useState<DividaFornecedor[]>([]);
+
+  useEffect(() => {
+    fetchDividasFornecedoresFromSupabase(predio.id_predio).then(d => setDividas(d || []));
+  }, [predio.id_predio]);
+
+  // Novo lançamento de dívida
+  const [dividaFornecedorId, setDividaFornecedorId] = useState("");
+  const [dividaFornecedorNome, setDividaFornecedorNome] = useState("");
+  const [dividaDescricao, setDividaDescricao] = useState("");
+  const [dividaCategoria, setDividaCategoria] = useState("");
+  const [dividaValor, setDividaValor] = useState("");
+  const [dividaDataEmissao, setDividaDataEmissao] = useState(() => new Date().toISOString().split("T")[0]);
+  const [dividaDataVencimento, setDividaDataVencimento] = useState("");
+
+  // Marcar dívida como paga
+  const [pagandoDividaId, setPagandoDividaId] = useState<string | null>(null);
+  const [pagamentoContaId, setPagamentoContaId] = useState("");
+  const [pagamentoData, setPagamentoData] = useState(() => new Date().toISOString().split("T")[0]);
+
+  const predioContas = contas.filter(c => c.id_predio === predio.id_predio);
+  const dividasPredio = dividas.filter(d => d.id_predio === predio.id_predio);
+  const dividasPendentes = dividasPredio.filter(d => d.estado === "Pendente");
+  const totalDividasPendentes = dividasPendentes.reduce((acc, d) => acc + d.valor, 0);
+
+  const handleLancarDivida = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loggedUser.role !== "ADMIN" && loggedUser.role !== "EMPRESA_GESTORA") {
+      return alert("Apenas administradores podem lançar dívidas a fornecedores!");
+    }
+    if (!dividaFornecedorNome.trim() || !dividaDescricao.trim() || !dividaValor) {
+      return alert("Preencha o fornecedor, a descrição e o valor da dívida!");
+    }
+    const nova: DividaFornecedor = {
+      id_divida: "div-" + Date.now(),
+      id_predio: predio.id_predio,
+      id_fornecedor: dividaFornecedorId || undefined,
+      fornecedor_nome: dividaFornecedorNome.trim(),
+      descricao: dividaDescricao.trim(),
+      categoria: dividaCategoria || undefined,
+      valor: Number(dividaValor) || 0,
+      data_emissao: dividaDataEmissao || undefined,
+      data_vencimento: dividaDataVencimento || undefined,
+      estado: "Pendente"
+    };
+    const ok = await saveDividaFornecedorToSupabase(nova);
+    if (!ok) return alert("❌ Não foi possível gravar a dívida no Supabase. Tente novamente.");
+    setDividas(prev => [nova, ...prev]);
+    registarLogAuditoria("Financeira", "Lançou uma dívida a fornecedor", predio.id_predio, loggedUser, `${nova.fornecedor_nome} — ${nova.descricao} (${nova.valor.toFixed(2)} €)`);
+    setDividaFornecedorId(""); setDividaFornecedorNome(""); setDividaDescricao(""); setDividaCategoria(""); setDividaValor(""); setDividaDataVencimento("");
+    alert("Dívida lançada com sucesso! Já entra no cálculo do saldo líquido do prédio.");
+  };
+
+  const handleConfirmarPagamento = async (divida: DividaFornecedor) => {
+    if (!pagamentoContaId) return alert("Selecione a conta bancária que vai pagar esta dívida.");
+    const conta = predioContas.find(c => c.id_conta === pagamentoContaId);
+    if (!conta) return alert("Conta bancária não encontrada.");
+
+    const novoMovimento: Movimento = {
+      id_mov: "mov-" + Date.now(),
+      id_predio: predio.id_predio,
+      id_conta: conta.id_conta,
+      data: pagamentoData,
+      tipo: "Despesa",
+      categoria: divida.categoria || "Fornecedores",
+      descricao: `Pagamento a ${divida.fornecedor_nome} — ${divida.descricao}`,
+      valor: divida.valor,
+      metodo_pagamento: "Transferência Bancária",
+      estado: "Justificado"
+    };
+    const movOk = await saveMovimentoToSupabase(novoMovimento);
+    if (!movOk) return alert("❌ Não foi possível registar o movimento de pagamento. Tente novamente.");
+
+    const contaAtualizada: Conta = { ...conta, saldo: conta.saldo - divida.valor };
+    await saveContaToSupabase(contaAtualizada);
+    setContas(prev => prev.map(c => c.id_conta === conta.id_conta ? contaAtualizada : c));
+    setMovements(prev => [novoMovimento, ...prev]);
+
+    const dividaPaga: DividaFornecedor = {
+      ...divida,
+      estado: "Paga",
+      data_pagamento: pagamentoData,
+      id_conta_pagamento: conta.id_conta,
+      id_movimento_pagamento: novoMovimento.id_mov
+    };
+    await saveDividaFornecedorToSupabase(dividaPaga);
+    setDividas(prev => prev.map(d => d.id_divida === divida.id_divida ? dividaPaga : d));
+    registarLogAuditoria("Financeira", "Pagou uma dívida a fornecedor", predio.id_predio, loggedUser, `${divida.fornecedor_nome} — ${divida.descricao} (${divida.valor.toFixed(2)} € via ${conta.banco})`);
+
+    setPagandoDividaId(null);
+    setPagamentoContaId("");
+    alert(`✅ Dívida paga! O saldo da conta ${conta.banco} foi atualizado e o movimento de despesa foi registado.`);
+  };
+
+  const handleRemoverDivida = async (divida: DividaFornecedor) => {
+    if (!window.confirm(`Eliminar o lançamento "${divida.descricao}"? Esta ação não pode ser desfeita.`)) return;
+    const ok = await deleteDividaFornecedorFromSupabase(divida.id_divida);
+    if (!ok) return alert("❌ Não foi possível eliminar a dívida no Supabase.");
+    setDividas(prev => prev.filter(d => d.id_divida !== divida.id_divida));
+  };
 
   // Global budget reference for impact evaluation
   const [orcamentoReferencia, setOrcamentoReferencia] = useState("5000");
@@ -392,9 +509,24 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
                     <i className="fa-solid fa-[#000] fa-mobile-screen-button text-emerald-600"></i>
                     Checklist de Atribuição de Perfis PWA
                   </label>
-                  <span className="text-[10px] text-slate-400">Ao selecionar um perfil, é enviado um e-mail com acessos e instruções PDF</span>
+                  <span className="text-[10px] text-slate-400">Por defeito não é enviado nenhum e-mail (bancos, seguradoras e a maioria dos fornecedores não precisam de acesso). Só selecione um perfil se este fornecedor for mesmo usar a PWA.</span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+                <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setPerfisPwa([])}
+                    className={`px-3 py-2 rounded-lg border text-xs font-bold flex items-center justify-between cursor-pointer transition-all ${
+                      perfisPwa.length === 0
+                        ? "border-slate-400 bg-slate-100 text-slate-800 ring-2 ring-slate-400 shadow-xs"
+                        : "bg-white border-slate-200 text-slate-500 hover:bg-slate-100"
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span>🚫</span>
+                      <span>Sem Acesso PWA</span>
+                    </span>
+                    <i className={`fa-solid ${perfisPwa.length === 0 ? "fa-circle-check text-slate-600" : "fa-circle text-slate-300"} text-xs`}></i>
+                  </button>
                   {[
                     { id: "LIMPEZAS", label: "Limpezas", icon: "🧹", color: "border-emerald-300 bg-emerald-50/50 text-emerald-900" },
                     { id: "TECNICO", label: "Técnico", icon: "🔍", color: "border-blue-300 bg-blue-50/50 text-blue-900" },
@@ -1139,6 +1271,188 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "dividas" && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
+              <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wide block">Total de Dívidas Pendentes</span>
+              <span className="text-xl font-black text-amber-700 font-mono mt-0.5 block">{totalDividasPendentes.toFixed(2)} €</span>
+              <span className="text-[10px] text-amber-600 mt-0.5 block">{dividasPendentes.length} fatura(s) por pagar</span>
+            </div>
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">Total Já Pago</span>
+              <span className="text-xl font-black text-slate-700 font-mono mt-0.5 block">
+                {dividasPredio.filter(d => d.estado === "Paga").reduce((acc, d) => acc + d.valor, 0).toFixed(2)} €
+              </span>
+              <span className="text-[10px] text-slate-500 mt-0.5 block">{dividasPredio.filter(d => d.estado === "Paga").length} fatura(s) liquidada(s)</span>
+            </div>
+          </div>
+
+          {(loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA') && (
+            <form onSubmit={handleLancarDivida} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+              <h3 className="text-sm font-bold text-slate-800">Lançar Dívida / Fatura Pendente</h3>
+              <p className="text-xs text-slate-500">Registe faturas recebidas de fornecedores ainda não pagas — entram logo no saldo líquido real do prédio, sem precisar de já ter saído dinheiro de nenhuma conta.</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="flex flex-col col-span-2">
+                  <label className="text-xs font-semibold text-slate-500 mb-1">Fornecedor *</label>
+                  <select
+                    value={dividaFornecedorId}
+                    onChange={e => {
+                      const id = e.target.value;
+                      setDividaFornecedorId(id);
+                      const f = predioForn.find(x => x.id_fornecedor === id);
+                      if (f) setDividaFornecedorNome(f.nome);
+                    }}
+                    className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white"
+                  >
+                    <option value="">— Fornecedor não registado (escrever nome abaixo) —</option>
+                    {predioForn.map(f => (
+                      <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    value={dividaFornecedorNome}
+                    onChange={e => setDividaFornecedorNome(e.target.value)}
+                    placeholder="Nome do fornecedor / entidade"
+                    className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 mt-2"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-semibold text-slate-500 mb-1">Valor (€) *</label>
+                  <input type="number" min="0" step="0.01" value={dividaValor} onChange={e => setDividaValor(e.target.value)} placeholder="0.00" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-semibold text-slate-500 mb-1">Categoria</label>
+                  <input type="text" value={dividaCategoria} onChange={e => setDividaCategoria(e.target.value)} placeholder="Ex: Manutenção, Limpeza..." className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex flex-col md:col-span-1">
+                  <label className="text-xs font-semibold text-slate-500 mb-1">Descrição da Fatura *</label>
+                  <input type="text" value={dividaDescricao} onChange={e => setDividaDescricao(e.target.value)} placeholder="Ex: Fatura nº 123 — reparação elevador" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-semibold text-slate-500 mb-1">Data de Emissão</label>
+                  <input type="date" value={dividaDataEmissao} onChange={e => setDividaDataEmissao(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-semibold text-slate-500 mb-1">Data de Vencimento</label>
+                  <input type="date" value={dividaDataVencimento} onChange={e => setDividaDataVencimento(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+                </div>
+              </div>
+
+              <button type="submit" className="bg-amber-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-amber-700 transition-colors cursor-pointer flex items-center space-x-1.5 shadow-xs">
+                <Save className="w-3.5 h-3.5" />
+                <span>Lançar Dívida</span>
+              </button>
+            </form>
+          )}
+
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                  <th className="p-3">Fornecedor</th>
+                  <th className="p-3">Descrição</th>
+                  <th className="p-3">Vencimento</th>
+                  <th className="p-3 text-right">Valor</th>
+                  <th className="p-3">Estado</th>
+                  <th className="p-3 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dividasPredio.length === 0 && (
+                  <tr><td colSpan={6} className="p-6 text-center text-slate-400">Sem dívidas a fornecedores lançadas.</td></tr>
+                )}
+                {dividasPredio.map(d => (
+                  <React.Fragment key={d.id_divida}>
+                    <tr className="border-b border-slate-100 hover:bg-slate-50/50">
+                      <td className="p-3 font-semibold text-slate-700">{d.fornecedor_nome}</td>
+                      <td className="p-3 text-slate-600">{d.descricao}{d.categoria ? ` (${d.categoria})` : ""}</td>
+                      <td className="p-3 text-slate-500 font-mono">{d.data_vencimento || "—"}</td>
+                      <td className="p-3 text-right font-bold text-slate-800 font-mono">{d.valor.toFixed(2)} €</td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded-full font-bold text-[9px] ${
+                          d.estado === "Paga" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                        }`}>
+                          {d.estado}
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {d.estado === "Pendente" && (loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA') && (
+                            <button
+                              onClick={() => setPagandoDividaId(pagandoDividaId === d.id_divida ? null : d.id_divida)}
+                              className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                              title="Marcar como Paga"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Marcar Paga</span>
+                            </button>
+                          )}
+                          {loggedUser.role === 'ADMIN' && (
+                            <button
+                              onClick={() => handleRemoverDivida(d)}
+                              className="p-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded-lg transition-all cursor-pointer"
+                              title="Eliminar Lançamento"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                    {pagandoDividaId === d.id_divida && (
+                      <tr className="bg-emerald-50/40 border-b border-emerald-100">
+                        <td colSpan={6} className="p-3">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
+                            <div className="flex flex-col">
+                              <label className="text-[10px] font-bold text-slate-500 mb-1 uppercase">Conta a Debitar *</label>
+                              <select
+                                value={pagamentoContaId}
+                                onChange={e => setPagamentoContaId(e.target.value)}
+                                className="border border-slate-200 px-3 py-1.5 text-xs rounded-lg focus:outline-emerald-500 bg-white min-w-[220px]"
+                              >
+                                <option value="">— Selecione a conta —</option>
+                                {predioContas.map(c => (
+                                  <option key={c.id_conta} value={c.id_conta}>{c.banco} ({c.tipo}) — Saldo: {c.saldo.toFixed(2)} €</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="flex flex-col">
+                              <label className="text-[10px] font-bold text-slate-500 mb-1 uppercase">Data de Pagamento</label>
+                              <input type="date" value={pagamentoData} onChange={e => setPagamentoData(e.target.value)} className="border border-slate-200 px-3 py-1.5 text-xs rounded-lg focus:outline-emerald-500" />
+                            </div>
+                            <button
+                              onClick={() => handleConfirmarPagamento(d)}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs"
+                            >
+                              Confirmar Pagamento
+                            </button>
+                            <button
+                              onClick={() => { setPagandoDividaId(null); setPagamentoContaId(""); }}
+                              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                          {predioContas.length === 0 && (
+                            <p className="text-[10px] text-red-600 mt-2 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Não há contas bancárias registadas neste prédio.</p>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

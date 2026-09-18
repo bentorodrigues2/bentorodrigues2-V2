@@ -28,7 +28,8 @@ import {
   fetchLimpezasFromSupabase,
   fetchProcessosJuridicosFromSupabase,
   fetchSondagensFromSupabase,
-  fetchConversasFromSupabase
+  fetchConversasFromSupabase,
+  fetchDividasFornecedoresFromSupabase
 } from "./lib/supabaseService";
 import { PainelControlo } from "./components/PainelControlo";
 import { GestaoPredios } from "./components/GestaoPredios";
@@ -291,7 +292,7 @@ export default function App() {
   const [openMenuConsultoriaIA, setOpenMenuConsultoriaIA] = useState(false);
   const [openMenuFornecedores, setOpenMenuFornecedores] = useState(false);
   const [openMenuConfiguracoesIA, setOpenMenuConfiguracoesIA] = useState(false);
-  const [fornecedoresTab, setFornecedoresTab] = useState<"fornecedores" | "contratos">("fornecedores");
+  const [fornecedoresTab, setFornecedoresTab] = useState<"fornecedores" | "contratos" | "dividas">("fornecedores");
   const [iaInitialTab, setIaInitialTab] = useState<"juridico" | "fundo_reserva" | "orcamentos" | "orcamento_anual_ia" | "cerebro_ia" | undefined>(undefined);
   const [viewMode, setViewMode] = useState<"BROWSER" | "PWA">("BROWSER");
   const [brandingColor, setBrandingColorState] = useState<string>(() => {
@@ -541,6 +542,7 @@ export default function App() {
   const [alertasJuridicosAtivosCount, setAlertasJuridicosAtivosCount] = useState<number>(0);
   const [sondagensAtivasCount, setSondagensAtivasCount] = useState<number>(0);
   const [mensagensPendentesCount, setMensagensPendentesCount] = useState<number>(0);
+  const [dividasFornecedoresPendentesValor, setDividasFornecedoresPendentesValor] = useState<number>(0);
 
   useEffect(() => {
     const idPredio = predioAtivo?.id_predio;
@@ -550,15 +552,17 @@ export default function App() {
       setAlertasJuridicosAtivosCount(0);
       setSondagensAtivasCount(0);
       setMensagensPendentesCount(0);
+      setDividasFornecedoresPendentesValor(0);
       return;
     }
     (async () => {
-      const [obrasReais, limpezasReais, juridicosReais, sondagensReais, conversasReais] = await Promise.all([
+      const [obrasReais, limpezasReais, juridicosReais, sondagensReais, conversasReais, dividasReais] = await Promise.all([
         fetchObrasExtraFromSupabase(idPredio),
         fetchLimpezasFromSupabase(idPredio),
         fetchProcessosJuridicosFromSupabase(idPredio),
         fetchSondagensFromSupabase(idPredio),
-        fetchConversasFromSupabase(idPredio)
+        fetchConversasFromSupabase(idPredio),
+        fetchDividasFornecedoresFromSupabase(idPredio)
       ]);
       setObrasAtivasCount((obrasReais || []).filter(o => o.estado !== "Concluída").length);
       const areasUnicas = new Set<string>();
@@ -567,6 +571,7 @@ export default function App() {
       setAlertasJuridicosAtivosCount((juridicosReais || []).filter(p => p.fase_processual !== "CONCLUIDO_EXTINTO").length);
       setSondagensAtivasCount((sondagensReais || []).filter(s => s.estado === "ativa").length);
       setMensagensPendentesCount((conversasReais || []).filter(c => c.estado === "pendente").length);
+      setDividasFornecedoresPendentesValor((dividasReais || []).filter(d => d.estado === "Pendente").reduce((acc, d) => acc + (Number(d.valor) || 0), 0));
     })();
   }, [predioAtivo?.id_predio, browserIsLoggedOut]);
 
@@ -1644,6 +1649,22 @@ export default function App() {
                   <i className="fa-solid fa-file-contract text-emerald-400 text-xs"></i>
                   <span>Serviços contratados</span>
                 </button>
+                <button
+                  onClick={() => {
+                    setActiveSection("fornecedores");
+                    setFornecedoresTab("dividas");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "fornecedores" && fornecedoresTab === "dividas"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <i className="fa-solid fa-file-invoice-dollar text-emerald-400 text-xs"></i>
+                  <span>Dívidas a Fornecedores</span>
+                </button>
               </div>
             )}
           </div>
@@ -2417,6 +2438,7 @@ export default function App() {
                   reservasCount={predioAtivo?.id_predio && predioAtivo.id_predio !== "predio-temp" ? reservas.filter(r => r.id_predio === predioAtivo.id_predio).length : 0}
                   mensagensCount={mensagensPendentesCount}
                   notificacoesCount={0}
+                  dividasPendentesValor={dividasFornecedoresPendentesValor}
                   onSelectSection={selectSection}
                 />
               )}
@@ -2446,12 +2468,16 @@ export default function App() {
           )}
 
           {activeSection === "fornecedores" && (
-            <GestaoFornecedores 
-              predio={predioAtivo} 
-              fornecedores={fornecedores} 
+            <GestaoFornecedores
+              predio={predioAtivo}
+              fornecedores={fornecedores}
               onAddFornecedor={handleAddFornecedor}
               loggedUser={loggedUser}
               initialTab={fornecedoresTab}
+              contas={contas}
+              setContas={setContas}
+              movements={movements}
+              setMovements={setMovements}
             />
           )}
 

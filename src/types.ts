@@ -103,6 +103,27 @@ export interface Fornecedor {
   foto?: string | null;
 }
 
+// Dívida/fatura a um fornecedor ainda por pagar — permite lançar um passivo
+// real (ex: fatura recebida mas não paga) sem precisar de já ter saído
+// dinheiro de nenhuma conta. Ao marcar como paga, gera um Movimento de
+// despesa real e reduz o saldo da conta bancária escolhida.
+export interface DividaFornecedor {
+  id_divida: string;
+  id_predio: string;
+  id_fornecedor?: string;
+  fornecedor_nome: string;
+  descricao: string;
+  categoria?: string;
+  valor: number;
+  data_emissao?: string;
+  data_vencimento?: string;
+  estado: "Pendente" | "Paga";
+  data_pagamento?: string;
+  id_conta_pagamento?: string;
+  id_movimento_pagamento?: string;
+  documento_anexo?: string;
+}
+
 export interface Proprietario {
   id_proprietario?: string;
   id_predio?: string;

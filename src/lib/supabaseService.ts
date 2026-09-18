@@ -7,9 +7,10 @@ import {
   Predio, 
   Fracao, 
   Proprietario,
-  Conta, 
-  Fornecedor, 
-  Movimento, 
+  Conta,
+  Fornecedor,
+  DividaFornecedor,
+  Movimento,
   Aviso, 
   Reuniao,
   PontoVotacaoAssembleia,
@@ -1452,6 +1453,63 @@ export async function fetchFornecedoresFromSupabase(idPredio?: string): Promise<
   } catch (err) {
     return null;
   }
+}
+
+// ============================================================================
+// DÍVIDAS A FORNECEDORES (PASSIVO — faturas recebidas ainda não pagas)
+// ============================================================================
+export async function fetchDividasFornecedoresFromSupabase(idPredio?: string): Promise<DividaFornecedor[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const data = await dbSelect("dividas_fornecedores", {
+      filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined,
+      order: { coluna: "created_at", asc: false }
+    });
+    if (!data) return null;
+
+    return data.map((row: any) => ({
+      id_divida: row.id_divida,
+      id_predio: row.id_predio,
+      id_fornecedor: row.id_fornecedor || undefined,
+      fornecedor_nome: row.fornecedor_nome,
+      descricao: row.descricao,
+      categoria: row.categoria || undefined,
+      valor: Number(row.valor) || 0,
+      data_emissao: row.data_emissao || undefined,
+      data_vencimento: row.data_vencimento || undefined,
+      estado: row.estado === "Paga" ? "Paga" : "Pendente",
+      data_pagamento: row.data_pagamento || undefined,
+      id_conta_pagamento: row.id_conta_pagamento || undefined,
+      id_movimento_pagamento: row.id_movimento_pagamento || undefined,
+      documento_anexo: row.documento_anexo || undefined
+    }));
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function saveDividaFornecedorToSupabase(divida: DividaFornecedor): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("dividas_fornecedores", {
+    id_divida: divida.id_divida,
+    id_predio: divida.id_predio,
+    id_fornecedor: divida.id_fornecedor || null,
+    fornecedor_nome: divida.fornecedor_nome,
+    descricao: divida.descricao,
+    categoria: divida.categoria || null,
+    valor: divida.valor,
+    data_emissao: divida.data_emissao || null,
+    data_vencimento: divida.data_vencimento || null,
+    estado: divida.estado,
+    data_pagamento: divida.data_pagamento || null,
+    id_conta_pagamento: divida.id_conta_pagamento || null,
+    id_movimento_pagamento: divida.id_movimento_pagamento || null,
+    documento_anexo: divida.documento_anexo || null
+  });
+}
+
+export async function deleteDividaFornecedorFromSupabase(idDivida: string): Promise<boolean> {
+  return dbDelete("dividas_fornecedores", [["id_divida", "eq", idDivida]]);
 }
 
 // ============================================================================

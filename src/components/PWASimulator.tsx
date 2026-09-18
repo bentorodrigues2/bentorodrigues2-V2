@@ -3334,11 +3334,15 @@ export function PWASimulator({
                         />
                       )}
                       {activePwaSubMenuDetails === "fornecedores_fichas" && (
-                        <GestaoFornecedores 
+                        <GestaoFornecedores
                           predio={predio}
                           fornecedores={fornecedores}
                           onAddFornecedor={(f) => setFornecedores(prev => [...prev, f])}
                           loggedUser={loggedUser}
+                          contas={contas}
+                          setContas={setContas}
+                          movements={movements}
+                          setMovements={setMovements}
                         />
                       )}
                       {activePwaSubMenuDetails === "fornecedores_orcamentos" && (
