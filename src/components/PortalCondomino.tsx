@@ -26,6 +26,7 @@ import { generateCondominoPwaManualPDF } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { playVoiceNoteSimulation, playNotificationTone } from "../lib/soundService";
 import { supabase } from "../lib/supabaseClient";
+import { encontrarFracaoDoCondomino } from "../lib/condominoUtils";
 import {
   isSupabaseConfigured,
   fetchConversasFromSupabase,
@@ -238,7 +239,7 @@ export function PortalCondomino({
   // Sync edited fields with loggedUser
   useEffect(() => {
     // Find active fraction matching the user
-    const userFracao = fracoes.find((f) => f.proprietario.email === loggedUser.email);
+    const userFracao = encontrarFracaoDoCondomino(fracoes, loggedUser);
     if (userFracao) {
       setEditedNome(userFracao.proprietario.nome);
       setEditedEmail(userFracao.proprietario.email);
@@ -297,6 +298,14 @@ export function PortalCondomino({
 
   // Profile WebP Update
   const handleProfilePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Esta edição mexe em f.proprietario (o titular principal) — para um
+    // coproprietário ou inquilino autenticado isso corromperia os dados do
+    // titular. A auto-edição de perfil para esses papéis ainda não está
+    // construída (têm de pedir a alteração ao administrador por agora).
+    if (loggedUser.role !== "USER") {
+      alert("A edição de perfil ainda não está disponível para este tipo de acesso — peça à administração para atualizar os seus dados.");
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
     convertToWebP(file, (webpUrl) => {
@@ -319,6 +328,10 @@ export function PortalCondomino({
   // Submit Profile Changes (except address)
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
+    if (loggedUser.role !== "USER") {
+      alert("A edição de perfil ainda não está disponível para este tipo de acesso — peça à administração para atualizar os seus dados.");
+      return;
+    }
     if (!editedNome || !editedEmail || !editedNif) {
       alert("Por favor, preencha os campos obrigatórios (Nome, E-mail, NIF).");
       return;
@@ -562,7 +575,7 @@ export function PortalCondomino({
     }
 
     triggerSendReaction("mensagem", "A Enviar Mensagem à Administração...", async () => {
-      const userFracao = fracoes.find((f) => f.proprietario.email === loggedUser.email);
+      const userFracao = encontrarFracaoDoCondomino(fracoes, loggedUser);
       const isVoice = !!recordedAudioUrl;
       const docLabel = msgDocAttachment ? ` 📄 (${msgDocAttachment.name})` : "";
 
@@ -675,7 +688,7 @@ export function PortalCondomino({
 
     setTimeout(() => {
       // Find current user's fraction to test IBAN matching rule
-      const userFracao = fracoes.find((f) => f.proprietario.email === loggedUser.email) || fracoes[0];
+      const userFracao = encontrarFracaoDoCondomino(fracoes, loggedUser) || fracoes[0];
       const targetAviso = avisos.find((a) => a.id_aviso === payAvisoId);
 
       // Simulate extraction
@@ -721,7 +734,7 @@ export function PortalCondomino({
       return;
     }
 
-    const userFracao = fracoes.find((f) => f.proprietario.email === loggedUser.email) || fracoes[0];
+    const userFracao = encontrarFracaoDoCondomino(fracoes, loggedUser) || fracoes[0];
     const novoComp: ComprovativoSubmetido = {
       id: "comp-" + (comprovativos.length + 1),
       id_fracao: payerFractionId || userFracao.id_fracao,
@@ -876,7 +889,7 @@ export function PortalCondomino({
   };
 
   // Active User Fraction
-  const activeUserFracao = fracoes.find((f) => f.proprietario.email === loggedUser.email);
+  const activeUserFracao = encontrarFracaoDoCondomino(fracoes, loggedUser);
   const activeUserAvisos = avisos.filter(
     (a) => a.id_fracao === activeUserFracao?.id_fracao && a.id_predio === predio.id_predio
   );
@@ -1289,14 +1302,14 @@ export function PortalCondomino({
             </div>
 
             {/* Quotas / Avisos */}
-            {loggedUser.role === "INQUILINO" ? (
+            {(loggedUser.role === "INQUILINO" || loggedUser.role === "COPROPRIETARIO") ? (
               <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-5 text-amber-900 shadow-sm flex items-start gap-3">
                 <div className="p-2 bg-amber-100 rounded-lg shrink-0">
                   <Shield className="h-5 w-5 text-amber-700" />
                 </div>
                 <div>
                   <h4 className="font-bold text-xs uppercase tracking-wider text-amber-900 mb-1">
-                    Perfil de Inquilino - Restrição de Dados Financeiros
+                    {loggedUser.role === "COPROPRIETARIO" ? "Perfil de Coproprietário - Restrição de Dados Financeiros" : "Perfil de Inquilino - Restrição de Dados Financeiros"}
                   </h4>
                   <p className="text-xs text-amber-800 leading-relaxed">
                     Como Inquilino, não tem acesso aos extratos de conta-corrente, avisos de cobrança de quotas ou comprovativos financeiros da fração. A gestão financeira e a liquidação de quotas cabem exclusivamente ao proprietário da fração e à administração do condomínio.

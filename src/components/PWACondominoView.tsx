@@ -893,7 +893,7 @@ export default function PWACondominoView({
                   { id: "fornecedores", label: "Fornecedores", desc: "Prestadores Ativos", image: "/modulos/67-fornecedor.png" },
                   { id: "sondagens", label: "Sondagens", desc: "Decisões e Votos", image: "/modulos/70-pessoa-de-contacto.png" },
                   { id: "obras", label: "Obras", desc: "Melhorias Prédio", image: "/modulos/41-obra.png" }
-                ].filter(card => !(loggedUser.role === "INQUILINO" && card.id === "financas")).map(card => {
+                ].filter(card => !((loggedUser.role === "INQUILINO" || loggedUser.role === "COPROPRIETARIO") && card.id === "financas")).map(card => {
                   const notifCount = getNotificationCount(card.id);
                   return (
                     <button
@@ -4251,7 +4251,7 @@ export default function PWACondominoView({
           antes só existia lá, faltava aqui na PWA. Navega para o separador
           "Mensagens" em vez de abrir um modal próprio, reaproveitando o chat
           já existente no Módulo 8 desta mesma vista. */}
-      {(loggedUser.role === "USER" || loggedUser.role === "INQUILINO") && activeTab !== "mensagens" && (
+      {(loggedUser.role === "USER" || loggedUser.role === "INQUILINO" || loggedUser.role === "COPROPRIETARIO") && activeTab !== "mensagens" && (
         <motion.div
           drag
           dragMomentum={false}

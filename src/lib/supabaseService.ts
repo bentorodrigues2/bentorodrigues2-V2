@@ -426,7 +426,7 @@ export interface SupabaseUserProfile {
   id: string;
   email: string;
   nome: string;
-  role: "ADMIN" | "GESTOR" | "EMPRESA_GESTORA" | "USER" | "TECNICO" | "LIMPEZAS" | "CONTABILISTA" | "JURIDICO" | "AUDITOR";
+  role: "ADMIN" | "GESTOR" | "EMPRESA_GESTORA" | "USER" | "INQUILINO" | "COPROPRIETARIO" | "TECNICO" | "LIMPEZAS" | "CONTABILISTA" | "JURIDICO" | "AUDITOR";
   telefone?: string;
   nif?: string;
   fracao?: string;

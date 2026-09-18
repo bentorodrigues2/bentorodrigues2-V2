@@ -75,6 +75,7 @@ export function GestaoFracoes({
     foto: string | null;
   }[]>([]);
   const [gravandoCoproprietario, setGravandoCoproprietario] = useState(false);
+  const [enviandoConviteCoproprietario, setEnviandoConviteCoproprietario] = useState(false);
   const [editingCoIndex, setEditingCoIndex] = useState<number | null>(null);
   const [enviandoConvites, setEnviandoConvites] = useState(false);
 
@@ -962,6 +963,50 @@ export function GestaoFracoes({
               : `✅ Proprietário associado com sucesso à Fração ${targetFracao.fracao_nome} no Supabase, mas houve um erro a enviar o email de ativação. Pode reenviá-lo mais tarde.`);
           } else {
             alert(`✅ Dados do proprietário da Fração ${targetFracao.fracao_nome} (${propNome.trim()}) gravados com sucesso no Supabase!`);
+          }
+
+          // Convite real de acesso ao inquilino — antes era só um registo
+          // informativo, nunca recebia email nenhum nem conseguia entrar na
+          // plataforma. Mesma ordem: boas-vindas primeiro, 60s depois a
+          // ativação. Só dispara quando o email do inquilino é novo/mudou.
+          const isNewInquilinoEmail = arrendada && inqNome.trim() && inqEmail.trim() && targetFracao.inquilino?.email !== inqEmail.trim();
+          if (isNewInquilinoEmail) {
+            setEnviandoConvites(true);
+            try {
+              await fetch("/api/pdf?tipo=boas-vindas", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  nome: inqNome.trim(),
+                  buildingName: predio.nome,
+                  email: inqEmail.trim(),
+                  predio: predio.id_predio,
+                  fracao: selectedFracaoId
+                })
+              }).catch(err => console.warn("[GestaoFracoes] Aviso ao enviar boas-vindas ao inquilino:", err));
+
+              await new Promise(resolve => setTimeout(resolve, 60000));
+
+              const respConviteInq = await fetch("/api/admin?acao=convidar", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  email: inqEmail.trim(),
+                  nome: inqNome.trim(),
+                  role: "INQUILINO",
+                  id_predio: predio.id_predio,
+                  id_fracao: selectedFracaoId
+                })
+              });
+              const dataConviteInq = await respConviteInq.json();
+              if (respConviteInq.ok && dataConviteInq.ok) {
+                alert(`✅ Inquilino ${inqNome.trim()} convidado com sucesso! Foi enviado um email para ${inqEmail.trim()} com o guia de boas-vindas e, 60 segundos depois, o link para ativar o acesso e definir a password.`);
+              } else {
+                alert(`⚠️ Dados do inquilino gravados, mas houve um erro a enviar o convite de acesso. Pode reenviá-lo mais tarde.`);
+              }
+            } finally {
+              setEnviandoConvites(false);
+            }
           }
 
           limparFormProprietario();
@@ -2155,7 +2200,7 @@ export function GestaoFracoes({
 
                   <button
                     type="button"
-                    disabled={gravandoCoproprietario}
+                    disabled={gravandoCoproprietario || enviandoConviteCoproprietario}
                     onClick={async () => {
                       if (!coNome.trim()) {
                         alert("Insira pelo menos o nome do coproprietário.");
@@ -2174,6 +2219,8 @@ export function GestaoFracoes({
                         data_nascimento: coDataNascimento || undefined,
                         foto: coFoto
                       };
+                      const emailAnterior = editingCoIndex !== null ? proprietariosAdicionais[editingCoIndex]?.email : undefined;
+                      const isNovoEmailCo = coEmail.trim() && coEmail.trim() !== emailAnterior;
                       const novaLista = editingCoIndex !== null
                         ? proprietariosAdicionais.map((p, i) => i === editingCoIndex ? novoCoproprietario : p)
                         : [...proprietariosAdicionais, novoCoproprietario];
@@ -2201,11 +2248,55 @@ export function GestaoFracoes({
                         } finally {
                           setGravandoCoproprietario(false);
                         }
+
+                        // Convite real de acesso — antes um coproprietário
+                        // era só um registo informativo, nunca recebia email
+                        // nenhum nem conseguia entrar na plataforma. Mesma
+                        // ordem já usada para o proprietário principal:
+                        // boas-vindas primeiro, 60s depois a ativação.
+                        if (isNovoEmailCo) {
+                          setEnviandoConviteCoproprietario(true);
+                          try {
+                            await fetch("/api/pdf?tipo=boas-vindas", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                nome: coNome.trim(),
+                                buildingName: predio.nome,
+                                email: coEmail.trim(),
+                                predio: predio.id_predio,
+                                fracao: selectedFracaoId
+                              })
+                            }).catch(err => console.warn("[GestaoFracoes] Aviso ao enviar boas-vindas ao coproprietário:", err));
+
+                            await new Promise(resolve => setTimeout(resolve, 60000));
+
+                            const respConvite = await fetch("/api/admin?acao=convidar", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                email: coEmail.trim(),
+                                nome: coNome.trim(),
+                                role: "COPROPRIETARIO",
+                                id_predio: predio.id_predio,
+                                id_fracao: selectedFracaoId
+                              })
+                            });
+                            const dataConvite = await respConvite.json();
+                            if (respConvite.ok && dataConvite.ok) {
+                              alert(`✅ Coproprietário ${coNome.trim()} convidado com sucesso! Foi enviado um email para ${coEmail.trim()} com o guia de boas-vindas e, 60 segundos depois, o link para ativar o acesso e definir a password.`);
+                            } else {
+                              alert(`⚠️ Coproprietário gravado, mas houve um erro a enviar o convite de acesso. Pode reenviá-lo mais tarde.`);
+                            }
+                          } finally {
+                            setEnviandoConviteCoproprietario(false);
+                          }
+                        }
                       }
                     }}
                     className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors cursor-pointer"
                   >
-                    <i className={`fa-solid ${editingCoIndex !== null ? "fa-check" : "fa-plus"} mr-1`}></i> {gravandoCoproprietario ? "A gravar..." : editingCoIndex !== null ? "Guardar Alterações" : "Adicionar Coproprietário"}
+                    <i className={`fa-solid ${editingCoIndex !== null ? "fa-check" : "fa-plus"} mr-1`}></i> {enviandoConviteCoproprietario ? "A enviar convite (não feche esta janela)..." : gravandoCoproprietario ? "A gravar..." : editingCoIndex !== null ? "Guardar Alterações" : "Adicionar Coproprietário"}
                   </button>
                   {editingCoIndex !== null && (
                     <button

@@ -724,7 +724,7 @@ export default function App() {
           setNeedsPasswordSetup(null);
           const perfil = cleanEmail ? await fetchUserProfileByEmail(cleanEmail) : null;
           if (perfil) {
-            setLoggedUser({ role: perfil.role, email: perfil.email || cleanEmail, nome: perfil.nome || cleanEmail });
+            setLoggedUser({ role: perfil.role, email: perfil.email || cleanEmail, nome: perfil.nome || cleanEmail, id_fracao: perfil.fracao, id_predio: perfil.id_predio });
           } else if (cleanEmail) {
             setLoggedUser({ role: "USER", email: cleanEmail, nome: cleanEmail });
           }
@@ -751,7 +751,9 @@ export default function App() {
         setLoggedUser({
           role: perfil.role,
           email: perfil.email || cleanEmail,
-          nome: perfil.nome || cleanEmail
+          nome: perfil.nome || cleanEmail,
+          id_fracao: perfil.fracao,
+          id_predio: perfil.id_predio
         });
       }
 

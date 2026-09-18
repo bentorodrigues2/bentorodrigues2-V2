@@ -323,7 +323,14 @@ export interface Ocorrencia {
 export interface LoggedUser {
   nome: string;
   email: string;
-  role: "ADMIN" | "GESTOR" | "EMPRESA_GESTORA" | "USER" | "INQUILINO" | "TECNICO" | "LIMPEZAS" | "JURIDICO" | "AUDITOR" | "CONTABILISTA";
+  role: "ADMIN" | "GESTOR" | "EMPRESA_GESTORA" | "USER" | "INQUILINO" | "COPROPRIETARIO" | "TECNICO" | "LIMPEZAS" | "JURIDICO" | "AUDITOR" | "CONTABILISTA";
+  // Fração associada a este login — vem do profiles.fracao definido no
+  // convite (ver api/admin.js atualizarPerfil). Sem isto, um coproprietário
+  // ou inquilino que iniciasse sessão não tinha forma fiável de a app saber
+  // a que fração pertence (só se procurava por email do proprietário
+  // principal, nunca coproprietários/inquilino).
+  id_fracao?: string;
+  id_predio?: string;
 }
 
 export interface Reserva {

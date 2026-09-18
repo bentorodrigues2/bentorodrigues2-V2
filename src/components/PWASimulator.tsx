@@ -40,6 +40,7 @@ import { ConfiguracoesAdministracao } from "./ConfiguracoesAdministracao";
 import { FichaEmpresaGestora } from "./FichaEmpresaGestora";
 import { PWASupplierCardsView } from "./PWASupplierCardsView";
 import { saveAvisosToSupabase, saveMovimentoToSupabase, saveContaToSupabase, saveDocumentoToSupabase, saveReuniaoToSupabase, saveOcorrenciaToSupabase, saveReservaToSupabase, registarLogAuditoria, saveConversaToSupabase, saveMensagemConversaToSupabase, saveProprietarioToSupabase, saveFracaoToSupabase, saveLimpezaToSupabase } from "../lib/supabaseService";
+import { encontrarFracaoDoCondomino } from "../lib/condominoUtils";
 import { 
   Smartphone, 
   Wifi, 
@@ -395,8 +396,11 @@ export function PWASimulator({
     return () => clearInterval(interval);
   }, []);
 
-  // Determine active fraction for owner role
-  const condominoFracao = fracoes.find(f => f.proprietario.email === loggedUser.email) || fracoes[0];
+  // Determine active fraction for owner role — antes só procurava pelo
+  // email do proprietário principal, o que fazia um coproprietário ou
+  // inquilino autenticado cair sempre no fallback fracoes[0] (dados de
+  // OUTRA fração, potencialmente de outro condómino).
+  const condominoFracao = encontrarFracaoDoCondomino(fracoes, loggedUser) || fracoes[0];
 
   // Auto-route tab when role switches to avoid blank state
   useEffect(() => {
