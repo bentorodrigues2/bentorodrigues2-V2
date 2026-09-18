@@ -3341,7 +3341,8 @@ export function PWASimulator({
                         <GestaoFornecedores
                           predio={predio}
                           fornecedores={fornecedores}
-                          onAddFornecedor={(f) => setFornecedores(prev => [...prev, f])}
+                          onAddFornecedor={(f) => setFornecedores(prev => prev.some(x => x.id_fornecedor === f.id_fornecedor) ? prev.map(x => x.id_fornecedor === f.id_fornecedor ? f : x) : [...prev, f])}
+                          onRemoveFornecedor={(id) => setFornecedores(prev => prev.filter(x => x.id_fornecedor !== id))}
                           loggedUser={loggedUser}
                           contas={contas}
                           setContas={setContas}

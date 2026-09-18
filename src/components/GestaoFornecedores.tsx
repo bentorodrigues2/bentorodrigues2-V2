@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Download, Save, FileText, Trash2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Download, Save, FileText, Trash2, CheckCircle2, AlertTriangle, Pencil, X } from "lucide-react";
 import { Predio, Fornecedor, DividaFornecedor, LoggedUser, Conta, Movimento } from "../types";
 import { exportToXLS, generateSupplierPwaManualPDF, gerarPdfRegistoFornecedorHomologado, gerarCartaoAniversarioCondominoPDF } from "../utils";
 import {
   saveFornecedorToSupabase,
+  deleteFornecedorFromSupabase,
   saveContratoToSupabase,
   fetchContratosFromSupabase,
   deleteContratoFromSupabase,
@@ -19,6 +20,7 @@ interface GestaoFornecedoresProps {
   predio: Predio;
   fornecedores: Fornecedor[];
   onAddFornecedor: (novoFornecedor: Fornecedor) => void;
+  onRemoveFornecedor?: (idFornecedor: string) => void;
   loggedUser: LoggedUser;
   initialTab?: "fornecedores" | "contratos" | "dividas";
   contas: Conta[];
@@ -48,7 +50,7 @@ export interface Contrato {
   documento_base64?: string;
 }
 
-export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, loggedUser, initialTab, contas, setContas, movements, setMovements }: GestaoFornecedoresProps) {
+export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRemoveFornecedor, loggedUser, initialTab, contas, setContas, movements, setMovements }: GestaoFornecedoresProps) {
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<"fornecedores" | "contratos" | "dividas">(initialTab || "fornecedores");
   const [fornecedoresList, setFornecedoresList] = useState<Fornecedor[]>(fornecedores);
@@ -75,6 +77,36 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
   const [emailContacto, setEmailContacto] = useState("");
   const [dataNascimento, setDataNascimento] = useState("");
   const [perfisPwa, setPerfisPwa] = useState<("LIMPEZAS" | "TECNICO" | "JURIDICO" | "AUDITOR" | "CONTABILISTA")[]>([]);
+  const [editingFornecedorId, setEditingFornecedorId] = useState<string | null>(null);
+
+  const handleEditarFornecedor = (f: Fornecedor) => {
+    setEditingFornecedorId(f.id_fornecedor);
+    setNome(f.nome);
+    setNif(f.nif);
+    setIban(f.iban || "");
+    setCategoria(f.categoria);
+    setMorada(f.morada || "");
+    setContacto(f.contacto || "");
+    setPessoaContacto(f.pessoa_contacto || "");
+    setTelemovelDireto(f.telemovel_direto || "");
+    setEmailContacto(f.email_contacto || "");
+    setDataNascimento(f.data_nascimento || "");
+    setPerfisPwa(f.perfis_pwa || []);
+    document.getElementById("btn-guardar-fornecedor-supabase")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const handleCancelarEdicaoFornecedor = () => {
+    setEditingFornecedorId(null);
+    setNome(""); setNif(""); setIban(""); setCategoria(""); setMorada(""); setContacto(""); setPessoaContacto(""); setTelemovelDireto(""); setEmailContacto(""); setDataNascimento(""); setPerfisPwa([]);
+  };
+
+  const handleEliminarFornecedor = async (f: Fornecedor) => {
+    if (!window.confirm(`Tem a certeza de que deseja eliminar o fornecedor "${f.nome}"?`)) return;
+    const ok = await deleteFornecedorFromSupabase(f.id_fornecedor);
+    if (!ok) return alert("❌ Não foi possível eliminar o fornecedor no Supabase. Tente novamente.");
+    setFornecedoresList(prev => prev.filter(x => x.id_fornecedor !== f.id_fornecedor));
+    onRemoveFornecedor?.(f.id_fornecedor);
+  };
 
   // Modals for supplier automated emails
   const [welcomeModalFornecedor, setWelcomeModalFornecedor] = useState<Fornecedor | null>(null);
@@ -300,9 +332,11 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
     }
     if (!nome || !nif || !categoria) return alert("Preencha todos os campos obrigatórios (Nome, NIF, Categoria)!");
 
-    const novoId = "forn-" + (fornecedores.length + 1);
+    const isEditing = editingFornecedorId !== null;
+    const fornecedorOriginal = isEditing ? fornecedoresList.find(f => f.id_fornecedor === editingFornecedorId) : null;
+    const idFinal = isEditing && fornecedorOriginal ? fornecedorOriginal.id_fornecedor : "forn-" + (fornecedores.length + 1);
     const novo: Fornecedor = {
-      id_fornecedor: novoId,
+      id_fornecedor: idFinal,
       id_predio: predio.id_predio,
       nome,
       nif,
@@ -315,13 +349,24 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
       email_contacto: emailContacto || undefined,
       data_nascimento: dataNascimento || undefined,
       perfis_pwa: perfisPwa.length > 0 ? perfisPwa : undefined,
-      pwa_acesso_enviado: perfisPwa.length > 0
+      // Ao editar, mantém o que já lá estava — não se reenvia o acesso PWA
+      // só porque se corrigiu, por exemplo, um número de telefone.
+      pwa_acesso_enviado: isEditing ? (fornecedorOriginal?.pwa_acesso_enviado ?? perfisPwa.length > 0) : perfisPwa.length > 0
     };
     onAddFornecedor(novo);
-    saveFornecedorToSupabase(novo).catch(console.error);
-    
+    const okSave = await saveFornecedorToSupabase(novo);
+    if (!okSave) {
+      alert("⚠️ Fornecedor gravado localmente, mas houve um erro a gravar no Supabase. Tente novamente.");
+    }
+
+    if (isEditing) {
+      handleCancelarEdicaoFornecedor();
+      alert(`✅ Dados do fornecedor "${novo.nome}" atualizados com sucesso!`);
+      return;
+    }
+
     // Automatically select this new supplier in contract form if they want to build one next
-    setSelectedFornecedorId(novoId);
+    setSelectedFornecedorId(idFinal);
 
     // If PWA profile checklist had selected items, trigger automated welcome email & PDF manual
     if (perfisPwa.length > 0) {
@@ -451,8 +496,20 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
 
           {(loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA') && (
             <form onSubmit={submeterFornecedor} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4 no-print">
-              <h3 className="text-sm font-bold text-slate-800">Cadastrar Novo Fornecedor do Condomínio</h3>
-              
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-800">{editingFornecedorId ? `Editar Fornecedor: ${nome || "..."}` : "Cadastrar Novo Fornecedor do Condomínio"}</h3>
+                {editingFornecedorId && (
+                  <button
+                    type="button"
+                    onClick={handleCancelarEdicaoFornecedor}
+                    className="text-xs font-semibold text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Cancelar</span>
+                  </button>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="flex flex-col col-span-2">
                   <label className="text-xs font-semibold text-slate-500 mb-1">Nome do Parceiro / Empresa *</label>
@@ -557,13 +614,13 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
                 </div>
               </div>
 
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 id="btn-guardar-fornecedor-supabase"
                 className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors cursor-pointer flex items-center space-x-1.5 shadow-xs"
               >
-                <Save className="w-3.5 h-3.5" />
-                <span>Guardar Fornecedor no Supabase</span>
+                {editingFornecedorId ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
+                <span>{editingFornecedorId ? "Guardar Alterações" : "Guardar Fornecedor no Supabase"}</span>
               </button>
             </form>
           )}
@@ -627,27 +684,31 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, logg
                       </td>
                       <td className="p-3 text-right space-y-1">
                         <button
-                          onClick={() => setWelcomeModalFornecedor(f)}
-                          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer block w-full text-center"
+                          onClick={() => handleEditarFornecedor(f)}
+                          className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 w-full text-center"
+                          title="Editar Fornecedor"
                         >
-                          <i className="fa-solid fa-paper-plane mr-1"></i> Acessos PWA & Manual
+                          <Pencil className="h-2.5 w-2.5" />
+                          <span>Editar</span>
+                        </button>
+                        <button
+                          onClick={() => setWelcomeModalFornecedor(f)}
+                          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer block w-full text-center"
+                        >
+                          <i className="fa-solid fa-paper-plane mr-1 text-[8px]"></i> Acessos PWA & Manual
                         </button>
                         <button
                           onClick={() => setBirthdayModalFornecedor(f)}
-                          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer block w-full text-center"
+                          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer block w-full text-center"
                         >
-                          <i className="fa-solid fa-cake-candles mr-1"></i> E-mail Aniversário
+                          <i className="fa-solid fa-cake-candles mr-1 text-[8px]"></i> E-mail Aniversário
                         </button>
                         <button
-                          onClick={() => {
-                            if (confirm(`Tem a certeza de que deseja eliminar o fornecedor "${f.nome}"?`)) {
-                              setFornecedoresList(prev => prev.filter(x => x.id_fornecedor !== f.id_fornecedor));
-                            }
-                          }}
-                          className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 w-full text-center"
+                          onClick={() => handleEliminarFornecedor(f)}
+                          className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 w-full text-center"
                           title="Eliminar Fornecedor"
                         >
-                          <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="h-3.5 w-3.5 object-contain" />
+                          <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="h-2.5 w-2.5 object-contain" />
                           <span>Eliminar</span>
                         </button>
                       </td>

@@ -630,7 +630,13 @@ export default function App() {
   };
 
   const handleAddFornecedor = (novoFornecedor: Fornecedor) => {
-    setFornecedores([...fornecedores, novoFornecedor]);
+    setFornecedores(prev => prev.some(f => f.id_fornecedor === novoFornecedor.id_fornecedor)
+      ? prev.map(f => f.id_fornecedor === novoFornecedor.id_fornecedor ? novoFornecedor : f)
+      : [...prev, novoFornecedor]);
+  };
+
+  const handleRemoveFornecedor = (idFornecedor: string) => {
+    setFornecedores(prev => prev.filter(f => f.id_fornecedor !== idFornecedor));
   };
 
   const handleAddConta = (novaConta: Conta) => {
@@ -2558,6 +2564,7 @@ export default function App() {
               predio={predioAtivo}
               fornecedores={fornecedores}
               onAddFornecedor={handleAddFornecedor}
+              onRemoveFornecedor={handleRemoveFornecedor}
               loggedUser={loggedUser}
               initialTab={fornecedoresTab}
               contas={contas}
