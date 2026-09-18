@@ -162,6 +162,22 @@ export default function PWACondominoView({
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
 
+  // Caixa de escrever mensagem cresce em altura conforme o texto (até um
+  // limite, depois passa a ter scroll interno) — antes era um <input> de uma
+  // única linha que só mostrava alguns caracteres. Dois refs porque há duas
+  // caixas de composição (a do separador "Mensagens" e a do modal de chat
+  // rápido) que nunca estão montadas ao mesmo tempo, mas partilham o mesmo
+  // texto (newMsgText vem por props).
+  const msgTextareaTabRef = useRef<HTMLTextAreaElement>(null);
+  const msgTextareaModalRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    [msgTextareaTabRef.current, msgTextareaModalRef.current].forEach((el) => {
+      if (!el) return;
+      el.style.height = "auto";
+      el.style.height = Math.min(el.scrollHeight, 96) + "px";
+    });
+  }, [newMsgText]);
+
   useEffect(() => {
     let interval: any = null;
     if (isRecordingChatAudio) {
@@ -2274,8 +2290,8 @@ export default function PWACondominoView({
                       ✕
                     </button>
                   </div>
-                  <div className="grid grid-cols-8 gap-1.5 text-base">
-                    {["😊", "👍", "🏢", "🔑", "🚪", "💡", "🔧", "⚠️", "📄", "💶", "⏱️", "📋", "🤝", "📢", "🚨", "💧", "🛠️", "🚗", "📦", "🧹", "✨", "🔒", "✅", "❌"].map((emoji) => (
+                  <div className="grid grid-cols-6 gap-1.5 text-base">
+                    {["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => (
                       <button
                         key={emoji}
                         type="button"
@@ -2374,7 +2390,7 @@ export default function PWACondominoView({
                   setIsEmojiPickerOpen(false);
                   setIsAttachmentMenuOpen(false);
                 }}
-                className="flex items-center gap-1.5 pt-2 border-t border-slate-150 dark:border-slate-800"
+                className="flex items-end gap-1 pt-2 border-t border-slate-150 dark:border-slate-800"
               >
                 {/* CLIP BUTTON */}
                 <button
@@ -2383,7 +2399,7 @@ export default function PWACondominoView({
                     setIsAttachmentMenuOpen(!isAttachmentMenuOpen);
                     setIsEmojiPickerOpen(false);
                   }}
-                  className={`p-2 rounded-xl cursor-pointer transition-colors shrink-0 ${
+                  className={`p-1.5 rounded-xl cursor-pointer transition-colors shrink-0 ${
                     isAttachmentMenuOpen || chatPhotoWebp || chatDocAttachment
                       ? "bg-emerald-600 text-white shadow-xs"
                       : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
@@ -2400,7 +2416,7 @@ export default function PWACondominoView({
                     setIsEmojiPickerOpen(!isEmojiPickerOpen);
                     setIsAttachmentMenuOpen(false);
                   }}
-                  className={`p-2 rounded-xl cursor-pointer transition-colors shrink-0 ${
+                  className={`p-1.5 rounded-xl cursor-pointer transition-colors shrink-0 ${
                     isEmojiPickerOpen
                       ? "bg-amber-500 text-white shadow-xs"
                       : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-amber-500"
@@ -2423,9 +2439,9 @@ export default function PWACondominoView({
                       setChatAudioTimer(0);
                     }
                   }}
-                  className={`p-2 ${
-                    isRecordingChatAudio 
-                      ? "bg-red-600 text-white animate-pulse" 
+                  className={`p-1.5 ${
+                    isRecordingChatAudio
+                      ? "bg-red-600 text-white animate-pulse"
                       : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-emerald-600 dark:text-emerald-400"
                   } rounded-xl cursor-pointer transition-colors shrink-0`}
                   title={isRecordingChatAudio ? "Parar gravação de voz" : "Gravar mensagem de áudio (Nota de Voz)"}
@@ -2433,24 +2449,31 @@ export default function PWACondominoView({
                   <Mic className="h-4 w-4" />
                 </button>
 
-                {/* TEXT INPUT */}
-                <input 
-                  type="text" 
+                {/* TEXT INPUT (auto-cresce em altura conforme o texto) */}
+                <textarea
+                  ref={msgTextareaTabRef}
+                  rows={1}
                   required={!chatAudioData && !chatPhotoWebp && !chatDocAttachment}
                   value={newMsgText}
                   onChange={e => setNewMsgText(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      e.currentTarget.form?.requestSubmit();
+                    }
+                  }}
                   placeholder={
-                    isRecordingChatAudio 
-                      ? `🔴 A gravar áudio (${chatAudioTimer}s)... clique no microfone para parar` 
+                    isRecordingChatAudio
+                      ? `🔴 A gravar áudio (${chatAudioTimer}s)... clique no microfone para parar`
                       : "Escreva ao gestor do prédio..."
                   }
-                  className="flex-grow bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs rounded-xl focus:outline-none focus:border-emerald-500 text-slate-800 dark:text-white font-medium"
+                  className="flex-grow min-w-0 resize-none max-h-24 overflow-y-auto bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs rounded-xl focus:outline-none focus:border-emerald-500 text-slate-800 dark:text-white font-medium leading-snug"
                 />
 
                 {/* ENVIAR MENSAGEM BUTTON */}
-                <button 
-                  type="submit" 
-                  className="p-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl cursor-pointer transition-all active:scale-95 shadow-md flex items-center justify-center shrink-0"
+                <button
+                  type="submit"
+                  className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl cursor-pointer transition-all active:scale-95 shadow-md flex items-center justify-center shrink-0"
                   title="Enviar Mensagem"
                 >
                   <Send className="h-4 w-4" />
@@ -3470,8 +3493,8 @@ export default function PWACondominoView({
                             ✕
                           </button>
                         </div>
-                        <div className="grid grid-cols-8 gap-1.5 text-base">
-                          {["😊", "👍", "🏢", "🔑", "🚪", "💡", "🔧", "⚠️", "📄", "💶", "⏱️", "📋", "🤝", "📢", "🚨", "💧", "🛠️", "🚗", "📦", "🧹", "✨", "🔒", "✅", "❌"].map((emoji) => (
+                        <div className="grid grid-cols-6 gap-1.5 text-base">
+                          {["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => (
                             <button
                               key={emoji}
                               type="button"
@@ -3622,7 +3645,7 @@ export default function PWACondominoView({
                         setIsEmojiPickerOpen(false);
                         setIsAttachmentMenuOpen(false);
                       }} 
-                      className="flex items-center gap-1.5 shrink-0 pt-2 border-t border-slate-800"
+                      className="flex items-end gap-1 shrink-0 pt-2 border-t border-slate-800"
                     >
                       {/* CLIP BUTTON (Anexos / Documentos / Foto com câmara) */}
                       <button
@@ -3631,7 +3654,7 @@ export default function PWACondominoView({
                           setIsAttachmentMenuOpen(!isAttachmentMenuOpen);
                           setIsEmojiPickerOpen(false);
                         }}
-                        className={`p-2 rounded-xl cursor-pointer transition-colors shrink-0 ${
+                        className={`p-1.5 rounded-xl cursor-pointer transition-colors shrink-0 ${
                           isAttachmentMenuOpen || chatPhotoWebp || chatDocAttachment
                             ? "bg-emerald-600 text-white shadow-xs"
                             : "bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white"
@@ -3648,7 +3671,7 @@ export default function PWACondominoView({
                           setIsEmojiPickerOpen(!isEmojiPickerOpen);
                           setIsAttachmentMenuOpen(false);
                         }}
-                        className={`p-2 rounded-xl cursor-pointer transition-colors shrink-0 ${
+                        className={`p-1.5 rounded-xl cursor-pointer transition-colors shrink-0 ${
                           isEmojiPickerOpen
                             ? "bg-amber-500 text-slate-950 shadow-xs"
                             : "bg-slate-800 hover:bg-slate-700 text-amber-400"
@@ -3671,9 +3694,9 @@ export default function PWACondominoView({
                             setChatAudioTimer(0);
                           }
                         }}
-                        className={`p-2 ${
-                          isRecordingChatAudio 
-                            ? "bg-red-600 text-white animate-pulse" 
+                        className={`p-1.5 ${
+                          isRecordingChatAudio
+                            ? "bg-red-600 text-white animate-pulse"
                             : "bg-slate-800 hover:bg-slate-700 text-emerald-400"
                         } rounded-xl cursor-pointer transition-colors shrink-0`}
                         title={isRecordingChatAudio ? "Parar gravação de voz" : "Gravar mensagem de áudio (Nota de Voz)"}
@@ -3681,24 +3704,31 @@ export default function PWACondominoView({
                         <Mic className="h-4 w-4" />
                       </button>
 
-                      {/* TEXT INPUT */}
-                      <input 
-                        type="text" 
+                      {/* TEXT INPUT (auto-cresce em altura conforme o texto) */}
+                      <textarea
+                        ref={msgTextareaModalRef}
+                        rows={1}
                         required={!chatAudioData && !chatPhotoWebp && !chatDocAttachment}
                         value={newMsgText}
                         onChange={e => setNewMsgText(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            e.currentTarget.form?.requestSubmit();
+                          }
+                        }}
                         placeholder={
-                          isRecordingChatAudio 
-                            ? `🔴 A gravar áudio (${chatAudioTimer}s)... clique no microfone para parar` 
+                          isRecordingChatAudio
+                            ? `🔴 A gravar áudio (${chatAudioTimer}s)... clique no microfone para parar`
                             : "Escreva ao gestor do prédio..."
                         }
-                        className="flex-grow bg-slate-850 border border-slate-750 px-3 py-2 text-xs rounded-xl focus:outline-none focus:border-emerald-500 text-white font-medium shadow-inner"
+                        className="flex-grow min-w-0 resize-none max-h-24 overflow-y-auto bg-slate-850 border border-slate-750 px-3 py-2 text-xs rounded-xl focus:outline-none focus:border-emerald-500 text-white font-medium shadow-inner leading-snug"
                       />
 
                       {/* ENVIAR MENSAGEM BUTTON (Explicit Icon & Tooltip) */}
-                      <button 
-                        type="submit" 
-                        className="p-2.5 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black rounded-xl cursor-pointer transition-all active:scale-95 shadow-md flex items-center justify-center shrink-0"
+                      <button
+                        type="submit"
+                        className="p-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black rounded-xl cursor-pointer transition-all active:scale-95 shadow-md flex items-center justify-center shrink-0"
                         title="Enviar Mensagem"
                       >
                         <Send className="h-4 w-4" />
@@ -4170,6 +4200,36 @@ export default function PWACondominoView({
             </motion.div>
           </div>
         )}
+
+      {/* --- DRAGGABLE FLOATING CONTACT BUTTON (FAB) --- */}
+      {/* Equivalente ao FAB deslocável do PortalCondomino.tsx (versão browser) —
+          antes só existia lá, faltava aqui na PWA. Navega para o separador
+          "Mensagens" em vez de abrir um modal próprio, reaproveitando o chat
+          já existente no Módulo 8 desta mesma vista. */}
+      {(loggedUser.role === "USER" || loggedUser.role === "INQUILINO") && activeTab !== "mensagens" && (
+        <motion.div
+          drag
+          dragMomentum={false}
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setActiveTab("mensagens")}
+          className="fixed bottom-20 right-4 z-40 cursor-grab active:cursor-grabbing select-none"
+          title="Contactar Administração (Deslocável)"
+        >
+          <div className="relative w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xl flex items-center justify-center border-2 border-white dark:border-slate-900 ring-4 ring-emerald-600/20 transition-colors">
+            <img
+              src="/modulos/75-mensagem.png"
+              alt="Mensagens"
+              className="w-8 h-8 object-contain pointer-events-none drop-shadow-sm"
+            />
+            {mensagens.filter((m) => m.estado === "Pendente").length > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-black border-2 border-white shadow-md animate-pulse">
+                {mensagens.filter((m) => m.estado === "Pendente").length}
+              </span>
+            )}
+          </div>
+        </motion.div>
+      )}
 
       {/* PWA NATIVE BOTTOM NAVIGATION BAR (Specially customized for 5 key views with CondoManager AI colors) */}
       <div className="h-14 shrink-0 bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800/80 px-2 flex items-center justify-around text-[9px] font-bold text-slate-500 dark:text-white z-10">
