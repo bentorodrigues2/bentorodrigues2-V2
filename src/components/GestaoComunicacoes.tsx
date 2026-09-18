@@ -214,6 +214,13 @@ export function GestaoComunicacoes({
       await saveMensagemConversaToSupabase(novaMensagem);
       setMensagensSelecionadas(prev => [...prev, { ...novaMensagem, created_at: new Date().toISOString() }]);
 
+      // Responder já é a própria ação de resolver o pendente — antes a
+      // conversa ficava "pendente" para sempre, mesmo depois de respondida,
+      // porque só o botão separado "Arquivar" mudava o estado.
+      const conversaRespondida = { ...selectedC, estado: "arquivada" as const };
+      await saveConversaToSupabase(conversaRespondida);
+      setConversas(prev => prev.map(c => c.id_conversa === selectedC.id_conversa ? conversaRespondida : c));
+
       const fracaoDaConversa = fracoes.find(f => f.id_fracao === selectedC.id_fracao);
       if (fracaoDaConversa?.proprietario?.email) {
         await fetch("/api/email?acao=notificar", {
@@ -227,6 +234,19 @@ export function GestaoComunicacoes({
           })
         });
       }
+
+      // Notificação push real no telemóvel/PWA do condómino (além do email).
+      fetch("/api/admin?acao=enviar-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_predio: selectedC.id_predio,
+          id_fracao: selectedC.id_fracao,
+          title: "Nova mensagem da Administração",
+          body: respostaTexto.length > 120 ? respostaTexto.slice(0, 117) + "..." : respostaTexto,
+          url: "/"
+        })
+      }).catch(() => {});
 
       setRespostaTexto("");
     } catch (err) {

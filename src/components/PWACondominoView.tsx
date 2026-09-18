@@ -19,7 +19,7 @@ import { generateAndDownloadPdf, downloadEmailDocument, exportToXLS, downloadBlo
 import { GestaoDocumentos } from "./GestaoDocumentos";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
 import { DraggableAIFloatingButton } from "./DraggableAIFloatingButton";
-import { playVoiceNoteSimulation } from "../lib/soundService";
+import { playVoiceNoteSimulation, playNotificationTone } from "../lib/soundService";
 import { supabase } from "../lib/supabaseClient";
 import {
   isSupabaseConfigured,
@@ -142,6 +142,21 @@ export default function PWACondominoView({
   // Mobile app navigation: handles both bottom quick tabs and the 10 modules
   const [activeTab, setActiveTab] = useState<string>("home");
 
+  // Contagem real de respostas por ler no botão flutuante — só decrescia
+  // na aparência, nunca de facto ("Pendente" nunca refletia se já tinha
+  // sido lida). Guarda localmente quais respostas já foram vistas (chave =
+  // conversa + hora da resposta) e recalcula sempre que se entra no
+  // separador Mensagens.
+  const chaveRespostaVistaPwa = (idConversa: string, dataResposta?: string) => `${idConversa}|${dataResposta || ""}`;
+  const [respostasVistasPwa, setRespostasVistasPwa] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(`respostas_vistas_${loggedUser.email}`);
+      return new Set(raw ? JSON.parse(raw) : []);
+    } catch {
+      return new Set();
+    }
+  });
+
   // Local biometric simulation states
   const [simulatingScan, setSimulatingScan] = useState(false);
   const [simulatingScanProgress, setSimulatingScanProgress] = useState(0);
@@ -221,6 +236,18 @@ export default function PWACondominoView({
   // desta correção era tudo texto fixo/estado local sem qualquer ligação
   // ao backend.
   const [mensagens, setMensagens] = useState<TicketMensagem[]>([]);
+  const respostasPorLerPwa = mensagens.filter((m) => m.respostaAdmin && !respostasVistasPwa.has(chaveRespostaVistaPwa(m.id_conversa, m.dataResposta))).length;
+  useEffect(() => {
+    if (activeTab !== "mensagens" || mensagens.length === 0) return;
+    setRespostasVistasPwa((prev) => {
+      const novo = new Set(prev);
+      mensagens.forEach((m) => { if (m.respostaAdmin) novo.add(chaveRespostaVistaPwa(m.id_conversa, m.dataResposta)); });
+      try {
+        localStorage.setItem(`respostas_vistas_${loggedUser.email}`, JSON.stringify(Array.from(novo)));
+      } catch { /* localStorage pode não estar disponível — ignora */ }
+      return novo;
+    });
+  }, [activeTab, mensagens, loggedUser.email]);
   const [comunicadosFeed, setComunicadosFeed] = useState<Comunicado[]>([]);
   const [sondagensFeed, setSondagensFeed] = useState<Sondagem[]>([]);
   const [questionariosFeed, setQuestionariosFeed] = useState<Questionario[]>([]);
@@ -256,10 +283,31 @@ export default function PWACondominoView({
 
   useEffect(() => {
     if (!isSupabaseConfigured() || !condominoFracao?.id_fracao) return;
+    const idConversaFracao = "conv-" + condominoFracao.id_fracao;
     const canal = supabase
       .channel(`pwa_conversas_${condominoFracao.id_fracao}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "conversas", filter: `id_fracao=eq.${condominoFracao.id_fracao}` }, () => carregarMensagensReais())
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "mensagens_conversa" }, () => carregarMensagensReais())
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "mensagens_conversa", filter: `id_conversa=eq.${idConversaFracao}` },
+        (payload: any) => {
+          carregarMensagensReais();
+          // Toca um som e mostra uma notificação local quando chega uma
+          // resposta real da administração (não quando é o próprio
+          // condómino a enviar, para não tocar ao escrever a sua mensagem).
+          if (payload?.new?.autor === "administracao") {
+            playNotificationTone();
+            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+              try {
+                new Notification("Nova mensagem da Administração", {
+                  body: payload.new.texto,
+                  icon: "/marca/10-icone-negativo.png"
+                });
+              } catch { /* alguns browsers exigem Service Worker para notificações — ignora silenciosamente */ }
+            }
+          }
+        }
+      )
       .subscribe();
     return () => { supabase.removeChannel(canal); };
   }, [condominoFracao?.id_fracao, carregarMensagensReais]);
@@ -389,7 +437,15 @@ export default function PWACondominoView({
     if (!newMsgText.trim() || !condominoFracao?.id_fracao || !predio?.id_predio) return;
     const texto = newMsgText.trim();
     setNewMsgText("");
-    const idConversa = "conv_" + Date.now();
+
+    // Um único fio de conversa por fração (mesmo ID sempre, tal como já
+    // acontece em PWASimulator.tsx/handleEnviarMensagem) — antes criava
+    // sempre uma conversa nova a cada mensagem, mesmo a continuar uma
+    // conversa já existente, e a caixa de entrada do admin enchia-se de
+    // dezenas de conversas fragmentadas em vez de um único fio. Reabre-a
+    // automaticamente (volta a "pendente") se entretanto tiver sido
+    // arquivada pelo admin ao responder.
+    const idConversa = "conv-" + condominoFracao.id_fracao;
     await saveConversaToSupabase({
       id_conversa: idConversa,
       id_predio: predio.id_predio,
@@ -2879,20 +2935,9 @@ export default function PWACondominoView({
                 </div>
               </button>
 
-              {/* Módulo 8 */}
-              <button 
-                id="pwa-hub-link-chat"
-                onClick={() => setActiveTab("mensagens")}
-                className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3 rounded-xl shadow-xs hover:border-emerald-500 hover:scale-[1.02] transition-all text-left space-y-1.5 cursor-pointer"
-              >
-                <div className="flex justify-between items-center">
-                  <MessageSquare className="h-5 w-5 text-emerald-500" />
-                </div>
-                <div>
-                  <span className="font-extrabold text-slate-800 dark:text-slate-200 block">Mensagens</span>
-                  <span className="text-[8px] text-slate-400">Contacto com a administração</span>
-                </div>
-              </button>
+              {/* Módulo 8: Mensagens removido daqui — já existe o botão
+                  flutuante deslocável em todos os ecrãs para o mesmo fim,
+                  não faz sentido duplicar o atalho. */}
 
               {/* Módulo 9 */}
               <button 
@@ -4222,9 +4267,9 @@ export default function PWACondominoView({
               alt="Mensagens"
               className="w-8 h-8 object-contain pointer-events-none drop-shadow-sm"
             />
-            {mensagens.filter((m) => m.estado === "Pendente").length > 0 && (
+            {respostasPorLerPwa > 0 && (
               <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-black border-2 border-white shadow-md animate-pulse">
-                {mensagens.filter((m) => m.estado === "Pendente").length}
+                {respostasPorLerPwa}
               </span>
             )}
           </div>

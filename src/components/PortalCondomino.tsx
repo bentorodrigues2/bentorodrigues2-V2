@@ -24,7 +24,7 @@ import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondag
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
 import { generateCondominoPwaManualPDF } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
-import { playVoiceNoteSimulation } from "../lib/soundService";
+import { playVoiceNoteSimulation, playNotificationTone } from "../lib/soundService";
 import { supabase } from "../lib/supabaseClient";
 import {
   isSupabaseConfigured,
@@ -165,6 +165,33 @@ export function PortalCondomino({
 
   // Add Message Modal/State & WhatsApp Chat Engine
   const [msgDrawerOpen, setMsgDrawerOpen] = useState(false);
+
+  // Contagem real de respostas por ler no botão flutuante — antes contava
+  // sempre "Pendente OU tem resposta" (praticamente tudo) e nunca baixava
+  // depois de abrir as mensagens. Guarda localmente que respostas já foram
+  // vistas (chave = conversa + hora da resposta) e só conta as que faltam.
+  const chaveRespostaVista = (idConversa: string, dataResposta?: string) => `${idConversa}|${dataResposta || ""}`;
+  const [respostasVistas, setRespostasVistas] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(`respostas_vistas_${loggedUser.email}`);
+      return new Set(raw ? JSON.parse(raw) : []);
+    } catch {
+      return new Set();
+    }
+  });
+  const marcarRespostasComoVistas = (tickets: MensagemAdministracao[]) => {
+    setRespostasVistas((prev) => {
+      const novo = new Set(prev);
+      tickets.forEach((m) => {
+        if (m.respostaAdmin) novo.add(chaveRespostaVista(m.id, m.dataResposta));
+      });
+      try {
+        localStorage.setItem(`respostas_vistas_${loggedUser.email}`, JSON.stringify(Array.from(novo)));
+      } catch { /* localStorage pode não estar disponível (privado/bloqueado) — ignora */ }
+      return novo;
+    });
+  };
+  const respostasPorLer = mensagens.filter((m) => m.respostaAdmin && !respostasVistas.has(chaveRespostaVista(m.id, m.dataResposta))).length;
   const [newMsgAssunto, setNewMsgAssunto] = useState("");
   const [newMsgTexto, setNewMsgTexto] = useState("");
   const [newMsgAnexo, setNewMsgAnexo] = useState<string | null>(null);
@@ -552,7 +579,11 @@ export function PortalCondomino({
         if (caminho) textoFinal += `\n📎 Anexo arquivado: ${caminho}`;
       }
 
-      const idConversa = "conv_" + Date.now();
+      // Um único fio de conversa por fração (mesmo ID sempre) — antes cada
+      // mensagem criava uma conversa nova, fragmentando a caixa de entrada
+      // do admin em dezenas de conversas separadas em vez de um só fio, e
+      // fazia com que "pendente" nunca refletisse bem o estado real.
+      const idConversa = "conv-" + (userFracao?.id_fracao || "sem-fracao");
       const conversa = {
         id_conversa: idConversa,
         id_predio: predio.id_predio,
@@ -582,7 +613,11 @@ export function PortalCondomino({
         estado: "Pendente",
       };
 
-      setMensagens((prev) => [...prev, novaMsg]);
+      // Atualiza em vez de duplicar, agora que o mesmo id_conversa é
+      // reaproveitado em envios sucessivos para a mesma fração.
+      setMensagens((prev) => prev.some((m) => m.id === novaMsg.id)
+        ? prev.map((m) => (m.id === novaMsg.id ? novaMsg : m))
+        : [...prev, novaMsg]);
       setNewMsgAssunto("");
       setNewMsgTexto("");
       setNewMsgAnexo(null);
@@ -881,6 +916,7 @@ export function PortalCondomino({
   // (ex.: a administração respondeu a um pedido).
   useEffect(() => {
     if (!isSupabaseConfigured() || !activeUserFracao?.id_fracao) return;
+    const idConversaFracao = "conv-" + activeUserFracao.id_fracao;
     const canal = supabase
       .channel(`portal_conversas_${activeUserFracao.id_fracao}`)
       .on(
@@ -890,8 +926,23 @@ export function PortalCondomino({
       )
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "mensagens_conversa" },
-        () => { carregarMensagensReais(); }
+        { event: "INSERT", schema: "public", table: "mensagens_conversa", filter: `id_conversa=eq.${idConversaFracao}` },
+        (payload: any) => {
+          carregarMensagensReais();
+          // Som + notificação local quando chega mesmo uma resposta da
+          // administração (não quando é o próprio condómino a enviar).
+          if (payload?.new?.autor === "administracao") {
+            playNotificationTone();
+            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+              try {
+                new Notification("Nova mensagem da Administração", {
+                  body: payload.new.texto,
+                  icon: "/marca/10-icone-negativo.png"
+                });
+              } catch { /* ignora silenciosamente se o browser exigir Service Worker */ }
+            }
+          }
+        }
       )
       .subscribe();
     return () => { supabase.removeChannel(canal); };
@@ -1754,14 +1805,20 @@ export function PortalCondomino({
       )}
 
       {/* --- DRAGGABLE FLOATING CONTACT BUTTON (FAB) --- */}
-      {loggedUser.role === "USER" && (
+      {/* Antes só aparecia com loggedUser.role === "USER" — mas quando o
+          ADMIN usa "Simular Outra Vista" para pré-visualizar o Portal do
+          Condómino (activeTab === "portal"), o conteúdo mostrado é
+          exatamente o mesmo que um condómino real veria, e o FAB devia
+          aparecer também aí. Mostra-se sempre que esta vista está ativa,
+          independentemente de quem está autenticado. */}
+      {activeTab === "portal" && (
         <>
           <motion.div
             drag
             dragMomentum={false}
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => setMsgDrawerOpen(true)}
+            onClick={() => { setMsgDrawerOpen(true); marcarRespostasComoVistas(mensagens); }}
             className="fixed bottom-6 right-6 z-40 cursor-grab active:cursor-grabbing select-none"
             title="Contactar Administração (Deslocável)"
           >
@@ -1771,9 +1828,11 @@ export function PortalCondomino({
                 alt="Mensagens"
                 className="w-8 h-8 object-contain pointer-events-none drop-shadow-sm"
               />
-              <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-black border-2 border-white shadow-md animate-pulse">
-                {mensagens.filter((m) => m.estado === "Pendente" || m.respostaAdmin).length || 1}
-              </span>
+              {respostasPorLer > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-black border-2 border-white shadow-md animate-pulse">
+                  {respostasPorLer}
+                </span>
+              )}
             </div>
           </motion.div>
 
