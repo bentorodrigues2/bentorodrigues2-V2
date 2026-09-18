@@ -572,6 +572,12 @@ export default function PWACondominoView({
 
   // Touch Signature Pad States & Handlers for PWA Assembleia Atas
   const [signingAtaTarget, setSigningAtaTarget] = useState<any | null>(null);
+  // Antes havia sempre uma ata fictícia fixa ("ATA-056", de teste) — não
+  // existe ainda nenhuma fonte real de atas pendentes de assinatura ligada a
+  // este ecrã (precisaria de vir por prop de App.tsx + um registo real de
+  // quem já assinou cada ata), por isso fica honestamente vazio por agora,
+  // em vez de mostrar um pedido de assinatura que nunca existiu.
+  const atasPendentesReais: { id: string; nome: string; data: string; estado: string }[] = [];
   const pwaCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawingPwa, setIsDrawingPwa] = useState(false);
   const [hasSignaturePwa, setHasSignaturePwa] = useState(false);
@@ -3808,11 +3814,12 @@ export default function PWACondominoView({
                 {activePwaModal === "atas_pendentes" && (
                   <div className="space-y-3.5 text-[10px]">
                     <p className="text-slate-300">As seguintes atas de assembleia aguardam a sua leitura e assinatura digital para validação jurídica do condomínio:</p>
-                    
+
                     <div className="space-y-2.5">
-                      {[
-                        { id: "ATA-056", nome: "Ata Assembleia Geral de Maio 2026", data: "15/05/2026", estado: "Pendente de Assinatura" }
-                      ].map((ata, idx) => (
+                      {(atasPendentesReais as { id: string; nome: string; data: string; estado: string }[]).length === 0 && (
+                        <p className="text-slate-500 italic text-[10px] py-4 text-center">Não há nenhuma ata pendente de assinatura neste momento.</p>
+                      )}
+                      {atasPendentesReais.map((ata, idx) => (
                         <div key={idx} className="bg-slate-850 border border-slate-800 p-3 rounded-xl space-y-2">
                           <div className="flex justify-between items-start">
                             <div>

@@ -75,6 +75,7 @@ export function GestaoFracoes({
     foto: string | null;
   }[]>([]);
   const [gravandoCoproprietario, setGravandoCoproprietario] = useState(false);
+  const [editingCoIndex, setEditingCoIndex] = useState<number | null>(null);
 
   const [arrendada, setArrendada] = useState(false);
   const [inqNome, setInqNome] = useState("");
@@ -2036,25 +2037,48 @@ export function GestaoFracoes({
                             </p>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            const novaLista = proprietariosAdicionais.filter((_, i) => i !== idx);
-                            setProprietariosAdicionais(novaLista);
-                            const targetFracaoAtual = selectedFracaoId ? predioFracoes.find(f => f.id_fracao === selectedFracaoId) : null;
-                            if (targetFracaoAtual) {
-                              const ok = await dbUpdate('fracoes', { proprietarios_adicionais: novaLista }, [['id_fracao', 'eq', selectedFracaoId]]);
-                              if (ok) {
-                                const updatedFracao: Fracao = { ...targetFracaoAtual, proprietarios_adicionais: novaLista };
-                                onUpdateFracoes(fracoes.map(f => f.id_fracao === selectedFracaoId ? updatedFracao : f));
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCoNome(co.nome || "");
+                              setCoNif(co.nif || "");
+                              setCoEmail(co.email || "");
+                              setCoTlm(co.tlm || "");
+                              setCoDataNascimento(co.data_nascimento || "");
+                              setCoFoto(co.foto || null);
+                              setEditingCoIndex(idx);
+                              window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+                            }}
+                            className="text-indigo-500 hover:text-indigo-700 p-1 text-xs cursor-pointer"
+                            title="Editar Coproprietário"
+                          >
+                            <i className="fa-solid fa-pen"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const novaLista = proprietariosAdicionais.filter((_, i) => i !== idx);
+                              setProprietariosAdicionais(novaLista);
+                              if (editingCoIndex === idx) {
+                                setEditingCoIndex(null);
+                                setCoNome(""); setCoNif(""); setCoEmail(""); setCoTlm(""); setCoDataNascimento(""); setCoFoto(null);
                               }
-                            }
-                          }}
-                          className="text-red-500 hover:text-red-700 p-1 text-xs cursor-pointer"
-                          title="Remover Coproprietário"
-                        >
-                          <i className="fa-solid fa-trash-can"></i>
-                        </button>
+                              const targetFracaoAtual = selectedFracaoId ? predioFracoes.find(f => f.id_fracao === selectedFracaoId) : null;
+                              if (targetFracaoAtual) {
+                                const ok = await dbUpdate('fracoes', { proprietarios_adicionais: novaLista }, [['id_fracao', 'eq', selectedFracaoId]]);
+                                if (ok) {
+                                  const updatedFracao: Fracao = { ...targetFracaoAtual, proprietarios_adicionais: novaLista };
+                                  onUpdateFracoes(fracoes.map(f => f.id_fracao === selectedFracaoId ? updatedFracao : f));
+                                }
+                              }
+                            }}
+                            className="text-red-500 hover:text-red-700 p-1 text-xs cursor-pointer"
+                            title="Remover Coproprietário"
+                          >
+                            <i className="fa-solid fa-trash-can"></i>
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2062,7 +2086,7 @@ export function GestaoFracoes({
               )}
 
               <div className="bg-indigo-50/30 p-4 rounded-xl border border-indigo-100/50 space-y-3">
-                <span className="text-[10px] font-bold text-indigo-800 uppercase block tracking-wider">Novo Coproprietário</span>
+                <span className="text-[10px] font-bold text-indigo-800 uppercase block tracking-wider">{editingCoIndex !== null ? `A Editar: ${proprietariosAdicionais[editingCoIndex]?.nome || "Coproprietário"}` : "Novo Coproprietário"}</span>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   <div className="flex flex-col">
                     <label className="text-xs font-semibold text-slate-500 mb-1">Nome Completo</label>
@@ -2129,20 +2153,24 @@ export function GestaoFracoes({
                         alert("Insira pelo menos o nome do coproprietário.");
                         return;
                       }
-                      const numProprietariosComFoto = (propFoto ? 1 : 0) + proprietariosAdicionais.filter(p => p.foto).length + (coFoto ? 1 : 0);
-                      if (numProprietariosComFoto > 2) {
+                      const numProprietariosComFotoExcluindoEdicao = (propFoto ? 1 : 0) + proprietariosAdicionais.filter((p, i) => p.foto && i !== editingCoIndex).length + (coFoto ? 1 : 0);
+                      if (numProprietariosComFotoExcluindoEdicao > 2) {
                         alert("Limite atingido! Máximo de 2 proprietários com fotografia por fração.");
                         return;
                       }
-                      const novaLista = [...proprietariosAdicionais, {
+                      const novoCoproprietario = {
                         nome: coNome,
                         nif: coNif,
                         email: coEmail,
                         tlm: coTlm,
                         data_nascimento: coDataNascimento || undefined,
                         foto: coFoto
-                      }];
+                      };
+                      const novaLista = editingCoIndex !== null
+                        ? proprietariosAdicionais.map((p, i) => i === editingCoIndex ? novoCoproprietario : p)
+                        : [...proprietariosAdicionais, novoCoproprietario];
                       setProprietariosAdicionais(novaLista);
+                      setEditingCoIndex(null);
                       // Clear inputs
                       setCoNome(""); setCoNif(""); setCoEmail(""); setCoTlm(""); setCoDataNascimento(""); setCoFoto(null);
 
@@ -2169,8 +2197,20 @@ export function GestaoFracoes({
                     }}
                     className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors cursor-pointer"
                   >
-                    <i className="fa-solid fa-plus mr-1"></i> {gravandoCoproprietario ? "A gravar..." : "Adicionar Coproprietário"}
+                    <i className={`fa-solid ${editingCoIndex !== null ? "fa-check" : "fa-plus"} mr-1`}></i> {gravandoCoproprietario ? "A gravar..." : editingCoIndex !== null ? "Guardar Alterações" : "Adicionar Coproprietário"}
                   </button>
+                  {editingCoIndex !== null && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingCoIndex(null);
+                        setCoNome(""); setCoNif(""); setCoEmail(""); setCoTlm(""); setCoDataNascimento(""); setCoFoto(null);
+                      }}
+                      className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold px-4 py-2 rounded-lg transition-colors cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -3314,7 +3354,7 @@ export function GestaoFracoes({
                   <p>Espero que este e-mail o(a) encontre bem.</p>
                   <p>Nos termos do <strong>Artigo 1429.º do Código Civil</strong>, é obrigatório o seguro contra o risco de incêndio do edifício, quer quanto às frações autónomas, quer quanto às partes comuns.</p>
                   <p>Para manter o registo legal do nosso condomínio devidamente atualizado, solicitamos o favor de nos enviar uma cópia da sua <strong>apólice de seguro de incêndio / multirriscos</strong> ou do respetivo <strong>recibo de pagamento renovado</strong> referente à sua <strong>Fração {fireInsuranceModalFracao.fracao_nome} ({fireInsuranceModalFracao.piso})</strong>.</p>
-                  <p>Poderá responder diretamente a este e-mail anexando o comprovativo em formato PDF ou imagem, ou efetuar o carregamento na sua área reservada da plataforma <strong>CondoManager AI</strong>.</p>
+                  <p>Poderá enviar para o email <strong>bentorodrgues2@gmail.com</strong> anexando o comprovativo em formato PDF ou imagem, ou efetuar o carregamento na sua área reservada da plataforma <strong>CondoManager AI</strong>.</p>
                   <p>Agradecemos desde já a sua pronta colaboração na manutenção da segurança jurídica de todo o edifício.</p>
 
                   <div className="pt-3 border-t border-amber-200/80 space-y-1">
@@ -3347,7 +3387,7 @@ export function GestaoFracoes({
                         to: recipientEmail,
                         nomeDestinatario: alvo.proprietario.nome,
                         assunto: `Solicitação de Apólice de Seguro de Incêndio — Fração ${alvo.fracao_nome}`,
-                        mensagem: `Para manter o registo legal do nosso condomínio devidamente atualizado, solicitamos o favor de nos enviar uma cópia da sua apólice de seguro de incêndio / multirriscos ou do respetivo recibo de pagamento renovado referente à sua Fração ${alvo.fracao_nome} (${alvo.piso}).<br><br>Poderá responder diretamente a este e-mail anexando o comprovativo em formato PDF ou imagem, ou efetuar o carregamento na sua área reservada da plataforma CondoManager AI.<br><br>Agradecemos desde já a sua pronta colaboração na manutenção da segurança jurídica de todo o edifício.`
+                        mensagem: `Para manter o registo legal do nosso condomínio devidamente atualizado, solicitamos o favor de nos enviar uma cópia da sua apólice de seguro de incêndio / multirriscos ou do respetivo recibo de pagamento renovado referente à sua Fração ${alvo.fracao_nome} (${alvo.piso}).<br><br>Poderá enviar para o email bentorodrgues2@gmail.com anexando o comprovativo em formato PDF ou imagem, ou efetuar o carregamento na sua área reservada da plataforma CondoManager AI.<br><br>Agradecemos desde já a sua pronta colaboração na manutenção da segurança jurídica de todo o edifício.`
                       })
                     });
                     const data = await resp.json();
