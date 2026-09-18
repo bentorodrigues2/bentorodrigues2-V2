@@ -53,14 +53,16 @@ async function convidarUtilizador({ email, nome, role, id_predio, id_fracao }) {
         options: { redirectTo: SITE_URL }
       });
       if (recError) throw new Error(recError.message);
+      if (!recData.properties?.action_link) throw new Error("generateLink (recovery) não devolveu action_link.");
       await atualizarPerfil({ id: recData.user?.id, email: emailLimpo, nome, role, id_predio, id_fracao });
-      return { actionLink: recData.action_link, reenvio: true };
+      return { actionLink: recData.properties.action_link, reenvio: true };
     }
     throw new Error(error.message);
   }
 
+  if (!data.properties?.action_link) throw new Error("generateLink (invite) não devolveu action_link.");
   await atualizarPerfil({ id: data.user?.id, email: emailLimpo, nome, role, id_predio, id_fracao });
-  return { actionLink: data.action_link, reenvio: false };
+  return { actionLink: data.properties.action_link, reenvio: false };
 }
 
 /**
@@ -86,7 +88,11 @@ async function pedirRecuperacaoPassword({ email }) {
     return { enviado: false };
   }
 
-  const actionLink = data.action_link;
+  const actionLink = data.properties?.action_link;
+  if (!actionLink) {
+    console.error("[recuperar-password] generateLink não devolveu action_link — email NÃO enviado para evitar um link partido.");
+    return { enviado: false };
+  }
   const mensagem =
     `Recebemos um pedido para redefinir a palavra-passe da sua conta no CondoManager AI.<br><br>Para escolher uma nova palavra-passe, clique no botão abaixo:<br><br>` +
     `<a href="${actionLink}" style="display:inline-block;background-color:#0f766e;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Redefinir Palavra-passe</a><br><br>` +
