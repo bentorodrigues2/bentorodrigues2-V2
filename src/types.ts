@@ -132,8 +132,11 @@ export interface Fornecedor {
 
 // Dívida/fatura a um fornecedor ainda por pagar — permite lançar um passivo
 // real (ex: fatura recebida mas não paga) sem precisar de já ter saído
-// dinheiro de nenhuma conta. Ao marcar como paga, gera um Movimento de
-// despesa real e reduz o saldo da conta bancária escolhida.
+// dinheiro de nenhuma conta. Contratos de valor avultado costumam ser pagos
+// em tranches, por isso uma dívida pode ter vários pagamentos parciais
+// (ver PagamentoDivida) até ficar liquidada — cada tranche gera o seu
+// próprio Movimento de despesa real e pode sair de uma conta bancária
+// diferente das restantes tranches da mesma dívida.
 export interface DividaFornecedor {
   id_divida: string;
   id_predio: string;
@@ -144,11 +147,34 @@ export interface DividaFornecedor {
   valor: number;
   data_emissao?: string;
   data_vencimento?: string;
-  estado: "Pendente" | "Paga";
+  estado: "Pendente" | "Paga Parcialmente" | "Paga";
+  // Soma de todas as tranches já pagas (ver PagamentoDivida) — mantido
+  // sincronizado a cada pagamento para não ter de somar o livro de
+  // pagamentos sempre que se quer saber o saldo em dívida.
+  valor_pago?: number;
+  // Dados da última tranche paga, mantidos por compatibilidade com quem só
+  // precise de um resumo rápido — o histórico completo está em
+  // PagamentoDivida.
   data_pagamento?: string;
   id_conta_pagamento?: string;
   id_movimento_pagamento?: string;
   documento_anexo?: string;
+}
+
+// Um pagamento em tranche de uma DividaFornecedor. Cada tranche gera o seu
+// próprio Movimento de despesa e debita a conta bancária escolhida nessa
+// tranche especificamente — permite pagar a mesma dívida a partir de contas
+// diferentes em momentos diferentes.
+export interface PagamentoDivida {
+  id_pagamento: string;
+  id_divida: string;
+  id_predio: string;
+  id_fornecedor?: string;
+  valor: number;
+  data: string;
+  id_conta: string;
+  id_movimento?: string;
+  observacoes?: string;
 }
 
 export interface Proprietario {

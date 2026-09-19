@@ -572,7 +572,9 @@ export default function App() {
       setAlertasJuridicosAtivosCount((juridicosReais || []).filter(p => p.fase_processual !== "CONCLUIDO_EXTINTO").length);
       setSondagensAtivasCount((sondagensReais || []).filter(s => s.estado === "ativa").length);
       setMensagensPendentesCount((conversasReais || []).filter(c => c.estado === "pendente").length);
-      setDividasFornecedoresPendentesValor((dividasReais || []).filter(d => d.estado === "Pendente").reduce((acc, d) => acc + (Number(d.valor) || 0), 0));
+      setDividasFornecedoresPendentesValor((dividasReais || [])
+        .filter(d => d.estado === "Pendente" || d.estado === "Paga Parcialmente")
+        .reduce((acc, d) => acc + ((Number(d.valor) || 0) - (Number(d.valor_pago) || 0)), 0));
     })();
   }, [predioAtivo?.id_predio, browserIsLoggedOut]);
 

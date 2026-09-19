@@ -10,6 +10,7 @@ import {
   Conta,
   Fornecedor,
   DividaFornecedor,
+  PagamentoDivida,
   RevisaoOrcamento,
   Movimento,
   Aviso, 
@@ -1475,7 +1476,8 @@ export async function fetchDividasFornecedoresFromSupabase(idPredio?: string): P
       valor: Number(row.valor) || 0,
       data_emissao: row.data_emissao || undefined,
       data_vencimento: row.data_vencimento || undefined,
-      estado: row.estado === "Paga" ? "Paga" : "Pendente",
+      estado: row.estado === "Paga" ? "Paga" : row.estado === "Paga Parcialmente" ? "Paga Parcialmente" : "Pendente",
+      valor_pago: Number(row.valor_pago) || 0,
       data_pagamento: row.data_pagamento || undefined,
       id_conta_pagamento: row.id_conta_pagamento || undefined,
       id_movimento_pagamento: row.id_movimento_pagamento || undefined,
@@ -1499,6 +1501,7 @@ export async function saveDividaFornecedorToSupabase(divida: DividaFornecedor): 
     data_emissao: divida.data_emissao || null,
     data_vencimento: divida.data_vencimento || null,
     estado: divida.estado,
+    valor_pago: divida.valor_pago || 0,
     data_pagamento: divida.data_pagamento || null,
     id_conta_pagamento: divida.id_conta_pagamento || null,
     id_movimento_pagamento: divida.id_movimento_pagamento || null,
@@ -1508,6 +1511,53 @@ export async function saveDividaFornecedorToSupabase(divida: DividaFornecedor): 
 
 export async function deleteDividaFornecedorFromSupabase(idDivida: string): Promise<boolean> {
   return dbDelete("dividas_fornecedores", [["id_divida", "eq", idDivida]]);
+}
+
+// ============================================================================
+// PAGAMENTOS EM TRANCHE DE DÍVIDAS A FORNECEDORES
+// ============================================================================
+export async function fetchPagamentosDividasFromSupabase(idPredio?: string): Promise<PagamentoDivida[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const data = await dbSelect("pagamentos_dividas_fornecedores", {
+      filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined,
+      order: { coluna: "created_at", asc: false }
+    });
+    if (!data) return null;
+
+    return data.map((row: any) => ({
+      id_pagamento: row.id_pagamento,
+      id_divida: row.id_divida,
+      id_predio: row.id_predio,
+      id_fornecedor: row.id_fornecedor || undefined,
+      valor: Number(row.valor) || 0,
+      data: row.data,
+      id_conta: row.id_conta,
+      id_movimento: row.id_movimento || undefined,
+      observacoes: row.observacoes || undefined
+    }));
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function savePagamentoDividaToSupabase(pagamento: PagamentoDivida): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("pagamentos_dividas_fornecedores", {
+    id_pagamento: pagamento.id_pagamento,
+    id_divida: pagamento.id_divida,
+    id_predio: pagamento.id_predio,
+    id_fornecedor: pagamento.id_fornecedor || null,
+    valor: pagamento.valor,
+    data: pagamento.data,
+    id_conta: pagamento.id_conta,
+    id_movimento: pagamento.id_movimento || null,
+    observacoes: pagamento.observacoes || null
+  });
+}
+
+export async function deletePagamentoDividaFromSupabase(idPagamento: string): Promise<boolean> {
+  return dbDelete("pagamentos_dividas_fornecedores", [["id_pagamento", "eq", idPagamento]]);
 }
 
 // ============================================================================

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Download, Save, FileText, Trash2, CheckCircle2, AlertTriangle, Pencil, X } from "lucide-react";
-import { Predio, Fornecedor, DividaFornecedor, LoggedUser, Conta, Movimento } from "../types";
+import { Predio, Fornecedor, DividaFornecedor, PagamentoDivida, LoggedUser, Conta, Movimento } from "../types";
 import { exportToXLS, generateSupplierPwaManualPDF, gerarPdfRegistoFornecedorHomologado, gerarCartaoAniversarioCondominoPDF } from "../utils";
 import {
   saveFornecedorToSupabase,
@@ -11,6 +11,8 @@ import {
   fetchDividasFornecedoresFromSupabase,
   saveDividaFornecedorToSupabase,
   deleteDividaFornecedorFromSupabase,
+  fetchPagamentosDividasFromSupabase,
+  savePagamentoDividaToSupabase,
   saveContaToSupabase,
   saveMovimentoToSupabase,
   registarLogAuditoria
@@ -151,6 +153,16 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     fetchDividasFornecedoresFromSupabase(predio.id_predio).then(d => setDividas(d || []));
   }, [predio.id_predio]);
 
+  // Livro de pagamentos por tranche — uma dívida pode ser paga aos poucos
+  // (contratos de valor avultado costumam ser pagos em várias parcelas).
+  const [pagamentos, setPagamentos] = useState<PagamentoDivida[]>([]);
+
+  useEffect(() => {
+    fetchPagamentosDividasFromSupabase(predio.id_predio).then(p => setPagamentos(p || []));
+  }, [predio.id_predio]);
+
+  const [historicoAbertoDividaId, setHistoricoAbertoDividaId] = useState<string | null>(null);
+
   // Novo lançamento de dívida (ou edição de uma já lançada)
   const [dividaFornecedorId, setDividaFornecedorId] = useState("");
   const [dividaFornecedorNome, setDividaFornecedorNome] = useState("");
@@ -178,15 +190,19 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     setDividaFornecedorId(""); setDividaFornecedorNome(""); setDividaDescricao(""); setDividaCategoria(""); setDividaValor(""); setDividaDataVencimento(""); setDividaDataEmissao(new Date().toISOString().split("T")[0]);
   };
 
-  // Marcar dívida como paga
+  // Pagamento de dívida (em tranches — ver handleRegistarPagamentoTranche)
   const [pagandoDividaId, setPagandoDividaId] = useState<string | null>(null);
   const [pagamentoContaId, setPagamentoContaId] = useState("");
   const [pagamentoData, setPagamentoData] = useState(() => new Date().toISOString().split("T")[0]);
+  const [pagamentoValorTranche, setPagamentoValorTranche] = useState("");
 
   const predioContas = contas.filter(c => c.id_predio === predio.id_predio);
   const dividasPredio = dividas.filter(d => d.id_predio === predio.id_predio);
-  const dividasPendentes = dividasPredio.filter(d => d.estado === "Pendente");
-  const totalDividasPendentes = dividasPendentes.reduce((acc, d) => acc + d.valor, 0);
+  const saldoDevedorDivida = (d: DividaFornecedor) => Math.max(0, d.valor - (d.valor_pago || 0));
+  const pagamentosDaDivida = (idDivida: string) =>
+    pagamentos.filter(p => p.id_divida === idDivida).sort((a, b) => (a.data < b.data ? 1 : -1));
+  const dividasPendentes = dividasPredio.filter(d => d.estado === "Pendente" || d.estado === "Paga Parcialmente");
+  const totalDividasPendentes = dividasPendentes.reduce((acc, d) => acc + saldoDevedorDivida(d), 0);
 
   const handleLancarDivida = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,6 +215,10 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
 
     const isEditing = editingDividaId !== null;
     const dividaOriginal = isEditing ? dividasPredio.find(d => d.id_divida === editingDividaId) : null;
+    const novoValor = Number(dividaValor) || 0;
+    if (dividaOriginal && novoValor < (dividaOriginal.valor_pago || 0)) {
+      return alert(`Já foram pagos ${(dividaOriginal.valor_pago || 0).toFixed(2)} € desta dívida — o novo valor não pode ficar abaixo do que já foi pago.`);
+    }
     const dividaAtualizada: DividaFornecedor = {
       id_divida: isEditing && dividaOriginal ? dividaOriginal.id_divida : "div-" + Date.now(),
       id_predio: predio.id_predio,
@@ -206,11 +226,12 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       fornecedor_nome: dividaFornecedorNome.trim(),
       descricao: dividaDescricao.trim(),
       categoria: dividaCategoria || undefined,
-      valor: Number(dividaValor) || 0,
+      valor: novoValor,
       data_emissao: dividaDataEmissao || undefined,
       data_vencimento: dividaDataVencimento || undefined,
-      // Editar não mexe no estado de pagamento — mantém o que já lá estava.
+      // Editar não mexe no estado nem no valor já pago — mantém o que já lá estava.
       estado: dividaOriginal?.estado || "Pendente",
+      valor_pago: dividaOriginal?.valor_pago || 0,
       data_pagamento: dividaOriginal?.data_pagamento,
       id_conta_pagamento: dividaOriginal?.id_conta_pagamento,
       id_movimento_pagamento: dividaOriginal?.id_movimento_pagamento
@@ -232,10 +253,22 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     alert("Dívida lançada com sucesso! Já entra no cálculo do saldo líquido do prédio.");
   };
 
-  const handleConfirmarPagamento = async (divida: DividaFornecedor) => {
-    if (!pagamentoContaId) return alert("Selecione a conta bancária que vai pagar esta dívida.");
+  // Pagamento de uma dívida em tranches: contratos de valor avultado
+  // costumam ser pagos aos poucos, e cada tranche pode sair de uma conta
+  // bancária diferente (ex: uma parcela da conta principal, outra do fundo
+  // de reserva). Cada tranche gera o seu próprio Movimento de despesa real
+  // e um registo no livro de pagamentos da dívida.
+  const handleRegistarPagamentoTranche = async (divida: DividaFornecedor) => {
+    if (!pagamentoContaId) return alert("Selecione a conta bancária que vai pagar esta tranche.");
     const conta = predioContas.find(c => c.id_conta === pagamentoContaId);
     if (!conta) return alert("Conta bancária não encontrada.");
+
+    const saldoDevedor = saldoDevedorDivida(divida);
+    const valorTranche = Number(pagamentoValorTranche) || 0;
+    if (valorTranche <= 0) return alert("Indique o valor a pagar nesta tranche.");
+    if (valorTranche > saldoDevedor + 0.01) {
+      return alert(`Esta tranche (${valorTranche.toFixed(2)} €) é maior do que o saldo em dívida (${saldoDevedor.toFixed(2)} €).`);
+    }
 
     const novoMovimento: Movimento = {
       id_mov: "mov-" + Date.now(),
@@ -244,36 +277,67 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       data: pagamentoData,
       tipo: "Despesa",
       categoria: divida.categoria || "Fornecedores",
-      descricao: `Pagamento a ${divida.fornecedor_nome} — ${divida.descricao}`,
-      valor: divida.valor,
+      descricao: `Pagamento a ${divida.fornecedor_nome} — ${divida.descricao}${saldoDevedor - valorTranche > 0.01 ? " (tranche)" : ""}`,
+      valor: valorTranche,
       metodo_pagamento: "Transferência Bancária",
       estado: "Justificado"
     };
     const movOk = await saveMovimentoToSupabase(novoMovimento);
     if (!movOk) return alert("❌ Não foi possível registar o movimento de pagamento. Tente novamente.");
 
-    const contaAtualizada: Conta = { ...conta, saldo: conta.saldo - divida.valor };
+    const contaAtualizada: Conta = { ...conta, saldo: conta.saldo - valorTranche };
     await saveContaToSupabase(contaAtualizada);
     setContas(prev => prev.map(c => c.id_conta === conta.id_conta ? contaAtualizada : c));
     setMovements(prev => [novoMovimento, ...prev]);
 
-    const dividaPaga: DividaFornecedor = {
+    const novoPagamento: PagamentoDivida = {
+      id_pagamento: "pagdiv-" + Date.now(),
+      id_divida: divida.id_divida,
+      id_predio: predio.id_predio,
+      id_fornecedor: divida.id_fornecedor,
+      valor: valorTranche,
+      data: pagamentoData,
+      id_conta: conta.id_conta,
+      id_movimento: novoMovimento.id_mov
+    };
+    const pagOk = await savePagamentoDividaToSupabase(novoPagamento);
+    if (!pagOk) return alert("❌ Não foi possível registar o pagamento no livro de tranches. Tente novamente.");
+    setPagamentos(prev => [novoPagamento, ...prev]);
+
+    const novoValorPago = (divida.valor_pago || 0) + valorTranche;
+    const ficaLiquidada = novoValorPago >= divida.valor - 0.01;
+    const dividaAtualizada: DividaFornecedor = {
       ...divida,
-      estado: "Paga",
+      estado: ficaLiquidada ? "Paga" : "Paga Parcialmente",
+      valor_pago: novoValorPago,
       data_pagamento: pagamentoData,
       id_conta_pagamento: conta.id_conta,
       id_movimento_pagamento: novoMovimento.id_mov
     };
-    await saveDividaFornecedorToSupabase(dividaPaga);
-    setDividas(prev => prev.map(d => d.id_divida === divida.id_divida ? dividaPaga : d));
-    registarLogAuditoria("Financeira", "Pagou uma dívida a fornecedor", predio.id_predio, loggedUser, `${divida.fornecedor_nome} — ${divida.descricao} (${divida.valor.toFixed(2)} € via ${conta.banco})`);
+    await saveDividaFornecedorToSupabase(dividaAtualizada);
+    setDividas(prev => prev.map(d => d.id_divida === divida.id_divida ? dividaAtualizada : d));
+    registarLogAuditoria(
+      "Financeira",
+      ficaLiquidada ? "Liquidou uma dívida a fornecedor" : "Pagou uma tranche de uma dívida a fornecedor",
+      predio.id_predio,
+      loggedUser,
+      `${divida.fornecedor_nome} — ${divida.descricao} (${valorTranche.toFixed(2)} € via ${conta.banco}${ficaLiquidada ? "" : `, saldo em dívida: ${(divida.valor - novoValorPago).toFixed(2)} €`})`
+    );
 
-    setPagandoDividaId(null);
     setPagamentoContaId("");
-    alert(`✅ Dívida paga! O saldo da conta ${conta.banco} foi atualizado e o movimento de despesa foi registado.`);
+    setPagamentoValorTranche("");
+    if (ficaLiquidada) {
+      setPagandoDividaId(null);
+      alert(`✅ Dívida totalmente paga! O saldo da conta ${conta.banco} foi atualizado.`);
+    } else {
+      alert(`✅ Tranche registada! Saldo em dívida: ${(divida.valor - novoValorPago).toFixed(2)} €. Podes registar outra tranche quando quiseres.`);
+    }
   };
 
   const handleRemoverDivida = async (divida: DividaFornecedor) => {
+    if ((divida.valor_pago || 0) > 0) {
+      return alert("Esta dívida já tem pagamentos registados — não pode ser eliminada, para não perder a ligação aos movimentos e contas já debitados. Corrija-a antes através da edição, se necessário.");
+    }
     if (!window.confirm(`Eliminar o lançamento "${divida.descricao}"? Esta ação não pode ser desfeita.`)) return;
     const ok = await deleteDividaFornecedorFromSupabase(divida.id_divida);
     if (!ok) return alert("❌ Não foi possível eliminar a dívida no Supabase.");
@@ -1480,9 +1544,11 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">Total Já Pago</span>
               <span className="text-xl font-black text-slate-700 font-mono mt-0.5 block">
-                {dividasPredio.filter(d => d.estado === "Paga").reduce((acc, d) => acc + d.valor, 0).toFixed(2)} €
+                {dividasPredio.reduce((acc, d) => acc + (d.valor_pago || 0), 0).toFixed(2)} €
               </span>
-              <span className="text-[10px] text-slate-500 mt-0.5 block">{dividasPredio.filter(d => d.estado === "Paga").length} fatura(s) liquidada(s)</span>
+              <span className="text-[10px] text-slate-500 mt-0.5 block">
+                {pagamentos.filter(p => dividasPredio.some(d => d.id_divida === p.id_divida)).length} tranche(s) paga(s) — {dividasPredio.filter(d => d.estado === "Paga").length} fatura(s) liquidada(s)
+              </span>
             </div>
           </div>
 
@@ -1568,7 +1634,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                   <th className="p-3">Fornecedor</th>
                   <th className="p-3">Descrição</th>
                   <th className="p-3">Vencimento</th>
-                  <th className="p-3 text-right">Valor</th>
+                  <th className="p-3 text-right">Valor / Saldo em Dívida</th>
                   <th className="p-3">Estado</th>
                   <th className="p-3 text-right">Ações</th>
                 </tr>
@@ -1577,23 +1643,44 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                 {dividasPredio.length === 0 && (
                   <tr><td colSpan={6} className="p-6 text-center text-slate-400">Sem dívidas a fornecedores lançadas.</td></tr>
                 )}
-                {dividasPredio.map(d => (
+                {dividasPredio.map(d => {
+                  const saldo = saldoDevedorDivida(d);
+                  const historico = pagamentosDaDivida(d.id_divida);
+                  const podeGerir = (loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA') && d.estado !== "Paga";
+                  return (
                   <React.Fragment key={d.id_divida}>
                     <tr className="border-b border-slate-100 hover:bg-slate-50/50">
                       <td className="p-3 font-semibold text-slate-700">{d.fornecedor_nome}</td>
                       <td className="p-3 text-slate-600">{d.descricao}{d.categoria ? ` (${d.categoria})` : ""}</td>
                       <td className="p-3 text-slate-500 font-mono">{d.data_vencimento || "—"}</td>
-                      <td className="p-3 text-right font-bold text-slate-800 font-mono">{d.valor.toFixed(2)} €</td>
+                      <td className="p-3 text-right font-mono">
+                        <span className="font-bold text-slate-800">{d.valor.toFixed(2)} €</span>
+                        {d.estado === "Paga Parcialmente" && (
+                          <span className="block text-[10px] text-amber-600 mt-0.5">
+                            Pago: {(d.valor_pago || 0).toFixed(2)} € · Falta: {saldo.toFixed(2)} €
+                          </span>
+                        )}
+                      </td>
                       <td className="p-3">
                         <span className={`px-2 py-0.5 rounded-full font-bold text-[9px] ${
-                          d.estado === "Paga" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                          d.estado === "Paga" ? "bg-emerald-100 text-emerald-800" :
+                          d.estado === "Paga Parcialmente" ? "bg-blue-100 text-blue-800" :
+                          "bg-amber-100 text-amber-800"
                         }`}>
                           {d.estado}
                         </span>
+                        {historico.length > 0 && (
+                          <button
+                            onClick={() => setHistoricoAbertoDividaId(historicoAbertoDividaId === d.id_divida ? null : d.id_divida)}
+                            className="block text-[9px] text-slate-400 hover:text-slate-700 underline mt-1 cursor-pointer"
+                          >
+                            {historico.length} tranche(s) {historicoAbertoDividaId === d.id_divida ? "▲" : "▼"}
+                          </button>
+                        )}
                       </td>
                       <td className="p-3">
                         <div className="flex items-center justify-end gap-1.5">
-                          {d.estado === "Pendente" && (loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA') && (
+                          {podeGerir && (
                             <button
                               onClick={() => handleEditarDivida(d)}
                               className="p-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-lg transition-all cursor-pointer"
@@ -1602,14 +1689,18 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
                           )}
-                          {d.estado === "Pendente" && (loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA') && (
+                          {podeGerir && (
                             <button
-                              onClick={() => setPagandoDividaId(pagandoDividaId === d.id_divida ? null : d.id_divida)}
+                              onClick={() => {
+                                const abrir = pagandoDividaId !== d.id_divida;
+                                setPagandoDividaId(abrir ? d.id_divida : null);
+                                setPagamentoValorTranche(abrir ? saldo.toFixed(2) : "");
+                              }}
                               className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-                              title="Marcar como Paga"
+                              title="Pagar (total ou em tranche)"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Marcar Paga</span>
+                              <span>Pagar</span>
                             </button>
                           )}
                           {loggedUser.role === 'ADMIN' && (
@@ -1624,10 +1715,46 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                         </div>
                       </td>
                     </tr>
+
+                    {historicoAbertoDividaId === d.id_divida && historico.length > 0 && (
+                      <tr className="bg-slate-50/60 border-b border-slate-100">
+                        <td colSpan={6} className="p-3">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase block mb-1.5">Histórico de Tranches Pagas</span>
+                          <div className="space-y-1">
+                            {historico.map(p => {
+                              const contaPag = predioContas.find(c => c.id_conta === p.id_conta);
+                              return (
+                                <div key={p.id_pagamento} className="flex items-center justify-between text-[11px] bg-white border border-slate-200 rounded-lg px-3 py-1.5">
+                                  <span className="text-slate-500 font-mono">{p.data}</span>
+                                  <span className="text-slate-600">{contaPag ? `${contaPag.banco} (${contaPag.tipo})` : "Conta removida"}</span>
+                                  <span className="font-bold text-slate-800 font-mono">{p.valor.toFixed(2)} €</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+
                     {pagandoDividaId === d.id_divida && (
                       <tr className="bg-emerald-50/40 border-b border-emerald-100">
                         <td colSpan={6} className="p-3">
+                          <p className="text-[10px] text-slate-500 mb-2">
+                            Saldo em dívida: <strong className="text-slate-700">{saldo.toFixed(2)} €</strong>. Podes pagar o valor todo agora ou só uma tranche — o resto fica pendente para pagares mais tarde, mesmo a partir de outra conta bancária.
+                          </p>
                           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
+                            <div className="flex flex-col">
+                              <label className="text-[10px] font-bold text-slate-500 mb-1 uppercase">Valor a Pagar Agora (€) *</label>
+                              <input
+                                type="number"
+                                min="0.01"
+                                max={saldo}
+                                step="0.01"
+                                value={pagamentoValorTranche}
+                                onChange={e => setPagamentoValorTranche(e.target.value)}
+                                className="border border-slate-200 px-3 py-1.5 text-xs rounded-lg focus:outline-emerald-500 font-mono w-32"
+                              />
+                            </div>
                             <div className="flex flex-col">
                               <label className="text-[10px] font-bold text-slate-500 mb-1 uppercase">Conta a Debitar *</label>
                               <select
@@ -1646,13 +1773,13 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                               <input type="date" value={pagamentoData} onChange={e => setPagamentoData(e.target.value)} className="border border-slate-200 px-3 py-1.5 text-xs rounded-lg focus:outline-emerald-500" />
                             </div>
                             <button
-                              onClick={() => handleConfirmarPagamento(d)}
+                              onClick={() => handleRegistarPagamentoTranche(d)}
                               className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs"
                             >
-                              Confirmar Pagamento
+                              {Number(pagamentoValorTranche) >= saldo - 0.01 ? "Confirmar Pagamento Total" : "Registar Tranche"}
                             </button>
                             <button
-                              onClick={() => { setPagandoDividaId(null); setPagamentoContaId(""); }}
+                              onClick={() => { setPagandoDividaId(null); setPagamentoContaId(""); setPagamentoValorTranche(""); }}
                               className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-all cursor-pointer"
                             >
                               Cancelar
@@ -1665,7 +1792,8 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                       </tr>
                     )}
                   </React.Fragment>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

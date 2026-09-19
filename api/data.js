@@ -68,7 +68,8 @@ const TABELAS_PERMITIDAS = new Set([
   "rfps",
   "propostas",
   "dividas_fornecedores",
-  "revisoes_orcamento"
+  "revisoes_orcamento",
+  "pagamentos_dividas_fornecedores"
 ]);
 
 // Registos de auditoria: só select e insert, mesmo por este proxy — para
