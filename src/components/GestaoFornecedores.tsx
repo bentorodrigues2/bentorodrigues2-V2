@@ -13,8 +13,10 @@ import {
   deleteDividaFornecedorFromSupabase,
   fetchPagamentosDividasFromSupabase,
   savePagamentoDividaToSupabase,
+  deletePagamentoDividaFromSupabase,
   saveContaToSupabase,
   saveMovimentoToSupabase,
+  deleteMovimentoFromSupabase,
   registarLogAuditoria
 } from "../lib/supabaseService";
 
@@ -358,9 +360,53 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     }
   };
 
+  // Elimina uma tranche já paga por engano/duplicação — reverte tudo o que
+  // handleRegistarPagamentoTranche criou: o movimento bancário real, o
+  // saldo debitado na conta, e o valor_pago/estado da dívida. Antes só era
+  // possível eliminar a dívida inteira, e só se não tivesse pagamentos —
+  // não havia forma de desfazer uma tranche lançada por engano sem apagar
+  // a dívida toda à mão na base de dados.
+  const handleRemoverPagamento = async (divida: DividaFornecedor, pagamento: PagamentoDivida) => {
+    if (!window.confirm(`Eliminar esta tranche de ${pagamento.valor.toFixed(2)} € (${pagamento.data})? Isto reverte o movimento bancário e o saldo da conta correspondente. Esta ação não pode ser desfeita.`)) return;
+
+    const contaPag = contas.find(c => c.id_conta === pagamento.id_conta);
+    if (contaPag) {
+      const contaRevertida: Conta = { ...contaPag, saldo: contaPag.saldo + pagamento.valor };
+      const okConta = await saveContaToSupabase(contaRevertida);
+      if (!okConta) return alert("❌ Não foi possível reverter o saldo da conta. Tente novamente.");
+      setContas(prev => prev.map(c => c.id_conta === contaPag.id_conta ? contaRevertida : c));
+    }
+
+    if (pagamento.id_movimento) {
+      await deleteMovimentoFromSupabase(pagamento.id_movimento);
+      setMovements(prev => prev.filter(m => m.id_mov !== pagamento.id_movimento));
+    }
+
+    const okPag = await deletePagamentoDividaFromSupabase(pagamento.id_pagamento);
+    if (!okPag) return alert("❌ Não foi possível eliminar o registo da tranche. Tente novamente.");
+    setPagamentos(prev => prev.filter(p => p.id_pagamento !== pagamento.id_pagamento));
+
+    const novoValorPago = Math.max(0, (divida.valor_pago || 0) - pagamento.valor);
+    const dividaAtualizada: DividaFornecedor = {
+      ...divida,
+      valor_pago: novoValorPago,
+      estado: novoValorPago <= 0 ? "Pendente" : "Paga Parcialmente"
+    };
+    await saveDividaFornecedorToSupabase(dividaAtualizada);
+    setDividas(prev => prev.map(d => d.id_divida === divida.id_divida ? dividaAtualizada : d));
+
+    registarLogAuditoria(
+      "Financeira",
+      "Eliminou uma tranche de pagamento a fornecedor",
+      predio.id_predio,
+      loggedUser,
+      `${divida.fornecedor_nome} — ${divida.descricao} (${pagamento.valor.toFixed(2)} € revertidos)`
+    );
+  };
+
   const handleRemoverDivida = async (divida: DividaFornecedor) => {
     if ((divida.valor_pago || 0) > 0) {
-      return alert("Esta dívida já tem pagamentos registados — não pode ser eliminada, para não perder a ligação aos movimentos e contas já debitados. Corrija-a antes através da edição, se necessário.");
+      return alert("Esta dívida já tem pagamentos registados — elimine primeiro cada tranche no histórico (▼) para repor o saldo em 0€, e só depois poderá eliminar a dívida.");
     }
     if (!window.confirm(`Eliminar o lançamento "${divida.descricao}"? Esta ação não pode ser desfeita.`)) return;
     const ok = await deleteDividaFornecedorFromSupabase(divida.id_divida);
@@ -1992,6 +2038,13 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                                   <span className="text-slate-500 font-mono">{p.data}</span>
                                   <span className="text-slate-600">{contaPag ? `${contaPag.banco} (${contaPag.tipo})` : "Conta removida"}</span>
                                   <span className="font-bold text-slate-800 font-mono">{p.valor.toFixed(2)} €</span>
+                                  <button
+                                    onClick={() => handleRemoverPagamento(d, p)}
+                                    title="Eliminar esta tranche (reverte o movimento e o saldo da conta)"
+                                    className="text-slate-400 hover:text-red-600 cursor-pointer ml-2"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
                                 </div>
                               );
                             })}

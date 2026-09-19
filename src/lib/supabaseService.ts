@@ -396,6 +396,10 @@ export async function saveMovimentoToSupabase(mov: Movimento): Promise<boolean> 
   });
 }
 
+export async function deleteMovimentoFromSupabase(idMov: string): Promise<boolean> {
+  return dbDelete("movimentos", [["id_movimento", "eq", idMov]]);
+}
+
 // ============================================================================
 // UPLOAD DE FICHEIROS PARA O SUPABASE STORAGE
 // ============================================================================
