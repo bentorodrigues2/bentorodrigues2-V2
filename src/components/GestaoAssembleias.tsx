@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { jsPDF } from "jspdf";
 import { Predio, Fracao, Reuniao, LoggedUser, ReuniaoAssinatura, Documento } from "../types";
+import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { 
   formatDatePT, 
   formatDateISO, 
@@ -16,7 +17,7 @@ import {
 } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { VotacaoAssembleiaVirtual } from "./VotacaoAssembleiaVirtual";
-import { saveReuniaoToSupabase, deleteReuniaoFromSupabase, registarLogAuditoria } from "../lib/supabaseService";
+import { saveReuniaoToSupabase, deleteReuniaoFromSupabase, registarLogAuditoria, fetchObrasExtraFromSupabase } from "../lib/supabaseService";
 
 interface GestaoAssembleiasProps {
   predio: Predio;
@@ -37,6 +38,18 @@ export function GestaoAssembleias({ predio, fracoes, reunioes, onAddReuniao, set
   const [ordensTrabalho, setOrdensTrabalho] = useState("");
   const [emailConvocatoria, setEmailConvocatoria] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Obras reais (Portal de Orçamentos → Obras & Contratação) para ligar como
+  // ponto de trabalho à convocatória/ata — antes não havia nenhuma ligação
+  // real entre uma reunião e as obras/orçamentos que estava a aprovar.
+  const [obrasExtra, setObrasExtra] = useState<ObraExtraordinaria[]>([]);
+  const [obrasRelacionadasIds, setObrasRelacionadasIds] = useState<string[]>([]);
+  useEffect(() => {
+    fetchObrasExtraFromSupabase(predio.id_predio).then((dados) => setObrasExtra(dados || []));
+  }, [predio.id_predio]);
+  const toggleObraRelacionada = (id: string) => {
+    setObrasRelacionadasIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  };
 
   // Videoconference & Poll states
   const [isVideoconferencia, setIsVideoconferencia] = useState(false);
@@ -315,7 +328,8 @@ Com os meus cumprimentos,
             ordens_trabalho: ordensTrabalho,
             isVideoconferencia,
             plataformaVideoconferencia: plataformaVideo,
-            linkVideoconferencia: linkFinal
+            linkVideoconferencia: linkFinal,
+            id_obras_relacionadas: obrasRelacionadasIds
           };
           return reuniaoAtualizada;
         }
@@ -344,7 +358,8 @@ Com os meus cumprimentos,
         votosPresenca: gerarSondagem ? defaultVotos : [],
         folha_presencas: {},
         representantes: {},
-        assinaturas: []
+        assinaturas: [],
+        id_obras_relacionadas: obrasRelacionadasIds
       };
       // Pre-populate with all absent by default
       const defaultPresences: { [k: string]: "Presente" | "Ausente" | "Representado" } = {};
@@ -394,7 +409,7 @@ Com os meus cumprimentos,
     );
 
     setEmailConvocatoria(textoConvocatoria);
-    setTema(""); setData(""); setHora(""); setOrdensTrabalho(""); setLinkVideo(""); setLocalReuniao("");
+    setTema(""); setData(""); setHora(""); setOrdensTrabalho(""); setLinkVideo(""); setLocalReuniao(""); setObrasRelacionadasIds([]);
   };
 
   // Funções de Arquivamento Manual/Direto no Arquivo Digital
@@ -469,6 +484,7 @@ Com os meus cumprimentos,
     setHora(r.hora);
     setLocalReuniao(r.local_reuniao || "Sala Comum do Condomínio");
     setOrdensTrabalho(r.ordens_trabalho);
+    setObrasRelacionadasIds(r.id_obras_relacionadas || []);
   };
 
   const eliminarReuniao = (id: string) => {
@@ -1489,6 +1505,26 @@ Com os meus cumprimentos,
             <textarea value={ordensTrabalho} onChange={e => setOrdensTrabalho(e.target.value)} rows={3} placeholder="1. Aprovação de contas do exercício anterior;&#10;2. Discussão e votação do orçamento extraordinário de obras;&#10;3. Eleição dos órgãos da administração de condomínio." className="border border-slate-200 p-3 rounded-lg text-sm focus:outline-emerald-500 bg-slate-50/50" />
           </div>
 
+          {obrasExtra.length > 0 && (
+            <div className="flex flex-col">
+              <label className="text-xs font-semibold text-slate-500 mb-1">Obra(s) Relacionada(s) (ponto de trabalho)</label>
+              <div className="border border-slate-200 rounded-lg bg-slate-50/50 p-2.5 space-y-1.5 max-h-32 overflow-y-auto">
+                {obrasExtra.map((o) => (
+                  <label key={o.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={obrasRelacionadasIds.includes(o.id)}
+                      onChange={() => toggleObraRelacionada(o.id)}
+                      className="rounded text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
+                    />
+                    <span className="font-medium">{o.descricao}</span>
+                    <span className="text-slate-400">— {o.fornecedorNome} ({o.custoTotal.toFixed(2)} €) [{o.estado}]</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Opções de Vídeo-Conferência e Sondagem */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
@@ -1749,6 +1785,24 @@ Com os meus cumprimentos,
                 <span className="text-[10px] uppercase font-bold text-slate-400 block mb-2">Ordens de Trabalho Oficiais</span>
                 <p className="text-xs text-slate-700 whitespace-pre-line leading-relaxed font-medium">{r.ordens_trabalho}</p>
               </div>
+
+              {r.id_obras_relacionadas && r.id_obras_relacionadas.length > 0 && (
+                <div className="p-4 bg-sky-50 rounded-lg border border-sky-200 space-y-2">
+                  <span className="text-[10px] uppercase font-bold text-sky-700 block">
+                    <i className="fa-solid fa-trowel-bricks mr-1"></i>Obra(s) em Discussão/Adjudicação Nesta Reunião
+                  </span>
+                  {r.id_obras_relacionadas.map((idObra) => {
+                    const obra = obrasExtra.find((o) => o.id === idObra);
+                    if (!obra) return null;
+                    return (
+                      <div key={idObra} className="text-xs text-slate-700 bg-white border border-sky-100 rounded-lg px-3 py-2">
+                        <p className="font-bold">{obra.descricao}</p>
+                        <p className="text-slate-500">Fornecedor: {obra.fornecedorNome} • Custo: {obra.custoTotal.toFixed(2)} € • Estado: {obra.estado}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* SONDAGEM DE PRESENÇAS TIPO WHATSAPP */}
               {r.votosPresenca && r.votosPresenca.length > 0 && (

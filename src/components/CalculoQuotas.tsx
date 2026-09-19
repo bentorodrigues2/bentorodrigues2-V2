@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { 
   Calculator, 
   Landmark, 
@@ -13,8 +13,9 @@ import {
   Save
 } from "lucide-react";
 import { Predio, Fracao, Conta, Aviso, LoggedUser } from "../types";
+import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { jsPDF } from "jspdf";
-import { saveConfiguracaoQuotasToSupabase, saveAvisosToSupabase, registarLogAuditoria } from "../lib/supabaseService";
+import { saveConfiguracaoQuotasToSupabase, saveAvisosToSupabase, registarLogAuditoria, fetchObrasExtraFromSupabase } from "../lib/supabaseService";
 import { parseValorMonetario, gerarReferenciaBR23E, exportarBalanceteMapaAnualXLS } from "../utils";
 
 interface CalculoQuotasProps {
@@ -76,6 +77,27 @@ export function CalculoQuotas({
     return d.toISOString().split("T")[0];
   });
   const [descricaoExtra, setDescricaoExtra] = useState<string>("");
+
+  // Obras adjudicadas reais (Portal de Orçamentos → Obras & Contratação) —
+  // antes esta secção não tinha nenhuma ligação real à obra, só um campo de
+  // texto livre "Finalidade/Descrição" que o administrador escrevia à mão,
+  // sem relação nenhuma com a obra e o fornecedor já adjudicados.
+  const [obrasExtra, setObrasExtra] = useState<ObraExtraordinaria[]>([]);
+  const [obraSelecionadaId, setObraSelecionadaId] = useState<string>("");
+  useEffect(() => {
+    fetchObrasExtraFromSupabase(predio.id_predio).then((dados) => setObrasExtra(dados || []));
+  }, [predio.id_predio]);
+  const obrasAdjudicadasParaQuota = obrasExtra.filter((o) => o.necessitaCotaExtra && !!o.id_divida);
+  const obraSelecionada = obrasAdjudicadasParaQuota.find((o) => o.id === obraSelecionadaId) || null;
+
+  const handleSelecionarObra = (id: string) => {
+    setObraSelecionadaId(id);
+    if (!id) return;
+    const obra = obrasAdjudicadasParaQuota.find((o) => o.id === id);
+    if (!obra) return;
+    setDescricaoExtra(`${obra.descricao} — ${obra.fornecedorNome}`);
+    setOrcamentoExtra(String(obra.custoTotal));
+  };
   const [contaExtraId, setContaExtraId] = useState<string>(() => {
     const fcr = predioContas.find(
       (c) => c.tipo === "Poupanca" || c.tipo === "Fundo de Reserva" || c.descricao?.toLowerCase().includes("reserva")
@@ -160,6 +182,7 @@ export function CalculoQuotas({
           descricao: `Quota Extraordinária (1/${numPrestacoesExtra}): ${descricaoExtra} (IBAN: ${contaExtraSel?.iban || "FCR"})`,
           valor: valorExtraMensal,
           estado: "Pendente",
+          id_obra: obraSelecionadaId || undefined,
         });
       }
     });
@@ -557,7 +580,30 @@ export function CalculoQuotas({
 
           <div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Finalidade / Descrição da Obra
+              Obra Adjudicada
+            </label>
+            <select
+              value={obraSelecionadaId}
+              onChange={(e) => handleSelecionarObra(e.target.value)}
+              className="w-full border border-slate-200 px-3 py-2 text-xs rounded-xl focus:outline-sky-500 bg-white font-bold text-slate-800 cursor-pointer"
+            >
+              <option value="">-- Sem obra ligada (finalidade livre, ex: reforço geral do FCR) --</option>
+              {obrasAdjudicadasParaQuota.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.descricao} — {o.fornecedorNome} ({o.custoTotal.toFixed(2)} €) [{o.estado}]
+                </option>
+              ))}
+            </select>
+            {obrasAdjudicadasParaQuota.length === 0 && (
+              <p className="text-[10px] text-slate-400 mt-1">
+                Nenhuma obra adjudicada a pedir quota extra de momento (Obras & Contratação → Obras Adjudicadas & Execução).
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+              Finalidade / Descrição {obraSelecionada && <span className="text-sky-600 normal-case font-medium">(preenchida a partir da obra selecionada, pode ajustar)</span>}
             </label>
             <input
               type="text"

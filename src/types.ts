@@ -264,6 +264,11 @@ export interface Aviso {
   // silenciosamente a história de quem devia esse documento na altura.
   proprietario_nome?: string;
   proprietario_nif?: string;
+  // Ligação real a uma Obra Extraordinária adjudicada, quando este aviso é
+  // uma quota extraordinária lançada para a financiar — antes o formulário
+  // de Quotas Extraordinárias só tinha um campo de texto livre, sem ligação
+  // nenhuma à obra e ao fornecedor já adjudicados.
+  id_obra?: string;
 }
 
 export interface Movimento {
@@ -321,6 +326,10 @@ export interface Reuniao {
   folha_presencas?: { [fracaoId: string]: "Presente" | "Ausente" | "Representado" };
   representantes?: { [fracaoId: string]: string }; // Map of fraction ID to proxy representative name
   assinaturas?: ReuniaoAssinatura[];
+  // Liga a convocatória/ata a Obra(s) Extraordinária(s) reais discutidas
+  // como ponto de trabalho — antes não havia nenhuma ligação entre uma
+  // reunião e as obras/orçamentos que estava a aprovar.
+  id_obras_relacionadas?: string[];
 }
 
 export interface DocumentoVersao {

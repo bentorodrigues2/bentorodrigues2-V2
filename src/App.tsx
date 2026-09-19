@@ -312,6 +312,7 @@ export default function App() {
   const [openMenuComunicacoes, setOpenMenuComunicacoes] = useState(false);
   const [openMenuConsultoriaIA, setOpenMenuConsultoriaIA] = useState(false);
   const [openMenuFornecedores, setOpenMenuFornecedores] = useState(false);
+  const [openMenuObras, setOpenMenuObras] = useState(false);
   const [openMenuConfiguracoesIA, setOpenMenuConfiguracoesIA] = useState(false);
   const [fornecedoresTab, setFornecedoresTab] = useState<"fornecedores" | "contratos" | "dividas">("fornecedores");
   const [iaInitialTab, setIaInitialTab] = useState<"juridico" | "orcamento_anual_ia" | "cerebro_ia" | undefined>(undefined);
@@ -1664,14 +1665,14 @@ export default function App() {
               id="sidebar-item-manutencao"
               onClick={() => {
                 setOpenMenuVistoriasIntervencoes(!openMenuVistoriasIntervencoes);
-                if (!["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "manutencao_agenda", "manutencao_extraordinarias", "agenda_manutencao", "inventario_tecnico"].includes(activeSection)) {
+                if (!["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "manutencao_agenda", "agenda_manutencao", "inventario_tecnico"].includes(activeSection)) {
                   setActiveSection("manutencao_ocorrencias");
                 }
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                ["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "manutencao_agenda", "manutencao_extraordinarias", "agenda_manutencao", "inventario_tecnico"].includes(activeSection)
+                ["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "manutencao_agenda", "agenda_manutencao", "inventario_tecnico"].includes(activeSection)
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                   : "text-slate-400 hover:text-white hover:bg-slate-800/30"
               }`}
@@ -1765,22 +1766,10 @@ export default function App() {
                   <span>Agenda de Manutenção</span>
                 </button>
 
-                <button
-                  onClick={() => {
-                    setActiveSection("manutencao_extraordinarias");
-                    setViewMode("BROWSER");
-                    setIaInitialTab(undefined);
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "manutencao_extraordinarias" 
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
-                  }`}
-                >
-                  <img src="/modulos/41-obra.png" alt="Obras" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Intervenções Extraordinárias (Obras)</span>
-                </button>
-
+                {/* "Intervenções Extraordinárias (Obras)" saiu daqui — vivia
+                    separada do Portal de Orçamentos apesar de serem passos
+                    do mesmo processo (orçamento → adjudicação → obra).
+                    Passa a viver só no novo menu "Obras & Contratação". */}
                 <button
                   onClick={() => {
                     setActiveSection("agenda_manutencao");
@@ -1875,6 +1864,49 @@ export default function App() {
                   <i className="fa-solid fa-file-contract text-emerald-400 text-xs"></i>
                   <span>Serviços contratados</span>
                 </button>
+                {/* "Dívidas a Fornecedores" deixou de aparecer aqui — é dinheiro
+                    e passivo real do prédio, por isso só faz sentido viver na
+                    área Financeira (onde continua acessível), em vez de estar
+                    também aqui, a confundir onde é a "casa" da funcionalidade.
+                    "Portal de Orçamentos (RFPs)" também saiu daqui — ver o
+                    novo menu "Obras & Contratação". */}
+              </div>
+            )}
+          </div>
+
+          {/* 8b. Obras & Contratação (Accordion) — junta num só sítio todo o
+              ciclo de vida de uma obra extraordinária: pedir orçamentos
+              (RFP), rever propostas, adjudicar, e acompanhar a obra em
+              execução. Antes vivia partido entre "Fornecedores" (Portal de
+              Orçamentos) e "Manutenção" (Obras), sem nenhuma ligação visível
+              entre os dois apesar de já partilharem dados reais (id_rfp/
+              id_proposta na Obra criada ao adjudicar). */}
+          <div className="space-y-1">
+            <button
+              id="sidebar-item-obras-contratacao"
+              onClick={() => {
+                setOpenMenuObras(!openMenuObras);
+                if (!["portal_orcamentos", "manutencao_extraordinarias"].includes(activeSection)) {
+                  setActiveSection("portal_orcamentos");
+                }
+                setViewMode("BROWSER");
+                setIaInitialTab(undefined);
+              }}
+              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                ["portal_orcamentos", "manutencao_extraordinarias"].includes(activeSection)
+                  ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <img src="/modulos/41-obra.png" alt="Obras & Contratação" className="w-5 h-5 object-contain shrink-0" />
+                <span>Obras & Contratação</span>
+              </div>
+              <i className={`fa-solid fa-chevron-down text-[10px] transition-transform ${openMenuObras ? "rotate-180" : ""}`}></i>
+            </button>
+
+            {openMenuObras && (
+              <div className="pl-6 space-y-1 border-l-2 border-emerald-500/40 ml-3.5 my-1">
                 <button
                   onClick={() => {
                     setActiveSection("portal_orcamentos");
@@ -1888,12 +1920,23 @@ export default function App() {
                   }`}
                 >
                   <i className="fa-solid fa-file-invoice text-emerald-400 text-xs"></i>
-                  <span>Portal de Orçamentos (RFPs)</span>
+                  <span>1. Pedir & Rever Orçamentos (RFPs)</span>
                 </button>
-                {/* "Dívidas a Fornecedores" deixou de aparecer aqui — é dinheiro
-                    e passivo real do prédio, por isso só faz sentido viver na
-                    área Financeira (onde continua acessível), em vez de estar
-                    também aqui, a confundir onde é a "casa" da funcionalidade. */}
+                <button
+                  onClick={() => {
+                    setActiveSection("manutencao_extraordinarias");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "manutencao_extraordinarias"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <img src="/modulos/41-obra.png" alt="Obras" className="w-4 h-4 object-contain shrink-0" />
+                  <span>2. Obras Adjudicadas & Execução</span>
+                </button>
               </div>
             )}
           </div>

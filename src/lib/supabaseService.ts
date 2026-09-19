@@ -1067,7 +1067,8 @@ export async function fetchReunioesFromSupabase(idPredio?: string): Promise<Reun
       notas_ata: row.notas_ata || undefined,
       folha_presencas: row.folha_presencas || undefined,
       representantes: row.representantes || undefined,
-      assinaturas: row.assinaturas || undefined
+      assinaturas: row.assinaturas || undefined,
+      id_obras_relacionadas: row.id_obras_relacionadas || undefined
     }));
   } catch (err) {
     return null;
@@ -1092,7 +1093,8 @@ export async function saveReuniaoToSupabase(reuniao: Reuniao): Promise<boolean> 
     notas_ata: reuniao.notas_ata || null,
     folha_presencas: reuniao.folha_presencas || {},
     representantes: reuniao.representantes || {},
-    assinaturas: reuniao.assinaturas || []
+    assinaturas: reuniao.assinaturas || [],
+    id_obras_relacionadas: reuniao.id_obras_relacionadas || []
   });
 }
 
@@ -1238,7 +1240,8 @@ export async function fetchAvisosFromSupabase(idPredio?: string): Promise<Aviso[
       id_conta: row.id_conta || undefined,
       valor_fundo_reserva: row.valor_fundo_reserva !== null && row.valor_fundo_reserva !== undefined ? Number(row.valor_fundo_reserva) : undefined,
       proprietario_nome: row.proprietario_nome || undefined,
-      proprietario_nif: row.proprietario_nif || undefined
+      proprietario_nif: row.proprietario_nif || undefined,
+      id_obra: row.id_obra || undefined
     }));
   } catch (err) {
     return null;
@@ -1261,7 +1264,8 @@ export async function saveAvisosToSupabase(novosAvisos: any[]): Promise<boolean>
     id_conta: a.id_conta || null,
     valor_fundo_reserva: a.valor_fundo_reserva ?? null,
     proprietario_nome: a.proprietario_nome || null,
-    proprietario_nif: a.proprietario_nif || null
+    proprietario_nif: a.proprietario_nif || null,
+    id_obra: a.id_obra || null
   }));
   return dbUpsert("avisos", payload);
 }
