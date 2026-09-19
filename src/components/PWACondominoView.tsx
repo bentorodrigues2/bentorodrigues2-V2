@@ -1010,8 +1010,15 @@ export default function PWACondominoView({
                     <div className="space-y-3">
                       <p className="text-slate-300 text-[10px] leading-relaxed">Central de Comunicação Integrada com a Empresa Gestora:</p>
                       <div className="flex flex-col gap-2">
-                        <button 
-                          onClick={() => { setActivePwaModal("chat_admin"); setSelectedSubmenu(null); setHasUnreadMessages(false); }} 
+                        <button
+                          onClick={() => { setActiveTab("comunicacoes"); setSelectedSubmenu(null); }}
+                          className="w-full bg-sky-600 hover:bg-sky-700 text-white font-black py-2.5 rounded-xl text-center cursor-pointer transition-colors flex items-center justify-center gap-2 text-xs"
+                        >
+                          <i className="fa-solid fa-bullhorn"></i>
+                          <span>Comunicados da Administração</span>
+                        </button>
+                        <button
+                          onClick={() => { setActivePwaModal("chat_admin"); setSelectedSubmenu(null); setHasUnreadMessages(false); }}
                           className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-black py-2.5 rounded-xl text-center cursor-pointer transition-colors flex items-center justify-center gap-2 text-xs"
                         >
                           <i className="fa-solid fa-comments"></i>

@@ -2611,21 +2611,6 @@ export function PWASimulator({
                             </button>
                           ))}
 
-                          {selectedPwaSubmenu === "ocorrencias" && [
-                            { id: "ocorrencias_gestao", label: "Gestão de Ocorrências & Avarias", image: "/modulos/29-avaria.png" },
-                            { id: "ocorrencias_agenda", label: "Agenda de Intervenções Técnicas", image: "/modulos/02-equipamentos-tecnicos.png" },
-                            { id: "ocorrencias_concluidas", label: "Histórico de Intervenções Concluídas", image: "/modulos/27-arquivo-automatico.png" }
-                          ].map(opt => (
-                            <button
-                              key={opt.id}
-                              onClick={() => setActivePwaSubMenuDetails(opt.id)}
-                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
-                            >
-                              <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
-                              <span className="text-[10.5px]">{opt.label}</span>
-                            </button>
-                          ))}
-
                           {selectedPwaSubmenu === "comunicar" && [
                             { id: "comunicar_broadcast", label: "Comunicados & Avisos Globais", image: "/modulos/21-notificacoes-inquilino.png" },
                             { id: "comunicar_chat", label: "Caixa de Entrada & Mensagens Diretas", image: "/modulos/75-mensagem.png" },
@@ -2658,6 +2643,9 @@ export function PWASimulator({
                           ))}
 
                           {selectedPwaSubmenu === "obras" && [
+                            { id: "ocorrencias_gestao", label: "Gestão de Ocorrências & Avarias", image: "/modulos/29-avaria.png" },
+                            { id: "ocorrencias_agenda", label: "Agenda de Intervenções Técnicas", image: "/modulos/02-equipamentos-tecnicos.png" },
+                            { id: "ocorrencias_concluidas", label: "Histórico de Intervenções Concluídas", image: "/modulos/27-arquivo-automatico.png" },
                             { id: "obras_extraordinarias", label: "Gestão de Obras Extraordinárias", image: "/modulos/41-obra.png" },
                             { id: "obras_limpezas", label: "Relatórios de Vistoria & Limpeza", image: "/modulos/50-limpeza.png" }
                           ].map(opt => (

@@ -350,7 +350,7 @@ export default function App() {
 
   // Sincronização automática para manter aberto o menu Área Financeira quando uma das suas secções está ativa
   useEffect(() => {
-    if (["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "saldos_iniciais", "contas", "fundo_reserva"].includes(activeSection)) {
+    if (["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "saldos_iniciais", "contas", "fundo_reserva"].includes(activeSection)) {
       setOpenMenuFinanceiro(true);
     }
   }, [activeSection]);
@@ -922,6 +922,44 @@ export default function App() {
             <span className={`${sidebarCollapsed ? "lg:hidden" : ""}`}>Dashboard Inicial</span>
           </button>
 
+          {/* 1b. Dashboard de KPIs (detalhe do prédio ativo) */}
+          <button
+            id="sidebar-item-dashboard-kpis"
+            onClick={() => {
+              setActiveSection("dashboard_kpis");
+              setViewMode("BROWSER");
+              setIaInitialTab(undefined);
+            }}
+            className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2.5 ${
+              activeSection === "dashboard_kpis"
+                ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
+                : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+            }`}
+          >
+            <i className="fa-solid fa-chart-line text-emerald-400 text-sm w-5 text-center shrink-0"></i>
+            <span className={`${sidebarCollapsed ? "lg:hidden" : ""}`}>Dashboard de KPIs</span>
+          </button>
+
+          {/* 1c. Portal Multi-Condomínio (portefólio de vários prédios) */}
+          {["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role) && (
+            <button
+              id="sidebar-item-multi-condominio"
+              onClick={() => {
+                setActiveSection("multi_condominio");
+                setViewMode("BROWSER");
+                setIaInitialTab(undefined);
+              }}
+              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2.5 ${
+                activeSection === "multi_condominio"
+                  ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+              }`}
+            >
+              <i className="fa-solid fa-city text-emerald-400 text-sm w-5 text-center shrink-0"></i>
+              <span className={`${sidebarCollapsed ? "lg:hidden" : ""}`}>Portal Multi-Condomínio</span>
+            </button>
+          )}
+
           {/* 2. Registo de Prédio (Accordion Expandível) */}
           <div className="space-y-1">
             <button 
@@ -1102,14 +1140,14 @@ export default function App() {
               id="sidebar-item-comunicacao"
               onClick={() => {
                 setOpenMenuComunicacoes(!openMenuComunicacoes);
-                if (!["comunicacao_broadcast", "comunicacao_chat", "comunicacao_sondagens", "comunicacao_questionarios", "assembleias", "portal_condomino", "agendador_automatico", "agenda_notificacoes", "mural_reservas"].includes(activeSection)) {
+                if (!["comunicacao_broadcast", "comunicacao_chat", "comunicacao_sondagens", "comunicacao_questionarios", "assembleias", "portal_condomino", "agendador_automatico", "agenda_notificacoes", "mural_reservas", "reservas"].includes(activeSection)) {
                   setActiveSection("comunicacao_broadcast");
                 }
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                ["comunicacao_broadcast", "comunicacao_chat", "comunicacao_sondagens", "comunicacao_questionarios", "portal_condomino", "assembleias", "agendador_automatico", "agenda_notificacoes", "mural_reservas"].includes(activeSection)
+                ["comunicacao_broadcast", "comunicacao_chat", "comunicacao_sondagens", "comunicacao_questionarios", "portal_condomino", "assembleias", "agendador_automatico", "agenda_notificacoes", "mural_reservas", "reservas"].includes(activeSection)
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                   : "text-slate-400 hover:text-white hover:bg-slate-800/30"
               }`}
@@ -1170,6 +1208,21 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => {
+                    setActiveSection("agendador_automatico");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "agendador_automatico"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <i className="fa-solid fa-clock-rotate-left text-emerald-400 text-xs"></i>
+                  <span>Agendador Automático de Jobs</span>
+                </button>
+                <button
+                  onClick={() => {
                     setActiveSection("mural_reservas");
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
@@ -1182,6 +1235,21 @@ export default function App() {
                 >
                   <i className="fa-solid fa-chalkboard-user text-emerald-400 text-xs"></i>
                   <span>Mural & Reservas</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveSection("reservas");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "reservas"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <i className="fa-solid fa-calendar-days text-emerald-400 text-xs"></i>
+                  <span>Gestão de Reservas de Espaços</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1228,21 +1296,10 @@ export default function App() {
                   <img src="/modulos/77-questionario.png" alt="Questionários" className="w-4 h-4 object-contain shrink-0" />
                   <span>Questionários & Inquérito</span>
                 </button>
-                <button
-                  onClick={() => {
-                    setActiveSection("assembleias");
-                    setViewMode("BROWSER");
-                    setIaInitialTab(undefined);
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "assembleias" 
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
-                  }`}
-                >
-                  <img src="/modulos/80-pdf-de-resultados.png" alt="Reuniões" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Reuniões & Convocatórias</span>
-                </button>
+                {/* "Reuniões & Convocatórias" removido daqui — estava duplicado
+                    (mesmo rótulo, mesmo ícone, mesmo destino) com o item de
+                    topo "9. Reuniões & Convocatórias", que fica como único
+                    acesso a esta secção. */}
               </div>
             )}
           </div>
@@ -1253,14 +1310,14 @@ export default function App() {
               id="sidebar-item-financeiro"
               onClick={() => {
                 setOpenMenuFinanceiro(!openMenuFinanceiro);
-                if (!["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection)) {
+                if (!["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection)) {
                   setActiveSection("configuracao_arranque");
                 }
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                ["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection) 
+                ["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection) 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
                   : "text-slate-400 hover:text-white hover:bg-slate-800/30"
               }`}
@@ -1356,6 +1413,36 @@ export default function App() {
                   <span className="bg-emerald-500/20 text-emerald-300 text-[9px] font-bold rounded px-1.5 py-0.5 border border-emerald-400/30 shrink-0">
                     Contas
                   </span>
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveSection("financeiro_quotas_mensais");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "financeiro_quotas_mensais"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <i className="fa-solid fa-table-list text-emerald-400 text-xs"></i>
+                  <span>Mapa de Quotas Mensais</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveSection("financeiro_quotas_extra");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "financeiro_quotas_extra"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <i className="fa-solid fa-money-bill-trend-up text-emerald-400 text-xs"></i>
+                  <span>Quotas Extraordinárias & Fundos Especiais</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1465,6 +1552,21 @@ export default function App() {
                 >
                   <i className="fa-solid fa-file-invoice-dollar text-emerald-400 text-xs"></i>
                   <span>Dívidas a Fornecedores</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveSection("contabilidade_interna");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "contabilidade_interna"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <i className="fa-solid fa-calculator text-emerald-400 text-xs"></i>
+                  <span>Contabilidade Interna</span>
                 </button>
 
                 {/* --- FUNDO DE RESERVA --- */}
@@ -1577,14 +1679,14 @@ export default function App() {
               id="sidebar-item-manutencao"
               onClick={() => {
                 setOpenMenuVistoriasIntervencoes(!openMenuVistoriasIntervencoes);
-                if (!["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "manutencao_agenda", "manutencao_extraordinarias"].includes(activeSection)) {
+                if (!["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "manutencao_agenda", "manutencao_extraordinarias", "agenda_manutencao", "inventario_tecnico"].includes(activeSection)) {
                   setActiveSection("manutencao_ocorrencias");
                 }
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                ["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "manutencao_agenda", "manutencao_extraordinarias"].includes(activeSection)
+                ["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "manutencao_agenda", "manutencao_extraordinarias", "agenda_manutencao", "inventario_tecnico"].includes(activeSection)
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                   : "text-slate-400 hover:text-white hover:bg-slate-800/30"
               }`}
@@ -1693,6 +1795,38 @@ export default function App() {
                   <img src="/modulos/41-obra.png" alt="Obras" className="w-4 h-4 object-contain shrink-0" />
                   <span>Intervenções Extraordinárias (Obras)</span>
                 </button>
+
+                <button
+                  onClick={() => {
+                    setActiveSection("agenda_manutencao");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "agenda_manutencao"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <i className="fa-solid fa-clipboard-list text-emerald-400 text-xs"></i>
+                  <span>Plano de Manutenção Obrigatória</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveSection("inventario_tecnico");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "inventario_tecnico"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <i className="fa-solid fa-boxes-stacked text-emerald-400 text-xs"></i>
+                  <span>Inventário Técnico & Arquitetura</span>
+                </button>
               </div>
             )}
           </div>
@@ -1755,6 +1889,21 @@ export default function App() {
                 >
                   <i className="fa-solid fa-file-contract text-emerald-400 text-xs"></i>
                   <span>Serviços contratados</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveSection("portal_orcamentos");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "portal_orcamentos"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <i className="fa-solid fa-file-invoice text-emerald-400 text-xs"></i>
+                  <span>Portal de Orçamentos (RFPs)</span>
                 </button>
                 {/* "Dívidas a Fornecedores" deixou de aparecer aqui — é dinheiro
                     e passivo real do prédio, por isso só faz sentido viver na
@@ -2046,6 +2195,21 @@ export default function App() {
                   <i className="fa-solid fa-brain text-emerald-400 text-xs"></i>
                   <span>Analista IA (DocFG)</span>
                 </button>
+                <button
+                  onClick={() => {
+                    setActiveSection("ia_importacao");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "ia_importacao"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <i className="fa-solid fa-file-import text-emerald-400 text-xs"></i>
+                  <span>Assistente de Importação (PDF/XLS)</span>
+                </button>
               </div>
             )}
           </div>
@@ -2270,6 +2434,29 @@ export default function App() {
             </div>
           )}
 
+          {/* 13b. Auditoria Interna — antes só era possível chegar aqui uma
+              vez, trocando o perfil de demonstração para "AUDITOR" (o
+              redireciona automaticamente), sem nenhum botão para lá voltar
+              depois de sair. */}
+          {["ADMIN", "EMPRESA_GESTORA", "GESTOR", "AUDITOR"].includes(loggedUser.role) && (
+            <button
+              id="sidebar-item-auditoria-interna"
+              onClick={() => {
+                setActiveSection("auditoria_interna");
+                setViewMode("BROWSER");
+                setIaInitialTab(undefined);
+              }}
+              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2.5 ${
+                activeSection === "auditoria_interna"
+                  ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+              }`}
+            >
+              <i className="fa-solid fa-magnifying-glass-chart text-emerald-400 text-sm w-5 text-center shrink-0"></i>
+              <span className={`${sidebarCollapsed ? "lg:hidden" : ""}`}>Auditoria Interna</span>
+            </button>
+          )}
+
           {/* 14. Segurança & Credenciais (Último lugar da coluna central/sidebar) */}
           <button 
             id="sidebar-item-seguranca"
@@ -2399,6 +2586,10 @@ export default function App() {
                 {activeSection === "financeiro_recibos" && "Emissão de Recibos Manuais (100% Editável)"}
                 {activeSection === "financeiro_relatorios" && "Relatórios de Dívidas (por Condómino & Pro Condomínio)"}
                 {activeSection === "relatorios_automaticos" && "Relatórios Financeiros (Prestação de Contas)"}
+                {activeSection === "contabilidade_interna" && "Contabilidade Interna"}
+                {activeSection === "agenda_manutencao" && "Plano de Manutenção Obrigatória"}
+                {activeSection === "auditoria_interna" && "Auditoria Interna"}
+                {activeSection === "agendador_automatico" && "Agendador Automático de Jobs"}
                 {activeSection === "financeiro_extratos" && "Extrato de Movimentos e Saldo (Visão Condómino)"}
                 {activeSection === "financeiro_quotas_mensais" && "Mapa de Quotas Mensais de Condomínio"}
                 {activeSection === "financeiro_quotas_extra" && "Quotas Extraordinárias & Fundos Especiais"}
