@@ -311,7 +311,11 @@ export function PainelControlo({
             name: "Total Líquido",
             val: `${totalLiquido.toLocaleString("pt-PT")} €`,
             icon: "/modulos/57-quota.png",
-            section: "fornecedores",
+            // Antes ia para Fornecedores, que só mostra uma das três parcelas
+            // que compõem este valor (Contas + Fundo de Reserva - Dívidas
+            // Pendentes) — vai agora para o Relatório de Contas, onde as três
+            // parcelas são visíveis.
+            section: "financeiro_relatorios",
             fixo: true,
             corSinal: true,
             positivo: totalLiquido >= 0,
@@ -356,11 +360,10 @@ export function PainelControlo({
                 );
               })}
             </div>
-            {dividasPendentesValor > 0 && (
-              <p className="text-[10px] text-slate-400">
-                O "Total Líquido" já desconta {dividasPendentesValor.toLocaleString("pt-PT")} € em dívidas pendentes a fornecedores (ver Fornecedores → Dívidas a Fornecedores).
-              </p>
-            )}
+            <p className="text-[10px] text-slate-400">
+              "Total Líquido" = Conta(s) à Ordem ({totalContaOrdem.toLocaleString("pt-PT")} €) + Fundo de Reserva ({totalFundoReserva.toLocaleString("pt-PT")} €)
+              {dividasPendentesValor > 0 && ` − Dívidas Pendentes a Fornecedores (${dividasPendentesValor.toLocaleString("pt-PT")} €)`}. Uma conta com saldo negativo (ex: obras pagas antes de reforço de fundos) reduz este total tanto quanto uma dívida por pagar.
+            </p>
           </div>
         );
       })()}
