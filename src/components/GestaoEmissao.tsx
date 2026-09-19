@@ -222,7 +222,12 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
         descricao: `Quota de Condomínio (Ordinária + Fundo de Reserva) - ${mes} / ${anoNum}`,
         valor: valorTotal,
         valor_fundo_reserva: valorFCR,
-        estado: "Pendente"
+        estado: "Pendente",
+        // Fotografia do proprietário no momento da emissão — se a fração
+        // mudar de proprietário mais tarde, este aviso continua a mostrar
+        // sempre quem o devia na altura, em vez do proprietário atual.
+        proprietario_nome: f.proprietario?.nome,
+        proprietario_nif: f.proprietario?.nif
       });
     });
 

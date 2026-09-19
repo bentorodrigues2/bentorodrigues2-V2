@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { Pencil, Trash2, Plus, ArrowLeftRight, History } from "lucide-react";
 import { Predio, Fracao, LoggedUser, Aviso, Proprietario } from "../types";
 import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCondominoVaziaPDF, downloadFichaCondominoPreenchidaPDF, downloadListaCondominosPDF, gerarReferenciaBR23E, parseValorMonetario } from "../utils";
 import { ModalFichaCondominoEditavel } from "./ModalFichaCondominoEditavel";
@@ -182,6 +182,13 @@ export function GestaoFracoes({
   const inqFileRef = React.useRef<HTMLInputElement>(null);
 
   const [selectedFracaoId, setSelectedFracaoId] = useState<string | null>(null);
+
+  // Transferência de Propriedade: guarda o proprietário ATUAL da fração
+  // enquanto o admin regista o novo — só é arquivado em historico_proprietarios
+  // quando o novo proprietário é mesmo gravado (evita ficar em limbo se o
+  // admin desistir a meio, e mantém arquivamento + novo registo atómicos).
+  const [transferindoPropriedadeDe, setTransferindoPropriedadeDe] = useState<Proprietario | null>(null);
+  const [historicoModalFracaoId, setHistoricoModalFracaoId] = useState<string | null>(null);
 
   // Inline Permilage editing state
   const [isEditingPermilages, setIsEditingPermilages] = useState(false);
@@ -510,6 +517,30 @@ export function GestaoFracoes({
     setInqDataNascimento("");
     setInqFoto(null);
     setEditingOwnerKey(null);
+    setTransferindoPropriedadeDe(null);
+  };
+
+  // Inicia a transferência de propriedade de uma fração: limpa o formulário
+  // para registar o NOVO proprietário, mas guarda o antigo em
+  // transferindoPropriedadeDe para ser arquivado em historico_proprietarios
+  // assim que o novo for mesmo submetido (ver submeterEditarProprietario).
+  const iniciarTransferenciaPropriedade = (fracaoId: string) => {
+    const targetFracao = predioFracoes.find(f => f.id_fracao === fracaoId);
+    if (!targetFracao?.proprietario?.nome) {
+      alert("Esta fração não tem um proprietário atual registado — utilize 'Registar / Editar Proprietário' normalmente.");
+      return;
+    }
+    if (!window.confirm(
+      `Transferir a propriedade da Fração ${targetFracao.fracao_nome}?\n\n` +
+      `O proprietário atual (${targetFracao.proprietario.nome}) será arquivado no histórico da fração (mantendo o acesso aos documentos e recibos já emitidos em seu nome) e vai poder registar de seguida os dados do novo proprietário.`
+    )) {
+      return;
+    }
+    limparFormProprietario();
+    setSelectedFracaoId(fracaoId);
+    setTransferindoPropriedadeDe(targetFracao.proprietario);
+    setCurrentSubTab("fracoes_proprietario");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Helper para carregar dados de uma fração para edição
@@ -862,10 +893,27 @@ export function GestaoFracoes({
         if (targetFracao) {
           const isNewEmail = targetFracao.proprietario?.email !== propEmail.trim();
 
+          // Se isto é uma Transferência de Propriedade, arquiva o
+          // proprietário anterior (capturado em iniciarTransferenciaPropriedade)
+          // no histórico da fração, em vez de o deixar desaparecer ao ser
+          // substituído pelo novo — mantém o registo de quem era o
+          // proprietário em cada período, para consulta de documentos antigos.
+          const novoHistoricoProprietarios = transferindoPropriedadeDe
+            ? [
+                ...(targetFracao.historico_proprietarios || []),
+                {
+                  proprietario: transferindoPropriedadeDe,
+                  data_fim: new Date().toISOString().split("T")[0],
+                  motivo: "Transferência de propriedade"
+                }
+              ]
+            : targetFracao.historico_proprietarios;
+
           const updateFracOk = await dbUpdate('fracoes', {
             referencia_br23e: refBR23E,
             proprietario: novoProprietarioObj,
             proprietarios_adicionais: proprietariosAdicionais,
+            historico_proprietarios: novoHistoricoProprietarios,
             inquilino: arrendada && inqNome.trim() ? {
               nome: inqNome.trim(),
               email: inqEmail.trim(),
@@ -891,6 +939,7 @@ export function GestaoFracoes({
             notificacao_preferencial: notificacao,
             proprietario: novoProprietarioObj,
             proprietarios_adicionais: proprietariosAdicionais,
+            historico_proprietarios: novoHistoricoProprietarios,
             inquilino: arrendada && inqNome.trim() ? {
               nome: inqNome.trim(),
               email: inqEmail.trim(),
@@ -905,6 +954,17 @@ export function GestaoFracoes({
           onUpdateFracoes(updatedList);
           await saveFracaoToSupabase(updatedFracao);
           await saveProprietarioToSupabase(novoProprietarioObj, selectedFracaoId);
+
+          if (transferindoPropriedadeDe) {
+            registarLogAuditoria(
+              "Frações",
+              `Transferiu a propriedade da Fração ${targetFracao.fracao_nome}`,
+              predio.id_predio,
+              loggedUser,
+              `${transferindoPropriedadeDe.nome} → ${novoProprietarioObj.nome}`
+            );
+            setTransferindoPropriedadeDe(null);
+          }
 
           if (isNewEmail || !targetFracao.proprietario) {
             // Ordem deliberada: primeiro o email de boas-vindas (com o PDF
@@ -1730,6 +1790,23 @@ export function GestaoFracoes({
                 </div>
               </div>
             </div>
+
+            {transferindoPropriedadeDe && (
+              <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  <i className="fa-solid fa-right-left mr-1.5"></i>
+                  <strong>Transferência de Propriedade em curso</strong> — está a registar o novo proprietário da Fração{" "}
+                  {predioFracoes.find(f => f.id_fracao === selectedFracaoId)?.fracao_nome}. Ao gravar, <strong>{transferindoPropriedadeDe.nome}</strong> será arquivado no histórico da fração (os documentos e recibos já emitidos em seu nome mantêm-se consultáveis).
+                </p>
+                <button
+                  type="button"
+                  onClick={limparFormProprietario}
+                  className="text-xs text-amber-700 hover:text-amber-900 font-bold underline cursor-pointer whitespace-nowrap"
+                >
+                  Cancelar Transferência
+                </button>
+              </div>
+            )}
 
             {/* Ficha do Proprietário Principal */}
             <div className="pt-2 space-y-4">
@@ -2570,6 +2647,27 @@ export function GestaoFracoes({
                               <Pencil className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                               <span className="font-semibold text-[10px]">Editar</span>
                             </button>
+                            {prop.id_fracao && (
+                              <button
+                                type="button"
+                                onClick={() => iniciarTransferenciaPropriedade(prop.id_fracao!)}
+                                className="bg-amber-50 hover:bg-amber-100 text-amber-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-amber-200 flex items-center gap-1 shadow-xs"
+                                title="Transferir Propriedade (arquiva este proprietário e regista o novo)"
+                              >
+                                <ArrowLeftRight className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                <span className="font-semibold text-[10px]">Transferir</span>
+                              </button>
+                            )}
+                            {prop.id_fracao && (fracoes.find(f => f.id_fracao === prop.id_fracao)?.historico_proprietarios?.length ?? 0) > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setHistoricoModalFracaoId(prop.id_fracao!)}
+                                className="bg-slate-50 hover:bg-slate-100 text-slate-600 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-slate-200 flex items-center gap-1 shadow-xs"
+                                title="Ver Histórico de Proprietários"
+                              >
+                                <History className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => handleEliminarProprietario(prop)}
@@ -3443,6 +3541,74 @@ export function GestaoFracoes({
         fracoes={predioFracoes}
         avisos={avisos}
       />
+
+      {/* Modal Histórico de Proprietários — consulta de proprietários
+          anteriores de uma fração e dos avisos/recibos emitidos em seu nome,
+          preservados mesmo depois de uma Transferência de Propriedade. */}
+      {historicoModalFracaoId && (() => {
+        const fracaoHist = fracoes.find(f => f.id_fracao === historicoModalFracaoId);
+        if (!fracaoHist) return null;
+        const historico = [...(fracaoHist.historico_proprietarios || [])].sort((a, b) => (b.data_fim || "").localeCompare(a.data_fim || ""));
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl border border-slate-200 max-h-[85vh] flex flex-col">
+              <div className="bg-slate-900 px-6 py-4 text-white flex justify-between items-center shrink-0">
+                <div className="flex items-center space-x-2">
+                  <History className="w-4 h-4 text-slate-300" />
+                  <div>
+                    <h3 className="font-bold text-sm">Histórico de Proprietários — Fração {fracaoHist.fracao_nome}</h3>
+                    <p className="text-[10px] text-slate-300">Proprietário atual: <strong>{fracaoHist.proprietario?.nome || "—"}</strong></p>
+                  </div>
+                </div>
+                <button onClick={() => setHistoricoModalFracaoId(null)} className="text-slate-300 hover:text-white cursor-pointer">
+                  <i className="fa-solid fa-xmark text-lg"></i>
+                </button>
+              </div>
+              <div className="p-5 space-y-3 overflow-y-auto">
+                {historico.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-6">Ainda não há proprietários anteriores registados para esta fração.</p>
+                ) : historico.map((h, idx) => {
+                  const avisosDoProprietario = (avisos || []).filter(a =>
+                    a.id_fracao === historicoModalFracaoId &&
+                    (a.proprietario_nome ? a.proprietario_nome === h.proprietario.nome : a.data <= h.data_fim)
+                  );
+                  return (
+                    <div key={idx} className="border border-slate-200 rounded-xl p-3.5 space-y-2 bg-slate-50/60">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-bold text-slate-800">{h.proprietario.nome}</p>
+                          <p className="text-[10px] text-slate-500 font-mono">NIF: {h.proprietario.nif || "—"} {h.proprietario.email ? `· ${h.proprietario.email}` : ""}</p>
+                        </div>
+                        <span className="text-[10px] bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                          Até {h.data_fim}
+                        </span>
+                      </div>
+                      {h.motivo && <p className="text-[10px] text-slate-500 italic">{h.motivo}</p>}
+                      <div className="pt-1.5 border-t border-slate-200">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                          Avisos / Recibos em nome deste proprietário ({avisosDoProprietario.length})
+                        </p>
+                        {avisosDoProprietario.length === 0 ? (
+                          <p className="text-[10px] text-slate-400">Nenhum documento encontrado.</p>
+                        ) : (
+                          <ul className="space-y-1 max-h-28 overflow-y-auto">
+                            {avisosDoProprietario.map(a => (
+                              <li key={a.id_aviso} className="text-[10px] text-slate-600 flex justify-between gap-2 bg-white rounded px-2 py-1 border border-slate-150">
+                                <span className="truncate">{a.tipo} — {a.descricao}</span>
+                                <span className="font-mono font-bold shrink-0">{a.valor.toFixed(2)}€ · {a.estado}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modal Simulador de E-mail de Solicitação de Apólice de Incêndio (02/01) */}
       {fireInsuranceModalFracao && fireInsuranceModalFracao.proprietario && (

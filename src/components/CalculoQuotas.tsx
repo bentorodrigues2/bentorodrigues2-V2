@@ -190,6 +190,11 @@ export function CalculoQuotas({
           valor: valorExtraMensal,
           estado: "Pendente",
           id_obra: obraSelecionadaId || undefined,
+          // Fotografia do proprietário no momento da emissão — mantém o
+          // aviso atribuído a quem devia na altura, mesmo que a fração mude
+          // de proprietário mais tarde (Transferência de Propriedade).
+          proprietario_nome: f.proprietario?.nome,
+          proprietario_nif: f.proprietario?.nif,
         });
       }
     });

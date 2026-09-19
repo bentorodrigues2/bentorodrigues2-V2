@@ -334,6 +334,12 @@ export async function emitirQuotasMensais() {
         // administrador).
         const idAviso = `av-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
+        // Buscado antes de criar o aviso para poder gravar logo a
+        // "fotografia" do proprietário (nome/NIF) no momento da emissão —
+        // sem isto, reabrir um aviso antigo depois de uma Transferência de
+        // Propriedade mostrava sempre o proprietário ATUAL da fração.
+        const proprietario = await obterProprietarioDaFracao(f.id_fracao);
+
         const { error: errAv } = await supabase.from("avisos").insert([
           {
             id_aviso: idAviso,
@@ -345,7 +351,9 @@ export async function emitirQuotasMensais() {
             descricao: `Quota de Condomínio (Ordinária + Fundo de Reserva) - ${mesRefLabel} / ${anoRef}`,
             valor: valorTotal,
             valor_fundo_reserva: valorFCR,
-            estado: "Pendente"
+            estado: "Pendente",
+            proprietario_nome: proprietario?.nome || null,
+            proprietario_nif: proprietario?.nif || null
           }
         ]);
 
@@ -354,7 +362,6 @@ export async function emitirQuotasMensais() {
           continue;
         }
 
-        const proprietario = await obterProprietarioDaFracao(f.id_fracao);
         if (!proprietario?.email) continue;
 
         const { count: totalNotas } = await supabase
