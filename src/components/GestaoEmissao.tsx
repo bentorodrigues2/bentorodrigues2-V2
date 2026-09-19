@@ -137,6 +137,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
   const [customNrecibo, setCustomNrecibo] = useState("");
   const [pagamentoContaId, setPagamentoContaId] = useState("");
   const [aRegistarPagamento, setARegistarPagamento] = useState(false);
+  const [pagamentoValorInput, setPagamentoValorInput] = useState("");
 
   // Edição/eliminação de avisos já emitidos — antes não existia forma
   // nenhuma de corrigir um valor errado ou eliminar um aviso lançado por
@@ -346,7 +347,10 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
   // mostrava referências de movimento (MOV-...) completamente fabricadas,
   // que não correspondiam a nada na Tesouraria. Agora cria um Movimento real
   // ligado à fração e à conta escolhida, e credita mesmo o saldo dessa conta.
-  const handleMarcarPagoComMovimento = async (aviso: Aviso, idConta: string) => {
+  // O valor é editável em vez de assumir sempre o total — um condómino pode
+  // pagar só parte do que deve agora e o resto mais tarde (ex: deve 600€,
+  // paga 250€), e o aviso fica "Paga Parcialmente" com o saldo em aberto.
+  const handleMarcarPagoComMovimento = async (aviso: Aviso, idConta: string, valorInformado: number) => {
     if (!idConta) {
       alert("Selecione a conta bancária onde o valor foi recebido antes de marcar como pago.");
       return;
@@ -356,8 +360,14 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
       alert("Conta bancária inválida.");
       return;
     }
+    const saldoDevedor = Math.round((aviso.valor - (aviso.valor_pago || 0)) * 100) / 100;
+    if (valorInformado <= 0 || valorInformado > saldoDevedor + 0.01) {
+      alert(`Indique um valor entre 0,01€ e o saldo em dívida (${saldoDevedor.toFixed(2)}€).`);
+      return;
+    }
 
     const frac = fracoes.find(f => f.id_fracao === aviso.id_fracao);
+    const ehQuitacaoTotal = valorInformado >= saldoDevedor - 0.01;
     const novoMovimento: Movimento = {
       id_mov: "mov-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
       id_predio: predio.id_predio,
@@ -365,30 +375,43 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
       id_fracao: aviso.id_fracao,
       data: customDataPagamento || new Date().toISOString().split("T")[0],
       tipo: "Receita",
-      valor: aviso.valor,
-      descricao: `${aviso.tipo || "Quota"} — Fração ${frac?.fracao_nome || aviso.id_fracao} (Aviso ${aviso.id_aviso})`,
+      valor: valorInformado,
+      descricao: `${aviso.tipo || "Quota"} — Fração ${frac?.fracao_nome || aviso.id_fracao} (Aviso ${aviso.id_aviso})${ehQuitacaoTotal ? "" : " (tranche)"}`,
       categoria: (aviso.tipo || "").toLowerCase().includes("extra") ? "Quota Extraordinária" : "Quota Mensal",
       estado: "Justificado",
       metodo_pagamento: "Transferência Bancária"
     };
 
-    const contaAtualizada: Conta = { ...contaAlvo, saldo: (contaAlvo.saldo || 0) + aviso.valor };
+    const contaAtualizada: Conta = { ...contaAlvo, saldo: (contaAlvo.saldo || 0) + valorInformado };
     setContas(prev => prev.map(c => c.id_conta === idConta ? contaAtualizada : c));
     saveContaToSupabase(contaAtualizada).catch(console.error);
 
     setMovements(prev => [novoMovimento, ...prev]);
     saveMovimentoToSupabase(novoMovimento).catch(console.error);
 
-    const atualizacaoAviso = { estado: "Paga", id_movimento: novoMovimento.id_mov, id_conta: idConta };
+    const novoValorPago = Math.round(((aviso.valor_pago || 0) + valorInformado) * 100) / 100;
+    const atualizacaoAviso = {
+      estado: ehQuitacaoTotal ? "Paga" : "Paga Parcialmente",
+      valor_pago: novoValorPago,
+      id_movimento: novoMovimento.id_mov,
+      id_conta: idConta
+    };
     setAvisos(prev => prev.map(a => a.id_aviso === aviso.id_aviso ? { ...a, ...atualizacaoAviso } : a));
     if (selectedAviso && selectedAviso.id_aviso === aviso.id_aviso) {
       setSelectedAviso(prev => prev ? { ...prev, ...atualizacaoAviso } : null);
     }
     dbUpdate("avisos", atualizacaoAviso, [["id_aviso", "eq", aviso.id_aviso]]).catch(console.error);
-    registarLogAuditoria("Financeira", `Registou o recebimento do aviso ${aviso.id_aviso} na conta ${contaAlvo.banco}`, predio.id_predio, loggedUser, `${aviso.valor.toFixed(2)}€`);
+    registarLogAuditoria(
+      "Financeira",
+      ehQuitacaoTotal ? `Liquidou o aviso ${aviso.id_aviso}` : `Registou um pagamento parcial do aviso ${aviso.id_aviso}`,
+      predio.id_predio,
+      loggedUser,
+      `${valorInformado.toFixed(2)}€ via ${contaAlvo.banco}${ehQuitacaoTotal ? "" : ` — saldo em dívida: ${(saldoDevedor - valorInformado).toFixed(2)}€`}`
+    );
 
     setARegistarPagamento(false);
     setPagamentoContaId("");
+    setPagamentoValorInput("");
   };
 
   const fecharModal = () => {
@@ -688,8 +711,10 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                       <td className="p-3 text-right font-bold font-mono">{a.valor.toFixed(2)}€</td>
                       <td className="p-3 text-center">
                         <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
-                          a.estado === 'Paga' 
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
+                          a.estado === 'Paga'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                            : a.estado === 'Paga Parcialmente'
+                            ? 'bg-sky-50 text-sky-700 border border-sky-100'
                             : 'bg-amber-50 text-amber-700 border border-amber-100'
                         }`}>
                           {a.estado}
@@ -891,7 +916,11 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                     <button
                       type="button"
                       disabled={selectedAviso.estado === "Paga"}
-                      onClick={() => setARegistarPagamento(true)}
+                      onClick={() => {
+                        const saldoDevedor = Math.round((selectedAviso.valor - (selectedAviso.valor_pago || 0)) * 100) / 100;
+                        setPagamentoValorInput(saldoDevedor.toFixed(2).replace(".", ","));
+                        setARegistarPagamento(true);
+                      }}
                       className={`flex-1 py-1 text-[9px] font-extrabold rounded-md border disabled:cursor-not-allowed ${
                         selectedAviso.estado === "Paga"
                           ? "bg-emerald-100 text-emerald-800 border-emerald-300"
@@ -904,6 +933,11 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                   {selectedAviso.estado === "Paga" && selectedAviso.id_movimento && (
                     <p className="text-[9px] text-emerald-600 dark:text-emerald-400 pt-0.5">
                       <i className="fa-solid fa-check-circle mr-1"></i>Depósito registado na Tesouraria ({movements.find(m => m.id_mov === selectedAviso.id_movimento)?.categoria || "Movimento"})
+                    </p>
+                  )}
+                  {selectedAviso.estado === "Paga Parcialmente" && (
+                    <p className="text-[9px] text-amber-600 dark:text-amber-400 pt-0.5">
+                      <i className="fa-solid fa-hourglass-half mr-1"></i>Pago {((selectedAviso.valor_pago || 0)).toFixed(2)}€ de {selectedAviso.valor.toFixed(2)}€ — falta {(selectedAviso.valor - (selectedAviso.valor_pago || 0)).toFixed(2)}€
                     </p>
                   )}
 
@@ -920,17 +954,31 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                           <option key={c.id_conta} value={c.id_conta}>{c.banco} ({c.tipo}) - Saldo: {c.saldo?.toFixed(2)}€</option>
                         ))}
                       </select>
+                      <label className="text-[9px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wide">
+                        Valor Recebido Agora (€) * — em dívida: {(selectedAviso.valor - (selectedAviso.valor_pago || 0)).toFixed(2)}€
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={pagamentoValorInput}
+                        onChange={e => setPagamentoValorInput(e.target.value)}
+                        placeholder="0,00"
+                        className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[10px] px-2 py-1.5 rounded-lg focus:outline-emerald-500 dark:text-white"
+                      />
+                      <p className="text-[8px] text-emerald-700 dark:text-emerald-400">
+                        Pode indicar um valor inferior ao total em dívida para registar um pagamento parcial (o aviso fica "Paga Parcialmente" até liquidar o resto).
+                      </p>
                       <div className="flex space-x-1.5">
                         <button
                           type="button"
-                          onClick={() => { setARegistarPagamento(false); setPagamentoContaId(""); }}
+                          onClick={() => { setARegistarPagamento(false); setPagamentoContaId(""); setPagamentoValorInput(""); }}
                           className="flex-1 py-1 text-[9px] font-extrabold rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
                         >
                           Cancelar
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleMarcarPagoComMovimento(selectedAviso, pagamentoContaId)}
+                          onClick={() => handleMarcarPagoComMovimento(selectedAviso, pagamentoContaId, parseValorMonetario(pagamentoValorInput))}
                           className="flex-1 py-1 text-[9px] font-extrabold rounded-md border border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700"
                         >
                           Confirmar Recebimento

@@ -592,8 +592,8 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   const hojeISO = new Date().toISOString().split("T")[0];
   const calcularDividaFracao = (idFracao: string): number =>
     avisos
-      .filter(a => a.id_fracao === idFracao && a.tipo === "Cota Ordinária" && a.estado === "Pendente" && a.vencimento && a.vencimento < hojeISO)
-      .reduce((soma, a) => soma + (Number(a.valor) || 0), 0);
+      .filter(a => a.id_fracao === idFracao && a.tipo === "Cota Ordinária" && (a.estado === "Pendente" || a.estado === "Paga Parcialmente") && a.vencimento && a.vencimento < hojeISO)
+      .reduce((soma, a) => soma + ((Number(a.valor) || 0) - (Number(a.valor_pago) || 0)), 0);
 
   // Frações com dívidas para seleção rápida
   const fracoesComDivida = fracoes.filter(f => f.id_predio === predio.id_predio);

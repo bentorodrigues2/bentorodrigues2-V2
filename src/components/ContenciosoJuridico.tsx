@@ -194,9 +194,9 @@ export function ContenciosoJuridico({
 
   // Determine the legal status and metrics for each fraction
   const getLegalInfoForFracao = (fracId: string) => {
-    const frAvisos = predioAvisos.filter(a => a.id_fracao === fracId && a.estado === "Pendente");
-    const totalDebt = frAvisos.reduce((acc, curr) => acc + curr.valor, 0);
-    
+    const frAvisos = predioAvisos.filter(a => a.id_fracao === fracId && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"));
+    const totalDebt = frAvisos.reduce((acc, curr) => acc + (curr.valor - (curr.valor_pago || 0)), 0);
+
     let maxDaysOverdue = 0;
     let worstAvisoDate = "";
 
@@ -463,8 +463,8 @@ export function ContenciosoJuridico({
   const handleGerarMinutaComIA = async (fracaoId: string) => {
     const frac = fracoes.find(f => f.id_fracao === fracaoId);
     if (!frac) return;
-    const frAvisos = predioAvisos.filter(a => a.id_fracao === fracaoId && a.estado === "Pendente");
-    const totalDebt = frAvisos.reduce((acc, curr) => acc + curr.valor, 0);
+    const frAvisos = predioAvisos.filter(a => a.id_fracao === fracaoId && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"));
+    const totalDebt = frAvisos.reduce((acc, curr) => acc + (curr.valor - (curr.valor_pago || 0)), 0);
 
     setIsGeneratingAiNotice(true);
     setAiLegalNoticeText("");
@@ -2028,7 +2028,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                     .filter(f => getLegalInfoForFracao(f.id_fracao).totalDebt > 0)
                     .map(frac => {
                       const lInfo = getLegalInfoForFracao(frac.id_fracao);
-                      const frAvisos = predioAvisos.filter(a => a.id_fracao === frac.id_fracao && a.estado === "Pendente");
+                      const frAvisos = predioAvisos.filter(a => a.id_fracao === frac.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"));
                       return (
                         <div
                           key={frac.id_fracao}

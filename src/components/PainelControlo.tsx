@@ -121,12 +121,12 @@ export function PainelControlo({
     const hoje = new Date();
     const porFracao = new Map<string, { fracao: string; valor: number }>();
     predioAvisos
-      .filter(a => a.estado === "Pendente" && a.vencimento && new Date(a.vencimento) < hoje)
+      .filter(a => (a.estado === "Pendente" || a.estado === "Paga Parcialmente") && a.vencimento && new Date(a.vencimento) < hoje)
       .forEach(a => {
         const frac = predioFracoes.find(f => f.id_fracao === a.id_fracao);
         const nomeFracao = frac?.fracao_nome || a.id_fracao;
         const atual = porFracao.get(a.id_fracao) || { fracao: nomeFracao, valor: 0 };
-        atual.valor += Number(a.valor) || 0;
+        atual.valor += (Number(a.valor) || 0) - (Number(a.valor_pago) || 0);
         porFracao.set(a.id_fracao, atual);
       });
     return Array.from(porFracao.values()).sort((a, b) => b.valor - a.valor);
@@ -254,11 +254,11 @@ export function PainelControlo({
           },
           {
             name: "Cobranças",
-            val: `${predioAvisos.filter(a => a.estado === 'Pendente').length} Pendentes`,
+            val: `${predioAvisos.filter(a => a.estado === 'Pendente' || a.estado === 'Paga Parcialmente').length} Pendentes`,
             icon: "/modulos/60-nota-de-cobranca.png",
             section: "financeiro_relatorios",
             fixo: false,
-            contagem: predioAvisos.filter(a => a.estado === 'Pendente').length
+            contagem: predioAvisos.filter(a => a.estado === 'Pendente' || a.estado === 'Paga Parcialmente').length
           },
           {
             name: "Alertas Jurídicos",

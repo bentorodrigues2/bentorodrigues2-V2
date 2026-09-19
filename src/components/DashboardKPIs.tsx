@@ -74,8 +74,8 @@ export function DashboardKPIs({
 
   // Total Outstanding Debt / Delinquency
   const totalOutstandingDebt = predioAvisos
-    .filter(a => a.estado === "Pendente")
-    .reduce((acc, curr) => acc + curr.valor, 0);
+    .filter(a => a.estado === "Pendente" || a.estado === "Paga Parcialmente")
+    .reduce((acc, curr) => acc + (curr.valor - (curr.valor_pago || 0)), 0);
 
   const totalInvoiced = predioAvisos.reduce((acc, curr) => acc + curr.valor, 0);
   const delinquencyRate = totalInvoiced > 0 ? (totalOutstandingDebt / totalInvoiced) * 100 : 0;
@@ -100,8 +100,8 @@ export function DashboardKPIs({
   };
 
   const getFracaoDebtMetrics = (fracId: string) => {
-    const frAvisos = predioAvisos.filter(a => a.id_fracao === fracId && a.estado === "Pendente");
-    const totalDebt = frAvisos.reduce((acc, curr) => acc + curr.valor, 0);
+    const frAvisos = predioAvisos.filter(a => a.id_fracao === fracId && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"));
+    const totalDebt = frAvisos.reduce((acc, curr) => acc + (curr.valor - (curr.valor_pago || 0)), 0);
     let maxOverdue = 0;
     frAvisos.forEach(a => {
       const days = getDaysOverdue(a.vencimento);

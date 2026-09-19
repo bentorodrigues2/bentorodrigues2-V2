@@ -1241,7 +1241,8 @@ export async function fetchAvisosFromSupabase(idPredio?: string): Promise<Aviso[
       valor_fundo_reserva: row.valor_fundo_reserva !== null && row.valor_fundo_reserva !== undefined ? Number(row.valor_fundo_reserva) : undefined,
       proprietario_nome: row.proprietario_nome || undefined,
       proprietario_nif: row.proprietario_nif || undefined,
-      id_obra: row.id_obra || undefined
+      id_obra: row.id_obra || undefined,
+      valor_pago: row.valor_pago !== null && row.valor_pago !== undefined ? Number(row.valor_pago) : undefined
     }));
   } catch (err) {
     return null;
@@ -1265,7 +1266,8 @@ export async function saveAvisosToSupabase(novosAvisos: any[]): Promise<boolean>
     valor_fundo_reserva: a.valor_fundo_reserva ?? null,
     proprietario_nome: a.proprietario_nome || null,
     proprietario_nif: a.proprietario_nif || null,
-    id_obra: a.id_obra || null
+    id_obra: a.id_obra || null,
+    valor_pago: a.valor_pago ?? null
   }));
   return dbUpsert("avisos", payload);
 }

@@ -254,9 +254,13 @@ export interface Aviso {
   vencimento: string;
   descricao: string;
   valor: number; // total (quota ordinária + fundo de reserva, quando aplicável)
-  estado: string;
+  estado: string; // "Pendente" | "Paga Parcialmente" | "Paga"
   id_movimento?: string;
   id_conta?: string;
+  // Soma do que já foi recebido deste aviso — permite registar pagamentos
+  // parciais (ex: condómino deve 600€, paga 250€ agora e o resto depois),
+  // em vez de "Marcar Pago" só suportar tudo-ou-nada.
+  valor_pago?: number;
   valor_fundo_reserva?: number; // parcela do FCR dentro do valor total, para a nota/recibo discriminar as duas rubricas no mesmo documento
   // "Fotografia" do proprietário no momento da emissão — sem isto, reabrir
   // um aviso/recibo antigo depois de uma transferência de propriedade

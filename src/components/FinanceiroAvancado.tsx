@@ -251,8 +251,8 @@ export function FinanceiroAvancado({
 
   // Helper: calculate balance for a fraction (Negative if they have unpaid notices, Positive/Zero if in good standing)
   const getFracaoBalance = (id_fracao: string) => {
-    const pendentes = predioAvisos.filter(a => a.id_fracao === id_fracao && a.estado === "Pendente");
-    const totalPend = pendentes.reduce((acc, curr) => acc + curr.valor, 0);
+    const pendentes = predioAvisos.filter(a => a.id_fracao === id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"));
+    const totalPend = pendentes.reduce((acc, curr) => acc + (curr.valor - (curr.valor_pago || 0)), 0);
     // In condominium terminology, unpaid quotas represent debt (negative balance from condómino perspective)
     return totalPend === 0 ? 0 : -totalPend;
   };
@@ -1272,7 +1272,7 @@ export function FinanceiroAvancado({
                       {predioFracoes.map(frac => {
                         const bal = getFracaoBalance(frac.id_fracao);
                         const isGoodStanding = bal >= 0;
-                        const pendCount = predioAvisos.filter(a => a.id_fracao === frac.id_fracao && a.estado === "Pendente").length;
+                        const pendCount = predioAvisos.filter(a => a.id_fracao === frac.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")).length;
                         return (
                           <tr key={frac.id_fracao} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-colors">
                             <td className="py-3 px-4 font-bold text-slate-800 dark:text-white">

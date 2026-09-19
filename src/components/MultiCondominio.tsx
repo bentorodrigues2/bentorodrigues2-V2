@@ -144,8 +144,8 @@ export function MultiCondominio({
   const totalDespesas = movimentos.filter(m => m.tipo === "Despesa").reduce((sum, m) => sum + m.valor, 0);
   
   // Pendings
-  const totalAvisosPendentes = avisos.filter(a => a.estado === "Pendente");
-  const totalDividaConsolidada = totalAvisosPendentes.reduce((sum, a) => sum + a.valor, 0);
+  const totalAvisosPendentes = avisos.filter(a => a.estado === "Pendente" || a.estado === "Paga Parcialmente");
+  const totalDividaConsolidada = totalAvisosPendentes.reduce((sum, a) => sum + (a.valor - (a.valor_pago || 0)), 0);
   const totalOcorrenciasAtivas = ocorrencias.filter(o => o.estado !== "Resolvido").length;
   const totalReservasPendentes = reservas.filter(r => r.estado === "Pendente").length;
 
@@ -351,8 +351,8 @@ export function MultiCondominio({
                       const buildingContas = contas.filter(c => c.id_predio === p.id_predio);
                       const buildingSaldo = buildingContas.reduce((sum, c) => sum + c.saldo, 0);
                       
-                      const buildingAvisos = avisos.filter(a => a.id_predio === p.id_predio && a.estado === "Pendente");
-                      const buildingDividas = buildingAvisos.reduce((sum, a) => sum + a.valor, 0);
+                      const buildingAvisos = avisos.filter(a => a.id_predio === p.id_predio && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"));
+                      const buildingDividas = buildingAvisos.reduce((sum, a) => sum + (a.valor - (a.valor_pago || 0)), 0);
                       
                       const buildingOcorr = ocorrencias.filter(o => o.id_predio === p.id_predio && o.estado !== "Resolvido").length;
                       const buildingTeam = teams.filter(t => t.id_predio === p.id_predio).length;

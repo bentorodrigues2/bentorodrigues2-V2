@@ -381,8 +381,8 @@ export function FichaEmpresaGestora({
     .reduce((soma, a) => soma + (Number(a.valor) || 0), 0);
 
   const totalFaturacaoEmAtraso = avisosQuotaOrdinaria
-    .filter(a => a.estado === "Pendente" && a.vencimento && a.vencimento < hoje.toISOString().split("T")[0])
-    .reduce((soma, a) => soma + (Number(a.valor) || 0), 0);
+    .filter(a => (a.estado === "Pendente" || a.estado === "Paga Parcialmente") && a.vencimento && a.vencimento < hoje.toISOString().split("T")[0])
+    .reduce((soma, a) => soma + ((Number(a.valor) || 0) - (Number(a.valor_pago) || 0)), 0);
 
   const totalTaxaInadimplencia = totalFaturacaoMensal > 0
     ? ((totalFaturacaoEmAtraso / totalFaturacaoMensal) * 100).toFixed(1)

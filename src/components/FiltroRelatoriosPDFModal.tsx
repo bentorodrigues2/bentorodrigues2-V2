@@ -72,7 +72,7 @@ export function FiltroRelatoriosPDFModal({
       headers = ["Fração", "Piso", "Proprietário", "NIF", "Contacto", "Quota Mensal", "Estado Pagamento", "Saldo Dívida"];
       const scopeFracoes = ambito === "FRACAO" && fracaoSelecionada ? [fracaoSelecionada] : predioFracoes;
       rows = scopeFracoes.map(f => {
-        const debt = avisos.filter(a => a.id_fracao === f.id_fracao && a.estado === "Pendente").reduce((acc, c) => acc + c.valor, 0);
+        const debt = avisos.filter(a => a.id_fracao === f.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")).reduce((acc, c) => acc + (c.valor - (c.valor_pago || 0)), 0);
         return [
           f.fracao_nome,
           f.piso,
@@ -188,7 +188,7 @@ export function FiltroRelatoriosPDFModal({
             <tbody>
               ${(ambito === "FRACAO" && fracaoSelecionada ? [fracaoSelecionada] : predioFracoes).map(f => {
                 const quotaM = (((predio as any).orcamento_anual || 12000) * (f.permilagem / 1000) / 12).toFixed(2);
-                const debt = avisos.filter(a => a.id_fracao === f.id_fracao && a.estado === "Pendente").reduce((acc, c) => acc + c.valor, 0);
+                const debt = avisos.filter(a => a.id_fracao === f.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")).reduce((acc, c) => acc + (c.valor - (c.valor_pago || 0)), 0);
                 return `
                   <tr>
                     <td><strong>Fração ${f.fracao_nome}</strong></td>

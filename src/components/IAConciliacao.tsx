@@ -42,7 +42,7 @@ export function IAConciliacao({ predio, fracoes, avisos, setAvisos, movements, s
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const predioFracoes = fracoes.filter(f => f.id_predio === predio.id_predio);
-  const predioAvisosPendentes = avisos.filter(a => a.id_predio === predio.id_predio && a.estado === "Pendente");
+  const predioAvisosPendentes = avisos.filter(a => a.id_predio === predio.id_predio && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"));
 
   const carregarAmostraExtrato = () => {
     const amostra = 
