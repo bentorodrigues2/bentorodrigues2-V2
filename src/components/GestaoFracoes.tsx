@@ -951,8 +951,11 @@ export function GestaoFracoes({
           const isNewEmail = targetFracao.proprietario?.email !== propEmail.trim();
           // Com email "NA" (condómino recusou fornecer), não faz sentido
           // tentar enviar convites/boas-vindas reais para um endereço que
-          // não existe — a API do Resend rejeitaria o envio na mesma.
-          const emailValidoParaEnvio = /\S+@\S+\.\S+/.test(propEmail.trim());
+          // não existe — a API do Resend rejeitaria o envio na mesma. E
+          // quem escolheu explicitamente ser notificado por Correio Postal
+          // não deve receber nenhum email automático de boas-vindas/ativação
+          // — antes o sistema enviava-os na mesma, ignorando essa escolha.
+          const emailValidoParaEnvio = /\S+@\S+\.\S+/.test(propEmail.trim()) && notificacao.includes("Digital");
 
           // Se isto é uma Transferência de Propriedade, arquiva o
           // proprietário anterior (capturado em iniciarTransferenciaPropriedade)

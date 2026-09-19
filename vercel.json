@@ -16,7 +16,6 @@
     { "source": "/api/ai-studio-router", "destination": "/api/email?acao=router" },
     { "source": "/api/ai-studio-router/templates", "destination": "/api/email?acao=router-templates" },
     { "source": "/api/inbound", "destination": "/api/webhooks/resend" },
-    { "source": "/api/ai-studio", "destination": "/api/webhooks/resend" },
     { "source": "/api/pdf/convocatoria", "destination": "/api/pdf?tipo=convocatoria" },
     { "source": "/api/pdf/ata", "destination": "/api/pdf?tipo=ata" },
     { "source": "/api/pdf/aviso", "destination": "/api/pdf?tipo=aviso" },
