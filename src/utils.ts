@@ -2740,12 +2740,12 @@ export function gerarConvocatoriaOficialPDF(
 
     doc.setFillColor(255, 255, 255);
     doc.setDrawColor(148, 163, 184);
-    doc.rect(14, y2, 182, 120, "S");
+    doc.rect(14, y2, 182, 165, "S");
 
     doc.setTextColor(15, 23, 42);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    
+
     let procY = y2 + 10;
     doc.text("Eu, abaixo-assinado(a):", 20, procY);
     procY += 7;
@@ -2767,7 +2767,7 @@ export function gerarConvocatoriaOficialPDF(
     doc.text("Portador(a) do Documento de Identificação / NIF: _________________________________________", 20, procY);
     procY += 10;
 
-    const mandatoText = 
+    const mandatoText =
       `Para que em meu nome e em minha representação assista, vote e delibere sobre todos os pontos constantes da Ordem do Dia ` +
       `da Assembleia Geral de Condóminos a realizar no dia ${reuniao.data}, pelas ${reuniao.hora} horas (ou em segunda convocatória), ` +
       `podendo assinar a respetiva folha de presenças e exercer todos os direitos decorrentes da titularidade da referida fração autónoma.`;
@@ -2775,6 +2775,27 @@ export function gerarConvocatoriaOficialPDF(
     doc.text(splitMandato, 20, procY);
     procY += (splitMandato.length * 5) + 8;
 
+    // Observações / sentido de voto — permite ao condómino que se faz
+    // representar deixar por escrito a sua opinião ou instruções de voto
+    // em pontos específicos da Ordem do Dia, mesmo não estando presente.
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.text("OBSERVAÇÕES / SENTIDO DE VOTO RECOMENDADO (opcional):", 20, procY);
+    procY += 5;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text("Pode aqui deixar a sua opinião ou instruções de voto em pontos específicos da Ordem do Dia, mesmo fazendo-se representar.", 20, procY);
+    procY += 6;
+    doc.setTextColor(15, 23, 42);
+    doc.line(20, procY, 184, procY);
+    procY += 7;
+    doc.line(20, procY, 184, procY);
+    procY += 7;
+    doc.line(20, procY, 184, procY);
+    procY += 9;
+
+    doc.setFontSize(9);
     doc.text("Data: ____ / ____ / 2026", 20, procY);
     doc.text("Assinatura do(a) Condómino(a) Mandante:", 100, procY);
     doc.line(100, procY + 12, 180, procY + 12);
@@ -3524,6 +3545,30 @@ export function gerarDeclaracaoRepresentacaoPDF(devolverDoc?: boolean) {
     caixaVotacao("Assinar a Folha de Presenças em representação do outorgante.", y + 20);
     y += 32;
 
+    // Caixa 4: Observações / Sentido de Voto — quem se faz representar por
+    // não poder comparecer pode ainda assim deixar por escrito a sua
+    // opinião ou instruções de voto sobre pontos específicos da Ordem do
+    // Dia, para o procurador (ou a Mesa) ter em conta.
+    doc.setFillColor(15, 23, 42);
+    doc.roundedRect(14, y, 182, 6, 1, 1, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("OBSERVAÇÕES / SENTIDO DE VOTO RECOMENDADO (opcional)", 18, y + 4.2);
+    y += 9;
+
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(186, 230, 253);
+    doc.roundedRect(14, y, 182, 16, 2, 2, "FD");
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text("Pode registar aqui a sua opinião ou instruções de voto em pontos específicos da Ordem do Dia, mesmo fazendo-se representar:", 18, y + 5);
+    doc.setDrawColor(203, 213, 225);
+    doc.line(18, y + 10, 192, y + 10);
+    doc.line(18, y + 14.5, 192, y + 14.5);
+    y += 22;
+
     // Instruções de Entrega
     doc.setFont("helvetica", "italic");
     doc.setFontSize(7.5);
@@ -3533,14 +3578,14 @@ export function gerarDeclaracaoRepresentacaoPDF(devolverDoc?: boolean) {
       182
     );
     doc.text(instrucoes, 14, y);
-    y += instrucoes.length * 4 + 10;
+    y += instrucoes.length * 4 + 8;
 
     // Local e Data / Assinatura
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
     doc.text(`Local e Data: ${"_".repeat(28)}, ____ de ${"_".repeat(16)} de 2026`, 14, y);
-    y += 16;
+    y += 14;
 
     doc.line(14, y, 110, y);
     y += 4;

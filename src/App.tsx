@@ -1741,22 +1741,10 @@ export default function App() {
                   <i className="fa-solid fa-file-contract text-emerald-400 text-xs"></i>
                   <span>Serviços contratados</span>
                 </button>
-                <button
-                  onClick={() => {
-                    setActiveSection("fornecedores");
-                    setFornecedoresTab("dividas");
-                    setViewMode("BROWSER");
-                    setIaInitialTab(undefined);
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "fornecedores" && fornecedoresTab === "dividas"
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
-                  }`}
-                >
-                  <i className="fa-solid fa-file-invoice-dollar text-emerald-400 text-xs"></i>
-                  <span>Dívidas a Fornecedores</span>
-                </button>
+                {/* "Dívidas a Fornecedores" deixou de aparecer aqui — é dinheiro
+                    e passivo real do prédio, por isso só faz sentido viver na
+                    área Financeira (onde continua acessível), em vez de estar
+                    também aqui, a confundir onde é a "casa" da funcionalidade. */}
               </div>
             )}
           </div>

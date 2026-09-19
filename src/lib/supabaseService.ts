@@ -2150,7 +2150,8 @@ export async function fetchObrasExtraFromSupabase(idPredio: string): Promise<Obr
     impactoSaldoAnual: Number(row.impacto_saldo_anual) || 0,
     estado: row.estado,
     orcamentos: row.orcamentos || [],
-    documentosArquivados: Boolean(row.documentos_arquivados)
+    documentosArquivados: Boolean(row.documentos_arquivados),
+    id_divida: row.id_divida || undefined
   }));
 }
 
@@ -2172,7 +2173,8 @@ export async function saveObraExtraToSupabase(idPredio: string, item: ObraExtrao
     impacto_saldo_anual: item.impactoSaldoAnual || 0,
     estado: item.estado,
     orcamentos: item.orcamentos || [],
-    documentos_arquivados: Boolean(item.documentosArquivados)
+    documentos_arquivados: Boolean(item.documentosArquivados),
+    id_divida: item.id_divida || null
   });
 }
 

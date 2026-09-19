@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Predio, Fracao, Ocorrencia, Movimento, Conta, Documento, LoggedUser, Fornecedor, OcorrenciaFoto } from "../types";
+import { Predio, Fracao, Ocorrencia, Movimento, Conta, Documento, LoggedUser, Fornecedor, OcorrenciaFoto, DividaFornecedor } from "../types";
 import { formatDatePT, exportToXLS } from "../utils";
 import { motion, AnimatePresence } from "motion/react";
 import {
   fetchAgendaVistoriasFromSupabase, saveAgendaVistoriaToSupabase,
   fetchIntervencoesFromSupabase, saveIntervencaoToSupabase,
   fetchObrasExtraFromSupabase, saveObraExtraToSupabase,
-  saveDocumentoToSupabase, saveMovimentoToSupabase, saveOcorrenciaToSupabase, saveContaToSupabase, registarLogAuditoria
+  saveDocumentoToSupabase, saveMovimentoToSupabase, saveOcorrenciaToSupabase, saveContaToSupabase,
+  saveDividaFornecedorToSupabase, registarLogAuditoria
 } from "../lib/supabaseService";
 import { 
   Wrench, Calendar, TriangleAlert, Hammer, CheckSquare, FolderArchive, 
@@ -80,6 +81,11 @@ export interface ObraExtraordinaria {
   estado: "Planeada" | "Em Curso" | "Concluída";
   orcamentos: string[]; // names/links
   documentosArquivados: boolean;
+  // Ligação à dívida a fornecedor criada ao adjudicar a obra — o custo só
+  // sai mesmo de uma conta bancária quando essa dívida é paga (a prestações
+  // ou de uma vez) em Financeiro → Dívidas a Fornecedores, em vez de ser
+  // debitado logo na adjudicação.
+  id_divida?: string;
 }
 
 export function GestaoManutencaoIntervencoes({
@@ -863,43 +869,49 @@ export function GestaoManutencaoIntervencoes({
   };
 
   // Confirm Extraordinary Work & launch quota + automatic archive
-  const handleConfirmarObraExtra = (id: string) => {
+  const handleConfirmarObraExtra = async (id: string) => {
+    const target = obrasExtra.find(o => o.id === id);
+    if (!target) return;
+
+    // Adjudicar a obra passa a lançar uma Dívida a Fornecedor (Pendente),
+    // em vez de debitar logo o custo todo de uma conta bancária escolhida
+    // ao acaso (contas[0]) — o dinheiro só sai mesmo quando a dívida é paga
+    // (a prestações ou de uma vez) em Financeiro → Dívidas a Fornecedores,
+    // que já suporta tranches e escolha de conta em cada pagamento.
+    const novaDivida: DividaFornecedor = {
+      id_divida: "div-obr-" + Date.now(),
+      id_predio: predio.id_predio,
+      id_fornecedor: target.fornecedorId !== "forn-custom" ? target.fornecedorId : undefined,
+      fornecedor_nome: target.fornecedorNome,
+      descricao: `Obra Extraordinária: ${target.descricao}`,
+      categoria: "Obras",
+      valor: target.custoTotal,
+      data_emissao: new Date().toISOString().split("T")[0],
+      data_vencimento: target.dataFim,
+      estado: "Pendente",
+      valor_pago: 0
+    };
+    const dividaOk = await saveDividaFornecedorToSupabase(novaDivida);
+    if (!dividaOk) {
+      alert("❌ Não foi possível lançar a dívida a fornecedor desta obra. Tente novamente.");
+      return;
+    }
+
     const updated = obrasExtra.map(o => {
       if (o.id === id) {
         return {
           ...o,
           estado: "Em Curso" as const,
-          documentosArquivados: true
+          documentosArquivados: true,
+          id_divida: novaDivida.id_divida
         };
       }
       return o;
     });
 
     setObrasExtra(updated);
-    const target = obrasExtra.find(o => o.id === id);
-    if (!target) return;
     const obraAtualizada = updated.find(o => o.id === id);
     if (obraAtualizada) saveObraExtraToSupabase(predio.id_predio, obraAtualizada).catch(console.error);
-
-    // Post to movements automatically as Despesa
-    const contaAlvo = contas[0];
-    const novoMov: Movimento = {
-      id_mov: "mov-obr-" + Date.now(),
-      id_predio: predio.id_predio,
-      id_conta: contaAlvo?.id_conta || "cnt-1",
-      data: new Date().toISOString().split("T")[0],
-      tipo: "DESPESA",
-      valor: target.custoTotal,
-      descricao: `[OBRA EXTRAORDINÁRIA] ${target.descricao} - Fornecedor: ${target.fornecedorNome}`,
-      categoria: "Obras",
-      fotos: []
-    };
-    setMovements([novoMov, ...movements]);
-    saveMovimentoToSupabase(novoMov).catch(console.error);
-    if (contaAlvo) {
-      contaAlvo.saldo = (contaAlvo.saldo || 0) - target.custoTotal;
-      saveContaToSupabase(contaAlvo).catch(console.error);
-    }
 
     // Auto-archive in extraordinary works
     const novoDoc: Documento = {
@@ -936,7 +948,7 @@ export function GestaoManutencaoIntervencoes({
       }).catch(console.error);
     }
 
-    alert("Obra adjudicada! Lançamento de despesa extraordinária efetuado, plano arquivado e condóminos notificados por email.");
+    alert("Obra adjudicada! Dívida ao fornecedor lançada em Financeiro → Dívidas a Fornecedores (paga dali, a prestações ou de uma vez), plano arquivado e condóminos notificados por email.");
   };
 
   // Admin verifies & signs off a completed task
@@ -1983,9 +1995,16 @@ export function GestaoManutencaoIntervencoes({
                       className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-xl text-xs cursor-pointer shadow flex items-center gap-1"
                     >
                       <Check className="h-4 w-4" />
-                      <span>Confirmar Adjudicação & Lançar Despesa</span>
+                      <span>Confirmar Adjudicação & Lançar Dívida a Fornecedor</span>
                     </button>
                   </div>
+                )}
+
+                {o.id_divida && (
+                  <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                    <Landmark className="h-3 w-3" />
+                    O custo desta obra está lançado como dívida ao fornecedor — o pagamento (total ou em tranches) faz-se em Financeiro → Dívidas a Fornecedores.
+                  </p>
                 )}
 
                 {o.estado === "Em Curso" && (activeProfile === "ADMIN" || activeProfile === "EMPRESA_GESTORA" || activeProfile === "PRESIDENTE") && (
