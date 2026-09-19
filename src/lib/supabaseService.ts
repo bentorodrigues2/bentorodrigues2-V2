@@ -974,11 +974,15 @@ export async function saveContratoToSupabase(contrato: any): Promise<boolean> {
     renovacao_automatica: contrato.renovacao_automatica,
     estado: contrato.estado || "Ativo",
     alerta_renovacao: contrato.alerta_renovacao,
+    alerta_dias_antecedencia: contrato.alerta_dias_antecedencia ?? 60,
+    alerta_enviado_em: contrato.alerta_enviado_em || null,
     sla_resposta: contrato.sla_resposta || null,
     penalizacao_atraso: contrato.penalizacao_atraso || null,
     indexacao_preco: contrato.indexacao_preco || null,
     historico_renovacoes: contrato.historico_renovacoes || [],
-    documento_nome: contrato.documento_nome || null
+    documento_nome: contrato.documento_nome || null,
+    documento_base64: contrato.documento_base64 || null,
+    rescisao: contrato.rescisao || null
   });
 }
 
@@ -999,11 +1003,15 @@ export async function fetchContratosFromSupabase(idPredio?: string): Promise<any
     renovacao_automatica: Boolean(row.renovacao_automatica),
     estado: row.estado,
     alerta_renovacao: row.alerta_renovacao ?? true,
+    alerta_dias_antecedencia: Number(row.alerta_dias_antecedencia) || 60,
+    alerta_enviado_em: row.alerta_enviado_em || undefined,
     sla_resposta: row.sla_resposta || undefined,
     penalizacao_atraso: row.penalizacao_atraso || undefined,
     indexacao_preco: row.indexacao_preco || undefined,
     historico_renovacoes: row.historico_renovacoes || [],
-    documento_nome: row.documento_nome || undefined
+    documento_nome: row.documento_nome || undefined,
+    documento_base64: row.documento_base64 || undefined,
+    rescisao: row.rescisao || undefined
   }));
 }
 

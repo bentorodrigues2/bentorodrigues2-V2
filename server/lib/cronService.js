@@ -127,6 +127,145 @@ export async function sincronizarOrcamentosVigentes() {
 }
 
 /**
+ * Todos os dias: percorre os contratos de fornecedores ativos de todos os
+ * prédios e, para cada um, calcula quantos dias faltam até data_fim:
+ *  - Já passou (dias <= 0) e tem renovação automática ligada: renova +1 ano
+ *    sozinho, tal como o botão manual "Renovar" faz, e avisa a
+ *    administração por email.
+ *  - Já passou e NÃO tem renovação automática: marca o contrato como
+ *    "Expirado" e arquiva-o em Arquivo → Fornecedores → "Contratos
+ *    Rescindidos / Não Renovados", para não ficar simplesmente esquecido.
+ *  - Ainda não chegou mas está dentro do prazo de alerta configurado por
+ *    contrato (alerta_dias_antecedencia — 30/60/90/120 dias, escolhido em
+ *    Fornecedores → Contratos): envia um único email de aviso à
+ *    administração (alerta_enviado_em evita repetir todos os dias) a avisar
+ *    que o contrato está a aproximar-se do fim.
+ * Antes disto, o campo "alerta_renovacao" existia mas nunca era realmente
+ * usado para enviar nada — era só um badge visual calculado a partir de uma
+ * data "hoje" fixa no código, por isso nunca funcionava passada essa data.
+ */
+export async function processarContratosFornecedores() {
+  const hojeISO = new Date().toISOString().split("T")[0];
+  const predios = await obterPredios();
+  const resultado = { renovados: 0, expirados: 0, alertas_enviados: 0, detalhe: [] };
+
+  for (const predio of predios) {
+    const { data: contratos } = await supabase
+      .from("contratos")
+      .select("*")
+      .eq("id_predio", predio.id_predio)
+      .eq("estado", "Ativo");
+    if (!contratos || contratos.length === 0) continue;
+
+    const { data: fornecedoresPredio } = await supabase
+      .from("fornecedores")
+      .select("id_fornecedor, nome")
+      .eq("id_predio", predio.id_predio);
+    const nomeFornecedor = (idFornecedor) =>
+      (fornecedoresPredio || []).find((f) => f.id_fornecedor === idFornecedor)?.nome || "Fornecedor";
+
+    // Destinatários administrativos: os que gerem este prédio especificamente
+    // e os que não têm id_predio definido (administradores globais).
+    const { data: admins } = await supabase
+      .from("profiles")
+      .select("email, nome")
+      .in("role", ["ADMIN", "EMPRESA_GESTORA", "GESTOR"])
+      .or(`id_predio.eq.${predio.id_predio},id_predio.is.null`);
+    const destinatarios = (admins || []).filter((a) => a.email);
+    if (destinatarios.length === 0) continue;
+
+    for (const c of contratos) {
+      const nomeForn = nomeFornecedor(c.id_fornecedor);
+      const diasRestantes = Math.ceil((new Date(c.data_fim).getTime() - new Date(hojeISO).getTime()) / 86400000);
+
+      if (diasRestantes <= 0) {
+        if (c.renovacao_automatica) {
+          const parts = String(c.data_fim).split("-");
+          const anoSeguinte = (parseInt(parts[0], 10) || new Date().getFullYear()) + 1;
+          const novaDataFim = `${anoSeguinte}-${parts[1] || "12"}-${parts[2] || "31"}`;
+          const logMsg = `Renovado automaticamente pelo sistema em ${new Date().toLocaleDateString("pt-PT")} para ${novaDataFim}`;
+
+          await supabase
+            .from("contratos")
+            .update({
+              data_fim: novaDataFim,
+              alerta_enviado_em: null,
+              historico_renovacoes: [logMsg, ...(c.historico_renovacoes || [])]
+            })
+            .eq("id_contrato", c.id_contrato);
+          resultado.renovados += 1;
+          resultado.detalhe.push({ id_contrato: c.id_contrato, acao: "renovado", nova_data_fim: novaDataFim });
+
+          const html = gerarHtmlResposta(
+            "Administração",
+            `O contrato "${c.titulo}" com <strong>${nomeForn}</strong> (${predio.nome}) tinha renovação automática ativa e foi renovado por mais um ano, até <strong>${novaDataFim}</strong>.`
+          );
+          for (const dest of destinatarios) {
+            await enviarEmailSemAnexo({ to: dest.email, subject: `Contrato renovado automaticamente — ${nomeForn}`, html }).catch(() => {});
+          }
+        } else {
+          const logMsg = `Expirado sem renovação em ${new Date().toLocaleDateString("pt-PT")}`;
+          await supabase
+            .from("contratos")
+            .update({
+              estado: "Expirado",
+              historico_renovacoes: [logMsg, ...(c.historico_renovacoes || [])]
+            })
+            .eq("id_contrato", c.id_contrato);
+          resultado.expirados += 1;
+          resultado.detalhe.push({ id_contrato: c.id_contrato, acao: "expirado" });
+
+          try {
+            await registarDocumento({
+              ano: String(new Date().getFullYear()),
+              tema: "Fornecedores",
+              tipo: "Contrato Expirado",
+              predio: predio.id_predio,
+              fracao: null,
+              fluxo: "contrato_expirado",
+              origem: "cron_processar_contratos_fornecedores",
+              nomeFicheiro: `Contrato_${c.titulo || c.id_contrato}_${nomeForn}.pdf`,
+              categoria: "Contratos Rescindidos / Não Renovados",
+              subPasta: nomeForn,
+              fornecedor: nomeForn,
+              visibilidade: "Administração"
+            });
+          } catch (err) {
+            console.warn("[cronService] Aviso ao arquivar contrato expirado:", err?.message || err);
+          }
+
+          const html = gerarHtmlResposta(
+            "Administração",
+            `O contrato "${c.titulo}" com <strong>${nomeForn}</strong> (${predio.nome}) chegou à data de fim (${c.data_fim}) sem renovação automática ativa e foi marcado como <strong>Expirado</strong>. Se ainda for necessário, renove-o manualmente ou celebre um novo contrato em Fornecedores → Contratos.`
+          );
+          for (const dest of destinatarios) {
+            await enviarEmailSemAnexo({ to: dest.email, subject: `Contrato expirou sem renovação — ${nomeForn}`, html }).catch(() => {});
+          }
+        }
+        continue;
+      }
+
+      const prazoAlerta = Number(c.alerta_dias_antecedencia) || 60;
+      if (diasRestantes <= prazoAlerta && !c.alerta_enviado_em) {
+        await supabase.from("contratos").update({ alerta_enviado_em: hojeISO }).eq("id_contrato", c.id_contrato);
+        resultado.alertas_enviados += 1;
+        resultado.detalhe.push({ id_contrato: c.id_contrato, acao: "alerta", dias_restantes: diasRestantes });
+
+        const html = gerarHtmlResposta(
+          "Administração",
+          `O contrato "${c.titulo}" com <strong>${nomeForn}</strong> (${predio.nome}) termina em <strong>${diasRestantes} dias</strong> (${c.data_fim}).${c.renovacao_automatica ? " Tem renovação automática ativa — será renovado sozinho quando chegar a data." : " Não tem renovação automática — decida se renova, rescinde ou deixa expirar."}`
+        );
+        for (const dest of destinatarios) {
+          await enviarEmailSemAnexo({ to: dest.email, subject: `Contrato a vencer em ${diasRestantes} dias — ${nomeForn}`, html }).catch(() => {});
+        }
+      }
+    }
+  }
+
+  return { job: "PROCESSAR_CONTRATOS_FORNECEDORES", ...resultado };
+}
+
+/**
  * Dia 25: emite a nota de cobrança das quotas do mês seguinte para todas as
  * frações de todos os prédios (Quota Ordinária + 10% Fundo Comum de Reserva,
  * DL 268/94). Cria os avisos ("Pendente") e envia a nota de cobrança por

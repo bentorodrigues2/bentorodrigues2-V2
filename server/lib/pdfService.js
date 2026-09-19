@@ -83,7 +83,7 @@ export async function guardarNoArquivo({ pdfBuffer, ano, tema, tipo, predio, fra
  * deixava os documentos gerados aqui a aparecer só por acaso, via
  * correspondência solta ao campo "tipo".
  */
-export async function registarDocumento({ caminho, ano, tema, tipo, predio, fracao, fluxo, origem, nomeFicheiro, categoria, visibilidade }) {
+export async function registarDocumento({ caminho, ano, tema, tipo, predio, fracao, fluxo, origem, nomeFicheiro, categoria, visibilidade, subPasta, fornecedor }) {
   const { error } = await supabase.from("documentos").insert({
     id_doc: `DOC-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     id_predio: predio,
@@ -98,6 +98,12 @@ export async function registarDocumento({ caminho, ano, tema, tipo, predio, frac
     origem,
     categoria: categoria || null,
     visibilidade: visibilidade || null,
+    // sub_pasta/fornecedor: usados pelo filtro "Pasta de Fornecedor" do
+    // Arquivo Digital (GestaoDocumentos.tsx) para agrupar por fornecedor —
+    // sem isto, um documento arquivado com categoria "Fornecedores" não
+    // aparecia dentro da pasta desse fornecedor em concreto.
+    sub_pasta: subPasta || null,
+    fornecedor: fornecedor || null,
     created_at: new Date().toISOString()
   });
 

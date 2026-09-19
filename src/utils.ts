@@ -3726,6 +3726,110 @@ export function gerarTermoAcordoPagamentoPDF(params: {
 }
 
 /**
+ * Carta de Rescisão de Contrato com Fornecedor — comunica formalmente a
+ * cessação de um contrato de prestação de serviços, com motivo e data de
+ * efeito. Gerada e enviada por email a partir de Fornecedores → Contratos
+ * (ver api/pdf.js, tipo "rescisao-contrato-fornecedor"), que devolve
+ * confirmação real de envio (comprovativo) em vez de um botão que só finge
+ * enviar.
+ */
+export function gerarCartaRescisaoContratoPDF(params: {
+  predioNome: string;
+  predioNif: string;
+  fornecedorNome: string;
+  fornecedorNif?: string;
+  servico: string;
+  dataInicio?: string;
+  dataFimContratual?: string;
+  motivo: string;
+  dataEfeito: string;
+  administradorNome?: string;
+}, devolverDoc?: boolean) {
+  try {
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    let y = addPdfHeaderWithLogo(doc, params.predioNome);
+
+    doc.setFillColor(15, 23, 42);
+    doc.rect(14, y, 182, 11, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10.5);
+    doc.text("CARTA DE RESCISÃO DE CONTRATO DE PRESTAÇÃO DE SERVIÇOS", 105, y + 7, { align: "center" });
+    y += 18;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 41, 59);
+    doc.text(`Exmo(a). Senhor(a),`, 14, y);
+    y += 6;
+    doc.text(`${params.fornecedorNome}${params.fornecedorNif ? ` (NIF: ${params.fornecedorNif})` : ""}`, 14, y);
+    y += 10;
+
+    const intro = doc.splitTextToSize(
+      `Vimos, pelo presente meio, comunicar a rescisão do contrato de prestação de serviços de "${params.servico}", celebrado com o Condomínio do Edifício ${params.predioNome} (NIF: ${params.predioNif})${params.dataInicio ? ` em ${formatDatePT(params.dataInicio)}` : ""}${params.dataFimContratual ? `, com termo inicialmente previsto para ${formatDatePT(params.dataFimContratual)}` : ""}.`,
+      182
+    );
+    doc.text(intro, 14, y);
+    y += intro.length * 4.5 + 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("MOTIVO DA RESCISÃO", 14, y);
+    y += 6;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    const motivoTexto = doc.splitTextToSize(params.motivo, 182);
+    doc.text(motivoTexto, 14, y);
+    y += motivoTexto.length * 4.5 + 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("DATA DE EFEITO", 14, y);
+    y += 6;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.text(
+      `A rescisão produz efeitos a partir de ${formatDatePT(params.dataEfeito)}, data a partir da qual cessam todas as obrigações contratuais entre as partes, sem prejuízo de valores eventualmente em dívida à data da cessação, que se mantêm exigíveis.`,
+      14,
+      y,
+      { maxWidth: 182 }
+    );
+    y += 18;
+
+    const despedida = doc.splitTextToSize(
+      "Agradecemos os serviços prestados e apresentamos os nossos melhores cumprimentos.",
+      182
+    );
+    doc.text(despedida, 14, y);
+    y += despedida.length * 4.5 + 14;
+
+    doc.setTextColor(30, 41, 59);
+    doc.text(`Local e Data: ${"_".repeat(28)}, ____ de ${"_".repeat(16)} de 2026`, 14, y);
+    y += 16;
+
+    doc.setDrawColor(160, 172, 190);
+    doc.line(20, y, 120, y);
+    y += 4;
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`A Administração do Condomínio${params.administradorNome ? ` (${params.administradorNome})` : ""}`, 20, y);
+
+    doc.setFontSize(6.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text("CondoManager AI • Carta de Rescisão de Contrato de Prestação de Serviços", 105, 285, { align: "center" });
+
+    if (devolverDoc) return doc;
+    const blob = doc.output("blob");
+    downloadBlob(blob, `Carta_Rescisao_Contrato_${params.fornecedorNome.replace(/\s+/g, "_")}.pdf`);
+    return true;
+  } catch (err) {
+    console.error("Erro ao gerar Carta de Rescisão de Contrato PDF:", err);
+    if (typeof alert !== "undefined") alert("Ocorreu um erro ao gerar a Carta de Rescisão.");
+    return false;
+  }
+}
+
+/**
  * Notificação de Cessação de Obras / Violação do Regulamento Interno
  * (Art.º 1422.º do Código Civil).
  */

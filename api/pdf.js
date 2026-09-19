@@ -10,7 +10,8 @@ import {
   gerarParticipacaoSinistroPDF,
   gerarTermoAcordoPagamentoPDF,
   gerarNotificacaoObrasIrregularesPDF,
-  gerarPdfBoasVindasGestor
+  gerarPdfBoasVindasGestor,
+  gerarCartaRescisaoContratoPDF
 } from "../server/lib/pdfDocs.js";
 
 const TIPOS = {
@@ -28,7 +29,8 @@ const TIPOS = {
   "participacao-sinistro": { tema: "Seguros", tipo: "Participação de Sinistro", fluxo: "participacao_sinistro", categoria: "Seguros & Apólices" },
   "termo-acordo-pagamento": { tema: "Contencioso e Ações Judiciais", tipo: "Termo de Acordo de Pagamento", fluxo: "termo_acordo_pagamento", categoria: "Processos Judiciais & Contencioso" },
   "notificacao-obras-irregulares": { tema: "Contencioso e Ações Judiciais", tipo: "Notificação de Obras Irregulares", fluxo: "notificacao_obras_irregulares", categoria: "Processos Judiciais & Contencioso" },
-  "boas-vindas-gestor": { tema: "Comunicações", tipo: "Boas-vindas Gestão", fluxo: "boas_vindas_gestao" }
+  "boas-vindas-gestor": { tema: "Comunicações", tipo: "Boas-vindas Gestão", fluxo: "boas_vindas_gestao" },
+  "rescisao-contrato-fornecedor": { tema: "Fornecedores", tipo: "Carta de Rescisão", fluxo: "rescisao_contrato_fornecedor", categoria: "Contratos Rescindidos / Não Renovados" }
 };
 
 const TIPOS_ESPECIAIS = new Set([
@@ -40,7 +42,8 @@ const TIPOS_ESPECIAIS = new Set([
   "participacao-sinistro",
   "termo-acordo-pagamento",
   "notificacao-obras-irregulares",
-  "boas-vindas-gestor"
+  "boas-vindas-gestor",
+  "rescisao-contrato-fornecedor"
 ]);
 
 /**
@@ -132,6 +135,15 @@ function gerarDocEspecial(tipo, body, logoWhiteLabel) {
     };
   }
 
+  if (tipo === "rescisao-contrato-fornecedor") {
+    return {
+      doc: gerarCartaRescisaoContratoPDF(body.rescisao || {}, true),
+      nomeFicheiro: `Carta_Rescisao_${(body.rescisao?.fornecedorNome || "fornecedor").replace(/\s+/g, "_")}.pdf`,
+      assunto: `Rescisão de Contrato — ${body.rescisao?.servico || "Prestação de Serviços"}`,
+      mensagem: `Vimos por este meio comunicar formalmente a rescisão do contrato de prestação de serviços. Segue em anexo a carta com os detalhes e a data de efeito.`
+    };
+  }
+
   // boas-vindas-gestor (cobre também Super Admin, quando gestor.perfil === "ADMIN")
   const gestor = body.gestor || {};
   const ehAdmin = gestor.perfil === "ADMIN";
@@ -174,6 +186,12 @@ async function gerarDocumentoEspecial(tipo, config, body) {
     nomeFicheiro
   });
 
+  // A carta de rescisão arquiva-se dentro da pasta do próprio fornecedor
+  // no Arquivo Digital (e como visibilidade interna, não pública aos
+  // condóminos) — os restantes tipos especiais mantêm o comportamento
+  // anterior (sem sub-pasta, visibilidade Público).
+  const nomeFornecedorRescisao = tipo === "rescisao-contrato-fornecedor" ? body.rescisao?.fornecedorNome : undefined;
+
   await registarDocumento({
     caminho,
     ano,
@@ -185,7 +203,9 @@ async function gerarDocumentoEspecial(tipo, config, body) {
     origem: `pdf_${tipo.replace(/-/g, "_")}`,
     nomeFicheiro,
     categoria: categoria || config.categoria,
-    visibilidade: "Público"
+    subPasta: nomeFornecedorRescisao,
+    fornecedor: nomeFornecedorRescisao,
+    visibilidade: nomeFornecedorRescisao ? "Administração" : "Público"
   });
 
   // "convocatoria-oficial" vai para todos os condóminos (destinatarios[]);

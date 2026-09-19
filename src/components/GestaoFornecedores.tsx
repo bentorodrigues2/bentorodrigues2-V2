@@ -42,14 +42,35 @@ export interface Contrato {
   custo_anual: number;
   renovacao_automatica: boolean;
   data_fim: string;
+  // "Ativo" | "Rescindido" | "Expirado" — os dois últimos são aplicados
+  // automaticamente pela sincronização diária (ver cronService.js) quando
+  // um contrato passa a data_fim sem ser renovado.
   estado: string;
   alerta_renovacao: boolean;
+  // Prazo de antecedência (dias) para o alerta automático de fim de
+  // contrato — 30/60/90/120. Substitui o antigo alerta_renovacao (boolean,
+  // mantido só por compatibilidade) que não permitia escolher o prazo.
+  alerta_dias_antecedencia?: number;
+  // Última data em que o alerta de vencimento foi enviado — evita repetir o
+  // email todos os dias depois de ultrapassado o limiar; reposto a vazio
+  // sempre que o contrato é renovado, para o próximo ciclo poder alertar.
+  alerta_enviado_em?: string;
   sla_resposta?: string;
   penalizacao_atraso?: string;
   indexacao_preco?: string;
   historico_renovacoes?: string[];
   documento_nome?: string;
   documento_base64?: string;
+  // Registo da rescisão — só existe depois de emitida a carta de rescisão.
+  // enviado_em/comprovativo confirmam que a carta foi mesmo enviada por
+  // email (ou o motivo de não ter sido), em vez de um botão que só finge.
+  rescisao?: {
+    motivo: string;
+    data_efeito: string;
+    enviado_para: string;
+    enviado_em?: string;
+    comprovativo?: string;
+  };
 }
 
 export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRemoveFornecedor, loggedUser, initialTab, contas, setContas, movements, setMovements }: GestaoFornecedoresProps) {
@@ -356,11 +377,19 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
   const [custoAnual, setCustoAnual] = useState("");
   const [renovacaoAuto, setRenovacaoAuto] = useState(true);
   const [dataFim, setDataFim] = useState("2027-01-01");
+  const [alertaDiasAntecedencia, setAlertaDiasAntecedencia] = useState(60);
   const [slaResposta, setSlaResposta] = useState("4 horas para avarias");
   const [penalizacaoAtraso, setPenalizacaoAtraso] = useState("5% desconto em mora");
   const [indexacaoPreco, setIndexacaoPreco] = useState("IPC Inflação INE");
   const [documentoNome, setDocumentoNome] = useState("");
   const [documentoBase64, setDocumentoBase64] = useState("");
+
+  // Rescisão de contrato — emite carta real (PDF + email) e regista
+  // comprovativo de envio no próprio contrato.
+  const [rescindindoContratoId, setRescindindoContratoId] = useState<string | null>(null);
+  const [motivoRescisao, setMotivoRescisao] = useState("");
+  const [dataEfeitoRescisao, setDataEfeitoRescisao] = useState(() => new Date().toISOString().split("T")[0]);
+  const [aEnviarRescisao, setAEnviarRescisao] = useState(false);
 
   const renovarContratoAutomatico = async (idContrato: string) => {
     const atual = contratos.find(c => c.id_contrato === idContrato);
@@ -369,10 +398,15 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     const parts = atual.data_fim.split("-");
     const nextYear = (parseInt(parts[0]) || 2026) + 1;
     const newDateFim = `${nextYear}-${parts[1] || "12"}-${parts[2] || "31"}`;
-    const logMsg = `Renovado automaticamente pela IA em ${new Date().toLocaleDateString("pt-PT")} para ${newDateFim}`;
+    const logMsg = `Renovado manualmente em ${new Date().toLocaleDateString("pt-PT")} para ${newDateFim}`;
     const atualizado: Contrato = {
       ...atual,
       data_fim: newDateFim,
+      estado: "Ativo",
+      // Repõe o ciclo de alerta — sem isto, um contrato recém-renovado
+      // ficava "mudo" para sempre, porque alerta_enviado_em continuava
+      // preenchido da vigência anterior.
+      alerta_enviado_em: undefined,
       historico_renovacoes: [logMsg, ...(atual.historico_renovacoes || [])]
     };
 
@@ -540,11 +574,16 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       data_fim: dataFim,
       estado: "Ativo",
       alerta_renovacao: true,
+      alerta_dias_antecedencia: alertaDiasAntecedencia,
       sla_resposta: slaResposta || "24h padrão",
       penalizacao_atraso: penalizacaoAtraso || "Sem penalização",
       indexacao_preco: indexacaoPreco || "IPC Taxa Inflação",
       historico_renovacoes: [`Criado e registado em ${new Date().toLocaleDateString("pt-PT")}`],
-      documento_nome: documentoNome || undefined
+      // Antes só se guardava o nome do ficheiro (documento_base64 ficava
+      // capturado no estado local mas nunca era enviado ao Supabase) — o
+      // anexo desaparecia sempre depois de recarregar a página.
+      documento_nome: documentoNome || undefined,
+      documento_base64: documentoBase64 || undefined
     };
 
     saveContratoToSupabase(novoContrato).then(ok => {
@@ -553,6 +592,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
         setServicoNome("");
         setCustoMensal("");
         setCustoAnual("");
+        setAlertaDiasAntecedencia(60);
         setDocumentoNome("");
         setDocumentoBase64("");
         alert("Serviço Contratado registado e arquivado no sistema!");
@@ -569,6 +609,92 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       setContratos(contratos.filter(c => c.id_contrato !== id));
     } else {
       alert("❌ Não foi possível remover o contrato no Supabase. Tente novamente.");
+    }
+  };
+
+  // Emite a carta de rescisão (PDF real, gerado e enviado por email a
+  // partir do servidor — não um botão que só finge). O resultado devolvido
+  // por /api/pdf diz mesmo se o email foi enviado, e isso fica gravado como
+  // comprovativo no próprio contrato, em vez de assumir sucesso às cegas.
+  // Ao rescindir, o contrato também é arquivado automaticamente na pasta
+  // "Fornecedores → Contratos Rescindidos / Não Renovados" do Arquivo
+  // Digital (feito no servidor, via registarDocumento em api/pdf.js).
+  const handleEmitirRescisao = async (contrato: Contrato) => {
+    if (loggedUser.role !== 'ADMIN' && loggedUser.role !== 'EMPRESA_GESTORA') {
+      return alert("Apenas administradores podem rescindir contratos!");
+    }
+    if (!motivoRescisao.trim()) return alert("Indique o motivo da rescisão.");
+
+    const fornecedor = predioForn.find(f => f.id_fornecedor === contrato.id_fornecedor);
+    const emailDestino = fornecedor?.email_contacto;
+    if (!emailDestino) {
+      return alert("Este fornecedor não tem e-mail de contacto registado — não é possível enviar a carta de rescisão. Adicione um e-mail na ficha do fornecedor primeiro.");
+    }
+
+    setAEnviarRescisao(true);
+    try {
+      const resp = await fetch("/api/pdf?tipo=rescisao-contrato-fornecedor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          predio: predio.id_predio,
+          ano: new Date().getFullYear(),
+          email: emailDestino,
+          nome: fornecedor?.nome,
+          rescisao: {
+            predioNome: predio.nome,
+            predioNif: predio.nif || "",
+            fornecedorNome: fornecedor?.nome || contrato.tipo_contrato,
+            fornecedorNif: fornecedor?.nif,
+            servico: contrato.servico,
+            dataInicio: contrato.data_inicio,
+            dataFimContratual: contrato.data_fim,
+            motivo: motivoRescisao.trim(),
+            dataEfeito: dataEfeitoRescisao,
+            administradorNome: loggedUser.nome
+          }
+        })
+      });
+      const resultado = await resp.json();
+      if (!resp.ok || !resultado?.ok) {
+        alert(`❌ Não foi possível gerar/enviar a carta de rescisão: ${resultado?.error || "erro desconhecido"}`);
+        return;
+      }
+
+      const contratoAtualizado: Contrato = {
+        ...contrato,
+        estado: "Rescindido",
+        rescisao: {
+          motivo: motivoRescisao.trim(),
+          data_efeito: dataEfeitoRescisao,
+          enviado_para: emailDestino,
+          enviado_em: resultado.email_enviado ? new Date().toISOString() : undefined,
+          comprovativo: resultado.email_enviado
+            ? `E-mail enviado com sucesso para ${emailDestino} em ${new Date().toLocaleString("pt-PT")}`
+            : "PDF gerado, mas o envio do e-mail falhou — confirme o e-mail do fornecedor e tente reenviar."
+        },
+        historico_renovacoes: [
+          `Contrato rescindido em ${new Date().toLocaleDateString("pt-PT")} — ${motivoRescisao.trim()}`,
+          ...(contrato.historico_renovacoes || [])
+        ]
+      };
+      const okSave = await saveContratoToSupabase(contratoAtualizado);
+      if (!okSave) {
+        alert("⚠️ A carta foi gerada e enviada, mas não foi possível atualizar o estado do contrato no Supabase. Tente novamente.");
+        return;
+      }
+      setContratos(prev => prev.map(c => c.id_contrato === contrato.id_contrato ? contratoAtualizado : c));
+      registarLogAuditoria("Fornecedores", "Rescindiu um contrato de fornecedor", predio.id_predio, loggedUser, `${fornecedor?.nome || ""} — ${contrato.servico}`);
+      setRescindindoContratoId(null);
+      setMotivoRescisao("");
+      alert(resultado.email_enviado
+        ? `✅ Carta de rescisão enviada para ${emailDestino} e arquivada em Arquivo → Fornecedores.`
+        : "⚠️ Carta gerada e contrato marcado como rescindido, mas o envio do e-mail falhou. Verifique o e-mail do fornecedor.");
+    } catch (err) {
+      console.error("Erro ao emitir carta de rescisão:", err);
+      alert("❌ Ocorreu um erro ao emitir a carta de rescisão. Tente novamente.");
+    } finally {
+      setAEnviarRescisao(false);
     }
   };
 
@@ -589,12 +715,18 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
   };
 
   // Helper to check expiration within 30 days (based on local date 2026-07-16)
-  const isExpiringSoon = (dateStr: string) => {
-    const baseDate = new Date("2026-07-16");
+  // Usava uma data fixa ("hoje" = 16/07/2026) em vez da data real, por isso
+  // o alerta visual ficava errado (sempre calculado a partir dessa data
+  // congelada) assim que se passasse a data verdadeira do sistema. Também
+  // aceita agora o prazo configurado por contrato (30/60/90/120 dias) em
+  // vez de 30 dias fixos para todos.
+  const isExpiringSoon = (dateStr: string, diasAntecedencia: number = 30) => {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
     const expDate = new Date(dateStr);
-    const diffTime = expDate.getTime() - baseDate.getTime();
+    const diffTime = expDate.getTime() - hoje.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays >= 0 && diffDays <= 30;
+    return diffDays >= 0 && diffDays <= diasAntecedencia;
   };
 
   // Sum active contracted services costs
@@ -876,6 +1008,31 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                               )}
                             </div>
                           </div>
+
+                          {(() => {
+                            const contratosDoFornecedor = predioContratos.filter(c => c.id_fornecedor === f.id_fornecedor);
+                            if (contratosDoFornecedor.length === 0) return null;
+                            const ativos = contratosDoFornecedor.filter(c => c.estado === "Ativo");
+                            const proximoAVencer = [...ativos].sort((a, b) => a.data_fim < b.data_fim ? -1 : 1)[0];
+                            const algumAExpirar = ativos.some(c => isExpiringSoon(c.data_fim, c.alerta_dias_antecedencia || 60));
+                            return (
+                              <div className={`flex items-center justify-between gap-2 border-t border-slate-200 pt-2 text-[10px] ${algumAExpirar ? "text-amber-700" : "text-slate-500"}`}>
+                                <span>
+                                  <i className="fa-solid fa-file-contract mr-1"></i>
+                                  {ativos.length} contrato(s) ativo(s){contratosDoFornecedor.length > ativos.length ? `, ${contratosDoFornecedor.length - ativos.length} encerrado(s)` : ""}
+                                  {proximoAVencer && ` — próximo fim: ${proximoAVencer.data_fim}`}
+                                  {algumAExpirar && <span className="font-bold"> ⚠️ a vencer em breve</span>}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveTab("contratos")}
+                                  className="text-indigo-600 hover:text-indigo-800 underline font-semibold cursor-pointer shrink-0"
+                                >
+                                  Ver Contratos
+                                </button>
+                              </div>
+                            );
+                          })()}
 
                           <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-200">
                             <button
@@ -1334,6 +1491,21 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                     <span>Renovação Automática?</span>
                   </label>
                 </div>
+
+                <div className="flex flex-col">
+                  <label className="text-xs font-semibold text-slate-500 mb-1">Alertar Fim de Contrato Com Antecedência</label>
+                  <select
+                    value={alertaDiasAntecedencia}
+                    onChange={e => setAlertaDiasAntecedencia(Number(e.target.value))}
+                    className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 bg-white"
+                  >
+                    <option value={30}>30 dias antes</option>
+                    <option value={60}>60 dias antes</option>
+                    <option value={90}>90 dias antes</option>
+                    <option value={120}>120 dias antes</option>
+                  </select>
+                  <span className="text-[10px] text-slate-400 mt-1">Email automático à administração quando faltar este prazo para o fim do contrato.</span>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1429,14 +1601,17 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
               <div className="grid grid-cols-1 gap-4">
                 {predioContratos.map(c => {
                   const partner = fornecedores.find(f => f.id_fornecedor === c.id_fornecedor);
-                  const isExpiring = isExpiringSoon(c.data_fim);
-                  
+                  const isExpiring = c.estado === "Ativo" && isExpiringSoon(c.data_fim, c.alerta_dias_antecedencia || 60);
+                  const isEncerrado = c.estado === "Rescindido" || c.estado === "Expirado";
+
                   return (
-                    <div 
-                      key={c.id_contrato} 
+                    <div
+                      key={c.id_contrato}
                       className={`bg-white p-5 rounded-xl border shadow-sm transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${
-                        isExpiring 
-                          ? "border-amber-400 bg-amber-50/20" 
+                        isEncerrado
+                          ? "border-slate-200 opacity-70"
+                          : isExpiring
+                          ? "border-amber-400 bg-amber-50/20"
                           : "border-slate-200"
                       }`}
                     >
@@ -1446,7 +1621,17 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                           <span className="text-[10px] bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded">
                             {partner?.categoria || "Serviço Geral"}
                           </span>
-                          {c.renovacao_automatica && (
+                          {c.estado === "Rescindido" && (
+                            <span className="text-[9px] bg-red-100 text-red-700 border border-red-200 font-extrabold px-2 py-0.5 rounded-full">
+                              RESCINDIDO
+                            </span>
+                          )}
+                          {c.estado === "Expirado" && (
+                            <span className="text-[9px] bg-slate-200 text-slate-600 border border-slate-300 font-extrabold px-2 py-0.5 rounded-full">
+                              EXPIRADO SEM RENOVAÇÃO
+                            </span>
+                          )}
+                          {c.estado === "Ativo" && c.renovacao_automatica && (
                             <span className="text-[9px] bg-emerald-50 text-emerald-700 border border-emerald-100 font-extrabold px-1.5 py-0.5 rounded">
                               Renovação Auto Ativa
                             </span>
@@ -1454,12 +1639,12 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                           {isExpiring && (
                             <span className="text-[9px] bg-amber-500 text-white font-extrabold px-2 py-0.5 rounded-full animate-bounce flex items-center space-x-1">
                               <i className="fa-solid fa-bell"></i>
-                              <span>ALERTA DE RENOVAÇÃO EM CURSO (&lt;30 dias)</span>
+                              <span>ALERTA DE FIM DE CONTRATO (&lt;{c.alerta_dias_antecedencia || 60} dias)</span>
                             </span>
                           )}
                         </div>
                         <h4 className="text-xs font-bold text-slate-700">{c.servico}</h4>
-                        
+
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500 font-mono">
                           <span>Data Fim: <strong className={isExpiring ? "text-amber-700 font-extrabold" : ""}>{c.data_fim}</strong></span>
                           <span>IBAN: <strong>{partner?.iban || "N/A"}</strong></span>
@@ -1471,6 +1656,14 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                           <div className="text-[10px] text-amber-800 bg-amber-50 px-2.5 py-1 rounded border border-amber-200/60 inline-block font-sans">
                             <i className="fa-solid fa-gavel mr-1 text-amber-600"></i>
                             <span className="font-semibold">Penalização:</span> {c.penalizacao_atraso}
+                          </div>
+                        )}
+
+                        {c.rescisao && (
+                          <div className="text-[10px] text-red-700 bg-red-50 px-2.5 py-1.5 rounded border border-red-200/60 space-y-0.5">
+                            <div><span className="font-semibold">Motivo da Rescisão:</span> {c.rescisao.motivo}</div>
+                            <div><span className="font-semibold">Data de Efeito:</span> {c.rescisao.data_efeito}</div>
+                            <div className="font-mono text-[9px] text-red-500">{c.rescisao.comprovativo}</div>
                           </div>
                         )}
 
@@ -1491,21 +1684,37 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                         </div>
 
                         <div className="flex space-x-1.5">
-                          {c.renovacao_automatica && (
+                          {c.estado === "Ativo" && c.renovacao_automatica && (
                             <button
                               type="button"
                               onClick={() => renovarContratoAutomatico(c.id_contrato)}
                               className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 shadow-xs"
-                              title="Executar Renovação Automática (+1 ano)"
+                              title="Executar Renovação (+1 ano)"
                             >
                               <i className="fa-solid fa-rotate"></i>
-                              <span>Renovar Auto</span>
+                              <span>Renovar</span>
+                            </button>
+                          )}
+
+                          {c.estado === "Ativo" && (loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA') && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRescindindoContratoId(rescindindoContratoId === c.id_contrato ? null : c.id_contrato);
+                                setMotivoRescisao("");
+                                setDataEfeitoRescisao(new Date().toISOString().split("T")[0]);
+                              }}
+                              className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1"
+                              title="Emitir Carta de Rescisão"
+                            >
+                              <i className="fa-solid fa-file-signature"></i>
+                              <span>Rescindir</span>
                             </button>
                           )}
 
                           {c.documento_nome && (
-                            <a 
-                              href={c.documento_base64 || "#"} 
+                            <a
+                              href={c.documento_base64 || "#"}
                               download={c.documento_nome}
                               className="p-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all"
                               title={`Download ${c.documento_nome}`}
@@ -1517,13 +1726,57 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                             <button
                               onClick={() => excluirContrato(c.id_contrato)}
                               className="p-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded-lg text-xs font-bold transition-all cursor-pointer"
-                              title="Arquivar Contrato"
+                              title="Eliminar Registo do Contrato"
                             >
-                              <i className="fa-solid fa-box-archive"></i>
+                              <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="h-3.5 w-3.5 object-contain" />
                             </button>
                           )}
                         </div>
                       </div>
+
+                      {rescindindoContratoId === c.id_contrato && (
+                        <div className="w-full order-last bg-red-50/60 border border-red-200 rounded-lg p-4 space-y-3">
+                          <p className="text-[10px] text-red-700">A carta de rescisão é gerada em PDF e enviada por email real para <strong>{partner?.email_contacto || "— este fornecedor não tem e-mail registado —"}</strong>, com comprovativo de envio guardado no contrato e arquivado em Arquivo → Fornecedores.</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="flex flex-col">
+                              <label className="text-[10px] font-bold text-slate-500 mb-1 uppercase">Motivo da Rescisão *</label>
+                              <input
+                                type="text"
+                                value={motivoRescisao}
+                                onChange={e => setMotivoRescisao(e.target.value)}
+                                placeholder="Ex: Incumprimento reiterado do SLA contratado"
+                                className="border border-slate-200 px-3 py-1.5 text-xs rounded-lg focus:outline-red-500"
+                              />
+                            </div>
+                            <div className="flex flex-col">
+                              <label className="text-[10px] font-bold text-slate-500 mb-1 uppercase">Data de Efeito</label>
+                              <input
+                                type="date"
+                                value={dataEfeitoRescisao}
+                                onChange={e => setDataEfeitoRescisao(e.target.value)}
+                                className="border border-slate-200 px-3 py-1.5 text-xs rounded-lg focus:outline-red-500"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              disabled={aEnviarRescisao}
+                              onClick={() => handleEmitirRescisao(c)}
+                              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
+                            >
+                              {aEnviarRescisao ? "A enviar..." : "Emitir e Enviar Carta de Rescisão"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setRescindindoContratoId(null)}
+                              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

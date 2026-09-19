@@ -1,4 +1,4 @@
-import { emitirQuotasMensais, enviarLembretesQuotas, avisarQuotasEmMora, enviarFelicitacoesAniversario, sincronizarOrcamentosVigentes } from "../server/lib/cronService.js";
+import { emitirQuotasMensais, enviarLembretesQuotas, avisarQuotasEmMora, enviarFelicitacoesAniversario, sincronizarOrcamentosVigentes, processarContratosFornecedores } from "../server/lib/cronService.js";
 
 /**
  * Endpoint diário de automações agendadas — chamado por um cron externo
@@ -9,6 +9,7 @@ import { emitirQuotasMensais, enviarLembretesQuotas, avisarQuotasEmMora, enviarF
  *   - dia 16: aviso de mora a quem continua sem pagar
  *   - todos os dias: felicitações de aniversário
  *   - todos os dias: aplica adendas ao orçamento cuja data de vigência já chegou
+ *   - todos os dias: renova/expira contratos de fornecedores e envia alertas de fim de contrato
  * Protegido por um segredo partilhado (?secret= ou header x-cron-secret),
  * para não poder ser invocado por terceiros.
  */
@@ -53,6 +54,10 @@ export default async function handler(req, res) {
 
     if (forcar === "mora" || (!forcar && dia === 16)) {
       resultados.push(await avisarQuotasEmMora());
+    }
+
+    if (forcar === "contratos" || (!forcar && true)) {
+      resultados.push(await processarContratosFornecedores());
     }
 
     return res.status(200).json({ status: "ok", data: hoje.toISOString().split("T")[0], jobs_executados: resultados });
