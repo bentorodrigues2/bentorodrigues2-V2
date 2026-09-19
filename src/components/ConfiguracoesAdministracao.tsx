@@ -1800,7 +1800,7 @@ export function ConfiguracoesAdministracao({
                           onChange={e => setPreviewFractionId(e.target.value)}
                           className="bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-[11px] font-bold border rounded p-1"
                         >
-                          {fracoes.map(f => (
+                          {fracoes.filter(f => !predio || f.id_predio === predio.id_predio).map(f => (
                             <option key={f.id_fracao} value={f.id_fracao}>
                               {f.fracao_nome} — {f.proprietario.nome}
                             </option>

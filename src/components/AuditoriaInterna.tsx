@@ -1033,7 +1033,7 @@ export function AuditoriaInterna({
               </p>
 
               <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                {fracoes.map(f => {
+                {fracoes.filter(f => f.id_predio === predio.id_predio).map(f => {
                   const hasApolice = !!f.apolice_num && !!f.apolice_validade;
                   const isExpired = hasApolice && new Date(f.apolice_validade) < new Date("2026-07-16");
                   

@@ -4001,6 +4001,20 @@ export function gerarReferenciaBR23E(fracaoNome?: string, idFracao?: string): st
   return `BR23E-FR-${base || "01"}`;
 }
 
+/**
+ * Ordena uma lista de frações por ordem alfabética/natural do nome da
+ * fração (A, B, C... ou 1, 2, 10... conforme o edifício) — usado sempre
+ * que se carrega/atualiza a lista de frações no estado principal da app,
+ * para que todas as tabelas e grelhas em toda a plataforma (que mapeiam
+ * diretamente essa lista) saiam já ordenadas, sem cada ecrã ter de
+ * reordenar por si.
+ */
+export function ordenarFracoesPorNome<T extends { fracao_nome?: string }>(lista: T[]): T[] {
+  return [...lista].sort((a, b) =>
+    (a.fracao_nome || "").localeCompare(b.fracao_nome || "", "pt", { numeric: true, sensitivity: "base" })
+  );
+}
+
 export * from './utils/registerServiceWorker';
 export * from './utils/requestPermission';
 export * from './utils/subscribeUser';

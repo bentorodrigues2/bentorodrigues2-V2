@@ -213,6 +213,7 @@ export async function fetchFracoesFromSupabase(idPredio?: string): Promise<Fraca
       notificacao_preferencial: row.notificacao_preferencial || "E-mail",
       proprietario: row.proprietario || { nome: "", nif: "", email: "", tlm: "" },
       proprietarios_adicionais: row.proprietarios_adicionais || [],
+      historico_proprietarios: row.historico_proprietarios || [],
       inquilino: row.inquilino || null,
       seguradora: row.seguradora || "",
       apolice_num: row.apolice_num || "",
@@ -241,6 +242,7 @@ export async function saveFracaoToSupabase(fracao: Fracao): Promise<boolean> {
     is_arrendada: fracao.is_arrendada,
     proprietario: fracao.proprietario,
     proprietarios_adicionais: fracao.proprietarios_adicionais || [],
+    historico_proprietarios: fracao.historico_proprietarios || [],
     inquilino: fracao.inquilino,
     administrador_interno: fracao.administrador_interno,
     notificacao_preferencial: fracao.notificacao_preferencial,
@@ -1230,7 +1232,9 @@ export async function fetchAvisosFromSupabase(idPredio?: string): Promise<Aviso[
       estado: row.estado || "Pendente",
       id_movimento: row.id_movimento || undefined,
       id_conta: row.id_conta || undefined,
-      valor_fundo_reserva: row.valor_fundo_reserva !== null && row.valor_fundo_reserva !== undefined ? Number(row.valor_fundo_reserva) : undefined
+      valor_fundo_reserva: row.valor_fundo_reserva !== null && row.valor_fundo_reserva !== undefined ? Number(row.valor_fundo_reserva) : undefined,
+      proprietario_nome: row.proprietario_nome || undefined,
+      proprietario_nif: row.proprietario_nif || undefined
     }));
   } catch (err) {
     return null;
@@ -1251,7 +1255,9 @@ export async function saveAvisosToSupabase(novosAvisos: any[]): Promise<boolean>
     estado: a.estado || "Pendente",
     id_movimento: a.id_movimento || null,
     id_conta: a.id_conta || null,
-    valor_fundo_reserva: a.valor_fundo_reserva ?? null
+    valor_fundo_reserva: a.valor_fundo_reserva ?? null,
+    proprietario_nome: a.proprietario_nome || null,
+    proprietario_nif: a.proprietario_nif || null
   }));
   return dbUpsert("avisos", payload);
 }

@@ -1049,7 +1049,7 @@ export function GestaoManutencaoIntervencoes({
                     className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 p-2 text-xs rounded-lg focus:outline-none"
                   >
                     <option value="common">Áreas Comuns do Edifício</option>
-                    {fracoes.map(f => (
+                    {fracoes.filter(f => f.id_predio === predio.id_predio).map(f => (
                       <option key={f.id_fracao} value={f.id_fracao}>{f.fracao_nome} ({f.proprietario.nome})</option>
                     ))}
                   </select>
@@ -1587,7 +1587,7 @@ export function GestaoManutencaoIntervencoes({
                     className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950"
                   >
                     <option value="common">Áreas Comuns</option>
-                    {fracoes.map(f => (
+                    {fracoes.filter(f => f.id_predio === predio.id_predio).map(f => (
                       <option key={f.id_fracao} value={f.id_fracao}>{f.fracao_nome} ({f.proprietario.nome})</option>
                     ))}
                   </select>
@@ -1961,7 +1961,7 @@ export function GestaoManutencaoIntervencoes({
                         <div className="pt-2">
                           <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Sugestão de Repartição por Fração (Permilagem)</span>
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-32 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-900 rounded border">
-                            {fracoes.map(f => {
+                            {fracoes.filter(f => f.id_predio === predio.id_predio).map(f => {
                               const share = iaBreakdown.byFraction[f.id_fracao] || 0;
                               const monthlyShare = share / newObraMeses;
                               return (
@@ -2038,7 +2038,10 @@ export function GestaoManutencaoIntervencoes({
                   <div className="border-l-4 border-emerald-500 pl-4 space-y-2">
                     <p className="font-bold text-xs text-emerald-700 dark:text-emerald-400">Plano de Financiamento de Quotas Extraordinárias ({o.mesesFracionamento} Meses):</p>
                     <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
-                      {fracoes.map(f => {
+                      {/* Antes usava fracoes diretamente, sem filtrar pelo
+                          prédio ativo — em multi-condomínio mostraria também
+                          frações de outros edifícios no plano de financiamento. */}
+                      {fracoes.filter(f => f.id_predio === predio.id_predio).map(f => {
                         const costPerFrac = (o.custoTotal * f.permilagem) / 1000;
                         const monthlyVal = costPerFrac / o.mesesFracionamento;
                         return (

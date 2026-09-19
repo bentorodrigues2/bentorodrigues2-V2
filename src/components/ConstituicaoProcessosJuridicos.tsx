@@ -1311,7 +1311,7 @@ export function ConstituicaoProcessosJuridicos({
                     onChange={(e) => handleFracaoChange(e.target.value)}
                     className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white font-bold"
                   >
-                    {fracoes.map(f => (
+                    {fracoes.filter(f => f.id_predio === predio.id_predio).map(f => (
                       <option key={f.id_fracao} value={f.id_fracao}>
                         Fração {f.fracao_nome} - {f.proprietario?.nome || "Proprietário"}
                       </option>

@@ -6,6 +6,7 @@ import { initialPredios, initialContas, initialFornecedores, initialFracoes, ini
 import { isSupabaseConfigured, fetchUserProfileByEmail } from "./lib/supabaseService";
 import { supabase, authRedirectHashAtLoad } from "./lib/supabaseClient";
 import { encontrarFotoDoUtilizador } from "./lib/condominoUtils";
+import { ordenarFracoesPorNome } from "./utils";
 import {
   fetchPrediosFromSupabase,
   fetchFracoesFromSupabase,
@@ -103,7 +104,7 @@ export default function App() {
   const [activePredioId, setActivePredioId] = useState("");
   const [contas, setContas] = useState<Conta[]>(initialContas);
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>(initialFornecedores);
-  const [fracoes, setFracoes] = useState<Fracao[]>(initialFracoes);
+  const [fracoes, setFracoes] = useState<Fracao[]>(() => ordenarFracoesPorNome(initialFracoes));
   const [avisos, setAvisos] = useState<Aviso[]>(initialAvisos);
   const [movements, setMovements] = useState<Movimento[]>(initialMovements);
   const [reunioes, setReunioes] = useState<Reuniao[]>(initialReunioes);
@@ -179,7 +180,7 @@ export default function App() {
     ]);
 
     if (prediosReais) setPredios(prediosReais);
-    if (fracoesReais) setFracoes(fracoesReais);
+    if (fracoesReais) setFracoes(ordenarFracoesPorNome(fracoesReais));
     if (contasReais) setContas(contasReais);
     if (movimentosReais) setMovements(movimentosReais);
     if (avisosReais) setAvisos(avisosReais);
@@ -498,49 +499,6 @@ export default function App() {
     }
   };
 
-  const handleProfileChange = (role: LoggedUser["role"]) => {
-    let email = "carlos.adm@condomanager.pt";
-    let nome = "Carlos Administrador";
-    let section = "painel";
-
-    if (role === "EMPRESA_GESTORA") {
-      email = "contacto@gestaoforte.pt";
-      nome = "Gestão Forte Administrações";
-      section = "ficha_gestora";
-    } else if (role === "USER") {
-      email = "ana.silva@gmail.com";
-      nome = "Ana Silva (Fração A - Condómino)";
-      section = "portal_condomino";
-    } else if (role === "INQUILINO") {
-      email = "tiago.inquilino@gmail.com";
-      nome = "Tiago Rocha (Inquilino Fração B)";
-      section = "portal_condomino";
-    } else if (role === "TECNICO") {
-      email = "rui.melo@vistoriasegura.pt";
-      nome = "Eng. Rui Melo";
-      section = "manutencao_ocorrencias";
-    } else if (role === "LIMPEZAS") {
-      email = "maria.silva@limpezasestrela.pt";
-      nome = "Maria Silva (Limpezas)";
-      section = "vistorias_limpezas";
-    } else if (role === "JURIDICO") {
-      email = "dra.margarida@legalcondo.pt";
-      nome = "Dra. Margarida Castro (Jurídico)";
-      section = "contencioso_juridico";
-    } else if (role === "AUDITOR") {
-      email = "antonio.auditor@auditchain.pt";
-      nome = "Dr. António Melo (Auditor)";
-      section = "auditoria_interna";
-    } else if (role === "CONTABILISTA") {
-      email = "paula.contas@tcontabilidade.pt";
-      nome = "Dra. Paula Silva (Contabilista)";
-      section = "movimentos";
-    }
-
-    setLoggedUser({ role, email, nome });
-    setActiveSection(section);
-    setViewMode("BROWSER");
-  }; 
   const [sidebarExpanded, setSidebarExpanded] = useState({
     administracao: true,
     operacoes: true,
@@ -617,7 +575,7 @@ export default function App() {
 
   const handleImportGlobalData = async (predioData: Predio, fracoesData: Fracao[], avisosData: Aviso[]) => {
     setPredios(prev => [...prev, predioData]);
-    setFracoes(prev => [...prev, ...fracoesData]);
+    setFracoes(prev => ordenarFracoesPorNome([...prev, ...fracoesData]));
     setAvisos(prev => [...prev, ...avisosData]);
     setActivePredioId(predioData.id_predio);
     setActiveSection("painel"); // Redirect to Dashboard of newly imported building!
@@ -652,11 +610,11 @@ export default function App() {
   };
 
   const handleAddFracao = (novaFracao: Fracao) => {
-    setFracoes([...fracoes, novaFracao]);
+    setFracoes(ordenarFracoesPorNome([...fracoes, novaFracao]));
   };
 
   const handleUpdateFracoes = (updatedFracoes: Fracao[]) => {
-    setFracoes(updatedFracoes);
+    setFracoes(ordenarFracoesPorNome(updatedFracoes));
   };
 
   const handleAddFornecedor = (novoFornecedor: Fornecedor) => {
@@ -748,9 +706,6 @@ export default function App() {
     saveDocumentoToSupabase(novoDoc).catch(console.error);
   };
 
-  const handleToggleUserRole = () => {
-    handleProfileChange(loggedUser.role === "ADMIN" ? "USER" : "ADMIN");
-  };
 
   if (needsPasswordSetup) {
     return (
@@ -1264,21 +1219,33 @@ export default function App() {
                   <i className="fa-solid fa-chalkboard-user text-emerald-400 text-xs"></i>
                   <span>Mural & Reservas</span>
                 </button>
-                <button
-                  onClick={() => {
-                    setActiveSection("reservas");
-                    setViewMode("BROWSER");
-                    setIaInitialTab(undefined);
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "reservas"
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
-                  }`}
-                >
-                  <i className="fa-solid fa-calendar-days text-emerald-400 text-xs"></i>
-                  <span>Gestão de Reservas de Espaços</span>
-                </button>
+                {/* Só faz sentido reservar espaços comuns que o prédio
+                    realmente tenha registados — antes o botão aparecia
+                    sempre, mesmo em prédios sem nenhum espaço reservável. */}
+                {Boolean(
+                  (predioAtivo?.patrimonio as any)?.tem_piscina ||
+                  (predioAtivo?.patrimonio as any)?.tem_ginasio ||
+                  (predioAtivo?.patrimonio as any)?.tem_spa ||
+                  (predioAtivo?.patrimonio as any)?.tem_sala_comum ||
+                  (predioAtivo?.patrimonio as any)?.tem_churrasqueira ||
+                  (predioAtivo?.patrimonio as any)?.tem_terraco
+                ) && (
+                  <button
+                    onClick={() => {
+                      setActiveSection("reservas");
+                      setViewMode("BROWSER");
+                      setIaInitialTab(undefined);
+                    }}
+                    className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                      activeSection === "reservas"
+                        ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                    }`}
+                  >
+                    <i className="fa-solid fa-calendar-days text-emerald-400 text-xs"></i>
+                    <span>Gestão de Reservas de Espaços</span>
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setActiveSection("portal_condomino");
@@ -2511,12 +2478,6 @@ export default function App() {
                       <i className="fa-solid fa-moon mr-1 text-indigo-400"></i> Escuro
                     </>
                   )}
-                </button>
-                <button 
-                  onClick={handleToggleUserRole}
-                  className="text-[8px] bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded px-1 py-0.5 font-bold tracking-tight cursor-pointer"
-                >
-                  PAPEL
                 </button>
               </div>
             </div>

@@ -227,6 +227,16 @@ export interface Fracao {
   referencia_br23e?: string;
   proprietario: Proprietario;
   proprietarios_adicionais?: Proprietario[];
+  // Histórico de proprietários anteriores — preenchido automaticamente ao
+  // "Transferir Propriedade" em vez de o formulário de edição simplesmente
+  // substituir os dados do proprietário atual, o que apagava para sempre
+  // o registo de quem era o proprietário antes.
+  historico_proprietarios?: {
+    proprietario: Proprietario;
+    data_inicio?: string;
+    data_fim: string;
+    motivo?: string;
+  }[];
   inquilino: Inquilino | null;
   seguradora?: string;
   apolice_num?: string;
@@ -248,6 +258,12 @@ export interface Aviso {
   id_movimento?: string;
   id_conta?: string;
   valor_fundo_reserva?: number; // parcela do FCR dentro do valor total, para a nota/recibo discriminar as duas rubricas no mesmo documento
+  // "Fotografia" do proprietário no momento da emissão — sem isto, reabrir
+  // um aviso/recibo antigo depois de uma transferência de propriedade
+  // mostrava sempre o nome do proprietário ATUAL da fração, reescrevendo
+  // silenciosamente a história de quem devia esse documento na altura.
+  proprietario_nome?: string;
+  proprietario_nif?: string;
 }
 
 export interface Movimento {
