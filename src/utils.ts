@@ -64,6 +64,48 @@ export function addPdfHeaderWithLogo(doc: jsPDF, buildingName?: string): number 
   return 28; // Return Y start position for document content
 }
 
+/**
+ * Interpreta um valor monetário escrito à mão, aceitando tanto a
+ * convenção PT-PT (milhares com ".", decimais com ",") como a EN-US
+ * (milhares com ",", decimais com "."), e ainda o caso ambíguo de só um
+ * separador solto — decide se é milhar ou decimal pelo número de dígitos
+ * a seguir a esse separador (3 dígitos = milhar; 1-2 dígitos = decimal).
+ *
+ * Existe porque um <input type="number"> nativo aceita "10,458" como
+ * "10.458" (três casas decimais) sem avisar visivelmente — e só rejeita
+ * no submit, com um erro nativo do browser que não explica a confusão
+ * real: quem escreveu "10,458" quase de certeza quis dizer dez mil
+ * quatrocentos e cinquenta e oito euros, não dez euros e 458 milésimos.
+ */
+export function parseValorMonetario(raw: string): number {
+  let s = (raw || "").trim().replace(/[€\s]/g, "");
+  if (!s) return 0;
+
+  const hasComma = s.includes(",");
+  const hasDot = s.includes(".");
+
+  if (hasComma && hasDot) {
+    // O separador que aparece por último é o decimal.
+    if (s.lastIndexOf(",") > s.lastIndexOf(".")) {
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else {
+      s = s.replace(/,/g, "");
+    }
+  } else if (hasComma) {
+    const depoisVirgula = s.split(",")[1] || "";
+    s = depoisVirgula.length === 3 ? s.replace(",", "") : s.replace(",", ".");
+  } else if (hasDot) {
+    const partes = s.split(".");
+    const depoisPonto = partes[partes.length - 1] || "";
+    if (partes.length === 2 && depoisPonto.length === 3) {
+      s = s.replace(".", "");
+    }
+  }
+
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
 export const formatDatePT = (dateStr: string | undefined): string => {
   if (!dateStr) return "";
   const parts = dateStr.split('-');

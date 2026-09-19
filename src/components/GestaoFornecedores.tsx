@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Download, Save, FileText, Trash2, CheckCircle2, AlertTriangle, Pencil, X } from "lucide-react";
 import { Predio, Fornecedor, DividaFornecedor, PagamentoDivida, LoggedUser, Conta, Movimento } from "../types";
-import { exportToXLS, generateSupplierPwaManualPDF, gerarPdfRegistoFornecedorHomologado, gerarCartaoAniversarioCondominoPDF } from "../utils";
+import { exportToXLS, generateSupplierPwaManualPDF, gerarPdfRegistoFornecedorHomologado, gerarCartaoAniversarioCondominoPDF, parseValorMonetario } from "../utils";
 import {
   saveFornecedorToSupabase,
   deleteFornecedorFromSupabase,
@@ -236,7 +236,10 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
 
     const isEditing = editingDividaId !== null;
     const dividaOriginal = isEditing ? dividasPredio.find(d => d.id_divida === editingDividaId) : null;
-    const novoValor = Number(dividaValor) || 0;
+    const novoValor = parseValorMonetario(dividaValor);
+    if (novoValor <= 0) {
+      return alert("Indique um valor válido para a dívida.");
+    }
     if (dividaOriginal && novoValor < (dividaOriginal.valor_pago || 0)) {
       return alert(`Já foram pagos ${(dividaOriginal.valor_pago || 0).toFixed(2)} € desta dívida — o novo valor não pode ficar abaixo do que já foi pago.`);
     }
@@ -1850,7 +1853,14 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                 </div>
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-slate-500 mb-1">Valor (€) *</label>
-                  <input type="number" min="0" step="0.01" value={dividaValor} onChange={e => setDividaValor(e.target.value)} placeholder="0.00" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
+                  {/* Texto em vez de number: um <input type="number"> nativo
+                      interpretava "10,458" como 10.458 (três casas
+                      decimais) e rejeitava no submit sem explicar a
+                      confusão — quem escreve "10,458" quase sempre quer
+                      dizer 10.458€ (dez mil e quatrocentos e cinquenta e
+                      oito euros). parseValorMonetario decide pela
+                      convenção certa (PT-PT ou EN-US, milhar vs. decimal). */}
+                  <input type="text" inputMode="decimal" value={dividaValor} onChange={e => setDividaValor(e.target.value)} placeholder="0,00" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
                 </div>
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-slate-500 mb-1">Categoria</label>
