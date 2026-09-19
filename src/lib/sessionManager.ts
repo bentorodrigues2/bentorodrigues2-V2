@@ -86,7 +86,7 @@ export const RoleNavigationMap: Record<UserRole, RoleNavigationConfig> = {
   CONTABILISTA: {
     role: "CONTABILISTA",
     defaultTab: "movimentos",
-    allowedTabs: ["painel", "movimentos", "financeiro_recibos", "financeiro_relatorios", "financeiro_extratos", "calculo_quotas", "contas", "emissao", "fundo_reserva", "contabilidade_interna", "conciliacao", "arquivo", "documentos", "assembleias", "ia_avancada"],
+    allowedTabs: ["painel", "movimentos", "financeiro_recibos", "financeiro_relatorios", "financeiro_extratos", "calculo_quotas", "contas", "emissao", "fundo_reserva", "contabilidade_interna", "conciliacao", "arquivo", "documentos", "assembleias", "ia_avancada", "ia_classificador"],
     displayName: "Contabilista Certificado",
     badgeColor: "bg-blue-500/20 text-blue-400 border-blue-500/30"
   },

@@ -485,6 +485,72 @@ Devolve JSON com formato:
     }
   }
 
+  // 9.4. CLASSIFICADOR GERAL DE DOCUMENTOS (?acao=classificar-documento)
+  // Usado por ClassificadorDocumentos.tsx — primeiro passo de um fluxo em
+  // duas etapas: aqui só se identifica a CATEGORIA do documento (ata,
+  // extrato bancário, comprovativo/fatura, apólice de seguro, outro) e um
+  // resumo curto; o frontend usa essa categoria para decidir que ação real
+  // oferecer ao utilizador (arquivar, enviar para conciliação, lançar
+  // movimento, etc.) e, se for caso disso, chama depois o endpoint
+  // especializado certo (reconhecer-anexo / extrair-movimentos-historicos /
+  // reconhecer-apolice) para a extração profunda — sem duplicar essa lógica
+  // aqui.
+  if (acao === "classificar-documento") {
+    if (req.method === "GET") {
+      return res.status(200).json({ status: "online", endpoint: "/api/ai?acao=classificar-documento" });
+    }
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
+
+    try {
+      const { base64, mimeType } = req.body || {};
+      if (!base64 || !mimeType) {
+        return res.status(400).json({ error: "base64 e mimeType são obrigatórios" });
+      }
+
+      const prompt = `És o assistente de triagem documental da administração de um condomínio em Portugal.
+Analisa o documento em anexo (a imagem/PDF real) e classifica-o numa destas categorias:
+- "ata": ata de assembleia de condóminos, convocatória, ou minuta de reunião
+- "extrato_bancario": extrato de conta bancária do condomínio (lista de movimentos/transações)
+- "comprovativo_financeiro": fatura, recibo, comprovativo de transferência/pagamento, ou aviso de débito direto de um único documento (não um extrato com vários movimentos)
+- "apolice_seguro": apólice de seguro, condições gerais/particulares de seguro, ou nota de cobertura
+- "outro": qualquer outro tipo de documento (contrato, orçamento de obra, correspondência, planta, etc.)
+
+Devolve APENAS JSON estrito:
+{
+  "tipo": "ata" | "extrato_bancario" | "comprovativo_financeiro" | "apolice_seguro" | "outro",
+  "confianca": 0.0 a 1.0,
+  "resumo": "Uma frase curta e concreta a dizer o que este documento é (ex: 'Ata da Assembleia Geral Ordinária de 15/03/2026' ou 'Extrato do Santander Totta de Março 2026' ou 'Fatura da EDP de 45,20€')",
+  "titulo_sugerido": "Um nome de ficheiro curto e descritivo, sem extensão"
+}`;
+
+      const responseText = await generateWithFallback({
+        contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType, data: base64 } }] }],
+        responseMimeType: "application/json"
+      });
+
+      let dados = null;
+      try {
+        dados = JSON.parse(responseText);
+      } catch {
+        const match = responseText.match(/\{[\s\S]*\}/);
+        if (match) {
+          try { dados = JSON.parse(match[0]); } catch { /* mantém null */ }
+        }
+      }
+
+      if (!dados || !dados.tipo) {
+        return res.status(502).json({ error: "A IA não conseguiu classificar este documento." });
+      }
+
+      return res.status(200).json({ ok: true, ...dados });
+    } catch (err) {
+      console.error("[api/ai?acao=classificar-documento] Erro:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao classificar o documento." });
+    }
+  }
+
   // 9.5. RECONHECER ANEXO REAL POR IA MULTIMODAL (?acao=reconhecer-anexo)
   // Usado por LeitorAnexosIA.tsx — lê mesmo o ficheiro (imagem/PDF) enviado,
   // ao contrário de "reconhecer-recibo" acima, que só analisa texto.
@@ -782,8 +848,10 @@ Analisa o pedido face ao regulamento e à lei aplicável e devolve APENAS um JSO
         "generate-minutes",
         "parse-import",
         "reconhecer-recibo",
+        "classificar-documento",
         "reconhecer-anexo",
         "extrair-movimentos-historicos",
+        "reconhecer-apolice",
         "humanize-convocatoria",
         "validar-regulamento"
       ]
@@ -791,6 +859,6 @@ Analisa o pedido face ao regulamento e à lei aplicável e devolve APENAS um JSO
   }
 
   return res.status(400).json({
-    error: "Ação não especificada ou inválida. Use ?acao=chat|generate-legal-notice|ai-query|predict-budget|predict-reserve-fund|compare-proposals|generate-minutes|parse-import|reconhecer-recibo|reconhecer-anexo|extrair-movimentos-historicos|humanize-convocatoria|validar-regulamento"
+    error: "Ação não especificada ou inválida. Use ?acao=chat|generate-legal-notice|ai-query|predict-budget|predict-reserve-fund|compare-proposals|generate-minutes|parse-import|reconhecer-recibo|classificar-documento|reconhecer-anexo|extrair-movimentos-historicos|reconhecer-apolice|humanize-convocatoria|validar-regulamento"
   });
 }

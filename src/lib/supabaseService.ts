@@ -410,11 +410,21 @@ export async function uploadDocumentoToStorage(file: File, path: string): Promis
       return null;
     }
 
-    const { data: publicData } = supabase.storage
+    // O bucket "documentos" é privado (só leitura para utilizadores
+    // autenticados via RLS) — getPublicUrl() devolvia um link que parecia
+    // válido mas dava 403 ao ser aberto diretamente (um <a href> normal não
+    // carrega o token de sessão). Um URL assinado de longa duração é o que
+    // realmente funciona para um documento de arquivo permanente.
+    const { data: signedData, error: signError } = await supabase.storage
       .from("documentos")
-      .getPublicUrl(data.path);
+      .createSignedUrl(data.path, 60 * 60 * 24 * 365 * 10); // 10 anos
 
-    return publicData.publicUrl;
+    if (signError || !signedData?.signedUrl) {
+      console.warn("[Supabase Storage] Erro ao assinar URL:", signError?.message);
+      return null;
+    }
+
+    return signedData.signedUrl;
   } catch (err) {
     console.warn("[Supabase Storage] Exception:", err);
     return null;

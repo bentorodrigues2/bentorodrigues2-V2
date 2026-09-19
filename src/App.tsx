@@ -48,6 +48,7 @@ import { GestaoVistoriasLimpezas } from "./components/GestaoVistoriasLimpezas";
 import { IAAvancada } from "./components/IAAvancada";
 import { GestaoComunicacoes } from "./components/GestaoComunicacoes";
 import { AssistenteImportacao } from "./components/AssistenteImportacao";
+import { ClassificadorDocumentos } from "./components/ClassificadorDocumentos";
 import { GestaoReservas } from "./components/GestaoReservas";
 import { PortalCondomino } from "./components/PortalCondomino";
 import { ContenciosoJuridico } from "./components/ContenciosoJuridico";
@@ -1443,6 +1444,26 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => {
+                    setActiveSection("ia_avancada");
+                    setIaInitialTab("orcamento_anual_ia");
+                    setViewMode("BROWSER");
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                    activeSection === "ia_avancada" && iaInitialTab === "orcamento_anual_ia"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <i className="fa-solid fa-wand-magic-sparkles text-emerald-400 text-xs shrink-0"></i>
+                    <span className="truncate">Previsão Orçamental (IA)</span>
+                  </div>
+                  <span className="bg-emerald-500/20 text-emerald-300 text-[9px] font-bold rounded px-1.5 py-0.5 border border-emerald-400/30 shrink-0">
+                    IA
+                  </span>
+                </button>
+                <button
+                  onClick={() => {
                     setActiveSection("financeiro_recibos");
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
@@ -2126,21 +2147,13 @@ export default function App() {
 
             {openMenuConsultoriaIA && (
               <div className="pl-6 space-y-1 border-l-2 border-emerald-500/40 ml-3.5 my-1">
-                <button
-                  onClick={() => {
-                    setActiveSection("ia_avancada");
-                    setIaInitialTab("orcamento_anual_ia");
-                    setViewMode("BROWSER");
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "ia_avancada" && iaInitialTab === "orcamento_anual_ia" 
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
-                  }`}
-                >
-                  <i className="fa-solid fa-wand-magic-sparkles text-emerald-400 text-xs"></i>
-                  <span>Orçamentos & Projecções</span>
-                </button>
+                {/* "Orçamentos & Projecções" saiu daqui — vivia num menu
+                    completamente separado (Consultoria IA) do resto do
+                    cálculo de quotas (Financeiro → Cobrança), o que tornava
+                    confuso encontrar tudo o que tem a ver com quotas/
+                    orçamento. Passa a viver só em Financeiro → Cobrança →
+                    "Previsão Orçamental (IA)", ao lado de Cálculo de Quotas
+                    e Orçamento Anual & Emissão. */}
                 <button
                   onClick={() => {
                     setActiveSection("ia_avancada");
@@ -2198,6 +2211,21 @@ export default function App() {
                 >
                   <i className="fa-solid fa-file-import text-emerald-400 text-xs"></i>
                   <span>Assistente de Importação (PDF/XLS)</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveSection("ia_classificador");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "ia_classificador"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <i className="fa-solid fa-shuffle text-emerald-400 text-xs"></i>
+                  <span>Classificador de Documentos</span>
                 </button>
               </div>
             )}
@@ -2588,6 +2616,7 @@ export default function App() {
                 {(activeSection === "vistorias_limpezas" || activeSection === "limpezas_vistorias") && "Manutenção • Vistorias & Higienização"}
                 {activeSection === "ia_avancada" && "Central de Inteligência Artificial Avançada"}
                 {activeSection === "ia_importacao" && "Assistente de Importação Global por IA (PDF/XLS)"}
+                {activeSection === "ia_classificador" && "Classificador Geral de Documentos por IA"}
                 {activeSection === "contencioso_juridico" && "Resumo de Contencioso & Prazos Legais"}
                 {activeSection === "contencioso_juridico_processos" && "Constituição de Processos Judiciais & Acervo Probatório"}
                 {activeSection === "contencioso_juridico_nd" && "Carta de Não Dívida (Art. 54.º-A do DL 268/94)"}
@@ -3026,9 +3055,24 @@ export default function App() {
           )}
 
           {activeSection === "ia_importacao" && (
-            <AssistenteImportacao 
+            <AssistenteImportacao
               onImportComplete={handleImportGlobalData}
               loggedUser={loggedUser}
+            />
+          )}
+
+          {activeSection === "ia_classificador" && (
+            <ClassificadorDocumentos
+              predio={predioAtivo}
+              fracoes={fracoes}
+              contas={contas}
+              setContas={setContas}
+              movements={movements}
+              setMovements={setMovements}
+              documentos={documentos}
+              setDocumentos={setDocumentos}
+              loggedUser={loggedUser}
+              onNavigate={(secao) => { setActiveSection(secao); setViewMode("BROWSER"); }}
             />
           )}
 
