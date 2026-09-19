@@ -142,30 +142,86 @@ Escreve em tom profissional e direto, destacando apenas o que exige atenção da
   }
 
   // 4. PREVISÃO ORÇAMENTAL (/api/predict-budget -> ?acao=predict-budget)
+  // PREVISÃO ORÇAMENTAL — NARRATIVA (?acao=predict-budget)
+  // Antes disto, o pedido enviava despesas/receitas/obras REAIS mas o
+  // prompt só usava "predio" e "fracoes" — todo o resto (movimentos,
+  // avisos, obras, rubricas editadas pelo administrador) era ignorado. Pior
+  // ainda: a resposta era só {prediction: <texto>}, mas o cliente esperava
+  // um objeto estruturado complexo (despesas_previstas, quota_minima,
+  // chart_data, etc.) que nunca veio — os números que apareciam no ecrã
+  // eram sempre os valores de exemplo iniciais, nunca uma resposta real.
+  //
+  // Os NÚMEROS (despesas, receitas, quotas, gráfico de 12 meses) passaram a
+  // ser calculados de forma determinística no cliente, a partir de rubricas
+  // reais e editáveis pelo administrador (handleRecalculateBudget em
+  // IAAvancada.tsx) — matemática financeira simples não deve ser "pedida"
+  // a um modelo de linguagem, que não garante rigor aritmético. A IA fica
+  // só com o que lhe compete mesmo: escrever a análise narrativa em
+  // português, com base nos números reais já calculados (nunca inventa
+  // valores novos).
   if (acao === "predict-budget") {
     if (req.method === "GET") {
-      return res.status(200).json({ status: "online", endpoint: "/api/predict-budget" });
+      return res.status(200).json({ status: "online", endpoint: "/api/ai?acao=predict-budget" });
     }
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Método não permitido" });
     }
 
     try {
-      const { predio, fracoes } = req.body || {};
-      const prompt = `Analisa a composição deste edifício em Portugal e propõe uma estimativa realista de orçamento anual com rubricas comuns (eletricidade partes comuns, limpeza, manutenção de elevadores, seguro condomínio, água, gestão, fundo de reserva legal de 10%):
-Edifício: ${JSON.stringify(predio || {})}
-Número de frações: ${fracoes?.length || 10}
+      const {
+        predioNome,
+        numFracoes,
+        despesasPrevistas,
+        receitasPrevistas,
+        fundoMinimoLegal,
+        fundoRecomendado,
+        saldoAnualPrevisto,
+        quotaMinima,
+        quotaRecomendada,
+        quotaIdeal,
+        totalObrasReal,
+        obrasPendentes,
+        inadimplenciaHistorica
+      } = req.body || {};
 
-Devolve a análise em formato estruturado com rubricas, valores estimados em Euros e recomendações financeiras para a administração.`;
+      const prompt = `És um administrador experiente de condomínios em Portugal a redigir a análise narrativa de um orçamento anual já calculado (os números abaixo são reais e definitivos — nunca os alteres nem inventes outros).
+
+Edifício: ${predioNome || "Condomínio"} (${numFracoes || "?"} frações).
+Despesas anuais previstas: €${(despesasPrevistas || 0).toFixed(2)}
+Receitas anuais previstas: €${(receitasPrevistas || 0).toFixed(2)}
+Fundo de reserva mínimo legal (10%, DL 268/94): €${(fundoMinimoLegal || 0).toFixed(2)}
+Fundo de reserva recomendado: €${(fundoRecomendado || 0).toFixed(2)}
+Saldo anual previsto: €${(saldoAnualPrevisto || 0).toFixed(2)}
+Quota mensal mínima por fração: €${(quotaMinima || 0).toFixed(2)}
+Quota mensal recomendada por fração: €${(quotaRecomendada || 0).toFixed(2)}
+Quota mensal ideal por fração: €${(quotaIdeal || 0).toFixed(2)}
+Custo total de obras extraordinárias pendentes: €${(totalObrasReal || 0).toFixed(2)}
+Obras pendentes: ${Array.isArray(obrasPendentes) && obrasPendentes.length > 0 ? obrasPendentes.map(o => `"${o.titulo}" (€${o.custo})`).join(", ") : "nenhuma obra extraordinária pendente registada"}
+Taxa de inadimplência histórica assumida: ${inadimplenciaHistorica || 0}%
+
+Escreve uma análise curta e clara para a administração, em português de Portugal, usando SEMPRE estes números exatos (nunca outros). Devolve APENAS um JSON válido, sem markdown, no formato exato:
+{"impacto_obras": "...", "impacto_quotas_extraordinarias": "...", "impacto_inadimplencia_prevista": "...", "explicacao_quotas": "...", "impacto_fundo": "...", "impacto_saldo": "..."}
+
+Cada campo deve ter 1 a 3 frases. Se não houver obras pendentes, impacto_obras e impacto_quotas_extraordinarias devem dizê-lo claramente em vez de inventar obras.`.trim();
 
       const responseText = await generateWithFallback({
-        contents: [{ role: "user", parts: [{ text: prompt }] }]
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        responseMimeType: "application/json"
       });
 
-      return res.status(200).json({ prediction: responseText });
+      let narrativa;
+      try {
+        narrativa = JSON.parse(responseText);
+      } catch {
+        const match = responseText.match(/\{[\s\S]*\}/);
+        if (match) narrativa = JSON.parse(match[0]);
+      }
+      if (!narrativa) throw new Error("A IA não devolveu um formato válido.");
+
+      return res.status(200).json({ success: true, ...narrativa });
     } catch (err) {
       console.error("[api/ai?acao=predict-budget] Erro:", err);
-      return res.status(500).json({ error: err?.message || "Erro ao prever orçamento." });
+      return res.status(500).json({ error: err?.message || "Erro ao gerar a análise do orçamento.", success: false });
     }
   }
 
@@ -504,6 +560,54 @@ Se algum campo não constar no documento, usa null nesse campo. Nunca inventes v
   }
 
   // 10. HUMANIZAR CONVOCATÓRIA (/api/humanize-convocatoria -> ?acao=humanize-convocatoria)
+  // SUGESTÃO DE TEMA & ORDEM DE TRABALHOS PARA UMA NOVA ASSEMBLEIA
+  // (?acao=sugerir-ordem-trabalhos) — antes disto, o botão "Elaborar com
+  // IA" em GestaoAssembleias.tsx não chamava IA nenhuma: só preenchia o
+  // formulário sempre com o mesmo tema, a mesma data fixa (2026-09-21) e um
+  // link de Google Meet inventado que não levava a lado nenhum.
+  if (acao === "sugerir-ordem-trabalhos") {
+    if (req.method === "GET") {
+      return res.status(200).json({ status: "online", endpoint: "/api/ai?acao=sugerir-ordem-trabalhos" });
+    }
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
+
+    try {
+      const { predioNome, numFracoes, temasAnteriores } = req.body || {};
+
+      const prompt = `És um administrador experiente de condomínios em Portugal, a preparar o rascunho de uma nova Assembleia Geral de Condóminos.
+
+Edifício: ${predioNome || "Condomínio"} (${numFracoes || "várias"} frações).
+${Array.isArray(temasAnteriores) && temasAnteriores.length > 0 ? `Temas de assembleias anteriores (para não repetires exatamente o mesmo): ${temasAnteriores.join("; ")}` : "Não há histórico de assembleias anteriores registado."}
+
+Sugere um tema apropriado e uma ordem de trabalhos plausível e bem estruturada (entre 3 a 6 pontos numerados) para uma Assembleia Geral Ordinária ou Extraordinária, adequada à época do ano atual e às responsabilidades legais correntes de um condomínio (Código Civil Art. 1431.º-1432.º e DL 268/94/Lei 8/2022) — por exemplo: apreciação de contas, aprovação de orçamento, obras de conservação, eleição de administrador, ou outro assunto plausível.
+
+Devolve APENAS um JSON válido, sem markdown, no formato exato:
+{"tema": "...", "ordensTrabalho": "1. ...\\n2. ...\\n3. ..."}`.trim();
+
+      const responseText = await generateWithFallback({
+        contents: [{ role: "user", parts: [{ text: prompt }] }]
+      });
+
+      let sugestao;
+      try {
+        const limpo = responseText.replace(/```json|```/g, "").trim();
+        sugestao = JSON.parse(limpo);
+      } catch {
+        throw new Error("A IA não devolveu um formato válido.");
+      }
+      if (!sugestao?.tema || !sugestao?.ordensTrabalho) {
+        throw new Error("A IA não devolveu tema/ordem de trabalhos.");
+      }
+
+      return res.status(200).json({ success: true, tema: sugestao.tema, ordensTrabalho: sugestao.ordensTrabalho });
+    } catch (err) {
+      console.error("[api/ai?acao=sugerir-ordem-trabalhos] Erro:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao sugerir ordem de trabalhos.", success: false });
+    }
+  }
+
   if (acao === "humanize-convocatoria") {
     if (req.method === "GET") {
       return res.status(200).json({ status: "online", endpoint: "/api/humanize-convocatoria" });

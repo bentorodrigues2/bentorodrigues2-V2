@@ -3,6 +3,8 @@ import { Predio, Fracao, Aviso, Movimento, Fornecedor, LoggedUser } from "../typ
 import { generateAndDownloadPdf } from "../utils";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar, LineChart, Line, ComposedChart } from "recharts";
 import { SendingReactionModal } from "./SendingReactionModal";
+import { fetchObrasExtraFromSupabase } from "../lib/supabaseService";
+import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 
 interface IAAvancadaProps {
   predio: Predio;
@@ -915,49 +917,71 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
   const [inadimplenciaHistorica, setInadimplenciaHistorica] = useState<number>(12);
   const [isGeneratingBudget, setIsGeneratingBudget] = useState<boolean>(false);
 
+  // Antes deste ecrã sequer ser usado, já mostrava um "Orçamento Anual
+  // Automático (IA)" completo com números e datas inventados (despesas de
+  // €12.480, obras de "Pintura Geral" e "Reparação de Clarabóia" que não
+  // existem, meses já passados como "Jul 26") — indistinguível de uma
+  // análise real. Substituído por um estado a zeros com os 12 meses reais
+  // seguintes a partir de hoje, até o administrador gerar mesmo uma análise
+  // (handleRunBudgetPredictionAI, que agora usa obras reais do prédio).
+  const proximosDozeMeses = (): string[] => {
+    const nomesMeses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    const hoje = new Date();
+    return Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1);
+      return `${nomesMeses[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+    });
+  };
+
+  // Reparte o custo de cada obra real pelos meses do seu fracionamento
+  // (a partir da data de início), alinhado com proximosDozeMeses() — usado
+  // para preencher "obras_futuras" no gráfico com dados reais em vez do
+  // valor fixo (0 ou 500€ nalguns meses) que existia antes.
+  const calcularObrasFuturasPorMes = (obras: ObraExtraordinaria[], meses: string[]): number[] => {
+    const nomesMeses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    return meses.map(mesLabel => {
+      const [nomeMes, anoCurto] = mesLabel.split(" ");
+      const mesIdx = nomesMeses.indexOf(nomeMes);
+      const ano = 2000 + Number(anoCurto);
+      let total = 0;
+      obras.forEach(o => {
+        if (o.estado === "Concluída" || !o.dataInicio) return;
+        const inicio = new Date(o.dataInicio);
+        const duracao = Math.max(1, o.mesesFracionamento || 1);
+        const fim = new Date(inicio.getFullYear(), inicio.getMonth() + duracao, 1);
+        const alvo = new Date(ano, mesIdx, 1);
+        if (alvo >= new Date(inicio.getFullYear(), inicio.getMonth(), 1) && alvo < fim) {
+          total += (o.custoTotal || 0) / duracao;
+        }
+      });
+      return Math.round(total * 100) / 100;
+    });
+  };
+
   const defaultBudgetResult = {
-    despesas_previstas: 12480.00,
-    receitas_previstas: 14160.00,
-    fundo_minimo_legal: 1248.00,
-    fundo_recomendado: 2496.00,
-    saldo_anual_previsto: 1680.00,
-    impacto_obras: "O planeamento de obras de conservação preventiva (Pintura Geral e Reparação de Clarabóia) prevê um encargo adicional de €14,500. A canalização deste montante através do Fundo de Reserva Comum consumirá 85% do saldo do mesmo. Recomenda-se vivamente o fracionamento deste encargo sob a forma de quotas extraordinárias temporárias para manter o fundo acima do limite legal de 10%.",
-    impacto_quotas_extraordinarias: "A aprovação de quotas extraordinárias temporárias (referência BR23E) permitirá diluir o esforço financeiro dos condóminos em parcelas mensais suaves, gerando um encaixe de tesouraria de €12,000 para as obras sem comprometer o fluxo de caixa mensal ordinário.",
-    impacto_inadimplencia_prevista: "Com uma taxa de inadimplência histórica de 12%, estima-se uma quebra de liquidez de €1,699.20 no próximo ano. O saldo previsto de €1,680.00 é suficiente para absorver este desvio sem incorrer em rutura financeira, contudo, sugere-se a aplicação da Quota Recomendada para maior segurança.",
-    quota_minima: 35.50,
-    quota_recomendada: 42.00,
-    quota_ideal: 48.50,
-    quota_extraordinaria: 15.00,
-    explicacao_quotas: "A Quota Mínima cobre estritamente as despesas correntes de contratos e manutenção ordinária. A Quota Recomendada inclui o provisionamento ideal para o Fundo de Reserva de conservação (15%). A Quota Ideal adiciona uma margem preventiva contra a inadimplência de 12%. A Quota Extraordinária propõe uma contribuição mensal adicional média de €15.00 por fração destinada ao plano de obras ativas (referência BR23E).",
+    despesas_previstas: 0,
+    receitas_previstas: 0,
+    fundo_minimo_legal: 0,
+    fundo_recomendado: 0,
+    saldo_anual_previsto: 0,
+    impacto_obras: "Gere o orçamento inteligente para obter uma análise real com base nos dados deste prédio.",
+    impacto_quotas_extraordinarias: "",
+    impacto_inadimplencia_prevista: "",
+    quota_minima: 0,
+    quota_recomendada: 0,
+    quota_ideal: 0,
+    quota_extraordinaria: 0,
+    explicacao_quotas: "",
     quota_extraordinaria_sugestao: {
-      valor_total: 12000.00,
-      valor_por_fracao_medio: 1000.00,
-      fracionamentos: [
-        { meses: 3, valor_mensal_medio: 333.33 },
-        { meses: 6, valor_mensal_medio: 166.67 },
-        { meses: 9, valor_mensal_medio: 111.11 },
-        { meses: 12, valor_mensal_medio: 83.33 },
-        { meses: 18, valor_mensal_medio: 55.56 },
-        { meses: 24, valor_mensal_medio: 41.67 }
-      ],
-      referencia: "BR23E",
-      impacto_fundo: "A liquidação das quotas extraordinárias permitirá manter o Fundo de Reserva intacto, prevenindo a necessidade de resgate antecipado de depósitos a prazo e garantindo liquidez imediata para intervenções urgentes.",
-      impacto_saldo: "Garante um acréscimo líquido de €12,000 nas contas de tesouraria do condomínio, eliminando qualquer risco de saldo negativo durante o decorrer das obras de pintura das fachadas."
+      valor_total: 0,
+      valor_por_fracao_medio: 0,
+      fracionamentos: [3, 6, 9, 12, 18, 24].map(meses => ({ meses, valor_mensal_medio: 0 })),
+      impacto_fundo: "",
+      impacto_saldo: ""
     },
-    chart_data: [
-      { month: "Jul 26", saldo_futuro: 2150, despesas_futuras: 1040, receitas_previstas: 1180, obras_futuras: 0, inadimplencia_prevista: 141.60 },
-      { month: "Ago 26", saldo_futuro: 2290, despesas_futuras: 1040, receitas_previstas: 1180, obras_futuras: 0, inadimplencia_prevista: 141.60 },
-      { month: "Set 26", saldo_futuro: 1930, despesas_futuras: 1540, receitas_previstas: 1180, obras_futuras: 500, inadimplencia_prevista: 141.60 },
-      { month: "Out 26", saldo_futuro: 2070, despesas_futuras: 1040, receitas_previstas: 1180, obras_futuras: 0, inadimplencia_prevista: 141.60 },
-      { month: "Nov 26", saldo_futuro: 2210, despesas_futuras: 1040, receitas_previstas: 1180, obras_futuras: 0, inadimplencia_prevista: 141.60 },
-      { month: "Dez 26", saldo_futuro: 2040, despesas_futuras: 1350, receitas_previstas: 1180, obras_futuras: 300, inadimplencia_prevista: 141.60 },
-      { month: "Jan 27", saldo_futuro: 2180, despesas_futuras: 1040, receitas_previstas: 1180, obras_futuras: 0, inadimplencia_prevista: 141.60 },
-      { month: "Fev 27", saldo_futuro: 2320, despesas_futuras: 1040, receitas_previstas: 1180, obras_futuras: 0, inadimplencia_prevista: 141.60 },
-      { month: "Mar 27", saldo_futuro: 1700, despesas_futuras: 1800, receitas_previstas: 1180, obras_futuras: 760, inadimplencia_prevista: 141.60 },
-      { month: "Abr 27", saldo_futuro: 1840, despesas_futuras: 1040, receitas_previstas: 1180, obras_futuras: 0, inadimplencia_prevista: 141.60 },
-      { month: "Mai 27", saldo_futuro: 1980, despesas_futuras: 1040, receitas_previstas: 1180, obras_futuras: 0, inadimplencia_prevista: 141.60 },
-      { month: "Jun 27", saldo_futuro: 2120, despesas_futuras: 1040, receitas_previstas: 1180, obras_futuras: 0, inadimplencia_prevista: 141.60 }
-    ]
+    chart_data: proximosDozeMeses().map(month => ({
+      month, saldo_futuro: 0, despesas_futuras: 0, receitas_previstas: 0, obras_futuras: 0, inadimplencia_prevista: 0
+    }))
   };
 
   const [budgetResult, setBudgetResult] = useState<any>(defaultBudgetResult);
@@ -1047,7 +1071,11 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
           id: "sim-log-" + Date.now() + "-final",
           timestamp: finalTime,
           trigger: trigger.title,
-          message: `[CONCLUÍDO] Todos os triggers automáticos do Documento FG executados com sucesso para o prédio Bento Rodrigues PP2. Histórico registado na tabela de Auditoria Interna.`,
+          // Esta é uma SIMULAÇÃO ilustrativa da rotina lógica documentada no
+          // Documento FG — não escreve nada na base de dados nem na
+          // Auditoria Interna (a mensagem anterior afirmava isso, o que era
+          // falso). Para ver a auditoria real, ir a Auditoria Interna.
+          message: `[CONCLUÍDO] Simulação da rotina "${trigger.title}" terminada — passos ilustrativos apresentados acima. Isto é uma demonstração da lógica documentada, não uma execução real na base de dados.`,
           type: "success" as const
         };
         setRealtimeLogs(prev => [finalLog, ...prev]);
@@ -1058,43 +1086,89 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
   const handleRunBudgetPredictionAI = async () => {
     setIsGeneratingBudget(true);
     try {
-      const response = await fetch("/api/predict-budget", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          predio,
-          fracoes,
-          movements,
-          avisos,
-          obrasFuturas: [
-            { titulo: "Pintura Geral das Fachadas", custo_total: 12000, metodo_distribuicao: "permilagem", fracionamento_meses: 6, data_inicio: "2026-04-01", estado: "Em Curso" },
-            { titulo: "Reparação Urgente de Clarabóia", custo_total: 2500, metodo_distribuicao: "igual", fracionamento_meses: 1, data_inicio: "2026-06-10", estado: "Concluída" }
-          ],
-          contratos,
-          seguros,
-          servicos,
-          manutencao,
-          limpeza,
-          inspecoes,
-          inadimplenciaHistorica
-        })
-      });
+      // Obras reais do prédio (antes eram sempre as mesmas duas obras
+      // inventadas, "Pintura Geral das Fachadas" e "Reparação de
+      // Clarabóia", que nem sequer eram usadas pelo servidor).
+      const obrasReais = (await fetchObrasExtraFromSupabase(predio.id_predio)) || [];
+      const obrasPendentesReais = obrasReais.filter(o => o.estado !== "Concluída");
+      const totalObrasReal = Math.round(obrasPendentesReais.reduce((acc, o) => acc + (o.custoTotal || 0), 0) * 100) / 100;
 
-      if (!response.ok) throw new Error("Erro na previsão de orçamento por IA.");
-      const data = await response.json();
-      setBudgetResult(data);
-      
-      // Initialize editable rubrics based on user's preset values
-      const totalObras = data.quota_extraordinaria_sugestao?.valor_total || 12000;
-      setRubricas([
+      const novasRubricas = [
         { id: "contratos", nome: "Contratos de Manutenção (Elevadores, Limpeza, etc.)", valor: contratos * 12, editable: true },
         { id: "seguros", nome: "Seguros do Edifício (Multirriscos Condomínio)", valor: seguros, editable: true },
         { id: "servicos", nome: "Serviços de Administração e Apoio", valor: servicos * 12, editable: true },
         { id: "manutencao", nome: "Manutenção Preventiva Periódica", valor: manutencao * 12, editable: true },
         { id: "limpeza", nome: "Limpeza Geral das Áreas Comuns", valor: limpeza * 12, editable: true },
         { id: "inspecoes", nome: "Inspeções Obrigatórias e Elevadores", valor: inspecoes, editable: true },
-        { id: "obras", nome: "Fundo de Obras Futuras", valor: totalObras, editable: true }
-      ]);
+        { id: "obras", nome: "Fundo de Obras Futuras", valor: totalObrasReal, editable: true }
+      ];
+
+      // Números reais calculados já aqui (mesma fórmula de
+      // handleRecalculateBudget) para dar à IA um contexto real sobre o
+      // qual escrever a análise, em vez de lhe pedir para "inventar" ou
+      // recalcular por conta própria.
+      const totalDespesasReal = novasRubricas.reduce((sum, r) => sum + r.valor, 0);
+      const fundoMinimoLegalReal = Math.round(totalDespesasReal * 0.10 * 100) / 100;
+      const fundoRecomendadoReal = Math.round(totalDespesasReal * 0.20 * 100) / 100;
+      const numFracoesReal = fracoes?.length || 1;
+      const quotaRecomendadaReal = Math.round(((totalDespesasReal + fundoRecomendadoReal) / (12 * numFracoesReal)) * 100) / 100;
+      const quotaMinimaReal = Math.round(((totalDespesasReal + fundoMinimoLegalReal) / (12 * numFracoesReal)) * 100) / 100;
+      const quotaIdealReal = Math.round((quotaRecomendadaReal * (1 + (inadimplenciaHistorica / 100))) * 100) / 100;
+      const receitasPrevistasReal = Math.round((quotaRecomendadaReal * 12 * numFracoesReal) * 100) / 100;
+      const saldoAnualPrevistoReal = Math.round((receitasPrevistasReal - totalDespesasReal) * 100) / 100;
+
+      const response = await fetch("/api/ai?acao=predict-budget", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          predioNome: predio?.nome,
+          numFracoes: numFracoesReal,
+          despesasPrevistas: totalDespesasReal,
+          receitasPrevistas: receitasPrevistasReal,
+          fundoMinimoLegal: fundoMinimoLegalReal,
+          fundoRecomendado: fundoRecomendadoReal,
+          saldoAnualPrevisto: saldoAnualPrevistoReal,
+          quotaMinima: quotaMinimaReal,
+          quotaRecomendada: quotaRecomendadaReal,
+          quotaIdeal: quotaIdealReal,
+          totalObrasReal,
+          obrasPendentes: obrasPendentesReais.map(o => ({ titulo: o.descricao, custo: o.custoTotal })),
+          inadimplenciaHistorica
+        })
+      });
+
+      const narrativa = await response.json();
+      if (!response.ok || !narrativa?.success) {
+        throw new Error(narrativa?.error || "Erro na análise de orçamento por IA.");
+      }
+
+      const meses = proximosDozeMeses();
+      const obrasFuturasPorMes = calcularObrasFuturasPorMes(obrasPendentesReais, meses);
+
+      setBudgetResult((prev: any) => ({
+        ...prev,
+        impacto_obras: narrativa.impacto_obras,
+        impacto_quotas_extraordinarias: narrativa.impacto_quotas_extraordinarias,
+        impacto_inadimplencia_prevista: narrativa.impacto_inadimplencia_prevista,
+        explicacao_quotas: narrativa.explicacao_quotas,
+        // Equivalente mensal, por fração, do custo total das obras
+        // pendentes espalhado por 12 meses — antes ficava sempre no valor
+        // de exemplo fixo (€15,00), nunca recalculado a sério.
+        quota_extraordinaria: numFracoesReal > 0 ? Math.round((totalObrasReal / numFracoesReal / 12) * 100) / 100 : 0,
+        quota_extraordinaria_sugestao: {
+          valor_total: totalObrasReal,
+          valor_por_fracao_medio: numFracoesReal > 0 ? Math.round((totalObrasReal / numFracoesReal) * 100) / 100 : 0,
+          fracionamentos: [3, 6, 9, 12, 18, 24].map(m => ({ meses: m, valor_mensal_medio: Math.round((totalObrasReal / m) * 100) / 100 })),
+          impacto_fundo: narrativa.impacto_fundo,
+          impacto_saldo: narrativa.impacto_saldo
+        },
+        chart_data: meses.map((month, i) => ({ month, saldo_futuro: 0, despesas_futuras: 0, receitas_previstas: 0, obras_futuras: obrasFuturasPorMes[i], inadimplencia_prevista: 0 }))
+      }));
+
+      // Aplica as rubricas reais e recalcula todos os números derivados
+      // (despesas, receitas, quotas, gráfico de 12 meses) por fórmula real.
+      setRubricas(novasRubricas);
+      setTimeout(() => handleRecalculateBudget(), 50);
     } catch (err: any) {
       console.error(err);
       alert("Erro ao calcular orçamento IA: " + err.message);
@@ -1184,7 +1258,10 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
         const monthlyReceita = Math.round((totalReceitas) / 12 * 100) / 100;
         const monthlyInadimplencia = Math.round((monthlyReceita * (inadimplenciaHistorica / 100)) * 100) / 100;
 
-        let prevSaldo = idx === 0 ? 2150 : prev.chart_data[idx - 1].saldo_futuro;
+        // Sem acesso ao saldo bancário real neste ecrã, o ponto de partida
+        // é 0 (não um valor inventado) — o gráfico mostra a variação
+        // projetada, não um saldo absoluto de tesouraria.
+        let prevSaldo = idx === 0 ? 0 : prev.chart_data[idx - 1].saldo_futuro;
         const saldoFut = prevSaldo + monthlyReceita - totalMesDespesa - monthlyInadimplencia;
 
         return {
@@ -3123,7 +3200,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                             ) : (
                               <>
                                 <i className="fa-solid fa-play animate-pulse"></i>
-                                <span>Executar Simulação na BD</span>
+                                <span>Simular Rotina (Demonstração)</span>
                               </>
                             )}
                           </button>

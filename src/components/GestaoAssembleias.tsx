@@ -55,6 +55,7 @@ export function GestaoAssembleias({ predio, fracoes, reunioes, onAddReuniao, set
   const [ataTexto, setAtaTexto] = useState("");
   const [loadingAta, setLoadingAta] = useState(false);
   const [loadingHumanize, setLoadingHumanize] = useState(false);
+  const [loadingElaborarIA, setLoadingElaborarIA] = useState(false);
 
   // Digital Signature Canvas Refs & States
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -165,7 +166,10 @@ Com os meus cumprimentos,
     const localStr = localReuniao.trim() ? localReuniao : `Sala Comum / Morada do Prédio (${predio?.morada_linha1 || ""}, Nº ${predio?.num_porta || ""})`;
 
     try {
-      const resp = await fetch("/api/humanize-convocatoria", {
+      // "/api/humanize-convocatoria" também funciona (redirecionado para
+      // aqui via rewrite em vercel.json), mas chama-se o destino direto
+      // para não depender desse rewrite continuar a existir.
+      const resp = await fetch("/api/ai?acao=humanize-convocatoria", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -211,22 +215,45 @@ Com os meus cumprimentos,
     }
   };
 
-  // Helper AI assistant to formulate convocation draft
-  const elaborarComIA = () => {
-    setTema("Assembleia Geral Ordinária de Apreciação de Contas e Obras");
-    setData("2026-09-21");
-    setHora("20:30");
-    setLocalReuniao("Sala Comum do Condomínio");
-    setOrdensTrabalho(
-      "1. Apreciação, discussão e votação do relatório de contas do exercício transato;\n" +
-      "2. Análise e aprovação do orçamento de despesas correntes para o novo ano civil;\n" +
-      "3. Deliberação sobre obras urgentes de conservação e pintura das fachadas;\n" +
-      "4. Eleição e tomada de posse do Administrador do Condomínio."
-    );
-    setIsVideoconferencia(true);
-    setPlataformaVideo("Google Meet");
-    setLinkVideo("https://meet.google.com/condo-reuniao-21set");
-    alert("✨ Convocatória elaborada com auxílio da Inteligência Artificial! Reveja os dados e clique em 'Gerar Convocatória & Agendar'.");
+  // Assistente de IA para sugerir tema + ordem de trabalhos de uma nova
+  // assembleia. Antes disto não chamava IA nenhuma: preenchia sempre os
+  // mesmos campos fixos, incluindo uma data já passada e um link de Google
+  // Meet inventado que não levava a lado nenhum — corrigido para chamar
+  // mesmo o Gemini, com contexto real do prédio e dos temas já tratados em
+  // assembleias anteriores, e sem inventar data/link (isso fica ao critério
+  // do administrador).
+  const elaborarComIA = async () => {
+    setLoadingElaborarIA(true);
+    try {
+      const temasAnteriores = reunioes
+        .map(r => r.tema)
+        .filter((t): t is string => Boolean(t))
+        .slice(0, 8);
+
+      const resp = await fetch("/api/ai?acao=sugerir-ordem-trabalhos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          predioNome: predio?.nome,
+          numFracoes: fracoes.length,
+          temasAnteriores
+        })
+      });
+      const json = await resp.json();
+      if (!resp.ok || !json?.success) {
+        throw new Error(json?.error || "Erro ao obter sugestão da IA.");
+      }
+
+      setTema(json.tema);
+      setOrdensTrabalho(json.ordensTrabalho);
+      if (!localReuniao.trim()) setLocalReuniao("Sala Comum do Condomínio");
+      alert("✨ Tema e ordem de trabalhos sugeridos pela Inteligência Artificial! Reveja o texto e defina a data, hora e local antes de gerar a convocatória.");
+    } catch (err) {
+      console.error("Erro ao elaborar convocatória com IA:", err);
+      alert(`❌ Não foi possível obter uma sugestão da IA: ${err instanceof Error ? err.message : "erro desconhecido"}. Tente novamente.`);
+    } finally {
+      setLoadingElaborarIA(false);
+    }
   };
 
   const submeterForm = (e: React.FormEvent) => {
@@ -1384,11 +1411,12 @@ Com os meus cumprimentos,
             <h3 className="text-lg font-bold text-slate-800">{editingId ? "Editar Reunião / Convocatória" : "Agendar Nova Reunião & Convocatória"}</h3>
             <button
               type="button"
+              disabled={loadingElaborarIA}
               onClick={elaborarComIA}
-              className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm flex items-center space-x-1.5 cursor-pointer"
+              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm flex items-center space-x-1.5 cursor-pointer"
             >
-              <i className="fa-solid fa-wand-magic-sparkles"></i>
-              <span>Elaborar Convocatória com IA</span>
+              <i className={`fa-solid ${loadingElaborarIA ? "fa-spinner fa-spin" : "fa-wand-magic-sparkles"}`}></i>
+              <span>{loadingElaborarIA ? "A pensar..." : "Elaborar Convocatória com IA"}</span>
             </button>
           </div>
           
