@@ -2237,6 +2237,11 @@ export async function saveObraExtraToSupabase(idPredio: string, item: ObraExtrao
   });
 }
 
+export async function deleteObraExtraFromSupabase(id: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbDelete("obras_extraordinarias", [["id", "eq", id]]);
+}
+
 // ============================================================================
 // PLANO DE MANUTENÇÃO OBRIGATÓRIA (AgendaManutencao.tsx)
 // ============================================================================

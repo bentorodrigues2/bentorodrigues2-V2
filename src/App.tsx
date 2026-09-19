@@ -1920,7 +1920,7 @@ export default function App() {
                   }`}
                 >
                   <i className="fa-solid fa-file-invoice text-emerald-400 text-xs"></i>
-                  <span>1. Pedir & Rever Orçamentos (RFPs)</span>
+                  <span>1. Concursos & Orçamentos (RFPs)</span>
                 </button>
                 <button
                   onClick={() => {
@@ -2633,7 +2633,7 @@ export default function App() {
                 {activeSection === "obras_futuras" && "Obras Futuras & Fundo Extraordinário"}
                 {activeSection === "ficha_gestora" && "Ficha da Empresa Gestora (White-Label)"}
                 {activeSection === "portal_condomino" && "Portal do Condómino & Perfis"}
-                {activeSection === "portal_orcamentos" && "Portal de Orçamentos de Fornecedores"}
+                {activeSection === "portal_orcamentos" && "Concursos de Obras & Portal de Orçamentos"}
                 {activeSection === "dashboard_kpis" && "Dashboard de KPIs do Prédio"}
                 {activeSection === "multi_condominio" && "Portal Multi-Condomínio Integrado"}
                 {activeSection === "configuracoes_gerais" && "Configurações Gerais do Edifício"}

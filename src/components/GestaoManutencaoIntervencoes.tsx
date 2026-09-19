@@ -5,14 +5,14 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   fetchAgendaVistoriasFromSupabase, saveAgendaVistoriaToSupabase,
   fetchIntervencoesFromSupabase, saveIntervencaoToSupabase,
-  fetchObrasExtraFromSupabase, saveObraExtraToSupabase,
+  fetchObrasExtraFromSupabase, saveObraExtraToSupabase, deleteObraExtraFromSupabase,
   saveDocumentoToSupabase, saveMovimentoToSupabase, saveOcorrenciaToSupabase, saveContaToSupabase,
-  saveDividaFornecedorToSupabase, registarLogAuditoria
+  saveDividaFornecedorToSupabase, fetchDividasFornecedoresFromSupabase, deleteDividaFornecedorFromSupabase, registarLogAuditoria
 } from "../lib/supabaseService";
 import { 
-  Wrench, Calendar, TriangleAlert, Hammer, CheckSquare, FolderArchive, 
-  Plus, Upload, ShieldAlert, Check, RefreshCw, Sparkles, Send, 
-  Clock, FileDown, Eye, FileText, Landmark, User, FileSpreadsheet, Play
+  Wrench, Calendar, TriangleAlert, Hammer, CheckSquare, FolderArchive,
+  Plus, Upload, ShieldAlert, Check, RefreshCw, Sparkles, Send,
+  Clock, FileDown, Eye, FileText, Landmark, User, FileSpreadsheet, Play, Trash2
 } from "lucide-react";
 
 interface GestaoManutencaoIntervencoesProps {
@@ -976,6 +976,35 @@ export function GestaoManutencaoIntervencoes({
     }
 
     alert("Obra adjudicada! Dívida ao fornecedor lançada em Financeiro → Dívidas a Fornecedores (paga dali, a prestações ou de uma vez), plano arquivado e condóminos notificados por email.");
+  };
+
+  // Elimina uma Obra Extraordinária mal registada (ex: adjudicada por
+  // engano, valores errados) para permitir corrigir/voltar atrás — antes
+  // não havia nenhuma forma de eliminar uma obra depois de criada, mesmo
+  // que estivesse mal efetuada. Se já tiver uma dívida a fornecedor ligada
+  // com pagamentos registados, bloqueia (tal como acontece ao eliminar uma
+  // dívida com tranches) para não apagar dinheiro já pago sem querer.
+  const handleEliminarObraExtra = async (obra: ObraExtraordinaria) => {
+    if (obra.id_divida) {
+      const dividas = await fetchDividasFornecedoresFromSupabase(predio.id_predio);
+      const dividaLigada = dividas?.find(d => d.id_divida === obra.id_divida);
+      if (dividaLigada && (dividaLigada.valor_pago || 0) > 0) {
+        alert(`Esta obra tem uma dívida a fornecedor com ${(dividaLigada.valor_pago || 0).toFixed(2)}€ já pagos — elimine primeiro as tranches em Financeiro → Dívidas a Fornecedores para repor o saldo em 0€, e só depois poderá eliminar a obra.`);
+        return;
+      }
+      if (!window.confirm(`Eliminar a obra "${obra.descricao}"? Isto também elimina a dívida a fornecedor associada (ainda sem pagamentos). Esta ação não pode ser desfeita.`)) return;
+      if (dividaLigada) await deleteDividaFornecedorFromSupabase(dividaLigada.id_divida);
+    } else {
+      if (!window.confirm(`Eliminar a obra "${obra.descricao}"? Esta ação não pode ser desfeita.`)) return;
+    }
+
+    const ok = await deleteObraExtraFromSupabase(obra.id);
+    if (!ok) {
+      alert("❌ Não foi possível eliminar a obra no Supabase. Tente novamente.");
+      return;
+    }
+    setObrasExtra(prev => prev.filter(o => o.id !== obra.id));
+    registarLogAuditoria("Manutenção", `Eliminou a obra extraordinária "${obra.descricao}"`, predio.id_predio, loggedUser);
   };
 
   // Admin verifies & signs off a completed task
@@ -2083,6 +2112,19 @@ export function GestaoManutencaoIntervencoes({
                     >
                       <CheckSquare className="h-4 w-4" />
                       <span>Homologar e Fechar Obra</span>
+                    </button>
+                  </div>
+                )}
+
+                {(activeProfile === "ADMIN" || activeProfile === "EMPRESA_GESTORA") && (
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <button
+                      onClick={() => handleEliminarObraExtra(o)}
+                      className="bg-red-50 hover:bg-red-100 text-red-700 font-bold py-1.5 px-3 rounded-lg text-[11px] cursor-pointer border border-red-200 flex items-center gap-1.5"
+                      title="Eliminar esta obra registada mal, para corrigir/voltar atrás"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>Eliminar Obra (corrigir registo)</span>
                     </button>
                   </div>
                 )}
