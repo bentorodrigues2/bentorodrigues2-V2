@@ -347,6 +347,11 @@ export function PortalOrcamentos({
   const [painelAdjudicacaoId, setPainelAdjudicacaoId] = useState<string | null>(null);
   const [destinoObraEscolhido, setDestinoObraEscolhido] = useState<"obra_extraordinaria" | "intervencao">("obra_extraordinaria");
   const [usaFundoReservaEscolhido, setUsaFundoReservaEscolhido] = useState(false);
+  // Antes o fracionamento ficava sempre fixo em 1 mês (pagamento único) —
+  // agora, antes de adjudicar, o admin pode simular o valor mensal por
+  // fração para vários números de meses e escolher o plano de pagamento
+  // faseado que vai mesmo ficar gravado na Obra Extraordinária criada.
+  const [mesesFracionamentoEscolhido, setMesesFracionamentoEscolhido] = useState(1);
   const [painelRejeicaoId, setPainelRejeicaoId] = useState<string | null>(null);
   const [motivoRejeicao, setMotivoRejeicao] = useState("");
 
@@ -421,7 +426,7 @@ export function PortalOrcamentos({
         dataFim: dataFimEstimada,
         custoTotal: proposal.valor,
         necessitaCotaExtra: !usaFundoReservaEscolhido,
-        mesesFracionamento: 1,
+        mesesFracionamento: usaFundoReservaEscolhido ? 1 : mesesFracionamentoEscolhido,
         valoresPorFracao,
         impactoFundoReserva: Math.round(proposal.valor * 0.10 * 100) / 100,
         impactoSaldoAnual: -proposal.valor,
@@ -1028,6 +1033,7 @@ export function PortalOrcamentos({
                                 setPainelAdjudicacaoId(abrir ? prop.id_proposal : null);
                                 setDestinoObraEscolhido("obra_extraordinaria");
                                 setUsaFundoReservaEscolhido(false);
+                                setMesesFracionamentoEscolhido(1);
                               }}
                               className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1 px-3 text-[11px] rounded transition-colors cursor-pointer flex items-center space-x-1"
                             >
@@ -1106,6 +1112,44 @@ export function PortalOrcamentos({
                                 <PiggyBank size={13} className="text-emerald-600" />
                                 <span>Pagar esta obra a partir do Fundo de Reserva Comum (em vez de quota extraordinária aos condóminos)</span>
                               </label>
+                            )}
+
+                            {destinoObraEscolhido === "obra_extraordinaria" && !usaFundoReservaEscolhido && (
+                              <div className="bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900 rounded-lg p-3 space-y-2.5">
+                                <label className="text-[10px] font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wide block">
+                                  Simulação de Pagamento Faseado da Quota Extraordinária
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] text-slate-500">Faseado em</span>
+                                  <select
+                                    value={mesesFracionamentoEscolhido}
+                                    onChange={e => setMesesFracionamentoEscolhido(Number(e.target.value))}
+                                    className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-[11px] font-bold px-2 py-1 rounded"
+                                  >
+                                    {[1, 2, 3, 6, 9, 12, 18, 24].map(m => (
+                                      <option key={m} value={m}>{m} {m === 1 ? "mês (pagamento único)" : "meses"}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-32 overflow-y-auto pr-1">
+                                  {fracoes.filter(f => f.id_predio === predio.id_predio).map(f => {
+                                    const custoPorFracao = (prop.valor * (f.permilagem || 0)) / 1000;
+                                    const valorPrestacao = custoPorFracao / mesesFracionamentoEscolhido;
+                                    return (
+                                      <div key={f.id_fracao} className="p-1.5 bg-slate-50 dark:bg-slate-950 rounded border border-slate-150 dark:border-slate-800 text-[9px]">
+                                        <span className="font-bold text-slate-600 dark:text-slate-400 block">{f.fracao_nome}</span>
+                                        <span className="font-mono-custom block text-slate-500">Total: {custoPorFracao.toFixed(2)}€</span>
+                                        <span className="font-mono-custom font-bold text-emerald-600">
+                                          {mesesFracionamentoEscolhido === 1 ? "Único" : `${mesesFracionamentoEscolhido}x`}: {valorPrestacao.toFixed(2)}€
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                <p className="text-[9px] text-slate-400">
+                                  Este plano fica gravado na Obra Extraordinária criada e é usado depois em "Calcular & Lançar Quotas Mensais" para emitir os avisos de quota extra em {mesesFracionamentoEscolhido} {mesesFracionamentoEscolhido === 1 ? "prestação" : "prestações"}.
+                                </p>
+                              </div>
                             )}
 
                             <div className="flex gap-2 justify-end pt-1 border-t border-emerald-100 dark:border-emerald-900">

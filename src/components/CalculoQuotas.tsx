@@ -97,6 +97,13 @@ export function CalculoQuotas({
     if (!obra) return;
     setDescricaoExtra(`${obra.descricao} — ${obra.fornecedorNome}`);
     setOrcamentoExtra(String(obra.custoTotal));
+    // O faseamento simulado/escolhido no Portal de Orçamentos ao adjudicar
+    // (obra.mesesFracionamento) passa a ser o número de prestações aqui —
+    // sem isto, o plano simulado ficava só "no papel" e tinha de ser
+    // reintroduzido manualmente ao emitir a quota extra.
+    if (obra.mesesFracionamento && obra.mesesFracionamento > 0) {
+      setNumPrestacoesExtra(obra.mesesFracionamento);
+    }
   };
   const [contaExtraId, setContaExtraId] = useState<string>(() => {
     const fcr = predioContas.find(
