@@ -864,20 +864,24 @@ export function GestaoFracoes({
     if (loggedUser.role !== 'ADMIN' && loggedUser.role !== 'EMPRESA_GESTORA') {
       return alert("Apenas administradores podem atualizar proprietários!");
     }
+    // Campos obrigatórios aceitam "NA" (Não Aplicável/Não Autorizado) — há
+    // condóminos que recusam fornecer certos dados (email, NIF, telemóvel);
+    // sem esta válvula de escape não era possível sequer registar a fração
+    // com um proprietário conhecido mas não colaborante.
     if (!propNome.trim()) {
       alert("O campo Nome Completo do Proprietário é obrigatório.");
       return;
     }
     if (!propNif.trim()) {
-      alert("O campo NIF Fiscal do Proprietário é obrigatório.");
+      alert("O campo NIF Fiscal do Proprietário é obrigatório (escreva NA se o condómino recusar fornecer).");
       return;
     }
     if (!propEmail.trim()) {
-      alert("O campo E-mail do Proprietário é obrigatório.");
+      alert("O campo E-mail do Proprietário é obrigatório (escreva NA se o condómino recusar fornecer/registar-se).");
       return;
     }
     if (!propTlm.trim()) {
-      alert("O campo Telemóvel do Proprietário é obrigatório.");
+      alert("O campo Telemóvel do Proprietário é obrigatório (escreva NA se o condómino recusar fornecer).");
       return;
     }
     if (!adminInterno) {
@@ -910,8 +914,13 @@ export function GestaoFracoes({
     };
 
     try {
+      // Com NIF "NA" (recusado), usar o NIF como parte do id_proprietario
+      // faria colidir dois proprietários diferentes que ambos recusaram
+      // fornecer o NIF (o segundo upsert sobrescrevia o primeiro em
+      // silêncio) — nesse caso gera um id ligado à fração em vez do NIF.
+      const nifUtilizavel = novoProprietarioObj.nif && novoProprietarioObj.nif.toUpperCase() !== "NA";
       const propPayload = {
-        id_proprietario: "prop-" + (novoProprietarioObj.nif || Date.now()),
+        id_proprietario: nifUtilizavel ? "prop-" + novoProprietarioObj.nif : "prop-" + (selectedFracaoId || "geral") + "-" + Date.now(),
         id_predio: predio.id_predio,
         id_fracao: selectedFracaoId || null,
         nome: novoProprietarioObj.nome,
@@ -940,6 +949,10 @@ export function GestaoFracoes({
       if (selectedFracaoId) {
         if (targetFracao) {
           const isNewEmail = targetFracao.proprietario?.email !== propEmail.trim();
+          // Com email "NA" (condómino recusou fornecer), não faz sentido
+          // tentar enviar convites/boas-vindas reais para um endereço que
+          // não existe — a API do Resend rejeitaria o envio na mesma.
+          const emailValidoParaEnvio = /\S+@\S+\.\S+/.test(propEmail.trim());
 
           // Se isto é uma Transferência de Propriedade, arquiva o
           // proprietário anterior (capturado em iniciarTransferenciaPropriedade)
@@ -1040,7 +1053,7 @@ export function GestaoFracoes({
             setTransferindoPropriedadeDe(null);
           }
 
-          if (isNewEmail || !targetFracao.proprietario) {
+          if ((isNewEmail || !targetFracao.proprietario) && emailValidoParaEnvio) {
             // Ordem deliberada: primeiro o email de boas-vindas (com o PDF
             // de instruções do site & instalação da PWA em anexo), só depois
             // o email de ativação — para a pessoa abrir o 1º email, ler o
@@ -1104,7 +1117,7 @@ export function GestaoFracoes({
           // informativo, nunca recebia email nenhum nem conseguia entrar na
           // plataforma. Mesma ordem: boas-vindas primeiro, 60s depois a
           // ativação. Só dispara quando o email do inquilino é novo/mudou.
-          const isNewInquilinoEmail = arrendada && inqNome.trim() && inqEmail.trim() && targetFracao.inquilino?.email !== inqEmail.trim();
+          const isNewInquilinoEmail = arrendada && inqNome.trim() && inqEmail.trim() && /\S+@\S+\.\S+/.test(inqEmail.trim()) && targetFracao.inquilino?.email !== inqEmail.trim();
           if (isNewInquilinoEmail) {
             setEnviandoConvites(true);
             try {
@@ -1912,21 +1925,21 @@ export function GestaoFracoes({
                   <label className="text-xs font-bold text-slate-700 mb-1">NIF Fiscal *</label>
                   <input 
                     type="text" 
-                    value={propNif} 
-                    onChange={e => setPropNif(e.target.value)} 
-                    placeholder="Ex: 221230475" 
+                    value={propNif}
+                    onChange={e => setPropNif(e.target.value)}
+                    placeholder="Ex: 221230475 ou NA se recusar"
                     className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono bg-white font-medium text-slate-800" 
                     required
                   />
                 </div>
                 <div className="flex flex-col">
                   <label className="text-xs font-bold text-slate-700 mb-1">E-mail *</label>
-                  <input 
-                    type="email" 
-                    value={propEmail} 
-                    onChange={e => setPropEmail(e.target.value)} 
-                    placeholder="Ex: jose@email.com" 
-                    className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono bg-white font-medium text-slate-800" 
+                  <input
+                    type="text"
+                    value={propEmail}
+                    onChange={e => setPropEmail(e.target.value)}
+                    placeholder="Ex: jose@email.com ou NA se recusar"
+                    className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono bg-white font-medium text-slate-800"
                     required
                   />
                 </div>
@@ -1934,9 +1947,9 @@ export function GestaoFracoes({
                   <label className="text-xs font-bold text-slate-700 mb-1">Telemóvel *</label>
                   <input 
                     type="text" 
-                    value={propTlm} 
-                    onChange={e => setPropTlm(e.target.value)} 
-                    placeholder="Ex: 912345678" 
+                    value={propTlm}
+                    onChange={e => setPropTlm(e.target.value)}
+                    placeholder="Ex: 912345678 ou NA se recusar"
                     className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono bg-white font-medium text-slate-800" 
                     required
                   />

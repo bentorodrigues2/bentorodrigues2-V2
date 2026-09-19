@@ -360,9 +360,10 @@ export function ModalFichaCondominoEditavel({
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">E-mail Oficial *</label>
                 <input
-                  type="email"
+                  type="text"
                   value={formData.prop_email}
                   onChange={e => handleChange("prop_email", e.target.value)}
+                  placeholder="Ex: jose@email.com ou NA se recusar"
                   className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-semibold text-slate-800 dark:text-white"
                 />
               </div>
@@ -417,10 +418,10 @@ export function ModalFichaCondominoEditavel({
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">E-mail</label>
                 <input
-                  type="email"
+                  type="text"
                   value={formData.coprop_email}
                   onChange={e => handleChange("coprop_email", e.target.value)}
-                  placeholder="coprop@email.pt"
+                  placeholder="coprop@email.pt ou NA se recusar"
                   className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 dark:text-white"
                 />
               </div>
@@ -490,9 +491,10 @@ export function ModalFichaCondominoEditavel({
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">E-mail do Inquilino</label>
                   <input
-                    type="email"
+                    type="text"
                     value={formData.inq_email}
                     onChange={e => handleChange("inq_email", e.target.value)}
+                    placeholder="Ex: inquilino@email.com ou NA se recusar"
                     className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 dark:text-white"
                   />
                 </div>
