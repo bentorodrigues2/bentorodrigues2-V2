@@ -350,7 +350,7 @@ export default function App() {
 
   // Sincronização automática para manter aberto o menu Área Financeira quando uma das suas secções está ativa
   useEffect(() => {
-    if (["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "saldos_iniciais", "contas", "fundo_reserva"].includes(activeSection)) {
+    if (["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "saldos_iniciais", "contas", "fundo_reserva"].includes(activeSection)) {
       setOpenMenuFinanceiro(true);
     }
   }, [activeSection]);
@@ -1253,14 +1253,14 @@ export default function App() {
               id="sidebar-item-financeiro"
               onClick={() => {
                 setOpenMenuFinanceiro(!openMenuFinanceiro);
-                if (!["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection)) {
+                if (!["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection)) {
                   setActiveSection("configuracao_arranque");
                 }
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                ["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection) 
+                ["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection) 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
                   : "text-slate-400 hover:text-white hover:bg-slate-800/30"
               }`}
@@ -1386,6 +1386,21 @@ export default function App() {
                 >
                   <img src="/modulos/25-relatorio.png" alt="Relatórios" className="w-4 h-4 object-contain shrink-0" />
                   <span>Relatórios de Dívidas</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveSection("relatorios_automaticos");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "relatorios_automaticos"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <i className="fa-solid fa-file-invoice-dollar text-emerald-400 text-xs"></i>
+                  <span>Relatórios Financeiros (Prestação de Contas)</span>
                 </button>
 
                 {/* --- MOVIMENTOS --- */}
@@ -2383,6 +2398,7 @@ export default function App() {
                 {activeSection === "movimentos" && "Registo de Movimentos Financeiros"}
                 {activeSection === "financeiro_recibos" && "Emissão de Recibos Manuais (100% Editável)"}
                 {activeSection === "financeiro_relatorios" && "Relatórios de Dívidas (por Condómino & Pro Condomínio)"}
+                {activeSection === "relatorios_automaticos" && "Relatórios Financeiros (Prestação de Contas)"}
                 {activeSection === "financeiro_extratos" && "Extrato de Movimentos e Saldo (Visão Condómino)"}
                 {activeSection === "financeiro_quotas_mensais" && "Mapa de Quotas Mensais de Condomínio"}
                 {activeSection === "financeiro_quotas_extra" && "Quotas Extraordinárias & Fundos Especiais"}

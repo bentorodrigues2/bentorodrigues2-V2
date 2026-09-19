@@ -22,23 +22,6 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
   const [compiledReport, setCompiledReport] = useState<any | null>(null);
   const [isFiltroModalOpen, setIsFiltroModalOpen] = useState(false);
 
-  // Simulated static/fallback values if real props are empty
-  const defaultMovimentos: Movimento[] = movimentos.length > 0 ? movimentos : [
-    { id_mov: "m-1", id_predio: predio.id_predio, id_conta: "c-1", data: "2026-07-12", tipo: "RECEITA", valor: 350.00, descricao: "Quota Mensal Fração A", categoria: "Quotas Comuns" },
-    { id_mov: "m-2", id_predio: predio.id_predio, id_conta: "c-1", data: "2026-07-10", tipo: "RECEITA", valor: 420.00, descricao: "Quota Mensal Fração B", categoria: "Quotas Comuns" },
-    { id_mov: "m-3", id_predio: predio.id_predio, id_conta: "c-1", data: "2026-07-08", tipo: "DESPESA", valor: 160.00, descricao: "Limpeza Semanal Áreas Comuns", categoria: "Limpeza e Higiene" },
-    { id_mov: "m-4", id_predio: predio.id_predio, id_conta: "c-1", data: "2026-07-05", tipo: "DESPESA", valor: 85.00, descricao: "Manutenção Elevador Principal", categoria: "Manutenção Técnica" },
-    { id_mov: "m-5", id_predio: predio.id_predio, id_conta: "c-1", data: "2026-07-02", tipo: "DESPESA", valor: 45.12, descricao: "Fatura Eletricidade Escadas", categoria: "Eletricidade" },
-    { id_mov: "m-6", id_predio: predio.id_predio, id_conta: "c-1", data: "2026-06-25", tipo: "RECEITA", valor: 350.00, descricao: "Quota Mensal Fração C", categoria: "Quotas Comuns" },
-    { id_mov: "m-7", id_predio: predio.id_predio, id_conta: "c-1", data: "2026-06-18", tipo: "DESPESA", valor: 1200.00, descricao: "Reparação Infiltração Garagem", categoria: "Obras Conservação" },
-  ];
-
-  const defaultFracoes: Fracao[] = fracoes.length > 0 ? fracoes : [
-    { id_fracao: "fr-1", id_predio: predio.id_predio, fracao_nome: "R/C Esq", piso: "0", permilagem: 125, tipologia: "T2", tipo_access: "Escadas", tem_garagem_spot: true, tem_arrecadacao_box: false, is_arrendada: false, administrador_interno: "Sim", notificacao_preferencial: "Email", proprietario: { nome: "António Simões", nif: "123456789", email: "antonio@email.com", tlm: "912345678" }, inquilino: null },
-    { id_fracao: "fr-2", id_predio: predio.id_predio, fracao_nome: "R/C Dir", piso: "0", permilagem: 125, tipologia: "T2", tipo_access: "Escadas", tem_garagem_spot: true, tem_arrecadacao_box: true, is_arrendada: true, administrador_interno: "Não", notificacao_preferencial: "Email", proprietario: { nome: "Maria Ferreira", nif: "987654321", email: "maria@email.com", tlm: "965432109" }, inquilino: { nome: "Carlos Santos", nif: "234567890", email: "carlos@email.com", tlm: "933221100" } },
-    { id_fracao: "fr-3", id_predio: predio.id_predio, fracao_nome: "1º Esq", piso: "1", permilagem: 250, tipologia: "T3", tipo_access: "Elevador", tem_garagem_spot: true, tem_arrecadacao_box: true, is_arrendada: false, administrador_interno: "Não", notificacao_preferencial: "Email", proprietario: { nome: "Joana Fernandes", nif: "456789123", email: "joana@email.com", tlm: "921122334" }, inquilino: null },
-  ];
-
   const handleCompilarRelatorio = () => {
     setIsCompiling(true);
     setCompiledReport(null);
@@ -46,8 +29,8 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
     setTimeout(() => {
       // Compile data
       const filterYear = parseInt(anoSelecionado);
-      
-      const filtered = defaultMovimentos.filter(m => {
+
+      const filtered = movimentos.filter(m => {
         const parts = m.data.split("-");
         const movYear = parts[0].length === 4 ? parseInt(parts[0]) : parseInt(parts[2]);
         const movMonth = parts[0].length === 4 ? parts[1] : parts[1];
@@ -89,7 +72,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
         saldoPeriodo,
         resultadoLiquido: saldoPeriodo,
         despesasPorCategoria,
-        totalFracoes: defaultFracoes.length
+        totalFracoes: fracoes.length
       });
 
       setIsCompiling(false);
@@ -100,6 +83,12 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
     if (!compiledReport || !onAddDocumento) {
       alert("Não é possível publicar: gere primeiro um relatório.");
       return;
+    }
+    if (compiledReport.movimentos.length === 0) {
+      const confirmar = window.confirm(
+        "Este período não tem nenhum movimento financeiro registado — o relatório ficaria com Receitas, Despesas e Saldo a 0,00€.\n\nIsto pode significar que ainda não há dados lançados para este período (e não que as contas estão mesmo a zero). Publicar mesmo assim no Portal, visível aos condóminos?"
+      );
+      if (!confirmar) return;
     }
     setIsPublicando(true);
     const novoDoc: Documento = {
@@ -151,7 +140,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
           <button
             type="button"
             onClick={() => {
-              exportarBalanceteMapaAnualXLS(predio, defaultFracoes, parseInt(anoSelecionado) || 2026, [], defaultMovimentos);
+              exportarBalanceteMapaAnualXLS(predio, fracoes, parseInt(anoSelecionado) || 2026, [], movimentos);
             }}
             className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all cursor-pointer flex items-center gap-2 shadow-sm"
             title="Exportar Grelha das 12 Quotas Mensais de todas as Frações num único ficheiro Excel/CSV"
@@ -448,8 +437,8 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
         isOpen={isFiltroModalOpen}
         onClose={() => setIsFiltroModalOpen(false)}
         predio={predio}
-        fracoes={defaultFracoes}
-        movimentos={defaultMovimentos}
+        fracoes={fracoes}
+        movimentos={movimentos}
       />
     </div>
   );
