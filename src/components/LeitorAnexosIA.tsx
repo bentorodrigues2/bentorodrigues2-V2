@@ -5,10 +5,8 @@ import {
   UploadCloud, 
   Sparkles, 
   CheckCircle2, 
-  Receipt, 
-  Mail, 
-  Send, 
-  Bot, 
+  Receipt,
+  Bot,
   Search, 
   Check, 
   RefreshCw, 
@@ -24,7 +22,6 @@ import {
   Eye
 } from "lucide-react";
 import { formatDatePT } from "../utils";
-import { triggerSendReaction } from "./SendingReactionModal";
 
 interface LeitorAnexosIAProps {
   predio: Predio;
@@ -41,7 +38,6 @@ interface DocumentoAnalisado {
   dataUpload: string;
   status: "ANALISANDO" | "CONCLUIDO" | "LANCADO" | "ERRO";
   confiancaIa?: number;
-  remetenteEmail?: string;
   dadosExtraidos: {
     fornecedorNome?: string;
     nif?: string;
@@ -56,7 +52,6 @@ interface DocumentoAnalisado {
     fracaoReferenciada?: string;
     descricaoDespesa: string;
     resumoIa: string;
-    sugestaoRespostaEmail?: string;
   };
 }
 
@@ -163,15 +158,6 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
     } else {
       showToast(`✅ Lançado no mapa financeiro como ${isReceita ? "Receita" : "Despesa"} (${doc.dadosExtraidos.valorTotal.toFixed(2)}€)!`);
     }
-  };
-
-  const enviarAutoRespostaEmail = () => {
-    if (!docSelecionado) return;
-    const dest = docSelecionado.remetenteEmail || "o condómino";
-    
-    triggerSendReaction("email", `Autoresponder: ${docSelecionado.dadosExtraidos.fornecedorNome || dest}`, () => {
-      showToast(`📧 E-mail de resposta automática enviado com sucesso para ${dest}!`);
-    });
   };
 
   const docsFiltrados = documentos.filter(doc => {
@@ -537,35 +523,6 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
                 </div>
               </div>
 
-              {/* Autoresponder Gemini E-mail Suggestion */}
-              {docSelecionado.dadosExtraidos.sugestaoRespostaEmail && (
-                <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-200 dark:border-emerald-900/40 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center space-x-1.5 text-emerald-800 dark:text-emerald-300 font-bold">
-                      <Mail className="h-3.5 w-3.5" />
-                      <span>Autoresponder ({docSelecionado.remetenteEmail || "condómino"})</span>
-                    </div>
-                    <span className="text-[9px] bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 px-1.5 py-0.5 rounded font-mono font-bold">
-                      Pronto
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed font-sans max-h-24 overflow-y-auto">
-                    {docSelecionado.dadosExtraidos.sugestaoRespostaEmail}
-                  </div>
-
-                  <div className="flex items-center justify-end">
-                    <button
-                      type="button"
-                      onClick={enviarAutoRespostaEmail}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Send className="h-3 w-3" />
-                      <span>Enviar Resposta Automática</span>
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 text-slate-400 text-xs text-center space-y-2">

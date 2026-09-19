@@ -113,6 +113,7 @@ export function AssistenteImportacao({ onImportComplete, loggedUser }: Assistent
   // States for missing fields report
   const [showReportModal, setShowReportModal] = useState(false);
   const [emailReport, setEmailReport] = useState<{ to: string; subject: string; body: string } | null>(null);
+  const [enviandoRelatorioLacunas, setEnviandoRelatorioLacunas] = useState(false);
 
   // Drag and drop state
   const [dragActive, setDragActive] = useState(false);
@@ -246,6 +247,38 @@ export function AssistenteImportacao({ onImportComplete, loggedUser }: Assistent
       body,
     });
     setShowReportModal(true);
+  };
+
+  // Envio real do relatório de lacunas por email — antes o botão
+  // ("Simular Envio por Email") só mostrava um alert "enviado com sucesso"
+  // sem chamar nenhuma API, apesar do destinatário e do conteúdo já serem
+  // reais (o próprio email do administrador autenticado).
+  const handleEnviarRelatorioLacunas = async () => {
+    if (!emailReport) return;
+    setEnviandoRelatorioLacunas(true);
+    try {
+      const resp = await fetch("/api/email?acao=notificar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: emailReport.to,
+          nomeDestinatario: loggedUser.nome,
+          assunto: emailReport.subject,
+          mensagem: emailReport.body.replace(/\n/g, "<br>")
+        })
+      });
+      const resultado = await resp.json();
+      if (!resp.ok || !resultado.ok) {
+        throw new Error(resultado?.error || "Falha ao enviar o email.");
+      }
+      alert(`✅ Relatório enviado com sucesso para ${emailReport.to}!`);
+      setShowReportModal(false);
+    } catch (err) {
+      console.error("Erro ao enviar relatório de lacunas:", err);
+      alert(`❌ Não foi possível enviar o relatório: ${err instanceof Error ? err.message : "erro desconhecido"}.`);
+    } finally {
+      setEnviandoRelatorioLacunas(false);
+    }
   };
 
   // Commit and save everything to parent state
@@ -948,13 +981,11 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
                 </button>
 
                 <button
-                  onClick={() => {
-                    alert(`Relatório enviado com sucesso por correio interno para o administrador: ${emailReport.to}!`);
-                    setShowReportModal(false);
-                  }}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer transition-all"
+                  onClick={handleEnviarRelatorioLacunas}
+                  disabled={enviandoRelatorioLacunas}
+                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer transition-all"
                 >
-                  <i className="fa-solid fa-paper-plane mr-1"></i> Simular Envio por Email
+                  <i className={`fa-solid ${enviandoRelatorioLacunas ? "fa-spinner fa-spin" : "fa-paper-plane"} mr-1`}></i> {enviandoRelatorioLacunas ? "A enviar..." : "Enviar Relatório por Email"}
                 </button>
               </div>
             </div>

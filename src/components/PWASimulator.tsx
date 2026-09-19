@@ -1055,22 +1055,33 @@ export function PWASimulator({
   const handleBroadcastNotification = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNotificationTitle || !newNotificationDesc) return;
-    const nova = {
-      id: "not-b-" + Date.now(),
-      title: newNotificationTitle,
-      desc: newNotificationDesc,
-      date: "Agora"
-    };
-    setPwaNotifications(prev => [nova, ...prev]);
-    fetch("/api/admin?acao=enviar-push", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id_predio: predio.id_predio, title: newNotificationTitle, body: newNotificationDesc, categoria: "optional_general" })
-    }).catch(() => {});
-    registarLogAuditoria("Comunicação", `Enviou uma notificação push: "${newNotificationTitle}"`, predio.id_predio, loggedUser);
+    const tituloEnviado = newNotificationTitle;
+    const descEnviada = newNotificationDesc;
+
+    // O pedido real já era feito, mas sem "action" — o erro era engolido
+    // (.catch(() => {})) e a animação de "sucesso" disparava incondicional,
+    // por isso o administrador via sempre "enviado" mesmo quando o envio
+    // push falhava de facto.
+    triggerSendReaction("mensagem", "A Enviar Alerta Push ao Condomínio...", async () => {
+      const resp = await fetch("/api/admin?acao=enviar-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_predio: predio.id_predio, title: tituloEnviado, body: descEnviada, categoria: "optional_general" })
+      });
+      const resultado = await resp.json();
+      if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar a notificação push");
+
+      const nova = {
+        id: "not-b-" + Date.now(),
+        title: tituloEnviado,
+        desc: descEnviada,
+        date: "Agora"
+      };
+      setPwaNotifications(prev => [nova, ...prev]);
+      registarLogAuditoria("Comunicação", `Enviou uma notificação push: "${tituloEnviado}"`, predio.id_predio, loggedUser);
+    });
     setNewNotificationTitle("");
     setNewNotificationDesc("");
-    triggerSendReaction("mensagem", "A Enviar Alerta Push ao Condomínio...");
   };
 
   // Technician submits checklist/report

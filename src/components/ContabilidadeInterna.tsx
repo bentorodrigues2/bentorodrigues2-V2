@@ -195,7 +195,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
     setMovimentosReconciliacao(novosMovs);
     setComprovativosPendentes(novosDocs);
 
-    alert(`Reconciliador Inteligente CondoManager AI:\nEncontrados ${matchedCount} cruzamentos automáticos perfeitos de valores e datas! Comprovativos vinculados à contabilidade.`);
+    alert(`Reconciliador Inteligente CondoManager AI:\nEncontrados ${matchedCount} cruzamento(s) automático(s) por valor exato! Comprovativos vinculados à contabilidade. (Datas próximas ainda têm de ser confirmadas manualmente.)`);
   };
 
   // 3. Motor de Categorização Semântica / Regras
@@ -472,7 +472,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                 <i className="fa-solid fa-wand-magic-sparkles text-indigo-600 mr-2"></i> Conciliação Bancária & Comprovativos Inteligente
               </h4>
               <p className="text-[11px] text-slate-500 leading-relaxed max-w-2xl">
-                O CondoManager AI lê os ficheiros de faturas digitadas e extratos bancários integrados em tempo real. Clique em "Iniciar Reconciliação" para emparelhar automaticamente faturas por valor e data de vencimento.
+                O CondoManager AI lê os ficheiros de faturas digitadas e cruza-os com os movimentos bancários reais deste prédio ainda por justificar. Clique em "Iniciar Reconciliação" para emparelhar automaticamente por valor exato — datas diferentes têm de ser confirmadas manualmente.
               </p>
             </div>
             <button
@@ -487,8 +487,8 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
             {/* Bank movements */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2 flex justify-between">
-                <span>Movimentos do Extrato Bancário</span>
-                <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-mono">BPI Empresas</span>
+                <span>Movimentos por Justificar</span>
+                <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-mono">{movimentosReconciliacao.length}</span>
               </h4>
               <div className="space-y-2">
                 {movimentosReconciliacao.map(m => (
