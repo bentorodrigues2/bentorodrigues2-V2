@@ -104,6 +104,7 @@ Saldos: 0.00€`
 export function AssistenteImportacao({ onImportComplete, loggedUser }: AssistenteImportacaoProps) {
   const [activeStep, setActiveStep] = useState<"upload" | "homologation" | "success">("upload");
   const [textContent, setTextContent] = useState("");
+  const [anexoFile, setAnexoFile] = useState<{ nome: string; base64: string; mimeType: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -146,19 +147,45 @@ export function AssistenteImportacao({ onImportComplete, loggedUser }: Assistent
     }
   };
 
+  // PDF e XLSX são ficheiros binários — lê-los com readAsText (como acontecia
+  // antes) corrompe o conteúdo e a IA recebe lixo binário, daí o formulário
+  // "bloquear e dar erro" com estes formatos apesar de os aceitar no <input>.
+  // Só TXT/CSV/JSON são texto puro e podem ser lidos diretamente; os restantes
+  // vão como base64 para a IA multimodal ler o documento real (mesmo padrão
+  // já usado em LeitorAnexosIA.tsx / GestaoSinistrosSeguros.tsx).
+  const TIPOS_TEXTO = [".txt", ".csv", ".json"];
+
   const readAndSetFile = (file: File) => {
+    const nomeMin = file.name.toLowerCase();
+    const ehTexto = TIPOS_TEXTO.some((ext) => nomeMin.endsWith(ext));
+
+    if (ehTexto) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setTextContent(event.target.result as string);
+          setAnexoFile(null);
+        }
+      };
+      reader.readAsText(file);
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
-      if (event.target?.result) {
-        setTextContent(event.target.result as string);
+      const resultado = event.target?.result as string;
+      const base64 = resultado ? resultado.split(",")[1] || "" : "";
+      if (base64) {
+        setAnexoFile({ nome: file.name, base64, mimeType: file.type || "application/octet-stream" });
+        setTextContent("");
       }
     };
-    reader.readAsText(file);
+    reader.readAsDataURL(file);
   };
 
   // Submit to Gemini extractor endpoint
   const processWithIA = async () => {
-    if (!textContent.trim()) {
+    if (!textContent.trim() && !anexoFile) {
       setError("Por favor, cole o texto do documento ou carregue um ficheiro.");
       return;
     }
@@ -167,18 +194,22 @@ export function AssistenteImportacao({ onImportComplete, loggedUser }: Assistent
     setError(null);
 
     try {
+      const payload = anexoFile
+        ? { base64: anexoFile.base64, mimeType: anexoFile.mimeType }
+        : { textContent };
+
       const response = await fetch("/api/parse-import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ textContent }),
+        body: JSON.stringify(payload),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Falha ao comunicar com o servidor de IA. Verifique as credenciais.");
+        throw new Error(data?.error || "Falha ao comunicar com o servidor de IA.");
       }
 
-      const data = await response.json();
-      
       if (!data.predio || !data.fracoes) {
         throw new Error("A IA não conseguiu identificar os campos básicos necessários do prédio e frações.");
       }
@@ -421,14 +452,31 @@ export function AssistenteImportacao({ onImportComplete, loggedUser }: Assistent
                 <p className="text-xs text-slate-400">A Inteligência Artificial irá ler toda a estrutura do edifício, frações, nomes, NIFs, e-mails e quotas em atraso automaticamente.</p>
               </div>
 
-              <textarea
-                value={textContent}
-                onChange={(e) => setTextContent(e.target.value)}
-                placeholder="Exemplo de colar:
+              {anexoFile ? (
+                <div className="w-full h-80 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-4 flex flex-col items-center justify-center text-center space-y-3">
+                  <i className="fa-solid fa-file-lines text-3xl text-violet-500"></i>
+                  <div>
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{anexoFile.nome}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Ficheiro pronto para leitura pela IA multimodal (Gemini lê o documento real, PDF ou Excel)</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAnexoFile(null)}
+                    className="text-xs font-semibold text-rose-600 hover:text-rose-700 cursor-pointer"
+                  >
+                    <i className="fa-solid fa-xmark mr-1"></i>Remover ficheiro e colar texto em vez disso
+                  </button>
+                </div>
+              ) : (
+                <textarea
+                  value={textContent}
+                  onChange={(e) => setTextContent(e.target.value)}
+                  placeholder="Exemplo de colar:
 Condomínio Edifício Miramar, Rua de Gaia 123...
 Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
-                className="w-full h-80 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-4 text-xs font-mono-custom focus:outline-none focus:border-violet-500 text-slate-700 dark:text-slate-200"
-              />
+                  className="w-full h-80 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-4 text-xs font-mono-custom focus:outline-none focus:border-violet-500 text-slate-700 dark:text-slate-200"
+                />
+              )}
 
               {/* Drag and Drop Zone */}
               <div 
@@ -456,8 +504,8 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
               <div className="flex justify-end pt-2">
                 <button
                   onClick={processWithIA}
-                  disabled={isLoading || !textContent.trim()}
-                  className={`px-5 py-2.5 rounded-lg text-sm font-bold text-white flex items-center space-x-2 transition-all ${isLoading || !textContent.trim() ? "bg-slate-300 dark:bg-slate-800 cursor-not-allowed" : "bg-violet-600 hover:bg-violet-700 hover:shadow-lg cursor-pointer"}`}
+                  disabled={isLoading || (!textContent.trim() && !anexoFile)}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-bold text-white flex items-center space-x-2 transition-all ${isLoading || (!textContent.trim() && !anexoFile) ? "bg-slate-300 dark:bg-slate-800 cursor-not-allowed" : "bg-violet-600 hover:bg-violet-700 hover:shadow-lg cursor-pointer"}`}
                 >
                   {isLoading ? (
                     <>
@@ -490,7 +538,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
                 {MOCK_PRESETS.map((preset, idx) => (
                   <button
                     key={idx}
-                    onClick={() => setTextContent(preset.text)}
+                    onClick={() => { setTextContent(preset.text); setAnexoFile(null); }}
                     className="w-full text-left p-3.5 rounded-lg border border-slate-100 dark:border-slate-800 hover:border-violet-300 dark:hover:border-violet-800 bg-slate-50/50 dark:bg-slate-950/40 hover:bg-violet-50/10 dark:hover:bg-violet-950/20 transition-all cursor-pointer group"
                   >
                     <div className="flex items-center justify-between">

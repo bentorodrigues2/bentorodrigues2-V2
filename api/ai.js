@@ -351,6 +351,13 @@ Gera a ata integral estruturada com introdução, verificação de quórum por p
   }
 
   // 8. PARSE DE IMPORTAÇÃO (/api/parse-import -> ?acao=parse-import)
+  // Aceita texto colado/CSV/TXT (textContent) OU um ficheiro binário real
+  // (base64 + mimeType, ex: PDF/XLSX) lido no cliente com readAsDataURL —
+  // antes só existia o caminho de texto, mas o formulário aceitava .pdf/.xlsx
+  // e lia-os com readAsText, enviando conteúdo binário corrompido à IA
+  // (por isso "bloqueava e dava erro" com PDFs/Excel reais). Devolve
+  // diretamente {predio, fracoes} no formato que o ecrã de homologação espera,
+  // em vez do array solto e incompatível que a versão anterior devolvia.
   if (acao === "parse-import") {
     if (req.method === "GET") {
       return res.status(200).json({ status: "online", endpoint: "/api/parse-import" });
@@ -360,35 +367,73 @@ Gera a ata integral estruturada com introdução, verificação de quórum por p
     }
 
     try {
-      const { textContent } = req.body || {};
-      const prompt = `Analisa o seguinte texto que contém dados de frações de um condomínio e extrai um array JSON estrito:
-[
-  {
-    "fracao": "Ex: 1º Dto ou A",
-    "piso": "Ex: 1 ou R/C",
-    "tipologia": "Ex: T2 ou T3",
-    "permilagem": 50,
-    "proprietario": "Nome do proprietário",
-    "email": "email@exemplo.com",
-    "telefone": "912345678",
-    "quota_mensal": 45.00
-  }
-]
+      const { textContent, base64, mimeType } = req.body || {};
+      if (!textContent && !base64) {
+        return res.status(400).json({ error: "Envie o texto colado (textContent) ou um ficheiro (base64 + mimeType)." });
+      }
 
-Texto para extrair:
-${textContent}`;
+      const prompt = `Analisa o documento/texto de transição de um condomínio em Portugal (ata, mapa de frações, folha de saldos de uma gestora anterior) e extrai TODOS os dados reais nele contidos.
+Devolve APENAS um JSON estrito com este formato exato:
+{
+  "predio": {
+    "nome": "Nome do condomínio/edifício",
+    "morada_linha1": "Nome da rua/avenida, sem número",
+    "num_porta": "Número de porta",
+    "codigo_postal": "Formato 0000-000",
+    "localidade": "Cidade/localidade",
+    "nif": "NIF do prédio/condomínio",
+    "patrimonio": {
+      "tem_elevador": true,
+      "num_elevadores": 1,
+      "tem_garagem": false,
+      "tem_piscina": false,
+      "tem_jardins": false,
+      "tem_churrasqueira": false
+    }
+  },
+  "fracoes": [
+    {
+      "fracao_nome": "Ex: A ou 1º Dto",
+      "piso": "Ex: R/C ou 1º",
+      "tipologia": "Ex: T2 ou T3",
+      "permilagem": 50,
+      "proprietario": {
+        "nome": "Nome completo do proprietário",
+        "nif": "NIF ou null se não constar",
+        "email": "email ou null se não constar",
+        "tlm": "telemóvel/contacto ou null se não constar"
+      },
+      "saldo_inicial": 0
+    }
+  ]
+}
+Regras: "saldo_inicial" é negativo se o condómino tiver dívida/quotas em atraso, positivo se tiver crédito/adiantamento, e 0 se estiver regularizado. Se algum dado não constar no documento, usa null nesse campo (nunca inventes). Se não conseguires identificar campos do prédio (ex: NIF do edifício), usa null nesses campos mas extrai sempre a lista de frações que conseguires encontrar.`;
+
+      const parts = [{ text: textContent ? `${prompt}\n\nTexto para extrair:\n${textContent}` : prompt }];
+      if (base64 && mimeType) {
+        parts.push({ inlineData: { mimeType, data: base64 } });
+      }
 
       const responseText = await generateWithFallback({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        contents: [{ role: "user", parts }],
         responseMimeType: "application/json"
       });
 
+      let parsed = null;
       try {
-        const parsed = JSON.parse(responseText);
-        return res.status(200).json({ data: parsed });
+        parsed = JSON.parse(responseText);
       } catch {
-        return res.status(200).json({ raw: responseText });
+        const match = responseText.match(/\{[\s\S]*\}/);
+        if (match) {
+          try { parsed = JSON.parse(match[0]); } catch { /* mantém null, cai no erro abaixo */ }
+        }
       }
+
+      if (!parsed || !parsed.predio || !Array.isArray(parsed.fracoes)) {
+        return res.status(502).json({ error: "A IA não conseguiu identificar os campos básicos necessários do prédio e frações neste documento." });
+      }
+
+      return res.status(200).json({ predio: parsed.predio, fracoes: parsed.fracoes });
     } catch (err) {
       console.error("[api/ai?acao=parse-import] Erro:", err);
       return res.status(500).json({ error: err?.message || "Erro ao processar importação." });

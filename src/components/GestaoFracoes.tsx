@@ -76,6 +76,7 @@ export function GestaoFracoes({
   }[]>([]);
   const [gravandoCoproprietario, setGravandoCoproprietario] = useState(false);
   const [enviandoConviteCoproprietario, setEnviandoConviteCoproprietario] = useState(false);
+  const [reenviandoConviteCoIdx, setReenviandoConviteCoIdx] = useState<number | null>(null);
   const [editingCoIndex, setEditingCoIndex] = useState<number | null>(null);
   const [enviandoConvites, setEnviandoConvites] = useState(false);
 
@@ -2091,6 +2092,48 @@ export function GestaoFracoes({
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            disabled={reenviandoConviteCoIdx === idx}
+                            onClick={async () => {
+                              // Reenvia o link de acesso ao mesmo email (sem alterar dados) —
+                              // essencial quando o link original expirou (o Supabase expira-os
+                              // ao fim de 24h) ou nunca chegou, já que editar e gravar sem
+                              // mudar o email não reenvia nada (só reenvia quando o email muda).
+                              if (!co.email) {
+                                alert("Este coproprietário não tem email registado.");
+                                return;
+                              }
+                              setReenviandoConviteCoIdx(idx);
+                              try {
+                                const resp = await fetch("/api/admin?acao=convidar", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    email: co.email,
+                                    nome: co.nome,
+                                    role: "COPROPRIETARIO",
+                                    id_predio: predio.id_predio,
+                                    id_fracao: selectedFracaoId
+                                  })
+                                });
+                                const data = await resp.json();
+                                if (resp.ok && data.ok) {
+                                  alert(`✅ Convite de acesso reenviado para ${co.email}. O link anterior deixa de ser válido — só o novo email funciona.`);
+                                } else {
+                                  alert(`❌ Não foi possível reenviar o convite: ${data?.error || "erro desconhecido"}.`);
+                                }
+                              } catch (err) {
+                                alert(`❌ Não foi possível reenviar o convite: ${err instanceof Error ? err.message : "erro de rede"}.`);
+                              } finally {
+                                setReenviandoConviteCoIdx(null);
+                              }
+                            }}
+                            className="text-emerald-500 hover:text-emerald-700 disabled:opacity-40 p-1 text-xs cursor-pointer"
+                            title="Reenviar Convite de Acesso (link expirado ou nunca recebido)"
+                          >
+                            <i className={`fa-solid ${reenviandoConviteCoIdx === idx ? "fa-spinner fa-spin" : "fa-paper-plane"}`}></i>
+                          </button>
                           <button
                             type="button"
                             onClick={() => {

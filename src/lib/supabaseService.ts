@@ -1217,7 +1217,9 @@ export async function fetchAvisosFromSupabase(idPredio?: string): Promise<Aviso[
       vencimento: row.vencimento,
       descricao: row.descricao,
       valor: Number(row.valor),
-      estado: row.estado || "Pendente"
+      estado: row.estado || "Pendente",
+      id_movimento: row.id_movimento || undefined,
+      id_conta: row.id_conta || undefined
     }));
   } catch (err) {
     return null;
@@ -1235,7 +1237,9 @@ export async function saveAvisosToSupabase(novosAvisos: any[]): Promise<boolean>
     vencimento: a.vencimento,
     descricao: a.descricao,
     valor: a.valor,
-    estado: a.estado || "Pendente"
+    estado: a.estado || "Pendente",
+    id_movimento: a.id_movimento || null,
+    id_conta: a.id_conta || null
   }));
   return dbUpsert("avisos", payload);
 }

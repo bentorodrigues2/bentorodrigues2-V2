@@ -4,7 +4,7 @@ import { ActionIcon } from "./components/ActionIcon";
 import { LoggedUser, Predio, Conta, Fornecedor, Fracao, Aviso, Movimento, Reuniao, Documento, Ocorrencia, Reserva, CapacidadeLimite } from "./types";
 import { initialPredios, initialContas, initialFornecedores, initialFracoes, initialAvisos, initialMovements, initialReunioes, initialDocumentos, initialOcorrencias, defaultEmptyPredio } from "./data";
 import { isSupabaseConfigured, fetchUserProfileByEmail } from "./lib/supabaseService";
-import { supabase } from "./lib/supabaseClient";
+import { supabase, authRedirectHashAtLoad } from "./lib/supabaseClient";
 import { encontrarFotoDoUtilizador } from "./lib/condominoUtils";
 import {
   fetchPrediosFromSupabase,
@@ -118,12 +118,30 @@ export default function App() {
   // automaticamente pelo backend (pagamentos, movimentos, avisos, notas de
   // cobrança, etc.) alguma vez chegava a aparecer no ecrã do administrador.
   // Cada fetch* devolve null se o Supabase não estiver configurado ou se a
-  // Deteta chegada através de um link de convite/recuperação de password
-  // (o Supabase Auth SDK já apanhou o token da própria URL sozinho) — mostra
-  // o ecrã de "Definir Palavra-passe" em vez do login/dashboard normal.
+
+  // Deteta chegada através de um link de convite/recuperação de password e
+  // mostra o ecrã de "Definir Palavra-passe" em vez do login/dashboard normal.
+  // Dois casos reais que faltavam aqui (o link "ia para a página inicial"
+  // sem explicação nenhuma):
+  // 1) Convites de PRIMEIRO acesso (type=invite, gerados em api/admin.js)
+  //    autenticam a sessão mas o Supabase JS dispara SIGNED_IN, não
+  //    PASSWORD_RECOVERY — este último só existe para type=recovery. Sem
+  //    verificar o "type" na própria URL, um convite novo nunca acionava
+  //    o ecrã de definir password.
+  // 2) Um link expirado ou já usado nunca dispara nenhum evento de sessão —
+  //    o Supabase só deixa "#error=access_denied&error_code=otp_expired..."
+  //    na própria URL, que precisa de ser lido explicitamente.
   useEffect(() => {
+    const hashInicial = authRedirectHashAtLoad || "";
+    if (hashInicial.includes("error=") && (hashInicial.includes("otp_expired") || hashInicial.includes("access_denied") || hashInicial.includes("type=invite") || hashInicial.includes("type=recovery"))) {
+      setLoginErrorMessage("Este link de acesso expirou ou já foi utilizado. Peça à administração do condomínio para reenviar o convite ou use a opção \"Esqueci-me da password\".");
+      window.history.replaceState({}, "", window.location.pathname + window.location.search);
+    }
+
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY") {
+      const hashDaSessao = authRedirectHashAtLoad || "";
+      const chegouPorConviteOuRecuperacao = hashDaSessao.includes("type=invite") || hashDaSessao.includes("type=recovery");
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && chegouPorConviteOuRecuperacao)) {
         setNeedsPasswordSetup({ email: session?.user?.email || undefined });
       }
     });
@@ -2796,11 +2814,15 @@ export default function App() {
           )}
 
           {activeSection === "emissao" && (
-            <GestaoEmissao 
-              predio={predioAtivo} 
-              fracoes={fracoes} 
-              avisos={avisos} 
+            <GestaoEmissao
+              predio={predioAtivo}
+              fracoes={fracoes}
+              avisos={avisos}
               setAvisos={setAvisos}
+              contas={contas}
+              setContas={setContas}
+              movements={movements}
+              setMovements={setMovements}
               documentos={documentos}
               setDocumentos={setDocumentos}
               loggedUser={loggedUser}

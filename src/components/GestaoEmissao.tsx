@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Predio, Fracao, Aviso, LoggedUser, Documento, RevisaoOrcamento } from "../types";
+import { Predio, Fracao, Aviso, LoggedUser, Documento, RevisaoOrcamento, Conta, Movimento } from "../types";
 import { formatDatePT, generateAndDownloadPdf, formatQuotaReceiptNumber, downloadReceiptPDF, gerarReferenciaBR23E, parseValorMonetario } from "../utils";
 import { isSupabaseConfigured } from "@/lib/supabaseClient";
 import {
   dbUpdate,
   saveAvisosToSupabase,
+  saveContaToSupabase,
+  saveMovimentoToSupabase,
   registarLogAuditoria,
   fetchRevisoesOrcamentoFromSupabase,
   saveRevisaoOrcamentoToSupabase,
@@ -17,12 +19,16 @@ interface GestaoEmissaoProps {
   fracoes: Fracao[];
   avisos: Aviso[];
   setAvisos: React.Dispatch<React.SetStateAction<Aviso[]>>;
+  contas: Conta[];
+  setContas: React.Dispatch<React.SetStateAction<Conta[]>>;
+  movements: Movimento[];
+  setMovements: React.Dispatch<React.SetStateAction<Movimento[]>>;
   documentos?: Documento[];
   setDocumentos?: React.Dispatch<React.SetStateAction<Documento[]>>;
   loggedUser: LoggedUser;
 }
 
-export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, setDocumentos, loggedUser }: GestaoEmissaoProps) {
+export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setContas, movements, setMovements, documentos, setDocumentos, loggedUser }: GestaoEmissaoProps) {
   const [orcamentoAnual, setOrcamentoAnual] = useState(() => {
     const guardado = (predio.patrimonio as any)?.orcamento_anual;
     return guardado ? String(guardado) : "";
@@ -126,9 +132,12 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
   const [customDescritivo, setCustomDescritivo] = useState("");
   const [customCondomino, setCustomCondomino] = useState("");
   const [customNrecibo, setCustomNrecibo] = useState("");
+  const [pagamentoContaId, setPagamentoContaId] = useState("");
+  const [aRegistarPagamento, setARegistarPagamento] = useState(false);
 
   const predioFracoes = fracoes.filter(f => f.id_predio === predio.id_predio);
   const predioAvisos = avisos.filter(a => a.id_predio === predio.id_predio);
+  const predioContas = contas.filter(c => c.id_predio === predio.id_predio);
 
   const selectedFracaoObj = selectedAviso ? fracoes.find(f => f.id_fracao === selectedAviso.id_fracao) : null;
   const referenciaBR23EOficial = selectedFracaoObj?.referencia_br23e || selectedFracaoObj?.proprietario?.referencia_br23e || (selectedFracaoObj ? gerarReferenciaBR23E(selectedFracaoObj.fracao_nome, selectedFracaoObj.id_fracao) : "BR23E-FR-01");
@@ -260,6 +269,57 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
     registarLogAuditoria("Financeira", `Alterou o estado do aviso ${id} para "${novoEstado}"`, predio.id_predio, loggedUser);
   };
 
+  // Regista o depósito real do condómino ao marcar um aviso como pago —
+  // antes "Marcar Pago" só mudava um estado (sem criar nenhum movimento
+  // bancário nem tocar no saldo de conta nenhuma), por isso o recibo gerado
+  // mostrava referências de movimento (MOV-...) completamente fabricadas,
+  // que não correspondiam a nada na Tesouraria. Agora cria um Movimento real
+  // ligado à fração e à conta escolhida, e credita mesmo o saldo dessa conta.
+  const handleMarcarPagoComMovimento = async (aviso: Aviso, idConta: string) => {
+    if (!idConta) {
+      alert("Selecione a conta bancária onde o valor foi recebido antes de marcar como pago.");
+      return;
+    }
+    const contaAlvo = contas.find(c => c.id_conta === idConta);
+    if (!contaAlvo) {
+      alert("Conta bancária inválida.");
+      return;
+    }
+
+    const frac = fracoes.find(f => f.id_fracao === aviso.id_fracao);
+    const novoMovimento: Movimento = {
+      id_mov: "mov-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+      id_predio: predio.id_predio,
+      id_conta: idConta,
+      id_fracao: aviso.id_fracao,
+      data: customDataPagamento || new Date().toISOString().split("T")[0],
+      tipo: "Receita",
+      valor: aviso.valor,
+      descricao: `${aviso.tipo || "Quota"} — Fração ${frac?.fracao_nome || aviso.id_fracao} (Aviso ${aviso.id_aviso})`,
+      categoria: (aviso.tipo || "").toLowerCase().includes("extra") ? "Quota Extraordinária" : "Quota Mensal",
+      estado: "Justificado",
+      metodo_pagamento: "Transferência Bancária"
+    };
+
+    const contaAtualizada: Conta = { ...contaAlvo, saldo: (contaAlvo.saldo || 0) + aviso.valor };
+    setContas(prev => prev.map(c => c.id_conta === idConta ? contaAtualizada : c));
+    saveContaToSupabase(contaAtualizada).catch(console.error);
+
+    setMovements(prev => [novoMovimento, ...prev]);
+    saveMovimentoToSupabase(novoMovimento).catch(console.error);
+
+    const atualizacaoAviso = { estado: "Paga", id_movimento: novoMovimento.id_mov, id_conta: idConta };
+    setAvisos(prev => prev.map(a => a.id_aviso === aviso.id_aviso ? { ...a, ...atualizacaoAviso } : a));
+    if (selectedAviso && selectedAviso.id_aviso === aviso.id_aviso) {
+      setSelectedAviso(prev => prev ? { ...prev, ...atualizacaoAviso } : null);
+    }
+    dbUpdate("avisos", atualizacaoAviso, [["id_aviso", "eq", aviso.id_aviso]]).catch(console.error);
+    registarLogAuditoria("Financeira", `Registou o recebimento do aviso ${aviso.id_aviso} na conta ${contaAlvo.banco}`, predio.id_predio, loggedUser, `${aviso.valor.toFixed(2)}€`);
+
+    setARegistarPagamento(false);
+    setPagamentoContaId("");
+  };
+
   const fecharModal = () => {
     setSelectedAviso(null);
   };
@@ -274,12 +334,18 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
     const recNumStr = customNrecibo || fallbackRecNum;
     const dtPag = customDataPagamento || selectedAviso.data || new Date().toISOString().split("T")[0];
 
+    // Usa a referência do Movimento REAL criado ao "Marcar Pago" (se existir)
+    // em vez de fabricar códigos MOV-... que não correspondem a nada na
+    // Tesouraria — só cai no fallback gerado se o aviso ainda não tiver
+    // sido processado por handleMarcarPagoComMovimento (ex: recibo emitido
+    // manualmente antes do registo do depósito).
+    const refMovimentoReal = selectedAviso.id_movimento;
     downloadReceiptPDF({
       reciboNum: recNumStr,
       dataPagamento: dtPag,
-      movimentoQuotaMensal: `MOV-${new Date().getFullYear()}-QM-${avisoHash}`,
-      movimentoFundoReserva: `MOV-${new Date().getFullYear()}-FR-${avisoHash}`,
-      movimentoQuotaExtra: `MOV-${new Date().getFullYear()}-QE-${avisoHash}`,
+      movimentoQuotaMensal: refMovimentoReal || `MOV-${new Date().getFullYear()}-QM-${avisoHash}`,
+      movimentoFundoReserva: refMovimentoReal || `MOV-${new Date().getFullYear()}-FR-${avisoHash}`,
+      movimentoQuotaExtra: refMovimentoReal || `MOV-${new Date().getFullYear()}-QE-${avisoHash}`,
       buildingName: predio?.nome || "Condomínio",
       buildingAddress: `${predio?.morada_linha1 || ""} ${predio?.num_porta || ""}, ${predio?.localidade || ""}`,
       buildingNif: predio?.nif || "—",
@@ -837,7 +903,13 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
                   <div className="flex space-x-1.5">
                     <button
                       type="button"
-                      onClick={() => alterarEstadoAviso(selectedAviso.id_aviso, "Pendente")}
+                      onClick={() => {
+                        if (selectedAviso.id_movimento && !confirm("Este aviso já tem um depósito real registado na Tesouraria. Marcar como Pendente NÃO apaga esse movimento nem o saldo já creditado — se foi um erro, corrija/elimine o movimento diretamente em Movimentos & Tesouraria. Continuar?")) {
+                          return;
+                        }
+                        setARegistarPagamento(false);
+                        alterarEstadoAviso(selectedAviso.id_aviso, "Pendente");
+                      }}
                       className={`flex-1 py-1 text-[9px] font-extrabold rounded-md border ${
                         selectedAviso.estado === "Pendente"
                           ? "bg-amber-100 text-amber-800 border-amber-300"
@@ -848,8 +920,9 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
                     </button>
                     <button
                       type="button"
-                      onClick={() => alterarEstadoAviso(selectedAviso.id_aviso, "Paga")}
-                      className={`flex-1 py-1 text-[9px] font-extrabold rounded-md border ${
+                      disabled={selectedAviso.estado === "Paga"}
+                      onClick={() => setARegistarPagamento(true)}
+                      className={`flex-1 py-1 text-[9px] font-extrabold rounded-md border disabled:cursor-not-allowed ${
                         selectedAviso.estado === "Paga"
                           ? "bg-emerald-100 text-emerald-800 border-emerald-300"
                           : "bg-slate-50 border-slate-200 text-slate-400"
@@ -858,6 +931,43 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
                       Marcar Pago
                     </button>
                   </div>
+                  {selectedAviso.estado === "Paga" && selectedAviso.id_movimento && (
+                    <p className="text-[9px] text-emerald-600 dark:text-emerald-400 pt-0.5">
+                      <i className="fa-solid fa-check-circle mr-1"></i>Depósito registado na Tesouraria ({movements.find(m => m.id_mov === selectedAviso.id_movimento)?.categoria || "Movimento"})
+                    </p>
+                  )}
+
+                  {aRegistarPagamento && (
+                    <div className="mt-2 p-2.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-lg space-y-2">
+                      <label className="text-[9px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wide">Conta Bancária de Entrada *</label>
+                      <select
+                        value={pagamentoContaId}
+                        onChange={e => setPagamentoContaId(e.target.value)}
+                        className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[10px] px-2 py-1.5 rounded-lg focus:outline-emerald-500 dark:text-white"
+                      >
+                        <option value="">Selecione a conta...</option>
+                        {predioContas.map(c => (
+                          <option key={c.id_conta} value={c.id_conta}>{c.banco} ({c.tipo}) - Saldo: {c.saldo?.toFixed(2)}€</option>
+                        ))}
+                      </select>
+                      <div className="flex space-x-1.5">
+                        <button
+                          type="button"
+                          onClick={() => { setARegistarPagamento(false); setPagamentoContaId(""); }}
+                          className="flex-1 py-1 text-[9px] font-extrabold rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMarcarPagoComMovimento(selectedAviso, pagamentoContaId)}
+                          className="flex-1 py-1 text-[9px] font-extrabold rounded-md border border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700"
+                        >
+                          Confirmar Recebimento
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

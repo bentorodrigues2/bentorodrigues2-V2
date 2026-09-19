@@ -245,6 +245,8 @@ export interface Aviso {
   descricao: string;
   valor: number;
   estado: string;
+  id_movimento?: string;
+  id_conta?: string;
 }
 
 export interface Movimento {

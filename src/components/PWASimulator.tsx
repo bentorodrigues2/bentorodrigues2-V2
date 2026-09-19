@@ -3022,11 +3022,15 @@ export function PWASimulator({
                         />
                       )}
                       {activePwaSubMenuDetails === "aprovacoes_recibos" && (
-                        <GestaoEmissao 
+                        <GestaoEmissao
                           predio={predio}
                           fracoes={fracoes}
                           avisos={avisos}
                           setAvisos={setAvisos}
+                          contas={contas}
+                          setContas={setContas}
+                          movements={movements}
+                          setMovements={setMovements}
                           loggedUser={loggedUser}
                         />
                       )}
