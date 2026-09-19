@@ -15,7 +15,7 @@ import {
 import { Predio, Fracao, Conta, Aviso, LoggedUser } from "../types";
 import { jsPDF } from "jspdf";
 import { saveConfiguracaoQuotasToSupabase, saveAvisosToSupabase, registarLogAuditoria } from "../lib/supabaseService";
-import { parseValorMonetario } from "../utils";
+import { parseValorMonetario, gerarReferenciaBR23E, exportarBalanceteMapaAnualXLS } from "../utils";
 
 interface CalculoQuotasProps {
   predio: Predio;
@@ -98,7 +98,26 @@ export function CalculoQuotas({
   );
 
   // Cálculo individual da parcela extraordinária por mês se tiver prestações
-  const extraPorMesTotal = (parseValorMonetario(orcamentoExtra) || 0) / (numPrestacoesExtra || 1);
+  const extVal = parseValorMonetario(orcamentoExtra) || 0;
+  const extraPorMesTotal = extVal / (numPrestacoesExtra || 1);
+
+  // Taxa por permilagem da quota ordinária mensal, com o mesmo coeficiente
+  // real das lojas com acesso exterior usado em GestaoEmissao.tsx/
+  // cronService.js — antes esta pré-visualização calculava só por
+  // permilagem pura (sem a exceção das lojas), por isso a "Quota Ordinária"
+  // mostrada aqui nunca batia certo com o valor que a fração paga de facto.
+  const COEF_LOJA_EXTERIOR = 0.4528;
+  const isLojaExterior = (f: Fracao) => f.tipologia === "Loja Comercial" && (f.tipo_access || "").includes("Exterior");
+  const { rateNormalOrdinaria, rateLojaOrdinaria } = useMemo(() => {
+    let permilagemLoja = 0;
+    predioFracoes.forEach((f) => { if (isLojaExterior(f)) permilagemLoja += f.permilagem; });
+    const permilagemNormal = 1000 - permilagemLoja;
+    const denominador = permilagemNormal + permilagemLoja * COEF_LOJA_EXTERIOR;
+    const rN = denominador > 0 ? (Number(orcamentoRegular) || 0) / denominador : 0;
+    return { rateNormalOrdinaria: rN, rateLojaOrdinaria: rN * COEF_LOJA_EXTERIOR };
+  }, [predioFracoes, orcamentoRegular]);
+
+  const calcularQuotaOrdinaria = (f: Fracao) => f.permilagem * (isLojaExterior(f) ? rateLojaOrdinaria : rateNormalOrdinaria);
 
   // Emitir Quotas Extraordinárias em Lote diretamente para Avisos.
   // A quota ordinária mensal NÃO se emite aqui — é sempre a emissão
@@ -117,8 +136,6 @@ export function CalculoQuotas({
       alert("Sistema de avisos não disponível de momento.");
       return;
     }
-
-    const extVal = parseValorMonetario(orcamentoExtra) || 0;
 
     if (extVal <= 0) {
       alert("Por favor defina um orçamento extraordinário superior a 0€!");
@@ -260,7 +277,7 @@ export function CalculoQuotas({
       doc.setFont("helvetica", "normal");
 
       predioFracoes.forEach((f) => {
-        const regShare = (Number(orcamentoRegular) || 0) * (f.permilagem / 1000);
+        const regShare = calcularQuotaOrdinaria(f);
         const extShare = extraPorMesTotal * (f.permilagem / 1000);
         const totalShare = regShare + extShare;
 
@@ -608,6 +625,15 @@ export function CalculoQuotas({
             <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
               Total Mensal: {predioFracoes.length === 0 ? "0.00" : ((Number(orcamentoRegular) || 0) + extraPorMesTotal).toFixed(2)} €
             </span>
+            <button
+              type="button"
+              onClick={() => exportarBalanceteMapaAnualXLS(predio, predioFracoes, new Date().getFullYear(), avisos)}
+              className="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+              title="Descarregar grelha das 12 quotas mensais de todas as frações em Excel/CSV para entregar em Assembleia"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>Exportar Mapa Anual (XLS)</span>
+            </button>
           </div>
         </div>
 
@@ -619,6 +645,7 @@ export function CalculoQuotas({
                 <th className="p-3">Condómino</th>
                 <th className="p-3 text-center">Permilagem</th>
                 <th className="p-3 text-right">Quota Ordinária</th>
+                <th className="p-3 text-right">Fundo de Reserva</th>
                 <th className="p-3 text-right">Quota Extra (1/{numPrestacoesExtra})</th>
                 <th className="p-3 text-right font-black">Total a Pagar</th>
                 <th className="p-3">Conta / IBAN Crédito</th>
@@ -628,16 +655,27 @@ export function CalculoQuotas({
             <tbody className="divide-y divide-slate-100">
               {predioFracoes.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-400">
+                  <td colSpan={9} className="p-8 text-center text-slate-400">
                     Nenhuma fração registada neste condomínio.
                   </td>
                 </tr>
               ) : (
                 predioFracoes.map((f) => {
-                  const regShare = (Number(orcamentoRegular) || 0) * (f.permilagem / 1000);
+                  const quotaTotal = calcularQuotaOrdinaria(f);
+                  const quotaOrdinariaPart = Math.round(quotaTotal * 0.9 * 100) / 100;
+                  const quotaFCRPart = Math.round(quotaTotal * 0.1 * 100) / 100;
                   const extShare = extraPorMesTotal * (f.permilagem / 1000);
-                  const totalShare = regShare + extShare;
-                  const refSimulada = `CD-${predio.id_predio.slice(-3).toUpperCase()}-${f.fracao_nome}`;
+                  const totalShare = quotaOrdinariaPart + quotaFCRPart + extShare;
+                  // Referência de pagamento REAL (a mesma usada na Nota de
+                  // Cobrança/Recibo oficiais) — antes esta coluna mostrava
+                  // uma referência inventada ("CD-XXX-Y", variável literalmente
+                  // chamada refSimulada) que não correspondia a nenhuma
+                  // referência de cobrança real do condómino.
+                  const referenciaReal = f.referencia_br23e || f.proprietario?.referencia_br23e || gerarReferenciaBR23E(f.fracao_nome, f.id_fracao);
+                  // A quota extra tem referência própria (distinta da quota
+                  // ordinária), já que pode ir para uma conta diferente
+                  // (contaExtraSel) e precisa de ser conciliada em separado.
+                  const referenciaExtra = `EXT23E-FR-${(f.fracao_nome || f.id_fracao || "").toString().trim().toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Z0-9]/g, "") || "01"}`;
 
                   return (
                     <tr key={f.id_fracao} className="hover:bg-slate-50/70 transition-colors">
@@ -664,7 +702,11 @@ export function CalculoQuotas({
                       </td>
 
                       <td className="p-3 text-right font-mono font-bold text-emerald-700">
-                        {regShare.toFixed(2)} €
+                        {quotaOrdinariaPart.toFixed(2)} €
+                      </td>
+
+                      <td className="p-3 text-right font-mono font-bold text-amber-700">
+                        {quotaFCRPart.toFixed(2)} €
                       </td>
 
                       <td className="p-3 text-right font-mono font-bold text-sky-700">
@@ -683,13 +725,30 @@ export function CalculoQuotas({
                           <span className="text-[9px] font-mono text-slate-500 block truncate max-w-[180px]">
                             {contaOrdinariaSel?.iban || "PT50..."}
                           </span>
+                          {extVal > 0 && contaExtraSel?.id_conta !== contaOrdinariaSel?.id_conta && (
+                            <>
+                              <span className="text-[9px] text-sky-700 font-bold block truncate max-w-[180px] pt-1">
+                                Extra: {contaExtraSel?.banco || "Conta Geral"}
+                              </span>
+                              <span className="text-[9px] font-mono text-sky-500 block truncate max-w-[180px]">
+                                {contaExtraSel?.iban || "PT50..."}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </td>
 
                       <td className="p-3 text-center">
-                        <span className="font-mono text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200">
-                          {refSimulada}
-                        </span>
+                        <div className="space-y-1">
+                          <span className="font-mono text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200 block">
+                            {referenciaReal}
+                          </span>
+                          {extVal > 0 && (
+                            <span className="font-mono text-[9px] font-bold bg-sky-50 text-sky-700 px-2 py-1 rounded border border-sky-200 block" title="Referência própria da quota extraordinária">
+                              {referenciaExtra}
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -704,7 +763,10 @@ export function CalculoQuotas({
                   </td>
                   <td className="p-3 text-center font-mono font-black">{totalPermilagem}‰</td>
                   <td className="p-3 text-right font-mono font-black text-emerald-800">
-                    {Number(orcamentoRegular).toFixed(2)} €
+                    {(Math.round((Number(orcamentoRegular) || 0) * 0.9 * 100) / 100).toFixed(2)} €
+                  </td>
+                  <td className="p-3 text-right font-mono font-black text-amber-800">
+                    {(Math.round((Number(orcamentoRegular) || 0) * 0.1 * 100) / 100).toFixed(2)} €
                   </td>
                   <td className="p-3 text-right font-mono font-black text-sky-800">
                     {extraPorMesTotal.toFixed(2)} €

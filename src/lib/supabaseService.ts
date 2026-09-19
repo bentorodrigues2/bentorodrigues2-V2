@@ -1219,7 +1219,8 @@ export async function fetchAvisosFromSupabase(idPredio?: string): Promise<Aviso[
       valor: Number(row.valor),
       estado: row.estado || "Pendente",
       id_movimento: row.id_movimento || undefined,
-      id_conta: row.id_conta || undefined
+      id_conta: row.id_conta || undefined,
+      valor_fundo_reserva: row.valor_fundo_reserva !== null && row.valor_fundo_reserva !== undefined ? Number(row.valor_fundo_reserva) : undefined
     }));
   } catch (err) {
     return null;
@@ -1239,7 +1240,8 @@ export async function saveAvisosToSupabase(novosAvisos: any[]): Promise<boolean>
     valor: a.valor,
     estado: a.estado || "Pendente",
     id_movimento: a.id_movimento || null,
-    id_conta: a.id_conta || null
+    id_conta: a.id_conta || null,
+    valor_fundo_reserva: a.valor_fundo_reserva ?? null
   }));
   return dbUpsert("avisos", payload);
 }

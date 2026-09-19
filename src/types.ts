@@ -243,10 +243,11 @@ export interface Aviso {
   data: string;
   vencimento: string;
   descricao: string;
-  valor: number;
+  valor: number; // total (quota ordinária + fundo de reserva, quando aplicável)
   estado: string;
   id_movimento?: string;
   id_conta?: string;
+  valor_fundo_reserva?: number; // parcela do FCR dentro do valor total, para a nota/recibo discriminar as duas rubricas no mesmo documento
 }
 
 export interface Movimento {
@@ -484,6 +485,9 @@ export interface ReciboQuitacao {
   iban_predio: string;
   codigo_verificacao_hash: string;
   emitido_por: string;
+  tipoDocumento?: "recibo" | "nota_cobranca";
+  adminSignatureBase64?: string;
+  adminNome?: string;
 }
 
 // ----------------------------------------------------------------------------

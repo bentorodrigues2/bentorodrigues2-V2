@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Predio, Fracao, Aviso, LoggedUser, Documento, RevisaoOrcamento, Conta, Movimento } from "../types";
-import { formatDatePT, generateAndDownloadPdf, formatQuotaReceiptNumber, downloadReceiptPDF, gerarReferenciaBR23E, parseValorMonetario } from "../utils";
+import { formatDatePT, formatQuotaReceiptNumber, parseValorMonetario } from "../utils";
+import { downloadOfficialReceiptPDF } from "../utils/receiptGenerator";
 import { isSupabaseConfigured } from "@/lib/supabaseClient";
 import {
   dbUpdate,
+  dbDelete,
   saveAvisosToSupabase,
   saveContaToSupabase,
   saveMovimentoToSupabase,
@@ -34,6 +36,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
     return guardado ? String(guardado) : "";
   });
   const [mes, setMes] = useState("Janeiro");
+  const [anoEmissao, setAnoEmissao] = useState(String(new Date().getFullYear()));
 
   // O orçamento anual também é necessário no servidor (emissão automática de
   // quotas no dia 25 via cron — ver server/lib/cronService.js), por isso é
@@ -135,12 +138,23 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
   const [pagamentoContaId, setPagamentoContaId] = useState("");
   const [aRegistarPagamento, setARegistarPagamento] = useState(false);
 
+  // Edição/eliminação de avisos já emitidos — antes não existia forma
+  // nenhuma de corrigir um valor errado ou eliminar um aviso lançado por
+  // engano, só era possível criar novos.
+  const [editingAviso, setEditingAviso] = useState<Aviso | null>(null);
+  const [editValorTotal, setEditValorTotal] = useState("");
+  const [editValorFCR, setEditValorFCR] = useState("");
+  const [editVencimento, setEditVencimento] = useState("");
+  const [editDescricao, setEditDescricao] = useState("");
+
   const predioFracoes = fracoes.filter(f => f.id_predio === predio.id_predio);
   const predioAvisos = avisos.filter(a => a.id_predio === predio.id_predio);
   const predioContas = contas.filter(c => c.id_predio === predio.id_predio);
 
-  const selectedFracaoObj = selectedAviso ? fracoes.find(f => f.id_fracao === selectedAviso.id_fracao) : null;
-  const referenciaBR23EOficial = selectedFracaoObj?.referencia_br23e || selectedFracaoObj?.proprietario?.referencia_br23e || (selectedFracaoObj ? gerarReferenciaBR23E(selectedFracaoObj.fracao_nome, selectedFracaoObj.id_fracao) : "BR23E-FR-01");
+  const MESES_INDEX: Record<string, number> = {
+    "Janeiro": 0, "Fevereiro": 1, "Março": 2, "Abril": 3, "Maio": 4, "Junho": 5,
+    "Julho": 6, "Agosto": 7, "Setembro": 8, "Outubro": 9, "Novembro": 10, "Dezembro": 11
+  };
 
   const gerarOrcamentoMensal = (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,46 +164,63 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
     if (!orcamentoAnual) return alert("Preencha o Orçamento Anual!");
     const orcamentoAnualNum = parseValorMonetario(orcamentoAnual);
     if (orcamentoAnualNum <= 0) return alert("Indique um valor válido para o Orçamento Anual!");
+    const anoNum = parseInt(anoEmissao, 10);
+    if (!anoNum || anoNum < 2000) return alert("Indique um ano de emissão válido!");
 
     persistirOrcamentoNoSupabase(orcamentoAnualNum);
 
-    const novosAvisos: Aviso[] = [];
     const d = new Date();
     const dataDoc = d.toISOString().split('T')[0];
+    // Vencimento a dia 8 do mês selecionado (mesma convenção usada pela
+    // emissão automática mensal em server/lib/cronService.js).
+    const mesIdx = MESES_INDEX[mes] ?? 0;
+    const vencimento = `${anoNum}-${String(mesIdx + 1).padStart(2, "0")}-08`;
+    const orcamentoMensal = orcamentoAnualNum / 12;
 
+    // Coeficiente real das lojas com acesso direto pelo exterior — NÃO é uma
+    // isenção legal fixa (a lei, art.º 1424º CC, só isenta especificamente
+    // despesas de ascensor, e o ascensor deste prédio custa 1600€/ano, o que
+    // por si só não explicava o desfasamento). Este valor (45,28%) foi
+    // reverse-engineered a partir do quadro de quotas real desta gestora
+    // anterior (confirmado com o administrador: bate a 1 cêntimo ou exato
+    // em 17 de 17 frações, incluindo o total = orçamento anual/12) e
+    // confirmado por ele para passar a ser a fórmula oficial. As lojas
+    // pagam esta fração da taxa das restantes frações, e a diferença é
+    // sempre redistribuída pelas outras para o total bater sempre certo
+    // com o orçamento anual aprovado (antes o fator 0.4 "perdia" essa
+    // diferença sem a redistribuir — por isso o total nunca batia certo).
+    const COEF_LOJA_EXTERIOR = 0.4528;
+    const isLojaExterior = (f: Fracao) => f.tipologia === "Loja Comercial" && (f.tipo_access || "").includes("Exterior");
+
+    let permilagemLoja = 0;
     predioFracoes.forEach(f => {
-      const isShopExempt = f.tipologia === "Loja Comercial" && f.tipo_access.includes("Exterior");
-      let fatorIsencao = 1.0;
-      if (isShopExempt) fatorIsencao = 0.4; // 60% de desconto legal
+      if (isLojaExterior(f)) permilagemLoja += f.permilagem;
+    });
+    const permilagemNormal = 1000 - permilagemLoja;
+    const denominador = permilagemNormal + permilagemLoja * COEF_LOJA_EXTERIOR;
+    const rateNormal = denominador > 0 ? orcamentoMensal / denominador : 0;
+    const rateLoja = rateNormal * COEF_LOJA_EXTERIOR;
 
-      const orcamentoMensalProporcional = (orcamentoAnualNum / 12) * (f.permilagem / 1000) * fatorIsencao;
+    const novosAvisos: Aviso[] = [];
+    predioFracoes.forEach(f => {
+      const orcamentoMensalProporcional = f.permilagem * (isLojaExterior(f) ? rateLoja : rateNormal);
+
       const valorOrdinario = Math.round((orcamentoMensalProporcional * 0.9) * 100) / 100;
       const valorFCR = Math.round((orcamentoMensalProporcional * 0.1) * 100) / 100;
+      const valorTotal = Math.round((valorOrdinario + valorFCR) * 100) / 100;
 
-      const idOrdinario = "av-" + Math.floor(10000 + Math.random() * 90000);
-      const idFCR = "av-" + Math.floor(10000 + Math.random() * 90000);
+      const idAviso = "av-" + Date.now() + "-" + Math.floor(1000 + Math.random() * 9000);
 
       novosAvisos.push({
-        id_aviso: idOrdinario,
+        id_aviso: idAviso,
         id_predio: predio.id_predio,
         id_fracao: f.id_fracao,
         tipo: "Cota Ordinária",
         data: dataDoc,
-        vencimento: "2026-08-15",
-        descricao: `Quota de Condomínio Ordinária - ${mes} / 2026`,
-        valor: valorOrdinario,
-        estado: "Pendente"
-      });
-
-      novosAvisos.push({
-        id_aviso: idFCR,
-        id_predio: predio.id_predio,
-        id_fracao: f.id_fracao,
-        tipo: "Fundo de Reserva",
-        data: dataDoc,
-        vencimento: "2026-08-15",
-        descricao: `Quota do Fundo Comum de Reserva (FCR) - ${mes} / 2026`,
-        valor: valorFCR,
+        vencimento,
+        descricao: `Quota de Condomínio (Ordinária + Fundo de Reserva) - ${mes} / ${anoNum}`,
+        valor: valorTotal,
+        valor_fundo_reserva: valorFCR,
         estado: "Pendente"
       });
     });
@@ -198,7 +229,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
     saveAvisosToSupabase(novosAvisos).catch(console.error);
     registarLogAuditoria(
       "Financeira",
-      `Emitiu ${novosAvisos.length} notas de cobrança (Quotas + FCR) - ${mes}/2026`,
+      `Emitiu ${novosAvisos.length} notas de cobrança (Quota + FCR juntos) - ${mes}/${anoNum}`,
       predio.id_predio,
       loggedUser
     );
@@ -258,6 +289,46 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
     setCustomDescritivo(aviso.descricao);
     setCustomCondomino(frac?.proprietario?.nome || "Condómino Registado");
     setCustomNrecibo(nRec);
+  };
+
+  const abrirEdicaoAviso = (aviso: Aviso) => {
+    setEditingAviso(aviso);
+    setEditValorTotal(String(aviso.valor));
+    setEditValorFCR(aviso.valor_fundo_reserva !== undefined ? String(aviso.valor_fundo_reserva) : "");
+    setEditVencimento(aviso.vencimento);
+    setEditDescricao(aviso.descricao);
+  };
+
+  const guardarEdicaoAviso = () => {
+    if (!editingAviso) return;
+    const novoValor = parseValorMonetario(editValorTotal);
+    if (novoValor <= 0) return alert("Indique um valor total válido.");
+    const novoValorFCR = editValorFCR ? parseValorMonetario(editValorFCR) : undefined;
+    if (novoValorFCR !== undefined && novoValorFCR >= novoValor) {
+      return alert("O valor do Fundo de Reserva tem de ser menor do que o valor total.");
+    }
+
+    const atualizacao: Partial<Aviso> = {
+      valor: novoValor,
+      valor_fundo_reserva: novoValorFCR,
+      vencimento: editVencimento,
+      descricao: editDescricao
+    };
+    setAvisos(prev => prev.map(a => a.id_aviso === editingAviso.id_aviso ? { ...a, ...atualizacao } : a));
+    dbUpdate("avisos", { ...atualizacao, valor_fundo_reserva: novoValorFCR ?? null }, [["id_aviso", "eq", editingAviso.id_aviso]]).catch(console.error);
+    registarLogAuditoria("Financeira", `Editou o aviso ${editingAviso.id_aviso}`, predio.id_predio, loggedUser, `Novo valor: ${novoValor.toFixed(2)}€`);
+    setEditingAviso(null);
+  };
+
+  const eliminarAviso = (aviso: Aviso) => {
+    if (aviso.id_movimento) {
+      alert("Este aviso já tem um depósito real registado na Tesouraria — não pode ser eliminado. Se foi um erro, corrija o movimento diretamente em Movimentos & Tesouraria.");
+      return;
+    }
+    if (!window.confirm(`Eliminar o aviso ${aviso.id_aviso.toUpperCase()} (${aviso.valor.toFixed(2)}€)? Esta ação não pode ser desfeita.`)) return;
+    setAvisos(prev => prev.filter(a => a.id_aviso !== aviso.id_aviso));
+    dbDelete("avisos", [["id_aviso", "eq", aviso.id_aviso]]).catch(console.error);
+    registarLogAuditoria("Financeira", `Eliminou o aviso ${aviso.id_aviso}`, predio.id_predio, loggedUser, `${aviso.valor.toFixed(2)}€`);
   };
 
   const alterarEstadoAviso = (id: string, novoEstado: string) => {
@@ -324,215 +395,88 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
     setSelectedAviso(null);
   };
 
-  const handleExportReceiptA5 = () => {
+  // Substitui a antiga dupla geração (preview HTML "no-print" reaberta numa
+  // janela popup com uma tradução manual e incompleta de classes Tailwind
+  // para CSS + o próprio botão de "Recibo A5" com dados por vezes simulados)
+  // por UM único caminho real: o mesmo gerador jsPDF (generateOfficialReceiptPDF)
+  // já usado pela emissão automática mensal (server/lib/cronService.js).
+  // Isto resolve de uma vez: (1) o menu jurídico fabricado ("Autoridade
+  // Digital de Lisboa" etc., que nunca existiu neste gerador), (2) a nota/
+  // recibo a sair desconfigurada ao imprimir (um PDF real não tem risco de
+  // quebra de página/CSS em falta), e (3) a Quota Mensal + Fundo de Reserva
+  // deixam de sair em dois documentos separados — vêm sempre juntas no
+  // mesmo PDF, com um total único, sempre que o aviso tiver valor_fundo_reserva.
+  const handleDownloadDocumentoOficial = () => {
     if (!selectedAviso) return;
     const frac = fracoes.find(f => f.id_fracao === selectedAviso.id_fracao);
-    const avisoHash = selectedAviso.id_aviso.toUpperCase().replace("AV-", "");
-    const isExtra = selectedAviso.tipo.includes("Extra");
+    const isExtra = selectedAviso.tipo.toLowerCase().includes("extra");
+    const temFCR = typeof selectedAviso.valor_fundo_reserva === "number" && selectedAviso.valor_fundo_reserva > 0;
 
-    const fallbackRecNum = formatQuotaReceiptNumber(Math.floor(1000 + Math.random() * 9000));
-    const recNumStr = customNrecibo || fallbackRecNum;
+    const rubricas: import("../types").ReciboQuitacao["rubricas"] = [];
+    if (temFCR) {
+      const valorOrdinaria = Math.round((selectedAviso.valor - (selectedAviso.valor_fundo_reserva || 0)) * 100) / 100;
+      rubricas.push({ descricao: "Quota de Condomínio Ordinária", valor: valorOrdinaria, tipo: "Quota Ordinária" });
+      rubricas.push({ descricao: "Fundo Comum de Reserva (FCR)", valor: selectedAviso.valor_fundo_reserva || 0, tipo: "Fundo Comum de Reserva" });
+    } else if (isExtra) {
+      rubricas.push({ descricao: customDescritivo || selectedAviso.descricao, valor: selectedAviso.valor, tipo: "Quota Extraordinária" });
+    } else {
+      rubricas.push({ descricao: customDescritivo || selectedAviso.descricao, valor: selectedAviso.valor, tipo: "Quota Ordinária" });
+    }
+
+    const recNumStr = customNrecibo || formatQuotaReceiptNumber(selectedAviso.id_aviso.toUpperCase().replace("AV-", ""));
     const dtPag = customDataPagamento || selectedAviso.data || new Date().toISOString().split("T")[0];
+    const dtEmissao = selectedAviso.data || dtPag;
 
-    // Usa a referência do Movimento REAL criado ao "Marcar Pago" (se existir)
-    // em vez de fabricar códigos MOV-... que não correspondem a nada na
-    // Tesouraria — só cai no fallback gerado se o aviso ainda não tiver
-    // sido processado por handleMarcarPagoComMovimento (ex: recibo emitido
-    // manualmente antes do registo do depósito).
-    const refMovimentoReal = selectedAviso.id_movimento;
-    downloadReceiptPDF({
-      reciboNum: recNumStr,
-      dataPagamento: dtPag,
-      movimentoQuotaMensal: refMovimentoReal || `MOV-${new Date().getFullYear()}-QM-${avisoHash}`,
-      movimentoFundoReserva: refMovimentoReal || `MOV-${new Date().getFullYear()}-FR-${avisoHash}`,
-      movimentoQuotaExtra: refMovimentoReal || `MOV-${new Date().getFullYear()}-QE-${avisoHash}`,
-      buildingName: predio?.nome || "Condomínio",
-      buildingAddress: `${predio?.morada_linha1 || ""} ${predio?.num_porta || ""}, ${predio?.localidade || ""}`,
-      buildingNif: predio?.nif || "—",
-      proprietarioNome: customCondomino || frac?.proprietario?.nome || "Condómino Registado",
-      proprietarioNif: frac?.proprietario?.nif || "—",
-      fracaoIdent: `Fração ${frac?.fracao_nome || frac?.id_fracao || "A"} (${frac?.piso || "Piso 1"})`,
-      referenciaFracao: referenciaBR23EOficial,
-      metodoPagamento: "Transferência Bancária",
-      quotaMensalVal: isExtra ? 0 : customQuotaMensal,
-      fundoReservaVal: isExtra ? 0 : Number((customQuotaMensal * 0.10).toFixed(2)),
-      quotaExtraVal: isExtra ? customQuotaExtra || selectedAviso.valor : 0,
-      isQuotaExtra: isExtra,
-      descricaoQuota: customDescritivo,
-      adminNome: loggedUser.nome ? `${loggedUser.nome} (Administração)` : "Administração do Condomínio",
-      adminSignatureBase64: localStorage.getItem("admin_signature_digital") || undefined
-    });
+    downloadOfficialReceiptPDF(
+      {
+        id_recibo: recNumStr,
+        tipoDocumento: docType === "RECIBO" ? "recibo" : "nota_cobranca",
+        numero_sequencial: 1,
+        ano: Number(dtPag.substring(0, 4)) || new Date().getFullYear(),
+        id_predio: predio.id_predio,
+        id_fracao: selectedAviso.id_fracao,
+        nome_condomino: customCondomino || frac?.proprietario?.nome || "Condómino Registado",
+        nif_condomino: frac?.proprietario?.nif || "",
+        fracao_nome: frac?.fracao_nome || "",
+        permilagem: frac?.permilagem || 0,
+        data_emissao: dtEmissao,
+        data_pagamento: dtPag,
+        metodo_pagamento: "Transferência Bancária",
+        valor_total: selectedAviso.valor,
+        rubricas,
+        iban_predio: customIban || predio.iban || "",
+        codigo_verificacao_hash: selectedAviso.id_aviso.toUpperCase(),
+        emitido_por: loggedUser.nome || "Administração do Condomínio",
+        adminNome: loggedUser.nome ? `${loggedUser.nome} (Administração)` : "Administração do Condomínio",
+        adminSignatureBase64: localStorage.getItem("admin_signature_digital") || undefined
+      },
+      predio,
+      frac
+    );
 
     if (setDocumentos) {
-      const subFolder = isExtra ? "Recibos Quotas extra" : "Recibos";
-      const docAno = dtPag.substring(0, 4);
-
+      const isRecibo = docType === "RECIBO";
       setDocumentos(prev => [
         ...prev,
         {
-          id_doc: "doc-rec-" + Math.floor(10000 + Math.random() * 90000),
+          id_doc: "doc-" + (isRecibo ? "rec-" : "nc-") + Math.floor(10000 + Math.random() * 90000),
           id_predio: predio.id_predio,
-          nome: `Recibo_${recNumStr.replace(/[^a-zA-Z0-9_-]/g, "_")}_Fracao_${frac?.fracao_nome || "A"}.pdf`,
-          tipo: isExtra ? "Recibo Quotas extra" : "Recibo",
+          nome: `${isRecibo ? "Recibo" : "Nota_Cobranca"}_${recNumStr.replace(/[^a-zA-Z0-9_-]/g, "_")}_Fracao_${frac?.fracao_nome || "A"}.pdf`,
+          tipo: isRecibo ? "Recibo" : "Nota de Cobrança",
           data_upload: dtPag,
-          tamanho: "320 KB",
+          tamanho: "220 KB",
           categoria: "Pasta Paga. Quotas",
-          sub_pasta: subFolder,
-          descricao: `Recibo nº ${recNumStr} - Fração ${frac?.fracao_nome || "A"} - ${customDescritivo || "Pagamento de Quota"}`,
+          sub_pasta: isRecibo ? "Recibos" : "Notas de cobrança",
+          descricao: `${isRecibo ? "Recibo" : "Nota de cobrança"} nº ${recNumStr} - Fração ${frac?.fracao_nome || "A"} - ${customDescritivo || selectedAviso.descricao}`,
           visibilidade: "Público",
           autor: loggedUser.nome || "Administração",
           tema: "Pasta Paga. Quotas",
-          ano: docAno,
+          ano: dtPag.substring(0, 4),
           tipo_arquivo: "documento",
           relevancia_perfis: ["ADMIN", "EMPRESA_GESTORA", "USER", "CONTABILISTA"]
         }
       ]);
     }
-  };
-
-  const handlePrint = () => {
-    const printContent = document.getElementById("printable-document-container");
-    if (!printContent) return;
-    
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      if (selectedAviso) {
-        generateAndDownloadPdf(
-          `${docType === "RECIBO" ? "RECIBO" : "AVISO DE COBRANÇA DE QUOTA"} - Fração ${selectedAviso.fracao_nome}`,
-          [
-            { heading: "Discriminação da Liquidação", content: `Aviso nº: ${selectedAviso.id_aviso}\nFração: ${selectedAviso.fracao_nome}\nValor: ${selectedAviso.valor.toFixed(2)} €\nPeríodo: ${selectedAviso.mes_referencia || "Quotas do Condomínio"}\nEstado: ${selectedAviso.pago ? "LIQUIDADO / QUITADO" : "PENDENTE DE PAGAMENTO"}` },
-            { heading: "Dados para Pagamento (Transferência Bancária)", content: `IBAN do Condomínio: ${customIban || predio.iban || "PT50 0033 0000 12345678901 02"}\nReferência Obrigatória no Descritivo (IA): ${referenciaBR23EOficial}` }
-          ],
-          `${docType}_${selectedAviso.fracao_nome}_${selectedAviso.id_aviso}.pdf`,
-          [{ label: "Edifício", value: predio.nome }, { label: "Data de Emissão", value: formatDatePT(selectedAviso.data_emissao) }]
-        );
-      }
-      return;
-    }
-
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>${docType === "RECIBO" ? "Recibo" : "Nota de Cobrança"} - ${predio.nome}</title>
-          <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
-            body { 
-              font-family: 'Inter', system-ui, -apple-system, sans-serif; 
-              color: #1A1A1A; 
-              padding: 40px; 
-              font-size: 11px; 
-              line-height: 1.5; 
-              background: #fff; 
-              -webkit-print-color-adjust: exact; 
-              print-color-adjust: exact; 
-            }
-            .flex { display: flex; }
-            .flex-col { display: flex; flex-direction: column; }
-            .justify-between { justify-content: space-between; }
-            .justify-center { justify-content: center; }
-            .items-center { align-items: center; }
-            .items-end { align-items: flex-end; }
-            .text-right { text-align: right; }
-            .text-center { text-align: center; }
-            .text-justify { text-align: justify; }
-            .border-b { border-bottom: 1px solid #1A1A1A; }
-            .border-b-2 { border-bottom: 2px solid #1A1A1A; }
-            .border-t { border-top: 1px solid #1A1A1A; }
-            .border-2 { border: 2px solid #1A1A1A; }
-            .border-dashed { border-style: dashed; }
-            .border-slate-100 { border-color: #f1f5f9; }
-            .border-slate-200 { border-color: #e2e8f0; }
-            .pb-4 { padding-bottom: 16px; }
-            .pb-5 { padding-bottom: 20px; }
-            .pt-4 { padding-top: 16px; }
-            .pt-6 { padding-top: 24px; }
-            .pt-8 { padding-top: 32px; }
-            .mt-1 { margin-top: 4px; }
-            .mt-1\\.5 { margin-top: 6px; }
-            .mt-2 { margin-top: 8px; }
-            .mt-6 { margin-top: 24px; }
-            .mt-8 { margin-top: 32px; }
-            .mt-12 { margin-top: 48px; }
-            .mb-2 { margin-bottom: 8px; }
-            .mb-6 { margin-bottom: 24px; }
-            .grid { display: grid; }
-            .grid-cols-2 { grid-template-cols: 1fr 1fr; }
-            .gap-4 { gap: 16px; }
-            .gap-6 { gap: 24px; }
-            .font-bold { font-weight: 700; }
-            .font-black { font-weight: 900; }
-            .text-sm { font-size: 13px; }
-            .text-lg { font-size: 18px; }
-            .text-xl { font-size: 20px; }
-            .text-xs { font-size: 10px; }
-            .text-slate-400 { color: #555555; }
-            .text-slate-500 { color: #333333; }
-            .text-emerald-600 { color: #047857; }
-            .text-emerald-700 { color: #065f46; }
-            .text-indigo-700 { color: #4338ca; }
-            .text-red-600 { color: #b91c1c; }
-            .bg-slate-50 { background-color: #f8fafc; }
-            .bg-emerald-50\\/30 { background-color: rgba(209, 250, 229, 0.3); }
-            .p-2 { padding: 8px; }
-            .p-3 { padding: 12px; }
-            .p-4 { padding: 16px; }
-            .p-5 { padding: 20px; }
-            .px-5 { padding-left: 20px; padding-right: 20px; }
-            .py-3 { padding-top: 12px; padding-bottom: 12px; }
-            .rounded-xl { border-radius: 12px; }
-            .border { border: 1px solid #1A1A1A; }
-            .w-full { width: 100%; }
-            .w-28 { width: 112px; }
-            .max-w-sm { max-w: 384px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-            th, td { border-bottom: 1px solid #e2e8f0; padding: 10px 8px; text-align: left; color: #1A1A1A; }
-            th { border-bottom: 2px solid #1A1A1A; font-weight: 700; color: #1A1A1A; font-size: 10px; text-transform: uppercase; }
-            .font-mono { font-family: 'JetBrains Mono', monospace; }
-            .relative { position: relative; }
-            .absolute { position: absolute; }
-            .top-1\\/2 { top: 50%; }
-            .left-1\\/2 { left: 50%; }
-            .pointer-events-none { pointer-events: none; }
-            .opacity-10 { opacity: 0.11; }
-            .space-y-1 > * + * { margin-top: 4px; }
-            .space-y-3 > * + * { margin-top: 12px; }
-            .space-y-4 > * + * { margin-top: 16px; }
-            .break-all { word-break: break-all; }
-            .leading-none { line-height: 1; }
-            .leading-relaxed { line-height: 1.625; }
-            .tracking-tight { tracking-tight: -0.025em; }
-            .tracking-wider { tracking-wider: 0.05em; }
-            .uppercase { text-transform: uppercase; }
-            .watermark-container {
-              position: absolute;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%) rotate(-30deg);
-              opacity: 0.11;
-              pointer-events: none;
-              text-align: center;
-              z-index: 0;
-              width: 100%;
-            }
-            .watermark-text {
-              font-size: 72px;
-              font-weight: 900;
-              letter-spacing: 12px;
-              color: #1A1A1A;
-            }
-          </style>
-        </head>
-        <body>
-          <div style="position: relative; min-height: 100%;">
-            ${printContent.innerHTML}
-          </div>
-          <script>
-            window.onload = function() { window.print(); setTimeout(function() { window.close(); }, 500); }
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
   };
 
   return (
@@ -649,9 +593,9 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
             </div>
             <div className="flex flex-col">
               <label className="text-xs font-semibold text-slate-500 mb-1">Mês de Emissão *</label>
-              <select 
-                value={mes} 
-                onChange={e => setMes(e.target.value)} 
+              <select
+                value={mes}
+                onChange={e => setMes(e.target.value)}
                 className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white"
               >
                 <option value="Janeiro">Janeiro</option>
@@ -667,6 +611,18 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                 <option value="Novembro">Novembro</option>
                 <option value="Dezembro">Dezembro</option>
               </select>
+            </div>
+            <div className="flex flex-col">
+              <label className="text-xs font-semibold text-slate-500 mb-1">Ano de Emissão *</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                required
+                value={anoEmissao}
+                onChange={e => setAnoEmissao(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
+                placeholder={String(new Date().getFullYear())}
+                className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono"
+              />
             </div>
           </div>
           <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-semibold hover:bg-emerald-700 transition-colors cursor-pointer flex items-center space-x-2">
@@ -754,6 +710,20 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                             className="p-1 px-2 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 border border-slate-200 text-slate-600 rounded text-[10px] font-bold cursor-pointer transition-colors"
                           >
                             <i className="fa-solid fa-receipt mr-1"></i> Recibo
+                          </button>
+                          <button
+                            onClick={() => abrirEdicaoAviso(a)}
+                            title="Editar Aviso"
+                            className="p-1 px-2 bg-slate-100 hover:bg-amber-50 hover:text-amber-600 border border-slate-200 text-slate-600 rounded text-[10px] font-bold cursor-pointer transition-colors"
+                          >
+                            <i className="fa-solid fa-pen"></i>
+                          </button>
+                          <button
+                            onClick={() => eliminarAviso(a)}
+                            title="Eliminar Aviso"
+                            className="p-1 px-2 bg-slate-100 hover:bg-red-50 hover:text-red-600 border border-slate-200 text-slate-600 rounded text-[10px] font-bold cursor-pointer transition-colors"
+                          >
+                            <i className="fa-solid fa-trash-can"></i>
                           </button>
                         </div>
                       </td>
@@ -972,23 +942,13 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
               </div>
 
               <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-4 mt-4">
-                {docType === "RECIBO" && (
-                  <button
-                    type="button"
-                    onClick={handleExportReceiptA5}
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center space-x-2 cursor-pointer shadow-md"
-                  >
-                    <i className="fa-solid fa-file-pdf"></i>
-                    <span>Gerar Recibo Oficial (A5 Horizontal)</span>
-                  </button>
-                )}
                 <button
                   type="button"
-                  onClick={handlePrint}
-                  className="w-full bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs hover:bg-slate-850 transition-colors flex items-center justify-center space-x-2 cursor-pointer"
+                  onClick={handleDownloadDocumentoOficial}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center space-x-2 cursor-pointer shadow-md"
                 >
-                  <i className="fa-solid fa-print"></i>
-                  <span>Imprimir A4 / Exportar PDF</span>
+                  <i className="fa-solid fa-file-pdf"></i>
+                  <span>Descarregar PDF Oficial (A5)</span>
                 </button>
                 <button
                   type="button"
@@ -1000,227 +960,135 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
               </div>
             </div>
 
-            {/* Right side: Interactive A4 sheet preview */}
-            <div className="flex-1 bg-slate-200 dark:bg-slate-900/40 p-4 md:p-8 overflow-y-auto flex justify-center items-start">
-              <div 
-                id="printable-document-container"
-                className="bg-white text-slate-900 p-8 md:p-12 w-full max-w-[21cm] min-h-[29.7cm] shadow-xl rounded-xl border border-slate-300 relative text-xs leading-relaxed overflow-hidden"
-                style={{ color: "#1A1A1A" }}
-              >
-                
-                {/* 1. Official Watermark (centered behind content) */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.10] pointer-events-none text-center select-none z-0">
-                  <img src="/marca/19-marca-dagua-logo-cinza-claro.png" alt="Watermark" className="w-96 h-96 object-contain" />
+            {/* Right side: resumo honesto dos dados — o documento oficial real
+                (com marca de água, numeração, assinatura) é gerado em PDF
+                real via handleDownloadDocumentoOficial (jsPDF, o mesmo motor
+                usado pela emissão automática mensal). Antes havia aqui uma
+                pré-visualização em HTML com texto jurídico fabricado
+                ("Autoridade Digital de Lisboa", "Assinatura Certificada",
+                um NIF e morada inventados) e sujeita a quebras de página ao
+                imprimir — removida por completo. */}
+            <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 p-6 md:p-10 overflow-y-auto flex flex-col items-center">
+              <div className="w-full max-w-md bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 space-y-5">
+                <div className="text-center space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pré-visualização de Dados</p>
+                  <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase">
+                    {docType === "RECIBO" ? `Recibo Nº ${customNrecibo}` : "Nota de Cobrança"}
+                  </h3>
+                  <p className="text-[10px] text-slate-400">
+                    Fração {fracoes.find(f => f.id_fracao === selectedAviso.id_fracao)?.fracao_nome || "?"} — {customCondomino}
+                  </p>
                 </div>
 
-                <div className="relative z-10 space-y-6">
-                  {/* 2. Cabeçalho Institucional (padrão oficial) */}
-                  <div className="flex justify-between items-center border-b-2 border-[#1A1A1A] pb-4">
-                    <div className="flex items-center space-x-3">
-                      <img src="/marca/20-Logotipo Horizontal com fundo.png" alt="CondoManager AI" className="h-12 object-contain" />
-                    </div>
-                    
-                    <div className="text-right font-sans text-[9px] text-slate-500 space-y-0.5 leading-tight">
-                      <p className="font-extrabold uppercase text-[#1A1A1A]">CONDOMANAGER AI — ADMINISTRAÇÃO LEGAL</p>
-                      <p>Avenida da República, Nº 1000, 1050-191 Lisboa</p>
-                      <p className="font-mono">NIF: 512 345 678 • Registo Comercial de Lisboa</p>
-                      <p>Email: suporte@condomanager.ai • Tel: +351 210 000 000</p>
-                    </div>
-                  </div>
-
-                  {/* 3. Título do Documento */}
-                  <div className="text-center py-2">
-                    <h2 className="text-lg font-black uppercase tracking-widest border-b border-dashed border-slate-300 pb-1.5 inline-block min-w-[280px]">
-                      {docType === "RECIBO" ? `RECIBO Nº ${customNrecibo}` : "AVISO DE DÉBITO / NOTA DE COBRANÇA"}
-                    </h2>
-                    <p className="text-[8px] text-slate-400 font-mono mt-1">CÓDIGO DIGITAL: {selectedAviso.id_aviso.toUpperCase()}-{Date.now().toString().slice(-4)}</p>
-                  </div>
-
-                  {/* 4. Identificação do Condómino */}
-                  <div className="grid grid-cols-2 gap-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
-                    <div>
-                      <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Destinatário da Fração</span>
-                      <p className="text-[11px] font-black uppercase text-[#1A1A1A]">Exmo(a) Sr(a):</p>
-                      <p className="text-xs font-bold text-slate-800">{customCondomino}</p>
-                      <p className="text-[9px] text-slate-500 mt-1">
-                        Fração Autónoma: <strong className="text-[#1A1A1A]">{fracoes.find(f => f.id_fracao === selectedAviso.id_fracao)?.fracao_nome || "?"}</strong> 
-                        &nbsp;({fracoes.find(f => f.id_fracao === selectedAviso.id_fracao)?.piso || "N/A"})
-                      </p>
-                      <p className="text-[9px] text-slate-500">
-                        Morada do Edifício: {predio?.morada_linha1 || ""}, {predio?.localidade || ""}
-                      </p>
-                    </div>
-                    
-                    <div className="text-right space-y-1">
-                      <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Dados de Emissão</span>
-                      <p className="text-[9px] text-slate-600"><strong>Contribuinte NIF:</strong> {fracoes.find(f => f.id_fracao === selectedAviso.id_fracao)?.proprietario?.nif || "999999990"}</p>
-                      <p className="text-[9px] text-slate-600"><strong>Data de Emissão:</strong> {formatDatePT(selectedAviso.data)}</p>
-                      {docType === "RECIBO" ? (
-                        <p className="text-[9px] text-slate-600"><strong>Data de Liquidação:</strong> <span className="font-bold text-emerald-600">{formatDatePT(customDataPagamento)}</span></p>
-                      ) : (
-                        <p className="text-[9px] text-slate-600"><strong>Limite de Pagamento:</strong> <span className="font-bold text-red-600">{formatDatePT(customDataLimite)}</span></p>
-                      )}
-                      <p className="text-[9px] text-slate-500"><strong>Permilagem Legal:</strong> {fracoes.find(f => f.id_fracao === selectedAviso.id_fracao)?.permilagem || 0}‰</p>
-                    </div>
-                  </div>
-
-                  {/* 5. Texto Institucional / Corpo do Documento */}
-                  <div className="text-justify text-[10px] text-slate-700 leading-relaxed">
-                    {docType === "RECIBO" ? (
-                      <p>
-                        Vimos por este meio confirmar e emitir quitação oficial de que <strong>Recebemos de V. Ex.ª</strong>, na qualidade de titular responsável pela fração autónoma acima identificada, o respetivo pagamento do montante abaixo discriminado, para os devidos efeitos de regularização financeira de conta corrente de condomínio:
-                      </p>
-                    ) : (
-                      <p>
-                        Vimos por este meio informar que se encontram em pagamento as quotas de condomínio a seguir discriminadas perante o respetivo edifício, pelo que agradecemos que proceda ao respetivo pagamento voluntário por uma das seguintes vias disponibilizadas:
-                      </p>
-                    )}
-                  </div>
-
-                  {/* 6. Tabela Oficial (Layout Híbrido, linhas finas, cabeçalho limpo, texto #1A1A1A, alinhamento esq / val dir) */}
-                  <div>
-                    <table className="w-full text-left text-[10px] border-collapse">
-                      <thead>
-                        <tr className="border-b-2 border-[#1A1A1A]">
-                          {docType === "RECIBO" ? (
-                            <>
-                              <th className="py-2 text-[#1A1A1A] font-bold uppercase tracking-wider">Documento / Código</th>
-                              <th className="py-2 text-[#1A1A1A] font-bold uppercase tracking-wider">Emissão</th>
-                              <th className="py-2 text-[#1A1A1A] font-bold uppercase tracking-wider">Vencimento</th>
-                              <th className="py-2 text-[#1A1A1A] font-bold uppercase tracking-wider">Fração</th>
-                              <th className="py-2 text-[#1A1A1A] font-bold uppercase tracking-wider">Descrição do Lançamento</th>
-                              <th className="py-2 text-right text-[#1A1A1A] font-bold uppercase tracking-wider">Recebido (€)</th>
-                            </>
-                          ) : (
-                            <>
-                              <th className="py-2 text-[#1A1A1A] font-bold uppercase tracking-wider">Fração (Piso + Letra)</th>
-                              <th className="py-2 text-[#1A1A1A] font-bold uppercase tracking-wider">Documento</th>
-                              <th className="py-2 text-[#1A1A1A] font-bold uppercase tracking-wider">Descrição do Lançamento</th>
-                              <th className="py-2 text-[#1A1A1A] font-bold uppercase tracking-wider">Emissão</th>
-                              <th className="py-2 text-[#1A1A1A] font-bold uppercase tracking-wider">Vencimento</th>
-                              <th className="py-2 text-right text-[#1A1A1A] font-bold uppercase tracking-wider">Valor (€)</th>
-                            </>
-                          )}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-b border-slate-200">
-                          {docType === "RECIBO" ? (
-                            <>
-                              <td className="py-3 font-mono font-bold text-[#1A1A1A]">{customNrecibo}</td>
-                              <td className="py-3 font-mono text-slate-600">{formatDatePT(selectedAviso.data)}</td>
-                              <td className="py-3 font-mono text-slate-600">{formatDatePT(selectedAviso.vencimento)}</td>
-                              <td className="py-3 font-bold text-slate-800">Fração {fracoes.find(f => f.id_fracao === selectedAviso.id_fracao)?.fracao_nome || "?"}</td>
-                              <td className="py-3">
-                                <span className="font-bold text-slate-800 block">{selectedAviso.tipo}</span>
-                                <span className="text-slate-500 block text-[9px] mt-0.5">{customDescritivo}</span>
-                              </td>
-                              <td className="py-3 text-right font-mono font-bold text-[#1A1A1A]">
-                                {(customQuotaMensal + customQuotaExtra).toFixed(2)} €
-                              </td>
-                            </>
-                          ) : (
-                            <>
-                              <td className="py-3 font-bold text-slate-800">
-                                Fração {fracoes.find(f => f.id_fracao === selectedAviso.id_fracao)?.fracao_nome || "?"} ({fracoes.find(f => f.id_fracao === selectedAviso.id_fracao)?.piso || "N/A"})
-                              </td>
-                              <td className="py-3 font-mono font-bold text-indigo-700">AV-{selectedAviso.id_aviso.toUpperCase()}</td>
-                              <td className="py-3">
-                                <span className="font-bold text-slate-800 block">{selectedAviso.tipo}</span>
-                                <span className="text-slate-500 block text-[9px] mt-0.5">{customDescritivo}</span>
-                              </td>
-                              <td className="py-3 font-mono text-slate-600">{formatDatePT(selectedAviso.data)}</td>
-                              <td className="py-3 font-mono text-slate-600">{formatDatePT(customDataLimite)}</td>
-                              <td className="py-3 text-right font-mono font-bold text-[#1A1A1A]">
-                                {(customQuotaMensal + customQuotaExtra).toFixed(2)} €
-                              </td>
-                            </>
-                          )}
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* 7. Bloco de Totais (Total em Débito ou Total Pago) */}
-                  <div className="flex justify-end pt-2">
-                    <div className="text-right border-t border-[#1A1A1A] pt-1.5 w-60">
-                      <p className="text-[12px] font-black uppercase text-[#1A1A1A]">
-                        {docType === "RECIBO" ? "Total Recebido:" : "Total em Débito:"} &nbsp;
-                        <span className="font-mono text-[14px] text-indigo-700">{(customQuotaMensal + customQuotaExtra).toFixed(2)} €</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* 8. Nota Legal (IVA) */}
-                  <div className="text-left py-1 text-[8.5px] text-slate-500 border-t border-dashed border-slate-200">
-                    <p className="font-semibold">Nota Legal: Isento de IVA nos termos do art.º 9.º, nº 21 do Código do Imposto sobre o Valor Acrescentado (CIVA).</p>
-                  </div>
-
-                  {/* 9. Observação ao Condómino (se aplicável) */}
-                  <div className="bg-amber-50/50 border border-amber-200/60 p-3 rounded-lg text-[9px] text-amber-900 leading-normal">
-                    {docType === "RECIBO" ? (
-                      <p><strong>Observação de Quitação:</strong> Este recibo oficial comprova a entrada de capitais na tesouraria do condomínio para quitação do débito acima citado, servindo de legítima prova de regularidade fiscal perante o edifício.</p>
-                    ) : (
-                      <p><strong>Observação ao Condómino:</strong> Caso algum dos valores acima indicados já tenha sido liquidado, agradecemos que nos faça chegar o respetivo comprovativo bancário por e-mail. Favor indicar o código de referência BR23E no descritivo da sua transferência.</p>
-                    )}
-                  </div>
-
-                  {/* 10. Canais de Pagamento (se nota de cobrança) */}
-                  {docType === "NOTA_COBRANCA" && (
-                    <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block">a) Transferência bancária para o IBAN:</span>
-                        <span className="font-mono font-bold text-slate-800 text-[10px] block mt-0.5 select-all">{customIban}</span>
+                <div className="space-y-2">
+                  {(() => {
+                    const temFCR = typeof selectedAviso.valor_fundo_reserva === "number" && (selectedAviso.valor_fundo_reserva || 0) > 0;
+                    const isExtra = selectedAviso.tipo.toLowerCase().includes("extra");
+                    const linhas: { label: string; valor: number }[] = temFCR
+                      ? [
+                          { label: "Quota de Condomínio Ordinária", valor: Math.round((selectedAviso.valor - (selectedAviso.valor_fundo_reserva || 0)) * 100) / 100 },
+                          { label: "Fundo Comum de Reserva (FCR)", valor: selectedAviso.valor_fundo_reserva || 0 }
+                        ]
+                      : [{ label: isExtra ? "Quota Extraordinária" : "Quota de Condomínio", valor: selectedAviso.valor }];
+                    return linhas.map((l, i) => (
+                      <div key={i} className="flex justify-between items-center text-xs">
+                        <span className="text-slate-600 dark:text-slate-300">{l.label}</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-white">{l.valor.toFixed(2)} €</span>
                       </div>
-                      <div>
-                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block">b) Depósito ou Identificação BR23E (Perfil Bancário da Fração):</span>
-                        <span className="font-mono font-bold text-emerald-800 text-[10px] block mt-0.5 select-all">{referenciaBR23EOficial}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 11. Assinatura Digital (padrão oficial) */}
-                  <div className="pt-6 border-t border-slate-200 flex flex-col md:flex-row items-center justify-between gap-6">
-                    <div className="text-center md:text-left space-y-1">
-                      <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block">Validação Jurídica de Ativos</span>
-                      <p className="text-[10px] font-extrabold text-[#1A1A1A] uppercase">A Administração do Condomínio</p>
-                      <p className="text-[8px] text-slate-500 font-medium">CondoManager AI, Lda. • Assinatura Certificada</p>
-                      <p className="text-[7.5px] text-emerald-600 uppercase font-black tracking-widest mt-1">✓ Assinatura Digital Ativa • Autoridade Digital de Lisboa</p>
-                    </div>
-
-                    <div className="flex items-center space-x-3.5 bg-slate-50 border border-slate-200 p-2.5 rounded-lg">
-                      <div className="h-10 w-10 bg-white border border-slate-300 flex items-center justify-center font-black text-slate-800 text-[8px] p-1 select-none">
-                        {/* Simulation of a real security verification QR Code */}
-                        <div className="grid grid-cols-4 gap-0.5 w-full h-full">
-                          {[...Array(16)].map((_, i) => (
-                            <div key={i} className={`rounded-xs ${i % 3 === 0 || i % 7 === 0 ? "bg-[#1A1A1A]" : "bg-transparent"}`} />
-                          ))}
-                        </div>
-                      </div>
-                      <div className="leading-tight text-[8px] text-slate-500 font-mono">
-                        <p className="font-bold text-[#1A1A1A]">SECURE VERIFY QR</p>
-                        <p>Código: LEG-HASH-SHA256</p>
-                        <p className="text-[7px] text-indigo-600 font-bold">✓ Documento Autêntico</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 12. Rodapé Institucional (padrão oficial) */}
-                  <div className="pt-4 border-t border-slate-100 flex justify-between items-center text-[7.5px] text-slate-400 font-mono leading-none">
-                    <div className="flex items-center space-x-1.5">
-                      <span className="font-bold uppercase tracking-wider">CondoManager AI</span>
-                      <span>— Gestão Inteligente de Condomínios</span>
-                    </div>
-                    <div className="text-right">
-                      <span>Documento gerado automaticamente pelo sistema • Versão Oficial 3.2</span>
-                    </div>
-                  </div>
-
+                    ));
+                  })()}
                 </div>
 
+                <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800">
+                  <span className="text-xs font-black uppercase text-slate-700 dark:text-slate-200">Total</span>
+                  <span className="font-mono font-black text-emerald-600 text-base">{selectedAviso.valor.toFixed(2)} €</span>
+                </div>
+
+                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-lg p-3 text-[10px] text-slate-500 dark:text-slate-400 space-y-1">
+                  <p><strong className="text-slate-700 dark:text-slate-300">Emissão:</strong> {formatDatePT(selectedAviso.data)}</p>
+                  <p><strong className="text-slate-700 dark:text-slate-300">{docType === "RECIBO" ? "Data de Liquidação" : "Limite de Pagamento"}:</strong> {formatDatePT(docType === "RECIBO" ? customDataPagamento : customDataLimite)}</p>
+                  <p><strong className="text-slate-700 dark:text-slate-300">IBAN:</strong> {customIban}</p>
+                </div>
+
+                <p className="text-[9px] text-slate-400 text-center leading-relaxed">
+                  Isto é apenas um resumo dos dados. O documento oficial (PDF em A5, com marca de água, numeração e assinatura da administração) é gerado no botão "Descarregar PDF Oficial" ao lado.
+                </p>
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Editar Aviso */}
+      {editingAviso && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 no-print">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
+              <h3 className="text-sm font-bold">Editar Aviso {editingAviso.id_aviso.toUpperCase()}</h3>
+              <button onClick={() => setEditingAviso(null)} className="text-slate-400 hover:text-white cursor-pointer">
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <div className="p-5 space-y-3 text-xs">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Descrição</label>
+                <input
+                  type="text"
+                  value={editDescricao}
+                  onChange={e => setEditDescricao(e.target.value)}
+                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg text-xs"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Valor Total (€) *</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={editValorTotal}
+                    onChange={e => setEditValorTotal(e.target.value)}
+                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg text-xs font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Fundo de Reserva (€)</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="Sem FCR"
+                    value={editValorFCR}
+                    onChange={e => setEditValorFCR(e.target.value)}
+                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg text-xs font-mono"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Vencimento</label>
+                <input
+                  type="date"
+                  value={editVencimento}
+                  onChange={e => setEditVencimento(e.target.value)}
+                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg text-xs"
+                />
+              </div>
+              <div className="flex space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingAviso(null)}
+                  className="flex-1 py-2 text-xs font-bold rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={guardarEdicaoAviso}
+                  className="flex-1 py-2 text-xs font-bold rounded-lg border border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer"
+                >
+                  Guardar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

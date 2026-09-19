@@ -295,6 +295,25 @@ export async function emitirQuotasMensais() {
 
     const fracoes = await obterFracoesDoPredio(predio.id_predio);
     const prefixoEdificio = derivarPrefixoEdificio(predio.nome);
+    const orcamentoMensal = orcamentoAnual / 12;
+
+    // Coeficiente real das lojas com acesso direto pelo exterior — NÃO é uma
+    // isenção legal fixa (a lei, art.º 1424º CC, só isenta especificamente
+    // despesas de ascensor). Este valor (45,28%) foi reverse-engineered a
+    // partir do quadro de quotas real historicamente praticado neste
+    // condomínio (confirmado com o administrador, bate a 1 cêntimo ou exato
+    // em 17 de 17 frações) — ver a mesma lógica em GestaoEmissao.tsx. As
+    // lojas pagam esta fração da taxa das restantes frações, e a diferença
+    // é sempre redistribuída pelas outras para o total mensal bater sempre
+    // certo com o orçamento anual aprovado.
+    const COEF_LOJA_EXTERIOR = 0.4528;
+    const isLojaExterior = (fr) => fr.tipologia === "Loja Comercial" && (fr.tipo_access || "").includes("Exterior");
+    let permilagemLoja = 0;
+    fracoes.forEach((fr) => { if (isLojaExterior(fr)) permilagemLoja += fr.permilagem; });
+    const permilagemNormal = 1000 - permilagemLoja;
+    const denominador = permilagemNormal + permilagemLoja * COEF_LOJA_EXTERIOR;
+    const rateNormal = denominador > 0 ? orcamentoMensal / denominador : 0;
+    const rateLoja = rateNormal * COEF_LOJA_EXTERIOR;
 
     for (const f of fracoes) {
       try {
@@ -303,37 +322,29 @@ export async function emitirQuotasMensais() {
           continue;
         }
 
-        const isShopExempt = f.tipologia === "Loja Comercial" && (f.tipo_access || "").includes("Exterior");
-        const fatorIsencao = isShopExempt ? 0.4 : 1.0;
-        const orcamentoMensalProporcional = (orcamentoAnual / 12) * (f.permilagem / 1000) * fatorIsencao;
+        const orcamentoMensalProporcional = f.permilagem * (isLojaExterior(f) ? rateLoja : rateNormal);
         const valorOrdinario = Math.round(orcamentoMensalProporcional * 0.9 * 100) / 100;
         const valorFCR = Math.round(orcamentoMensalProporcional * 0.1 * 100) / 100;
         const valorTotal = Math.round((valorOrdinario + valorFCR) * 100) / 100;
 
-        const idOrdinario = `av-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-        const idFCR = `av-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        // Um único aviso por fração, com o total (ordinária + FCR) — antes
+        // criava dois avisos separados (idOrdinario/idFCR), o que fazia a
+        // nota de cobrança e o recibo saírem em dois documentos distintos
+        // em vez de virem juntos com um total único (bug reportado pelo
+        // administrador).
+        const idAviso = `av-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
         const { error: errAv } = await supabase.from("avisos").insert([
           {
-            id_aviso: idOrdinario,
+            id_aviso: idAviso,
             id_predio: predio.id_predio,
             id_fracao: f.id_fracao,
             tipo: "Quota Ordinária",
             data: dataEmissao,
             vencimento,
-            descricao: `Quota de Condomínio Ordinária - ${mesRefLabel} / ${anoRef}`,
-            valor: valorOrdinario,
-            estado: "Pendente"
-          },
-          {
-            id_aviso: idFCR,
-            id_predio: predio.id_predio,
-            id_fracao: f.id_fracao,
-            tipo: "Fundo de Reserva",
-            data: dataEmissao,
-            vencimento,
-            descricao: `Quota do Fundo Comum de Reserva (FCR) - ${mesRefLabel} / ${anoRef}`,
-            valor: valorFCR,
+            descricao: `Quota de Condomínio (Ordinária + Fundo de Reserva) - ${mesRefLabel} / ${anoRef}`,
+            valor: valorTotal,
+            valor_fundo_reserva: valorFCR,
             estado: "Pendente"
           }
         ]);

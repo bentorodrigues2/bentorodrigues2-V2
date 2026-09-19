@@ -368,7 +368,7 @@ export default function App() {
 
   // Sincronização automática para manter aberto o menu Área Financeira quando uma das suas secções está ativa
   useEffect(() => {
-    if (["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "saldos_iniciais", "contas", "fundo_reserva"].includes(activeSection)) {
+    if (["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "saldos_iniciais", "contas", "fundo_reserva"].includes(activeSection)) {
       setOpenMenuFinanceiro(true);
     }
   }, [activeSection]);
@@ -1337,14 +1337,14 @@ export default function App() {
               id="sidebar-item-financeiro"
               onClick={() => {
                 setOpenMenuFinanceiro(!openMenuFinanceiro);
-                if (!["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection)) {
+                if (!["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection)) {
                   setActiveSection("configuracao_arranque");
                 }
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                ["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection) 
+                ["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection) 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
                   : "text-slate-400 hover:text-white hover:bg-slate-800/30"
               }`}
@@ -1435,41 +1435,11 @@ export default function App() {
                 >
                   <div className="flex items-center gap-2 truncate">
                     <img src="/modulos/62-calculadora.png" alt="Cálculo de Quotas" className="w-4 h-4 object-contain shrink-0" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
-                    <span className="truncate">Cálculo de Quotas</span>
+                    <span className="truncate">Cálculo de Quotas (Mensais + Extra)</span>
                   </div>
                   <span className="bg-emerald-500/20 text-emerald-300 text-[9px] font-bold rounded px-1.5 py-0.5 border border-emerald-400/30 shrink-0">
                     Contas
                   </span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveSection("financeiro_quotas_mensais");
-                    setViewMode("BROWSER");
-                    setIaInitialTab(undefined);
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "financeiro_quotas_mensais"
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
-                  }`}
-                >
-                  <i className="fa-solid fa-table-list text-emerald-400 text-xs"></i>
-                  <span>Mapa de Quotas Mensais</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveSection("financeiro_quotas_extra");
-                    setViewMode("BROWSER");
-                    setIaInitialTab(undefined);
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "financeiro_quotas_extra"
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
-                  }`}
-                >
-                  <i className="fa-solid fa-money-bill-trend-up text-emerald-400 text-xs"></i>
-                  <span>Quotas Extraordinárias & Fundos Especiais</span>
                 </button>
                 <button
                   onClick={() => {
@@ -2610,8 +2580,6 @@ export default function App() {
                 {activeSection === "auditoria_interna" && "Auditoria Interna"}
                 {activeSection === "agendador_automatico" && "Agendador Automático de Jobs"}
                 {activeSection === "financeiro_extratos" && "Extrato de Movimentos e Saldo (Visão Condómino)"}
-                {activeSection === "financeiro_quotas_mensais" && "Mapa de Quotas Mensais de Condomínio"}
-                {activeSection === "financeiro_quotas_extra" && "Quotas Extraordinárias & Fundos Especiais"}
                 {activeSection === "conciliacao" && "Motor de Inteligência Artificial para Conciliação"}
                 {activeSection === "assembleias" && "Reuniões e Convocatórias (Elaboradas Manualmente ou com Auxílio de IA)"}
                 {activeSection === "reservas" && "Agenda & Reservas de Espaços Comuns"}
@@ -2844,7 +2812,7 @@ export default function App() {
             />
           )}
 
-          {["financeiro_recibos", "financeiro_relatorios", "financeiro_extratos", "financeiro_quotas_mensais", "financeiro_quotas_extra"].includes(activeSection) && (
+          {["financeiro_recibos", "financeiro_relatorios", "financeiro_extratos"].includes(activeSection) && (
             <FinanceiroAvancado
               predio={predioAtivo}
               fracoes={fracoes}
@@ -2855,9 +2823,7 @@ export default function App() {
               initialTab={
                 activeSection === "financeiro_recibos" ? "recibos_manuais" :
                 activeSection === "financeiro_relatorios" ? "relatorio_dividas" :
-                activeSection === "financeiro_extratos" ? "extrato_saldos" :
-                activeSection === "financeiro_quotas_mensais" ? "quotas_mensais" :
-                activeSection === "financeiro_quotas_extra" ? "quotas_extra" : "recibos_manuais"
+                activeSection === "financeiro_extratos" ? "extrato_saldos" : "recibos_manuais"
               }
             />
           )}

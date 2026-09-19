@@ -155,9 +155,21 @@ export function AssistenteImportacao({ onImportComplete, loggedUser }: Assistent
   // já usado em LeitorAnexosIA.tsx / GestaoSinistrosSeguros.tsx).
   const TIPOS_TEXTO = [".txt", ".csv", ".json"];
 
+  // Limite aproximado que ainda cabe no corpo do pedido depois da conversão
+  // para base64 (~33% maior que o ficheiro original), dentro do limite de
+  // payload de uma função serverless da Vercel — sem isto, um PDF grande
+  // era aceite no ecrã mas rejeitado pelo servidor com "Request Entity Too
+  // Large" em texto simples, que rebentava o parser JSON do frontend.
+  const LIMITE_FICHEIRO_BYTES = 3 * 1024 * 1024;
+
   const readAndSetFile = (file: File) => {
     const nomeMin = file.name.toLowerCase();
     const ehTexto = TIPOS_TEXTO.some((ext) => nomeMin.endsWith(ext));
+
+    if (!ehTexto && file.size > LIMITE_FICHEIRO_BYTES) {
+      setError(`O ficheiro "${file.name}" tem ${(file.size / (1024 * 1024)).toFixed(1)} MB — o limite para leitura pela IA é de ~3 MB. Reduza o tamanho do PDF (ex: comprima ou exporte só as páginas relevantes) ou cole o texto diretamente na caixa.`);
+      return;
+    }
 
     if (ehTexto) {
       const reader = new FileReader();
@@ -204,7 +216,24 @@ export function AssistenteImportacao({ onImportComplete, loggedUser }: Assistent
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      // A resposta pode não ser JSON válido (ex: "Request Entity Too Large"
+      // em texto simples, devolvido pela própria Vercel quando o ficheiro é
+      // demasiado grande, antes sequer de chegar ao nosso código) — sem isto
+      // o erro aparecia como "Unexpected token 'R'... is not valid JSON",
+      // completamente ilegível para o utilizador.
+      let data: any = null;
+      try {
+        data = await response.json();
+      } catch {
+        if (!response.ok) {
+          throw new Error(
+            response.status === 413
+              ? "O ficheiro é demasiado grande para a IA processar (limite aproximado de 3 MB). Reduza o tamanho do PDF/Excel ou cole o texto diretamente."
+              : `Falha ao comunicar com o servidor de IA (código ${response.status}).`
+          );
+        }
+        throw new Error("O servidor devolveu uma resposta inesperada.");
+      }
 
       if (!response.ok) {
         throw new Error(data?.error || "Falha ao comunicar com o servidor de IA.");
