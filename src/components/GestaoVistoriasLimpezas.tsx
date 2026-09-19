@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Predio, LoggedUser } from "../types";
-import { formatDatePT, exportToXLS } from "../utils";
+import { formatDatePT, exportToXLS, parseValorMonetario } from "../utils";
 import {
   fetchEquipamentosScieFromSupabase,
   saveEquipamentoScieToSupabase,
@@ -607,7 +607,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
       gravidade: vGravidade,
       fotos: vFotos,
       estado: "Identificada",
-      custo_previsto: vCustoPrevisto ? parseFloat(vCustoPrevisto) : undefined,
+      custo_previsto: vCustoPrevisto ? parseValorMonetario(vCustoPrevisto) : undefined,
       periodicidade: vPeriodicidade,
       impacto_orcamento: vImpactoOrcamento,
       alerta_automatico: vAlertaAutomatico
@@ -1228,8 +1228,8 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                   <div className="flex flex-col">
                     <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Custo Previsto (€)</label>
                     <input
-                      type="number"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="Ex: 250"
                       value={vCustoPrevisto}
                       onChange={e => setVCustoPrevisto(e.target.value)}
@@ -2488,9 +2488,9 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
               
               <div className="flex flex-col">
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Custo Mensal da Limpeza (€) *</label>
-                <input 
-                  type="number"
-                  step="0.01"
+                <input
+                  type="text"
+                  inputMode="decimal"
                   value={limpezaCustoMensal}
                   onChange={e => setLimpezaCustoMensal(e.target.value)}
                   className="border border-slate-200 bg-white px-3 py-2 text-xs rounded-lg font-mono focus:outline-amber-500"
@@ -2499,8 +2499,9 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
 
               <div className="flex flex-col">
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Orçamento de Referência do Condomínio (€) *</label>
-                <input 
-                  type="number"
+                <input
+                  type="text"
+                  inputMode="decimal"
                   value={orcamentoGeralLimpeza}
                   onChange={e => setOrcamentoGeralLimpeza(e.target.value)}
                   className="border border-slate-200 bg-white px-3 py-2 text-xs rounded-lg font-mono focus:outline-amber-500"
@@ -2525,7 +2526,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 <div className="bg-white p-4 rounded-xl border border-slate-150 flex items-center justify-between">
                   <div>
                     <span className="text-slate-400 text-[9px] font-bold uppercase block">Custo Mensal Padrão</span>
-                    <h3 className="text-lg font-black text-slate-800 font-mono mt-0.5">{(Number(limpezaCustoMensal) || 0).toFixed(2)}€</h3>
+                    <h3 className="text-lg font-black text-slate-800 font-mono mt-0.5">{(parseValorMonetario(limpezaCustoMensal) || 0).toFixed(2)}€</h3>
                   </div>
                   <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs"><i className="fa-solid fa-calendar-day"></i></div>
                 </div>
@@ -2533,7 +2534,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 <div className="bg-white p-4 rounded-xl border border-slate-150 flex items-center justify-between">
                   <div>
                     <span className="text-slate-400 text-[9px] font-bold uppercase block">Custo Anual Total</span>
-                    <h3 className="text-lg font-black text-slate-800 font-mono mt-0.5">{((Number(limpezaCustoMensal) || 0) * 12).toFixed(2)}€</h3>
+                    <h3 className="text-lg font-black text-slate-800 font-mono mt-0.5">{((parseValorMonetario(limpezaCustoMensal) || 0) * 12).toFixed(2)}€</h3>
                   </div>
                   <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg text-xs"><i className="fa-solid fa-coins"></i></div>
                 </div>
@@ -2542,7 +2543,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                   <div>
                     <span className="text-slate-400 text-[9px] font-bold uppercase block">Impacto no Orçamento</span>
                     <h3 className="text-lg font-black text-slate-800 font-mono mt-0.5">
-                      {(((Number(limpezaCustoMensal) || 0) * 12 / (Number(orcamentoGeralLimpeza) || 5000)) * 100).toFixed(1)}%
+                      {(((parseValorMonetario(limpezaCustoMensal) || 0) * 12 / (parseValorMonetario(orcamentoGeralLimpeza) || 5000)) * 100).toFixed(1)}%
                     </h3>
                   </div>
                   <div className="p-2 bg-amber-50 text-amber-600 rounded-lg text-xs"><i className="fa-solid fa-chart-pie"></i></div>
@@ -2556,19 +2557,19 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                   <div className="w-full bg-slate-200 rounded-full h-2.5 mt-2 overflow-hidden relative">
                     <div 
                       className={`h-full rounded-full transition-all ${
-                        ((Number(limpezaCustoMensal) || 0) * 12 / (Number(orcamentoGeralLimpeza) || 5000)) * 100 > 35 
+                        ((parseValorMonetario(limpezaCustoMensal) || 0) * 12 / (parseValorMonetario(orcamentoGeralLimpeza) || 5000)) * 100 > 35 
                           ? "bg-red-500" 
-                          : ((Number(limpezaCustoMensal) || 0) * 12 / (Number(orcamentoGeralLimpeza) || 5000)) * 100 > 15 
+                          : ((parseValorMonetario(limpezaCustoMensal) || 0) * 12 / (parseValorMonetario(orcamentoGeralLimpeza) || 5000)) * 100 > 15 
                           ? "bg-amber-500" 
                           : "bg-emerald-500"
                       }`}
-                      style={{ width: `${Math.min(100, ((Number(limpezaCustoMensal) || 0) * 12 / (Number(orcamentoGeralLimpeza) || 5000)) * 100)}%` }}
+                      style={{ width: `${Math.min(100, ((parseValorMonetario(limpezaCustoMensal) || 0) * 12 / (parseValorMonetario(orcamentoGeralLimpeza) || 5000)) * 100)}%` }}
                     ></div>
                   </div>
                 </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-400 mt-2 font-mono">
                   <span>Mínimo (0%)</span>
-                  <span className="font-bold text-slate-650">Consumo Geral: {(((Number(limpezaCustoMensal) || 0) * 12 / (Number(orcamentoGeralLimpeza) || 5000)) * 100).toFixed(1)}%</span>
+                  <span className="font-bold text-slate-650">Consumo Geral: {(((parseValorMonetario(limpezaCustoMensal) || 0) * 12 / (parseValorMonetario(orcamentoGeralLimpeza) || 5000)) * 100).toFixed(1)}%</span>
                   <span>Máximo Recomendado (25%)</span>
                 </div>
               </div>
@@ -2596,7 +2597,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                   </thead>
                   <tbody>
                     {[0, 1, 2, 3].map(offset => {
-                      const baseMensal = Number(limpezaCustoMensal) || 0;
+                      const baseMensal = parseValorMonetario(limpezaCustoMensal) || 0;
                       const rate = (Number(taxaInflacaoPrevisao) || 0) / 100;
                       const yearVal = new Date().getFullYear() + offset;
                       
@@ -2627,7 +2628,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                   
                   <div className="flex justify-around items-end h-32 pt-4">
                     {[0, 1, 2, 3].map(offset => {
-                      const baseAnual = (Number(limpezaCustoMensal) || 0) * 12;
+                      const baseAnual = (parseValorMonetario(limpezaCustoMensal) || 0) * 12;
                       const rate = (Number(taxaInflacaoPrevisao) || 0) / 100;
                       const yearVal = new Date().getFullYear() + offset;
                       

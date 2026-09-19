@@ -13,7 +13,8 @@ import {
   gerarConvocatoriaOficialPDF,
   gerarNotificacaoDividaPDF,
   gerarAtaAprovadaOficialPDF,
-  gerarParticipacaoSinistroPDF
+  gerarParticipacaoSinistroPDF,
+  parseValorMonetario
 } from "../utils";
 import { BIRTHDAY_WATERMARK_BASE64 } from "../assets/birthdayWatermarkBase64";
 import { 
@@ -200,10 +201,10 @@ export function CentralDocumentosMinutas({
         doc.setFont("helvetica", "normal");
         doc.text(`- Quota Ordinária: ${avisoQuotaOrdinaria} €`, 14, y); y += 5;
         doc.text(`- Fundo Comum de Reserva: ${avisoFundoReserva} €`, 14, y); y += 5;
-        if (parseFloat(avisoQuotaExtra) > 0) {
+        if (parseValorMonetario(avisoQuotaExtra) > 0) {
           doc.text(`- Quota Extraordinária: ${avisoQuotaExtra} €`, 14, y); y += 5;
         }
-        const total = (parseFloat(avisoQuotaOrdinaria) + parseFloat(avisoFundoReserva) + parseFloat(avisoQuotaExtra)).toFixed(2);
+        const total = (parseValorMonetario(avisoQuotaOrdinaria) + parseValorMonetario(avisoFundoReserva) + parseValorMonetario(avisoQuotaExtra)).toFixed(2);
         doc.setFont("helvetica", "bold");
         doc.text(`TOTAL A PAGAR: ${total} €`, 14, y); y += 10;
 
@@ -1022,7 +1023,8 @@ A Administração do Condomínio`
                   <div>
                     <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Quórum Representado (‰)</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       value={ataQuorum}
                       onChange={(e) => setAtaQuorum(e.target.value)}
                       className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-black text-emerald-600"
@@ -1088,7 +1090,8 @@ A Administração do Condomínio`
                   <div>
                     <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Quota Ord. (€)</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       value={avisoQuotaOrdinaria}
                       onChange={(e) => setAvisoQuotaOrdinaria(e.target.value)}
                       className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-bold"
@@ -1097,7 +1100,8 @@ A Administração do Condomínio`
                   <div>
                     <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Fundo Reserva (€)</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       value={avisoFundoReserva}
                       onChange={(e) => setAvisoFundoReserva(e.target.value)}
                       className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 font-bold"
@@ -1183,7 +1187,8 @@ A Administração do Condomínio`
                   <div>
                     <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Valor em Débito (€)</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       value={dividaValorTotal}
                       onChange={(e) => setDividaValorTotal(e.target.value)}
                       className="w-full px-3 py-2 text-xs rounded-xl border border-red-300 dark:border-red-800 bg-red-50/50 dark:bg-red-950/30 font-black text-red-600 dark:text-red-400"

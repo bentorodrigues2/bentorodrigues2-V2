@@ -547,6 +547,9 @@ export default function App() {
 
   useEffect(() => {
     const idPredio = predioAtivo?.id_predio;
+    // Só recarrega quando se está mesmo no Dashboard — evita repetir estes
+    // 6 pedidos ao Supabase em todos os cliques de navegação da app.
+    if (activeSection !== "painel") return;
     if (!isSupabaseConfigured() || browserIsLoggedOut || !idPredio || idPredio === "predio-temp") {
       setObrasAtivasCount(0);
       setLimpezaAreasCount(0);
@@ -576,7 +579,13 @@ export default function App() {
         .filter(d => d.estado === "Pendente" || d.estado === "Paga Parcialmente")
         .reduce((acc, d) => acc + ((Number(d.valor) || 0) - (Number(d.valor_pago) || 0)), 0));
     })();
-  }, [predioAtivo?.id_predio, browserIsLoggedOut]);
+    // Corrido também sempre que se volta ao Dashboard — antes só corria
+    // uma vez por prédio/login, por isso o cartão "Mensagens" (e os
+    // outros: Obras, Limpeza, Alertas Jurídicos, Sondagens, Dívidas)
+    // ficavam com a contagem congelada no momento em que o dashboard
+    // carregou pela primeira vez, mesmo depois de responder a mensagens,
+    // fechar sondagens, etc. noutro ecrã.
+  }, [predioAtivo?.id_predio, browserIsLoggedOut, activeSection]);
 
   const toggleSidebarSub = (menu: "administracao" | "operacoes" | "financeiro" | "condomino" | "documentacao" | "juridico" | "manutencao") => {
     setSidebarExpanded(prev => ({ ...prev, [menu]: !prev[menu] }));

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Predio, LoggedUser, Conta } from "../types";
-import { ehContaFundoReserva } from "../utils";
+import { ehContaFundoReserva, parseValorMonetario } from "../utils";
 
 interface GestaoFundoReservaProps {
   predio: Predio;
@@ -156,20 +156,22 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
           
           <div className="flex flex-col">
             <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Orçamento Geral Anual aprovado (€) *</label>
-            <input 
-              type="number"
+            <input
+              type="text"
+              inputMode="decimal"
               value={orcamentoAnual}
-              onChange={e => setOrcamentoAnual(Math.max(0, parseFloat(e.target.value) || 0))}
+              onChange={e => setOrcamentoAnual(Math.max(0, parseValorMonetario(e.target.value)))}
               className="border border-slate-200 px-3 py-2 text-xs rounded-lg font-mono focus:outline-emerald-500 bg-slate-50/50"
             />
           </div>
 
           <div className="flex flex-col">
             <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Saldo Atual do FCR (€) *</label>
-            <input 
-              type="number"
+            <input
+              type="text"
+              inputMode="decimal"
               value={saldoAtualFCR}
-              onChange={e => setSaldoAtualFCR(Math.max(0, parseFloat(e.target.value) || 0))}
+              onChange={e => setSaldoAtualFCR(Math.max(0, parseValorMonetario(e.target.value)))}
               className="border border-slate-200 px-3 py-2 text-xs rounded-lg font-mono focus:outline-emerald-500 bg-slate-50/50"
             />
           </div>
@@ -190,10 +192,11 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
 
           <div className="flex flex-col">
             <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Poupança / Reforço Mensal (€)</label>
-            <input 
-              type="number"
+            <input
+              type="text"
+              inputMode="decimal"
               value={contribuicaoMensalExtra}
-              onChange={e => setContribuicaoMensalExtra(Math.max(0, parseFloat(e.target.value) || 0))}
+              onChange={e => setContribuicaoMensalExtra(Math.max(0, parseValorMonetario(e.target.value)))}
               className="border border-slate-200 px-3 py-2 text-xs rounded-lg font-mono focus:outline-emerald-500 bg-slate-50/50"
             />
             <p className="text-[9px] text-slate-400 mt-1">Reforço adicional arrecadado através das quotas mensais regulares das frações.</p>

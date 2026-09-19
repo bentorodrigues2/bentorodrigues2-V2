@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Predio, Fracao, Aviso, LoggedUser, Documento, RevisaoOrcamento } from "../types";
-import { formatDatePT, generateAndDownloadPdf, formatQuotaReceiptNumber, downloadReceiptPDF, gerarReferenciaBR23E } from "../utils";
+import { formatDatePT, generateAndDownloadPdf, formatQuotaReceiptNumber, downloadReceiptPDF, gerarReferenciaBR23E, parseValorMonetario } from "../utils";
 import { isSupabaseConfigured } from "@/lib/supabaseClient";
 import {
   dbUpdate,
@@ -70,11 +70,13 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
       return alert("Apenas administradores podem registar revisões ao orçamento!");
     }
     if (!novaRevisaoValor || !novaRevisaoData) return alert("Preencha o novo valor e a data de vigência.");
+    const novoValorRevisao = parseValorMonetario(novaRevisaoValor);
+    if (novoValorRevisao <= 0) return alert("Indique um valor válido para a revisão do orçamento.");
 
     const nova: RevisaoOrcamento = {
       id_revisao: "rev-" + Date.now(),
       id_predio: predio.id_predio,
-      valor: Number(novaRevisaoValor),
+      valor: novoValorRevisao,
       data_vigencia: novaRevisaoData,
       aprovado_em_assembleia: novaRevisaoAssembleia,
       motivo: novaRevisaoMotivo || undefined
@@ -137,8 +139,10 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
       return alert("Apenas administradores podem emitir quotas!");
     }
     if (!orcamentoAnual) return alert("Preencha o Orçamento Anual!");
+    const orcamentoAnualNum = parseValorMonetario(orcamentoAnual);
+    if (orcamentoAnualNum <= 0) return alert("Indique um valor válido para o Orçamento Anual!");
 
-    persistirOrcamentoNoSupabase(Number(orcamentoAnual));
+    persistirOrcamentoNoSupabase(orcamentoAnualNum);
 
     const novosAvisos: Aviso[] = [];
     const d = new Date();
@@ -149,7 +153,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
       let fatorIsencao = 1.0;
       if (isShopExempt) fatorIsencao = 0.4; // 60% de desconto legal
 
-      const orcamentoMensalProporcional = (Number(orcamentoAnual) / 12) * (f.permilagem / 1000) * fatorIsencao;
+      const orcamentoMensalProporcional = (orcamentoAnualNum / 12) * (f.permilagem / 1000) * fatorIsencao;
       const valorOrdinario = Math.round((orcamentoMensalProporcional * 0.9) * 100) / 100;
       const valorFCR = Math.round((orcamentoMensalProporcional * 0.1) * 100) / 100;
 
@@ -490,7 +494,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
           <form onSubmit={handleAddRevisaoOrcamento} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
             <div className="flex flex-col">
               <label className="text-xs font-semibold text-slate-500 mb-1">Novo Valor Anual (€) *</label>
-              <input type="number" min="1" step="0.01" value={novaRevisaoValor} onChange={e => setNovaRevisaoValor(e.target.value)} placeholder="Ex: 12000" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
+              <input type="text" inputMode="decimal" value={novaRevisaoValor} onChange={e => setNovaRevisaoValor(e.target.value)} placeholder="Ex: 12000" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
             </div>
             <div className="flex flex-col">
               <label className="text-xs font-semibold text-slate-500 mb-1">Vigência a partir de *</label>
@@ -567,14 +571,14 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex flex-col">
               <label className="text-xs font-semibold text-slate-500 mb-1">Orçamento Geral Anual (€) *</label>
-              <input 
-                type="number" 
-                min="1" 
+              <input
+                type="text"
+                inputMode="decimal"
                 required
-                value={orcamentoAnual} 
-                onChange={e => setOrcamentoAnual(e.target.value)} 
-                placeholder="Ex: 5000" 
-                className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" 
+                value={orcamentoAnual}
+                onChange={e => setOrcamentoAnual(e.target.value)}
+                placeholder="Ex: 5000"
+                className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono"
               />
             </div>
             <div className="flex flex-col">
@@ -766,20 +770,20 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, documentos, 
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Quota Mensal (€)</label>
                     <input
-                      type="number"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
                       value={customQuotaMensal}
-                      onChange={e => setCustomQuotaMensal(Number(e.target.value))}
+                      onChange={e => setCustomQuotaMensal(parseValorMonetario(e.target.value))}
                       className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-900 text-xs px-2 py-1.5 rounded-lg focus:outline-indigo-500 dark:text-white font-mono"
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Quota Extra (€)</label>
                     <input
-                      type="number"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
                       value={customQuotaExtra}
-                      onChange={e => setCustomQuotaExtra(Number(e.target.value))}
+                      onChange={e => setCustomQuotaExtra(parseValorMonetario(e.target.value))}
                       className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-900 text-xs px-2 py-1.5 rounded-lg focus:outline-indigo-500 dark:text-white font-mono"
                     />
                   </div>

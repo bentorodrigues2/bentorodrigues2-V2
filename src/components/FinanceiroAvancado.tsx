@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Predio, Fracao, Aviso, Movimento, LoggedUser, Documento } from "../types";
-import { formatDatePT, formatQuotaReceiptNumber, downloadReceiptPDF, exportarBalanceteMapaAnualXLS } from "../utils";
+import { formatDatePT, formatQuotaReceiptNumber, downloadReceiptPDF, exportarBalanceteMapaAnualXLS, parseValorMonetario } from "../utils";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
 import { fetchCaucoesFromSupabase, saveCaucaoToSupabase, registarLogAuditoria } from "../lib/supabaseService";
 
@@ -113,7 +113,7 @@ export function FinanceiroAvancado({
       fracao_nome: fr.fracao_nome,
       titular: cTitular || fr.proprietario.nome,
       finalidade: cFinalidade,
-      valor: parseFloat(cValor) || 0,
+      valor: parseValorMonetario(cValor),
       data_deposito: cData,
       metodo_pagamento: cMetodo,
       comprovativo_ref: cRef || "REF-" + Math.floor(Math.random() * 1000000),
@@ -139,13 +139,13 @@ export function FinanceiroAvancado({
           estado: "Devolvida",
           data_resolucao: actionData,
           comprovativo_devolucao: actionRef || "DEV-" + Math.floor(Math.random() * 100000),
-          valor_devolvido: parseFloat(actionValor) || alvo.valor
+          valor_devolvido: actionValor ? parseValorMonetario(actionValor) : alvo.valor
         }
       : {
           ...alvo,
           estado: "Retida (Danos/Penalização)",
           data_resolucao: actionData,
-          valor_retido: parseFloat(actionValor) || alvo.valor,
+          valor_retido: actionValor ? parseValorMonetario(actionValor) : alvo.valor,
           justificacao_retencao: actionMotivo || "Danos causados nas instalações comuns durante o período de caução."
         };
 
@@ -875,7 +875,8 @@ export function FinanceiroAvancado({
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Valor do Montante (€)</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       value={actionValor}
                       onChange={e => setActionValor(e.target.value)}
                       className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 font-mono font-bold"
@@ -1025,8 +1026,8 @@ export function FinanceiroAvancado({
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Valor (€) *</label>
                     <input
-                      type="number"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
                       required
                       value={cValor}
                       onChange={e => setCValor(e.target.value)}

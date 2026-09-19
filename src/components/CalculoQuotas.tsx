@@ -15,6 +15,7 @@ import {
 import { Predio, Fracao, Conta, Aviso, LoggedUser } from "../types";
 import { jsPDF } from "jspdf";
 import { saveConfiguracaoQuotasToSupabase, saveAvisosToSupabase, registarLogAuditoria } from "../lib/supabaseService";
+import { parseValorMonetario } from "../utils";
 
 interface CalculoQuotasProps {
   predio: Predio;
@@ -97,7 +98,7 @@ export function CalculoQuotas({
   );
 
   // Cálculo individual da parcela extraordinária por mês se tiver prestações
-  const extraPorMesTotal = (Number(orcamentoExtra) || 0) / (numPrestacoesExtra || 1);
+  const extraPorMesTotal = (parseValorMonetario(orcamentoExtra) || 0) / (numPrestacoesExtra || 1);
 
   // Emitir Quotas Extraordinárias em Lote diretamente para Avisos.
   // A quota ordinária mensal NÃO se emite aqui — é sempre a emissão
@@ -117,7 +118,7 @@ export function CalculoQuotas({
       return;
     }
 
-    const extVal = Number(orcamentoExtra) || 0;
+    const extVal = parseValorMonetario(orcamentoExtra) || 0;
 
     if (extVal <= 0) {
       alert("Por favor defina um orçamento extraordinário superior a 0€!");
@@ -232,7 +233,7 @@ export function CalculoQuotas({
       doc.text(`• Conta de Crédito (Ordinárias): ${contaOrdinariaSel?.banco || "Geral"} - IBAN: ${contaOrdinariaSel?.iban || "N/A"}`, 14, 50);
       doc.text(`• Data Limite Pagamento Ordinárias: ${dataLimiteRegular}`, 14, 55);
 
-      doc.text(`• Orçamento Extraordinário: ${Number(orcamentoExtra).toFixed(2)} € (${numPrestacoesExtra} prestações de ${extraPorMesTotal.toFixed(2)} €/mês)`, 14, 62);
+      doc.text(`• Orçamento Extraordinário: ${parseValorMonetario(orcamentoExtra).toFixed(2)} € (${numPrestacoesExtra} prestações de ${extraPorMesTotal.toFixed(2)} €/mês)`, 14, 62);
       doc.text(`• Finalidade: ${descricaoExtra}`, 14, 67);
       doc.text(`• Conta de Crédito (Extraordinárias): ${contaExtraSel?.banco || "FCR"} - IBAN: ${contaExtraSel?.iban || "N/A"}`, 14, 72);
 
@@ -327,8 +328,8 @@ export function CalculoQuotas({
               type="button"
               id="btn-guardar-quotas-supabase"
               onClick={handleEmitirQuotasEmLote}
-              disabled={(Number(orcamentoExtra) || 0) <= 0}
-              title={(Number(orcamentoExtra) || 0) <= 0 ? "Define um Orçamento Extraordinário para emitir — a quota ordinária é sempre automática (dia 25)." : undefined}
+              disabled={(parseValorMonetario(orcamentoExtra) || 0) <= 0}
+              title={(parseValorMonetario(orcamentoExtra) || 0) <= 0 ? "Define um Orçamento Extraordinário para emitir — a quota ordinária é sempre automática (dia 25)." : undefined}
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer shadow-md"
             >
               <Save className="w-3.5 h-3.5" />
@@ -496,7 +497,8 @@ export function CalculoQuotas({
                 Valor Total Orçado (€)
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={orcamentoExtra}
                 onChange={(e) => setOrcamentoExtra(e.target.value)}
                 className="w-full border border-slate-200 px-3 py-2 text-xs rounded-xl focus:outline-sky-500 bg-slate-50/50 font-mono font-bold"

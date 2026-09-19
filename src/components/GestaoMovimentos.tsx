@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso, Fornecedor } from "../types";
-import { formatDatePT } from "../utils";
+import { formatDatePT, parseValorMonetario } from "../utils";
 import { saveMovimentoToSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria } from "../lib/supabaseService";
 import { cruzarMovimentoComFornecedor } from "../lib/fornecedorMatching";
 import { Save, CheckCircle2 } from "lucide-react";
@@ -219,6 +219,11 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     if (loggedUser.role !== 'ADMIN') return alert("Apenas administradores podem lançar movimentos financeiros!");
     if (!contaId || !valor || !descricao || !categoria) return alert("Preencha todos os campos obrigatórios (*)");
 
+    const valorNumerico = parseValorMonetario(valor);
+    if (valorNumerico <= 0) {
+      return alert("Indique um valor válido para o movimento.");
+    }
+
     const isCego = tipo === "Despesa" && isCegoChecked;
 
     const novo: Movimento = {
@@ -227,7 +232,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       id_conta: contaId,
       data: new Date().toISOString().split('T')[0],
       tipo,
-      valor: Number(valor),
+      valor: valorNumerico,
       descricao,
       categoria,
       fotos: uploadedFotos,
@@ -237,14 +242,14 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
     const contaAlvo = contas.find(c => c.id_conta === contaId);
     if (contaAlvo) {
-      if (tipo === 'Receita') contaAlvo.saldo += Number(valor);
-      else contaAlvo.saldo -= Number(valor);
+      if (tipo === 'Receita') contaAlvo.saldo += valorNumerico;
+      else contaAlvo.saldo -= valorNumerico;
       saveContaToSupabase(contaAlvo).catch(console.error);
     }
 
     setMovements([novo, ...movements]);
     saveMovimentoToSupabase(novo).catch(console.error);
-    registarLogAuditoria("Financeira", `Lançou manualmente um movimento de ${tipo.toLowerCase()}`, predio.id_predio, loggedUser, `${descricao} — ${Number(valor).toFixed(2)}€`);
+    registarLogAuditoria("Financeira", `Lançou manualmente um movimento de ${tipo.toLowerCase()}`, predio.id_predio, loggedUser, `${descricao} — ${valorNumerico.toFixed(2)}€`);
     setValor("");
     setDescricao("");
     setUploadedFotos([]);
@@ -264,7 +269,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   // Registo Manual de E-mail de Fatura de Fornecedor
   const handleCriarEmailManual = (e: React.FormEvent) => {
     e.preventDefault();
-    const val = parseFloat(manualValor.replace(",", "."));
+    const val = parseValorMonetario(manualValor);
     if (!val || val <= 0) {
       alert("Introduza um valor válido para a fatura.");
       return;
@@ -301,7 +306,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       alert("Selecione a fração e a conta bancária de destino.");
       return;
     }
-    const val = parseFloat(dividaValor.replace(",", "."));
+    const val = parseValorMonetario(dividaValor);
     if (!val || val <= 0) {
       alert("Introduza um valor válido recebido.");
       return;
@@ -760,7 +765,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                 </div>
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-slate-500 mb-1">Valor (€) *</label>
-                  <input type="number" min="0.01" step="0.01" value={valor} onChange={e => setValor(e.target.value)} placeholder="0.00" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono-custom font-bold" />
+                  <input type="text" inputMode="decimal" value={valor} onChange={e => setValor(e.target.value)} placeholder="0,00" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono-custom font-bold" />
                 </div>
               </div>
 
@@ -1294,12 +1299,12 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700 dark:text-slate-300 block">Valor Recebido (€) *</label>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     required
                     value={dividaValor}
                     onChange={e => setDividaValor(e.target.value)}
-                    placeholder="0.00"
+                    placeholder="0,00"
                     className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs font-mono font-bold focus:outline-emerald-500"
                   />
                 </div>
@@ -1412,12 +1417,12 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700 dark:text-slate-300 block">Valor da Fatura (€) *</label>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     required
                     value={manualValor}
                     onChange={e => setManualValor(e.target.value)}
-                    placeholder="0.00"
+                    placeholder="0,00"
                     className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl p-2.5 text-xs font-mono font-bold focus:outline-emerald-500"
                   />
                 </div>

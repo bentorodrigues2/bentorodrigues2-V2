@@ -288,7 +288,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     if (!conta) return alert("Conta bancária não encontrada.");
 
     const saldoDevedor = saldoDevedorDivida(divida);
-    const valorTranche = Number(pagamentoValorTranche) || 0;
+    const valorTranche = parseValorMonetario(pagamentoValorTranche) || 0;
     if (valorTranche <= 0) return alert("Indique o valor a pagar nesta tranche.");
     if (valorTranche > saldoDevedor + 0.01) {
       return alert(`Esta tranche (${valorTranche.toFixed(2)} €) é maior do que o saldo em dívida (${saldoDevedor.toFixed(2)} €).`);
@@ -448,7 +448,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
   const handleCustoMensalChange = (val: string) => {
     setCustoMensal(val);
     if (val) {
-      setCustoAnual((Number(val) * 12).toFixed(2));
+      setCustoAnual((parseValorMonetario(val) * 12).toFixed(2));
     } else {
       setCustoAnual("");
     }
@@ -457,7 +457,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
   const handleCustoAnualChange = (val: string) => {
     setCustoAnual(val);
     if (val) {
-      setCustoMensal((Number(val) / 12).toFixed(2));
+      setCustoMensal((parseValorMonetario(val) / 12).toFixed(2));
     } else {
       setCustoMensal("");
     }
@@ -561,8 +561,8 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       return alert("Preencha todos os campos obrigatórios (Fornecedor, Serviço, Custo)!");
     }
 
-    const cMensal = Number(custoMensal) || 0;
-    const cAnual = Number(custoAnual) || 0;
+    const cMensal = parseValorMonetario(custoMensal) || 0;
+    const cAnual = parseValorMonetario(custoAnual) || 0;
 
     const novoContrato: Contrato = {
       id_contrato: crypto.randomUUID(),
@@ -735,7 +735,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
   // Sum active contracted services costs
   const totalMensalContratos = predioContratos.reduce((acc, curr) => acc + curr.custo_mensal, 0);
   const totalAnualContratos = predioContratos.reduce((acc, curr) => acc + curr.custo_anual, 0);
-  const orcReferenciaNum = Number(orcamentoReferencia) || 5000;
+  const orcReferenciaNum = parseValorMonetario(orcamentoReferencia) || 5000;
   const impactoOrcamentoContratos = (totalAnualContratos / orcReferenciaNum) * 100;
 
   return (
@@ -1352,8 +1352,9 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                 <div className="text-right">
                   <span className="text-[9px] font-bold text-slate-400 block uppercase">Ref. Orçamento Anual</span>
                   <div className="flex items-center justify-end space-x-1 mt-0.5 font-mono">
-                    <input 
-                      type="number"
+                    <input
+                      type="text"
+                      inputMode="decimal"
                       value={orcamentoReferencia}
                       onChange={e => setOrcamentoReferencia(e.target.value)}
                       className="w-16 border border-slate-200 text-center font-bold rounded py-0.5 text-[10px] bg-slate-50 focus:outline-indigo-500"
@@ -1449,8 +1450,8 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-slate-500 mb-1">Custo Mensal (€) *</label>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     required
                     value={custoMensal}
                     onChange={e => handleCustoMensalChange(e.target.value)}
@@ -1462,8 +1463,8 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-slate-500 mb-1">Custo Anual (€)</label>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     required
                     value={custoAnual}
                     onChange={e => handleCustoAnualChange(e.target.value)}
@@ -2009,10 +2010,8 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                             <div className="flex flex-col">
                               <label className="text-[10px] font-bold text-slate-500 mb-1 uppercase">Valor a Pagar Agora (€) *</label>
                               <input
-                                type="number"
-                                min="0.01"
-                                max={saldo}
-                                step="0.01"
+                                type="text"
+                                inputMode="decimal"
                                 value={pagamentoValorTranche}
                                 onChange={e => setPagamentoValorTranche(e.target.value)}
                                 className="border border-slate-200 px-3 py-1.5 text-xs rounded-lg focus:outline-emerald-500 font-mono w-32"
@@ -2039,7 +2038,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                               onClick={() => handleRegistarPagamentoTranche(d)}
                               className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs"
                             >
-                              {Number(pagamentoValorTranche) >= saldo - 0.01 ? "Confirmar Pagamento Total" : "Registar Tranche"}
+                              {parseValorMonetario(pagamentoValorTranche) >= saldo - 0.01 ? "Confirmar Pagamento Total" : "Registar Tranche"}
                             </button>
                             <button
                               onClick={() => { setPagandoDividaId(null); setPagamentoContaId(""); setPagamentoValorTranche(""); }}

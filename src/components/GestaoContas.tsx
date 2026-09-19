@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { Predio, Conta, LoggedUser } from "../types";
 import { saveContaToSupabase, deleteContaFromSupabase } from "../lib/supabaseService";
+import { parseValorMonetario } from "../utils";
 import { 
   Building2, 
   CreditCard, 
@@ -107,7 +108,7 @@ export function GestaoContas({
         banco: banco.trim(),
         iban: iban.trim(),
         tipo,
-        saldo: Number(saldo) || 0,
+        saldo: parseValorMonetario(saldo),
         balcao: balcao.trim() || undefined,
         morada_balcao: moradaBalcao.trim() || undefined,
         contacto_banco: contactoBanco.trim() || undefined,
@@ -134,7 +135,7 @@ export function GestaoContas({
         banco: banco.trim(),
         iban: iban.trim(),
         tipo,
-        saldo: Number(saldo) || 0,
+        saldo: parseValorMonetario(saldo),
         balcao: balcao.trim() || undefined,
         morada_balcao: moradaBalcao.trim() || undefined,
         contacto_banco: contactoBanco.trim() || undefined,
@@ -257,15 +258,14 @@ export function GestaoContas({
             </div>
             <div className="flex flex-col">
               <label htmlFor="input-saldo" className="text-xs font-semibold text-slate-600 mb-1">Saldo Atual (€) *</label>
-              <input 
+              <input
                 id="input-saldo"
-                type="number" 
-                min="0" 
-                step="0.01" 
-                value={saldo} 
-                onChange={e => setSaldo(e.target.value)} 
-                placeholder="0.00" 
-                className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono bg-white" 
+                type="text"
+                inputMode="decimal"
+                value={saldo}
+                onChange={e => setSaldo(e.target.value)}
+                placeholder="0,00"
+                className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono bg-white"
                 required
               />
             </div>

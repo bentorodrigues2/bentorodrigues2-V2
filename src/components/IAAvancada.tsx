@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Predio, Fracao, Aviso, Movimento, Fornecedor, LoggedUser } from "../types";
-import { generateAndDownloadPdf } from "../utils";
+import { generateAndDownloadPdf, parseValorMonetario } from "../utils";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar, LineChart, Line, ComposedChart } from "recharts";
 import { SendingReactionModal } from "./SendingReactionModal";
 import { fetchObrasExtraFromSupabase } from "../lib/supabaseService";
@@ -2356,10 +2356,11 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                             <div className="flex items-center justify-end gap-1.5">
                               <span className="text-slate-400">€</span>
                               <input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 disabled={isBudgetLocked}
                                 value={rub.valor}
-                                onChange={(e) => handleUpdateRubricaValue(rub.id, Number(e.target.value))}
+                                onChange={(e) => handleUpdateRubricaValue(rub.id, parseValorMonetario(e.target.value))}
                                 className="w-28 text-right font-mono font-bold text-slate-800 border border-slate-200 rounded px-1.5 py-0.5 focus:border-violet-500 focus:outline-none bg-white disabled:bg-slate-100/50"
                               />
                             </div>
@@ -2398,11 +2399,11 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                     <div className="w-full sm:w-40 space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Valor Anual (€)</label>
                       <input
-                        type="number"
-                        min="1"
+                        type="text"
+                        inputMode="decimal"
                         required
                         value={newRubricaValor}
-                        onChange={(e) => setNewRubricaValor(Number(e.target.value))}
+                        onChange={(e) => setNewRubricaValor(parseValorMonetario(e.target.value))}
                         className="w-full border border-slate-200 rounded-lg p-2 text-xs bg-white font-mono font-bold"
                       />
                     </div>
@@ -2538,12 +2539,12 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                     <span className="text-[9px] font-bold text-slate-500 uppercase block">Valor da Penalização</span>
                     <div className="relative">
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         disabled={isBudgetLocked}
-                        min="1"
                         value={valorPenalizacao}
                         onChange={(e) => {
-                          setValorPenalizacao(Number(e.target.value));
+                          setValorPenalizacao(parseValorMonetario(e.target.value));
                           setTimeout(() => handleRecalculateBudget(), 50);
                         }}
                         className="w-full border border-slate-200 rounded-lg p-1.5 text-xs bg-white font-bold"

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Predio, Fracao, Aviso, LoggedUser, Patrimonio } from "../types";
+import { parseValorMonetario } from "../utils";
 
 interface AssistenteImportacaoProps {
   onImportComplete: (predioData: Predio, fracoesData: Fracao[], avisosData: Aviso[]) => void;
@@ -763,11 +764,12 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
 
                             <td className="p-2">
                               <input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 value={frac.permilagem || 0}
                                 onChange={(e) => {
                                   const updated = [...importedFracoes];
-                                  updated[idx].permilagem = parseFloat(e.target.value);
+                                  updated[idx].permilagem = parseValorMonetario(e.target.value);
                                   setImportedFracoes(updated);
                                 }}
                                 className="w-full bg-transparent border-b border-transparent focus:border-violet-500 focus:outline-none p-0.5 text-slate-600 dark:text-slate-300"
@@ -845,11 +847,12 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
                             <td className="p-2 text-right">
                               <div className="flex items-center justify-end">
                                 <input
-                                  type="number"
+                                  type="text"
+                                  inputMode="decimal"
                                   value={frac.saldo_inicial || 0}
                                   onChange={(e) => {
                                     const updated = [...importedFracoes];
-                                    updated[idx].saldo_inicial = parseFloat(e.target.value);
+                                    updated[idx].saldo_inicial = parseValorMonetario(e.target.value);
                                     setImportedFracoes(updated);
                                   }}
                                   className={`w-20 bg-transparent border-b border-transparent text-right focus:border-violet-500 focus:outline-none p-0.5 font-bold ${frac.saldo_inicial < 0 ? "text-rose-600" : frac.saldo_inicial > 0 ? "text-emerald-600" : "text-slate-500"}`}

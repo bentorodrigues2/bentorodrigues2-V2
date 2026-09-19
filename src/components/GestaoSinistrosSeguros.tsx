@@ -44,6 +44,7 @@ import {
   dbUpdate
 } from "../lib/supabaseService";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
+import { parseValorMonetario } from "../utils";
 
 interface GestaoSinistrosSegurosProps {
   predio: Predio;
@@ -104,7 +105,7 @@ export function GestaoSinistrosSeguros({
   const [formApoliceNum, setFormApoliceNum] = useState("");
   const [formValidade, setFormValidade] = useState("");
   const [formTipoCobertura, setFormTipoCobertura] = useState("Incêndio e Multirriscos");
-  const [formCapitalSeguro, setFormCapitalSeguro] = useState<number | "">("");
+  const [formCapitalSeguro, setFormCapitalSeguro] = useState<string>("");
   const [formEstadoValidacao, setFormEstadoValidacao] = useState<"Valido" | "Pendente" | "Expirado" | "Recusado">("Valido");
   const [formDocumentoNome, setFormDocumentoNome] = useState("");
   const [formDocumentoUrl, setFormDocumentoUrl] = useState("");
@@ -114,8 +115,8 @@ export function GestaoSinistrosSeguros({
   const [formPCApoliceNum, setFormPCApoliceNum] = useState("");
   const [formPCValidade, setFormPCValidade] = useState("");
   const [formPCTomador, setFormPCTomador] = useState(`Condomínio ${predio.nome}`);
-  const [formPCCapitalEdificio, setFormPCCapitalEdificio] = useState<number | "">("");
-  const [formPCFranquia, setFormPCFranquia] = useState<number | "">("");
+  const [formPCCapitalEdificio, setFormPCCapitalEdificio] = useState<string>("");
+  const [formPCFranquia, setFormPCFranquia] = useState<string>("");
   const [formPCMediador, setFormPCMediador] = useState("");
   const [formPCDocumentoNome, setFormPCDocumentoNome] = useState("");
 
@@ -133,9 +134,9 @@ export function GestaoSinistrosSeguros({
   const [formSinPeritoContacto, setFormSinPeritoContacto] = useState("");
   const [formSinDataPeritagem, setFormSinDataPeritagem] = useState("");
   const [formSinDescricaoDanos, setFormSinDescricaoDanos] = useState("");
-  const [formSinValorEstimado, setFormSinValorEstimado] = useState<number | "">("");
-  const [formSinValorAprovado, setFormSinValorAprovado] = useState<number | "">("");
-  const [formSinFranquia, setFormSinFranquia] = useState<number | "">("");
+  const [formSinValorEstimado, setFormSinValorEstimado] = useState<string>("");
+  const [formSinValorAprovado, setFormSinValorAprovado] = useState<string>("");
+  const [formSinFranquia, setFormSinFranquia] = useState<string>("");
   const [formSinEstado, setFormSinEstado] = useState<SinistroSeguro["estado"]>("PARTICIPADO");
   const [formSinObservacoes, setFormSinObservacoes] = useState("");
 
@@ -248,7 +249,7 @@ export function GestaoSinistrosSeguros({
     setFormApoliceNum(seguroDb?.apolice_numero || fracao.apolice_num || "");
     setFormValidade(seguroDb?.apolice_validade || fracao.apolice_validade || "");
     setFormTipoCobertura(seguroDb?.tipo_cobertura || "Incêndio e Multirriscos");
-    setFormCapitalSeguro(seguroDb?.capital_seguro || "");
+    setFormCapitalSeguro(seguroDb?.capital_seguro ? String(seguroDb.capital_seguro) : "");
     setFormEstadoValidacao(seguroDb?.estado_validacao || (checkSeguroStatus(fracao) === "VALIDO" ? "Valido" : "Pendente"));
     setFormDocumentoNome(seguroDb?.documento_url ? "Documento em Arquivo" : "");
     setFormDocumentoUrl(seguroDb?.documento_url || "");
@@ -301,7 +302,7 @@ export function GestaoSinistrosSeguros({
         setFormApoliceNum(resultadoIA.apolice_numero);
         setFormValidade(resultadoIA.apolice_validade);
         setFormTipoCobertura(resultadoIA.tipo_cobertura);
-        setFormCapitalSeguro(resultadoIA.capital_seguro);
+        setFormCapitalSeguro(String(resultadoIA.capital_seguro));
         setFormEstadoValidacao("Valido");
         setFormDocumentoNome(file.name);
         setFormDocumentoUrl(`data:${file.type || "application/pdf"};base64,${base64}`);
@@ -310,8 +311,8 @@ export function GestaoSinistrosSeguros({
         setFormPCCompanhia(resultadoIA.seguradora);
         setFormPCApoliceNum(resultadoIA.apolice_numero);
         setFormPCValidade(resultadoIA.apolice_validade);
-        setFormPCCapitalEdificio(resultadoIA.capital_seguro);
-        setFormPCFranquia(resultadoIA.franquia);
+        setFormPCCapitalEdificio(String(resultadoIA.capital_seguro));
+        setFormPCFranquia(String(resultadoIA.franquia));
         setFormPCDocumentoNome(file.name);
         setIaExtractSuccess(`✓ IA extraiu dados da apólice do edifício: ${resultadoIA.seguradora || "(seguradora não identificada)"} • Apólice ${resultadoIA.apolice_numero || "N/D"}. Confirme os dados antes de gravar.`);
       }
@@ -340,7 +341,7 @@ export function GestaoSinistrosSeguros({
       apolice_numero: formApoliceNum.trim(),
       apolice_validade: formValidade.trim(),
       tipo_cobertura: formTipoCobertura.trim() || "Incêndio e Multirriscos",
-      capital_seguro: Number(formCapitalSeguro) || 0,
+      capital_seguro: parseValorMonetario(formCapitalSeguro),
       documento_url: formDocumentoUrl || modalSeguroFracao.seguroExistente?.documento_url || undefined,
       estado_validacao: formEstadoValidacao,
       atualizado_em: new Date().toISOString()
@@ -445,8 +446,8 @@ export function GestaoSinistrosSeguros({
       apolice_numero: formPCApoliceNum.trim(),
       apolice_validade: formPCValidade.trim(),
       tomador_seguro: formPCTomador.trim() || `Condomínio ${predio.nome}`,
-      capital_seguro_edificio: Number(formPCCapitalEdificio) || 0,
-      franquia: Number(formPCFranquia) || 0,
+      capital_seguro_edificio: parseValorMonetario(formPCCapitalEdificio),
+      franquia: parseValorMonetario(formPCFranquia),
       contacto_mediador: formPCMediador.trim() || undefined,
       estado: "Ativo",
       atualizado_em: new Date().toISOString()
@@ -490,9 +491,9 @@ export function GestaoSinistrosSeguros({
       setFormSinPeritoContacto(sinistro.perito_contacto || "");
       setFormSinDataPeritagem(sinistro.data_peritagem || "");
       setFormSinDescricaoDanos(sinistro.descricao_danos);
-      setFormSinValorEstimado(sinistro.valor_estimado_danos || "");
-      setFormSinValorAprovado(sinistro.valor_indemnizacao_aprovado || "");
-      setFormSinFranquia(sinistro.franquia_aplicavel || "");
+      setFormSinValorEstimado(sinistro.valor_estimado_danos ? String(sinistro.valor_estimado_danos) : "");
+      setFormSinValorAprovado(sinistro.valor_indemnizacao_aprovado ? String(sinistro.valor_indemnizacao_aprovado) : "");
+      setFormSinFranquia(sinistro.franquia_aplicavel ? String(sinistro.franquia_aplicavel) : "");
       setFormSinEstado(sinistro.estado);
       setFormSinObservacoes(sinistro.observacoes || "");
     } else {
@@ -510,7 +511,7 @@ export function GestaoSinistrosSeguros({
       setFormSinDescricaoDanos("");
       setFormSinValorEstimado("");
       setFormSinValorAprovado("");
-      setFormSinFranquia(apoliceEdificio?.franquia || "");
+      setFormSinFranquia(apoliceEdificio?.franquia ? String(apoliceEdificio.franquia) : "");
       setFormSinEstado("PARTICIPADO");
       setFormSinObservacoes("");
     }
@@ -539,9 +540,9 @@ export function GestaoSinistrosSeguros({
       perito_contacto: formSinPeritoContacto.trim() || undefined,
       data_peritagem: formSinDataPeritagem.trim() || undefined,
       descricao_danos: formSinDescricaoDanos.trim(),
-      valor_estimado_danos: Number(formSinValorEstimado) || 0,
-      valor_indemnizacao_aprovado: formSinValorAprovado ? Number(formSinValorAprovado) : undefined,
-      franquia_aplicavel: formSinFranquia ? Number(formSinFranquia) : undefined,
+      valor_estimado_danos: parseValorMonetario(formSinValorEstimado),
+      valor_indemnizacao_aprovado: formSinValorAprovado.trim() ? parseValorMonetario(formSinValorAprovado) : undefined,
+      franquia_aplicavel: formSinFranquia.trim() ? parseValorMonetario(formSinFranquia) : undefined,
       estado: formSinEstado,
       observacoes: formSinObservacoes.trim() || undefined
     };
@@ -1112,8 +1113,8 @@ export function GestaoSinistrosSeguros({
                       setFormPCApoliceNum(apoliceEdificio.apolice_numero);
                       setFormPCValidade(apoliceEdificio.apolice_validade);
                       setFormPCTomador(apoliceEdificio.tomador_seguro || `Condomínio ${predio.nome}`);
-                      setFormPCCapitalEdificio(apoliceEdificio.capital_seguro_edificio || "");
-                      setFormPCFranquia(apoliceEdificio.franquia || "");
+                      setFormPCCapitalEdificio(apoliceEdificio.capital_seguro_edificio ? String(apoliceEdificio.capital_seguro_edificio) : "");
+                      setFormPCFranquia(apoliceEdificio.franquia ? String(apoliceEdificio.franquia) : "");
                       setFormPCMediador(apoliceEdificio.contacto_mediador || "");
                       setModalSeguroPartesComunsOpen(true);
                     }}
@@ -1392,9 +1393,10 @@ export function GestaoSinistrosSeguros({
                       Capital Seguro (€)
                     </label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       value={formCapitalSeguro}
-                      onChange={e => setFormCapitalSeguro(e.target.value === "" ? "" : Number(e.target.value))}
+                      onChange={e => setFormCapitalSeguro(e.target.value)}
                       placeholder="Ex: 120000"
                       className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-950 px-3 py-2 text-xs rounded-xl focus:outline-emerald-500 font-mono"
                     />
@@ -1588,9 +1590,10 @@ export function GestaoSinistrosSeguros({
                       Capital Seguro Edifício (€)
                     </label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       value={formPCCapitalEdificio}
-                      onChange={e => setFormPCCapitalEdificio(e.target.value === "" ? "" : Number(e.target.value))}
+                      onChange={e => setFormPCCapitalEdificio(e.target.value)}
                       placeholder="Ex: 850000"
                       className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-950 px-3 py-2 text-xs rounded-xl focus:outline-emerald-500 font-mono"
                     />
@@ -1601,9 +1604,10 @@ export function GestaoSinistrosSeguros({
                       Franquia Aplicável (€)
                     </label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       value={formPCFranquia}
-                      onChange={e => setFormPCFranquia(e.target.value === "" ? "" : Number(e.target.value))}
+                      onChange={e => setFormPCFranquia(e.target.value)}
                       placeholder="Ex: 100"
                       className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-950 px-3 py-2 text-xs rounded-xl focus:outline-emerald-500 font-mono"
                     />
@@ -1830,9 +1834,10 @@ export function GestaoSinistrosSeguros({
                     Danos Estimados (€)
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={formSinValorEstimado}
-                    onChange={e => setFormSinValorEstimado(e.target.value === "" ? "" : Number(e.target.value))}
+                    onChange={e => setFormSinValorEstimado(e.target.value)}
                     className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-950 px-3 py-2 text-xs rounded-xl focus:outline-emerald-500 font-mono"
                   />
                 </div>
@@ -1841,9 +1846,10 @@ export function GestaoSinistrosSeguros({
                     Valor Aprovado (€)
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={formSinValorAprovado}
-                    onChange={e => setFormSinValorAprovado(e.target.value === "" ? "" : Number(e.target.value))}
+                    onChange={e => setFormSinValorAprovado(e.target.value)}
                     className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-950 px-3 py-2 text-xs rounded-xl focus:outline-emerald-500 font-mono"
                   />
                 </div>
@@ -1852,9 +1858,10 @@ export function GestaoSinistrosSeguros({
                     Franquia (€)
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={formSinFranquia}
-                    onChange={e => setFormSinFranquia(e.target.value === "" ? "" : Number(e.target.value))}
+                    onChange={e => setFormSinFranquia(e.target.value)}
                     className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-950 px-3 py-2 text-xs rounded-xl focus:outline-emerald-500 font-mono"
                   />
                 </div>

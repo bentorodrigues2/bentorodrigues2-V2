@@ -13,6 +13,7 @@ import {
   registarLogAuditoria
 } from "../lib/supabaseService";
 import type { ObraExtraordinaria, Intervencao } from "./GestaoManutencaoIntervencoes";
+import { parseValorMonetario } from "../utils";
 
 interface RequestForProposal {
   id_rfp: string;
@@ -169,13 +170,17 @@ export function PortalOrcamentos({
     if (!rfpTitulo || !rfpCategoria || !rfpEstimativa || !rfpLimite || !rfpDescricao) {
       return alert("Por favor preencha todos os campos obrigatórios (*)");
     }
+    const estimativaNum = parseValorMonetario(rfpEstimativa);
+    if (estimativaNum <= 0) {
+      return alert("Indique uma estimativa máxima válida.");
+    }
 
     const novoRfp: RequestForProposal = {
       id_rfp: "rfp-" + Date.now() + "-" + Math.floor(Math.random() * 100),
       id_predio: predio.id_predio,
       titulo: rfpTitulo,
       categoria: rfpCategoria,
-      estimativa: Number(rfpEstimativa),
+      estimativa: estimativaNum,
       data_publicacao: new Date().toISOString().split("T")[0],
       data_limite: rfpLimite,
       descricao: rfpDescricao,
@@ -212,6 +217,10 @@ export function PortalOrcamentos({
     if (!propEmpresa || !propNif || !propEmail || !propContacto || !propValor || !propPrazo || !propGarantia || !propDescricao) {
       return alert("Preencha todos os campos obrigatórios (*) para submeter a proposta.");
     }
+    const propValorNum = parseValorMonetario(propValor);
+    if (propValorNum <= 0) {
+      return alert("Indique um valor total válido para a proposta.");
+    }
 
     setSubmetendoProposta(true);
 
@@ -225,7 +234,7 @@ export function PortalOrcamentos({
       nif: propNif,
       email: propEmail,
       contacto: propContacto,
-      valor: Number(propValor),
+      valor: propValorNum,
       prazo_dias: Number(propPrazo),
       garantia_anos: Number(propGarantia),
       descricao_tecnica: propDescricao,
@@ -246,7 +255,7 @@ export function PortalOrcamentos({
 
     setProposals([...proposals, novaProposta]);
     setSelectedRfpForAnalysis(selectedRfpId);
-    alert(`Parabéns! A proposta da empresa "${propEmpresa}" foi registada com sucesso para análise.\nNIF: ${propNif}\nValor: ${Number(propValor).toLocaleString("pt-PT")} €`);
+    alert(`Parabéns! A proposta da empresa "${propEmpresa}" foi registada com sucesso para análise.\nNIF: ${propNif}\nValor: ${propValorNum.toLocaleString("pt-PT")} €`);
 
     // Reset Form
     setPropEmpresa("");
@@ -565,7 +574,8 @@ export function PortalOrcamentos({
                   <div>
                     <label className="text-[10px] font-bold text-slate-400 block mb-1">Estimativa Máx (€) *</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       required
                       placeholder="Ex: 5000"
                       value={rfpEstimativa}
@@ -743,7 +753,8 @@ export function PortalOrcamentos({
                 <div className="col-span-1">
                   <label className="text-[10px] font-bold text-slate-400 block mb-1">Valor Total *</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     required
                     placeholder="Ex: 14500"
                     value={propValor}

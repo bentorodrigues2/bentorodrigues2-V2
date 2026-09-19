@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { Predio, Fracao, LoggedUser, ProcessoJuridico, ProcessoProva, TipoProvaJuridica, Documento } from "../types";
-import { generateAndDownloadPdf, formatDatePT } from "../utils";
+import { generateAndDownloadPdf, formatDatePT, parseValorMonetario } from "../utils";
 import { saveProcessoJuridicoToSupabase } from "../lib/supabaseService";
 
 interface ConstituicaoProcessosJuridicosProps {
@@ -169,7 +169,7 @@ export function ConstituicaoProcessosJuridicos({
       return;
     }
 
-    const capital = parseFloat(novoValorCapital) || 0;
+    const capital = parseValorMonetario(novoValorCapital);
     const juros = Number((capital * 0.04 * (8 / 12)).toFixed(2)); // ~8 meses a 4%
     const custas = 76.50; // Taxa de justiça média
     const total = capital + juros + custas;
@@ -1358,8 +1358,8 @@ export function ConstituicaoProcessosJuridicos({
                     Valor da Dívida Capital (€)
                   </label>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     required
                     value={novoValorCapital}
                     onChange={(e) => setNovoValorCapital(e.target.value)}

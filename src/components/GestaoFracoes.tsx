@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Pencil, Trash2, Plus } from "lucide-react";
 import { Predio, Fracao, LoggedUser, Aviso, Proprietario } from "../types";
-import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCondominoVaziaPDF, downloadFichaCondominoPreenchidaPDF, downloadListaCondominosPDF, gerarReferenciaBR23E } from "../utils";
+import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCondominoVaziaPDF, downloadFichaCondominoPreenchidaPDF, downloadListaCondominosPDF, gerarReferenciaBR23E, parseValorMonetario } from "../utils";
 import { ModalFichaCondominoEditavel } from "./ModalFichaCondominoEditavel";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
@@ -2609,8 +2609,8 @@ export function GestaoFracoes({
               <div>
                 <label className="font-semibold text-slate-600 block mb-1">Valor Renda (€) / Caução (€)</label>
                 <div className="flex gap-1">
-                  <input type="number" value={resValorRenda} onChange={e => setResValorRenda(e.target.value)} placeholder="Renda €" className="w-1/2 border border-slate-300 rounded-lg p-2 bg-white font-mono" />
-                  <input type="number" value={resCaucao} onChange={e => setResCaucao(e.target.value)} placeholder="Caução €" className="w-1/2 border border-slate-300 rounded-lg p-2 bg-white font-mono" />
+                  <input type="text" inputMode="decimal" value={resValorRenda} onChange={e => setResValorRenda(e.target.value)} placeholder="Renda €" className="w-1/2 border border-slate-300 rounded-lg p-2 bg-white font-mono" />
+                  <input type="text" inputMode="decimal" value={resCaucao} onChange={e => setResCaucao(e.target.value)} placeholder="Caução €" className="w-1/2 border border-slate-300 rounded-lg p-2 bg-white font-mono" />
                 </div>
               </div>
             </div>
@@ -2635,8 +2635,8 @@ export function GestaoFracoes({
                   data_entrada: resDataEntrada,
                   data_saida: null,
                   contrato_fim: resContratoFim,
-                  valor_renda: Number(resValorRenda) || 800,
-                  caucao: Number(resCaucao) || 1600,
+                  valor_renda: resValorRenda ? parseValorMonetario(resValorRenda) : 800,
+                  caucao: resCaucao ? parseValorMonetario(resCaucao) : 1600,
                   chaves_entregues: resChaves,
                   estado: "Ativo"
                 };
@@ -2832,26 +2832,28 @@ export function GestaoFracoes({
                       </td>
                       <td className="p-3 text-center">
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           value={areaC}
-                          onChange={e => setAreaCoberta({ ...areaCoberta, [f.id_fracao]: Number(e.target.value) })}
+                          onChange={e => setAreaCoberta({ ...areaCoberta, [f.id_fracao]: parseValorMonetario(e.target.value) })}
                           className="w-16 border border-slate-300 rounded text-center p-1 font-mono font-bold"
                         />
                       </td>
                       <td className="p-3 text-center">
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           value={areaV}
-                          onChange={e => setAreaVarandas({ ...areaVarandas, [f.id_fracao]: Number(e.target.value) })}
+                          onChange={e => setAreaVarandas({ ...areaVarandas, [f.id_fracao]: parseValorMonetario(e.target.value) })}
                           className="w-16 border border-slate-300 rounded text-center p-1 font-mono font-bold"
                         />
                       </td>
                       <td className="p-3 text-center">
                         <input
-                          type="number"
-                          step="0.05"
+                          type="text"
+                          inputMode="decimal"
                           value={coef}
-                          onChange={e => setCoefPiso({ ...coefPiso, [f.id_fracao]: Number(e.target.value) })}
+                          onChange={e => setCoefPiso({ ...coefPiso, [f.id_fracao]: parseValorMonetario(e.target.value) })}
                           className="w-16 border border-slate-300 rounded text-center p-1 font-mono font-bold"
                         />
                       </td>

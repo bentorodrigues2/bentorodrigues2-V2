@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Predio, Fracao, Conta, Movimento, Aviso, LoggedUser } from "../types";
+import { parseValorMonetario } from "../utils";
 import { saveContaToSupabase, saveAvisosToSupabase, saveMovimentoToSupabase, registarLogAuditoria } from "../lib/supabaseService";
 import { 
   Sliders, 
@@ -209,7 +210,7 @@ export function ConfiguracaoArranqueSaldos({
       descricao: novoHistDesc,
       categoria: novoHistCat,
       tipo: novoHistTipo,
-      valor: parseFloat(novoHistValor) || 0,
+      valor: parseValorMonetario(novoHistValor),
       id_conta: targetConta ? targetConta.id_conta : "conta-ordem-" + predio.id_predio,
       nome_conta: targetConta ? targetConta.nome : "Conta à Ordem"
     };
@@ -759,11 +760,11 @@ export function ConfiguracaoArranqueSaldos({
                         <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Saldo de Abertura (€)</label>
                         <div className="relative">
                           <input
-                            type="number"
-                            step="0.01"
+                            type="text"
+                            inputMode="decimal"
                             value={conta.saldo || ""}
-                            onChange={(e) => handleUpdateContaArranque(conta.id_conta, { saldo: parseFloat(e.target.value) || 0 })}
-                            placeholder="0.00"
+                            onChange={(e) => handleUpdateContaArranque(conta.id_conta, { saldo: parseValorMonetario(e.target.value) })}
+                            placeholder="0,00"
                             className="w-full pl-2.5 pr-6 py-1.5 text-xs font-black font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                           />
                           <span className="absolute right-2.5 top-1.5 text-xs font-bold text-slate-400">€</span>
@@ -878,10 +879,10 @@ export function ConfiguracaoArranqueSaldos({
                         {sf.tipo_saldo !== "REGULARIZADO" ? (
                           <div className="relative w-28">
                             <input
-                              type="number"
-                              step="0.01"
+                              type="text"
+                              inputMode="decimal"
                               value={sf.valor_saldo || ""}
-                              onChange={(e) => handleUpdateSaldoFracao(sf.id_fracao, { valor_saldo: parseFloat(e.target.value) || 0 })}
+                              onChange={(e) => handleUpdateSaldoFracao(sf.id_fracao, { valor_saldo: parseValorMonetario(e.target.value) })}
                               className="w-full px-2.5 py-1.5 text-xs font-mono font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950"
                             />
                             <span className="absolute right-2 top-1.5 text-[10px] text-slate-400 font-bold">€</span>
@@ -1065,9 +1066,9 @@ export function ConfiguracaoArranqueSaldos({
               <div className="flex-1">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Valor (€)</label>
                 <input
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0,00"
                   value={novoHistValor}
                   onChange={(e) => setNovoHistValor(e.target.value)}
                   className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold font-mono"

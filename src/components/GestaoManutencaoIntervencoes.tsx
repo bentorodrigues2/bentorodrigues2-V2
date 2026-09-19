@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Predio, Fracao, Ocorrencia, Movimento, Conta, Documento, LoggedUser, Fornecedor, OcorrenciaFoto, DividaFornecedor } from "../types";
-import { formatDatePT, exportToXLS } from "../utils";
+import { formatDatePT, exportToXLS, parseValorMonetario } from "../utils";
 import { motion, AnimatePresence } from "motion/react";
 import {
   fetchAgendaVistoriasFromSupabase, saveAgendaVistoriaToSupabase,
@@ -196,8 +196,16 @@ export function GestaoManutencaoIntervencoes({
   const [showNewObraForm, setShowNewObraForm] = useState(false);
   const [newObraDesc, setNewObraDesc] = useState("");
   const [newObraForn, setNewObraForn] = useState("");
+  // Antes o "Empreiteiro / Fornecedor" era só texto livre, nunca ligado a
+  // nenhum fornecedor real — a obra ficava sempre gravada com
+  // fornecedorId: "forn-custom", sem qualquer relação com a ficha real do
+  // fornecedor (contactos, NIF, contratos, dívidas). Passa a poder
+  // escolher-se um fornecedor já registado (o id real fica em
+  // newObraFornId); "Outro / Não Registado" mantém o campo de texto livre.
+  const [newObraFornId, setNewObraFornId] = useState("");
   const [newObraCusto, setNewObraCusto] = useState("");
   const [newObraNecessitaCota, setNewObraNecessitaCota] = useState(true);
+  const [newObraUsaFundoReserva, setNewObraUsaFundoReserva] = useState(false);
   const [newObraMeses, setNewObraMeses] = useState<number>(12);
   const [newObraInicio, setNewObraInicio] = useState("");
   const [newObraFim, setNewObraFim] = useState("");
@@ -208,7 +216,7 @@ export function GestaoManutencaoIntervencoes({
 
   // Trigger auto calculating whenever form values update
   useEffect(() => {
-    const cost = parseFloat(newObraCusto) || 0;
+    const cost = parseValorMonetario(newObraCusto);
     if (cost <= 0) {
       setIaBreakdown(null);
       return;
@@ -660,7 +668,7 @@ export function GestaoManutencaoIntervencoes({
       id_fracao: newIntFracao,
       prioridade: newIntPrioridade,
       fornecedor: newIntForn || "Fornecedor Local",
-      custoPrevisto: parseFloat(newIntCusto) || 0,
+      custoPrevisto: parseValorMonetario(newIntCusto),
       estado: "Pendente",
       anoExercicio: new Date().getFullYear().toString(),
       validadoAdmin: false
@@ -702,7 +710,7 @@ export function GestaoManutencaoIntervencoes({
 
   // Admin Validates Small Repair (Intervencao), post financial movement and archives docs
   const handleAdminValidateIntervencao = (id: string) => {
-    const finalCost = parseFloat(valCustoFinal) || 0;
+    const finalCost = parseValorMonetario(valCustoFinal);
     const target = intervencoes.find(i => i.id === id);
     if (!target) return;
 
@@ -770,7 +778,7 @@ export function GestaoManutencaoIntervencoes({
   // Admin verifies / homologates a completed task inside Tarefas Concluídas view
   const handleVerifyTaskAdmin = (taskId: string, orig: string) => {
     if (orig === "reparacao") {
-      const costNum = parseFloat(verifyCost) || 0;
+      const costNum = parseValorMonetario(verifyCost);
       const target = intervencoes.find(i => i.id === taskId);
       if (!target) return;
 
@@ -846,7 +854,7 @@ export function GestaoManutencaoIntervencoes({
     e.preventDefault();
     if (!newObraDesc.trim() || !newObraCusto) return;
 
-    const cost = parseFloat(newObraCusto) || 0;
+    const cost = parseValorMonetario(newObraCusto);
     const valuesByFraction: { [key: string]: number } = {};
     fracoes.forEach(f => {
       valuesByFraction[f.id_fracao] = (cost * f.permilagem) / 1000;
@@ -855,7 +863,11 @@ export function GestaoManutencaoIntervencoes({
     const nova: ObraExtraordinaria = {
       id: "obr-" + Date.now(),
       descricao: newObraDesc,
-      fornecedorId: "forn-custom",
+      // Liga mesmo ao fornecedor real selecionado — antes ficava sempre
+      // "forn-custom", sem nenhuma relação com a ficha real (contactos,
+      // NIF, contratos, dívidas), mesmo quando um fornecedor registado
+      // tinha sido escolhido no formulário.
+      fornecedorId: newObraFornId && newObraFornId !== "outro" ? newObraFornId : "forn-custom",
       fornecedorNome: newObraForn || "Empreiteiro Geral",
       dataInicio: newObraInicio || new Date().toISOString().split("T")[0],
       dataFim: newObraFim || new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
@@ -867,7 +879,8 @@ export function GestaoManutencaoIntervencoes({
       impactoSaldoAnual: -cost,
       estado: "Planeada",
       orcamentos: [],
-      documentosArquivados: false
+      documentosArquivados: false,
+      usaFundoReserva: newObraUsaFundoReserva
     };
 
     setObrasExtra([nova, ...obrasExtra]);
@@ -876,7 +889,9 @@ export function GestaoManutencaoIntervencoes({
     setShowNewObraForm(false);
     setNewObraDesc("");
     setNewObraForn("");
+    setNewObraFornId("");
     setNewObraCusto("");
+    setNewObraUsaFundoReserva(false);
     alert("Intervenção Extraordinária (Obra Grande) adicionada com plano financeiro de permilagem!");
   };
 
@@ -1605,8 +1620,8 @@ export function GestaoManutencaoIntervencoes({
                 <div>
                   <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Custo Estimado / Previsto (€)</label>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     value={newIntCusto}
                     onChange={e => setNewIntCusto(e.target.value)}
                     placeholder="Ex: 120"
@@ -1727,8 +1742,8 @@ export function GestaoManutencaoIntervencoes({
                       <div>
                         <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Custo Final do Trabalho (€)</label>
                         <input
-                          type="number"
-                          step="0.01"
+                          type="text"
+                          inputMode="decimal"
                           value={valCustoFinal}
                           onChange={e => setValCustoFinal(e.target.value)}
                           placeholder={i.custoPrevisto.toString()}
@@ -1781,7 +1796,7 @@ export function GestaoManutencaoIntervencoes({
 
             <button
               onClick={() => setShowNewObraForm(!showNewObraForm)}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md cursor-pointer flex items-center gap-1"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md cursor-pointer flex items-center gap-1"
             >
               <Plus className="h-4 w-4" />
               <span>Planear Nova Obra</span>
@@ -1791,7 +1806,7 @@ export function GestaoManutencaoIntervencoes({
           {showNewObraForm && (
             <form onSubmit={handleCreateObraExtra} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border text-xs space-y-4 max-w-4xl">
               <h4 className="font-bold uppercase text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                <Hammer className="h-4 w-4 text-purple-600" />
+                <Hammer className="h-4 w-4 text-emerald-600" />
                 Dossier de Planeamento de Obra Grande
               </h4>
               
@@ -1810,21 +1825,40 @@ export function GestaoManutencaoIntervencoes({
 
                 <div>
                   <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Empreiteiro / Fornecedor</label>
-                  <input
-                    type="text"
-                    value={newObraForn}
-                    onChange={e => setNewObraForn(e.target.value)}
-                    placeholder="Ex: Pinturas do Norte, Lda."
-                    className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950"
-                  />
+                  <select
+                    value={newObraFornId}
+                    onChange={e => {
+                      const id = e.target.value;
+                      setNewObraFornId(id);
+                      const f = fornecedores.find(x => x.id_fornecedor === id);
+                      if (f) setNewObraForn(f.nome);
+                      else if (id === "") setNewObraForn("");
+                    }}
+                    className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-emerald-900 dark:text-emerald-100"
+                  >
+                    <option value="">— Selecionar Fornecedor Registado —</option>
+                    {fornecedores.filter(f => f.id_predio === predio.id_predio).map(f => (
+                      <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome} ({f.categoria})</option>
+                    ))}
+                    <option value="outro">Outro / Não Registado (escrever nome abaixo)</option>
+                  </select>
+                  {(newObraFornId === "outro" || newObraFornId === "") && (
+                    <input
+                      type="text"
+                      value={newObraForn}
+                      onChange={e => setNewObraForn(e.target.value)}
+                      placeholder="Ex: Pinturas do Norte, Lda."
+                      className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 mt-2"
+                    />
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Custo Total Previsto (€)</label>
                   <input
-                    type="number"
+                    type="text"
                     required
-                    step="0.01"
+                    inputMode="decimal"
                     value={newObraCusto}
                     onChange={e => setNewObraCusto(e.target.value)}
                     placeholder="Ex: 12500"
@@ -1853,19 +1887,38 @@ export function GestaoManutencaoIntervencoes({
                 </div>
               </div>
 
-              <div className="bg-purple-50 dark:bg-purple-950/20 p-4 rounded-xl border border-purple-150 text-xs">
-                <label className="flex items-center gap-2 mb-2 font-bold cursor-pointer select-none">
+              <div className="bg-emerald-50 dark:bg-emerald-950/20 p-4 rounded-xl border border-emerald-150 dark:border-emerald-900/40 text-xs space-y-2">
+                <label className="flex items-center gap-2 font-bold cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={newObraUsaFundoReserva}
+                    onChange={e => {
+                      const checked = e.target.checked;
+                      setNewObraUsaFundoReserva(checked);
+                      if (checked) setNewObraNecessitaCota(false);
+                    }}
+                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                  />
+                  <i className="fa-solid fa-piggy-bank text-emerald-600"></i>
+                  <span>Pagar a partir do Fundo de Reserva Comum?</span>
+                </label>
+
+                <label className="flex items-center gap-2 font-bold cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={newObraNecessitaCota}
-                    onChange={e => setNewObraNecessitaCota(e.target.checked)}
-                    className="rounded border-slate-300 text-purple-600 focus:ring-purple-500 h-4 w-4"
+                    onChange={e => {
+                      const checked = e.target.checked;
+                      setNewObraNecessitaCota(checked);
+                      if (checked) setNewObraUsaFundoReserva(false);
+                    }}
+                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4"
                   />
                   <span>Requer Lançamento de Quota Extraordinária?</span>
                 </label>
-                
+
                 {newObraNecessitaCota && (
-                  <div className="space-y-3 pt-2 pl-6 border-l-2 border-purple-200">
+                  <div className="space-y-3 pt-2 pl-6 border-l-2 border-emerald-200 dark:border-emerald-900">
                     <div>
                       <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Fracionamento Recomendado (Meses)</label>
                       <select
@@ -1885,8 +1938,8 @@ export function GestaoManutencaoIntervencoes({
                     {/* IA Prediction and Simulator Display */}
                     {iaBreakdown && (
                       <div className="space-y-2 text-slate-700 dark:text-slate-300 font-medium">
-                        <p className="font-bold text-purple-700 dark:text-purple-400 flex items-center gap-1 text-[11px]">
-                          <Sparkles className="h-4 w-4 text-purple-600" />
+                        <p className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 text-[11px]">
+                          <Sparkles className="h-4 w-4 text-emerald-600" />
                           Sugestão Automática de Quotas Extraordinárias (IA Predictor)
                         </p>
                         
@@ -1901,7 +1954,7 @@ export function GestaoManutencaoIntervencoes({
                           </div>
                           <div>
                             <span className="text-[9px] text-slate-400 uppercase block">Quota Mensal Global ({newObraMeses}m)</span>
-                            <span className="font-mono font-bold text-purple-600 dark:text-purple-400">{iaBreakdown.monthlyBreakdown[newObraMeses].toFixed(2)}€/mês</span>
+                            <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{iaBreakdown.monthlyBreakdown[newObraMeses].toFixed(2)}€/mês</span>
                           </div>
                         </div>
 
@@ -1928,7 +1981,7 @@ export function GestaoManutencaoIntervencoes({
               </div>
 
               <div className="flex gap-2">
-                <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-4 rounded text-xs cursor-pointer">
+                <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-4 rounded text-xs cursor-pointer">
                   Aprovar Dossier de Planeamento
                 </button>
                 <button type="button" onClick={() => setShowNewObraForm(false)} className="bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-1.5 px-4 rounded text-xs cursor-pointer">
@@ -1946,7 +1999,7 @@ export function GestaoManutencaoIntervencoes({
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="text-[9px] bg-slate-100 dark:bg-slate-850 px-2 py-0.5 rounded font-mono font-bold">ID: {o.id}</span>
-                      <span className="text-[10px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/30 px-2 py-0.5 rounded">Obra Grande Extraordinária</span>
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded">Obra Grande Extraordinária</span>
                     </div>
                     <h4 className="text-base font-bold text-slate-800 dark:text-slate-100">{o.descricao}</h4>
                   </div>
@@ -1956,7 +2009,7 @@ export function GestaoManutencaoIntervencoes({
                       ? "bg-emerald-50 text-emerald-800 border-emerald-200"
                       : o.estado === "Em Curso"
                       ? "bg-blue-50 text-blue-800 border-blue-200 animate-pulse"
-                      : "bg-purple-50 text-purple-800 border-purple-200"
+                      : "bg-emerald-50 text-emerald-800 border-emerald-200"
                   }`}>
                     {o.estado}
                   </span>
@@ -1982,8 +2035,8 @@ export function GestaoManutencaoIntervencoes({
                 </div>
 
                 {o.necessitaCotaExtra && (
-                  <div className="border-l-4 border-purple-500 pl-4 space-y-2">
-                    <p className="font-bold text-xs text-purple-700 dark:text-purple-400">Plano de Financiamento de Quotas Extraordinárias ({o.mesesFracionamento} Meses):</p>
+                  <div className="border-l-4 border-emerald-500 pl-4 space-y-2">
+                    <p className="font-bold text-xs text-emerald-700 dark:text-emerald-400">Plano de Financiamento de Quotas Extraordinárias ({o.mesesFracionamento} Meses):</p>
                     <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
                       {fracoes.map(f => {
                         const costPerFrac = (o.custoTotal * f.permilagem) / 1000;
@@ -1992,7 +2045,7 @@ export function GestaoManutencaoIntervencoes({
                           <div key={f.id_fracao} className="p-2 bg-slate-50 dark:bg-slate-950 rounded border text-[10px] font-medium">
                             <span className="font-bold text-slate-600 dark:text-slate-400 block">{f.fracao_nome}</span>
                             <span className="font-mono block">Total: {costPerFrac.toFixed(1)}€</span>
-                            <span className="font-mono font-bold text-purple-600">Mensal: {monthlyVal.toFixed(1)}€</span>
+                            <span className="font-mono font-bold text-emerald-600">Mensal: {monthlyVal.toFixed(1)}€</span>
                           </div>
                         );
                       })}
@@ -2004,7 +2057,7 @@ export function GestaoManutencaoIntervencoes({
                   <div className="pt-2 flex gap-2">
                     <button
                       onClick={() => handleConfirmarObraExtra(o.id)}
-                      className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-xl text-xs cursor-pointer shadow flex items-center gap-1"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-xl text-xs cursor-pointer shadow flex items-center gap-1"
                     >
                       <Check className="h-4 w-4" />
                       <span>Confirmar Adjudicação & Lançar Dívida a Fornecedor</span>
@@ -2255,8 +2308,8 @@ export function GestaoManutencaoIntervencoes({
                               <div>
                                 <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Custo Adjudicado Final (€)</label>
                                 <input
-                                  type="number"
-                                  step="0.01"
+                                  type="text"
+                                  inputMode="decimal"
                                   value={verifyCost}
                                   onChange={e => setVerifyCost(e.target.value)}
                                   placeholder={typeof task.custo === "number" ? task.custo.toString() : "120"}
