@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Predio, Conta, Fracao, Movimento, Aviso } from "../types";
-import { exportToXLS } from "../utils";
+import { exportToXLS, ehContaFundoReserva } from "../utils";
 import { 
   Building, DoorOpen, Users, FileText, Hammer, Brush, 
   Wallet, Truck, MessageSquare, Sparkles,
@@ -65,12 +65,11 @@ export function PainelControlo({
   // movimentos ignorava sempre o saldo de abertura). Classificação por
   // palavras-chave no "tipo" da conta, cobrindo tanto o texto produzido em
   // GestaoContas.tsx como no Assistente de Arranque.
-  const classificarContaComoReserva = (tipo: string) => /reserva|poupan|prazo|fcr/i.test(tipo || "");
   const totalFundoReserva = predioContas
-    .filter(c => classificarContaComoReserva(c.tipo))
+    .filter(c => ehContaFundoReserva(c.tipo))
     .reduce((acc, c) => acc + (Number(c.saldo) || 0), 0);
   const totalContaOrdem = predioContas
-    .filter(c => !classificarContaComoReserva(c.tipo))
+    .filter(c => !ehContaFundoReserva(c.tipo))
     .reduce((acc, c) => acc + (Number(c.saldo) || 0), 0);
   const totalDisponibilidades = totalContaOrdem + totalFundoReserva;
   const totalLiquido = totalDisponibilidades - dividasPendentesValor;
@@ -289,7 +288,10 @@ export function PainelControlo({
             name: "Conta(s) à Ordem",
             val: `${totalContaOrdem.toLocaleString("pt-PT")} €`,
             icon: "/modulos/57-quota.png",
-            section: "financeiro_extratos",
+            // Antes ia para "financeiro_extratos" (Extrato de Movimentos e
+            // Saldo do CONDÓMINO — por fração, nada a ver com o saldo desta
+            // conta bancária). Vai agora para a gestão real das contas.
+            section: "contas",
             fixo: true,
             destaque: true,
             contagem: 1
@@ -298,7 +300,9 @@ export function PainelControlo({
             name: "Fundo de Reserva",
             val: `${totalFundoReserva.toLocaleString("pt-PT")} €`,
             icon: "/modulos/64-saldo.png",
-            section: "financeiro_extratos",
+            // Idem — ia para o mesmo sítio errado. Vai agora para o ecrã
+            // real do Fundo de Reserva.
+            section: "fundo_reserva",
             fixo: true,
             destaque: true,
             contagem: 1

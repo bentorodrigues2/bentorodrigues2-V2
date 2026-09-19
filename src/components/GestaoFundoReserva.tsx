@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Predio, LoggedUser, Conta } from "../types";
+import { ehContaFundoReserva } from "../utils";
 
 interface GestaoFundoReservaProps {
   predio: Predio;
@@ -12,8 +13,8 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
   // antes eram sempre os mesmos números fixos (750€ com um comentário no
   // código a admitir "Starts below the minimum to trigger the alert!"),
   // independentemente do prédio selecionado.
-  const contaFCR = contas.find(c => c.id_predio === predio.id_predio && (c.tipo.includes("FCR") || c.tipo.includes("Reserva")));
-  const saldoRealFCR = contaFCR?.saldo || 0;
+  const contasFCR = contas.filter(c => c.id_predio === predio.id_predio && ehContaFundoReserva(c.tipo));
+  const saldoRealFCR = contasFCR.reduce((acc, c) => acc + (Number(c.saldo) || 0), 0);
   const orcamentoRealAnual = (predio.patrimonio as any)?.orcamento_anual || 0;
 
   // Financial parameters — pré-preenchidos com dados reais, mas continuam

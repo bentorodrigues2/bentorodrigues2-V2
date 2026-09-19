@@ -106,6 +106,28 @@ export function parseValorMonetario(raw: string): number {
   return isNaN(n) ? 0 : n;
 }
 
+/**
+ * Se uma conta bancária deve contar como Fundo de Reserva (FCR) nos
+ * indicadores do painel e no ecrã de Fundo de Reserva. "Finalidade da
+ * Conta" em GestaoContas.tsx é um dropdown fixo de 4 valores exatos — por
+ * isso a comparação é exata, não por substring solta.
+ *
+ * Corrigido um bug real: PainelControlo.tsx usava antes o regex
+ * /reserva|poupan|prazo|fcr/i, que apanhava QUALQUER conta cujo tipo
+ * contivesse "poupan" — incluindo "Poupança Intervenções & Obras", uma
+ * finalidade distinta e deliberadamente separada do Fundo de Reserva
+ * legal. Isso fazia o cartão "Fundo de Reserva" do painel mostrar o saldo
+ * dessa conta (que ia ficando negativo à medida que se pagavam dívidas a
+ * fornecedores a partir dela), dando a falsa impressão de que essas
+ * dívidas estavam a sair do fundo de reserva legal, quando na realidade
+ * saíam mesmo da conta que o administrador tinha selecionado.
+ * "Depósito a Prazo" conta como Fundo de Reserva porque o próprio produto
+ * admite guardar lá o fundo (pedido explícito do utilizador nesta sessão).
+ */
+export function ehContaFundoReserva(tipo: string | undefined | null): boolean {
+  return tipo === "Fundo Comum de Reserva (FCR)" || tipo === "Depósito a Prazo";
+}
+
 export const formatDatePT = (dateStr: string | undefined): string => {
   if (!dateStr) return "";
   const parts = dateStr.split('-');
