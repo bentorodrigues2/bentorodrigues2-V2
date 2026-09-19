@@ -407,9 +407,18 @@ export async function deleteMovimentoFromSupabase(idMov: string): Promise<boolea
 export async function uploadDocumentoToStorage(file: File, path: string): Promise<string | null> {
   if (!isSupabaseConfigured()) return null;
   try {
+    // O Storage do Supabase rejeita chaves com espaços, acentos ou outros
+    // caracteres fora de [a-zA-Z0-9.\-_/] (erro "Invalid key") — nomes de
+    // ficheiro reais em PT-PT ("Contrato Manutenção Elevadores.pdf") vinham
+    // diretamente dos chamadores e faziam o upload falhar silenciosamente
+    // (a função só devolvia null, sem o utilizador perceber porquê).
+    const pathSanitizado = path
+      .split("/")
+      .map(segmento => segmento.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9.\-_]+/g, "_"))
+      .join("/");
     const { data, error } = await supabase.storage
       .from("documentos")
-      .upload(path, file, { upsert: true });
+      .upload(pathSanitizado, file, { upsert: true });
 
     if (error) {
       console.warn("[Supabase Storage] Upload error:", error.message);

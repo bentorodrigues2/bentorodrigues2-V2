@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Download, Save, FileText, Trash2, CheckCircle2, AlertTriangle, Pencil, X } from "lucide-react";
-import { Predio, Fornecedor, DividaFornecedor, PagamentoDivida, LoggedUser, Conta, Movimento } from "../types";
+import { Predio, Fornecedor, DividaFornecedor, PagamentoDivida, LoggedUser, Conta, Movimento, Documento } from "../types";
 import { exportToXLS, generateSupplierPwaManualPDF, gerarPdfRegistoFornecedorHomologado, gerarCartaoAniversarioCondominoPDF, parseValorMonetario } from "../utils";
 import {
   saveFornecedorToSupabase,
@@ -17,6 +17,8 @@ import {
   saveContaToSupabase,
   saveMovimentoToSupabase,
   deleteMovimentoFromSupabase,
+  uploadDocumentoToStorage,
+  saveDocumentoToSupabase,
   registarLogAuditoria
 } from "../lib/supabaseService";
 
@@ -432,6 +434,10 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
   const [indexacaoPreco, setIndexacaoPreco] = useState("IPC Inflação INE");
   const [documentoNome, setDocumentoNome] = useState("");
   const [documentoBase64, setDocumentoBase64] = useState("");
+  // Ficheiro real (não só o base64) — precisa dele para o poder enviar
+  // também para o Supabase Storage e arquivar no módulo Documental geral
+  // (Arquivo → Fornecedores), que antes nunca recebia estes contratos.
+  const [documentoFile, setDocumentoFile] = useState<File | null>(null);
 
   // Rescisão de contrato — emite carta real (PDF + email) e regista
   // comprovativo de envio no próprio contrato.
@@ -514,6 +520,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     if (!file) return;
 
     setDocumentoNome(file.name);
+    setDocumentoFile(file);
     const reader = new FileReader();
     reader.onload = (event) => {
       if (event.target?.result) {
@@ -635,16 +642,52 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       documento_base64: documentoBase64 || undefined
     };
 
-    saveContratoToSupabase(novoContrato).then(ok => {
+    saveContratoToSupabase(novoContrato).then(async ok => {
       if (ok) {
         setContratos([novoContrato, ...contratos]);
+
+        // Arquiva automaticamente uma cópia real no módulo Documental geral
+        // (Arquivo → Fornecedores) — antes o contrato só ficava acessível
+        // aqui, na aba Contratos, e nunca aparecia em Arquivo para consulta.
+        if (documentoFile) {
+          const fornecedorNome = predioForn.find(f => f.id_fornecedor === selectedFornecedorId)?.nome || "Fornecedor";
+          const ano = new Date().getFullYear().toString();
+          const caminhoStorage = `${ano}/Fornecedores/${predio.id_predio}/${Date.now()}-${documentoFile.name}`;
+          const urlReal = await uploadDocumentoToStorage(documentoFile, caminhoStorage);
+          if (urlReal) {
+            const novoDoc: Documento = {
+              id_doc: "doc-contr-" + Date.now(),
+              id_predio: predio.id_predio,
+              nome: `Contrato - ${servicoNome} (${fornecedorNome})`,
+              tipo: documentoFile.type.includes("pdf") ? "PDF" : "Imagem",
+              data_upload: new Date().toISOString().split("T")[0],
+              tamanho: `${(documentoFile.size / 1024).toFixed(0)} KB`,
+              categoria: "Fornecedores",
+              descricao: `Contrato de ${tipoContrato} com ${fornecedorNome} — ${servicoNome}`,
+              visibilidade: "Administração",
+              autor: loggedUser.nome,
+              tema: "Fornecedores",
+              ano,
+              sub_pasta: fornecedorNome,
+              fornecedor: fornecedorNome,
+              caminho: urlReal,
+              arquivado: true,
+              data_arquivamento: new Date().toISOString().split("T")[0],
+              tipo_arquivo: "documento",
+              relevancia_perfis: ["ADMIN", "EMPRESA_GESTORA", "CONTABILISTA"]
+            };
+            await saveDocumentoToSupabase(novoDoc);
+          }
+        }
+
         setServicoNome("");
         setCustoMensal("");
         setCustoAnual("");
         setAlertaDiasAntecedencia(60);
         setDocumentoNome("");
         setDocumentoBase64("");
-        alert("Serviço Contratado registado e arquivado no sistema!");
+        setDocumentoFile(null);
+        alert("Serviço Contratado registado e arquivado no sistema (também disponível em Arquivo → Fornecedores)!");
       } else {
         alert("❌ Não foi possível guardar o contrato no Supabase. Tente novamente.");
       }
