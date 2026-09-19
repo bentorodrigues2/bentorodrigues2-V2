@@ -3354,8 +3354,9 @@ export function PWASimulator({
                         />
                       )}
                       {activePwaSubMenuDetails === "fornecedores_orcamentos" && (
-                        <PortalOrcamentos 
+                        <PortalOrcamentos
                           predio={predio}
+                          fracoes={fracoes}
                           fornecedores={fornecedores}
                           onAddFornecedor={(f) => setFornecedores(prev => [...prev, f])}
                           loggedUser={loggedUser}

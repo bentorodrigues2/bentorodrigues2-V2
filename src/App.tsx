@@ -294,7 +294,7 @@ export default function App() {
   const [openMenuFornecedores, setOpenMenuFornecedores] = useState(false);
   const [openMenuConfiguracoesIA, setOpenMenuConfiguracoesIA] = useState(false);
   const [fornecedoresTab, setFornecedoresTab] = useState<"fornecedores" | "contratos" | "dividas">("fornecedores");
-  const [iaInitialTab, setIaInitialTab] = useState<"juridico" | "orcamentos" | "orcamento_anual_ia" | "cerebro_ia" | undefined>(undefined);
+  const [iaInitialTab, setIaInitialTab] = useState<"juridico" | "orcamento_anual_ia" | "cerebro_ia" | undefined>(undefined);
   const [viewMode, setViewMode] = useState<"BROWSER" | "PWA">("BROWSER");
   const [brandingColor, setBrandingColorState] = useState<string>(() => {
     return localStorage.getItem("brandingColor") || "emerald";
@@ -2164,22 +2164,14 @@ export default function App() {
                     versão duplicada e com dados inventados (saldo fixo de
                     2150€, despesas fictícias mês a mês). A ferramenta real,
                     já ligada ao saldo verdadeiro das contas, vive agora só
-                    em Financeiro → Fundo de Reserva. */}
-                <button
-                  onClick={() => {
-                    setActiveSection("ia_avancada");
-                    setIaInitialTab("orcamentos");
-                    setViewMode("BROWSER");
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "ia_avancada" && iaInitialTab === "orcamentos" 
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
-                  }`}
-                >
-                  <i className="fa-solid fa-handshake-angle text-emerald-400 text-xs"></i>
-                  <span>Bolsa de Orçamentos</span>
-                </button>
+                    em Financeiro → Fundo de Reserva.
+                    "Bolsa de Orçamentos" saiu daqui pela mesma razão — era
+                    uma segunda versão com pedidos e propostas de
+                    fornecedores 100% inventados, mesmo chamando a IA real
+                    de comparação sobre esses dados falsos. O Portal de
+                    Orçamentos real (concursos e propostas gravados no
+                    Supabase) vive agora só em Fornecedores → Portal de
+                    Orçamentos. */}
                 <button
                   onClick={() => {
                     setActiveSection("ia_avancada");
@@ -3117,8 +3109,9 @@ export default function App() {
           )}
 
           {activeSection === "portal_orcamentos" && (
-            <PortalOrcamentos 
+            <PortalOrcamentos
               predio={predioAtivo}
+              fracoes={fracoes}
               fornecedores={fornecedores}
               onAddFornecedor={handleAddFornecedor}
               loggedUser={loggedUser}

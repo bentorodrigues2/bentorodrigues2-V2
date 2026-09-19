@@ -13,7 +13,7 @@ interface IAAvancadaProps {
   movements: Movimento[];
   fornecedores: Fornecedor[];
   loggedUser: LoggedUser;
-  initialTab?: "juridico" | "orcamentos" | "orcamento_anual_ia" | "cerebro_ia";
+  initialTab?: "juridico" | "orcamento_anual_ia" | "cerebro_ia";
 }
 
 interface Proposal {
@@ -731,7 +731,7 @@ const TABLES_DATA = {
 
 export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, loggedUser, initialTab }: IAAvancadaProps) {
   // Tabs for the IA Avançada Dashboard
-  const [activeTab, setActiveTab] = useState<"juridico" | "orcamentos" | "orcamento_anual_ia" | "cerebro_ia">(initialTab || "orcamento_anual_ia");
+  const [activeTab, setActiveTab] = useState<"juridico" | "orcamento_anual_ia" | "cerebro_ia">(initialTab || "orcamento_anual_ia");
 
   const [sendingReaction, setSendingReaction] = useState<{ isOpen: boolean; type: "email" | "mensagem"; title?: string } | null>(null);
 
@@ -1280,20 +1280,6 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
   const [legalNoticeText, setLegalNoticeText] = useState<string>("");
   const [isGeneratingNotice, setIsGeneratingNotice] = useState<boolean>(false);
 
-  // State for Bolsa de Orçamentos
-  const [selectedRequest, setSelectedRequest] = useState<string>("pintura_fachada");
-  const [isComparingProposals, setIsComparingProposals] = useState<boolean>(false);
-  const [proposalComparisonResult, setProposalComparisonResult] = useState<{
-    comparisonMatrix: Array<{ criterion: string; supplierA: string; supplierB: string; supplierC?: string; winner: string }>;
-    analysis: {
-      [key: string]: {
-        pros: string[];
-        cons: string[];
-        score: number;
-      };
-    };
-    recommendation: string;
-  } | null>(null);
 
   // 1. IDENTIFY DEBTORES (FRACTIONS WITH PENDING PAYMENTS)
   // Group pending avisos by fraction
@@ -1380,88 +1366,12 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
   };
 
 
-  // 3. BOLSA DE ORÇAMENTOS & PROPOSALS SIDE-BY-SIDE
-  const pedidosOrcamento = {
-    pintura_fachada: {
-      titulo: "Pintura Geral e Tratamento de Fissuras da Fachada Traseira",
-      descricao: "Pedido de orçamento para lavagem com jato de alta pressão, tratamento de fissuras ativas e pintura de impermeabilização de toda a fachada posterior do edifício (área estimada de 340m2), incluindo fornecimento e montagem de andaime licenciado.",
-      propostas: [
-        {
-          id_proposta: "prop-1",
-          fornecedor: "Alpino Pinturas Verticais, Lda.",
-          preco: 4850.00,
-          prazo: "10 dias úteis",
-          garantia: "5 anos",
-          detalhes: "Pintura por método de alpinismo industrial (dispensa andaimes em 80% da área). Utiliza tinta elástica de alta qualidade anti-fissuras Dyrup. Inclui lavagem inicial antifúngica.",
-          certificacoes: "Alvará de construção Classe 1, Seguro de Acidentes de Trabalho total, Técnicos IRATA certificados."
-        },
-        {
-          id_proposta: "prop-2",
-          fornecedor: "Construções & Fachadas Ribatejo, S.A.",
-          preco: 6200.00,
-          prazo: "15 dias úteis",
-          garantia: "10 anos",
-          detalhes: "Montagem completa de andaime metálico certificado com rede de proteção. Decapagem, aplicação de primário selante e duas demãos de tinta acrílica premium Robbialac. Reparação profunda com argamassa estrutural.",
-          certificacoes: "Alvará de construção Classe 2, Licença camarária de ocupação de via pública incluída, Seguro responsabilidade civil €250k."
-        }
-      ]
-    },
-    bomba_agua: {
-      titulo: "Substituição do Grupo de Bombas Pressurizadoras de Água",
-      descricao: "Fornecimento e instalação de novo grupo hidropressor duplo com variadores de velocidade integrados para o abastecimento do edifício, substituindo as bombas obsoletas que originam picos de ruído e quebras de pressão frequentes.",
-      propostas: [
-        {
-          id_proposta: "prop-3",
-          fornecedor: "Fluidotec - Engenharia de Fluidos Lda.",
-          preco: 2950.00,
-          prazo: "2 dias",
-          garantia: "3 anos",
-          detalhes: "Bombas Grundfos de última geração com motores de alto rendimento classe IE5. Inclui vaso de expansão de 80L em inox, novo quadro elétrico de proteção e desmontagem do equipamento antigo.",
-          certificacoes: "Certificação de qualidade ISO 9001, Técnicos credenciados ADENE para eficiência hídrica."
-        },
-        {
-          id_proposta: "prop-4",
-          fornecedor: "Saneamento Geral & Bombas Manuel Cruz",
-          preco: 2400.00,
-          prazo: "3 dias",
-          garantia: "2 anos",
-          detalhes: "Instalação de bombas Ebara duplas, quadro elétrico padrão sem inversores eletrónicos individuais. Reaproveita o vaso de expansão existente se estiver em boas condições operacionais.",
-          certificacoes: "Inscrição oficial no IMPIC, Seguro de Acidentes de Trabalho padrão."
-        }
-      ]
-    }
-  };
-
-  const currentRequestData = pedidosOrcamento[selectedRequest as keyof typeof pedidosOrcamento] || {
-    titulo: "Pedido não encontrado",
-    descricao: "",
-    propostas: [] as Proposal[]
-  };
-
-  const handleCompareProposalsAI = async () => {
-    setIsComparingProposals(true);
-    setProposalComparisonResult(null);
-
-    try {
-      const response = await fetch("/api/compare-proposals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requestDescription: (currentRequestData.titulo || "") + ": " + (currentRequestData.descricao || ""),
-          proposals: currentRequestData.propostas || []
-        })
-      });
-
-      if (!response.ok) throw new Error("Erro ao obter análise comparativa da IA.");
-      const data = await response.json();
-      setProposalComparisonResult(data);
-    } catch (err: any) {
-      console.error(err);
-      alert("Erro na comparação de propostas: " + err.message);
-    } finally {
-      setIsComparingProposals(false);
-    }
-  };
+  // A "Bolsa de Orçamentos" que existia aqui foi removida — era uma
+  // segunda versão, com pedidos e propostas de fornecedores 100%
+  // inventados (nomes, preços e certificações fictícios), mesmo chamando
+  // a IA real de comparação sobre esses dados falsos. O Portal de
+  // Orçamentos real (RFPs reais, gravados no Supabase) já existe e está
+  // acessível em Fornecedores → Portal de Orçamentos.
 
   return (
     <div className="space-y-6">
@@ -1477,7 +1387,6 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 <span>
                   {activeTab === "orcamento_anual_ia" && "🪄 Orçamentos & Projeções (IA)"}
                   {activeTab === "juridico" && "⚖️ Assistente Jurídico (IA)"}
-                  {activeTab === "orcamentos" && "🤝 Bolsa de Orçamentos (IA)"}
                   {activeTab === "cerebro_ia" && "🧠 Analista IA (DocFG)"}
                 </span>
               </h3>
@@ -1512,17 +1421,6 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
               </span>
               <p className="text-[11px] text-emerald-100/90 leading-relaxed">
                 Aqui pode consultar o detetor de contencioso de frações em atraso e redigir automaticamente minutas de cartas de interpelação extrajudicial e avisos de cobrança em conformidade com o Código Civil português.
-              </p>
-            </div>
-          )}
-
-          {activeTab === "orcamentos" && (
-            <div className="space-y-1">
-              <span className="font-black text-emerald-300 uppercase tracking-wider block text-[11px]">
-                <i className="fa-solid fa-circle-info mr-1.5"></i>Nota Explicativa: Bolsa de Orçamentos
-              </span>
-              <p className="text-[11px] text-emerald-100/90 leading-relaxed">
-                Aqui pode consultar o comparativo técnico e financeiro de propostas de fornecedores para obras e reparações no edifício, permitindo selecionar a opção com melhor relação custo-benefício.
               </p>
             </div>
           )}
@@ -1688,218 +1586,6 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 </div>
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* 3. BOLSA DE ORÇAMENTOS */}
-      {activeTab === "orcamentos" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fadeIn">
-          {/* Active budget request selector */}
-          <div className="lg:col-span-4 space-y-4">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Bolsa de Pedidos de Orçamento Activos</h4>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Envie pedidos digitais a múltiplos fornecedores credenciados e compare as propostas recebidas de forma estruturada.
-              </p>
-
-              <div className="space-y-3">
-                {Object.keys(pedidosOrcamento).map(key => {
-                  const req = pedidosOrcamento[key as keyof typeof pedidosOrcamento];
-                  return (
-                    <div
-                      key={key}
-                      onClick={() => { setSelectedRequest(key); setProposalComparisonResult(null); }}
-                      className={`p-4 rounded-xl border transition-all cursor-pointer ${
-                        selectedRequest === key
-                          ? "border-violet-500 bg-violet-50/20 shadow-sm"
-                          : "border-slate-200 bg-slate-50/50 hover:bg-slate-50"
-                      }`}
-                    >
-                      <h5 className="text-xs font-black text-slate-800">{req.titulo}</h5>
-                      <p className="text-[10px] text-slate-500 mt-1.5 truncate">{req.descricao}</p>
-                      
-                      <div className="mt-3 pt-2 border-t border-slate-200/60 flex justify-between items-center text-[9px] font-bold text-slate-400">
-                        <span><i className="fa-solid fa-paper-plane mr-1.5"></i>{req.propostas.length} Propostas Recebidas</span>
-                        <span className="text-violet-600">Ver Propostas <i className="fa-solid fa-arrow-right ml-1"></i></span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Launch new budget request */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3.5">
-              <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">Lançar Novo Pedido de Cotação</h5>
-              <div className="space-y-2.5">
-                <input
-                  type="text"
-                  placeholder="Título (Ex: Impermeabilização da Cobertura)"
-                  className="w-full border border-slate-200 rounded-lg p-2 text-xs bg-slate-50/50"
-                />
-                <textarea
-                  rows={2}
-                  placeholder="Descreva as especificações, metros quadrados, materiais pretendidos e garantias..."
-                  className="w-full border border-slate-200 rounded-lg p-2 text-xs bg-slate-50/50"
-                />
-                <button
-                  type="button"
-                  onClick={() => alert("A Bolsa de Condomínios (rede partilhada de fornecedores entre edifícios) ainda não está disponível. Para lançar um concurso real e receber propostas de fornecedores, use o Portal de Orçamentos.")}
-                  className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 px-3 rounded-xl text-xs transition-colors flex items-center justify-center cursor-pointer"
-                >
-                  <i className="fa-solid fa-share-nodes mr-2"></i>Enviar Pedidos Digitais
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Proposals side-by-side display and Gemini analysis */}
-          <div className="lg:col-span-8 space-y-4">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-              <div className="flex justify-between items-start gap-4">
-                <div>
-                  <h4 className="text-sm font-bold text-slate-800">{currentRequestData.titulo}</h4>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">{currentRequestData.descricao}</p>
-                </div>
-                <button
-                  onClick={handleCompareProposalsAI}
-                  disabled={isComparingProposals}
-                  className="bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm shrink-0 flex items-center cursor-pointer"
-                >
-                  {isComparingProposals ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      A Analisar com IA...
-                    </>
-                  ) : (
-                    <>
-                      <i className="fa-solid fa-chart-line mr-2"></i>Comparar Propostas com IA
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Renders standard received proposals first */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                {currentRequestData.propostas.map((prop, index) => (
-                  <div key={prop.id_proposta} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-2.5">
-                    <div className="flex justify-between items-start border-b border-slate-150 pb-2">
-                      <span className="text-xs font-black text-slate-800">{prop.fornecedor}</span>
-                      <span className="text-xs font-black text-slate-950">€{prop.preco.toLocaleString()}</span>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-1 text-[10px] text-slate-500 font-semibold">
-                      <div><i className="fa-solid fa-calendar mr-1"></i>Prazo: <span className="text-slate-800">{prop.prazo}</span></div>
-                      <div><i className="fa-solid fa-shield mr-1"></i>Garantia: <span className="text-slate-800">{prop.garantia}</span></div>
-                    </div>
-
-                    <p className="text-[11px] text-slate-600 leading-relaxed italic">"{prop.detalhes}"</p>
-                    <div className="pt-1.5 text-[9px] text-slate-400 border-t border-slate-200/50 truncate">
-                      <i className="fa-solid fa-circle-check text-emerald-500 mr-1"></i>{prop.certificacoes}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* AI Side-by-side Matrix Comparison results */}
-            {proposalComparisonResult && (
-              <div className="space-y-4 animate-fadeIn">
-                {/* 1. Comparison Matrix */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                  <div className="bg-slate-50 px-5 py-3 border-b border-slate-200">
-                    <span className="text-xs font-bold text-slate-700 flex items-center">
-                      <i className="fa-solid fa-table-columns text-violet-500 mr-2 text-sm"></i>
-                      Matriz Comparativa de Propostas (Análise AI)
-                    </span>
-                  </div>
-                  <table className="w-full text-xs text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 text-slate-400 font-extrabold uppercase tracking-wide border-b border-slate-200 text-[10px]">
-                        <th className="p-3 pl-5">Critério de Avaliação</th>
-                        <th className="p-3">{(currentRequestData.propostas?.[0]?.fornecedor || "Fornecedor A").split(" ")[0]}</th>
-                        <th className="p-3">{(currentRequestData.propostas?.[1]?.fornecedor || "Fornecedor B").split(" ")[0]}</th>
-                        <th className="p-3">Melhor Opção (Vencedor)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {proposalComparisonResult.comparisonMatrix.map((row, idx) => (
-                        <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50/50">
-                          <td className="p-3 pl-5 font-bold text-slate-700">{row.criterion}</td>
-                          <td className="p-3 text-slate-600">{row.supplierA}</td>
-                          <td className="p-3 text-slate-600">{row.supplierB}</td>
-                          <td className="p-3">
-                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 font-black text-[9px] px-2 py-0.5 rounded-md flex items-center w-max">
-                              <i className="fa-solid fa-circle-check mr-1 text-[8px]"></i>{row.winner}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* 2. Pros, Cons and Global Recommendation */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.keys(proposalComparisonResult.analysis).map((supKey, idx) => {
-                    const ana = proposalComparisonResult.analysis[supKey];
-                    return (
-                      <div key={idx} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                        <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                          <span className="text-xs font-black text-slate-800">{supKey}</span>
-                          <span className="text-xs bg-violet-50 text-violet-700 border border-violet-200 font-bold px-2 py-0.5 rounded-lg">
-                            Nota IA: {ana.score}/100
-                          </span>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <div>
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-600 block mb-1">Pontos Fortes (Prós)</span>
-                            <ul className="space-y-1">
-                              {ana.pros.map((p, i) => (
-                                <li key={i} className="text-[10px] text-slate-600 flex items-start">
-                                  <i className="fa-solid fa-plus text-emerald-500 mr-1.5 mt-0.5 text-[8px]"></i>{p}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-
-                          <div className="pt-1">
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-red-600 block mb-1">Pontos Fracos (Contras)</span>
-                            <ul className="space-y-1">
-                              {ana.cons.map((c, i) => (
-                                <li key={i} className="text-[10px] text-slate-600 flex items-start">
-                                  <i className="fa-solid fa-minus text-red-500 mr-1.5 mt-0.5 text-[8px]"></i>{c}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Recommendation Banner */}
-                <div className="bg-gradient-to-r from-violet-500 to-indigo-600 text-white p-6 rounded-2xl border border-violet-600 shadow-md flex items-start space-x-3.5">
-                  <div className="h-10 w-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-xl shrink-0 mt-0.5">
-                    <i className="fa-solid fa-lightbulb"></i>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-[9px] uppercase font-black text-violet-100 tracking-wider">Recomendação Final do Assistente de IA</span>
-                    <p className="text-xs font-semibold leading-relaxed text-white/90">
-                      {proposalComparisonResult.recommendation}
-                    </p>
-                  </div>
-                </div>
-
-              </div>
-            )}
-
           </div>
         </div>
       )}

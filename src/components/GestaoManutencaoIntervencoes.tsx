@@ -63,6 +63,10 @@ export interface Intervencao {
   faturaAnexa?: string;
   anoExercicio: string;
   validadoAdmin: boolean;
+  // Rastreabilidade: quando a intervenção nasce de uma proposta adjudicada
+  // no Portal de Orçamentos, guarda a ligação ao concurso/proposta de origem.
+  id_rfp?: string;
+  id_proposta?: string;
 }
 
 export interface ObraExtraordinaria {
@@ -86,6 +90,14 @@ export interface ObraExtraordinaria {
   // ou de uma vez) em Financeiro → Dívidas a Fornecedores, em vez de ser
   // debitado logo na adjudicação.
   id_divida?: string;
+  // Se esta obra vai mesmo ser paga a partir do Fundo de Reserva Comum —
+  // distinto de impactoFundoReserva, que é só a nota contabilística dos
+  // 10% legais (DL 268/94), não uma decisão real de onde sai o dinheiro.
+  usaFundoReserva?: boolean;
+  // Rastreabilidade: quando a obra nasce de uma proposta adjudicada no
+  // Portal de Orçamentos, guarda a ligação ao concurso/proposta de origem.
+  id_rfp?: string;
+  id_proposta?: string;
 }
 
 export function GestaoManutencaoIntervencoes({

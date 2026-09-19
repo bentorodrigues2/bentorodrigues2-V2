@@ -2110,7 +2110,9 @@ export async function fetchIntervencoesFromSupabase(idPredio: string): Promise<I
     fotos: row.fotos || [],
     faturaAnexa: row.fatura_anexa || undefined,
     anoExercicio: row.ano_exercicio || "",
-    validadoAdmin: Boolean(row.validado_admin)
+    validadoAdmin: Boolean(row.validado_admin),
+    id_rfp: row.id_rfp || undefined,
+    id_proposta: row.id_proposta || undefined
   }));
 }
 
@@ -2132,7 +2134,9 @@ export async function saveIntervencaoToSupabase(idPredio: string, item: Interven
     fotos: item.fotos || [],
     fatura_anexa: item.faturaAnexa || null,
     ano_exercicio: item.anoExercicio || null,
-    validado_admin: Boolean(item.validadoAdmin)
+    validado_admin: Boolean(item.validadoAdmin),
+    id_rfp: item.id_rfp || null,
+    id_proposta: item.id_proposta || null
   });
 }
 
@@ -2159,7 +2163,10 @@ export async function fetchObrasExtraFromSupabase(idPredio: string): Promise<Obr
     estado: row.estado,
     orcamentos: row.orcamentos || [],
     documentosArquivados: Boolean(row.documentos_arquivados),
-    id_divida: row.id_divida || undefined
+    id_divida: row.id_divida || undefined,
+    usaFundoReserva: row.usa_fundo_reserva ?? undefined,
+    id_rfp: row.id_rfp || undefined,
+    id_proposta: row.id_proposta || undefined
   }));
 }
 
@@ -2182,7 +2189,10 @@ export async function saveObraExtraToSupabase(idPredio: string, item: ObraExtrao
     estado: item.estado,
     orcamentos: item.orcamentos || [],
     documentos_arquivados: Boolean(item.documentosArquivados),
-    id_divida: item.id_divida || null
+    id_divida: item.id_divida || null,
+    usa_fundo_reserva: item.usaFundoReserva ?? null,
+    id_rfp: item.id_rfp || null,
+    id_proposta: item.id_proposta || null
   });
 }
 
@@ -2475,7 +2485,13 @@ export async function fetchPropostasFromSupabase(idRfp: string): Promise<any[] |
     descricao_tecnica: row.descricao_tecnica || "",
     ficheiro_nome: row.ficheiro_nome || "",
     ficheiro_caminho: row.ficheiro_caminho || undefined,
-    data_submissao: row.data_submissao || ""
+    data_submissao: row.data_submissao || "",
+    anexos: Array.isArray(row.anexos) ? row.anexos : [],
+    estado: row.estado || "Pendente",
+    motivo_rejeicao: row.motivo_rejeicao || undefined,
+    destino_obra: row.destino_obra || undefined,
+    usa_fundo_reserva: row.usa_fundo_reserva ?? undefined,
+    id_obra_criada: row.id_obra_criada || undefined
   }));
 }
 
@@ -2483,9 +2499,11 @@ export async function savePropostaToSupabase(proposta: {
   id_proposal: string; id_rfp: string; nome_empresa: string; nif: string; email: string; contacto: string;
   valor: number; prazo_dias: number; garantia_anos: number; descricao_tecnica: string;
   ficheiro_nome: string; ficheiro_caminho?: string; data_submissao: string;
+  anexos?: { nome: string; caminho: string }[];
+  estado?: string; motivo_rejeicao?: string; destino_obra?: string; usa_fundo_reserva?: boolean; id_obra_criada?: string;
 }): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
-  return dbInsert("propostas", {
+  return dbUpsert("propostas", {
     id_proposal: proposta.id_proposal,
     id_rfp: proposta.id_rfp,
     nome_empresa: proposta.nome_empresa,
@@ -2498,7 +2516,13 @@ export async function savePropostaToSupabase(proposta: {
     descricao_tecnica: proposta.descricao_tecnica,
     ficheiro_nome: proposta.ficheiro_nome,
     ficheiro_caminho: proposta.ficheiro_caminho || null,
-    data_submissao: proposta.data_submissao
+    data_submissao: proposta.data_submissao,
+    anexos: proposta.anexos || [],
+    estado: proposta.estado || "Pendente",
+    motivo_rejeicao: proposta.motivo_rejeicao || null,
+    destino_obra: proposta.destino_obra || null,
+    usa_fundo_reserva: proposta.usa_fundo_reserva ?? null,
+    id_obra_criada: proposta.id_obra_criada || null
   });
 }
 
@@ -2523,6 +2547,35 @@ export async function uploadPropostaFicheiro(file: File, idRfp: string, idPropos
     console.warn("[uploadPropostaFicheiro] Exceção:", err);
     return null;
   }
+}
+
+/**
+ * Upload de VÁRIOS anexos de uma proposta comercial (a proposta em si, mas
+ * também fichas técnicas, certificados, seguros, etc.) — devolve a lista
+ * dos que ficaram bem gravados, cada um com o nome original e o caminho no
+ * Storage. Ficheiros que falhem o upload são simplesmente omitidos da
+ * lista devolvida (não interrompem os restantes).
+ */
+export async function uploadPropostaFicheiros(files: File[], idRfp: string, idProposal: string): Promise<{ nome: string; caminho: string }[]> {
+  if (!isSupabaseConfigured() || files.length === 0) return [];
+  const resultados = await Promise.all(
+    files.map(async (file, idx) => {
+      try {
+        const extensao = file.name.includes(".") ? file.name.split(".").pop() : "pdf";
+        const caminho = `propostas/${idRfp}/${idProposal}-${idx}.${extensao}`;
+        const { error } = await supabase.storage.from("documentos").upload(caminho, file, { upsert: true });
+        if (error) {
+          console.warn("[uploadPropostaFicheiros] Erro no upload de", file.name, ":", error.message);
+          return null;
+        }
+        return { nome: file.name, caminho };
+      } catch (err) {
+        console.warn("[uploadPropostaFicheiros] Exceção no upload de", file.name, ":", err);
+        return null;
+      }
+    })
+  );
+  return resultados.filter((r): r is { nome: string; caminho: string } => r !== null);
 }
 
 // ============================================================================
