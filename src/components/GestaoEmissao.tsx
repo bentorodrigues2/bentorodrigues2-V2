@@ -258,7 +258,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
       setDocumentos(prev => [...prev, ...novosDocs]);
     }
 
-    alert("Foram gerados e emitidos com sucesso os avisos de cobrança 'Q' para todas as frações! Arquivados na Pasta Paga. Quotas.");
+    alert("Foram gerados e emitidos com sucesso os avisos de cobrança para todas as frações! Arquivados na Pasta Paga. Quotas.");
   };
 
   const abrirDocumento = (aviso: Aviso, tipoInicial: "RECIBO" | "NOTA_COBRANCA") => {
@@ -576,7 +576,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
             <span className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
               <i className="fa-solid fa-calculator text-sm"></i>
             </span>
-            <h3 className="text-sm font-bold text-slate-800">Calcular & Lançar Quotas Mensais ("Q" Docs)</h3>
+            <h3 className="text-sm font-bold text-slate-800">Calcular & Lançar Quotas Mensais (Notas de Cobrança)</h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex flex-col">
@@ -627,15 +627,15 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
           </div>
           <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-semibold hover:bg-emerald-700 transition-colors cursor-pointer flex items-center space-x-2">
             <i className="fa-solid fa-paper-plane"></i>
-            <span>Emitir "Q" em Lote Proporcional</span>
+            <span>Emitir Quotas em Lote Proporcional</span>
           </button>
         </form>
       ) : null}
 
-      {/* Lista de Documentos Q */}
+      {/* Lista de Avisos de Cobrança Emitidos */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-          <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Avisos de Cobrança Emitidos ("Q" Documentos)</h4>
+          <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Avisos de Cobrança Emitidos</h4>
           <span className="text-[10px] bg-slate-200 text-slate-600 font-bold px-2 py-0.5 rounded-full">
             Total: {predioAvisos.length} docs
           </span>
