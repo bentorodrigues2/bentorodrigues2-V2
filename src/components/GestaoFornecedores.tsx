@@ -386,9 +386,20 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
 
     const okPag = await deletePagamentoDividaFromSupabase(pagamento.id_pagamento);
     if (!okPag) return alert("❌ Não foi possível eliminar o registo da tranche. Tente novamente.");
-    setPagamentos(prev => prev.filter(p => p.id_pagamento !== pagamento.id_pagamento));
 
-    const novoValorPago = Math.max(0, (divida.valor_pago || 0) - pagamento.valor);
+    // Recalcula o valor pago a partir das tranches que REALMENTE restam
+    // (não subtraindo do divida.valor_pago recebido por parâmetro) — esse
+    // valor pode estar desatualizado se duas tranches forem eliminadas em
+    // sucessão rápida, antes do ecrã voltar a renderizar entre os cliques,
+    // fazendo a 2ª eliminação repetir a subtração com o valor antigo e o
+    // saldo em dívida ficar errado (bug real reportado em produção).
+    let tranchesRestantes: PagamentoDivida[] = [];
+    setPagamentos(prev => {
+      const restantes = prev.filter(p => p.id_pagamento !== pagamento.id_pagamento);
+      tranchesRestantes = restantes.filter(p => p.id_divida === divida.id_divida);
+      return restantes;
+    });
+    const novoValorPago = Math.round(tranchesRestantes.reduce((soma, p) => soma + p.valor, 0) * 100) / 100;
     const dividaAtualizada: DividaFornecedor = {
       ...divida,
       valor_pago: novoValorPago,
