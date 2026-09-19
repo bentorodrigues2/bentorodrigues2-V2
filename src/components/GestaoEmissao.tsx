@@ -463,8 +463,14 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
         ano: Number(dtPag.substring(0, 4)) || new Date().getFullYear(),
         id_predio: predio.id_predio,
         id_fracao: selectedAviso.id_fracao,
-        nome_condomino: customCondomino || frac?.proprietario?.nome || "Condómino Registado",
-        nif_condomino: frac?.proprietario?.nif || "",
+        // Usa a "fotografia" gravada no aviso (proprietario_nome/nif), não o
+        // proprietário ATUAL da fração — sem isto, reemitir o documento de
+        // um aviso antigo depois de uma Transferência de Propriedade mudava
+        // silenciosamente o nome do condómino para o novo proprietário.
+        // Avisos anteriores a esta funcionalidade não têm o instantâneo
+        // gravado, por isso caem para o proprietário atual como antes.
+        nome_condomino: customCondomino || selectedAviso.proprietario_nome || frac?.proprietario?.nome || "Condómino Registado",
+        nif_condomino: selectedAviso.proprietario_nif || frac?.proprietario?.nif || "",
         fracao_nome: frac?.fracao_nome || "",
         permilagem: frac?.permilagem || 0,
         data_emissao: dtEmissao,

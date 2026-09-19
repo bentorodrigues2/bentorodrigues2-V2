@@ -140,6 +140,12 @@ export function IAConciliacao({ predio, fracoes, avisos, setAvisos, movements, s
 
     const contaCorrente = contas.find(c => c.id_predio === predio.id_predio && c.tipo.includes("Ordem")) || contas[0];
     const fracao = fracoes.find(f => f.id_fracao === tx.fracao_sugerida_id);
+    // Fotografia do proprietário no momento em que o aviso foi emitido —
+    // não o proprietário ATUAL da fração, que pode já ter mudado entretanto
+    // por uma Transferência de Propriedade.
+    const avisoRef = tx.avisos_pendentes_ids?.length
+      ? avisos.find(a => tx.avisos_pendentes_ids.includes(a.id_aviso))
+      : undefined;
 
     // 1. Mark associated notices as paid
     if (tx.avisos_pendentes_ids && tx.avisos_pendentes_ids.length > 0) {
@@ -226,8 +232,8 @@ export function IAConciliacao({ predio, fracoes, avisos, setAvisos, movements, s
               ano: new Date(tx.data).getFullYear() || new Date().getFullYear(),
               id_predio: predio.id_predio,
               id_fracao: fracao.id_fracao,
-              nome_condomino: fracao.proprietario?.nome || "Condómino Registado",
-              nif_condomino: fracao.proprietario?.nif || "",
+              nome_condomino: avisoRef?.proprietario_nome || fracao.proprietario?.nome || "Condómino Registado",
+              nif_condomino: avisoRef?.proprietario_nif || fracao.proprietario?.nif || "",
               fracao_nome: fracao.fracao_nome,
               permilagem: fracao.permilagem,
               data_emissao: new Date().toISOString().split("T")[0],
@@ -529,8 +535,8 @@ export function IAConciliacao({ predio, fracoes, avisos, setAvisos, movements, s
                                 ano: 2026,
                                 id_predio: predio.id_predio,
                                 id_fracao: fracao?.id_fracao || "frac-1",
-                                nome_condomino: fracao?.proprietario?.nome || "Condómino",
-                                nif_condomino: fracao?.proprietario?.nif || "999999990",
+                                nome_condomino: (tx.avisos_pendentes_ids?.length ? avisos.find(a => tx.avisos_pendentes_ids.includes(a.id_aviso))?.proprietario_nome : undefined) || fracao?.proprietario?.nome || "Condómino",
+                                nif_condomino: (tx.avisos_pendentes_ids?.length ? avisos.find(a => tx.avisos_pendentes_ids.includes(a.id_aviso))?.proprietario_nif : undefined) || fracao?.proprietario?.nif || "999999990",
                                 fracao_nome: fracao?.fracao_nome || "A",
                                 permilagem: fracao?.permilagem || 50,
                                 data_emissao: new Date().toISOString().split("T")[0],
