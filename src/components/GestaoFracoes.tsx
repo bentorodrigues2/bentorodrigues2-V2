@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Pencil, Trash2, Plus, ArrowLeftRight, History } from "lucide-react";
-import { Predio, Fracao, LoggedUser, Aviso, Proprietario } from "../types";
+import { Predio, Fracao, LoggedUser, Aviso, Proprietario, Documento } from "../types";
 import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCondominoVaziaPDF, downloadFichaCondominoPreenchidaPDF, downloadListaCondominosPDF, gerarReferenciaBR23E, parseValorMonetario } from "../utils";
 import { ModalFichaCondominoEditavel } from "./ModalFichaCondominoEditavel";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
-import { saveFracaoToSupabase, deleteFracaoFromSupabase, saveProprietarioToSupabase, deleteProprietarioFromSupabase, dbSelect, dbUpdate, dbInsert, dbDelete, dbUpsert, saveAvisosToSupabase, registarLogAuditoria, fetchResidentesInquilinosFromSupabase, saveResidenteInquilinoToSupabase } from "../lib/supabaseService";
+import { saveFracaoToSupabase, deleteFracaoFromSupabase, saveProprietarioToSupabase, deleteProprietarioFromSupabase, dbSelect, dbUpdate, dbInsert, dbDelete, dbUpsert, saveAvisosToSupabase, registarLogAuditoria, fetchResidentesInquilinosFromSupabase, saveResidenteInquilinoToSupabase, uploadDocumentoToStorage, saveDocumentoToSupabase } from "../lib/supabaseService";
 
 interface GestaoFracoesProps {
   predio: Predio;
@@ -16,17 +16,21 @@ interface GestaoFracoesProps {
   avisos?: Aviso[];
   setAvisos?: React.Dispatch<React.SetStateAction<Aviso[]>>;
   activeSubSection?: string;
+  documentos?: Documento[];
+  setDocumentos?: React.Dispatch<React.SetStateAction<Documento[]>>;
 }
 
-export function GestaoFracoes({ 
-  predio, 
-  fracoes, 
-  onAddFracao, 
-  onUpdateFracoes, 
+export function GestaoFracoes({
+  predio,
+  fracoes,
+  onAddFracao,
+  onUpdateFracoes,
   loggedUser,
   avisos,
   setAvisos,
-  activeSubSection
+  activeSubSection,
+  documentos,
+  setDocumentos
 }: GestaoFracoesProps) {
   const [fracaoNome, setFracaoNome] = useState("");
   const [piso, setPiso] = useState("");
@@ -189,6 +193,7 @@ export function GestaoFracoes({
   // admin desistir a meio, e mantém arquivamento + novo registo atómicos).
   const [transferindoPropriedadeDe, setTransferindoPropriedadeDe] = useState<Proprietario | null>(null);
   const [historicoModalFracaoId, setHistoricoModalFracaoId] = useState<string | null>(null);
+  const [aArquivarRegistoDe, setAArquivarRegistoDe] = useState<string | null>(null);
 
   // Inline Permilage editing state
   const [isEditingPermilages, setIsEditingPermilages] = useState(false);
@@ -541,6 +546,49 @@ export function GestaoFracoes({
     setTransferindoPropriedadeDe(targetFracao.proprietario);
     setCurrentSubTab("fracoes_proprietario");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Arquivo manual de um registo (documento à escolha do admin) na pasta de
+  // um ex-proprietário/coproprietário/inquilino em Arquivo → Condóminos →
+  // Ex-Proprietários → [nome] — para além do registo automático criado ao
+  // transferir a propriedade, permite juntar aí qualquer outro documento.
+  const handleArquivarRegistoManual = async (nomeProprietario: string, fracaoNome: string, file: File) => {
+    if (!setDocumentos) return;
+    setAArquivarRegistoDe(nomeProprietario);
+    try {
+      const ano = new Date().getFullYear().toString();
+      const caminho = `${ano}/Condominos/ExProprietarios/${predio.id_predio}/${Date.now()}-${file.name}`;
+      const urlReal = await uploadDocumentoToStorage(file, caminho);
+      if (!urlReal) {
+        alert("Não foi possível carregar o ficheiro para o Supabase Storage.");
+        return;
+      }
+      const novoDoc: Documento = {
+        id_doc: "doc-exprop-manual-" + Date.now(),
+        id_predio: predio.id_predio,
+        nome: file.name,
+        tipo: file.type.includes("pdf") ? "PDF" : "Documento",
+        data_upload: new Date().toISOString().split("T")[0],
+        tamanho: `${(file.size / 1024).toFixed(0)} KB`,
+        categoria: "Condóminos",
+        tema: "Ex-Proprietários",
+        sub_pasta: nomeProprietario,
+        descricao: `Registo arquivado manualmente para ${nomeProprietario} (Fração ${fracaoNome})`,
+        visibilidade: "Administração",
+        autor: loggedUser.nome,
+        ano,
+        caminho: urlReal,
+        arquivado: true,
+        data_arquivamento: new Date().toISOString().split("T")[0],
+        tipo_arquivo: "documento",
+        relevancia_perfis: ["ADMIN", "EMPRESA_GESTORA"]
+      };
+      setDocumentos(prev => [novoDoc, ...prev]);
+      await saveDocumentoToSupabase(novoDoc);
+      registarLogAuditoria("Frações", `Arquivou manualmente um registo de ${nomeProprietario}`, predio.id_predio, loggedUser, file.name);
+    } finally {
+      setAArquivarRegistoDe(null);
+    }
   };
 
   // Helper para carregar dados de uma fração para edição
@@ -963,6 +1011,32 @@ export function GestaoFracoes({
               loggedUser,
               `${transferindoPropriedadeDe.nome} → ${novoProprietarioObj.nome}`
             );
+            // Desvincula o antigo proprietário da fração (já feito acima, ao
+            // substituir "proprietario") e cria um registo real no Arquivo
+            // Digital (Condóminos → Ex-Proprietários → nome), para consulta
+            // futura fora do JSON interno da fração.
+            if (setDocumentos) {
+              const docExOwner: Documento = {
+                id_doc: "doc-exprop-" + Date.now(),
+                id_predio: predio.id_predio,
+                nome: `Registo de Proprietário — ${transferindoPropriedadeDe.nome} (Fração ${targetFracao.fracao_nome})`,
+                tipo: "Registo",
+                data_upload: new Date().toISOString().split("T")[0],
+                tamanho: "—",
+                categoria: "Condóminos",
+                tema: "Ex-Proprietários",
+                sub_pasta: transferindoPropriedadeDe.nome,
+                descricao: `Proprietário da Fração ${targetFracao.fracao_nome} até ${new Date().toISOString().split("T")[0]}. NIF: ${transferindoPropriedadeDe.nif || "—"}. Email: ${transferindoPropriedadeDe.email || "—"}. Telemóvel: ${transferindoPropriedadeDe.tlm || "—"}. Motivo do arquivamento: Transferência de propriedade (novo proprietário: ${novoProprietarioObj.nome}).`,
+                visibilidade: "Administração",
+                autor: loggedUser.nome,
+                ano: new Date().getFullYear().toString(),
+                arquivado: true,
+                data_arquivamento: new Date().toISOString().split("T")[0],
+                relevancia_perfis: ["ADMIN", "EMPRESA_GESTORA"]
+              };
+              setDocumentos(prev => [docExOwner, ...prev]);
+              saveDocumentoToSupabase(docExOwner).catch(console.error);
+            }
             setTransferindoPropriedadeDe(null);
           }
 
@@ -3600,6 +3674,47 @@ export function GestaoFracoes({
                             ))}
                           </ul>
                         )}
+                      </div>
+                      <div className="pt-1.5 border-t border-slate-200">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                            Registos Arquivados — Condóminos → Ex-Proprietários → {h.proprietario.nome}
+                          </p>
+                          <label className={`text-[9px] font-bold px-2 py-1 rounded cursor-pointer border ${aArquivarRegistoDe === h.proprietario.nome ? "bg-slate-100 text-slate-400 border-slate-200" : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"}`}>
+                            {aArquivarRegistoDe === h.proprietario.nome ? "A arquivar..." : "+ Arquivar Registo"}
+                            <input
+                              type="file"
+                              className="hidden"
+                              disabled={aArquivarRegistoDe === h.proprietario.nome}
+                              onChange={e => {
+                                const file = e.target.files?.[0];
+                                if (file) handleArquivarRegistoManual(h.proprietario.nome, fracaoHist.fracao_nome, file);
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                        </div>
+                        {(() => {
+                          const registosDoProprietario = (documentos || []).filter(d =>
+                            d.categoria === "Condóminos" && d.tema === "Ex-Proprietários" && d.sub_pasta === h.proprietario.nome
+                          );
+                          return registosDoProprietario.length === 0 ? (
+                            <p className="text-[10px] text-slate-400">Ainda sem registos arquivados.</p>
+                          ) : (
+                            <ul className="space-y-1 max-h-28 overflow-y-auto">
+                              {registosDoProprietario.map(d => (
+                                <li key={d.id_doc} className="text-[10px] text-slate-600 flex justify-between gap-2 bg-white rounded px-2 py-1 border border-slate-150">
+                                  <span className="truncate">{d.tipo === "Registo" ? <i className="fa-solid fa-file-lines mr-1 text-slate-400"></i> : <i className="fa-solid fa-paperclip mr-1 text-slate-400"></i>}{d.nome}</span>
+                                  {d.caminho ? (
+                                    <a href={d.caminho} target="_blank" rel="noreferrer" className="font-bold text-emerald-600 hover:underline shrink-0">Abrir</a>
+                                  ) : (
+                                    <span className="text-slate-400 shrink-0">{d.data_upload}</span>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          );
+                        })()}
                       </div>
                     </div>
                   );

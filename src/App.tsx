@@ -2764,15 +2764,17 @@ export default function App() {
           )}
 
           {["fracoes", "fracoes_nova", "fracoes_proprietario", "fracoes_perfis"].includes(activeSection) && (
-            <GestaoFracoes 
-              predio={predioAtivo} 
-              fracoes={fracoes} 
+            <GestaoFracoes
+              predio={predioAtivo}
+              fracoes={fracoes}
               onAddFracao={handleAddFracao}
               onUpdateFracoes={handleUpdateFracoes}
               loggedUser={loggedUser}
               avisos={avisos}
               setAvisos={setAvisos}
               activeSubSection={activeSection}
+              documentos={documentos}
+              setDocumentos={setDocumentos}
             />
           )}
 
