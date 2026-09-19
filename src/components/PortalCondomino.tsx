@@ -736,7 +736,7 @@ export function PortalCondomino({
 
     const userFracao = encontrarFracaoDoCondomino(fracoes, loggedUser) || fracoes[0];
     const novoComp: ComprovativoSubmetido = {
-      id: "comp-" + (comprovativos.length + 1),
+      id: "comp-" + Date.now(),
       id_fracao: payerFractionId || userFracao.id_fracao,
       nome_fracao: payerFractionName || userFracao.fracao_nome,
       id_aviso: payAvisoId,
@@ -782,7 +782,7 @@ export function PortalCondomino({
     const principalConta = contas.find((c) => c.is_principal && c.id_predio === predio.id_predio) || contas[0];
     const numRecibo = `REC-2026-${Math.floor(Math.random() * 900) + 100}`;
     const novoMov: Movimento = {
-      id_mov: "mov-" + (movements.length + 1),
+      id_mov: "mov-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
       id_predio: predio.id_predio,
       id_conta: principalConta?.id_conta || "cta-1",
       data: new Date().toLocaleDateString("pt-PT").replace(/\//g, "-"),

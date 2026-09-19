@@ -204,7 +204,7 @@ export function ConfiguracaoArranqueSaldos({
     if (!novoHistDesc || !novoHistValor) return alert("Preencha descrição e valor.");
     const targetConta = contasArranque.find(c => c.id_conta === novoHistContaId) || contasArranque[0];
     const novo: MovimentoHistoricoTransitor = {
-      id: "hist-" + (movimentosHistoricos.length + 1),
+      id: "hist-" + Date.now(),
       data: novoHistData,
       descricao: novoHistDesc,
       categoria: novoHistCat,

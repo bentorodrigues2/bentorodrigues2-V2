@@ -107,7 +107,7 @@ export function FinanceiroAvancado({
     if (!fr) return alert("Selecione uma fração válida.");
 
     const nova: Caucao = {
-      id_caucao: "cau-" + (caucoes.length + 1),
+      id_caucao: "cau-" + Date.now(),
       id_predio: predio.id_predio,
       id_fracao: fr.id_fracao,
       fracao_nome: fr.fracao_nome,

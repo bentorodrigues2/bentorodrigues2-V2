@@ -166,7 +166,7 @@ export function MultiCondominio({
       return;
     }
     const novo: TeamMember = {
-      id: "t-" + (teams.length + 1),
+      id: "t-" + Date.now(),
       id_predio: selectedPredioId,
       nome: newMember.nome,
       funcao: newMember.funcao,

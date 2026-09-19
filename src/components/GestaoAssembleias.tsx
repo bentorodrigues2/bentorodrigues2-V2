@@ -303,7 +303,7 @@ Com os meus cumprimentos,
       alert("Assembleia atualizada com sucesso!");
     } else {
       const nova: Reuniao = {
-        id_reuniao: "reu-" + (reunioes.length + 1),
+        id_reuniao: "reu-" + Date.now(),
         id_predio: predio.id_predio,
         data: formatDatePT(data),
         hora,

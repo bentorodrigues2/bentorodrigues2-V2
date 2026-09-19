@@ -212,7 +212,7 @@ export function GestaoReservas({
     const initialStatus = needsApproval ? "Pendente" : "Aprovado";
 
     const nova: Reserva = {
-      id_reserva: "res-" + (reservas.length + 1) + "-" + Math.floor(Math.random() * 100),
+      id_reserva: "res-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
       id_predio: predio.id_predio,
       id_fracao: idFracao,
       area_comum: areaComum,

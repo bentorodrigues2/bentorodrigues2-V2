@@ -141,7 +141,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
 
       // Add to pending documents — real leitura por IA (Gemini Vision), sem validações fiscais inventadas
       const newDoc: ComprovativoPendente = {
-        id_comprovativo: "doc-rec-" + (comprovativosPendentes.length + 1),
+        id_comprovativo: "doc-rec-" + Date.now(),
         nome_ficheiro: file.name,
         data_sugerida: res.data_emissao,
         valor_sugerido: res.valor_total,

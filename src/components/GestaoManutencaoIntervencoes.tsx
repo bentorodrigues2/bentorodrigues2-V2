@@ -252,7 +252,7 @@ export function GestaoManutencaoIntervencoes({
     }
 
     const nova: Ocorrencia = {
-      id_ocorr: "oc-" + (ocorrencias.length + 1),
+      id_ocorr: "oc-" + Date.now(),
       id_predio: predio.id_predio,
       id_fracao: ocFracao,
       descricao: `[Prioridade: ${ocPrioridade}] ` + ocDescricao,
@@ -295,7 +295,7 @@ export function GestaoManutencaoIntervencoes({
     if (dispClassificacao === "manutencao" || dispClassificacao === "intervencao") {
       const targetOcorr = ocorrencias.find(o => o.id_ocorr === id);
       const novaInt: Intervencao = {
-        id: "int-" + (intervencoes.length + 1),
+        id: "int-" + Date.now(),
         descricao: `[Origem ${id}] ` + (targetOcorr?.descricao || ""),
         id_fracao: targetOcorr?.id_fracao || "common",
         prioridade: dispPrioridade,
@@ -312,7 +312,7 @@ export function GestaoManutencaoIntervencoes({
       const targetOcorr = ocorrencias.find(o => o.id_ocorr === id);
       const fornObj = fornecedores[0] || { id_fornecedor: "forn-auto", nome: dispTecnico || "Empreiteiro" };
       const novaObra: ObraExtraordinaria = {
-        id: "obr-" + (obrasExtra.length + 1),
+        id: "obr-" + Date.now(),
         descricao: `[Origem ${id}] OBRAS: ` + (targetOcorr?.descricao || ""),
         fornecedorId: fornObj.id_fornecedor,
         fornecedorNome: fornObj.nome,
@@ -449,7 +449,7 @@ export function GestaoManutencaoIntervencoes({
 
     // Auto-create document archive entry of this technical intervention
     const novoDoc: Documento = {
-      id_doc: "doc-" + (documentos.length + 1),
+      id_doc: "doc-" + Date.now(),
       id_predio: predio.id_predio,
       nome: `Relatorio_Tecnico_Ocorrencia_${id}.pdf`,
       tipo: "PDF",
@@ -572,7 +572,7 @@ export function GestaoManutencaoIntervencoes({
     if (checkAvarias.trim()) {
       const targetItem = agenda.find(i => i.id === id);
       const novaOc: Ocorrencia = {
-        id_ocorr: "oc-" + (ocorrencias.length + 1),
+        id_ocorr: "oc-" + Date.now(),
         id_predio: predio.id_predio,
         id_fracao: "common",
         descricao: `[AVARIA DETETADA NA VISTORIA DE ${targetItem?.equipamento}]: ${checkAvarias}`,
@@ -637,7 +637,7 @@ export function GestaoManutencaoIntervencoes({
     if (!newIntDesc.trim()) return;
 
     const nova: Intervencao = {
-      id: "int-" + (intervencoes.length + 1),
+      id: "int-" + Date.now(),
       descricao: newIntDesc,
       id_fracao: newIntFracao,
       prioridade: newIntPrioridade,
@@ -835,7 +835,7 @@ export function GestaoManutencaoIntervencoes({
     });
 
     const nova: ObraExtraordinaria = {
-      id: "obr-" + (obrasExtra.length + 1),
+      id: "obr-" + Date.now(),
       descricao: newObraDesc,
       fornecedorId: "forn-custom",
       fornecedorNome: newObraForn || "Empreiteiro Geral",

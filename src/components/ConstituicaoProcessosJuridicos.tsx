@@ -174,7 +174,17 @@ export function ConstituicaoProcessosJuridicos({
     const custas = 76.50; // Taxa de justiça média
     const total = capital + juros + custas;
 
-    const novoId = `PROC-${new Date().getFullYear()}/${String(processos.length + 1).padStart(3, "0")}-JUR`;
+    // Numeração humana sequencial (PROC-ano/nº-JUR), mas a garantir unicidade
+    // real contra os processos já existentes — usar só processos.length+1
+    // permitia dois processos criados em sucessão colidirem no mesmo número
+    // e o segundo sobrescrever silenciosamente o primeiro no Supabase.
+    const anoAtual = new Date().getFullYear();
+    let numeroSequencial = processos.length + 1;
+    let novoId = `PROC-${anoAtual}/${String(numeroSequencial).padStart(3, "0")}-JUR`;
+    while (processos.some(p => p.id_processo === novoId)) {
+      numeroSequencial += 1;
+      novoId = `PROC-${anoAtual}/${String(numeroSequencial).padStart(3, "0")}-JUR`;
+    }
 
     const novoProcesso: ProcessoJuridico = {
       id_processo: novoId,
