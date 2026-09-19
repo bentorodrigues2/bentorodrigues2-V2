@@ -140,6 +140,12 @@ export default async function handler(req, res) {
   }
 
   if (acao === "aprovar-resposta-ia") {
+    // Só quem gere a plataforma pode decidir enviar (ou não) um email
+    // redigido pela IA em nome do condomínio — sem isto, qualquer conta
+    // autenticada, mesmo um condómino comum, conseguia aprovar o envio de
+    // qualquer resposta pendente de qualquer prédio.
+    const chamador = await exigirSessaoComPapel(req, res, ["ADMIN", "GESTOR", "EMPRESA_GESTORA"]);
+    if (!chamador) return;
     try {
       const { id } = req.body || {};
       if (!id) return res.status(400).json({ error: "id é obrigatório" });
@@ -176,6 +182,8 @@ export default async function handler(req, res) {
   }
 
   if (acao === "rejeitar-resposta-ia") {
+    const chamador = await exigirSessaoComPapel(req, res, ["ADMIN", "GESTOR", "EMPRESA_GESTORA"]);
+    if (!chamador) return;
     try {
       const { id } = req.body || {};
       if (!id) return res.status(400).json({ error: "id é obrigatório" });
@@ -192,6 +200,11 @@ export default async function handler(req, res) {
   }
 
   if (acao === "enviar-push") {
+    // Disparar uma notificação push para todo um prédio (ou fração) é uma
+    // ação de comunicação em massa — só gestão pode acionar, não qualquer
+    // conta autenticada.
+    const chamador = await exigirSessaoComPapel(req, res, ["ADMIN", "GESTOR", "EMPRESA_GESTORA"]);
+    if (!chamador) return;
     try {
       if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
         return res.status(500).json({ error: "Chaves VAPID não configuradas no servidor." });
@@ -295,6 +308,12 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: err?.message || String(err) });
     }
   }
+
+  // Disparo manual de um job interno (emissão de quotas, avisos de mora,
+  // felicitações...) afeta a plataforma inteira — nunca deve ficar aberto
+  // a qualquer conta autenticada, só a quem gere.
+  const chamadorJob = await exigirSessaoComPapel(req, res, ["ADMIN", "GESTOR", "EMPRESA_GESTORA"]);
+  if (!chamadorJob) return;
 
   try {
     const { job } = req.body || {};

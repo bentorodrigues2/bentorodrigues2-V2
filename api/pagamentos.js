@@ -1,8 +1,11 @@
 import { supabase } from "../server/lib/supabaseServer.js";
-import { exigirSessaoValida } from "../server/lib/verificarSessao.js";
+import { exigirSessaoComPapel } from "../server/lib/verificarSessao.js";
 
 export default async function handler(req, res) {
-  const utilizador = await exigirSessaoValida(req, res);
+  // Este endpoint devolve pagamentos de qualquer fração/proprietário sem
+  // qualquer filtro por prédio — não faz sentido nenhum condómino comum
+  // conseguir listar pagamentos alheios, por isso fica restrito a gestão.
+  const utilizador = await exigirSessaoComPapel(req, res, ["ADMIN", "GESTOR", "EMPRESA_GESTORA"]);
   if (!utilizador) return;
 
   try {

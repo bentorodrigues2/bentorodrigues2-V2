@@ -1,10 +1,21 @@
-import { exigirSessaoValida } from "../server/lib/verificarSessao.js";
+import { exigirSessaoValida, exigirSessaoComPapel } from "../server/lib/verificarSessao.js";
 
 export default async function handler(req, res) {
   const { acao } = req.query;
 
-  const utilizador = await exigirSessaoValida(req, res);
-  if (!utilizador) return;
+  // "lancar" (submeter um comprovativo de pagamento) é uma ação do próprio
+  // condómino — fica aberta a qualquer conta autenticada. "confirmar"
+  // (validar um pagamento como recebido, marcando a dívida como paga) só
+  // pode ser feita por quem gere o condomínio: sem esta distinção, qualquer
+  // conta autenticada conseguia confirmar como paga uma dívida de qualquer
+  // fração, de qualquer prédio.
+  if (acao === "confirmar") {
+    const chamador = await exigirSessaoComPapel(req, res, ["ADMIN", "GESTOR", "EMPRESA_GESTORA"]);
+    if (!chamador) return;
+  } else {
+    const utilizador = await exigirSessaoValida(req, res);
+    if (!utilizador) return;
+  }
 
   try {
     if (acao === "lancar") {
