@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Predio, Fracao, Conta, Movimento, Aviso, LoggedUser } from "../types";
+import { Predio, Fracao, Conta, Movimento, Aviso, LoggedUser, Documento } from "../types";
 import { parseValorMonetario } from "../utils";
-import { saveContaToSupabase, saveAvisosToSupabase, saveMovimentoToSupabase, registarLogAuditoria, fetchObrasExtraFromSupabase } from "../lib/supabaseService";
+import { saveContaToSupabase, saveAvisosToSupabase, saveMovimentoToSupabase, registarLogAuditoria, fetchObrasExtraFromSupabase, uploadDocumentoToStorage, saveDocumentoToSupabase } from "../lib/supabaseService";
 import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { 
   Sliders, 
@@ -31,6 +31,7 @@ import {
   Scale
 } from "lucide-react";
 import { triggerSendReaction } from "./SendingReactionModal";
+import { MoneyInput } from "./MoneyInput";
 
 interface ConfiguracaoArranqueSaldosProps {
   predio: Predio;
@@ -42,6 +43,8 @@ interface ConfiguracaoArranqueSaldosProps {
   avisos: Aviso[];
   setAvisos: React.Dispatch<React.SetStateAction<Aviso[]>>;
   loggedUser: LoggedUser;
+  documentos?: Documento[];
+  setDocumentos?: React.Dispatch<React.SetStateAction<Documento[]>>;
   onConcluir?: () => void;
 }
 
@@ -67,6 +70,9 @@ export interface DividaQuotaOrdinariaPeriodo {
   data_inicio: string; // "desde"
   valor_quota_mensal: number; // valor total mensal (Ordinária + FCR)
   meses_em_divida: number;
+  // Prova documental da dívida transitada (balancete/extrato da
+  // administração anterior) — arquivada no Storage real, não só um nome.
+  comprovativo?: { nome: string; caminho: string };
 }
 
 // Uma quota extraordinária em dívida, ligada (opcionalmente) a uma Obra
@@ -80,6 +86,7 @@ export interface DividaQuotaExtraItem {
   data_fim_pagamentos: string;
   valor_mensal: number;
   valor_total: number;
+  comprovativo?: { nome: string; caminho: string };
 }
 
 export interface SaldoInicialFracao {
@@ -119,6 +126,8 @@ export function ConfiguracaoArranqueSaldos({
   avisos,
   setAvisos,
   loggedUser,
+  documentos,
+  setDocumentos,
   onConcluir
 }: ConfiguracaoArranqueSaldosProps) {
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -332,6 +341,67 @@ export function ConfiguracaoArranqueSaldos({
       updated.valor_saldo = calcularTotalDivida(updated);
       return updated;
     }));
+  };
+
+  // --- Comprovativo da transição: prova documental de cada dívida (ex:
+  // balancete/extrato entregue pela administração anterior) — arquivada a
+  // sério no Supabase Storage e no Arquivo Digital, não só um nome de
+  // ficheiro solto no formulário.
+  const [aArquivarComprovativoId, setAArquivarComprovativoId] = useState<string | null>(null);
+
+  const handleUploadComprovativo = async (
+    id_fracao: string,
+    tipoItem: "ordinaria" | "extra",
+    id_item: string,
+    file: File
+  ) => {
+    setAArquivarComprovativoId(id_item);
+    try {
+      const fracao = predioFracoes.find(f => f.id_fracao === id_fracao);
+      const ano = new Date().getFullYear().toString();
+      const caminho = `${ano}/SaldosIniciais/${predio.id_predio}/${id_fracao}/${Date.now()}-${file.name}`;
+      const urlReal = await uploadDocumentoToStorage(file, caminho);
+      if (!urlReal) {
+        alert("Não foi possível carregar o comprovativo para o Supabase Storage.");
+        return;
+      }
+      const comprovativo = { nome: file.name, caminho: urlReal };
+
+      setSaldosFracoes(prev => prev.map(s => {
+        if (s.id_fracao !== id_fracao) return s;
+        if (tipoItem === "ordinaria") {
+          return { ...s, dividasQuotasOrdinarias: s.dividasQuotasOrdinarias.map(p => p.id === id_item ? { ...p, comprovativo } : p) };
+        }
+        return { ...s, dividasQuotasExtras: s.dividasQuotasExtras.map(e => e.id === id_item ? { ...e, comprovativo } : e) };
+      }));
+
+      if (setDocumentos) {
+        const novoDoc: Documento = {
+          id_doc: "doc-saldo-inicial-" + Date.now(),
+          id_predio: predio.id_predio,
+          nome: file.name,
+          tipo: file.type.includes("pdf") ? "PDF" : "Documento",
+          data_upload: new Date().toISOString().split("T")[0],
+          tamanho: `${(file.size / 1024).toFixed(0)} KB`,
+          categoria: "Financeiro",
+          tema: "Saldos Iniciais / Transição",
+          sub_pasta: fracao?.fracao_nome || id_fracao,
+          descricao: `Comprovativo da dívida transitada — Fração ${fracao?.fracao_nome || id_fracao}`,
+          visibilidade: "Administração",
+          autor: loggedUser.nome,
+          ano,
+          caminho: urlReal,
+          arquivado: true,
+          data_arquivamento: new Date().toISOString().split("T")[0],
+          tipo_arquivo: "documento",
+          relevancia_perfis: ["ADMIN", "EMPRESA_GESTORA"]
+        };
+        setDocumentos(prev => [novoDoc, ...prev]);
+        saveDocumentoToSupabase(novoDoc).catch(console.error);
+      }
+    } finally {
+      setAArquivarComprovativoId(null);
+    }
   };
 
   // --- PASSO 3: MOVIMENTOS HISTÓRICOS DE TRANSIÇÃO (OPCIONAL) ---
@@ -958,11 +1028,9 @@ export function ConfiguracaoArranqueSaldos({
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Saldo de Abertura (€)</label>
                         <div className="relative">
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            value={conta.saldo || ""}
-                            onChange={(e) => handleUpdateContaArranque(conta.id_conta, { saldo: parseValorMonetario(e.target.value) })}
+                          <MoneyInput
+                            value={conta.saldo}
+                            onChange={(valor) => handleUpdateContaArranque(conta.id_conta, { saldo: valor })}
                             placeholder="0,00"
                             className="w-full pl-2.5 pr-6 py-1.5 text-xs font-black font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                           />
@@ -1082,11 +1150,9 @@ export function ConfiguracaoArranqueSaldos({
                       <td className="p-3">
                         {sf.tipo_saldo === "CREDITO" ? (
                           <div className="relative w-28">
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={sf.valor_saldo || ""}
-                              onChange={(e) => handleUpdateSaldoFracao(sf.id_fracao, { valor_saldo: parseValorMonetario(e.target.value) })}
+                            <MoneyInput
+                              value={sf.valor_saldo}
+                              onChange={(valor) => handleUpdateSaldoFracao(sf.id_fracao, { valor_saldo: valor })}
                               className="w-full px-2.5 py-1.5 text-xs font-mono font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950"
                             />
                             <span className="absolute right-2 top-1.5 text-[10px] text-slate-400 font-bold">€</span>
@@ -1225,11 +1291,9 @@ export function ConfiguracaoArranqueSaldos({
                             </div>
                             <div>
                               <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Quota Mensal Total</label>
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                value={p.valor_quota_mensal || ""}
-                                onChange={(e) => handleUpdatePeriodoQuotaOrdinaria(sf.id_fracao, p.id, { valor_quota_mensal: parseValorMonetario(e.target.value) })}
+                              <MoneyInput
+                                value={p.valor_quota_mensal}
+                                onChange={(valor) => handleUpdatePeriodoQuotaOrdinaria(sf.id_fracao, p.id, { valor_quota_mensal: valor })}
                                 placeholder="0,00"
                                 className="w-full px-2 py-1.5 text-[11px] font-mono font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950"
                               />
@@ -1261,6 +1325,27 @@ export function ConfiguracaoArranqueSaldos({
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
+                            </div>
+                            <div className="col-span-2 sm:col-span-5 pt-1.5 border-t border-indigo-200/60 dark:border-indigo-900/40 flex items-center gap-2">
+                              <label className={`text-[10px] font-bold px-2 py-1 rounded cursor-pointer border flex items-center gap-1 ${aArquivarComprovativoId === p.id ? "bg-slate-100 text-slate-400 border-slate-200" : "bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 border-indigo-300 dark:border-indigo-700 hover:bg-indigo-50"}`}>
+                                <UploadCloud className="h-3 w-3" />
+                                {aArquivarComprovativoId === p.id ? "A arquivar..." : "Anexar Comprovativo"}
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  disabled={aArquivarComprovativoId === p.id}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleUploadComprovativo(sf.id_fracao, "ordinaria", p.id, file);
+                                    e.target.value = "";
+                                  }}
+                                />
+                              </label>
+                              {p.comprovativo && (
+                                <a href={p.comprovativo.caminho} target="_blank" rel="noreferrer" className="text-[10px] text-emerald-600 hover:underline flex items-center gap-1 truncate">
+                                  <CheckCircle2 className="h-3 w-3 shrink-0" /> {p.comprovativo.nome}
+                                </a>
+                              )}
                             </div>
                           </div>
                         );
@@ -1337,22 +1422,18 @@ export function ConfiguracaoArranqueSaldos({
                             </div>
                             <div>
                               <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Valor Mensal</label>
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                value={it.valor_mensal || ""}
-                                onChange={(e) => handleUpdateDividaQuotaExtra(sf.id_fracao, it.id, { valor_mensal: parseValorMonetario(e.target.value) })}
+                              <MoneyInput
+                                value={it.valor_mensal}
+                                onChange={(valor) => handleUpdateDividaQuotaExtra(sf.id_fracao, it.id, { valor_mensal: valor })}
                                 placeholder="0,00"
                                 className="w-full px-2 py-1.5 text-[11px] font-mono font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950"
                               />
                             </div>
                             <div>
                               <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Valor Total</label>
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                value={it.valor_total || ""}
-                                onChange={(e) => handleUpdateDividaQuotaExtra(sf.id_fracao, it.id, { valor_total: parseValorMonetario(e.target.value) })}
+                              <MoneyInput
+                                value={it.valor_total}
+                                onChange={(valor) => handleUpdateDividaQuotaExtra(sf.id_fracao, it.id, { valor_total: valor })}
                                 placeholder="0,00"
                                 className="w-full px-2 py-1.5 text-[11px] font-mono font-black text-red-600 dark:text-red-400 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950"
                               />
@@ -1364,6 +1445,27 @@ export function ConfiguracaoArranqueSaldos({
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
+                          </div>
+                          <div className="pt-1.5 border-t border-amber-200/60 dark:border-amber-900/40 flex items-center gap-2">
+                            <label className={`text-[10px] font-bold px-2 py-1 rounded cursor-pointer border flex items-center gap-1 ${aArquivarComprovativoId === it.id ? "bg-slate-100 text-slate-400 border-slate-200" : "bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700 hover:bg-amber-50"}`}>
+                              <UploadCloud className="h-3 w-3" />
+                              {aArquivarComprovativoId === it.id ? "A arquivar..." : "Anexar Comprovativo"}
+                              <input
+                                type="file"
+                                className="hidden"
+                                disabled={aArquivarComprovativoId === it.id}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleUploadComprovativo(sf.id_fracao, "extra", it.id, file);
+                                  e.target.value = "";
+                                }}
+                              />
+                            </label>
+                            {it.comprovativo && (
+                              <a href={it.comprovativo.caminho} target="_blank" rel="noreferrer" className="text-[10px] text-emerald-600 hover:underline flex items-center gap-1 truncate">
+                                <CheckCircle2 className="h-3 w-3 shrink-0" /> {it.comprovativo.nome}
+                              </a>
+                            )}
                           </div>
                         </div>
                       ))}

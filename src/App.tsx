@@ -3199,6 +3199,8 @@ export default function App() {
               avisos={avisos}
               setAvisos={setAvisos}
               loggedUser={loggedUser}
+              documentos={documentos}
+              setDocumentos={setDocumentos}
               onConcluir={() => setActiveSection("painel")}
             />
           )}

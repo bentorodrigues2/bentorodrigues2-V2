@@ -192,10 +192,36 @@ export function ContenciosoJuridico({
     return Math.floor(diffTime / (1000 * 60 * 60 * 24));
   };
 
+  // Prazo de prescrição das quotas de condomínio — "prestações
+  // periodicamente vencidas" prescrevem em 5 anos (Art. 310º, al. g) do
+  // Código Civil). Passado esse prazo, a dívida deixa de ser judicialmente
+  // cobrável (a menos que tenha havido interrupção/reconhecimento da
+  // dívida, que este cálculo não tem como saber) — por isso é sinalizada
+  // em separado, para não se perder tempo/custas a tentar cobrar algo que
+  // um tribunal já não aceitaria.
+  const CINCO_ANOS_MS = 5 * 365.25 * 24 * 60 * 60 * 1000;
+  const isAvisoPrescrito = (aviso: Aviso): boolean => {
+    const venc = new Date(aviso.vencimento);
+    return (anchorDate.getTime() - venc.getTime()) > CINCO_ANOS_MS;
+  };
+
+  // Juros de mora estimados — reaproveita a mesma fórmula já usada para o
+  // Requerimento de Injunção (calculateInterestForAviso, definida mais
+  // abaixo), mas somados por fração, para dar uma visão imediata do
+  // agravamento da dívida sem ter de abrir esse formulário.
+  const calcularJurosAviso = (aviso: Aviso): number => {
+    const days = getDaysOverdue(aviso.vencimento);
+    if (days <= 0) return 0;
+    return parseFloat(((aviso.valor * (interestRate / 100) * days) / 365).toFixed(2));
+  };
+
   // Determine the legal status and metrics for each fraction
   const getLegalInfoForFracao = (fracId: string) => {
     const frAvisos = predioAvisos.filter(a => a.id_fracao === fracId && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"));
     const totalDebt = frAvisos.reduce((acc, curr) => acc + (curr.valor - (curr.valor_pago || 0)), 0);
+    const totalDebtPrescrito = frAvisos.filter(isAvisoPrescrito).reduce((acc, curr) => acc + (curr.valor - (curr.valor_pago || 0)), 0);
+    const totalDebtCobravel = totalDebt - totalDebtPrescrito;
+    const totalJurosMoraEstimados = frAvisos.reduce((acc, curr) => acc + calcularJurosAviso(curr), 0);
 
     let maxDaysOverdue = 0;
     let worstAvisoDate = "";
@@ -237,6 +263,9 @@ export function ContenciosoJuridico({
 
     return {
       totalDebt,
+      totalDebtPrescrito,
+      totalDebtCobravel,
+      totalJurosMoraEstimados,
       maxDaysOverdue,
       worstAvisoDate,
       status,
@@ -244,7 +273,11 @@ export function ContenciosoJuridico({
       color,
       inibidoVoto,
       unpaidCount: frAvisos.length,
-      unpaidAvisos: frAvisos
+      unpaidAvisos: frAvisos,
+      // Só as prestações ainda dentro do prazo de prescrição — usadas para
+      // não reclamar num documento jurídico real (Injunção, Carta AR) capital
+      // ou juros sobre dívida que um tribunal já não aceitaria como exigível.
+      unpaidAvisosCobraveis: frAvisos.filter(a => !isAvisoPrescrito(a))
     };
   };
 
@@ -784,6 +817,14 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                       </td>
                       <td className="p-3 text-right font-bold font-mono-custom text-slate-900 dark:text-slate-100">
                         {info.totalDebt > 0 ? `${info.totalDebt.toFixed(2)} €` : "0.00 €"}
+                        {info.totalJurosMoraEstimados > 0 && (
+                          <span className="block text-[9px] font-semibold text-amber-600 dark:text-amber-400">+ {info.totalJurosMoraEstimados.toFixed(2)}€ juros est.</span>
+                        )}
+                        {info.totalDebtPrescrito > 0 && (
+                          <span className="block text-[9px] font-bold text-slate-400" title="Prestações vencidas há mais de 5 anos — Art. 310º Código Civil, já não judicialmente cobráveis">
+                            <i className="fa-solid fa-hourglass-end mr-0.5"></i>{info.totalDebtPrescrito.toFixed(2)}€ prescrito
+                          </span>
+                        )}
                       </td>
                       <td className="p-3 text-center">
                         <span className={`px-2.5 py-1 rounded text-[10px] font-bold border ${info.color}`}>
@@ -1403,27 +1444,33 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   <div className="grid grid-cols-4 gap-2 text-center p-2 bg-slate-50 border rounded font-mono-custom text-xs font-bold">
                     <div className="border-r">
                       <p className="text-[9px] font-sans text-slate-400 uppercase">Capital Inicial</p>
-                      <p className="text-slate-800">{selectedFracaoInfo?.totalDebt.toFixed(2)} €</p>
+                      <p className="text-slate-800">{(selectedFracaoInfo?.totalDebtCobravel ?? 0).toFixed(2)} €</p>
                     </div>
                     <div className="border-r">
                       <p className="text-[9px] font-sans text-slate-400 uppercase">Juros de Mora</p>
-                      <p className="text-amber-600">{getCalculatedTotalInterest(selectedFracaoInfo?.unpaidAvisos || []).toFixed(2)} €</p>
+                      <p className="text-amber-600">{getCalculatedTotalInterest(selectedFracaoInfo?.unpaidAvisosCobraveis || []).toFixed(2)} €</p>
                     </div>
                     <div className="border-r">
                       <p className="text-[9px] font-sans text-slate-400 uppercase">Taxa de Justiça</p>
-                      <p className="text-red-600">{(selectedFracaoInfo?.totalDebt || 0) <= 2000 ? "25.50" : "51.00"} €</p>
+                      <p className="text-red-600">{(selectedFracaoInfo?.totalDebtCobravel || 0) <= 2000 ? "25.50" : "51.00"} €</p>
                     </div>
                     <div>
                       <p className="text-[9px] font-sans text-slate-400 uppercase">Valor do Pedido</p>
                       <p className="text-slate-950 font-extrabold">
                         {(
-                          (selectedFracaoInfo?.totalDebt || 0) + 
-                          getCalculatedTotalInterest(selectedFracaoInfo?.unpaidAvisos || []) + 
-                          ((selectedFracaoInfo?.totalDebt || 0) <= 2000 ? 25.50 : 51.00)
+                          (selectedFracaoInfo?.totalDebtCobravel || 0) +
+                          getCalculatedTotalInterest(selectedFracaoInfo?.unpaidAvisosCobraveis || []) +
+                          ((selectedFracaoInfo?.totalDebtCobravel || 0) <= 2000 ? 25.50 : 51.00)
                         ).toFixed(2)} €
                       </p>
                     </div>
                   </div>
+                  {(selectedFracaoInfo?.totalDebtPrescrito || 0) > 0 && (
+                    <p className="text-[10px] text-slate-500 flex items-start gap-1.5 bg-slate-50 border border-slate-200 rounded p-2">
+                      <i className="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5"></i>
+                      <span>Excluídos <strong>{(selectedFracaoInfo?.totalDebtPrescrito || 0).toFixed(2)} €</strong> de prestações vencidas há mais de 5 anos, já prescritas nos termos do Art. 310º do Código Civil — não reclamáveis judicialmente.</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">

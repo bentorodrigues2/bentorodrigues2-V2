@@ -3,6 +3,7 @@ import { Pencil, Trash2, Plus, ArrowLeftRight, History } from "lucide-react";
 import { Predio, Fracao, LoggedUser, Aviso, Proprietario, Documento } from "../types";
 import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCondominoVaziaPDF, downloadFichaCondominoPreenchidaPDF, downloadListaCondominosPDF, gerarReferenciaBR23E, parseValorMonetario } from "../utils";
 import { ModalFichaCondominoEditavel } from "./ModalFichaCondominoEditavel";
+import { MoneyInput } from "./MoneyInput";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import { saveFracaoToSupabase, deleteFracaoFromSupabase, saveProprietarioToSupabase, deleteProprietarioFromSupabase, dbSelect, dbUpdate, dbInsert, dbDelete, dbUpsert, saveAvisosToSupabase, registarLogAuditoria, fetchResidentesInquilinosFromSupabase, saveResidenteInquilinoToSupabase, uploadDocumentoToStorage, saveDocumentoToSupabase } from "../lib/supabaseService";
@@ -3062,29 +3063,23 @@ export function GestaoFracoes({
                         Fração {f.fracao_nome} ({f.piso})
                       </td>
                       <td className="p-3 text-center">
-                        <input
-                          type="text"
-                          inputMode="decimal"
+                        <MoneyInput
                           value={areaC}
-                          onChange={e => setAreaCoberta({ ...areaCoberta, [f.id_fracao]: parseValorMonetario(e.target.value) })}
+                          onChange={valor => setAreaCoberta({ ...areaCoberta, [f.id_fracao]: valor })}
                           className="w-16 border border-slate-300 rounded text-center p-1 font-mono font-bold"
                         />
                       </td>
                       <td className="p-3 text-center">
-                        <input
-                          type="text"
-                          inputMode="decimal"
+                        <MoneyInput
                           value={areaV}
-                          onChange={e => setAreaVarandas({ ...areaVarandas, [f.id_fracao]: parseValorMonetario(e.target.value) })}
+                          onChange={valor => setAreaVarandas({ ...areaVarandas, [f.id_fracao]: valor })}
                           className="w-16 border border-slate-300 rounded text-center p-1 font-mono font-bold"
                         />
                       </td>
                       <td className="p-3 text-center">
-                        <input
-                          type="text"
-                          inputMode="decimal"
+                        <MoneyInput
                           value={coef}
-                          onChange={e => setCoefPiso({ ...coefPiso, [f.id_fracao]: parseValorMonetario(e.target.value) })}
+                          onChange={valor => setCoefPiso({ ...coefPiso, [f.id_fracao]: valor })}
                           className="w-16 border border-slate-300 rounded text-center p-1 font-mono font-bold"
                         />
                       </td>

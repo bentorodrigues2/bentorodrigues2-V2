@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Predio, Fracao, Aviso, LoggedUser, Documento, RevisaoOrcamento, Conta, Movimento } from "../types";
 import { formatDatePT, formatQuotaReceiptNumber, parseValorMonetario } from "../utils";
 import { downloadOfficialReceiptPDF } from "../utils/receiptGenerator";
+import { MoneyInput } from "./MoneyInput";
 import { isSupabaseConfigured } from "@/lib/supabaseClient";
 import {
   dbUpdate,
@@ -841,21 +842,17 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Quota Mensal (€)</label>
-                    <input
-                      type="text"
-                      inputMode="decimal"
+                    <MoneyInput
                       value={customQuotaMensal}
-                      onChange={e => setCustomQuotaMensal(parseValorMonetario(e.target.value))}
+                      onChange={setCustomQuotaMensal}
                       className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-900 text-xs px-2 py-1.5 rounded-lg focus:outline-indigo-500 dark:text-white font-mono"
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Quota Extra (€)</label>
-                    <input
-                      type="text"
-                      inputMode="decimal"
+                    <MoneyInput
                       value={customQuotaExtra}
-                      onChange={e => setCustomQuotaExtra(parseValorMonetario(e.target.value))}
+                      onChange={setCustomQuotaExtra}
                       className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-900 text-xs px-2 py-1.5 rounded-lg focus:outline-indigo-500 dark:text-white font-mono"
                     />
                   </div>

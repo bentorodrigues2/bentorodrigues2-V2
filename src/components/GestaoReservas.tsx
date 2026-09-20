@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Predio, Fracao, LoggedUser, Reserva, CapacidadeLimite } from "../types";
-import { formatDatePT, formatDateISO, parseValorMonetario } from "../utils";
+import { formatDatePT, formatDateISO } from "../utils";
 import { saveReservaToSupabase, deleteReservaFromSupabase, registarLogAuditoria } from "../lib/supabaseService";
+import { MoneyInput } from "./MoneyInput";
 
 interface GestaoReservasProps {
   predio: Predio;
@@ -524,12 +525,10 @@ export function GestaoReservas({
 
                         <div className="flex flex-col">
                           <label className="text-[10px] uppercase font-bold text-slate-400">Caução Requerida (€)</label>
-                          <input
-                            type="text"
-                            inputMode="decimal"
+                          <MoneyInput
                             value={rule.caucao}
                             disabled={loggedUser.role !== "ADMIN"}
-                            onChange={e => handleUpdateRegra(area.key, "caucao", parseValorMonetario(e.target.value))}
+                            onChange={valor => handleUpdateRegra(area.key, "caucao", valor)}
                             className="mt-1 border border-slate-200 dark:border-slate-800 px-2 py-1 text-xs rounded bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-mono-custom"
                           />
                         </div>
