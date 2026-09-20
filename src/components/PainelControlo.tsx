@@ -192,28 +192,24 @@ export function PainelControlo({
       {(() => {
         const indicadores = [
           {
+            // Só faz sentido mostrar este cartão quando há mais que um
+            // prédio a gerir — com um único edifício é informação óbvia.
             name: "Prédios Ativos",
             val: totalPrediosReais === 1 ? "1 Edifício" : `${totalPrediosReais} Edifícios`,
             icon: "/modulos/01-predio.png",
             section: "predios",
-            fixo: true,
+            fixo: totalPrediosReais > 1,
             contagem: 1
           },
           {
-            name: "Condóminos",
-            val: `${predioFracoes.length} Frações`,
+            // Condóminos e Inquilinos fundidos num só cartão — consultam-se
+            // sempre em conjunto ao nível da fração.
+            name: "Condóminos & Inquilinos",
+            val: `${predioFracoes.length} Frações · ${predioFracoes.filter(f => f.is_arrendada).length} Arrendadas`,
             icon: "/modulos/07-fracao.png",
             section: "fracoes",
             fixo: true,
             contagem: 1
-          },
-          {
-            name: "Inquilinos",
-            val: `${predioFracoes.filter(f => f.is_arrendada).length} Ativos`,
-            icon: "/modulos/12-inquilino.png",
-            section: "fracoes_perfis",
-            fixo: false,
-            contagem: predioFracoes.filter(f => f.is_arrendada).length
           },
           {
             name: "Intervenções",
@@ -285,14 +281,6 @@ export function PainelControlo({
             section: "contencioso_juridico",
             fixo: false,
             contagem: alertasJuridicosCount
-          },
-          {
-            name: "Contratos Fornecedores",
-            val: fornecedoresCount === 1 ? "1 Ativo" : `${fornecedoresCount} Ativos`,
-            icon: "/modulos/67-fornecedor.png",
-            section: "fornecedores",
-            fixo: false,
-            contagem: fornecedoresCount
           },
           {
             name: "Sondagens IA",
