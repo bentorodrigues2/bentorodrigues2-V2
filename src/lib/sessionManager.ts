@@ -93,7 +93,14 @@ export const RoleNavigationMap: Record<UserRole, RoleNavigationConfig> = {
   USER: {
     role: "USER",
     defaultTab: "portal_condomino",
-    allowedTabs: ["painel", "portal_condomino", "predios", "predios_cadastro", "predios_regras", "fracoes", "fracoes_perfis", "comunicacao_broadcast", "comunicacao_sondagens", "comunicacao_questionarios", "assembleias", "financeiro_extratos", "financeiro_recibos", "vistorias_limpezas", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
+    // "fracoes"/"fracoes_perfis" (ficha completa de TODAS as frações, com
+    // NIF/IBAN/contactos de outros condóminos) e "financeiro_recibos"
+    // (emissão manual de recibos de qualquer fração) removidos — são
+    // ferramentas de administração, não de autoconsulta. Os dados da
+    // própria fração e o extrato/saldo continuam disponíveis em
+    // "portal_condomino" e "financeiro_extratos" (agora bloqueado à
+    // própria fração em FinanceiroAvancado.tsx).
+    allowedTabs: ["painel", "portal_condomino", "predios", "predios_cadastro", "predios_regras", "comunicacao_broadcast", "comunicacao_sondagens", "comunicacao_questionarios", "assembleias", "financeiro_extratos", "vistorias_limpezas", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
     displayName: "Condómino (Proprietário)",
     badgeColor: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30"
   },

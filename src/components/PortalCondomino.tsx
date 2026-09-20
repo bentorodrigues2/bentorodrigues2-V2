@@ -1068,14 +1068,18 @@ export function PortalCondomino({
             </button>
           )}
 
-          {/* Tester toggle so they can inspect both sides easily */}
-          <button
-            onClick={() => setActiveTab(activeTab === "portal" ? "backoffice" : "portal")}
-            className="px-3 py-2 text-[10px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
-            title="Alternar vista apenas para simulação do motor"
-          >
-            <i className="fa-solid fa-arrows-rotate mr-1"></i> Simular Outra Vista ({activeTab === "portal" ? "Backoffice" : "Portal"})
-          </button>
+          {/* Tester toggle — só para o ADMIN inspecionar as duas vistas.
+              Nunca visível para condóminos/inquilinos: dava acesso ao
+              backoffice com dados de todos os residentes. */}
+          {loggedUser.role === "ADMIN" && (
+            <button
+              onClick={() => setActiveTab(activeTab === "portal" ? "backoffice" : "portal")}
+              className="px-3 py-2 text-[10px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+              title="Alternar vista apenas para simulação do motor"
+            >
+              <i className="fa-solid fa-arrows-rotate mr-1"></i> Simular Outra Vista ({activeTab === "portal" ? "Backoffice" : "Portal"})
+            </button>
+          )}
         </div>
 
         <div className="flex space-x-2">
@@ -1601,8 +1605,11 @@ export function PortalCondomino({
         </div>
       )}
 
-      {/* --- BACKOFFICE ADMIN PANEL --- */}
-      {activeTab === "backoffice" && (
+      {/* --- BACKOFFICE ADMIN PANEL ---
+          Acesso exclusivo ADMIN: mostra emails, passwords provisórias e
+          ações de segurança de TODOS os residentes — nunca deve ser
+          alcançável por um condómino/inquilino autenticado. */}
+      {activeTab === "backoffice" && loggedUser.role === "ADMIN" && (
         <div className="space-y-6">
           {/* Quick Simulation Job Tools */}
           <div className="bg-slate-900 rounded-xl p-6 text-white shadow-md relative overflow-hidden">

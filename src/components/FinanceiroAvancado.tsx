@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Predio, Fracao, Aviso, Movimento, LoggedUser, Documento } from "../types";
+import { Predio, Fracao, Aviso, Movimento, LoggedUser, Documento, Conta } from "../types";
 import { formatDatePT, formatQuotaReceiptNumber, downloadReceiptPDF, exportarBalanceteMapaAnualXLS, parseValorMonetario } from "../utils";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
 import { fetchCaucoesFromSupabase, saveCaucaoToSupabase, registarLogAuditoria } from "../lib/supabaseService";
@@ -31,6 +31,7 @@ interface FinanceiroAvancadoProps {
   movimentos?: Movimento[];
   setMovements?: React.Dispatch<React.SetStateAction<Movimento[]>>;
   setDocumentos?: React.Dispatch<React.SetStateAction<Documento[]>>;
+  contas?: Conta[];
   loggedUser: LoggedUser;
   activeSubSection?: string;
   initialTab?: string;
@@ -44,10 +45,17 @@ export function FinanceiroAvancado({
   movimentos,
   setMovements,
   setDocumentos,
+  contas = [],
   loggedUser,
   activeSubSection,
   initialTab
 }: FinanceiroAvancadoProps) {
+  // Um condómino (proprietário) só pode ver os dados da SUA própria fração —
+  // antes, qualquer condómino conseguia escolher no seletor "Fração" e ver a
+  // dívida, NIF e histórico de pagamentos de QUALQUER outra fração do
+  // prédio, incluindo emitir recibos manuais em nome de outra pessoa.
+  const ehCondomino = loggedUser.role === "USER" || loggedUser.role === "INQUILINO";
+  const emailLogado = (loggedUser.email || "").trim().toLowerCase();
   const normalizeTab = (t: string | undefined): string => {
     if (!t) return "recibos_manuais";
     if (t === "financeiro_recibos" || t === "recibos_manuais") return "recibos_manuais";
@@ -71,6 +79,14 @@ export function FinanceiroAvancado({
   const [isFiltroRelatoriosOpen, setIsFiltroRelatoriosOpen] = useState(false);
   const predioFracoes = useMemo(() => fracoes.filter(f => f.id_predio === predio.id_predio), [fracoes, predio.id_predio]);
   const predioAvisos = useMemo(() => avisos.filter(a => a.id_predio === predio.id_predio), [avisos, predio.id_predio]);
+  const predioContas = useMemo(() => contas.filter(c => c.id_predio === predio.id_predio), [contas, predio.id_predio]);
+
+  // A fração do próprio condómino (por email) — só é usada para o bloquear
+  // à sua fração; um ADMIN/EMPRESA_GESTORA continua a escolher livremente.
+  const fracaoPropria = useMemo(
+    () => predioFracoes.find(f => (f.proprietario?.email || "").trim().toLowerCase() === emailLogado),
+    [predioFracoes, emailLogado]
+  );
 
   // Cauções State — carregadas do Supabase (tabela real "caucoes")
   const [caucoes, setCaucoes] = useState<Caucao[]>([]);
@@ -162,9 +178,10 @@ export function FinanceiroAvancado({
     setActionType(null);
   };
 
-  // Default selected fraction
+  // Default selected fraction — um condómino arranca sempre bloqueado à
+  // própria fração, nunca à primeira da lista.
   const [selectedFracaoId, setSelectedFracaoId] = useState<string>(
-    predioFracoes.length > 0 ? predioFracoes[0].id_fracao : ""
+    ehCondomino ? (fracaoPropria?.id_fracao || "") : (predioFracoes.length > 0 ? predioFracoes[0].id_fracao : "")
   );
 
   // --- MANUAL RECEIPT STATE (Recibos Manuais) - Base limpa sem valores fixos de simulação ---
@@ -257,8 +274,12 @@ export function FinanceiroAvancado({
     return totalPend === 0 ? 0 : -totalPend;
   };
 
-  // Helper: get selected fraction object
-  const selectedFracao = predioFracoes.find(f => f.id_fracao === selectedFracaoId) || predioFracoes[0];
+  // Helper: get selected fraction object — para um condómino, ignora sempre
+  // selectedFracaoId e usa a própria fração (defesa em profundidade, mesmo
+  // que o seletor de fração venha a ficar visível nalgum ponto por engano).
+  const selectedFracao = ehCondomino
+    ? fracaoPropria
+    : (predioFracoes.find(f => f.id_fracao === selectedFracaoId) || predioFracoes[0]);
 
   // Helper: record manual receipt into movements
   const handleRegistarReciboManual = () => {
@@ -1357,25 +1378,52 @@ export function FinanceiroAvancado({
                   <span>Extrato de Movimentos e Saldo do Condómino</span>
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Listagem cronológica dos pagamentos e encargos de cada fração, com indicação visual de saldo a Verde (em dia) ou Vermelho (dívida).
+                  {ehCondomino
+                    ? "Histórico cronológico dos pagamentos e encargos da sua fração, com indicação visual de saldo a Verde (em dia) ou Vermelho (dívida)."
+                    : "Listagem cronológica dos pagamentos e encargos de cada fração, com indicação visual de saldo a Verde (em dia) ou Vermelho (dívida)."}
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-slate-400">Selecionar Fração:</span>
-                <select
-                  value={selectedFracaoId}
-                  onChange={e => setSelectedFracaoId(e.target.value)}
-                  className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  {predioFracoes.map(f => (
-                    <option key={f.id_fracao} value={f.id_fracao}>
-                      Fração "{f.fracao_nome}" ({f.piso}) — {f.proprietario.nome}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {!ehCondomino && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-slate-400">Selecionar Fração:</span>
+                  <select
+                    value={selectedFracaoId}
+                    onChange={e => setSelectedFracaoId(e.target.value)}
+                    className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    {predioFracoes.map(f => (
+                      <option key={f.id_fracao} value={f.id_fracao}>
+                        Fração "{f.fracao_nome}" ({f.piso}) — {f.proprietario.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
+
+            {/* Saldos gerais do condomínio (transparência) — visível a todos,
+                mostra só os totais das contas, nunca o extrato bancário
+                completo (esse continua reservado à administração). */}
+            {predioContas.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {predioContas.map(c => (
+                  <div key={c.id_conta} className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 p-3.5 rounded-xl flex items-center justify-between">
+                    <div>
+                      <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block">{c.descricao || c.tipo} — {c.banco}</span>
+                      <span className="text-[10px] text-slate-400 font-mono">Saldo do Condomínio</span>
+                    </div>
+                    <span className="text-base font-black font-mono text-slate-800 dark:text-white">{(c.saldo_atual ?? c.saldo ?? 0).toFixed(2)} €</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {ehCondomino && !fracaoPropria && (
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold">
+                Não encontrámos nenhuma fração associada ao seu email neste condomínio. Contacte a administração se isto não for esperado.
+              </div>
+            )}
 
             {/* Condómino Saldo Banner (VERDE vs VERMELHO REGRA) */}
             {selectedFracao && (
@@ -1441,18 +1489,20 @@ export function FinanceiroAvancado({
                         <i className="fa-solid fa-file-pdf"></i>
                         <span>Download Extrato PDF</span>
                       </button>
-                      <button
-                        onClick={() => openEmailShare(
-                          selectedFracao.proprietario.email,
-                          `Extrato Oficial de Condomínio - Fração ${selectedFracao.fracao_nome}`,
-                          `Exmo(a). Sr(a). ${selectedFracao.proprietario.nome},\n\nJunto remetemos o extrato detalhado de quotas e pagamentos da sua fração "${selectedFracao.fracao_nome}".\n\nSaldo atual: ${getFracaoBalance(selectedFracao.id_fracao).toFixed(2)} €\n\nA Administração ${predio.nome}`,
-                          `Extrato ${selectedFracao.fracao_nome}`
-                        )}
-                        className="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <i className="fa-solid fa-envelope"></i>
-                        <span>Partilhar por Email</span>
-                      </button>
+                      {!ehCondomino && (
+                        <button
+                          onClick={() => openEmailShare(
+                            selectedFracao.proprietario.email,
+                            `Extrato Oficial de Condomínio - Fração ${selectedFracao.fracao_nome}`,
+                            `Exmo(a). Sr(a). ${selectedFracao.proprietario.nome},\n\nJunto remetemos o extrato detalhado de quotas e pagamentos da sua fração "${selectedFracao.fracao_nome}".\n\nSaldo atual: ${getFracaoBalance(selectedFracao.id_fracao).toFixed(2)} €\n\nA Administração ${predio.nome}`,
+                            `Extrato ${selectedFracao.fracao_nome}`
+                          )}
+                          className="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <i className="fa-solid fa-envelope"></i>
+                          <span>Partilhar por Email</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 

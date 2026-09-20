@@ -2823,6 +2823,8 @@ export default function App() {
             <FinanceiroAvancado
               predio={predioAtivo}
               fracoes={fracoes}
+              avisos={avisos}
+              contas={contas}
               movimentos={movements}
               setDocumentos={setDocumentos}
               loggedUser={loggedUser}
