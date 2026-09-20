@@ -549,6 +549,10 @@ export function ConfiguracaoArranqueSaldos({
     const novosAvisos: Aviso[] = [];
     saldosFracoes.forEach((sf) => {
       if (sf.tipo_saldo !== "DIVIDA") return;
+      // Fotografia do proprietário — mesma regra usada em todos os outros
+      // pontos de emissão de avisos, para o documento nunca "mudar de dono"
+      // se a fração for transferida mais tarde.
+      const fracaoRef = predioFracoes.find(f => f.id_fracao === sf.id_fracao);
 
       sf.dividasQuotasOrdinarias.forEach((p, idx) => {
         if (p.valor_quota_mensal <= 0 || p.meses_em_divida <= 0) return;
@@ -564,7 +568,9 @@ export function ConfiguracaoArranqueSaldos({
           descricao: `Quotas Ordinárias em dívida da administração anterior — desde ${p.data_inicio} (${p.meses_em_divida} ${p.meses_em_divida === 1 ? "mês" : "meses"} × ${p.valor_quota_mensal.toFixed(2)}€). ${sf.observacoes}`.trim(),
           valor: valorTotal,
           valor_fundo_reserva: valorFCR,
-          estado: "Pendente"
+          estado: "Pendente",
+          proprietario_nome: fracaoRef?.proprietario?.nome,
+          proprietario_nif: fracaoRef?.proprietario?.nif
         });
       });
 
@@ -580,7 +586,9 @@ export function ConfiguracaoArranqueSaldos({
           descricao: `Quota Extraordinária em dívida da administração anterior — ${it.descricao || "Obra"} (${it.data_inicio_pagamentos} a ${it.data_fim_pagamentos}, ${it.valor_mensal.toFixed(2)}€/mês). ${sf.observacoes}`.trim(),
           valor: it.valor_total,
           estado: "Pendente",
-          id_obra: it.id_obra || undefined
+          id_obra: it.id_obra || undefined,
+          proprietario_nome: fracaoRef?.proprietario?.nome,
+          proprietario_nif: fracaoRef?.proprietario?.nif
         });
       });
 
@@ -597,7 +605,9 @@ export function ConfiguracaoArranqueSaldos({
           vencimento: dataAbertura,
           descricao: `Saldo devedor de transição (${sf.meses_atraso} meses em atraso da administração anterior). ${sf.observacoes}`,
           valor: sf.valor_saldo,
-          estado: "Pendente"
+          estado: "Pendente",
+          proprietario_nome: fracaoRef?.proprietario?.nome,
+          proprietario_nif: fracaoRef?.proprietario?.nif
         });
       }
     });
