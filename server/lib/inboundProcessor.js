@@ -11,7 +11,12 @@ import { cruzarMovimentoComFornecedor } from "./fornecedorMatching.js";
  * servidor de correio) — estes SIM são descartados por completo, sem
  * qualquer processamento.
  */
-const DESCARTE_TOTAL = ["mailer-daemon", "postmaster"];
+// Notificações do próprio Vercel/Resend (deploy falhado, limite de quota
+// diária atingido, etc.) chegam à mesma caixa e estavam a ser tratadas como
+// contactos genuínos — geravam resposta automática ("Recebemos o seu
+// contacto...") a um sistema, sem nenhuma utilidade e a gastar quota de
+// email à toa. Nunca trazem faturas/comprovativos, descartam-se por completo.
+const DESCARTE_TOTAL = ["mailer-daemon", "postmaster", "notifications@vercel.com", "notifications.resend.com"];
 
 /**
  * Remetentes automáticos de envio unidirecional (não conseguem receber
