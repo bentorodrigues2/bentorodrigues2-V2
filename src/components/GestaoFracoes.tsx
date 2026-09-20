@@ -3007,15 +3007,15 @@ export function GestaoFracoes({
               </div>
               <div>
                 <label className="font-semibold text-slate-600 block mb-1">NIF *</label>
-                <input type="text" value={resNif} onChange={e => setResNif(e.target.value)} placeholder="Ex: 234567890" className="w-full border border-slate-300 rounded-lg p-2 bg-white font-mono" />
+                <input type="text" value={resNif} onChange={e => setResNif(e.target.value)} placeholder="Ex: 234567890 (ou NA se recusar)" className="w-full border border-slate-300 rounded-lg p-2 bg-white font-mono" />
               </div>
               <div>
-                <label className="font-semibold text-slate-600 block mb-1">E-mail *</label>
-                <input type="email" value={resEmail} onChange={e => setResEmail(e.target.value)} placeholder="residente@email.com" className="w-full border border-slate-300 rounded-lg p-2 bg-white" />
+                <label className="font-semibold text-slate-600 block mb-1">E-mail</label>
+                <input type="text" value={resEmail} onChange={e => setResEmail(e.target.value)} placeholder="residente@email.com (ou NA)" className="w-full border border-slate-300 rounded-lg p-2 bg-white" />
               </div>
               <div>
-                <label className="font-semibold text-slate-600 block mb-1">Telefone *</label>
-                <input type="text" value={resTlm} onChange={e => setResTlm(e.target.value)} placeholder="912345678" className="w-full border border-slate-300 rounded-lg p-2 bg-white font-mono" />
+                <label className="font-semibold text-slate-600 block mb-1">Telefone</label>
+                <input type="text" value={resTlm} onChange={e => setResTlm(e.target.value)} placeholder="912345678 (ou NA)" className="w-full border border-slate-300 rounded-lg p-2 bg-white font-mono" />
               </div>
               <div>
                 <label className="font-semibold text-slate-600 block mb-1">Data de Entrada *</label>
@@ -3038,7 +3038,11 @@ export function GestaoFracoes({
               disabled={registandoEntrada}
               onClick={async () => {
                 if (!resFracaoTarget) return alert("Selecione a fração.");
-                if (!resNome || !resNif) return alert("Preencha Nome e NIF do residente.");
+                // NIF/E-mail/Telefone aceitam "NA" (Não Aplicável) — há
+                // inquilinos que recusam fornecer certos dados, tal como já
+                // acontece no registo de proprietário.
+                if (!resNome.trim()) return alert("Preencha o Nome do residente.");
+                if (!resNif.trim()) return alert("O campo NIF é obrigatório (escreva NA se o inquilino recusar fornecer).");
                 const fracaoInfo = predioFracoes.find(f => f.id_fracao === resFracaoTarget);
                 const idNovo = "res-" + Date.now();
                 const novoRes = {
@@ -3048,8 +3052,8 @@ export function GestaoFracoes({
                   fracao: fracaoInfo ? `Fração ${fracaoInfo.fracao_nome} (${fracaoInfo.piso})` : resFracaoTarget,
                   nome: resNome,
                   nif: resNif,
-                  email: resEmail || "residente@email.pt",
-                  telefone: resTlm || "910000000",
+                  email: resEmail.trim() || "NA",
+                  telefone: resTlm.trim() || "NA",
                   tipo: "Inquilino (Habitação Tradicional)",
                   data_entrada: resDataEntrada,
                   data_saida: null,

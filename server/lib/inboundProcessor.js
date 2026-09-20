@@ -560,12 +560,21 @@ async function obterConteudoAnexo(emailId, attachmentId) {
       `https://api.resend.com/emails/receiving/${emailId}/attachments/${attachmentId}`,
       { headers: { Authorization: `Bearer ${resendApiKey}` } }
     );
-    if (!meta.ok) return null;
+    if (!meta.ok) {
+      console.warn("[inboundProcessor] Falha ao obter metadados do anexo:", meta.status, await meta.text());
+      return null;
+    }
     const metaJson = await meta.json();
-    if (!metaJson?.download_url) return null;
+    if (!metaJson?.download_url) {
+      console.warn("[inboundProcessor] Anexo sem download_url:", JSON.stringify(metaJson));
+      return null;
+    }
 
     const ficheiro = await fetch(metaJson.download_url);
-    if (!ficheiro.ok) return null;
+    if (!ficheiro.ok) {
+      console.warn("[inboundProcessor] Falha ao descarregar o anexo:", ficheiro.status);
+      return null;
+    }
 
     const arrayBuffer = await ficheiro.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
@@ -760,12 +769,15 @@ export async function processInboundEmail(payload) {
   let comprovativoRegisto = null;
   let comprovativoIgnoradoDuplicado = false;
 
+  console.log(`[inboundProcessor] isRealResendWebhook=${isRealResendWebhook} | attachments recebidos=${Array.isArray(attachments) ? attachments.length : "n/a"}`);
+
   if (isRealResendWebhook && Array.isArray(attachments) && attachments.length > 0) {
     const anexosComConteudo = [];
     for (const anexo of attachments.slice(0, 3)) {
       const conteudo = await obterConteudoAnexo(webhookData.email_id, anexo.id);
       if (conteudo) anexosComConteudo.push(conteudo);
     }
+    console.log(`[inboundProcessor] Anexos com conteúdo obtido com sucesso: ${anexosComConteudo.length} de ${attachments.slice(0, 3).length}`);
 
     if (anexosComConteudo.length > 0) {
       const hashes = anexosComConteudo.map((a) => a.hash);
@@ -776,6 +788,7 @@ export async function processInboundEmail(payload) {
           dadosExtraidos = await extrairDadosDocumento(
             anexosComConteudo.map((a) => ({ mimeType: a.mimeType, base64: a.base64 }))
           );
+          console.log("[inboundProcessor] Dados extraídos do anexo:", JSON.stringify(dadosExtraidos));
         } catch (err) {
           console.warn("[inboundProcessor] Aviso na extração multimodal:", err?.message || err);
         }
