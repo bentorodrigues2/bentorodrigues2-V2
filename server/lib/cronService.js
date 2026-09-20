@@ -265,7 +265,7 @@ async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, ano
   };
 
   const ehRetroativa = fluxo === "emissao_quotas_retroativa";
-  await enviarEmailPDF({
+  const emailEnviado = await enviarEmailPDF({
     to: proprietario.email,
     nomeDestinatario: proprietario.nome,
     assunto: modeloCobranca
@@ -278,7 +278,7 @@ async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, ano
     nome: nomeFicheiro
   });
 
-  return { ok: true, emailEnviado: true };
+  return { ok: true, emailEnviado };
 }
 
 /**
@@ -372,7 +372,7 @@ export async function reenviarNotaCobrancaCorrigida(id_predio, aviso) {
     visibilidade: "Público"
   });
 
-  await enviarEmailPDF({
+  const emailEnviado = await enviarEmailPDF({
     to: proprietario.email,
     nomeDestinatario: proprietario.nome,
     assunto: `Correção — Nota de Cobrança — Quota de ${mesRefLabel} / ${anoRef} — Fração ${f.fracao_nome}`,
@@ -381,7 +381,7 @@ export async function reenviarNotaCobrancaCorrigida(id_predio, aviso) {
     nome: nomeFicheiro
   });
 
-  return { ok: true, emailEnviado: true };
+  return { ok: true, emailEnviado };
 }
 
 /**

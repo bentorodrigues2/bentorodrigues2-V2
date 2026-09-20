@@ -116,7 +116,7 @@ export async function registarDocumento({ caminho, ano, tema, tipo, predio, frac
  */
 export async function enviarEmailPDF({ to, nomeDestinatario, assunto, mensagem, pdfBuffer, nome, cc }) {
   const resendApiKey = process.env.RESEND_API_KEY;
-  if (!resendApiKey || !to) return;
+  if (!resendApiKey || !to) return false;
 
   const fromEmail = process.env.EMAIL_FROM_ADDRESS || "administracao@condomanagerai.com";
   const fromAddress = fromEmail.includes("<") ? fromEmail : `CondoManager AI Condomínio <${fromEmail}>`;
@@ -138,7 +138,9 @@ export async function enviarEmailPDF({ to, nomeDestinatario, assunto, mensagem, 
 
   if (!resp.ok) {
     console.error("[pdfService] Erro ao enviar email:", resp.status, await resp.text());
+    return false;
   }
+  return true;
 }
 
 /**
