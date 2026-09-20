@@ -145,6 +145,29 @@ export default function PWACondominoView({
   // Mobile app navigation: handles both bottom quick tabs and the 10 modules
   const [activeTab, setActiveTab] = useState<string>("home");
 
+  // Botão físico de "voltar atrás" do telemóvel (Android) / gesto de swipe
+  // (iOS): sem isto, o browser não tem nenhum registo de navegação interna
+  // e o botão físico sai diretamente da app em vez de voltar ao ecrã
+  // anterior. Regista uma entrada no histórico ao sair de "home" e, ao
+  // disparar "voltar", regressa a "home" em vez de deixar o browser tratar
+  // do evento (não cobre navegação entre sub-ecrãs dentro do mesmo separador,
+  // só o nível principal separador -> home).
+  const activeTabAnteriorRef = useRef<string>("home");
+  useEffect(() => {
+    if (activeTab !== "home" && activeTabAnteriorRef.current === "home") {
+      window.history.pushState({ pwaTab: activeTab }, "");
+    }
+    activeTabAnteriorRef.current = activeTab;
+  }, [activeTab]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setActiveTab(prev => (prev !== "home" ? "home" : prev));
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   // Rede de segurança: mesmo que o atalho fique escondido, um coproprietário
   // ou inquilino nunca deve conseguir ficar num separador com dados
   // financeiros (ex: sessão antiga, navegação programática). Devolve sempre
