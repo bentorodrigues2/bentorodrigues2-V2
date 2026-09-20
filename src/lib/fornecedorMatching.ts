@@ -30,7 +30,7 @@ export interface DadosParaCruzamentoFornecedor {
 
 export interface ResultadoCruzamentoFornecedor {
   fornecedor: Fornecedor;
-  metodo: "iban" | "referencia_contrato" | "nome";
+  metodo: "iban" | "referencia_contrato" | "nome" | "palavra_chave";
 }
 
 /**
@@ -42,6 +42,9 @@ export interface ResultadoCruzamentoFornecedor {
  *    fiável para débitos diretos de utilities, onde o IBAN é partilhado por
  *    milhares de clientes)
  * 3) Nome da entidade, por aproximação (ignora acentos/pontuação/sufixos)
+ * 4) Palavra-chave configurada na ficha do fornecedor, contida na descrição
+ *    do movimento — para custos sem IBAN nem nome de entidade fiável (ex:
+ *    "Imposto de Selo", "Comissão", associados ao próprio banco)
  * Devolve null se não houver nenhuma correspondência com confiança
  * suficiente — nesse caso a associação deve ficar pendente para escolha
  * manual do administrador, nunca adivinhada.
@@ -75,6 +78,17 @@ export function cruzarMovimentoComFornecedor(
       return nomeFornecedor.length >= 4 && (nomeAlvo.includes(nomeFornecedor) || nomeFornecedor.includes(nomeAlvo));
     });
     if (porNome) return { fornecedor: porNome, metodo: "nome" };
+  }
+
+  const descricaoAlvo = normalizarNomeEntidade(dados.descricao || dados.entidade_credora || dados.entidade);
+  if (descricaoAlvo.length >= 3) {
+    const porPalavraChave = fornecedores.find(f =>
+      (f.palavras_chave || []).some(pc => {
+        const pcNorm = normalizarNomeEntidade(pc);
+        return pcNorm.length >= 3 && descricaoAlvo.includes(pcNorm);
+      })
+    );
+    if (porPalavraChave) return { fornecedor: porPalavraChave, metodo: "palavra_chave" };
   }
 
   return null;

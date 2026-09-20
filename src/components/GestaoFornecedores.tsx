@@ -121,6 +121,21 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     setNovaReferenciaDescricao("");
   };
 
+  // Palavras-chave de reconhecimento automático — para custos sem IBAN nem
+  // nome de entidade fiável (ex: "Imposto de Selo", "Comissão", "Custos de
+  // Transferência" associados ao próprio banco), onde nenhum dos outros
+  // critérios de cruzamento (IBAN/referência/nome) consegue identificar o
+  // fornecedor a partir do extrato.
+  const [palavrasChave, setPalavrasChave] = useState<string[]>([]);
+  const [novaPalavraChave, setNovaPalavraChave] = useState("");
+
+  const handleAdicionarPalavraChave = () => {
+    const valor = novaPalavraChave.trim();
+    if (!valor || palavrasChave.some(p => p.toLowerCase() === valor.toLowerCase())) return;
+    setPalavrasChave(prev => [...prev, valor]);
+    setNovaPalavraChave("");
+  };
+
   const handleEditarFornecedor = (f: Fornecedor) => {
     setEditingFornecedorId(f.id_fornecedor);
     setNome(f.nome);
@@ -135,6 +150,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     setDataNascimento(f.data_nascimento || "");
     setPerfisPwa(f.perfis_pwa || []);
     setReferenciasContrato(f.referencias_contrato || []);
+    setPalavrasChave(f.palavras_chave || []);
     document.getElementById("btn-guardar-fornecedor-supabase")?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
@@ -142,6 +158,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     setEditingFornecedorId(null);
     setNome(""); setNif(""); setIban(""); setCategoria(""); setMorada(""); setContacto(""); setPessoaContacto(""); setTelemovelDireto(""); setEmailContacto(""); setDataNascimento(""); setPerfisPwa([]);
     setReferenciasContrato([]); setNovaReferenciaValor(""); setNovaReferenciaDescricao("");
+    setPalavrasChave([]); setNovaPalavraChave("");
   };
 
   const handleEliminarFornecedor = async (f: Fornecedor) => {
@@ -572,7 +589,8 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       // Ao editar, mantém o que já lá estava — não se reenvia o acesso PWA
       // só porque se corrigiu, por exemplo, um número de telefone.
       pwa_acesso_enviado: isEditing ? (fornecedorOriginal?.pwa_acesso_enviado ?? perfisPwa.length > 0) : perfisPwa.length > 0,
-      referencias_contrato: referenciasContrato.length > 0 ? referenciasContrato : undefined
+      referencias_contrato: referenciasContrato.length > 0 ? referenciasContrato : undefined,
+      palavras_chave: palavrasChave.length > 0 ? palavrasChave : undefined
     };
     onAddFornecedor(novo);
     const okSave = await saveFornecedorToSupabase(novo);
@@ -972,6 +990,56 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                 </div>
               </div>
 
+              {/* Palavras-chave de reconhecimento automático — para custos
+                  sem IBAN nem nome de entidade fiável (comissões, imposto de
+                  selo, portes de envio associados ao próprio banco), onde os
+                  outros critérios de cruzamento nunca conseguem identificar
+                  o fornecedor a partir do extrato. */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wide text-slate-700 flex items-center gap-2">
+                    <i className="fa-solid fa-tags text-emerald-600"></i>
+                    Palavras-Chave de Reconhecimento Automático
+                  </label>
+                  <span className="text-[10px] text-slate-400 max-w-xs text-right">Ex: "imposto de selo", "comissão", "custos de transferência" — associa automaticamente ao fornecedor qualquer movimento cuja descrição contenha uma destas palavras, quando não há IBAN nem referência de contrato.</span>
+                </div>
+
+                {palavrasChave.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {palavrasChave.map((pc, idx) => (
+                      <span key={idx} className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-full pl-3 pr-1.5 py-1 text-xs">
+                        <span className="text-slate-700">{pc}</span>
+                        <button
+                          type="button"
+                          onClick={() => setPalavrasChave(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-slate-400 hover:text-red-500 cursor-pointer"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={novaPalavraChave}
+                    onChange={e => setNovaPalavraChave(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAdicionarPalavraChave(); } }}
+                    placeholder="Ex: imposto de selo"
+                    className="border border-slate-200 px-2.5 py-1.5 text-xs rounded-lg focus:outline-emerald-500 flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAdicionarPalavraChave}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0"
+                  >
+                    Adicionar
+                  </button>
+                </div>
+              </div>
+
               {/* Checklist de Atribuição de Perfis PWA */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
                 <div className="flex items-center justify-between">
@@ -1090,6 +1158,16 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                                   {f.referencias_contrato.map((rc, i) => (
                                     <p key={i} className="font-mono text-[10px]">{rc.referencia}{rc.descricao ? ` — ${rc.descricao}` : ""}</p>
                                   ))}
+                                </div>
+                              )}
+                              {f.palavras_chave && f.palavras_chave.length > 0 && (
+                                <div className="pt-1">
+                                  <span className="font-semibold text-slate-500 block mb-0.5">Palavras-Chave:</span>
+                                  <div className="flex flex-wrap gap-1">
+                                    {f.palavras_chave.map((pc, i) => (
+                                      <span key={i} className="px-1.5 py-0.5 rounded-full text-[9px] bg-slate-100 border border-slate-200 text-slate-600">{pc}</span>
+                                    ))}
+                                  </div>
                                 </div>
                               )}
                             </div>

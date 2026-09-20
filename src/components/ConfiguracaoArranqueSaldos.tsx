@@ -206,6 +206,38 @@ export function ConfiguracaoArranqueSaldos({
   // --- PASSO 2: SALDOS INICIAIS POR FRAÇÃO (DÍVIDAS ANTERIORES) ---
   const predioFracoes = useMemo(() => fracoes.filter(f => f.id_predio === predio.id_predio), [fracoes, predio.id_predio]);
 
+  // Rate de quota mensal por fração — mesma fórmula (permilagem × rate, com
+  // o coeficiente real das lojas com acesso direto pelo exterior) já usada
+  // em GestaoQuotasOrcamento.tsx para emitir as quotas mensais normais —
+  // reaproveitada aqui para pré-preencher a "Quota Mensal Total" na
+  // discriminação de dívida, que antes nascia sempre a 0€.
+  const COEF_LOJA_EXTERIOR = 0.4528;
+  const isLojaExterior = (f: Fracao) => f.tipologia === "Loja Comercial" && (f.tipo_access || "").includes("Exterior");
+  const { rateNormal, rateLoja } = useMemo(() => {
+    const orcamentoAnual = Number((predio.patrimonio as any)?.orcamento_anual || 0);
+    const orcamentoMensal = orcamentoAnual / 12;
+    let permilagemLoja = 0;
+    predioFracoes.forEach(f => { if (isLojaExterior(f)) permilagemLoja += f.permilagem; });
+    const permilagemNormal = 1000 - permilagemLoja;
+    const denominador = permilagemNormal + permilagemLoja * COEF_LOJA_EXTERIOR;
+    const rN = denominador > 0 ? orcamentoMensal / denominador : 0;
+    return { rateNormal: rN, rateLoja: rN * COEF_LOJA_EXTERIOR };
+  }, [(predio.patrimonio as any)?.orcamento_anual, predioFracoes]);
+  const calcularQuotaMensalFracao = (f: Fracao): number =>
+    Math.round(f.permilagem * (isLojaExterior(f) ? rateLoja : rateNormal) * 100) / 100;
+
+  // Meses decorridos entre uma data e hoje (mínimo 1) — usado para
+  // pré-preencher "Meses em Dívida" quando a data "Desde" é escolhida ou
+  // alterada; o utilizador continua sempre livre para corrigir o valor.
+  const diffMesesAteHoje = (dataInicioIso: string): number => {
+    const inicio = new Date(dataInicioIso);
+    if (isNaN(inicio.getTime())) return 1;
+    const hoje = new Date();
+    let meses = (hoje.getFullYear() - inicio.getFullYear()) * 12 + (hoje.getMonth() - inicio.getMonth()) + 1;
+    if (hoje.getDate() < inicio.getDate()) meses -= 1;
+    return Math.max(1, meses);
+  };
+
   const [saldosFracoes, setSaldosFracoes] = useState<SaldoInicialFracao[]>(() => {
     return predioFracoes.map((f) => {
       return {
@@ -333,11 +365,12 @@ export function ConfiguracaoArranqueSaldos({
 
   // --- Gestão dos itens de dívida discriminados (Quotas Ordinárias) ---
   const handleAddPeriodoQuotaOrdinaria = (id_fracao: string) => {
+    const fracaoRef = predioFracoes.find(f => f.id_fracao === id_fracao);
     const novoPeriodo: DividaQuotaOrdinariaPeriodo = {
       id: "qord-" + Date.now(),
       data_inicio: dataAbertura,
-      valor_quota_mensal: 0,
-      meses_em_divida: 1
+      valor_quota_mensal: fracaoRef ? calcularQuotaMensalFracao(fracaoRef) : 0,
+      meses_em_divida: diffMesesAteHoje(dataAbertura)
     };
     setSaldosFracoes(prev => prev.map(s => {
       if (s.id_fracao !== id_fracao) return s;
@@ -350,7 +383,20 @@ export function ConfiguracaoArranqueSaldos({
   const handleUpdatePeriodoQuotaOrdinaria = (id_fracao: string, id_periodo: string, fields: Partial<DividaQuotaOrdinariaPeriodo>) => {
     setSaldosFracoes(prev => prev.map(s => {
       if (s.id_fracao !== id_fracao) return s;
-      const updated = { ...s, dividasQuotasOrdinarias: s.dividasQuotasOrdinarias.map(p => p.id === id_periodo ? { ...p, ...fields } : p) };
+      const updated = {
+        ...s,
+        dividasQuotasOrdinarias: s.dividasQuotasOrdinarias.map(p => {
+          if (p.id !== id_periodo) return p;
+          const proximo = { ...p, ...fields };
+          // A data "Desde" mudou e não foi o próprio campo de meses a ser
+          // editado diretamente — recalcula os meses em dívida até hoje,
+          // mas o utilizador continua livre para os corrigir a seguir.
+          if (fields.data_inicio !== undefined && fields.meses_em_divida === undefined) {
+            proximo.meses_em_divida = diffMesesAteHoje(proximo.data_inicio);
+          }
+          return proximo;
+        })
+      };
       updated.valor_saldo = calcularTotalDivida(updated);
       return updated;
     }));

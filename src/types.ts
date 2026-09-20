@@ -138,6 +138,11 @@ export interface Fornecedor {
   pwa_password_provisoria?: string;
   foto?: string | null;
   referencias_contrato?: ReferenciaContratoFornecedor[];
+  // Palavras-chave para reconhecer automaticamente movimentos deste
+  // fornecedor pela descrição, quando não há IBAN nem referência de
+  // contrato fiável — caso típico de custos bancários (ex: "imposto de
+  // selo", "comissão", "custos de transferência" associados ao banco).
+  palavras_chave?: string[];
 }
 
 // Dívida/fatura a um fornecedor ainda por pagar — permite lançar um passivo

@@ -996,7 +996,10 @@ export async function saveFornecedorToSupabase(forn: any): Promise<boolean> {
     perfis_pwa: forn.perfis_pwa || null,
     pwa_acesso_enviado: forn.pwa_acesso_enviado || false,
     pwa_password_provisoria: forn.pwa_password_provisoria || null,
-    referencias_contrato: forn.referencias_contrato || null
+    referencias_contrato: forn.referencias_contrato || null,
+    observacoes: Array.isArray(forn.palavras_chave) && forn.palavras_chave.length > 0
+      ? JSON.stringify(forn.palavras_chave)
+      : null
   });
 }
 
@@ -1529,10 +1532,26 @@ export async function fetchFornecedoresFromSupabase(idPredio?: string): Promise<
       pwa_acesso_enviado: row.pwa_acesso_enviado || false,
       pwa_password_provisoria: row.pwa_password_provisoria || undefined,
       foto: row.foto || null,
-      referencias_contrato: row.referencias_contrato || undefined
+      referencias_contrato: row.referencias_contrato || undefined,
+      palavras_chave: parsePalavrasChaveFornecedor(row.observacoes)
     }));
   } catch (err) {
     return null;
+  }
+}
+
+// A tabela "fornecedores" não tem coluna dedicada para as palavras-chave de
+// reconhecimento automático (alteração de esquema exigiria DDL manual no
+// Supabase) — reaproveita a coluna "observacoes" (texto livre, sem nenhum
+// uso real no resto da app) guardando lá um JSON. Mesmo padrão já usado em
+// Predio.data_inicio_gestao dentro do jsonb "patrimonio".
+function parsePalavrasChaveFornecedor(observacoes: unknown): string[] | undefined {
+  if (typeof observacoes !== "string" || !observacoes.trim()) return undefined;
+  try {
+    const parsed = JSON.parse(observacoes);
+    return Array.isArray(parsed) ? parsed.filter(p => typeof p === "string") : undefined;
+  } catch {
+    return undefined;
   }
 }
 
