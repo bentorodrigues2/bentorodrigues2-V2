@@ -266,16 +266,17 @@ export function PainelControlo({
           {
             // Movimentos "cegos" chegados por email (comprovativos/faturas
             // reconhecidos automaticamente) que ainda esperam confirmação
-            // manual do administrador — cor vermelha (corSinal + !positivo)
-            // para se destacar dos restantes indicadores, dado tratar-se de
-            // dinheiro por justificar.
+            // manual do administrador — sempre visível (fixo), tal como
+            // "Mensagens", para nunca desaparecer do painel mesmo quando não
+            // há nenhum pendente; cor vermelha só quando há mesmo algo por
+            // justificar (dinheiro por confirmar).
             name: "Lançamentos por Confirmar",
-            val: lancamentosPorConfirmarCount === 1 ? "1 Por Justificar" : `${lancamentosPorConfirmarCount} Por Justificar`,
+            val: lancamentosPorConfirmarCount === 0 ? "Sem Pendentes" : lancamentosPorConfirmarCount === 1 ? "1 Por Justificar" : `${lancamentosPorConfirmarCount} Por Justificar`,
             icon: "/modulos/66-exportacao-financeira.png",
             section: "movimentos",
-            fixo: false,
-            contagem: lancamentosPorConfirmarCount,
-            corSinal: true,
+            fixo: true,
+            contagem: 1,
+            corSinal: lancamentosPorConfirmarCount > 0,
             positivo: false
           },
           {
