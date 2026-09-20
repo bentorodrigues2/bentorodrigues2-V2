@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { processInboundEmail } from "../server/lib/inboundProcessor.js";
+import { supabase } from "../server/lib/supabaseServer.js";
 
 // Normaliza o base64 devolvido pela API do Gmail (URL-safe: "-" e "_" em vez
 // de "+" e "/", RFC 4648 §5) para base64 padrão, antes de o decodificar —
@@ -106,20 +107,42 @@ export default async function handler(req, res) {
       // email lido via Gmail alguma vez teve o seu anexo processado.
       // Processar aqui, no mesmo pedido que já tem os anexos em mãos,
       // elimina essa dependência por completo.
+      // Antes, marcava-se sempre o email como lido a seguir a isto,
+      // mesmo quando processInboundEmail rebentava com uma exceção não
+      // apanhada internamente (ex: timeout/erro na chamada à IA que nem
+      // chega ao mecanismo interno de "FALHA NA LEITURA AUTOMÁTICA") —
+      // o email desaparecia da lista de não lidos sem deixar nenhum
+      // rasto, como se nunca tivesse chegado. Agora só se marca como
+      // lido se o processamento não rebentar; se rebentar, fica por ler
+      // (é retomado automaticamente no próximo ciclo, já protegido pela
+      // deduplicação de 3 minutos) e fica registado um erro visível.
+      let processadoComSucesso = false;
       try {
         await processInboundEmail({ from, subject, body, anexos });
+        processadoComSucesso = true;
       } catch (errProc) {
         console.error("[gmail-reader] Erro ao processar email inbound:", errProc);
+        try {
+          await supabase.from("ai_auditoria").insert({
+            origem: "gmail_reader_erro",
+            entidade: from,
+            referencia: subject,
+            raw_json: { erro: String(errProc?.message || errProc), stack: errProc?.stack || null }
+          });
+        } catch (errLog) {
+          console.error("[gmail-reader] Falha também ao registar o erro em ai_auditoria:", errLog);
+        }
       }
 
-      // Marcar como lido
-      await gmail.users.messages.modify({
-        userId: "me",
-        id: msg.id,
-        requestBody: {
-          removeLabelIds: ["UNREAD"]
-        }
-      });
+      if (processadoComSucesso) {
+        await gmail.users.messages.modify({
+          userId: "me",
+          id: msg.id,
+          requestBody: {
+            removeLabelIds: ["UNREAD"]
+          }
+        });
+      }
     }
 
     return res.status(200).json({
