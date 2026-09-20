@@ -1604,6 +1604,7 @@ export function PWASimulator({
                 <PWACondominoView
                   loggedUser={loggedUser}
                   predio={predio}
+                  fracoes={fracoes}
                   condominoFracao={condominoFracao}
                   documentos={documentos}
                   setDocumentos={setDocumentos}

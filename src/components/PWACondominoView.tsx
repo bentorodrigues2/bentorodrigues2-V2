@@ -6,6 +6,7 @@ import { motion } from "motion/react";
 import {
   LoggedUser,
   Predio,
+  Fracao,
   Documento,
   Ocorrencia,
   Reserva,
@@ -99,6 +100,7 @@ import {
 interface PWACondominoViewProps {
   loggedUser: LoggedUser;
   predio: Predio;
+  fracoes?: Fracao[];
   condominoFracao: any;
   documentos: Documento[];
   setDocumentos?: React.Dispatch<React.SetStateAction<Documento[]>>;
@@ -121,6 +123,7 @@ interface PWACondominoViewProps {
 export default function PWACondominoView({
   loggedUser,
   predio,
+  fracoes = [],
   condominoFracao,
   documentos,
   setDocumentos,
@@ -471,6 +474,27 @@ export default function PWACondominoView({
       autor: "condomino",
       texto
     });
+
+    // Notifica a Administração por email — mesma lógica que
+    // PortalCondomino.tsx (versão browser), para o admin não depender de
+    // entrar manualmente em Gestão de Comunicações para saber que chegou
+    // uma mensagem nova.
+    const nomeRemetenteMsg = `${loggedUser.nome} (Fração ${condominoFracao?.fracao_nome || "A"})`;
+    fracoes
+      .filter(f => f.id_predio === predio.id_predio && f.administrador_interno === "Sim" && f.proprietario?.email)
+      .forEach(adm => {
+        fetch("/api/email?acao=notificar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: adm.proprietario.email,
+            nomeDestinatario: adm.proprietario.nome,
+            assunto: `Nova mensagem de ${nomeRemetenteMsg}`,
+            mensagem: `Mensagem Direta<br><br>${texto}`
+          })
+        }).catch(console.error);
+      });
+
     await carregarMensagensReais();
   };
 
