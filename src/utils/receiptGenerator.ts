@@ -131,7 +131,7 @@ export function generateOfficialReceiptPDF(
   doc.setTextColor(51, 65, 85);
   doc.text(`Morada: ${predio.morada_linha1 || ""}${predio.num_porta ? `, ${predio.num_porta}` : ""}, ${predio.localidade || ""}`, 15, y + 16);
   doc.text(`NIF: ${predio.nif || ""} • Email: ${predio.email_condominio || predio.email || ""}`, 15, y + 20.5);
-  doc.text(`IBAN: ${predio.iban || recibo.iban_predio || "—"}`, 15, y + 25);
+  doc.text(`IBAN: ${recibo.iban_predio || predio.iban || "—"}`, 15, y + 25);
 
   const col2X = 12 + colW + 6;
   doc.setFillColor(248, 250, 252);
@@ -142,7 +142,10 @@ export function generateOfficialReceiptPDF(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   doc.setTextColor(...COR_TEAL);
-  doc.text("LIQUIDADO POR (PROPRIETÁRIO / FRAÇÃO):", col2X + 3, y + 6);
+  // "Liquidado por" só se aplica ao Recibo (pagamento já confirmado) — a
+  // Nota de Cobrança é uma identificação de quem deve pagar, o valor ainda
+  // não foi liquidado.
+  doc.text(tipoDocumento === "recibo" ? "LIQUIDADO POR (PROPRIETÁRIO / FRAÇÃO):" : "PROPRIETÁRIO / FRAÇÃO:", col2X + 3, y + 6);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
@@ -161,7 +164,17 @@ export function generateOfficialReceiptPDF(
   doc.text(`NIF: ${recibo.nif_condomino || "—"}`, col2X + 3, y + 23.5);
   // Referência individual da fração, usada pelo motor de IA para conciliação automática via extrato
   doc.text(`Referência: ${prefixo}-FRA-${recibo.fracao_nome}`, col2X + 3, y + 27.5);
-  doc.text(`Método de Pagamento: ${recibo.metodo_pagamento}`, col2X + 3, y + 31.5);
+  // Na Nota de Cobrança o valor ainda não foi pago, por isso não faz
+  // sentido afirmar um "Método de Pagamento" (dá a entender que já foi
+  // pago dessa forma) — mostra antes o valor que falta pagar. Só o Recibo,
+  // que confirma um pagamento já ocorrido, mostra o método usado.
+  doc.text(
+    tipoDocumento === "recibo"
+      ? `Método de Pagamento: ${recibo.metodo_pagamento}`
+      : `Valor a Pagar: ${recibo.valor_total.toFixed(2)} €`,
+    col2X + 3,
+    y + 31.5
+  );
 
   y += boxH + 6;
 

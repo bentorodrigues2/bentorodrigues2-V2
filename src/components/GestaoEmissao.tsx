@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Predio, Fracao, Aviso, LoggedUser, Documento, RevisaoOrcamento, Conta, Movimento } from "../types";
-import { formatDatePT, formatQuotaReceiptNumber, parseValorMonetario } from "../utils";
+import { formatDatePT, formatQuotaReceiptNumber, parseValorMonetario, escolherIbanContaPorTipo } from "../utils";
 import { downloadOfficialReceiptPDF } from "../utils/receiptGenerator";
 import { MoneyInput } from "./MoneyInput";
 import { isSupabaseConfigured } from "@/lib/supabaseClient";
@@ -479,7 +479,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
         metodo_pagamento: "Transferência Bancária",
         valor_total: selectedAviso.valor,
         rubricas,
-        iban_predio: customIban || predio.iban || "",
+        iban_predio: customIban || escolherIbanContaPorTipo(contas, selectedAviso.tipo) || predio.iban || "",
         codigo_verificacao_hash: selectedAviso.id_aviso.toUpperCase(),
         emitido_por: loggedUser.nome || "Administração do Condomínio",
         adminNome: loggedUser.nome ? `${loggedUser.nome} (Administração)` : "Administração do Condomínio",

@@ -116,6 +116,26 @@ function calcularRatesPredio(predio, fracoes) {
   return { orcamentoAnual, isLojaExterior, rateNormal, rateLoja };
 }
 
+// Escolhe o IBAN certo consoante o tipo de aviso: Quota Ordinária e Fundo
+// Comum de Reserva usam a conta corrente principal (is_principal), Quota
+// Extraordinária usa a conta de poupança/obras — mesma lógica que
+// escolherIbanContaPorTipo em src/utils.ts (não pode ser importada
+// diretamente aqui, mundo TS/frontend vs. JS/backend), sincronizadas para
+// nunca divergirem.
+function escolherIbanContaPorTipo(contas, tipoAviso) {
+  if (!contas || contas.length === 0) return "";
+  const ehExtraordinaria = (tipoAviso || "").toLowerCase().includes("extra");
+  const contaPrincipal = contas.find((c) => c.is_principal);
+  const contaSecundaria = contas.find((c) => !c.is_principal);
+  if (ehExtraordinaria) return (contaSecundaria || contaPrincipal || contas[0])?.iban || "";
+  return (contaPrincipal || contas[0])?.iban || "";
+}
+
+async function obterContasDoPredio(id_predio) {
+  const { data } = await supabase.from("contas").select("iban, is_principal").eq("id_predio", id_predio);
+  return data || [];
+}
+
 /** Existe já uma nota de cobrança (aviso "Quota Ordinária") desta fração com vencimento nesse mês? */
 async function existeNotaCobrancaMes(id_fracao, anoRef, mesIndex0) {
   const inicioMes = isoDate(anoRef, mesIndex0, 1);
@@ -138,7 +158,7 @@ async function existeNotaCobrancaMes(id_fracao, anoRef, mesIndex0) {
  * emitirQuotasMensais usava inline, extraída para poder ser reutilizada pela
  * emissão retroativa (emitirNotasEmAtrasoFracao) sem duplicar a fórmula.
  */
-async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, anoRef, mesIndex0, prefixoEdificio, fluxo }) {
+async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, anoRef, mesIndex0, prefixoEdificio, fluxo, contas }) {
   const mesRefLabel = nomeMesUTC(anoRef, mesIndex0);
   const hojeUTC = new Date();
   const dataEmissao = isoDate(hojeUTC.getUTCFullYear(), hojeUTC.getUTCMonth(), hojeUTC.getUTCDate());
@@ -202,7 +222,7 @@ async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, ano
       { descricao: `Quota de Condomínio Ordinária - ${mesRefLabel} / ${anoRef}`, valor: valorOrdinario, tipo: "Quota Ordinária" },
       { descricao: `Fundo Comum de Reserva (FCR) - ${mesRefLabel} / ${anoRef}`, valor: valorFCR, tipo: "Fundo Comum de Reserva" }
     ],
-    iban_predio: predio.iban || "",
+    iban_predio: escolherIbanContaPorTipo(contas, "Quota Ordinária") || predio.iban || "",
     emitido_por: "Administração do Condomínio",
     adminSignatureBase64: predio.patrimonio?.assinatura_admin_base64 || "sem-assinatura-digital"
   };
@@ -284,6 +304,7 @@ export async function emitirNotasEmAtrasoFracao(id_predio, id_fracao, mesInicioI
   const proprietario = await obterProprietarioDaFracao(id_fracao);
   const rates = calcularRatesPredio(predio, fracoes);
   const prefixoEdificio = derivarPrefixoEdificio(predio.nome);
+  const contas = await obterContasDoPredio(id_predio);
 
   const [anoInicio, mesInicio] = mesInicioISO.split("-").map((n) => parseInt(n, 10));
   const hoje = new Date();
@@ -310,7 +331,8 @@ export async function emitirNotasEmAtrasoFracao(id_predio, id_fracao, mesInicioI
           anoRef: ano,
           mesIndex0,
           prefixoEdificio,
-          fluxo: "emissao_quotas_retroativa"
+          fluxo: "emissao_quotas_retroativa",
+          contas
         });
         if (resultado.ok) emitidas += 1;
       }
@@ -532,6 +554,7 @@ export async function emitirQuotasMensais() {
     const fracoes = await obterFracoesDoPredio(predio.id_predio);
     const prefixoEdificio = derivarPrefixoEdificio(predio.nome);
     const rates = calcularRatesPredio(predio, fracoes);
+    const contas = await obterContasDoPredio(predio.id_predio);
     const mesIndex0 = mesRef;
 
     for (const f of fracoes) {
@@ -555,7 +578,8 @@ export async function emitirQuotasMensais() {
           anoRef,
           mesIndex0,
           prefixoEdificio,
-          fluxo: "emissao_quotas_mensal"
+          fluxo: "emissao_quotas_mensal",
+          contas
         });
 
         if (!resultado.ok) continue;

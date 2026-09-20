@@ -1100,6 +1100,20 @@ export function downloadListaCondominosPDF(predioNome: string = "Condomínio Act
   }
 }
 
+// Escolhe o IBAN certo consoante o tipo de aviso/recibo: Quota Ordinária e
+// Fundo Comum de Reserva usam a conta corrente principal (is_principal),
+// Quota Extraordinária usa a conta de poupança/obras (a outra) — mantém a
+// mesma lógica em server/lib/cronService.js (backend, sem poder partilhar
+// o import direto), sincronizadas para nunca divergirem.
+export function escolherIbanContaPorTipo(contas: { iban: string; is_principal?: boolean }[] | undefined | null, tipoAviso: string): string {
+  if (!contas || contas.length === 0) return "";
+  const ehExtraordinaria = (tipoAviso || "").toLowerCase().includes("extra");
+  const contaPrincipal = contas.find(c => c.is_principal);
+  const contaSecundaria = contas.find(c => !c.is_principal);
+  if (ehExtraordinaria) return (contaSecundaria || contaPrincipal || contas[0])?.iban || "";
+  return (contaPrincipal || contas[0])?.iban || "";
+}
+
 export function formatQuotaReceiptNumber(identifier: string | number): string {
   if (!identifier) return "BR2 00001";
   const str = String(identifier);

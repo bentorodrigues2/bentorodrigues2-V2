@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { Predio, Fracao, Aviso, Movimento, Conta, LoggedUser, ExtratoTransacao, ReciboQuitacao } from "../types";
-import { formatDatePT } from "../utils";
+import { formatDatePT, escolherIbanContaPorTipo } from "../utils";
 import { parseOFXContent, parseCSVContent, matchBankTransactions } from "../utils/bankStatementParser";
 import { generateOfficialReceiptPDF, downloadOfficialReceiptPDF } from "../utils/receiptGenerator";
 import { saveAvisosToSupabase, saveMovimentoToSupabase, saveContaToSupabase, registarLogAuditoria, dbInsert } from "../lib/supabaseService";
@@ -244,7 +244,7 @@ export function IAConciliacao({ predio, fracoes, avisos, setAvisos, movements, s
                 { descricao: `Quota de Condomínio Ordinária - Fração ${fracao.fracao_nome}`, valor: Math.round(tx.valor * 0.9 * 100) / 100, tipo: "Quota Ordinária" },
                 { descricao: `Fundo Comum de Reserva (FCR 10%) - Fração ${fracao.fracao_nome}`, valor: Math.round(tx.valor * 0.1 * 100) / 100, tipo: "Fundo Comum de Reserva" }
               ],
-              iban_predio: predio.iban || "",
+              iban_predio: escolherIbanContaPorTipo(contas, "Quota Ordinária") || predio.iban || "",
               codigo_verificacao_hash: `SHA256-${hashHex.substring(0, 16)}`,
               emitido_por: loggedUser.nome || "Administração do Condomínio"
             };
@@ -547,7 +547,7 @@ export function IAConciliacao({ predio, fracoes, avisos, setAvisos, movements, s
                                   { descricao: `Quota Ordinária Fração ${fracao?.fracao_nome || "A"}`, valor: tx.valor * 0.9, tipo: "Quota Ordinária" },
                                   { descricao: `FCR (10%) Fração ${fracao?.fracao_nome || "A"}`, valor: tx.valor * 0.1, tipo: "Fundo Comum de Reserva" }
                                 ],
-                                iban_predio: predio.iban || "",
+                                iban_predio: escolherIbanContaPorTipo(contas, "Quota Ordinária") || predio.iban || "",
                                 codigo_verificacao_hash: "N/D — sessão anterior, código não disponível",
                                 emitido_por: loggedUser.nome
                               };

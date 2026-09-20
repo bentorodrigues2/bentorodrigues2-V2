@@ -5,6 +5,19 @@ import { generateOfficialReceiptPDF, nomeFicheiroRecibo } from "../server/lib/re
 import { derivarPrefixoEdificio } from "../server/lib/reciboUtils.js";
 import { obterModeloEmail, interpolarModeloEmail } from "../server/lib/emailTemplates.js";
 
+// Escolhe o IBAN certo consoante o tipo de aviso: Quota Ordinária e Fundo
+// Comum de Reserva usam a conta corrente principal (is_principal), Quota
+// Extraordinária usa a conta de poupança/obras — mesma lógica que
+// escolherIbanContaPorTipo em src/utils.ts e server/lib/cronService.js.
+function escolherIbanContaPorTipo(contas, tipoAviso) {
+  if (!contas || contas.length === 0) return "";
+  const ehExtraordinaria = (tipoAviso || "").toLowerCase().includes("extra");
+  const contaPrincipal = contas.find((c) => c.is_principal);
+  const contaSecundaria = contas.find((c) => !c.is_principal);
+  if (ehExtraordinaria) return (contaSecundaria || contaPrincipal || contas[0])?.iban || "";
+  return (contaPrincipal || contas[0])?.iban || "";
+}
+
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
@@ -102,6 +115,10 @@ export default async function handler(req, res) {
       ? await supabase.from("predios").select("*").eq("id_predio", fracao.id_predio).maybeSingle()
       : { data: null };
 
+    const { data: contasPredio } = fracao?.id_predio
+      ? await supabase.from("contas").select("iban, is_principal").eq("id_predio", fracao.id_predio)
+      : { data: [] };
+
     const nomeDestinatario = proprietario?.nome || pagamento.entidade || "Condómino(a)";
     const emailDestinatario = proprietario?.email || null;
     const fracaoNome = fracao?.fracao_nome || pagamento.fracao || "Fração";
@@ -147,7 +164,7 @@ export default async function handler(req, res) {
           { descricao: "Fundo Comum de Reserva (10% legal)", valor: valorReserva, tipo: "Fundo Comum de Reserva" }
         ];
       })(),
-      iban_predio: predio?.iban || "",
+      iban_predio: escolherIbanContaPorTipo(contasPredio, "Quota Ordinária") || predio?.iban || "",
       codigo_verificacao_hash: hash,
       emitido_por: "José Carlos Guerra (Administrador do Condomínio)",
       // A assinatura é guardada em predios.patrimonio.assinatura_admin_base64
