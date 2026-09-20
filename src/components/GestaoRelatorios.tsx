@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Predio, LoggedUser, Movimento, Fracao, Documento } from "../types";
+import { Predio, LoggedUser, Movimento, Fracao, Documento, Aviso } from "../types";
 import { generateAndDownloadPdf, exportarBalanceteMapaAnualXLS } from "../utils";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
 import { registarLogAuditoria } from "../lib/supabaseService";
@@ -9,10 +9,11 @@ interface GestaoRelatoriosProps {
   loggedUser: LoggedUser;
   movimentos?: Movimento[];
   fracoes?: Fracao[];
+  avisos?: Aviso[];
   onAddDocumento?: (doc: Documento) => void;
 }
 
-export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes = [], onAddDocumento }: GestaoRelatoriosProps) {
+export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes = [], avisos = [], onAddDocumento }: GestaoRelatoriosProps) {
   const [isPublicando, setIsPublicando] = useState(false);
   const [tipoRelatorio, setTipoRelatorio] = useState<"mensal" | "trimestral" | "anual">("mensal");
   const [mesSelecionado, setMesSelecionado] = useState<string>("07");
@@ -439,6 +440,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
         predio={predio}
         fracoes={fracoes}
         movimentos={movimentos}
+        avisos={avisos}
       />
     </div>
   );

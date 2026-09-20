@@ -1,5 +1,5 @@
 import { jsPDF } from "jspdf";
-import { Predio, GestorCarteira, Fracao, Reuniao, Fornecedor } from "./types";
+import { Predio, GestorCarteira, Fracao, Reuniao, Fornecedor, Aviso } from "./types";
 import { 
   LOGO_HORIZONTAL_BASE64, 
   WATERMARK_BASE64, 
@@ -595,7 +595,7 @@ export interface DynamicReportOptions {
   predio: any;
   ambito: "PREDIO" | "FRACAO" | "TODAS";
   fracaoId?: string;
-  tipoRelatorio: "extrato_quotas" | "balancete" | "fichas_condominos" | "debitos_incumprimento" | "obras_manutencao" | "resumo_executivo";
+  tipoRelatorio: "extrato_quotas" | "balancete" | "fichas_condominos" | "debitos_incumprimento" | "obras_manutencao" | "resumo_executivo" | "recibos_emitidos";
   exercicio: string;
   fracoesList: any[];
   movimentosList?: any[];
@@ -617,7 +617,8 @@ export async function generateDynamicReportPDF(opts: DynamicReportOptions) {
       fichas_condominos: "RELATÓRIO - FICHAS & DADOS DE REGISTO",
       debitos_incumprimento: "RELATÓRIO - MAPA DE INCUMPRIMENTO & QUOTAS EM ATRASO",
       obras_manutencao: "RELATÓRIO - INTERVENÇÕES TÉCNICAS & VISTORIAS",
-      resumo_executivo: "RELATÓRIO EXECUÇÃO E RESUMO GERAL DO EDIFÍCIO"
+      resumo_executivo: "RELATÓRIO EXECUÇÃO E RESUMO GERAL DO EDIFÍCIO",
+      recibos_emitidos: "RELATÓRIO - NOTAS DE COBRANÇA & RECIBOS EMITIDOS"
     };
 
     const targetTitle = titleMap[opts.tipoRelatorio] || "RELATÓRIO OFICIAL DO CONDOMÍNIO";
@@ -654,6 +655,81 @@ export async function generateDynamicReportPDF(opts: DynamicReportOptions) {
     // Filter list of fracoes based on ambito
     const scopeFracoes = opts.ambito === "FRACAO" && targetFracao ? [targetFracao] : opts.fracoesList;
 
+    let totalQuotas = 0;
+    let totalDividas = 0;
+
+    if (opts.tipoRelatorio === "recibos_emitidos") {
+      const idsFracoesScope = new Set(scopeFracoes.map((f: any) => f.id_fracao));
+      const linhas = construirLinhasRecibosEmitidos(scopeFracoes, (opts.avisosList || []).filter((a: any) => idsFracoesScope.has(a.id_fracao)));
+
+      // Build Table Header
+      doc.setFillColor(226, 232, 240);
+      doc.rect(14, y, 182, 7, "F");
+      doc.setDrawColor(203, 213, 225);
+      doc.rect(14, y, 182, 7, "S");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text("FRAÇÃO / PROPRIETÁRIO", 17, y + 4.5);
+      doc.text("Nº RECIBO", 78, y + 4.5);
+      doc.text("PARCELA", 105, y + 4.5);
+      doc.text("EMISSÃO", 135, y + 4.5);
+      doc.text("LIMITE PAG.", 155, y + 4.5);
+      doc.text("VALOR / ESTADO", 175, y + 4.5);
+
+      y += 7;
+
+      linhas.forEach((l, idx) => {
+        if (y > 265) {
+          doc.addPage();
+          y = addPdfHeaderWithLogo(doc);
+        }
+
+        const rowBg = idx % 2 === 0 ? 255 : 248;
+        doc.setFillColor(rowBg, rowBg, rowBg);
+        doc.rect(14, y, 182, 8, "F");
+        doc.setDrawColor(226, 232, 240);
+        doc.rect(14, y, 182, 8, "S");
+
+        totalQuotas += l.valor;
+        if (l.estado === "Pendente" || l.estado === "Paga Parcialmente") totalDividas += l.valor;
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(6.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(`Fr. ${l.fracao_nome} — ${l.proprietario_nome}`, 17, y + 5);
+
+        doc.setFont("helvetica", "normal");
+        doc.text(l.numero_recibo, 78, y + 5);
+        doc.text(l.parcela, 105, y + 5);
+        doc.text(new Date(l.data_emissao).toLocaleDateString("pt-PT"), 135, y + 5);
+        doc.text(new Date(l.data_limite_pagamento).toLocaleDateString("pt-PT"), 155, y + 5);
+
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(l.estado === "Pendente" || l.estado === "Paga Parcialmente" ? 220 : 5, l.estado === "Pendente" || l.estado === "Paga Parcialmente" ? 38 : 150, l.estado === "Pendente" || l.estado === "Paga Parcialmente" ? 38 : 105);
+        doc.text(`${l.valor.toFixed(2)}€ (${l.estado})`, 175, y + 5);
+
+        y += 8;
+      });
+
+      y += 2;
+      doc.setFillColor(236, 253, 245);
+      doc.rect(14, y, 182, 9, "F");
+      doc.setDrawColor(52, 211, 153);
+      doc.rect(14, y, 182, 9, "S");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(4, 120, 87);
+      doc.text(`TOTAL SUMÁRIO (${linhas.length} LINHA/S DE RECIBO)`, 17, y + 5.5);
+      doc.text(`Total Emitido: ${totalQuotas.toFixed(2)}€`, 110, y + 5.5);
+      doc.setTextColor(totalDividas > 0 ? 220 : 5, totalDividas > 0 ? 38 : 150, totalDividas > 0 ? 38 : 105);
+      doc.text(`Total em Aberto: ${totalDividas.toFixed(2)}€`, 160, y + 5.5);
+
+      y += 16;
+    } else {
+
     // Build Table Header
     doc.setFillColor(226, 232, 240);
     doc.rect(14, y, 182, 7, "F");
@@ -670,9 +746,6 @@ export async function generateDynamicReportPDF(opts: DynamicReportOptions) {
     doc.text("ESTADO / SALDO", 170, y + 4.5);
 
     y += 7;
-
-    let totalQuotas = 0;
-    let totalDividas = 0;
 
     scopeFracoes.forEach((f, idx) => {
       if (y > 265) {
@@ -728,7 +801,7 @@ export async function generateDynamicReportPDF(opts: DynamicReportOptions) {
     doc.setTextColor(4, 120, 87);
     doc.text(`TOTAL SUMÁRIO (${scopeFracoes.length} FRAÇÃO/ÕES)`, 17, y + 5.5);
     doc.text(`Total Quotas: ${totalQuotas.toFixed(2)}€/mês`, 110, y + 5.5);
-    
+
     if (totalDividas > 0) {
       doc.setTextColor(220, 38, 38);
       doc.text(`Total em Atraso: ${totalDividas.toFixed(2)}€`, 160, y + 5.5);
@@ -738,6 +811,7 @@ export async function generateDynamicReportPDF(opts: DynamicReportOptions) {
     }
 
     y += 16;
+    }
 
     // Bloco de código de verificação digital real (hash SHA-256 do conteúdo do relatório) + campo para assinatura física
     if (opts.incluirAssinatura && y < 250) {
@@ -1035,6 +1109,82 @@ export function formatQuotaReceiptNumber(identifier: string | number): string {
     return `BR2 ${String(num).padStart(5, "0")}`;
   }
   return `BR2 00001`;
+}
+
+// Uma linha do Relatório de Recibos/Notas de Cobrança Emitidos — cada aviso
+// vira uma ou duas linhas (Quota Mensal + Fundo de Reserva em linhas
+// separadas, quando o aviso discrimina FCR), com o nº de recibo, data de
+// emissão e data limite de pagamento pedidos no relatório.
+export interface LinhaReciboEmitido {
+  fracao_nome: string;
+  proprietario_nome: string;
+  numero_recibo: string;
+  tipo: string; // "Cota Ordinária" | "Quota Extraordinária"
+  parcela: string; // "Quota Mensal" | "Fundo de Reserva" | "Quota Extraordinária"
+  data_emissao: string;
+  data_limite_pagamento: string;
+  valor: number;
+  estado: string;
+}
+
+// Constrói as linhas do relatório a partir dos avisos reais — Quotas
+// Ordinárias e Quotas Extraordinárias têm sequências de numeração próprias
+// e independentes (prefixo BR2 e BR2-EXT), tal como pedido, ordenadas por
+// data de emissão para a numeração fazer sentido cronologicamente.
+export function construirLinhasRecibosEmitidos(fracoes: Fracao[], avisos: Aviso[]): LinhaReciboEmitido[] {
+  const linhas: LinhaReciboEmitido[] = [];
+  const nomeFracao = (idFracao: string) => fracoes.find(f => f.id_fracao === idFracao)?.fracao_nome || idFracao;
+  const nomeProprietario = (aviso: Aviso) => aviso.proprietario_nome || fracoes.find(f => f.id_fracao === aviso.id_fracao)?.proprietario?.nome || "—";
+
+  const ehExtra = (a: Aviso) => (a.tipo || "").toLowerCase().includes("extra");
+  const ordinarios = avisos.filter(a => !ehExtra(a)).slice().sort((a, b) => a.data.localeCompare(b.data));
+  const extras = avisos.filter(ehExtra).slice().sort((a, b) => a.data.localeCompare(b.data));
+
+  ordinarios.forEach((a, idx) => {
+    const numero = `BR2 ${String(idx + 1).padStart(5, "0")}`;
+    const temFCR = typeof a.valor_fundo_reserva === "number" && a.valor_fundo_reserva > 0;
+    const valorOrdinaria = temFCR ? Math.round((a.valor - (a.valor_fundo_reserva || 0)) * 100) / 100 : a.valor;
+    linhas.push({
+      fracao_nome: nomeFracao(a.id_fracao),
+      proprietario_nome: nomeProprietario(a),
+      numero_recibo: numero,
+      tipo: a.tipo,
+      parcela: "Quota Mensal",
+      data_emissao: a.data,
+      data_limite_pagamento: a.vencimento,
+      valor: valorOrdinaria,
+      estado: a.estado
+    });
+    if (temFCR) {
+      linhas.push({
+        fracao_nome: nomeFracao(a.id_fracao),
+        proprietario_nome: nomeProprietario(a),
+        numero_recibo: numero,
+        tipo: a.tipo,
+        parcela: "Fundo de Reserva",
+        data_emissao: a.data,
+        data_limite_pagamento: a.vencimento,
+        valor: a.valor_fundo_reserva || 0,
+        estado: a.estado
+      });
+    }
+  });
+
+  extras.forEach((a, idx) => {
+    linhas.push({
+      fracao_nome: nomeFracao(a.id_fracao),
+      proprietario_nome: nomeProprietario(a),
+      numero_recibo: `BR2-EXT ${String(idx + 1).padStart(5, "0")}`,
+      tipo: a.tipo,
+      parcela: "Quota Extraordinária",
+      data_emissao: a.data,
+      data_limite_pagamento: a.vencimento,
+      valor: a.valor,
+      estado: a.estado
+    });
+  });
+
+  return linhas.sort((a, b) => a.fracao_nome.localeCompare(b.fracao_nome, "pt", { numeric: true }) || a.data_emissao.localeCompare(b.data_emissao));
 }
 
 export function generateSupplierPwaManualPDF(fornecedorNome: string, perfis: string[], passwordProvisoria?: string) {

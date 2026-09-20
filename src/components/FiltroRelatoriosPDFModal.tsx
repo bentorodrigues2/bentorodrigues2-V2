@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Predio, Fracao, Movimento, Aviso } from "../types";
-import { generateDynamicReportPDF, exportToXLS } from "../utils";
+import { generateDynamicReportPDF, exportToXLS, construirLinhasRecibosEmitidos } from "../utils";
 
 export interface FiltroRelatoriosPDFModalProps {
   isOpen: boolean;
@@ -94,6 +94,22 @@ export function FiltroRelatoriosPDFModal({
         m.valor.toFixed(2),
         m.id_fracao ? (predioFracoes.find(f => f.id_fracao === m.id_fracao)?.fracao_nome || "Geral") : "Geral Prédio"
       ]);
+    } else if (tipoRelatorio === "recibos_emitidos") {
+      headers = ["Fração", "Proprietário", "Nº Recibo", "Tipo", "Parcela", "Data Emissão", "Data Limite Pagamento", "Valor (€)", "Estado"];
+      const scopeFracoes = ambito === "FRACAO" && fracaoSelecionada ? [fracaoSelecionada] : predioFracoes;
+      const idsFracoesScope = new Set(scopeFracoes.map(f => f.id_fracao));
+      const linhas = construirLinhasRecibosEmitidos(scopeFracoes, avisos.filter(a => idsFracoesScope.has(a.id_fracao)));
+      rows = linhas.map(l => [
+        l.fracao_nome,
+        l.proprietario_nome,
+        l.numero_recibo,
+        l.tipo,
+        l.parcela,
+        l.data_emissao,
+        l.data_limite_pagamento,
+        l.valor.toFixed(2),
+        l.estado
+      ]);
     } else if (tipoRelatorio === "fichas_condominos") {
       headers = ["Fração", "Piso", "Permilagem", "Proprietário", "NIF", "Email", "Telemóvel", "IBAN", "Arrendada?", "Inquilino"];
       const scopeFracoes = ambito === "FRACAO" && fracaoSelecionada ? [fracaoSelecionada] : predioFracoes;
@@ -133,6 +149,7 @@ export function FiltroRelatoriosPDFModal({
       extrato_quotas: "Relatório - Extrato de Quotas & Pagamentos",
       balancete: "Relatório - Balancete Financeiro Consolidado",
       fichas_condominos: "Relatório - Fichas & Dados de Registo de Condóminos",
+      recibos_emitidos: "Relatório - Notas de Cobrança & Recibos Emitidos por Fração",
       debitos_incumprimento: "Relatório - Mapa de Incumprimento & Quotas em Atraso",
       obras_manutencao: "Relatório - Intervenções Técnicas & Vistorias",
       resumo_executivo: "Relatório Executivo Geral do Edifício"
@@ -173,6 +190,43 @@ export function FiltroRelatoriosPDFModal({
             <div><strong>Data de Emissão:</strong> ${new Date().toLocaleDateString("pt-PT")}</div>
           </div>
 
+          ${tipoRelatorio === "recibos_emitidos" ? `
+          <table>
+            <thead>
+              <tr>
+                <th>Fração</th>
+                <th>Proprietário</th>
+                <th>Nº Recibo</th>
+                <th>Tipo</th>
+                <th>Parcela</th>
+                <th>Data Emissão</th>
+                <th>Data Limite Pagamento</th>
+                <th>Valor</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(() => {
+                const scopeFracoes = ambito === "FRACAO" && fracaoSelecionada ? [fracaoSelecionada] : predioFracoes;
+                const idsFracoesScope = new Set(scopeFracoes.map(f => f.id_fracao));
+                const linhas = construirLinhasRecibosEmitidos(scopeFracoes, avisos.filter(a => idsFracoesScope.has(a.id_fracao)));
+                return linhas.map(l => `
+                  <tr>
+                    <td><strong>Fração ${l.fracao_nome}</strong></td>
+                    <td>${l.proprietario_nome}</td>
+                    <td>${l.numero_recibo}</td>
+                    <td>${l.tipo}</td>
+                    <td>${l.parcela}</td>
+                    <td>${new Date(l.data_emissao).toLocaleDateString("pt-PT")}</td>
+                    <td>${new Date(l.data_limite_pagamento).toLocaleDateString("pt-PT")}</td>
+                    <td>${l.valor.toFixed(2)}€</td>
+                    <td>${l.estado}</td>
+                  </tr>
+                `).join("");
+              })()}
+            </tbody>
+          </table>
+          ` : `
           <table>
             <thead>
               <tr>
@@ -203,6 +257,7 @@ export function FiltroRelatoriosPDFModal({
               }).join("")}
             </tbody>
           </table>
+          `}
 
           <div class="footer">
             Documento gerado oficialmente pela plataforma CondoManager AI para o edifício ${predio.nome} em ${new Date().toLocaleString("pt-PT")}.
@@ -397,6 +452,12 @@ export function FiltroRelatoriosPDFModal({
                   icon: "fa-address-card",
                   label: "Fichas & Dados de Registo",
                   desc: "Contactos de Proprietários, NIFs, IBANs, Inquilinos e Moradas"
+                },
+                {
+                  id: "recibos_emitidos",
+                  icon: "fa-receipt",
+                  label: "Notas de Cobrança & Recibos Emitidos",
+                  desc: "Nº de recibo, datas de emissão/limite, discriminado por Quota Mensal e Fundo de Reserva, e Quotas Extra"
                 },
                 {
                   id: "debitos_incumprimento",

@@ -2885,6 +2885,7 @@ export default function App() {
               loggedUser={loggedUser}
               movimentos={movements}
               fracoes={fracoes}
+              avisos={avisos}
               onAddDocumento={handleAddDocumento}
             />
           )}
