@@ -14,7 +14,7 @@ import {
 import { Predio, Fracao, Aviso, LoggedUser, Documento, RevisaoOrcamento, Conta, Movimento, Reuniao } from "../types";
 import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { jsPDF } from "jspdf";
-import { formatDatePT, formatQuotaReceiptNumber, parseValorMonetario, escolherIbanContaPorTipo, gerarReferenciaBR23E, exportarBalanceteMapaAnualXLS } from "../utils";
+import { formatDatePT, formatQuotaReceiptNumber, parseValorMonetario, escolherIbanContaPorTipo, gerarReferenciaBR23E, exportarBalanceteMapaAnualXLS, exportToXLS } from "../utils";
 import { downloadOfficialReceiptPDF } from "../utils/receiptGenerator";
 import { MoneyInput } from "./MoneyInput";
 import { AccordionSection } from "./AccordionSection";
@@ -808,10 +808,39 @@ export function GestaoQuotasOrcamento({
     setFiltroFracoesAvisos(prev => (prev.size === 0 ? new Set(avisosFracoesUnicas) : prev));
   }, [avisosFracoesUnicas.join("|")]);
 
+  // Pesquisa livre — id do aviso, descrição, fração ou nome do condómino,
+  // para além dos filtros de coluna (mais rápida do que abrir o filtro de
+  // cada coluna quando só se procura um termo, ex: "julho" ou "guerra").
+  const [pesquisaAvisos, setPesquisaAvisos] = useState("");
+
   const predioAvisosFiltrados = predioAvisos.filter(a => {
-    const nomeFracao = fracoes.find(f => f.id_fracao === a.id_fracao)?.fracao_nome || "?";
-    return filtroTiposAvisos.has(a.tipo) && filtroEstadosAvisos.has(a.estado) && filtroFracoesAvisos.has(nomeFracao);
+    const frac = fracoes.find(f => f.id_fracao === a.id_fracao);
+    const nomeFracao = frac?.fracao_nome || "?";
+    if (!filtroTiposAvisos.has(a.tipo) || !filtroEstadosAvisos.has(a.estado) || !filtroFracoesAvisos.has(nomeFracao)) return false;
+    const termo = pesquisaAvisos.trim().toLowerCase();
+    if (!termo) return true;
+    const alvo = `${a.id_aviso} ${a.descricao} ${nomeFracao} ${frac?.proprietario?.nome || ""}`.toLowerCase();
+    return alvo.includes(termo);
   });
+
+  const exportarAvisosXLS = () => {
+    const headers = ["Doc ID", "Fração", "Condómino", "Data", "Vencimento", "Descrição", "Tipo", "Valor (€)", "Estado"];
+    const rows = predioAvisosFiltrados.map(a => {
+      const frac = fracoes.find(f => f.id_fracao === a.id_fracao);
+      return [
+        a.id_aviso.toUpperCase(),
+        frac?.fracao_nome || "?",
+        frac?.proprietario?.nome || "",
+        formatDatePT(a.data),
+        formatDatePT(a.vencimento),
+        a.descricao,
+        a.tipo,
+        a.valor.toFixed(2),
+        a.estado
+      ];
+    });
+    exportToXLS(`Avisos_Cobranca_${predio.nome.replace(/\s+/g, "_")}`, headers, rows);
+  };
 
   return (
     <div className="space-y-4 animate-fadeIn">
@@ -1390,9 +1419,31 @@ export function GestaoQuotasOrcamento({
         icon={<FileText className="w-4 h-4" />}
         badge={<span className="text-[10px] bg-slate-200 text-slate-600 font-bold px-2 py-0.5 rounded-full">Total: {predioAvisos.length} docs</span>}
       >
-        <div className="overflow-x-auto border border-slate-200 rounded-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="relative w-full sm:max-w-xs">
+            <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]"></i>
+            <input
+              type="text"
+              value={pesquisaAvisos}
+              onChange={(e) => setPesquisaAvisos(e.target.value)}
+              placeholder="Pesquisar por ID, fração, condómino ou descrição..."
+              className="w-full border border-slate-200 pl-8 pr-3 py-1.5 text-xs rounded-lg focus:outline-emerald-500 bg-white"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={exportarAvisosXLS}
+            className="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0"
+            title="Descarregar a lista filtrada em Excel/CSV"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span>Exportar ({predioAvisosFiltrados.length})</span>
+          </button>
+        </div>
+
+        <div className="overflow-x-auto overflow-y-auto max-h-[480px] border border-slate-200 rounded-xl">
           <table className="w-full text-left text-xs border-collapse">
-            <thead>
+            <thead className="sticky top-0 z-10">
               <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
                 <th className="p-3">Doc ID</th>
                 <th className="p-3"><span className="inline-flex items-center">Fração <ColumnFilterDropdown label="Fração" options={avisosFracoesUnicas} selected={filtroFracoesAvisos} onChange={setFiltroFracoesAvisos} /></span></th>
