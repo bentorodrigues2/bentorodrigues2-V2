@@ -766,15 +766,17 @@ export async function processInboundEmail(payload) {
 
   // 8. Enviar (ou colocar em fila de aprovação) a resposta institucional
   // redigida pela IA, se subject e mensagem tiverem sido gerados. Em modo
-  // "confirmacao_previa" (predefinição do prédio), esta é a resposta com
-  // conteúdo decidido pela IA — fica pendente até o administrador clicar em
-  // "Aprovar" em Definições, em vez de sair sozinha.
+  // "confirmacao_previa" (predefinição do prédio), a aprovação manual só se
+  // aplica à categoria "quotas" — é aqui que se envia um recibo de pagamento
+  // real, e é essa confirmação que o administrador quer mesmo rever antes de
+  // sair. As restantes categorias (jurídico, manutenção, geral, etc.) saem
+  // sempre de imediato, tal como antes.
   let respostaEnviada = false;
   let respostaPendenteConfirmacao = false;
   if (aiData?.subject && aiData?.message) {
     const htmlInstitucional = gerarHtmlResposta(nomeRemetente, aiData.message);
 
-    if (modoAutoresponder === "confirmacao_previa") {
+    if (modoAutoresponder === "confirmacao_previa" && categoria === "quotas") {
       try {
         await supabase.from("respostas_ia_pendentes").insert({
           id: `RESP-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
