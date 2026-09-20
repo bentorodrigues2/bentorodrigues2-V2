@@ -116,12 +116,17 @@ export async function extrairMovimentosExtrato({ anexos, textoExtrato }) {
  * "documentos" e regista-o na tabela documentos, tal como pdfService.js
  * faz para os PDFs gerados — mas aqui para o anexo tal como chegou.
  */
-export async function arquivarAnexoOriginal({ buffer, filename, mimeType, ano, tema, tipo, predio, fracao, fluxo, origem, categoria, visibilidade, descricao }) {
+export async function arquivarAnexoOriginal({ buffer, filename, mimeType, ano, mes, tema, tipo, predio, fracao, fornecedor, fluxo, origem, categoria, visibilidade, descricao, subPasta }) {
   const anoSeguro = ano || new Date().getFullYear();
   const nomeSeguro = sanitizarNomeFicheiro(filename);
-  const pastas = [anoSeguro, tema, tipo, predio || "geral", fracao || "geral", fluxo]
-    .map(sanitizarSegmentoStorage)
-    .join("/");
+  // "mes" organiza os Comprovativos de Transferências por ano/mês; "fornecedor"
+  // organiza as Faturas de Fornecedor pelo nome do fornecedor em vez de por
+  // fração (que não faz sentido para uma fatura, que não pertence a uma
+  // fração específica) — ambos opcionais para não quebrar chamadores antigos.
+  const segmentos = [anoSeguro, mes, tema, tipo, fornecedor, predio || "geral", fracao || "geral", fluxo]
+    .filter(Boolean)
+    .map(sanitizarSegmentoStorage);
+  const pastas = segmentos.join("/");
   const caminho = `${pastas}/${nomeSeguro}`;
 
   const { error: errUpload } = await supabase.storage
@@ -140,6 +145,8 @@ export async function arquivarAnexoOriginal({ buffer, filename, mimeType, ano, t
     tipo,
     predio,
     fracao,
+    fornecedor: fornecedor || null,
+    sub_pasta: subPasta || fornecedor || null,
     fluxo,
     origem: origem || "email_inbound_anexo",
     categoria: categoria || null,

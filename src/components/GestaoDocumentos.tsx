@@ -713,7 +713,7 @@ export function GestaoDocumentos({
 
     <!-- Quittance Legal Note -->
     <div class="quittance-note">
-      O presente documento serve de quitação oficial para todos os efeitos legais, comprovando a liquidação dos valores discriminados por movimento na conta do condomínio.
+      O presente documento serve de comprovativo oficial de pagamento para todos os efeitos legais, comprovando a liquidação dos valores discriminados por movimento na conta do condomínio.
     </div>
 
     <!-- Signatures & Authenticity Footer -->

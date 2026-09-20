@@ -99,7 +99,7 @@ export function getIllustratedManualHtml(doc: Documento, predio: Predio): string
       <div class="step-number">3</div>
       <div class="step-title">Emissão de Quotas Ordinárias e Extraordinárias</div>
       <div class="step-desc">Gere mensalidades e quotas de fundo de reserva com um clique. A plataforma cria avisos de cobrança individuais com Entidade/Referência Multibanco e instruções de MB WAY.</div>
-      <div class="step-tip">💡 <em>Ao ser liquidado, o recibo oficial com quitação é gerado e arquivado no Arquivo Digital.</em></div>
+      <div class="step-tip">💡 <em>Ao ser liquidado, o recibo oficial de pagamento é gerado e arquivado no Arquivo Digital.</em></div>
     </div>
     <div class="step-card highlight">
       <div class="step-number">4</div>
@@ -120,7 +120,7 @@ export function getIllustratedManualHtml(doc: Documento, predio: Predio): string
     <div class="step-card">
       <div class="step-number">6</div>
       <div class="step-title">Auto-Responder e Disparo de Recibos</div>
-      <div class="step-desc">Após confirmar o movimento, o sistema pode enviar de imediato o Recibo Oficial por e-mail com indicação de quitação e o anexo PDF em layout homologado.</div>
+      <div class="step-desc">Após confirmar o movimento, o sistema pode enviar de imediato o Recibo Oficial de Pagamento por e-mail, com o anexo PDF em layout homologado.</div>
     </div>
   </div>
 
@@ -222,7 +222,7 @@ export function getIllustratedManualHtml(doc: Documento, predio: Predio): string
     <div class="step-card highlight">
       <div class="step-number">2</div>
       <div class="step-title">💳 Pagamento Rápido de Quotas (MB WAY / Multibanco)</div>
-      <div class="step-desc">No ecrã principal, toque no botão verde <strong>"Pagar com MB WAY"</strong> ou consulte a Referência Multibanco atribuída à sua fração. O recibo com quitação é emitido automaticamente após a boa cobrança.</div>
+      <div class="step-desc">No ecrã principal, toque no botão verde <strong>"Pagar com MB WAY"</strong> ou consulte a Referência Multibanco atribuída à sua fração. O recibo de pagamento é emitido automaticamente após a boa cobrança.</div>
       <div class="step-tip">💡 <em>Confirmação instantânea sem ter de enviar comprovativos em papel.</em></div>
     </div>
 

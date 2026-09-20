@@ -16,3 +16,4 @@ bun.lock.json
 server/geminiService.js
 server/lib/receiptGenerator.js
 server/lib/pdfDocs.js
+server/lib/fornecedorMatching.js

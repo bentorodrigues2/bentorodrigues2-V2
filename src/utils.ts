@@ -1328,7 +1328,7 @@ export function generateCondominoPwaManualPDF(condominoNome: string, buildingNam
         title: "4. ARQUIVO DIGITAL, ATAS E ASSEMBLEIAS VIRTUAIS",
         items: [
           "• Consulte o Regulamento Interno do Edifício, atas aprovadas, apólices de seguro e orçamentos.",
-          "• Participe em votações de assembleia através do telemóvel e descarregue declarações de quitação."
+          "• Participe em votações de assembleia através do telemóvel e descarregue os seus recibos de pagamento."
         ]
       }
     ];
@@ -1722,7 +1722,7 @@ export function generateReceiptPDF(data: ReceiptPdfData): jsPDF {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.5);
     doc.setTextColor(100, 116, 139);
-    doc.text("O presente documento serve de quitação oficial de pagamento para todos os efeitos legais, comprovando a liquidação dos valores discriminados.", 12, currentY + 2);
+    doc.text("O presente documento serve de comprovativo oficial de pagamento para todos os efeitos legais, comprovando a liquidação dos valores discriminados.", 12, currentY + 2);
 
     currentY += 3;
   }
@@ -1772,7 +1772,7 @@ export function generateReceiptPDF(data: ReceiptPdfData): jsPDF {
 
   doc.setFontSize(6);
   doc.setTextColor(148, 163, 184);
-  doc.text(`Documento nº ${data.reciboNum} • Autenticidade e Quitação Digital Garantida`, 12, currentY + 21);
+  doc.text(`Documento nº ${data.reciboNum} • Autenticidade e Pagamento Digitalmente Garantidos`, 12, currentY + 21);
 
   return doc;
 }

@@ -721,7 +721,7 @@ export function FinanceiroAvancado({
                     </div>
                     <div className="bg-[#0b1426] text-white rounded-xs px-4 py-2 text-left min-w-[280px] flex flex-col justify-center">
                       <div className="flex items-center gap-1">
-                        <span className="text-[11px] font-black uppercase tracking-wider text-white">RECIBO DE QUITAÇÃO Nº:</span>
+                        <span className="text-[11px] font-black uppercase tracking-wider text-white">RECIBO DE PAGAMENTO Nº:</span>
                         <input
                           type="text"
                           value={reciboNum}
@@ -810,7 +810,7 @@ export function FinanceiroAvancado({
 
                   {/* Quittance Legal Note */}
                   <div className="text-[8.5px] text-slate-500 relative z-10">
-                    O presente documento serve de quitação oficial para todos os efeitos legais, comprovando a liquidação dos valores discriminados por movimento na conta do condomínio.
+                    O presente documento serve de comprovativo oficial de pagamento para todos os efeitos legais, comprovando a liquidação dos valores discriminados por movimento na conta do condomínio.
                   </div>
 
                   {/* Signatures & Authenticity Footer */}

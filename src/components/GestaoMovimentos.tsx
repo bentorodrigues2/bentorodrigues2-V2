@@ -151,9 +151,9 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       }
 
       setMovements(prev => prev.map(m => m.id_mov === mov.id_mov ? { ...m, estado: "Justificado", is_movimento_cego: false } : m));
-      registarLogAuditoria("Financeira", "Confirmou pagamento e emitiu recibo de quitação", predio.id_predio, loggedUser, mov.descricao);
+      registarLogAuditoria("Financeira", "Confirmou pagamento e emitiu recibo de pagamento", predio.id_predio, loggedUser, mov.descricao);
       alert(data.email_enviado
-        ? "✅ Pagamento confirmado! O recibo oficial de quitação foi gerado e enviado por email ao condómino."
+        ? "✅ Pagamento confirmado! O recibo oficial de pagamento foi gerado e enviado por email ao condómino."
         : "✅ Pagamento confirmado e recibo gerado. (O condómino não tem email registado, por isso o recibo não foi enviado por email — está disponível no Arquivo Digital.)");
     } catch (err: any) {
       alert(`Erro ao confirmar pagamento: ${err?.message || "erro desconhecido"}`);
@@ -700,7 +700,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
             <i className="fa-solid fa-file-invoice-dollar text-xl"></i>
             <div>
               <h4 className="font-bold text-sm">Pagamentos por Confirmar</h4>
-              <p className="text-xs">Comprovativos recebidos por email, ainda por validar. Ao confirmar, o recibo oficial de quitação é gerado e enviado automaticamente ao condómino.</p>
+              <p className="text-xs">Comprovativos recebidos por email, ainda por validar. Ao confirmar, o recibo oficial de pagamento é gerado e enviado automaticamente ao condómino.</p>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 pt-2 border-t border-teal-200">

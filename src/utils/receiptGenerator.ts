@@ -227,7 +227,7 @@ export function generateOfficialReceiptPDF(
     doc.setFontSize(6.3);
     doc.setTextColor(71, 85, 105);
     doc.text(
-      "O presente documento serve de quitação oficial de pagamento para todos os efeitos legais, comprovando a liquidação dos valores discriminados.",
+      "O presente documento serve de comprovativo oficial de pagamento para todos os efeitos legais, comprovando a liquidação dos valores discriminados.",
       15,
       y + 4
     );

@@ -3,6 +3,7 @@ import { supabase } from "./supabaseServer.js";
 import { gerarHtmlAutoresponder, gerarHtmlResposta } from "./htmlemail.js";
 import { classifyEmailCategory, generateCategoryResponse } from "../geminiService.js";
 import { extrairDadosDocumento, arquivarAnexoOriginal } from "./multimodalService.js";
+import { cruzarMovimentoComFornecedor } from "./fornecedorMatching.js";
 
 /**
  * Filtro de remetentes automatizados e newsletters/spam.
@@ -312,6 +313,78 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
     return { pagamento, movimento };
   } catch (err) {
     console.error("[inboundProcessor] Erro ao registar comprovativo pendente:", err);
+    return null;
+  }
+}
+
+/**
+ * Fatura de fornecedor reconhecida por email: regista-a como uma dívida a
+ * pagar (dividas_fornecedores, estado "Pendente"), NUNCA mexendo no saldo
+ * de nenhuma conta bancária diretamente — o dinheiro só sai mesmo quando
+ * for realmente pago (manualmente em Fornecedores, ou por reconciliação
+ * quando o extrato bancário confirmar a saída), tal como já acontece em
+ * todo o resto da aplicação para dívidas a fornecedores. Cruza a fatura
+ * com o fornecedor certo por IBAN → referência de contrato/ADC → nome
+ * (a mesma lógica já usada na conciliação manual, agora também aqui).
+ */
+async function registarFaturaFornecedor({ dadosExtraidos, comprovativoUrl, idPredio, fornecedorJaCruzado }) {
+  try {
+    if (!idPredio || !dadosExtraidos) return null;
+
+    let cruzamento = fornecedorJaCruzado || null;
+    if (!cruzamento) {
+      const { data: fornecedores, error: errForn } = await supabase
+        .from("fornecedores")
+        .select("id_fornecedor, nome, iban, referencias_contrato")
+        .eq("id_predio", idPredio);
+
+      if (errForn || !fornecedores) {
+        console.warn("[inboundProcessor] Aviso ao buscar fornecedores para cruzamento:", errForn?.message || errForn);
+        return null;
+      }
+
+      cruzamento = cruzarMovimentoComFornecedor(fornecedores, {
+        iban_credor: dadosExtraidos.iban_credor,
+        numero_adc: dadosExtraidos.numero_adc,
+        referencia_credor: dadosExtraidos.referencia_credor,
+        entidade_credora: dadosExtraidos.entidade_credora,
+        entidade: dadosExtraidos.entidade
+      });
+    }
+
+    if (!cruzamento) {
+      console.log("[inboundProcessor] Fatura recebida mas sem fornecedor correspondente registado — fica só como movimento cego para associação manual.");
+      return null;
+    }
+
+    const valor = dadosExtraidos.valor_total || 0;
+    if (valor <= 0) return null;
+
+    const idDivida = `div-email-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const { error: errDivida } = await supabase.from("dividas_fornecedores").insert({
+      id_divida: idDivida,
+      id_predio: idPredio,
+      id_fornecedor: cruzamento.fornecedor.id_fornecedor,
+      fornecedor_nome: cruzamento.fornecedor.nome,
+      descricao: `Fatura recebida por email${dadosExtraidos.referencia ? ` — Nº ${dadosExtraidos.referencia}` : ""}`,
+      categoria: dadosExtraidos.categoria_contabilistica || "Fornecedores",
+      valor,
+      data_emissao: dadosExtraidos.data_documento || new Date().toISOString().split("T")[0],
+      data_vencimento: dadosExtraidos.data_documento || new Date().toISOString().split("T")[0],
+      estado: "Pendente",
+      valor_pago: 0,
+      documento_anexo: comprovativoUrl || null
+    });
+
+    if (errDivida) {
+      console.warn("[inboundProcessor] Aviso ao registar dívida a fornecedor a partir de fatura por email:", errDivida.message);
+      return null;
+    }
+
+    console.log(`[inboundProcessor] Fatura de ${cruzamento.fornecedor.nome} (${valor.toFixed(2)}€) registada como dívida pendente (cruzamento por ${cruzamento.metodo}).`);
+    return { id_divida: idDivida, fornecedor: cruzamento.fornecedor, metodo: cruzamento.metodo };
+  } catch (err) {
+    console.error("[inboundProcessor] Erro ao registar fatura de fornecedor:", err);
     return null;
   }
 }
@@ -703,11 +776,37 @@ export async function processInboundEmail(payload) {
         const principal = anexosComConteudo[0];
         comprovativoUrl = principal.filename;
 
-        // Arquiva o ficheiro original no Arquivo Digital para qualquer tipo de
-        // documento financeiro reconhecido (fatura, comprovativo, recibo,
-        // extrato) — antes só faturas eram arquivadas, perdendo o ficheiro
-        // original de comprovativos/recibos processados.
         const tipoDocLower = (dadosExtraidos?.tipo_documento || "").toLowerCase();
+        const isFaturaDoc = tipoDocLower === "fatura";
+        const isComprovativoDoc = tipoDocLower === "comprovativo";
+        const mesDocumento = String(new Date(dadosExtraidos?.data_documento || Date.now()).getMonth() + 1).padStart(2, "0");
+
+        // Para faturas, cruza já aqui com o fornecedor real (por IBAN → nº
+        // ADC/referência de contrato → nome) — usado tanto para nomear a
+        // pasta de arquivo como para lançar a dívida a pagar mais abaixo,
+        // em vez de correr o mesmo cruzamento duas vezes.
+        let fornecedorCruzado = null;
+        if (isFaturaDoc && contexto?.id_predio) {
+          const { data: fornecedoresPredio } = await supabase
+            .from("fornecedores")
+            .select("id_fornecedor, nome, iban, referencias_contrato")
+            .eq("id_predio", contexto.id_predio);
+          if (fornecedoresPredio) {
+            fornecedorCruzado = cruzarMovimentoComFornecedor(fornecedoresPredio, {
+              iban_credor: dadosExtraidos.iban_credor,
+              numero_adc: dadosExtraidos.numero_adc,
+              referencia_credor: dadosExtraidos.referencia_credor,
+              entidade_credora: dadosExtraidos.entidade_credora,
+              entidade: dadosExtraidos.entidade
+            });
+          }
+        }
+
+        // Arquiva o ficheiro original no Arquivo Digital — cada tipo de
+        // documento na pasta que realmente faz sentido para o encontrar
+        // depois: Comprovativos de Transferências por ano/mês, Faturas de
+        // Fornecedores pelo nome do fornecedor (não pela fração, que não se
+        // aplica a uma fatura), Recibos/Extratos como antes.
         const TIPOS_ARQUIVAVEIS = { fatura: "Fatura de Fornecedor", comprovativo: "Comprovativo de Pagamento", recibo: "Recibo", extrato: "Extrato Bancário" };
         if (TIPOS_ARQUIVAVEIS[tipoDocLower]) {
           try {
@@ -716,16 +815,27 @@ export async function processInboundEmail(payload) {
               filename: principal.filename,
               mimeType: principal.mimeType,
               ano: new Date().getFullYear(),
-              tema: "Faturas & Recibos",
+              mes: isComprovativoDoc ? mesDocumento : undefined,
+              tema: isComprovativoDoc ? "Comprovativos de Transferências" : isFaturaDoc ? "Faturas de Fornecedores" : "Faturas & Recibos",
               tipo: TIPOS_ARQUIVAVEIS[tipoDocLower],
               predio: contexto?.id_predio || null,
-              fracao: contexto?.fracao || null,
+              fracao: isFaturaDoc ? null : (contexto?.fracao || null),
+              fornecedor: isFaturaDoc ? (fornecedorCruzado?.fornecedor?.nome || dadosExtraidos?.entidade || "Não Identificado") : undefined,
               fluxo: `${tipoDocLower}_email_inbound`
             });
             comprovativoUrl = caminhoArquivo;
           } catch (errArquivo) {
             console.warn("[inboundProcessor] Aviso ao arquivar documento:", errArquivo?.message || errArquivo);
           }
+        }
+
+        if (isFaturaDoc) {
+          await registarFaturaFornecedor({
+            dadosExtraidos,
+            comprovativoUrl,
+            idPredio: contexto?.id_predio,
+            fornecedorJaCruzado: fornecedorCruzado
+          });
         }
 
         comprovativoRegisto = await registarComprovativoPendente({
@@ -740,16 +850,14 @@ export async function processInboundEmail(payload) {
         console.log("[inboundProcessor] Anexo já processado anteriormente (hash duplicado) — a ignorar novo lançamento.");
       }
     }
-  } else if (categoria === "quotas") {
-    // Sem anexo mas categoria sugere comprovativo — regista pendente sem dados extraídos
-    comprovativoRegisto = await registarComprovativoPendente({
-      categoria,
-      dadosExtraidos: null,
-      contexto,
-      comprovativoUrl: null,
-      remetenteEmail: cleanFrom
-    });
   }
+  // Nota: antes registava-se aqui um "pagamento pendente" fantasma sempre
+  // que a categoria era "quotas", mesmo sem nenhum anexo/comprovativo real
+  // (valor null, sem prova nenhuma) — só porque o assunto sugeria "quotas".
+  // Isto fazia com que um simples pedido de texto ("enviem-me o recibo")
+  // ficasse indevidamente bloqueado à espera de "confirmação de pagamento"
+  // que nunca existiu. Sem anexo real, não há nada para confirmar — a
+  // resposta (com o recibo já emitido, se existir) sai sempre de imediato.
 
   // 7.1 Categoria "quotas": ir buscar mesmo o recibo real da fração para
   // anexar — sem isto a resposta afirmava "enviamos em anexo o recibo" sem
@@ -760,23 +868,24 @@ export async function processInboundEmail(payload) {
     if (reciboReal) {
       anexosParaEnviar.push(reciboReal);
     } else if (aiData?.message) {
-      aiData.message = `Ainda não temos nenhum recibo emitido para a sua fração no nosso sistema.<br><br>Assim que o seu pagamento for confirmado pela administração, o recibo oficial de quitação ser-lhe-á enviado automaticamente por email. Se já efetuou o pagamento e ainda não recebeu confirmação, contacte a administração do condomínio.`;
+      aiData.message = `Ainda não temos nenhum recibo emitido para a sua fração no nosso sistema.<br><br>Assim que o seu pagamento for confirmado pela administração, o recibo oficial de pagamento ser-lhe-á enviado automaticamente por email. Se já efetuou o pagamento e ainda não recebeu confirmação, contacte a administração do condomínio.`;
     }
   }
 
   // 8. Enviar (ou colocar em fila de aprovação) a resposta institucional
-  // redigida pela IA, se subject e mensagem tiverem sido gerados. Em modo
-  // "confirmacao_previa" (predefinição do prédio), a aprovação manual só se
-  // aplica à categoria "quotas" — é aqui que se envia um recibo de pagamento
-  // real, e é essa confirmação que o administrador quer mesmo rever antes de
-  // sair. As restantes categorias (jurídico, manutenção, geral, etc.) saem
-  // sempre de imediato, tal como antes.
+  // redigida pela IA, se subject e mensagem tiverem sido gerados. A
+  // aprovação manual em modo "confirmacao_previa" só se aplica quando este
+  // email trouxe mesmo um comprovativo/pagamento novo a aguardar
+  // confirmação da administração (comprovativoRegisto.pagamento) — nunca
+  // para um simples pedido de texto (ex: "enviem-me o recibo"), que sai
+  // sempre de imediato com o recibo já emitido (se existir).
   let respostaEnviada = false;
   let respostaPendenteConfirmacao = false;
+  const aguardaConfirmacaoPagamento = Boolean(comprovativoRegisto?.pagamento);
   if (aiData?.subject && aiData?.message) {
     const htmlInstitucional = gerarHtmlResposta(nomeRemetente, aiData.message);
 
-    if (modoAutoresponder === "confirmacao_previa" && categoria === "quotas") {
+    if (modoAutoresponder === "confirmacao_previa" && aguardaConfirmacaoPagamento) {
       try {
         await supabase.from("respostas_ia_pendentes").insert({
           id: `RESP-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,

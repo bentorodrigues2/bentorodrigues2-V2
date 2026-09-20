@@ -443,7 +443,7 @@ export async function emitirQuotasMensais() {
             : `Nota de Cobrança — Quota de ${mesRefLabel} / ${anoRef} — Fração ${f.fracao_nome}`,
           mensagem: modeloCobranca
             ? interpolarModeloEmail(modeloCobranca.body, valoresCobranca).replace(/\n/g, "<br>")
-            : `Segue em anexo a nota de cobrança referente à quota de condomínio de <strong>${mesRefLabel} de ${anoRef}</strong>, no valor de <strong>${valorTotal.toFixed(2)} €</strong>, com vencimento a <strong>${formatarDataPT(vencimento)}</strong>.<br><br>Assim que o pagamento for confirmado pela administração, receberá o respetivo recibo de quitação oficial. Para um rápido cruzamento de dados, envie o comprovativo do pagamento para o email <strong>bentorodrgues2@gmail.com</strong>.`,
+            : `Segue em anexo a nota de cobrança referente à quota de condomínio de <strong>${mesRefLabel} de ${anoRef}</strong>, no valor de <strong>${valorTotal.toFixed(2)} €</strong>, com vencimento a <strong>${formatarDataPT(vencimento)}</strong>.<br><br>Assim que o pagamento for confirmado pela administração, receberá o respetivo recibo de pagamento oficial. Para um rápido cruzamento de dados, envie o comprovativo do pagamento para o email <strong>bentorodrgues2@gmail.com</strong>.`,
           pdfBuffer,
           nome: nomeFicheiro
         });

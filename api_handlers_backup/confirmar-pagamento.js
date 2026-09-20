@@ -202,10 +202,10 @@ export default async function handler(req, res) {
         nomeDestinatario,
         assunto: modeloRecibo
           ? interpolarModeloEmail(modeloRecibo.subject, valoresRecibo)
-          : `Recibo de Quitação — ${fracaoNome}`,
+          : `Recibo de Pagamento — ${fracaoNome}`,
         mensagem: modeloRecibo
           ? interpolarModeloEmail(modeloRecibo.body, valoresRecibo).replace(/\n/g, "<br>")
-          : `Segue em anexo o recibo de quitação referente à fração <strong>${fracaoNome}</strong>, no valor de <strong>${recibo.valor_total.toFixed(2)} €</strong>.`,
+          : `Segue em anexo o recibo de pagamento referente à fração <strong>${fracaoNome}</strong>, no valor de <strong>${recibo.valor_total.toFixed(2)} €</strong>.`,
         pdfBuffer,
         nome: nomeFicheiro
       });
