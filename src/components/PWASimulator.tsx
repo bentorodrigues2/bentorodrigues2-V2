@@ -710,27 +710,18 @@ export function PWASimulator({
       data: new Date().toLocaleDateString("pt-PT").replace(/\//g, "-")
     };
 
-    // Notifica mesmo os administradores por email — antes só entrava em
-    // estado React local (pwaContacts) e o alert afirmava falsamente que
-    // "o Backoffice recebeu a notificação".
-    const admsContacto = fracoes.filter(f => f.id_predio === predio.id_predio && f.administrador_interno === "Sim");
-    const notificacoes = admsContacto
-      .filter(adm => adm.proprietario?.email)
-      .map(adm =>
-        fetch("/api/email?acao=notificar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: adm.proprietario.email,
-            nomeDestinatario: adm.proprietario.nome,
-            assunto: `Novo Contacto PWA — ${contactAssunto}`,
-            mensagem: `<strong>${newContact.nome}</strong> (Fração ${newContact.fracao}) enviou um novo contacto pela aplicação.<br><br><strong>Assunto:</strong> ${contactAssunto}<br><strong>Mensagem:</strong> ${newContact.mensagem}${contactDocumentoName ? `<br><strong>Documento anexado:</strong> ${contactDocumentoName}` : ""}${contactAudioBase64 ? `<br><strong>Inclui mensagem de voz anexada (${contactAudioDuration}s).</strong>` : ""}`
-          })
-        })
-      );
-
+    // Notifica a administração por notificação push (nunca por email —
+    // mensagens usam sempre push, pedido explícito).
     try {
-      await Promise.all(notificacoes);
+      await fetch("/api/admin?acao=enviar-push-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_predio: predio.id_predio,
+          title: `💬 Novo contacto — ${newContact.nome} (Fração ${newContact.fracao})`,
+          body: contactAssunto
+        })
+      });
     } catch (err) {
       console.error("Erro ao notificar administração do contacto PWA:", err);
     }
@@ -750,11 +741,7 @@ export function PWASimulator({
     setContactModalOpen(false);
     setPwaSendingModal({ isOpen: true, type: "mensagem", title: "A Enviar Mensagem PWA..." });
 
-    alert(
-      notificacoes.length > 0
-        ? "Solicitação de contacto enviada com sucesso para a Administração! O Backoffice recebeu a notificação."
-        : "Solicitação de contacto registada. Nenhum administrador com email configurado foi encontrado para notificar."
-    );
+    alert("Solicitação de contacto enviada com sucesso para a Administração! O Backoffice recebeu a notificação.");
   };
 
   // Simulate capture receipt camera with IA extraction
@@ -1012,23 +999,18 @@ export function PWASimulator({
     if (!contactObj) return;
 
     triggerSendReaction("mensagem", "A Enviar Resposta ao Condómino...", async () => {
-      // Resposta real por email ao condómino — antes só atualizava
-      // estado React local e mostrava a animação de envio sem "action"
-      // (modo puramente decorativo), a resposta nunca chegava a sair.
-      if (contactObj.email) {
-        const resp = await fetch("/api/email?acao=notificar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: contactObj.email,
-            nomeDestinatario: contactObj.nome,
-            assunto: `Resposta ao seu contacto: ${contactObj.assunto}`,
-            mensagem: replyText.replace(/\n/g, "<br>")
-          })
-        });
-        const resultado = await resp.json();
-        if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar a resposta");
-      }
+      // Resposta real por notificação push ao condómino — nunca por email
+      // (mensagens usam sempre push, pedido explícito).
+      await fetch("/api/admin?acao=enviar-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_predio: predio.id_predio,
+          id_fracao: condominoFracao?.id_fracao,
+          title: "Nova Mensagem da Administração 💬",
+          body: replyText.length > 120 ? replyText.slice(0, 117) + "..." : replyText
+        })
+      }).catch(() => {});
 
       setPwaContacts(prev => prev.map(c => c.id === id ? {
         ...c,

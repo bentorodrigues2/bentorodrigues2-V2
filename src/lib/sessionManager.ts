@@ -10,7 +10,8 @@ export type UserRole =
   | "JURIDICO" 
   | "LIMPEZAS" 
   | "USER"
-  | "INQUILINO";
+  | "INQUILINO"
+  | "COPROPRIETARIO";
 
 export interface SessionToken {
   tokenId: string;
@@ -109,6 +110,18 @@ export const RoleNavigationMap: Record<UserRole, RoleNavigationConfig> = {
     defaultTab: "portal_condomino",
     allowedTabs: ["portal_condomino", "painel", "predios", "predios_cadastro", "predios_regras", "comunicacao_broadcast", "comunicacao_sondagens", "comunicacao_questionarios", "vistorias_limpezas", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
     displayName: "Inquilino / Arrendatário (Sem Acesso Financeiro)",
+    badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/30"
+  },
+  // Não estava definido — sem entrada aqui, isTabAllowedForRole devolvia
+  // sempre false para um coproprietário (não tem fallback como
+  // validateRoleAccess), o que podia bloquear silenciosamente ecrãs/ações,
+  // incluindo o submenu de Segurança (biometria/push/SMS). Mesmas
+  // permissões do Inquilino — sem acesso a dados financeiros da fração.
+  COPROPRIETARIO: {
+    role: "COPROPRIETARIO",
+    defaultTab: "portal_condomino",
+    allowedTabs: ["portal_condomino", "painel", "predios", "predios_cadastro", "predios_regras", "comunicacao_broadcast", "comunicacao_sondagens", "comunicacao_questionarios", "vistorias_limpezas", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
+    displayName: "Coproprietário (Sem Acesso Financeiro)",
     badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/30"
   }
 };

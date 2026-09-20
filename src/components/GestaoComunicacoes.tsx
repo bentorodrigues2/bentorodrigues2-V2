@@ -221,21 +221,8 @@ export function GestaoComunicacoes({
       await saveConversaToSupabase(conversaRespondida);
       setConversas(prev => prev.map(c => c.id_conversa === selectedC.id_conversa ? conversaRespondida : c));
 
-      const fracaoDaConversa = fracoes.find(f => f.id_fracao === selectedC.id_fracao);
-      if (fracaoDaConversa?.proprietario?.email) {
-        await fetch("/api/email?acao=notificar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: fracaoDaConversa.proprietario.email,
-            nomeDestinatario: fracaoDaConversa.proprietario.nome,
-            assunto: `Nova resposta da Administração: ${selectedC.assunto || "a sua mensagem"}`,
-            mensagem: respostaTexto
-          })
-        });
-      }
-
-      // Notificação push real no telemóvel/PWA do condómino (além do email).
+      // Notificação push real no telemóvel/PWA do condómino — só push, nunca
+      // email (pedido explícito: mensagens usam sempre notificação push).
       fetch("/api/admin?acao=enviar-push", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
