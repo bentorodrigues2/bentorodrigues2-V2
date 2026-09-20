@@ -5,11 +5,12 @@ export default async function handler(req, res) {
 
   // "lancar" (submeter um comprovativo de pagamento) é uma ação do próprio
   // condómino — fica aberta a qualquer conta autenticada. "confirmar"
-  // (validar um pagamento como recebido, marcando a dívida como paga) só
-  // pode ser feita por quem gere o condomínio: sem esta distinção, qualquer
-  // conta autenticada conseguia confirmar como paga uma dívida de qualquer
-  // fração, de qualquer prédio.
-  if (acao === "confirmar") {
+  // (validar um pagamento como recebido, marcando a dívida como paga) e
+  // "emitir-notas-atraso" (emissão retroativa de notas de cobrança ao
+  // registar um proprietário) só podem ser feitas por quem gere o
+  // condomínio: sem esta distinção, qualquer conta autenticada conseguia
+  // confirmar como paga ou emitir cobranças de qualquer fração/prédio.
+  if (acao === "confirmar" || acao === "emitir-notas-atraso") {
     const chamador = await exigirSessaoComPapel(req, res, ["ADMIN", "GESTOR", "EMPRESA_GESTORA"]);
     if (!chamador) return;
   } else {
@@ -28,9 +29,14 @@ export default async function handler(req, res) {
       return mod.default(req, res);
     }
 
+    if (acao === "emitir-notas-atraso") {
+      const mod = await import("../api_handlers_backup/emitir-notas-atraso.js");
+      return mod.default(req, res);
+    }
+
     return res.status(400).json({
       ok: false,
-      error: "Ação inválida. Use lancar | confirmar"
+      error: "Ação inválida. Use lancar | confirmar | emitir-notas-atraso"
     });
 
   } catch (err) {

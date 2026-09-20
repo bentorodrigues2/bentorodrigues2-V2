@@ -897,6 +897,13 @@ export function GestaoFracoes({
     const targetFracao = selectedFracaoId ? predioFracoes.find(f => f.id_fracao === selectedFracaoId) : null;
     const refBR23E = targetFracao?.referencia_br23e || targetFracao?.proprietario?.referencia_br23e || gerarReferenciaBR23E(targetFracao?.fracao_nome || propNome.trim(), selectedFracaoId);
 
+    // Primeiro registo REAL de proprietário nesta fração (não uma edição de
+    // dados já existentes, nem uma Transferência de Propriedade — nesse caso
+    // o novo proprietário não deve ser cobrado retroativamente por meses em
+    // que ainda não era dono) — dispara a emissão automática das notas de
+    // cobrança em atraso desde o início de atividade (ver mais abaixo).
+    const isPrimeiroRegistoProprietario = !targetFracao?.proprietario && !transferindoPropriedadeDe;
+
     const novoProprietarioObj: Proprietario = {
       nome: propNome.trim(),
       nif: propNif.trim(),
@@ -1066,6 +1073,31 @@ export function GestaoFracoes({
             // dois há um intervalo real de 60 segundos (não é decorativo:
             // este pedido só é feito depois de a Promise abaixo resolver).
             setEnviandoConvites(true);
+
+            // Primeiro registo do proprietário desta fração: emite e envia
+            // automaticamente, antes de mais nada, todas as notas de
+            // cobrança mensais em falta desde o início de atividade da
+            // administração (01/06/2026) até ao mês corrente.
+            let notasAtrasoResumoTexto = "";
+            if (isPrimeiroRegistoProprietario) {
+              try {
+                const respNotas = await fetch("/api/pagamento?acao=emitir-notas-atraso", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ id_predio: predio.id_predio, id_fracao: selectedFracaoId })
+                });
+                const dataNotas = await respNotas.json();
+                if (respNotas.ok && dataNotas.ok) {
+                  notasAtrasoResumoTexto = `\n💶 Foram emitidas e enviadas ${dataNotas.mesesEmitidos} nota(s) de cobrança em atraso (desde o início de atividade) para ${propEmail.trim()}.`;
+                } else {
+                  notasAtrasoResumoTexto = "\n⚠️ Não foi possível emitir automaticamente as notas de cobrança em atraso — pode fazê-lo manualmente em Financeiro.";
+                }
+              } catch (err) {
+                console.warn("[GestaoFracoes] Aviso ao emitir notas de cobrança em atraso:", err);
+                notasAtrasoResumoTexto = "\n⚠️ Não foi possível emitir automaticamente as notas de cobrança em atraso — pode fazê-lo manualmente em Financeiro.";
+              }
+            }
+
             let boasVindasEnviado = false;
             try {
               const respBV = await fetch("/api/pdf?tipo=boas-vindas", {
@@ -1110,9 +1142,10 @@ export function GestaoFracoes({
             }
             setEnviandoConvites(false);
 
-            alert(convidado
+            alert((convidado
               ? `✅ Proprietário associado com sucesso à Fração ${targetFracao.fracao_nome}!\n\n${boasVindasEnviado ? `📧 Foi enviado o email de boas-vindas para ${propEmail.trim()} com o guia de instruções de acesso ao site e instalação da PWA.` : "⚠️ Não foi possível enviar o guia de boas-vindas — pode reenviá-lo mais tarde."}\n📧 60 segundos depois, foi enviado o email com o link seguro para o condómino ativar o seu acesso e definir a própria password.`
-              : `✅ Proprietário associado com sucesso à Fração ${targetFracao.fracao_nome} no Supabase, mas houve um erro a enviar o email de ativação. Pode reenviá-lo mais tarde.`);
+              : `✅ Proprietário associado com sucesso à Fração ${targetFracao.fracao_nome} no Supabase, mas houve um erro a enviar o email de ativação. Pode reenviá-lo mais tarde.`
+            ) + notasAtrasoResumoTexto);
           } else {
             alert(`✅ Dados do proprietário da Fração ${targetFracao.fracao_nome} (${propNome.trim()}) gravados com sucesso no Supabase!`);
           }
