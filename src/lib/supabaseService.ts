@@ -260,6 +260,31 @@ export async function deleteFracaoFromSupabase(idFracao: string): Promise<boolea
   return dbDelete("fracoes", [["id_fracao", "eq", idFracao]]);
 }
 
+// A tabela `proprietarios` usa tipos estritos diferentes dos usados no resto
+// da app (que guarda sempre os rótulos em português, ex: "Sim"/"Não",
+// "Digital (E-mail e Mensagens Push)", em `fracoes.proprietario` e no tipo
+// Proprietario): `notificacao_preferencial` é um ENUM Postgres com apenas
+// "digital"|"postal"|"ambos", e `administrador_interno` é boolean. Enviar os
+// rótulos em português diretos fazia o upsert falhar SEMPRE (erro de
+// tipo/enum do Postgres) — e como dbUpsert só regista um console.warn, a
+// falha nunca chegava a aparecer para o administrador, que via sempre o
+// alerta de sucesso (a gravação em fracoes.proprietario essa sim funcionava).
+// Resultado real em produção: a tabela proprietarios ficou vazia apesar de
+// haver proprietários reais registados e visíveis na interface.
+export function converterNotificacaoParaEnumProprietarios(valor?: string): "digital" | "postal" | "ambos" {
+  const v = (valor || "").toLowerCase();
+  const digital = v.includes("digital");
+  const postal = v.includes("postal");
+  if (digital && postal) return "ambos";
+  if (postal) return "postal";
+  return "digital";
+}
+
+export function converterAdminInternoParaBoolean(valor?: string | boolean): boolean {
+  if (typeof valor === "boolean") return valor;
+  return (valor || "").trim().toLowerCase() === "sim";
+}
+
 export async function saveProprietarioToSupabase(proprietario: Proprietario, idFracao?: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
   // If associated with a fraction, update fraction's owner
@@ -281,8 +306,8 @@ export async function saveProprietarioToSupabase(proprietario: Proprietario, idF
     tlm: proprietario.tlm,
     iban: proprietario.iban,
     data_nascimento: proprietario.data_nascimento || null,
-    administrador_interno: proprietario.administrador_interno,
-    notificacao_preferencial: proprietario.notificacao_preferencial
+    administrador_interno: converterAdminInternoParaBoolean(proprietario.administrador_interno),
+    notificacao_preferencial: converterNotificacaoParaEnumProprietarios(proprietario.notificacao_preferencial)
   });
   return true;
 }

@@ -6,7 +6,7 @@ import { ModalFichaCondominoEditavel } from "./ModalFichaCondominoEditavel";
 import { MoneyInput } from "./MoneyInput";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
-import { saveFracaoToSupabase, deleteFracaoFromSupabase, saveProprietarioToSupabase, deleteProprietarioFromSupabase, dbSelect, dbUpdate, dbInsert, dbDelete, dbUpsert, saveAvisosToSupabase, registarLogAuditoria, fetchResidentesInquilinosFromSupabase, saveResidenteInquilinoToSupabase, uploadDocumentoToStorage, saveDocumentoToSupabase } from "../lib/supabaseService";
+import { saveFracaoToSupabase, deleteFracaoFromSupabase, saveProprietarioToSupabase, deleteProprietarioFromSupabase, dbSelect, dbUpdate, dbInsert, dbDelete, dbUpsert, saveAvisosToSupabase, registarLogAuditoria, fetchResidentesInquilinosFromSupabase, saveResidenteInquilinoToSupabase, uploadDocumentoToStorage, saveDocumentoToSupabase, converterNotificacaoParaEnumProprietarios, converterAdminInternoParaBoolean } from "../lib/supabaseService";
 
 interface GestaoFracoesProps {
   predio: Predio;
@@ -941,8 +941,12 @@ export function GestaoFracoes({
         entidade_bancaria: novoProprietarioObj.entidade_bancaria,
         morada_alternativa: novoProprietarioObj.morada_alternativa,
         foto: novoProprietarioObj.foto,
-        administrador_interno: novoProprietarioObj.administrador_interno,
-        notificacao_preferencial: novoProprietarioObj.notificacao_preferencial,
+        // A tabela proprietarios exige boolean/enum estritos, diferentes dos
+        // rótulos em português usados no resto da app — ver conversores em
+        // lib/supabaseService.ts (sem isto, este upsert falhava sempre e a
+        // tabela proprietarios ficava vazia apesar do registo aparecer OK).
+        administrador_interno: converterAdminInternoParaBoolean(novoProprietarioObj.administrador_interno),
+        notificacao_preferencial: converterNotificacaoParaEnumProprietarios(novoProprietarioObj.notificacao_preferencial),
         referencia_br23e: refBR23E
       };
 
