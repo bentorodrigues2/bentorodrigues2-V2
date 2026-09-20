@@ -646,6 +646,10 @@ export interface ProcessoJuridico {
   valor_juros_mora: number;
   taxa_juros: number;
   custas_processuais_estimadas: number;
+  // Despesas avulsas do processo (declarações pedidas, cartas registadas
+  // CTT, custos de tribunal além da taxa de justiça, etc.) — editáveis e
+  // elimináveis, somadas ao valor_total_pedido.
+  despesas_extra?: { id: string; descricao: string; valor: number; data: string }[];
   valor_total_pedido: number;
   tribunal_competente: string; // Ex: "Julgado de Paz de Lisboa" | "Balcão Nacional de Injunções (BNI)" | "Tribunal Judicial da Comarca"
   fase_processual: "PRE_CONTENCIOSO_NOTIFICACAO" | "INJUNCAO_BNI" | "ACAO_EXECUTIVA" | "JULGADO_PAZ" | "ACORDO_PAGAMENTO" | "CONCLUIDO_EXTINTO";

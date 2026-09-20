@@ -713,6 +713,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
           processos={processosState}
           setProcessos={setProcessosState}
           onAddDocumento={onAddDocumento}
+          avisos={avisos}
         />
       )}
 

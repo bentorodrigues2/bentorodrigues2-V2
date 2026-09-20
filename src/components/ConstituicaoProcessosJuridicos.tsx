@@ -1,7 +1,8 @@
 import React, { useState, useRef } from "react";
-import { Predio, Fracao, LoggedUser, ProcessoJuridico, ProcessoProva, TipoProvaJuridica, Documento } from "../types";
+import { Predio, Fracao, LoggedUser, ProcessoJuridico, ProcessoProva, TipoProvaJuridica, Documento, Aviso } from "../types";
 import { generateAndDownloadPdf, formatDatePT, parseValorMonetario } from "../utils";
-import { saveProcessoJuridicoToSupabase } from "../lib/supabaseService";
+import { saveProcessoJuridicoToSupabase, deleteProcessoJuridicoFromSupabase } from "../lib/supabaseService";
+import { MoneyInput } from "./MoneyInput";
 
 interface ConstituicaoProcessosJuridicosProps {
   predio: Predio;
@@ -10,6 +11,7 @@ interface ConstituicaoProcessosJuridicosProps {
   processos: ProcessoJuridico[];
   setProcessos: React.Dispatch<React.SetStateAction<ProcessoJuridico[]>>;
   onAddDocumento?: (novoDoc: any) => void;
+  avisos?: Aviso[];
 }
 
 export function ConstituicaoProcessosJuridicos({
@@ -18,7 +20,8 @@ export function ConstituicaoProcessosJuridicos({
   loggedUser,
   processos,
   setProcessos,
-  onAddDocumento
+  onAddDocumento,
+  avisos
 }: ConstituicaoProcessosJuridicosProps) {
   // Selected Process
   const [selectedProcessoId, setSelectedProcessoId] = useState<string>(
@@ -39,15 +42,55 @@ export function ConstituicaoProcessosJuridicos({
   const [showAddMarcoModal, setShowAddMarcoModal] = useState<boolean>(false);
   const [lightboxProva, setLightboxProva] = useState<ProcessoProva | null>(null);
 
-  // Form: Novo Processo
+  // Form: Novo Processo (também reutilizado para Editar Processo — ver
+  // editingProcessoId: quando definido, o submit atualiza em vez de criar)
+  const [editingProcessoId, setEditingProcessoId] = useState<string | null>(null);
   const [novoFracaoId, setNovoFracaoId] = useState<string>(fracoes[0]?.id_fracao || "");
   const [novoTipoProcesso, setNovoTipoProcesso] = useState<ProcessoJuridico["tipo_processo"]>("FALTA_PAGAMENTO_QUOTAS");
   const [novoTitulo, setNovoTitulo] = useState<string>("");
   const [novoDescricao, setNovoDescricao] = useState<string>("");
-  const [novoValorCapital, setNovoValorCapital] = useState<string>("650.00");
+  const [novoValorCapital, setNovoValorCapital] = useState<string>("0.00");
   const [novoTribunal, setNovoTribunal] = useState<string>("Balcão Nacional de Injunções (BNI)");
   const [novoFase, setNovoFase] = useState<ProcessoJuridico["fase_processual"]>("INJUNCAO_BNI");
   const [novoMandatario, setNovoMandatario] = useState<string>(`${loggedUser.nome} (Administrador do Condomínio)`);
+
+  // Despesas extra do processo em edição/detalhe (CTT registada,
+  // declarações pedidas, custos de tribunal além da taxa de justiça, etc.)
+  const [novaDespesaDescricao, setNovaDespesaDescricao] = useState<string>("");
+  const [novaDespesaValor, setNovaDespesaValor] = useState<number>(0);
+  const [novaDespesaData, setNovaDespesaData] = useState<string>(new Date().toISOString().split("T")[0]);
+
+  // Dívida real da fração (capital em dívida, a partir dos avisos reais —
+  // Pendente/Paga Parcialmente) — antes o valor de capital vinha sempre de
+  // um "650.00" fixo no formulário, nunca calculado a partir de dados reais.
+  const calcularDividaRealFracao = (idFracao: string): number => {
+    return (avisos || [])
+      .filter(a => a.id_fracao === idFracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"))
+      .reduce((soma, a) => soma + (a.valor - (a.valor_pago || 0)), 0);
+  };
+
+  // Juros de mora reais: para cada aviso em dívida, calcula os dias de
+  // atraso reais (vencimento → hoje) à taxa legal de 4% ao ano — substitui
+  // a estimativa fixa "8 meses" que era usada independentemente da data
+  // real de vencimento de cada aviso.
+  const calcularJurosReaisFracao = (idFracao: string): number => {
+    const hoje = new Date();
+    return (avisos || [])
+      .filter(a => a.id_fracao === idFracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"))
+      .reduce((soma, a) => {
+        const venc = new Date(a.vencimento);
+        const dias = Math.max(0, Math.floor((hoje.getTime() - venc.getTime()) / (1000 * 60 * 60 * 24)));
+        if (dias <= 0) return soma;
+        const capitalAviso = a.valor - (a.valor_pago || 0);
+        return soma + (capitalAviso * 0.04 * dias) / 365;
+      }, 0);
+  };
+
+  // Taxa de justiça real da Injunção BNI (Portaria 419-A/2009, tabela do
+  // Regulamento das Custas Processuais): 25,50€ até 2.000€ de capital,
+  // 51,00€ acima disso — substitui o valor fixo de 76,50€ que era usado
+  // sempre, independentemente do valor real do capital.
+  const calcularTaxaJusticaBNI = (capital: number): number => (capital <= 2000 ? 25.5 : 51.0);
 
   // Form: Nova Prova
   const [novaProvaTipo, setNovaProvaTipo] = useState<TipoProvaJuridica>("RECIBO_RECECAO_CARTA_AR");
@@ -75,7 +118,10 @@ export function ConstituicaoProcessosJuridicos({
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Helper when changing fraction in Novo Processo modal
+  // Helper when changing fraction in Novo Processo modal — preenche o
+  // capital com a dívida REAL da fração (soma dos avisos Pendente/Paga
+  // Parcialmente), não um valor fixo. Continua editável a seguir, para o
+  // administrador poder ajustar se necessário.
   const handleFracaoChange = (fracaoId: string) => {
     setNovoFracaoId(fracaoId);
     const fr = fracoes.find(f => f.id_fracao === fracaoId);
@@ -83,7 +129,52 @@ export function ConstituicaoProcessosJuridicos({
       const propNome = fr.proprietario?.nome || "Proprietário";
       setNovoTitulo(`Ação de Execução por Falta de Pagamento de Quotas - Fração ${fr.fracao_nome} (${propNome})`);
       setNovoDescricao(`Cobrança coerciva de dívida vencida de quotas ordinárias e fundo de reserva referente à fração autónoma ${fr.fracao_nome}.`);
+      const dividaReal = calcularDividaRealFracao(fracaoId);
+      setNovoValorCapital(dividaReal.toFixed(2));
     }
+  };
+
+  const resetFormNovoProcesso = () => {
+    setEditingProcessoId(null);
+    setNovoFracaoId(fracoes[0]?.id_fracao || "");
+    setNovoTipoProcesso("FALTA_PAGAMENTO_QUOTAS");
+    setNovoTitulo("");
+    setNovoDescricao("");
+    setNovoValorCapital("0.00");
+    setNovoTribunal("Balcão Nacional de Injunções (BNI)");
+    setNovoFase("INJUNCAO_BNI");
+    setNovoMandatario(`${loggedUser.nome} (Administrador do Condomínio)`);
+  };
+
+  // Carrega um processo já existente para o formulário, em modo edição —
+  // antes não havia nenhuma forma de corrigir um processo criado com
+  // valores errados (ex: o antigo capital fixo "650.00"), só eliminá-lo
+  // por fora (o que também não era possível).
+  const iniciarEdicaoProcesso = (proc: ProcessoJuridico) => {
+    setEditingProcessoId(proc.id_processo);
+    setNovoFracaoId(proc.id_fracao);
+    setNovoTipoProcesso(proc.tipo_processo);
+    setNovoTitulo(proc.titulo_processo);
+    setNovoDescricao(proc.descricao_resumo);
+    setNovoValorCapital(proc.valor_divida_capital.toFixed(2));
+    setNovoTribunal(proc.tribunal_competente);
+    setNovoFase(proc.fase_processual);
+    setNovoMandatario(proc.mandatario_responsavel);
+    setShowNovoProcessoModal(true);
+  };
+
+  const handleEliminarProcesso = async (proc: ProcessoJuridico) => {
+    if (!window.confirm(`Eliminar o processo ${proc.id_processo} (${proc.titulo_processo})? Esta ação não pode ser desfeita e remove também todas as provas e histórico associados.`)) return;
+    const ok = await deleteProcessoJuridicoFromSupabase(proc.id_processo);
+    if (!ok) {
+      showToast("❌ Não foi possível eliminar o processo. Tente novamente.");
+      return;
+    }
+    setProcessos(prev => prev.filter(p => p.id_processo !== proc.id_processo));
+    if (selectedProcessoId === proc.id_processo) {
+      setSelectedProcessoId(processos.find(p => p.id_processo !== proc.id_processo)?.id_processo || "");
+    }
+    showToast(`Processo ${proc.id_processo} eliminado.`);
   };
 
   // Handle File selection for proof
@@ -160,7 +251,8 @@ export function ConstituicaoProcessosJuridicos({
     }
   };
 
-  // Submit: Criar Novo Processo
+  // Submit: Criar Novo Processo, ou gravar as alterações se estiver em
+  // modo edição (editingProcessoId definido via iniciarEdicaoProcesso).
   const handleCriarProcessoSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const fr = fracoes.find(f => f.id_fracao === novoFracaoId);
@@ -170,8 +262,53 @@ export function ConstituicaoProcessosJuridicos({
     }
 
     const capital = parseValorMonetario(novoValorCapital);
-    const juros = Number((capital * 0.04 * (8 / 12)).toFixed(2)); // ~8 meses a 4%
-    const custas = 76.50; // Taxa de justiça média
+    // Juros reais: soma dos juros de cada aviso em dívida pelos dias reais
+    // de atraso, não uma estimativa fixa de "8 meses" para qualquer fração.
+    const juros = Number(calcularJurosReaisFracao(fr.id_fracao).toFixed(2));
+    const custas = calcularTaxaJusticaBNI(capital);
+
+    if (editingProcessoId) {
+      const processoExistente = processos.find(p => p.id_processo === editingProcessoId);
+      if (!processoExistente) return;
+      const totalDespesas = (processoExistente.despesas_extra || []).reduce((s, d) => s + d.valor, 0);
+      const total = capital + juros + custas + totalDespesas;
+      const processoAtualizado: ProcessoJuridico = {
+        ...processoExistente,
+        id_fracao: fr.id_fracao,
+        fracao_nome: fr.fracao_nome,
+        nome_reu: fr.proprietario?.nome || processoExistente.nome_reu,
+        nif_reu: fr.proprietario?.nif || processoExistente.nif_reu,
+        tipo_processo: novoTipoProcesso,
+        titulo_processo: novoTitulo || processoExistente.titulo_processo,
+        descricao_resumo: novoDescricao || processoExistente.descricao_resumo,
+        valor_divida_capital: capital,
+        valor_juros_mora: juros,
+        taxa_juros: 4.0,
+        custas_processuais_estimadas: custas,
+        valor_total_pedido: total,
+        tribunal_competente: novoTribunal,
+        fase_processual: novoFase,
+        data_ultima_atualizacao: new Date().toISOString().split("T")[0],
+        mandatario_responsavel: novoMandatario,
+        historico_tramitacao: [
+          ...processoExistente.historico_tramitacao,
+          {
+            id_fase: `tram-${Date.now()}`,
+            data_hora: new Date().toISOString().replace("T", " ").substring(0, 16),
+            fase: "Correção de Valores do Processo",
+            descricao: `Processo atualizado pela Administração. Novo valor global de ${total.toFixed(2)} € (Capital: ${capital.toFixed(2)} €).`,
+            responsavel: loggedUser.nome
+          }
+        ]
+      };
+      setProcessos(prev => prev.map(p => p.id_processo === editingProcessoId ? processoAtualizado : p));
+      saveProcessoJuridicoToSupabase(processoAtualizado).catch(console.error);
+      setShowNovoProcessoModal(false);
+      resetFormNovoProcesso();
+      showToast(`Processo ${editingProcessoId} atualizado com sucesso.`);
+      return;
+    }
+
     const total = capital + juros + custas;
 
     // Numeração humana sequencial (PROC-ano/nº-JUR), mas a garantir unicidade
@@ -200,6 +337,7 @@ export function ConstituicaoProcessosJuridicos({
       valor_juros_mora: juros,
       taxa_juros: 4.0,
       custas_processuais_estimadas: custas,
+      despesas_extra: [],
       valor_total_pedido: total,
       tribunal_competente: novoTribunal,
       fase_processual: novoFase,
@@ -223,7 +361,46 @@ export function ConstituicaoProcessosJuridicos({
     saveProcessoJuridicoToSupabase(novoProcesso).catch(console.error);
     setSelectedProcessoId(novoId);
     setShowNovoProcessoModal(false);
+    resetFormNovoProcesso();
     showToast(`Processo ${novoId} constituído com sucesso! Pode agora juntar recibos, prints e provas.`);
+  };
+
+  // Adiciona/remove uma despesa avulsa (CTT, declarações, custos de
+  // tribunal) ao processo atualmente selecionado, recalculando o total.
+  const handleAddDespesaExtra = () => {
+    if (!currentProcesso) return;
+    if (!novaDespesaDescricao.trim() || novaDespesaValor <= 0) {
+      showToast("Indique a descrição e o valor da despesa.");
+      return;
+    }
+    const novaDespesa = { id: `desp-${Date.now()}`, descricao: novaDespesaDescricao.trim(), valor: novaDespesaValor, data: novaDespesaData };
+    const despesasAtualizadas = [...(currentProcesso.despesas_extra || []), novaDespesa];
+    const totalDespesas = despesasAtualizadas.reduce((s, d) => s + d.valor, 0);
+    const processoAtualizado: ProcessoJuridico = {
+      ...currentProcesso,
+      despesas_extra: despesasAtualizadas,
+      valor_total_pedido: currentProcesso.valor_divida_capital + currentProcesso.valor_juros_mora + currentProcesso.custas_processuais_estimadas + totalDespesas,
+      data_ultima_atualizacao: new Date().toISOString().split("T")[0]
+    };
+    setProcessos(prev => prev.map(p => p.id_processo === currentProcesso.id_processo ? processoAtualizado : p));
+    saveProcessoJuridicoToSupabase(processoAtualizado).catch(console.error);
+    setNovaDespesaDescricao("");
+    setNovaDespesaValor(0);
+    showToast("Despesa adicionada ao processo.");
+  };
+
+  const handleRemoveDespesaExtra = (idDespesa: string) => {
+    if (!currentProcesso) return;
+    const despesasAtualizadas = (currentProcesso.despesas_extra || []).filter(d => d.id !== idDespesa);
+    const totalDespesas = despesasAtualizadas.reduce((s, d) => s + d.valor, 0);
+    const processoAtualizado: ProcessoJuridico = {
+      ...currentProcesso,
+      despesas_extra: despesasAtualizadas,
+      valor_total_pedido: currentProcesso.valor_divida_capital + currentProcesso.valor_juros_mora + currentProcesso.custas_processuais_estimadas + totalDespesas,
+      data_ultima_atualizacao: new Date().toISOString().split("T")[0]
+    };
+    setProcessos(prev => prev.map(p => p.id_processo === currentProcesso.id_processo ? processoAtualizado : p));
+    saveProcessoJuridicoToSupabase(processoAtualizado).catch(console.error);
   };
 
   // Submit: Adicionar Prova
@@ -708,7 +885,7 @@ export function ConstituicaoProcessosJuridicos({
                     </h3>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <button
                       onClick={() => setShowAddProvaModal(true)}
                       className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-2 cursor-pointer border border-emerald-400"
@@ -722,6 +899,20 @@ export function ConstituicaoProcessosJuridicos({
                     >
                       <i className="fa-solid fa-clock-rotate-left"></i>
                       <span>Marco</span>
+                    </button>
+                    <button
+                      onClick={() => iniciarEdicaoProcesso(currentProcesso)}
+                      className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer border border-slate-300 dark:border-slate-700"
+                      title="Editar Processo (corrigir valores/dados)"
+                    >
+                      <i className="fa-solid fa-pen"></i>
+                    </button>
+                    <button
+                      onClick={() => handleEliminarProcesso(currentProcesso)}
+                      className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer border border-rose-200 dark:border-rose-900"
+                      title="Eliminar Processo"
+                    >
+                      <i className="fa-solid fa-trash-can"></i>
                     </button>
                   </div>
                 </div>
@@ -750,7 +941,8 @@ export function ConstituicaoProcessosJuridicos({
                       {currentProcesso.valor_total_pedido.toFixed(2)} €
                     </span>
                     <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
-                      Cap: {currentProcesso.valor_divida_capital.toFixed(2)} € | Jur: {currentProcesso.valor_juros_mora.toFixed(2)} €
+                      Cap: {currentProcesso.valor_divida_capital.toFixed(2)} € | Jur: {currentProcesso.valor_juros_mora.toFixed(2)} € | Taxa: {currentProcesso.custas_processuais_estimadas.toFixed(2)} €
+                      {(currentProcesso.despesas_extra || []).length > 0 && ` | Desp: ${(currentProcesso.despesas_extra || []).reduce((s, d) => s + d.valor, 0).toFixed(2)} €`}
                     </span>
                   </div>
                 </div>
@@ -758,6 +950,64 @@ export function ConstituicaoProcessosJuridicos({
                 <div className="p-3 bg-slate-50/70 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                   <strong className="text-slate-800 dark:text-white">Resumo dos Factos: </strong>
                   {currentProcesso.descricao_resumo}
+                </div>
+              </div>
+
+              {/* SECTION: DESPESAS EXTRA (CTT, declarações, custos de tribunal
+                  além da taxa de justiça) — antes só existia a taxa de justiça
+                  fixa, sem forma de juntar outras despesas reais do processo. */}
+              <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-3">
+                <h4 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  <i className="fa-solid fa-receipt text-amber-500"></i>
+                  Despesas Extra do Processo ({(currentProcesso.despesas_extra || []).length})
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Declarações pedidas, cartas registadas CTT, custos de tribunal ou outras despesas reais além da taxa de justiça — somadas ao Valor Total do Pedido.
+                </p>
+
+                {(currentProcesso.despesas_extra || []).length > 0 && (
+                  <div className="space-y-1.5">
+                    {(currentProcesso.despesas_extra || []).map(d => (
+                      <div key={d.id} className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200 dark:border-slate-800 text-xs">
+                        <div>
+                          <span className="font-semibold text-slate-800 dark:text-white">{d.descricao}</span>
+                          <span className="text-[10px] text-slate-400 block">{formatDatePT(d.data)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-slate-800 dark:text-white">{d.valor.toFixed(2)} €</span>
+                          <button
+                            onClick={() => handleRemoveDespesaExtra(d.id)}
+                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <i className="fa-solid fa-trash-can text-[10px]"></i>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <input
+                    type="text"
+                    value={novaDespesaDescricao}
+                    onChange={e => setNovaDespesaDescricao(e.target.value)}
+                    placeholder="Ex: Carta Registada CTT AR"
+                    className="sm:col-span-2 px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950"
+                  />
+                  <MoneyInput
+                    value={novaDespesaValor}
+                    onChange={setNovaDespesaValor}
+                    placeholder="Valor (€)"
+                    className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddDespesaExtra}
+                    className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                  >
+                    + Adicionar Despesa
+                  </button>
                 </div>
               </div>
 
@@ -1290,10 +1540,10 @@ export function ConstituicaoProcessosJuridicos({
             <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-900 text-white">
               <h3 className="text-base font-bold flex items-center gap-2">
                 <i className="fa-solid fa-gavel text-emerald-400"></i>
-                Iniciar Novo Processo de Contencioso / Judicial
+                {editingProcessoId ? `Editar Processo ${editingProcessoId}` : "Iniciar Novo Processo de Contencioso / Judicial"}
               </h3>
               <button
-                onClick={() => setShowNovoProcessoModal(false)}
+                onClick={() => { setShowNovoProcessoModal(false); resetFormNovoProcesso(); }}
                 className="text-slate-400 hover:text-white p-2 rounded-lg cursor-pointer"
               >
                 <i className="fa-solid fa-xmark text-base"></i>
@@ -1354,9 +1604,19 @@ export function ConstituicaoProcessosJuridicos({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Valor da Dívida Capital (€)
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Valor da Dívida Capital (€)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setNovoValorCapital(calcularDividaRealFracao(novoFracaoId).toFixed(2))}
+                      className="text-[10px] font-bold text-emerald-600 hover:underline cursor-pointer"
+                      title="Ir buscar novamente o valor real em dívida da fração (avisos Pendente/Paga Parcialmente)"
+                    >
+                      <i className="fa-solid fa-rotate mr-1"></i>Recalcular da dívida real
+                    </button>
+                  </div>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -1365,6 +1625,7 @@ export function ConstituicaoProcessosJuridicos({
                     onChange={(e) => setNovoValorCapital(e.target.value)}
                     className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl font-mono text-slate-800 dark:text-white"
                   />
+                  <p className="text-[9px] text-slate-400">Preenchido a partir dos avisos reais em dívida desta fração — continua editável se precisar de ajustar.</p>
                 </div>
 
                 <div className="space-y-1">
@@ -1399,7 +1660,7 @@ export function ConstituicaoProcessosJuridicos({
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setShowNovoProcessoModal(false)}
+                  onClick={() => { setShowNovoProcessoModal(false); resetFormNovoProcesso(); }}
                   className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 cursor-pointer"
                 >
                   Cancelar
@@ -1409,7 +1670,7 @@ export function ConstituicaoProcessosJuridicos({
                   className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer border border-emerald-400"
                 >
                   <i className="fa-solid fa-gavel"></i>
-                  <span>Criar Dossiê do Processo</span>
+                  <span>{editingProcessoId ? "Guardar Alterações" : "Criar Dossiê do Processo"}</span>
                 </button>
               </div>
             </form>
