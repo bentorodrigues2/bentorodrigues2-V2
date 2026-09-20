@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso, Fornecedor } from "../types";
 import { formatDatePT, parseValorMonetario } from "../utils";
-import { saveMovimentoToSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria } from "../lib/supabaseService";
+import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria } from "../lib/supabaseService";
 import { cruzarMovimentoComFornecedor } from "../lib/fornecedorMatching";
 import { Save, CheckCircle2 } from "lucide-react";
+import { MoneyInput } from "./MoneyInput";
 
 interface GestaoMovimentosProps {
   predio: Predio;
@@ -586,6 +587,42 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   const cegosPendentesPagamento = todosCegosPendentes.filter(m => m.descricao?.includes("[pagamento:"));
   const cegosPendentes = todosCegosPendentes.filter(m => !m.descricao?.includes("[pagamento:"));
 
+  // Ver detalhe / corrigir valor / eliminar um movimento cego reconhecido
+  // automaticamente por email — antes só era possível anexar um comprovativo
+  // ("Regularizar"), sem forma de ver o que a IA reconheceu, corrigir um
+  // valor errado (ex: extração falhada, veio a 0€) ou eliminar duplicados.
+  const [detalheMovId, setDetalheMovId] = useState<string | null>(null);
+  const [editValorMov, setEditValorMov] = useState<number>(0);
+  const [editDescricaoMov, setEditDescricaoMov] = useState("");
+  const [aGuardarDetalheMov, setAGuardarDetalheMov] = useState(false);
+
+  const abrirDetalheMov = (m: Movimento) => {
+    setDetalheMovId(m.id_mov);
+    setEditValorMov(Math.abs(m.valor));
+    setEditDescricaoMov(m.descricao);
+  };
+
+  const handleGuardarDetalheMov = async () => {
+    const mov = predioMovements.find(m => m.id_mov === detalheMovId);
+    if (!mov) return;
+    setAGuardarDetalheMov(true);
+    const sinal = mov.valor < 0 ? -1 : 1;
+    const atualizado: Movimento = { ...mov, valor: sinal * Math.abs(editValorMov), descricao: editDescricaoMov };
+    const ok = await saveMovimentoToSupabase(atualizado);
+    setAGuardarDetalheMov(false);
+    if (!ok) return alert("❌ Não foi possível gravar a correção no Supabase.");
+    setMovements(prev => prev.map(m => m.id_mov === atualizado.id_mov ? atualizado : m));
+    setDetalheMovId(null);
+  };
+
+  const handleEliminarMov = async (idMov: string) => {
+    if (!window.confirm("Eliminar este movimento? Esta ação não pode ser desfeita.")) return;
+    const ok = await deleteMovimentoFromSupabase(idMov);
+    if (!ok) return alert("❌ Não foi possível eliminar o movimento no Supabase.");
+    setMovements(prev => prev.filter(m => m.id_mov !== idMov));
+    setDetalheMovId(null);
+  };
+
   // Dívida real por fração: soma dos avisos de "Cota Ordinária" vencidos e
   // por pagar (o campo divida_total da fração nunca chegou a ser lido/
   // escrito do Supabase, ficando sempre vazio).
@@ -651,37 +688,53 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                     <p className="font-semibold text-slate-800 line-clamp-1">{m.descricao}</p>
                     <p className="text-[10px] text-slate-500 font-mono-custom">Banco: {cta?.banco} | Valor: <span className="font-bold text-red-600">-{m.valor.toFixed(2)}€</span></p>
                   </div>
-                  <div>
+                  <div className="flex items-center gap-1 shrink-0">
                     {justifyingMovId === m.id_mov ? (
                       <div className="flex items-center space-x-1.5">
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          onChange={(e) => handleJustificationFileChange(e, m.id_mov)} 
-                          className="hidden" 
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleJustificationFileChange(e, m.id_mov)}
+                          className="hidden"
                           id={`input-justificar-${m.id_mov}`}
                         />
-                        <label 
-                          htmlFor={`input-justificar-${m.id_mov}`} 
+                        <label
+                          htmlFor={`input-justificar-${m.id_mov}`}
                           className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded text-[10px] font-bold cursor-pointer transition-colors"
                         >
                           <i className="fa-solid fa-cloud-arrow-up mr-1"></i> Carregar
                         </label>
-                        <button 
-                          onClick={() => setJustifyingMovId(null)} 
+                        <button
+                          onClick={() => setJustifyingMovId(null)}
                           className="text-slate-400 hover:text-slate-600 text-[10px] underline"
                         >
                           Cancelar
                         </button>
                       </div>
                     ) : (
-                      <button 
-                        onClick={() => setJustifyingMovId(m.id_mov)} 
-                        className="bg-amber-600 hover:bg-amber-700 text-white px-2.5 py-1 rounded text-[10px] font-bold flex items-center space-x-1 transition-colors cursor-pointer"
-                      >
-                        <i className="fa-solid fa-file-invoice mr-1"></i>
-                        <span>Regularizar</span>
-                      </button>
+                      <>
+                        <button
+                          onClick={() => abrirDetalheMov(m)}
+                          title="Ver detalhe / Corrigir valor"
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-600 p-1.5 rounded text-[10px] font-bold transition-colors cursor-pointer"
+                        >
+                          <i className="fa-solid fa-eye"></i>
+                        </button>
+                        <button
+                          onClick={() => handleEliminarMov(m.id_mov)}
+                          title="Eliminar"
+                          className="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded text-[10px] font-bold transition-colors cursor-pointer"
+                        >
+                          <i className="fa-solid fa-trash-can"></i>
+                        </button>
+                        <button
+                          onClick={() => setJustifyingMovId(m.id_mov)}
+                          className="bg-amber-600 hover:bg-amber-700 text-white px-2.5 py-1 rounded text-[10px] font-bold flex items-center space-x-1 transition-colors cursor-pointer"
+                        >
+                          <i className="fa-solid fa-file-invoice mr-1"></i>
+                          <span>Regularizar</span>
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -690,6 +743,78 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
           </div>
         </div>
       )}
+
+      {/* MODAL: Ver detalhe / corrigir valor / eliminar um movimento cego */}
+      {detalheMovId && (() => {
+        const mov = predioMovements.find(m => m.id_mov === detalheMovId);
+        if (!mov) return null;
+        return (
+          <div
+            onClick={(e) => { if (e.target === e.currentTarget) setDetalheMovId(null); }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+          >
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+              <div className="bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
+                <h3 className="text-sm font-bold flex items-center gap-2">
+                  <i className="fa-solid fa-magnifying-glass-dollar text-amber-400"></i>
+                  Detalhe do Movimento Reconhecido
+                </h3>
+                <button onClick={() => setDetalheMovId(null)} className="text-slate-400 hover:text-white cursor-pointer">
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+              <div className="p-4 space-y-3 text-xs">
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 space-y-1">
+                  <p><strong className="text-slate-600">Data:</strong> {formatDatePT(mov.data)}</p>
+                  <p><strong className="text-slate-600">Tipo:</strong> {mov.tipo}</p>
+                  <p><strong className="text-slate-600">Categoria:</strong> {mov.categoria}</p>
+                  <p><strong className="text-slate-600">Estado:</strong> {mov.estado}</p>
+                  {mov.id_fracao && <p><strong className="text-slate-600">Fração:</strong> {fracoes.find(f => f.id_fracao === mov.id_fracao)?.fracao_nome || mov.id_fracao}</p>}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 block">Descrição</label>
+                  <input
+                    type="text"
+                    value={editDescricaoMov}
+                    onChange={e => setEditDescricaoMov(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 block">
+                    Valor (€) {editValorMov === 0 && <span className="text-amber-600 font-normal">— reconhecimento automático veio a 0€, corrija manualmente</span>}
+                  </label>
+                  <MoneyInput
+                    value={editValorMov}
+                    onChange={setEditValorMov}
+                    className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-mono"
+                  />
+                </div>
+              </div>
+              <div className="p-4 border-t border-slate-200 flex items-center justify-between gap-2">
+                <button
+                  onClick={() => handleEliminarMov(mov.id_mov)}
+                  className="text-red-600 hover:text-red-700 text-xs font-bold cursor-pointer flex items-center gap-1.5"
+                >
+                  <i className="fa-solid fa-trash-can"></i> Eliminar Movimento
+                </button>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setDetalheMovId(null)} className="px-3 py-1.5 text-xs font-bold text-slate-500 cursor-pointer">Cancelar</button>
+                  <button
+                    onClick={handleGuardarDetalheMov}
+                    disabled={aGuardarDetalheMov}
+                    className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer"
+                  >
+                    {aGuardarDetalheMov ? "A gravar..." : "Guardar Correção"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Pagamentos pendentes de confirmação — criados automaticamente a partir
           de comprovativos recebidos por email; 1 clique confirma e envia o
@@ -710,14 +835,30 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                   <p className="font-semibold text-slate-800 line-clamp-1">{m.descricao.replace(/\s*\[pagamento:[^\]]+\]/, "")}</p>
                   <p className="text-[10px] text-slate-500 font-mono-custom">Valor: <span className="font-bold text-teal-700">{m.valor.toFixed(2)}€</span></p>
                 </div>
-                <button
-                  onClick={() => confirmarPagamentoEEnviarRecibo(m)}
-                  disabled={confirmandoPagamentoMovId === m.id_mov}
-                  className="bg-teal-600 hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-2.5 py-1 rounded text-[10px] font-bold flex items-center space-x-1 transition-colors cursor-pointer"
-                >
-                  <i className={`fa-solid ${confirmandoPagamentoMovId === m.id_mov ? "fa-spinner fa-spin" : "fa-check"} mr-1`}></i>
-                  <span>{confirmandoPagamentoMovId === m.id_mov ? "A confirmar..." : "Confirmar e Enviar Recibo"}</span>
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => abrirDetalheMov(m)}
+                    title="Ver detalhe / Corrigir valor"
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-600 p-1.5 rounded text-[10px] font-bold transition-colors cursor-pointer"
+                  >
+                    <i className="fa-solid fa-eye"></i>
+                  </button>
+                  <button
+                    onClick={() => handleEliminarMov(m.id_mov)}
+                    title="Eliminar"
+                    className="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded text-[10px] font-bold transition-colors cursor-pointer"
+                  >
+                    <i className="fa-solid fa-trash-can"></i>
+                  </button>
+                  <button
+                    onClick={() => confirmarPagamentoEEnviarRecibo(m)}
+                    disabled={confirmandoPagamentoMovId === m.id_mov}
+                    className="bg-teal-600 hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-2.5 py-1 rounded text-[10px] font-bold flex items-center space-x-1 transition-colors cursor-pointer"
+                  >
+                    <i className={`fa-solid ${confirmandoPagamentoMovId === m.id_mov ? "fa-spinner fa-spin" : "fa-check"} mr-1`}></i>
+                    <span>{confirmandoPagamentoMovId === m.id_mov ? "A confirmar..." : "Confirmar e Enviar Recibo"}</span>
+                  </button>
+                </div>
               </div>
             ))}
           </div>

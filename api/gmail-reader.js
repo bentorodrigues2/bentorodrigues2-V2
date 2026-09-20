@@ -1,4 +1,12 @@
 import { google } from "googleapis";
+import { processInboundEmail } from "../server/lib/inboundProcessor.js";
+
+// Normaliza o base64 devolvido pela API do Gmail (URL-safe: "-" e "_" em vez
+// de "+" e "/", RFC 4648 §5) para base64 padrão, antes de o decodificar —
+// sem isto, alguns anexos podiam ficar corrompidos silenciosamente.
+function base64UrlParaPadrao(str) {
+  return (str || "").replace(/-/g, "+").replace(/_/g, "/");
+}
 
 export default async function handler(req, res) {
   try {
@@ -60,7 +68,7 @@ export default async function handler(req, res) {
             anexos.push({
               filename: part.filename,
               mimeType: part.mimeType,
-              base64: attachment.data.data
+              base64: base64UrlParaPadrao(attachment.data.data)
             });
           }
         }
@@ -72,6 +80,19 @@ export default async function handler(req, res) {
         body,
         anexos
       });
+
+      // Processa o email diretamente aqui (em vez de depender de um sistema
+      // externo reencaminhar corretamente para /api/ai-studio?acao=inbound
+      // com os anexos incluídos) — confirmado em produção que esse
+      // reencaminhamento nunca incluía o campo "anexos", por isso nenhum
+      // email lido via Gmail alguma vez teve o seu anexo processado.
+      // Processar aqui, no mesmo pedido que já tem os anexos em mãos,
+      // elimina essa dependência por completo.
+      try {
+        await processInboundEmail({ from, subject, body, anexos });
+      } catch (errProc) {
+        console.error("[gmail-reader] Erro ao processar email inbound:", errProc);
+      }
 
       // Marcar como lido
       await gmail.users.messages.modify({
