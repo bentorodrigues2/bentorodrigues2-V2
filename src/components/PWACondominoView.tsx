@@ -17,6 +17,7 @@ import {
   Questionario
 } from "../types";
 import { generateAndDownloadPdf, downloadEmailDocument, exportToXLS, downloadBlob } from "../utils";
+import { usePwaBackButton } from "../utils/usePwaBackButton";
 import { GestaoDocumentos } from "./GestaoDocumentos";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
 import { DraggableAIFloatingButton } from "./DraggableAIFloatingButton";
@@ -202,6 +203,14 @@ export default function PWACondominoView({
   const [hasUnreadMessages, setHasUnreadMessages] = useState(true);
   const [selectedSubmenu, setSelectedSubmenu] = useState<string | null>(null);
   const [activePwaModal, setActivePwaModal] = useState<string | null>(null);
+
+  // Botão físico de "voltar" também dentro de sub-ecrãs/modais — não só
+  // no nível principal separador -> home (ver useEffect de activeTab mais
+  // acima). Cobre os dois níveis mais usados de navegação interna: o
+  // sub-módulo aberto dentro de um separador, e qualquer modal aberto por
+  // cima. Mesmo padrão reutilizável para outros modais, se necessário.
+  usePwaBackButton(selectedSubmenu !== null, () => setSelectedSubmenu(null));
+  usePwaBackButton(activePwaModal !== null, () => setActivePwaModal(null));
 
   // Audio recording, attachments & emojis states for chat
   const [isRecordingChatAudio, setIsRecordingChatAudio] = useState(false);
@@ -523,6 +532,7 @@ export default function PWACondominoView({
   const [documentSearch, setDocumentSearch] = useState("");
   const [documentCategory, setDocumentCategory] = useState("Todos");
   const [selectedDocPreview, setSelectedDocPreview] = useState<Documento | null>(null);
+  usePwaBackButton(selectedDocPreview !== null, () => setSelectedDocPreview(null));
 
   const getNotificationCount = (cardId: string) => {
     if (cardId === "ocorrencias") return 1;
