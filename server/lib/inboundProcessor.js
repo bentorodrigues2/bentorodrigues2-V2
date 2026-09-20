@@ -818,16 +818,25 @@ export async function processInboundEmail(payload) {
           console.warn("[inboundProcessor] Aviso na extração multimodal:", err?.message || err);
         }
 
-        // Segunda tentativa de identificar a fração: o email de quem enviou
-        // pode não corresponder a nenhum condómino registado, mas o
-        // comprovativo em si (extraído por IA) traz o IBAN de quem pagou —
-        // cruza-se contra o IBAN principal e as contas adicionais de cada
-        // proprietário/coproprietário.
-        if (!contexto?.id_fracao && dadosExtraidos?.ordenante_iban) {
+        // O comprovativo pertence a quem PAGOU, não necessariamente a quem
+        // enviou o email — um condómino pode reencaminhar o comprovativo de
+        // outra fração a partir da sua própria conta (ex: administrador
+        // interno a reencaminhar comprovativos que outros lhe enviaram).
+        // Por isso o IBAN do ordenante (extraído por IA do próprio
+        // documento) tem sempre prioridade sobre o contexto do remetente
+        // quando disponível, mesmo que o remetente já corresponda a um
+        // condómino registado — só cai para o contexto do remetente quando
+        // o IBAN não corresponde a nenhum proprietário/coproprietário
+        // conhecido.
+        if (dadosExtraidos?.ordenante_iban) {
           const contextoPorIban = await obterContextoPorIban(dadosExtraidos.ordenante_iban);
-          if (contextoPorIban) {
+          if (contextoPorIban && contextoPorIban.id_fracao !== contexto?.id_fracao) {
+            console.log(`[inboundProcessor] Fração identificada pelo IBAN do ordenante (${contextoPorIban.fracao}), diferente da fração do remetente do email (${contexto?.fracao || "nenhuma"}).`);
             contexto = contextoPorIban;
-            console.log(`[inboundProcessor] Fração identificada pelo IBAN do ordenante (${contexto.fracao}), o email do remetente não correspondia a nenhum condómino registado.`);
+          } else if (contextoPorIban) {
+            contexto = contextoPorIban;
+          } else if (!contexto?.id_fracao) {
+            console.log("[inboundProcessor] IBAN do ordenante não corresponde a nenhum condómino registado; mantém-se sem fração identificada.");
           }
         }
 
