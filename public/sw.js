@@ -1,11 +1,12 @@
 // CondoManager AI - Service Worker (Offline Cache, Push Notifications, Background Sync)
 
-const CACHE_NAME = "condomanager-v2.1-cache";
+const CACHE_NAME = "condomanager-v2.2-cache";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/manifest.json",
-  "/marca/21-icone-sem-moldura.png"
+  "/marca/icon-any-192.png",
+  "/marca/icon-maskable-192.png"
 ];
 
 // 1. Install Event - Pre-cache critical offline shell
@@ -85,8 +86,8 @@ self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : { title: "CondoManager AI", body: "Nova notificação do condomínio." };
   const options = {
     body: data.body,
-    icon: "/marca/21-icone-sem-moldura.png",
-    badge: "/marca/21-icone-sem-moldura.png",
+    icon: "/marca/icon-maskable-192.png",
+    badge: "/marca/icon-any-192.png",
     vibrate: [100, 50, 100],
     data: {
       url: data.url || "/"

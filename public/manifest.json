@@ -11,15 +11,27 @@
   "theme_color": "#10b981",
   "icons": [
     {
-      "src": "/marca/21-icone-sem-moldura.png",
+      "src": "/marca/icon-any-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "/marca/21-icone-sem-moldura.png",
+      "src": "/marca/icon-any-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/marca/icon-maskable-192.png",
       "type": "image/png",
       "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/marca/icon-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
       "purpose": "maskable"
     }
   ]

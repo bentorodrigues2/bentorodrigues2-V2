@@ -3,14 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <!-- Favicon (Separador do browser no computador e favoritos) -->
-    <link rel="icon" type="image/png" href="/marca/21-icone-sem-moldura.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/marca/icon-any-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/marca/icon-any-512.png" />
 
     <!-- Web App Manifest (PWA para Android / Chromium com o atalho "Condomínio") -->
     <link rel="manifest" href="/manifest.json" />
 
-    <!-- Apple Touch Icon (Atalho no ecrã principal iOS Safari / iPhone com o título "Condomínio") -->
-    <link rel="apple-touch-icon" sizes="180x180" href="/marca/21-icone-sem-moldura.png" />
-    <link rel="apple-touch-icon" href="/marca/21-icone-sem-moldura.png" />
+    <!-- Apple Touch Icon (Atalho no ecrã principal iOS Safari / iPhone com o título "Condomínio")
+         iOS preenche a área transparente de um apple-touch-icon a branco — por isso usa-se
+         sempre a versão de fundo sólido (nunca a "any", com cantos transparentes), para não
+         aparecer a moldura branca à volta do logótipo no ecrã principal. -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/marca/icon-apple-touch-180.png" />
+    <link rel="apple-touch-icon" href="/marca/icon-apple-touch-180.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Condomínio" />
