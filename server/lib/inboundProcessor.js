@@ -324,10 +324,17 @@ async function obterReciboMaisRecente(contexto) {
 async function registarComprovativoPendente({ categoria, dadosExtraidos, contexto, comprovativoUrl, remetenteEmail, fileHash }) {
   try {
     const tipoDocumento = (dadosExtraidos?.tipo_documento || "").toLowerCase();
+    // Sem dadosExtraidos (falha total da IA a ler o anexo) e sem a categoria
+    // do email ser "quotas", isto nunca se qualificava como comprovativo —
+    // uma fatura de fornecedor (Nowo, EDP, etc.) cuja leitura falhasse
+    // desaparecia por completo, sem nenhum registo em lado nenhum. Se havia
+    // mesmo um anexo real (fileHash presente), regista sempre na mesma,
+    // para nunca perder silenciosamente um documento que chegou.
     const isComprovativo =
       categoria === "quotas" ||
       ["comprovativo", "fatura", "recibo", "extrato"].includes(tipoDocumento) ||
-      (dadosExtraidos?.valor_total > 0);
+      (dadosExtraidos?.valor_total > 0) ||
+      (!dadosExtraidos && !!fileHash);
 
     if (!isComprovativo) return null;
 
