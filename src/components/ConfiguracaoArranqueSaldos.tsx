@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Predio, Fracao, Conta, Movimento, Aviso, LoggedUser } from "../types";
 import { parseValorMonetario } from "../utils";
-import { saveContaToSupabase, saveAvisosToSupabase, saveMovimentoToSupabase, registarLogAuditoria } from "../lib/supabaseService";
+import { saveContaToSupabase, saveAvisosToSupabase, saveMovimentoToSupabase, registarLogAuditoria, fetchObrasExtraFromSupabase } from "../lib/supabaseService";
+import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { 
   Sliders, 
   Wallet, 
@@ -24,7 +25,10 @@ import {
   DollarSign,
   Layers,
   Landmark,
-  Hammer
+  Hammer,
+  X,
+  Settings2,
+  Scale
 } from "lucide-react";
 import { triggerSendReaction } from "./SendingReactionModal";
 
@@ -53,6 +57,31 @@ export interface ContaArranqueItem {
   is_principal?: boolean;
 }
 
+// Um período de quota ordinária em dívida — várias entradas por fração
+// porque o valor da quota pode ter mudado ao longo do tempo (ex: 45€/mês
+// até março, 52€/mês depois). Cada período é dividido automaticamente em
+// Quota Ordinária + Fundo de Reserva (mesma regra dos 90%/10% já usada em
+// toda a app), e o total é meses em dívida × valor mensal.
+export interface DividaQuotaOrdinariaPeriodo {
+  id: string;
+  data_inicio: string; // "desde"
+  valor_quota_mensal: number; // valor total mensal (Ordinária + FCR)
+  meses_em_divida: number;
+}
+
+// Uma quota extraordinária em dívida, ligada (opcionalmente) a uma Obra
+// Extraordinária real já registada — transporta o valor calculado na
+// adjudicação da obra, discriminado por mês de início/fim de pagamentos.
+export interface DividaQuotaExtraItem {
+  id: string;
+  id_obra?: string;
+  descricao: string;
+  data_inicio_pagamentos: string;
+  data_fim_pagamentos: string;
+  valor_mensal: number;
+  valor_total: number;
+}
+
 export interface SaldoInicialFracao {
   id_fracao: string;
   fracao_nome: string;
@@ -61,6 +90,12 @@ export interface SaldoInicialFracao {
   valor_saldo: number;
   meses_atraso: number;
   observacoes: string;
+  // Discriminação real da dívida — substitui o valor único/generalizado.
+  // valor_saldo continua a existir e é recalculado automaticamente a
+  // partir destas listas, para manter compatível o resto do fluxo
+  // (contadores de totais, Ativo Líquido de Arranque).
+  dividasQuotasOrdinarias: DividaQuotaOrdinariaPeriodo[];
+  dividasQuotasExtras: DividaQuotaExtraItem[];
 }
 
 export interface MovimentoHistoricoTransitor {
@@ -169,10 +204,28 @@ export function ConfiguracaoArranqueSaldos({
         tipo_saldo: "REGULARIZADO",
         valor_saldo: 0,
         meses_atraso: 0,
-        observacoes: ""
+        observacoes: "",
+        dividasQuotasOrdinarias: [],
+        dividasQuotasExtras: []
       };
     });
   });
+
+  // Obras Extraordinárias reais já adjudicadas — para ligar uma dívida de
+  // quota extra a uma obra concreta em vez de um valor solto sem contexto.
+  const [obrasExtra, setObrasExtra] = useState<ObraExtraordinaria[]>([]);
+  useEffect(() => {
+    fetchObrasExtraFromSupabase(predio.id_predio).then(dados => setObrasExtra(dados || []));
+  }, [predio.id_predio]);
+
+  // Fração cujo modal de discriminação de dívidas está aberto
+  const [modalDividaFracaoId, setModalDividaFracaoId] = useState<string | null>(null);
+
+  const calcularTotalDivida = (sf: SaldoInicialFracao): number => {
+    const totalOrdinarias = (sf.dividasQuotasOrdinarias || []).reduce((soma, p) => soma + p.valor_quota_mensal * p.meses_em_divida, 0);
+    const totalExtras = (sf.dividasQuotasExtras || []).reduce((soma, e) => soma + e.valor_total, 0);
+    return Math.round((totalOrdinarias + totalExtras) * 100) / 100;
+  };
 
   // Atualizador de linha de saldo de fração
   const handleUpdateSaldoFracao = (id_fracao: string, fields: Partial<SaldoInicialFracao>) => {
@@ -182,10 +235,102 @@ export function ConfiguracaoArranqueSaldos({
         if (updated.tipo_saldo === "REGULARIZADO") {
           updated.valor_saldo = 0;
           updated.meses_atraso = 0;
+          updated.dividasQuotasOrdinarias = [];
+          updated.dividasQuotasExtras = [];
         }
         return updated;
       }
       return s;
+    }));
+  };
+
+  // --- Gestão dos itens de dívida discriminados (Quotas Ordinárias) ---
+  const handleAddPeriodoQuotaOrdinaria = (id_fracao: string) => {
+    const novoPeriodo: DividaQuotaOrdinariaPeriodo = {
+      id: "qord-" + Date.now(),
+      data_inicio: dataAbertura,
+      valor_quota_mensal: 0,
+      meses_em_divida: 1
+    };
+    setSaldosFracoes(prev => prev.map(s => {
+      if (s.id_fracao !== id_fracao) return s;
+      const updated = { ...s, dividasQuotasOrdinarias: [...s.dividasQuotasOrdinarias, novoPeriodo] };
+      updated.valor_saldo = calcularTotalDivida(updated);
+      return updated;
+    }));
+  };
+
+  const handleUpdatePeriodoQuotaOrdinaria = (id_fracao: string, id_periodo: string, fields: Partial<DividaQuotaOrdinariaPeriodo>) => {
+    setSaldosFracoes(prev => prev.map(s => {
+      if (s.id_fracao !== id_fracao) return s;
+      const updated = { ...s, dividasQuotasOrdinarias: s.dividasQuotasOrdinarias.map(p => p.id === id_periodo ? { ...p, ...fields } : p) };
+      updated.valor_saldo = calcularTotalDivida(updated);
+      return updated;
+    }));
+  };
+
+  const handleRemovePeriodoQuotaOrdinaria = (id_fracao: string, id_periodo: string) => {
+    setSaldosFracoes(prev => prev.map(s => {
+      if (s.id_fracao !== id_fracao) return s;
+      const updated = { ...s, dividasQuotasOrdinarias: s.dividasQuotasOrdinarias.filter(p => p.id !== id_periodo) };
+      updated.valor_saldo = calcularTotalDivida(updated);
+      return updated;
+    }));
+  };
+
+  // --- Gestão dos itens de dívida discriminados (Quotas Extra / Obras) ---
+  const handleAddDividaQuotaExtra = (id_fracao: string) => {
+    const novoItem: DividaQuotaExtraItem = {
+      id: "qext-" + Date.now(),
+      id_obra: undefined,
+      descricao: "",
+      data_inicio_pagamentos: dataAbertura,
+      data_fim_pagamentos: dataAbertura,
+      valor_mensal: 0,
+      valor_total: 0
+    };
+    setSaldosFracoes(prev => prev.map(s => {
+      if (s.id_fracao !== id_fracao) return s;
+      const updated = { ...s, dividasQuotasExtras: [...s.dividasQuotasExtras, novoItem] };
+      updated.valor_saldo = calcularTotalDivida(updated);
+      return updated;
+    }));
+  };
+
+  // Ao escolher uma obra real, pré-preenche a descrição e calcula a quota
+  // desta fração a partir do custo total da obra e da sua permilagem —
+  // reaproveita o valor já calculado na adjudicação, em vez de o admin ter
+  // de o voltar a calcular à mão.
+  const handleSelecionarObraDividaExtra = (id_fracao: string, id_periodo: string, id_obra: string) => {
+    const obra = obrasExtra.find(o => o.id === id_obra);
+    const fracao = predioFracoes.find(f => f.id_fracao === id_fracao);
+    if (!obra || !fracao) {
+      handleUpdateDividaQuotaExtra(id_fracao, id_periodo, { id_obra });
+      return;
+    }
+    const custoFracao = obra.valoresPorFracao?.[id_fracao] ?? (obra.custoTotal * (fracao.permilagem || 0)) / 1000;
+    handleUpdateDividaQuotaExtra(id_fracao, id_periodo, {
+      id_obra,
+      descricao: obra.descricao,
+      valor_total: Math.round(custoFracao * 100) / 100
+    });
+  };
+
+  const handleUpdateDividaQuotaExtra = (id_fracao: string, id_item: string, fields: Partial<DividaQuotaExtraItem>) => {
+    setSaldosFracoes(prev => prev.map(s => {
+      if (s.id_fracao !== id_fracao) return s;
+      const updated = { ...s, dividasQuotasExtras: s.dividasQuotasExtras.map(e => e.id === id_item ? { ...e, ...fields } : e) };
+      updated.valor_saldo = calcularTotalDivida(updated);
+      return updated;
+    }));
+  };
+
+  const handleRemoveDividaQuotaExtra = (id_fracao: string, id_item: string) => {
+    setSaldosFracoes(prev => prev.map(s => {
+      if (s.id_fracao !== id_fracao) return s;
+      const updated = { ...s, dividasQuotasExtras: s.dividasQuotasExtras.filter(e => e.id !== id_item) };
+      updated.valor_saldo = calcularTotalDivida(updated);
+      return updated;
     }));
   };
 
@@ -395,10 +540,54 @@ export function ConfiguracaoArranqueSaldos({
     setContas(novasContas);
     novasContas.forEach(c => saveContaToSupabase(c).catch(console.error));
 
-    // 2. Criar Avisos de Débito para as Frações com Dívida Inicial
+    // 2. Criar Avisos de Débito reais e discriminados para as Frações com
+    // Dívida Inicial — um aviso por cada período de quota ordinária e por
+    // cada quota extra/obra, em vez de um único valor genérico. Sendo
+    // avisos reais (estado "Pendente"), entram automaticamente nos
+    // cálculos de dívida pendente já usados em Contencioso Jurídico,
+    // Dashboard e Relatórios, sem precisar de nenhuma ligação extra.
     const novosAvisos: Aviso[] = [];
     saldosFracoes.forEach((sf) => {
-      if (sf.tipo_saldo === "DIVIDA" && sf.valor_saldo > 0) {
+      if (sf.tipo_saldo !== "DIVIDA") return;
+
+      sf.dividasQuotasOrdinarias.forEach((p, idx) => {
+        if (p.valor_quota_mensal <= 0 || p.meses_em_divida <= 0) return;
+        const valorFCR = Math.round(p.valor_quota_mensal * 0.1 * p.meses_em_divida * 100) / 100;
+        const valorTotal = Math.round(p.valor_quota_mensal * p.meses_em_divida * 100) / 100;
+        novosAvisos.push({
+          id_aviso: `aviso-inicial-qord-${sf.id_fracao}-${idx}-${Date.now()}`,
+          id_predio: predio.id_predio,
+          id_fracao: sf.id_fracao,
+          tipo: "Cota Ordinária",
+          data: dataAbertura,
+          vencimento: dataAbertura,
+          descricao: `Quotas Ordinárias em dívida da administração anterior — desde ${p.data_inicio} (${p.meses_em_divida} ${p.meses_em_divida === 1 ? "mês" : "meses"} × ${p.valor_quota_mensal.toFixed(2)}€). ${sf.observacoes}`.trim(),
+          valor: valorTotal,
+          valor_fundo_reserva: valorFCR,
+          estado: "Pendente"
+        });
+      });
+
+      sf.dividasQuotasExtras.forEach((it, idx) => {
+        if (it.valor_total <= 0) return;
+        novosAvisos.push({
+          id_aviso: `aviso-inicial-qext-${sf.id_fracao}-${idx}-${Date.now()}`,
+          id_predio: predio.id_predio,
+          id_fracao: sf.id_fracao,
+          tipo: "Quota Extraordinária",
+          data: dataAbertura,
+          vencimento: dataAbertura,
+          descricao: `Quota Extraordinária em dívida da administração anterior — ${it.descricao || "Obra"} (${it.data_inicio_pagamentos} a ${it.data_fim_pagamentos}, ${it.valor_mensal.toFixed(2)}€/mês). ${sf.observacoes}`.trim(),
+          valor: it.valor_total,
+          estado: "Pendente",
+          id_obra: it.id_obra || undefined
+        });
+      });
+
+      // Compatibilidade: fração marcada como DIVIDA mas sem nenhum item
+      // discriminado (admin não chegou a abrir o modal) — mantém o
+      // comportamento anterior como resguardo, para não perder o registo.
+      if (sf.dividasQuotasOrdinarias.length === 0 && sf.dividasQuotasExtras.length === 0 && sf.valor_saldo > 0) {
         novosAvisos.push({
           id_aviso: "aviso-inicial-" + sf.id_fracao,
           id_predio: predio.id_predio,
@@ -844,12 +1033,13 @@ export function ConfiguracaoArranqueSaldos({
                   <th className="p-3">Fração / Condómino</th>
                   <th className="p-3">Estado Inicial</th>
                   <th className="p-3">Valor do Saldo (€)</th>
-                  <th className="p-3">Meses em Atraso</th>
+                  <th className="p-3">Discriminação da Dívida</th>
                   <th className="p-3">Observações / Detalhe da Transição</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {saldosFracoes.map((sf) => {
+                  const temDetalhe = sf.dividasQuotasOrdinarias.length > 0 || sf.dividasQuotasExtras.length > 0;
                   return (
                     <tr key={sf.id_fracao} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="p-3 font-medium">
@@ -860,7 +1050,11 @@ export function ConfiguracaoArranqueSaldos({
                       <td className="p-3">
                         <select
                           value={sf.tipo_saldo}
-                          onChange={(e) => handleUpdateSaldoFracao(sf.id_fracao, { tipo_saldo: e.target.value as any })}
+                          onChange={(e) => {
+                            const novoTipo = e.target.value as SaldoInicialFracao["tipo_saldo"];
+                            handleUpdateSaldoFracao(sf.id_fracao, { tipo_saldo: novoTipo });
+                            if (novoTipo === "DIVIDA") setModalDividaFracaoId(sf.id_fracao);
+                          }}
                           className={`px-2.5 py-1.5 text-xs rounded-xl font-bold border transition-colors ${
                             sf.tipo_saldo === "DIVIDA"
                               ? "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-300 dark:border-red-800"
@@ -876,7 +1070,7 @@ export function ConfiguracaoArranqueSaldos({
                       </td>
 
                       <td className="p-3">
-                        {sf.tipo_saldo !== "REGULARIZADO" ? (
+                        {sf.tipo_saldo === "CREDITO" ? (
                           <div className="relative w-28">
                             <input
                               type="text"
@@ -887,6 +1081,8 @@ export function ConfiguracaoArranqueSaldos({
                             />
                             <span className="absolute right-2 top-1.5 text-[10px] text-slate-400 font-bold">€</span>
                           </div>
+                        ) : sf.tipo_saldo === "DIVIDA" ? (
+                          <span className="font-mono font-black text-red-600 dark:text-red-400">{sf.valor_saldo.toFixed(2)} €</span>
                         ) : (
                           <span className="text-slate-400 font-mono font-medium">0,00 €</span>
                         )}
@@ -894,14 +1090,20 @@ export function ConfiguracaoArranqueSaldos({
 
                       <td className="p-3">
                         {sf.tipo_saldo === "DIVIDA" ? (
-                          <input
-                            type="number"
-                            min="1"
-                            max="60"
-                            value={sf.meses_atraso || 1}
-                            onChange={(e) => handleUpdateSaldoFracao(sf.id_fracao, { meses_atraso: parseInt(e.target.value) || 1 })}
-                            className="w-16 px-2 py-1.5 text-xs text-center font-bold rounded-xl border border-red-300 dark:border-red-800 bg-white dark:bg-slate-950 text-red-600"
-                          />
+                          <button
+                            type="button"
+                            onClick={() => setModalDividaFracaoId(sf.id_fracao)}
+                            className={`px-2.5 py-1.5 text-[11px] rounded-xl font-bold border transition-colors cursor-pointer flex items-center gap-1.5 ${
+                              temDetalhe
+                                ? "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-300 dark:border-red-800"
+                                : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800 animate-pulse"
+                            }`}
+                          >
+                            <Settings2 className="h-3.5 w-3.5" />
+                            {temDetalhe
+                              ? `${sf.dividasQuotasOrdinarias.length + sf.dividasQuotasExtras.length} dívida(s) — Editar`
+                              : "Configurar Dívidas"}
+                          </button>
                         ) : (
                           <span className="text-slate-400">-</span>
                         )}
@@ -923,6 +1125,11 @@ export function ConfiguracaoArranqueSaldos({
             </table>
           </div>
 
+          <p className="text-[10px] text-slate-400 flex items-center gap-1.5">
+            <Scale className="h-3 w-3" />
+            Cada dívida configurada aqui gera avisos reais por fração — aparecem automaticamente em Financeiro (Emissão de Quotas) e são cruzados com a área Jurídica (Contencioso) para eventuais processos, tal como qualquer outra quota em atraso.
+          </p>
+
           <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
             <button
               onClick={() => setCurrentStep(1)}
@@ -942,6 +1149,234 @@ export function ConfiguracaoArranqueSaldos({
           </div>
         </div>
       )}
+
+      {/* ===================================================================
+          MODAL: DISCRIMINAÇÃO DE DÍVIDAS DA FRAÇÃO — em vez de um valor
+          generalizado, permite compor a dívida real a partir de Quotas
+          Ordinárias (vários períodos, porque o valor pode ter oscilado) e
+          Quotas Extraordinárias (ligadas a obras reais adjudicadas), cada
+          item totalmente editável e eliminável. */}
+      {modalDividaFracaoId && (() => {
+        const sf = saldosFracoes.find(s => s.id_fracao === modalDividaFracaoId);
+        if (!sf) return null;
+        const obrasComCotaExtra = obrasExtra.filter(o => o.necessitaCotaExtra);
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-3xl w-full max-h-[88vh] overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col">
+              <div className="bg-slate-900 dark:bg-slate-950 px-6 py-4 text-white flex justify-between items-center shrink-0">
+                <div>
+                  <h3 className="font-bold text-sm flex items-center gap-2">
+                    <Scale className="h-4 w-4 text-red-400" />
+                    Discriminação da Dívida — Fração {sf.fracao_nome}
+                  </h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{sf.proprietario_nome} · Total: <strong className="text-red-400">{sf.valor_saldo.toFixed(2)} €</strong></p>
+                </div>
+                <button onClick={() => setModalDividaFracaoId(null)} className="text-slate-300 hover:text-white cursor-pointer p-1">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-6 overflow-y-auto">
+                {/* DÍVIDA 1: QUOTAS ORDINÁRIAS MENSAIS */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <Wallet className="h-4 w-4 text-indigo-500" />
+                      Dívida 1 — Quotas Ordinárias Mensais
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => handleAddPeriodoQuotaOrdinaria(sf.id_fracao)}
+                      className="px-2.5 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 border border-indigo-300 dark:border-indigo-700/50 text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="h-3 w-3" /> Adicionar Período
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-400">Pode adicionar vários períodos se o valor da quota mudou ao longo do tempo (ex: um valor até certa data, outro depois).</p>
+
+                  {sf.dividasQuotasOrdinarias.length === 0 ? (
+                    <p className="text-[11px] text-slate-400 italic py-2">Sem períodos de quota ordinária em dívida.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {sf.dividasQuotasOrdinarias.map((p) => {
+                        const valorFCR = Math.round(p.valor_quota_mensal * 0.1 * 100) / 100;
+                        const valorOrdinaria = Math.round((p.valor_quota_mensal - valorFCR) * 100) / 100;
+                        const totalPeriodo = Math.round(p.valor_quota_mensal * p.meses_em_divida * 100) / 100;
+                        return (
+                          <div key={p.id} className="p-3 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40 grid grid-cols-2 sm:grid-cols-5 gap-2.5 items-end">
+                            <div className="col-span-2 sm:col-span-1">
+                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Desde</label>
+                              <input
+                                type="date"
+                                value={p.data_inicio}
+                                onChange={(e) => handleUpdatePeriodoQuotaOrdinaria(sf.id_fracao, p.id, { data_inicio: e.target.value })}
+                                className="w-full px-2 py-1.5 text-[11px] rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-bold"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Quota Mensal Total</label>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={p.valor_quota_mensal || ""}
+                                onChange={(e) => handleUpdatePeriodoQuotaOrdinaria(sf.id_fracao, p.id, { valor_quota_mensal: parseValorMonetario(e.target.value) })}
+                                placeholder="0,00"
+                                className="w-full px-2 py-1.5 text-[11px] font-mono font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Meses em Dívida</label>
+                              <input
+                                type="number"
+                                min="1"
+                                max="120"
+                                value={p.meses_em_divida || 1}
+                                onChange={(e) => handleUpdatePeriodoQuotaOrdinaria(sf.id_fracao, p.id, { meses_em_divida: parseInt(e.target.value) || 1 })}
+                                className="w-full px-2 py-1.5 text-[11px] text-center font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Ordinária / FCR</label>
+                              <p className="text-[10px] font-mono text-slate-600 dark:text-slate-300 leading-tight">{valorOrdinaria.toFixed(2)}€ + {valorFCR.toFixed(2)}€</p>
+                            </div>
+                            <div className="flex items-center justify-between gap-1">
+                              <div>
+                                <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Total</label>
+                                <p className="text-xs font-mono font-black text-red-600 dark:text-red-400">{totalPeriodo.toFixed(2)}€</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemovePeriodoQuotaOrdinaria(sf.id_fracao, p.id)}
+                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer shrink-0"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* DÍVIDA 2: QUOTAS EXTRAORDINÁRIAS (OBRAS) */}
+                <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <Hammer className="h-4 w-4 text-amber-500" />
+                      Dívida 2 — Quotas Extraordinárias (Obras)
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => handleAddDividaQuotaExtra(sf.id_fracao)}
+                      className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700/50 text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="h-3 w-3" /> Adicionar Dívida de Obra
+                    </button>
+                  </div>
+
+                  {sf.dividasQuotasExtras.length === 0 ? (
+                    <p className="text-[11px] text-slate-400 italic py-2">Sem quotas extraordinárias em dívida.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {sf.dividasQuotasExtras.map((it) => (
+                        <div key={it.id} className="p-3 rounded-xl bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 space-y-2.5">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Obra Adjudicada</label>
+                              <select
+                                value={it.id_obra || ""}
+                                onChange={(e) => handleSelecionarObraDividaExtra(sf.id_fracao, it.id, e.target.value)}
+                                className="w-full px-2 py-1.5 text-[11px] rounded-lg border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-950 font-bold"
+                              >
+                                <option value="">— Sem ligação a obra (valor manual) —</option>
+                                {obrasComCotaExtra.map(o => (
+                                  <option key={o.id} value={o.id}>{o.descricao} ({o.custoTotal.toFixed(2)}€)</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Descrição</label>
+                              <input
+                                type="text"
+                                value={it.descricao}
+                                onChange={(e) => handleUpdateDividaQuotaExtra(sf.id_fracao, it.id, { descricao: e.target.value })}
+                                placeholder="Ex: Reparação do telhado"
+                                className="w-full px-2 py-1.5 text-[11px] rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 items-end">
+                            <div>
+                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Início Pagamentos</label>
+                              <input
+                                type="date"
+                                value={it.data_inicio_pagamentos}
+                                onChange={(e) => handleUpdateDividaQuotaExtra(sf.id_fracao, it.id, { data_inicio_pagamentos: e.target.value })}
+                                className="w-full px-2 py-1.5 text-[11px] rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-bold"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Fim Pagamentos</label>
+                              <input
+                                type="date"
+                                value={it.data_fim_pagamentos}
+                                onChange={(e) => handleUpdateDividaQuotaExtra(sf.id_fracao, it.id, { data_fim_pagamentos: e.target.value })}
+                                className="w-full px-2 py-1.5 text-[11px] rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-bold"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Valor Mensal</label>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={it.valor_mensal || ""}
+                                onChange={(e) => handleUpdateDividaQuotaExtra(sf.id_fracao, it.id, { valor_mensal: parseValorMonetario(e.target.value) })}
+                                placeholder="0,00"
+                                className="w-full px-2 py-1.5 text-[11px] font-mono font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Valor Total</label>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={it.valor_total || ""}
+                                onChange={(e) => handleUpdateDividaQuotaExtra(sf.id_fracao, it.id, { valor_total: parseValorMonetario(e.target.value) })}
+                                placeholder="0,00"
+                                className="w-full px-2 py-1.5 text-[11px] font-mono font-black text-red-600 dark:text-red-400 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveDividaQuotaExtra(sf.id_fracao, it.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer shrink-0 justify-self-end"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-950/60">
+                <span className="text-xs text-slate-500">
+                  Total desta fração: <strong className="text-red-600 dark:text-red-400 font-mono">{sf.valor_saldo.toFixed(2)} €</strong>
+                </span>
+                <button
+                  onClick={() => setModalDividaFracaoId(null)}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition-all cursor-pointer"
+                >
+                  Concluído
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* PASSO 3: MOVIMENTOS ANTERIORES & HISTÓRICO ORÇAMENTAL */}
