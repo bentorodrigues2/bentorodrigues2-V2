@@ -80,9 +80,17 @@ async function obterFracoesDoPredio(id_predio) {
   return data || [];
 }
 
+// Lê sempre diretamente do JSONB de fracoes.proprietario — a mesma fonte de
+// verdade já usada em server/lib/inboundProcessor.js (obterContexto). A
+// tabela "proprietarios" paralela não é fiável: o upsert a partir do
+// frontend falhava sempre por incompatibilidade de tipos com colunas
+// enum/boolean (corrigido em src/lib/supabaseService.ts, mas manter aqui a
+// dependência da tabela paralela continuava frágil a uma futura regressão
+// do mesmo tipo) — o que fazia a emissão automática de quotas (dia 25) e a
+// emissão retroativa nunca encontrarem o email de nenhum proprietário real.
 async function obterProprietarioDaFracao(id_fracao) {
-  const { data } = await supabase.from("proprietarios").select("*").eq("id_fracao", id_fracao).maybeSingle();
-  return data || null;
+  const { data } = await supabase.from("fracoes").select("proprietario").eq("id_fracao", id_fracao).maybeSingle();
+  return data?.proprietario || null;
 }
 
 // Coeficiente real das lojas com acesso direto pelo exterior — NÃO é uma
