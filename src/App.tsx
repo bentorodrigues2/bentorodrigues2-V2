@@ -38,7 +38,7 @@ import { GestaoPredios } from "./components/GestaoPredios";
 import { GestaoFracoes } from "./components/GestaoFracoes";
 import { GestaoFornecedores } from "./components/GestaoFornecedores";
 import { GestaoContas } from "./components/GestaoContas";
-import { GestaoEmissao } from "./components/GestaoEmissao";
+import { GestaoQuotasOrcamento } from "./components/GestaoQuotasOrcamento";
 import { GestaoMovimentos } from "./components/GestaoMovimentos";
 import { IAConciliacao } from "./components/IAConciliacao";
 import { AgendadorAutomatico } from "./components/AgendadorAutomatico";
@@ -71,7 +71,6 @@ import { EnviosProgramados } from "./components/EnviosProgramados";
 import { CentralDocumentosMinutas } from "./components/CentralDocumentosMinutas";
 import { ConfiguracaoArranqueSaldos } from "./components/ConfiguracaoArranqueSaldos";
 import { AgendaManutencao } from "./components/AgendaManutencao";
-import { CalculoQuotas } from "./components/CalculoQuotas";
 import { GestaoSinistrosSeguros } from "./components/GestaoSinistrosSeguros";
 import { MuralDigitalReservas } from "./components/MuralDigitalReservas";
 import { SecurityAuditModal } from "./components/SecurityAuditModal";
@@ -378,7 +377,7 @@ export default function App() {
 
   // Sincronização automática para manter aberto o menu Área Financeira quando uma das suas secções está ativa
   useEffect(() => {
-    if (["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "saldos_iniciais", "contas", "fundo_reserva"].includes(activeSection)) {
+    if (["quotas_orcamento", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "saldos_iniciais", "contas", "fundo_reserva"].includes(activeSection)) {
       setOpenMenuFinanceiro(true);
     }
   }, [activeSection]);
@@ -1313,14 +1312,14 @@ export default function App() {
               id="sidebar-item-financeiro"
               onClick={() => {
                 setOpenMenuFinanceiro(!openMenuFinanceiro);
-                if (!["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection)) {
+                if (!["quotas_orcamento", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection)) {
                   setActiveSection("configuracao_arranque");
                 }
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                ["emissao", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection) 
+                ["quotas_orcamento", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection) 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
                   : "text-slate-400 hover:text-white hover:bg-slate-800/30"
               }`}
@@ -1362,18 +1361,18 @@ export default function App() {
                 <button
                   id="submenu-financeiro-emissao"
                   onClick={() => {
-                    setActiveSection("emissao");
+                    setActiveSection("quotas_orcamento");
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "emissao"
+                    activeSection === "quotas_orcamento"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/62-calculadora.png" alt="Orçamento Anual" className="w-4 h-4 object-contain shrink-0" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
-                  <span>Orçamento Anual & Emissão</span>
+                  <img src="/modulos/62-calculadora.png" alt="Quotas & Orçamento Anual" className="w-4 h-4 object-contain shrink-0" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                  <span>Quotas & Orçamento Anual</span>
                 </button>
                 {/* Antes sem nenhum botão em lado nenhum que lá levasse —
                     GestaoContas.tsx estava completamente órfão. */}
@@ -1394,29 +1393,6 @@ export default function App() {
                   <span>Contas Bancárias</span>
                 </button>
 
-                {/* --- COBRANÇA --- */}
-                <span className="block px-3 pt-2.5 pb-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500">Cobrança</span>
-                <button
-                  id="submenu-financeiro-calculo-quotas"
-                  onClick={() => {
-                    setActiveSection("calculo_quotas");
-                    setViewMode("BROWSER");
-                    setIaInitialTab(undefined);
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
-                    activeSection === "calculo_quotas"
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <img src="/modulos/62-calculadora.png" alt="Cálculo de Quotas" className="w-4 h-4 object-contain shrink-0" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
-                    <span className="truncate">Cálculo de Quotas (Mensais + Extra)</span>
-                  </div>
-                  <span className="bg-emerald-500/20 text-emerald-300 text-[9px] font-bold rounded px-1.5 py-0.5 border border-emerald-400/30 shrink-0">
-                    Contas
-                  </span>
-                </button>
                 <button
                   onClick={() => {
                     setActiveSection("ia_avancada");
@@ -2608,8 +2584,7 @@ export default function App() {
                 {(activeSection === "fracoes" || activeSection === "fracoes_nova" || activeSection === "fracoes_proprietario" || activeSection === "fracoes_perfis") && "Gestão de Frações, Proprietários & Perfis"}
                 {activeSection === "fornecedores" && "Fichas de Fornecedores"}
                 {activeSection === "contas" && "Contas Bancárias do Condomínio"}
-                {activeSection === "calculo_quotas" && "Cálculo e Emissão de Quotas (Interligadas com Contas Bancárias)"}
-                {activeSection === "emissao" && "Emissão de Avisos e Orçamentos"}
+                {activeSection === "quotas_orcamento" && "Quotas & Orçamento Anual (Interligadas com Contas Bancárias)"}
                 {activeSection === "movimentos" && "Registo de Movimentos Financeiros"}
                 {activeSection === "financeiro_recibos" && "Emissão de Recibos Manuais (100% Editável)"}
                 {activeSection === "financeiro_relatorios" && "Relatórios de Dívidas (por Condómino & Pro Condomínio)"}
@@ -2812,19 +2787,8 @@ export default function App() {
             />
           )}
 
-          {activeSection === "calculo_quotas" && (
-            <CalculoQuotas
-              predio={predioAtivo}
-              fracoes={fracoes}
-              contas={contas}
-              avisos={avisos}
-              setAvisos={setAvisos}
-              loggedUser={loggedUser}
-            />
-          )}
-
-          {activeSection === "emissao" && (
-            <GestaoEmissao
+          {activeSection === "quotas_orcamento" && (
+            <GestaoQuotasOrcamento
               predio={predioAtivo}
               fracoes={fracoes}
               avisos={avisos}
