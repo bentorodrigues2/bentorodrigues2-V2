@@ -107,6 +107,14 @@ function limparIban(iban) {
   return String(iban || "").replace(/\s+/g, "").toUpperCase();
 }
 
+function normalizarTexto(texto) {
+  return String(texto || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+}
+
 /**
  * Segunda tentativa de identificação, usada quando o email do remetente não
  * corresponde a nenhum condómino/inquilino registado (ex: um comprovativo
@@ -156,6 +164,94 @@ async function obterContextoPorIban(ibanOrdenante) {
     return null;
   } catch (e) {
     console.warn("[inboundProcessor] Aviso ao buscar contexto por IBAN:", e?.message || e);
+    return null;
+  }
+}
+
+/**
+ * Terceira tentativa de identificação: procura a referência individual
+ * BR23E de cada fração (gerada em GestaoFracoes.tsx para conciliação
+ * bancária) dentro do texto que o ordenante escreveu no campo
+ * "Descritivo"/"Referência" da transferência. Usada quando o IBAN do
+ * ordenante não vem no documento ou não corresponde a nenhum proprietário
+ * conhecido (ex: MB Way, ou transferência feita a partir de conta de
+ * terceiros a pedido do condómino).
+ */
+async function obterContextoPorReferencia(descritivoTransferencia) {
+  try {
+    const textoNormalizado = normalizarTexto(descritivoTransferencia);
+    if (!textoNormalizado) return null;
+
+    const { data: todasFracoes, error } = await supabase
+      .from("fracoes")
+      .select("*, predios(*)");
+
+    if (error || !Array.isArray(todasFracoes)) return null;
+
+    for (const fracao of todasFracoes) {
+      const refNormalizada = normalizarTexto(fracao.referencia_br23e);
+      if (refNormalizada && textoNormalizado.includes(refNormalizada)) {
+        return {
+          ...fracao,
+          fracao: fracao.fracao_nome || fracao.id_fracao || "Fração",
+          id_predio: fracao.id_predio || fracao.predios?.id_predio || null,
+          nome: fracao.proprietario?.nome || null,
+          id_proprietario: fracao.proprietario?.nif || null,
+          identificado_por: "referencia_br23e"
+        };
+      }
+    }
+
+    return null;
+  } catch (e) {
+    console.warn("[inboundProcessor] Aviso ao buscar contexto por referência BR23E:", e?.message || e);
+    return null;
+  }
+}
+
+/**
+ * Quarta e última tentativa de identificação: cruza o nome do
+ * ordenante/titular extraído do comprovativo contra o nome dos
+ * proprietários/coproprietários de todas as frações. Só usada quando o
+ * IBAN e a referência BR23E não permitiram identificar a fração — o nome
+ * é o critério menos fiável (homónimos, nomes incompletos), por isso exige
+ * correspondência exata (normalizada) e um mínimo de caracteres.
+ */
+async function obterContextoPorNome(nomeOrdenante) {
+  try {
+    const nomeNormalizado = normalizarTexto(nomeOrdenante);
+    if (!nomeNormalizado || nomeNormalizado.length < 6) return null;
+
+    const { data: todasFracoes, error } = await supabase
+      .from("fracoes")
+      .select("*, predios(*)");
+
+    if (error || !Array.isArray(todasFracoes)) return null;
+
+    for (const fracao of todasFracoes) {
+      const pessoas = [
+        fracao.proprietario,
+        ...(Array.isArray(fracao.proprietarios_adicionais) ? fracao.proprietarios_adicionais : [])
+      ];
+
+      for (const pessoa of pessoas) {
+        if (!pessoa?.nome) continue;
+        if (normalizarTexto(pessoa.nome) === nomeNormalizado) {
+          return {
+            ...fracao,
+            fracao: fracao.fracao_nome || fracao.id_fracao || "Fração",
+            id_predio: fracao.id_predio || fracao.predios?.id_predio || null,
+            nome: pessoa.nome || null,
+            id_proprietario: pessoa.nif || null,
+            identificado_por: "nome_titular"
+          };
+        }
+      }
+    }
+
+    return null;
+  } catch (e) {
+    console.warn("[inboundProcessor] Aviso ao buscar contexto por nome do titular:", e?.message || e);
     return null;
   }
 }
@@ -828,15 +924,45 @@ export async function processInboundEmail(payload) {
         // condómino registado — só cai para o contexto do remetente quando
         // o IBAN não corresponde a nenhum proprietário/coproprietário
         // conhecido.
+        let contextoIdentificadoPorDocumento = false;
+
         if (dadosExtraidos?.ordenante_iban) {
           const contextoPorIban = await obterContextoPorIban(dadosExtraidos.ordenante_iban);
           if (contextoPorIban && contextoPorIban.id_fracao !== contexto?.id_fracao) {
             console.log(`[inboundProcessor] Fração identificada pelo IBAN do ordenante (${contextoPorIban.fracao}), diferente da fração do remetente do email (${contexto?.fracao || "nenhuma"}).`);
             contexto = contextoPorIban;
+            contextoIdentificadoPorDocumento = true;
           } else if (contextoPorIban) {
             contexto = contextoPorIban;
+            contextoIdentificadoPorDocumento = true;
           } else if (!contexto?.id_fracao) {
-            console.log("[inboundProcessor] IBAN do ordenante não corresponde a nenhum condómino registado; mantém-se sem fração identificada.");
+            console.log("[inboundProcessor] IBAN do ordenante não corresponde a nenhum condómino registado; a tentar por referência/nome.");
+          }
+        }
+
+        // Referência individual BR23E escrita no descritivo da transferência
+        // — segunda prioridade, usada quando o IBAN não vem no documento ou
+        // não corresponde a nenhum proprietário conhecido.
+        if (!contextoIdentificadoPorDocumento && dadosExtraidos?.descritivo_transferencia) {
+          const contextoPorRef = await obterContextoPorReferencia(dadosExtraidos.descritivo_transferencia);
+          if (contextoPorRef) {
+            if (contextoPorRef.id_fracao !== contexto?.id_fracao) {
+              console.log(`[inboundProcessor] Fração identificada pela referência BR23E no descritivo da transferência (${contextoPorRef.fracao}), diferente da fração do remetente do email (${contexto?.fracao || "nenhuma"}).`);
+            }
+            contexto = contextoPorRef;
+            contextoIdentificadoPorDocumento = true;
+          }
+        }
+
+        // Nome do titular/ordenante — última prioridade, só quando nem o
+        // IBAN nem a referência permitiram identificar a fração.
+        if (!contextoIdentificadoPorDocumento && dadosExtraidos?.ordenante_nome) {
+          const contextoPorNome = await obterContextoPorNome(dadosExtraidos.ordenante_nome);
+          if (contextoPorNome) {
+            if (contextoPorNome.id_fracao !== contexto?.id_fracao) {
+              console.log(`[inboundProcessor] Fração identificada pelo nome do titular/ordenante (${contextoPorNome.fracao}), diferente da fração do remetente do email (${contexto?.fracao || "nenhuma"}).`);
+            }
+            contexto = contextoPorNome;
           }
         }
 
