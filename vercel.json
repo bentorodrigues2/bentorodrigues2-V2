@@ -33,5 +33,9 @@
   "crons": [
     { "path": "/api/cron", "schedule": "0 7 * * *" },
     { "path": "/api/cron?forcar=notas-atraso-registados", "schedule": "0 8 20 9 *" }
-  ]
+  ],
+  "functions": {
+    "api/gmail-reader.js": { "maxDuration": 60 },
+    "api/webhooks/resend.js": { "maxDuration": 60 }
+  }
 }

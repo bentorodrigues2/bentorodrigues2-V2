@@ -829,7 +829,7 @@ export async function processInboundEmail(payload) {
   // o condómino recebia o aviso de receção e a resposta institucional 2x.
   const hashEmail = calcularHashEmail(cleanFrom, subject, textoEmail);
   if (await emailJaProcessadoRecentemente(hashEmail)) {
-    console.log(`[inboundProcessor] Email de ${cleanFrom} (assunto: ${subject}) já foi processado nos últimos 60 minutos — ignorado para evitar duplicação.`);
+    console.log(`[inboundProcessor] Email de ${cleanFrom} (assunto: ${subject}) já foi processado nos últimos 3 minutos — ignorado para evitar duplicação.`);
     return { ok: true, status: 200, autoresponder: false, motivo: "email_duplicado_ja_processado" };
   }
   try {
