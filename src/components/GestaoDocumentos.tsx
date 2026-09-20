@@ -62,6 +62,11 @@ export function GestaoDocumentos({
   // Main view mode tab: "documentos" or "fotografias" or "enciclopedia"
   const [activeTab, setActiveTab] = useState<"documentos" | "fotografias" | "enciclopedia">("documentos");
 
+  // Vista de listagem dos documentos: tabela (por omissão — mais fácil de
+  // procurar um documento específico entre muitos, ex: "50 notas de
+  // cobrança emitidas") ou os cartões visuais originais.
+  const [vistaDocumentos, setVistaDocumentos] = useState<"tabela" | "cartoes">("tabela");
+
   // Single dynamic filter bar states
   const [busca, setBusca] = useState("");
   const [filtroAno, setFiltroAno] = useState<string>("Todos");
@@ -2470,6 +2475,116 @@ export function GestaoDocumentos({
           </button>
         </div>
       ) : activeTab === "documentos" ? (
+        <div className="space-y-3">
+          {/* Alternador Tabela / Cartões */}
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-emerald-300 font-bold">{docsFiltrados.length} documento{docsFiltrados.length === 1 ? "" : "s"}</span>
+            <div className="flex items-center gap-1 bg-emerald-950 border border-emerald-700 rounded-xl p-0.5">
+              <button
+                type="button"
+                onClick={() => setVistaDocumentos("tabela")}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  vistaDocumentos === "tabela" ? "bg-emerald-400 text-emerald-950 shadow-xs" : "text-emerald-300 hover:text-white"
+                }`}
+              >
+                <i className="fa-solid fa-table-list"></i>
+                <span>Tabela</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setVistaDocumentos("cartoes")}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  vistaDocumentos === "cartoes" ? "bg-emerald-400 text-emerald-950 shadow-xs" : "text-emerald-300 hover:text-white"
+                }`}
+              >
+                <i className="fa-solid fa-grip"></i>
+                <span>Cartões</span>
+              </button>
+            </div>
+          </div>
+
+          {vistaDocumentos === "tabela" ? (
+            /* VISTA EM TABELA — procurar um documento entre muitos (ex: 50
+               notas de cobrança emitidas) sem precisar de scroll infinito
+               por cartões; clicar na linha abre o documento. */
+            <div className="bg-white rounded-2xl border-2 border-emerald-200 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto overflow-y-auto max-h-[560px]">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="bg-emerald-50 text-emerald-800 font-bold border-b border-emerald-200">
+                      <th className="p-3">Documento</th>
+                      <th className="p-3">Tema / Pasta</th>
+                      <th className="p-3 text-center">Ano</th>
+                      <th className="p-3">Carregado</th>
+                      <th className="p-3 text-center">Visibilidade</th>
+                      <th className="p-3 text-center no-print">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {docsFiltrados.map(doc => (
+                      <tr
+                        key={doc.id_doc}
+                        onClick={() => setActivePdfViewerDoc(doc)}
+                        className="hover:bg-emerald-50/60 cursor-pointer transition-colors group"
+                      >
+                        <td className="p-3">
+                          <div className="flex items-start gap-2">
+                            <FileText className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                            <div className="min-w-0">
+                              <span className="font-bold text-slate-900 block truncate max-w-[320px] group-hover:text-emerald-700">{doc.nome}</span>
+                              <span className="text-[10px] text-slate-400">{doc.tamanho}{doc.arquivado ? " · ✓ Arquivado" : ""}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-slate-200">{doc.tema || doc.categoria || "Geral"}</span>
+                          {(doc.sub_pasta || doc.fornecedor) && (
+                            <span className="text-[10px] text-slate-500 block mt-0.5 truncate max-w-[180px]">{doc.sub_pasta || doc.fornecedor}</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-center font-mono text-slate-600">{doc.ano || "2026"}</td>
+                        <td className="p-3 font-mono text-slate-600">{formatDatePT(doc.data_upload)}</td>
+                        <td className="p-3 text-center">
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg inline-flex items-center gap-1 ${
+                            doc.visibilidade === "Administração" ? "bg-amber-50 text-amber-800 border border-amber-200" : "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                          }`}>
+                            {doc.visibilidade === "Administração" ? <Lock className="h-2.5 w-2.5" /> : <Unlock className="h-2.5 w-2.5" />}
+                            {doc.visibilidade || "Público"}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center no-print" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1">
+                            <button onClick={() => abrirModalEditarDoc(doc)} title="Editar metadados" className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 cursor-pointer transition-colors">
+                              <FileText className="h-3.5 w-3.5" />
+                            </button>
+                            <button onClick={() => abrirModalEnviarEmail(doc)} title="Enviar por email" className="p-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 cursor-pointer transition-colors">
+                              <Send className="h-3.5 w-3.5" />
+                            </button>
+                            <button onClick={() => handleDownloadPdf(doc)} title="Descarregar PDF" className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 cursor-pointer transition-colors">
+                              <img src="/modulos/80-pdf-de-resultados.png" alt="PDF" className="h-3.5 w-3.5 object-contain" onError={(e) => { e.currentTarget.src = "/modulos/25-relatorio.png"; }} />
+                            </button>
+                            <button onClick={() => handleDownloadDoc(doc)} title="Descarregar Word (.doc)" className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-blue-600 cursor-pointer transition-colors">
+                              <FileDown className="h-3.5 w-3.5" />
+                            </button>
+                            {["ADMIN", "EMPRESA_GESTORA"].includes(loggedUser.role) && (
+                              <>
+                                <button onClick={() => alternarVisibilidade(doc)} title="Alternar Visibilidade" className="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-600 cursor-pointer transition-colors">
+                                  {doc.visibilidade === "Administração" ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                                </button>
+                                <button onClick={() => eliminarDocumento(doc.id_doc)} title="Eliminar do Arquivo" className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 cursor-pointer transition-colors">
+                                  <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="h-3.5 w-3.5 object-contain" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
         /* VISTA DE DOCUMENTOS OFICIAIS — ESTILO PWA ADMINISTRADOR EMERALD */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {docsFiltrados.map(doc => (
@@ -2610,6 +2725,8 @@ export function GestaoDocumentos({
               </div>
             </div>
           ))}
+        </div>
+          )}
         </div>
       ) : (
         /* VISTA DE GALERIA DE FOTOGRAFIAS DO ARQUIVO — ESTILO PWA ADMINISTRADOR EMERALD */
