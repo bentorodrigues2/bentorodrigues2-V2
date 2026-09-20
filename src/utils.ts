@@ -1123,7 +1123,11 @@ export async function procurarLocalidadePorCodigoPostal(codigoPostal: string): P
   const cpLimpo = (codigoPostal || "").trim();
   if (!/^\d{4}-\d{3}$/.test(cpLimpo)) return null;
   try {
-    const resp = await fetch(`https://geoapi.pt/cp/${cpLimpo}`);
+    // Sem o cabeçalho Accept explícito, a geoapi.pt devolve a página HTML de
+    // apresentação em vez do JSON — o resp.json() falhava sempre em silêncio.
+    const resp = await fetch(`https://geoapi.pt/cp/${cpLimpo}`, {
+      headers: { Accept: "application/json" }
+    });
     if (!resp.ok) return null;
     const data = await resp.json();
     return data?.Distrito && data?.Concelho
