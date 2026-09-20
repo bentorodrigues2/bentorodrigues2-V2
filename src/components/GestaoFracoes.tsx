@@ -96,6 +96,33 @@ export function GestaoFracoes({
   const [adminInterno, setAdminInterno] = useState("Não");
   const [notificacao, setNotificacao] = useState("Digital (E-mail e Mensagens Push)");
 
+  // Emissão manual de notas de cobrança em atraso para um proprietário já
+  // registado (o disparo automático só corre no PRIMEIRO registo — ver
+  // submeterEditarProprietario). Usado quando o registo aconteceu antes da
+  // ligação automática existir, ou quando o admin quer forçar nova emissão.
+  const [aEmitirNotasAtrasoId, setAEmitirNotasAtrasoId] = useState<string | null>(null);
+  const emitirNotasAtrasoManual = async (idFracao: string, nomeFracao: string, email: string) => {
+    if (!confirm(`Emitir e enviar as notas de cobrança em atraso (desde 01/06/2026 até ao mês corrente) da Fração ${nomeFracao} para ${email}?`)) return;
+    setAEmitirNotasAtrasoId(idFracao);
+    try {
+      const resp = await fetch("/api/pagamento?acao=emitir-notas-atraso", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_predio: predio.id_predio, id_fracao: idFracao })
+      });
+      const data = await resp.json();
+      if (resp.ok && data.ok) {
+        alert(`✅ Fração ${nomeFracao}: ${data.mesesEmitidos} nota(s) de cobrança emitida(s) e enviada(s) para ${email}.${data.mesesJaExistentes ? ` (${data.mesesJaExistentes} mês(es) já tinham sido emitidos anteriormente e foram ignorados.)` : ""}`);
+      } else {
+        alert(`❌ Não foi possível emitir as notas de cobrança em atraso da Fração ${nomeFracao}: ${data.error || "erro desconhecido"}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Erro na ligação ao emitir notas de cobrança em atraso: ${err?.message || "erro desconhecido"}`);
+    } finally {
+      setAEmitirNotasAtrasoId(null);
+    }
+  };
+
   // Digital Signature Pad state for Administrator
   const adminCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const adminSigFileRef = React.useRef<HTMLInputElement>(null);
@@ -2784,6 +2811,18 @@ export function GestaoFracoes({
                               >
                                 <ArrowLeftRight className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                                 <span className="font-semibold text-[10px]">Transferir</span>
+                              </button>
+                            )}
+                            {prop.id_fracao && prop.email && /\S+@\S+\.\S+/.test(prop.email) && (
+                              <button
+                                type="button"
+                                disabled={aEmitirNotasAtrasoId === prop.id_fracao}
+                                onClick={() => emitirNotasAtrasoManual(prop.id_fracao!, prop.fracao_nome || prop.id_fracao!, prop.email)}
+                                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-indigo-200 flex items-center gap-1 shadow-xs disabled:opacity-50"
+                                title="Emitir e enviar notas de cobrança em atraso (desde o início de atividade)"
+                              >
+                                <i className="fa-solid fa-paper-plane text-indigo-600 shrink-0"></i>
+                                <span className="font-semibold text-[10px]">{aEmitirNotasAtrasoId === prop.id_fracao ? "A emitir..." : "Notas em Atraso"}</span>
                               </button>
                             )}
                             {prop.id_fracao && (fracoes.find(f => f.id_fracao === prop.id_fracao)?.historico_proprietarios?.length ?? 0) > 0 && (
