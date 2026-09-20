@@ -282,6 +282,109 @@ async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, ano
 }
 
 /**
+ * Reenvia a nota de cobrança de UM aviso "Quota Ordinária" JÁ EXISTENTE,
+ * com os valores atuais desse aviso (sem criar/alterar nenhum aviso) — usada
+ * para corrigir e reenviar notas que tinham saído com um valor errado
+ * (ex: bug de permilagem), depois de o aviso já ter sido corrigido na base
+ * de dados. O assunto e o corpo do email deixam explícito que se trata de
+ * uma correção a uma nota anteriormente enviada.
+ */
+export async function reenviarNotaCobrancaCorrigida(id_predio, aviso) {
+  const { data: predio } = await supabase.from("predios").select("*").eq("id_predio", id_predio).maybeSingle();
+  if (!predio) return { ok: false, error: "Prédio não encontrado." };
+
+  const { data: f } = await supabase.from("fracoes").select("*").eq("id_fracao", aviso.id_fracao).maybeSingle();
+  if (!f) return { ok: false, error: "Fração não encontrada." };
+
+  const proprietario = await obterProprietarioDaFracao(aviso.id_fracao);
+  if (!proprietario?.email) return { ok: false, error: "Fração sem email de proprietário." };
+
+  const contas = await obterContasDoPredio(id_predio);
+  const prefixoEdificio = derivarPrefixoEdificio(predio.nome);
+
+  const [anoRef, mesNum] = aviso.vencimento.split("-").map((n) => parseInt(n, 10));
+  const mesIndex0 = mesNum - 1;
+  const mesRefLabel = nomeMesUTC(anoRef, mesIndex0);
+  const hojeUTC = new Date();
+  const dataEmissao = isoDate(hojeUTC.getUTCFullYear(), hojeUTC.getUTCMonth(), hojeUTC.getUTCDate());
+
+  const valorFCR = Number(aviso.valor_fundo_reserva || 0);
+  const valorTotal = Number(aviso.valor || 0);
+  const valorOrdinario = Math.round((valorTotal - valorFCR) * 100) / 100;
+
+  const { count: totalNotas } = await supabase
+    .from("avisos")
+    .select("id_aviso", { count: "exact", head: true })
+    .eq("tipo", "Quota Ordinária");
+  const sequencial = String(totalNotas || 1).padStart(5, "0");
+  const idNota = `${prefixoEdificio} ${sequencial}`;
+
+  const nota = {
+    id_recibo: idNota,
+    tipoDocumento: "nota_cobranca",
+    numero_sequencial: totalNotas || 1,
+    ano: anoRef,
+    id_predio: predio.id_predio,
+    id_fracao: f.id_fracao,
+    nome_condomino: proprietario.nome,
+    nif_condomino: proprietario.nif || "",
+    fracao_nome: f.fracao_nome,
+    permilagem: f.permilagem,
+    data_emissao: dataEmissao,
+    data_pagamento: aviso.vencimento,
+    metodo_pagamento: "Transferência Bancária",
+    valor_total: valorTotal,
+    rubricas: [
+      { descricao: `Quota de Condomínio Ordinária - ${mesRefLabel} / ${anoRef}`, valor: valorOrdinario, tipo: "Quota Ordinária" },
+      { descricao: `Fundo Comum de Reserva (FCR) - ${mesRefLabel} / ${anoRef}`, valor: valorFCR, tipo: "Fundo Comum de Reserva" }
+    ],
+    iban_predio: escolherIbanContaPorTipo(contas, "Quota Ordinária") || predio.iban || "",
+    emitido_por: "Administração do Condomínio",
+    adminSignatureBase64: predio.patrimonio?.assinatura_admin_base64 || "sem-assinatura-digital"
+  };
+
+  const doc = generateOfficialReceiptPDF(nota, predio, f);
+  const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
+  const nomeFicheiro = nomeFicheiroRecibo(nota);
+
+  const caminho = await guardarNoArquivo({
+    pdfBuffer,
+    ano: anoRef,
+    tema: "Financeiro",
+    tipo: "Nota de Cobrança",
+    predio: predio.id_predio,
+    fracao: f.id_fracao,
+    fluxo: "correcao_quotas",
+    nomeFicheiro
+  });
+
+  await registarDocumento({
+    caminho,
+    ano: anoRef,
+    tema: "Financeiro",
+    tipo: "Nota de Cobrança",
+    predio: predio.id_predio,
+    fracao: f.id_fracao,
+    fluxo: "correcao_quotas",
+    origem: "correcao_manual_permilagem",
+    nomeFicheiro,
+    categoria: "Pasta Paga. Quotas",
+    visibilidade: "Público"
+  });
+
+  await enviarEmailPDF({
+    to: proprietario.email,
+    nomeDestinatario: proprietario.nome,
+    assunto: `Correção — Nota de Cobrança — Quota de ${mesRefLabel} / ${anoRef} — Fração ${f.fracao_nome}`,
+    mensagem: `Pedimos desculpa pelo incómodo: a nota de cobrança da quota de <strong>${mesRefLabel} de ${anoRef}</strong> que lhe foi enviada anteriormente continha um valor incorreto, devido a um erro técnico na permilagem da fração. Segue em anexo a nota corrigida, com o valor certo de <strong>${valorTotal.toFixed(2)} €</strong>, com vencimento a <strong>${formatarDataPT(aviso.vencimento)}</strong>.<br><br>Esta nota substitui a anteriormente enviada — desconsidere o valor antigo. Assim que o pagamento for confirmado pela administração, receberá o respetivo recibo de pagamento oficial.`,
+    pdfBuffer,
+    nome: nomeFicheiro
+  });
+
+  return { ok: true, emailEnviado: true };
+}
+
+/**
  * Emite retroativamente, para UMA fração, todas as notas de cobrança mensais
  * em falta desde o início de atividade da administração (mesInicioISO, por
  * omissão 01/06/2026) até ao mês corrente — disparado a partir do frontend
@@ -813,6 +916,7 @@ export async function enviarFelicitacoesAniversario() {
 export default {
   emitirQuotasMensais,
   emitirNotasEmAtrasoFracao,
+  reenviarNotaCobrancaCorrigida,
   enviarLembretesQuotas,
   avisarQuotasEmMora,
   enviarFelicitacoesAniversario
