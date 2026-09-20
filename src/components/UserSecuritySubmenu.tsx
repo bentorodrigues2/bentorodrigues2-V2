@@ -6,6 +6,7 @@ import { createSecurityLog } from "../lib/authSecurity";
 import { supabase } from "../lib/supabaseClient";
 import { subscribeUserToPush } from "../utils/subscribeUser";
 import { savePushSubscriptionToSupabase } from "../lib/supabaseService";
+import { browserSupportsWebAuthn, registarBiometriaNesteDispositivo, removerBiometriaNesteDispositivo } from "../utils/webauthn";
 
 interface UserSecuritySubmenuProps {
   userEmail: string;
@@ -178,31 +179,45 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
     }
   };
 
-  const handleToggleBiometrics = () => {
-    if (setBiometricsEnabled && setSimulatingScan && setSimulatingScanProgress) {
+  // Biometria real via WebAuthn (ver src/utils/webauthn.ts) — regista a
+  // chave do autenticador de plataforma (Face ID/Touch ID/Windows
+  // Hello/impressão digital) deste dispositivo no Supabase; nenhum dado
+  // biométrico em si chega ao servidor, só a chave pública.
+  const handleToggleBiometrics = async () => {
+    if (!browserSupportsWebAuthn()) {
+      alert("Este dispositivo/navegador não suporta biometria (WebAuthn).");
+      return;
+    }
+    setSimulatingScan?.(true);
+    setSimulatingScanProgress?.(35);
+    try {
       if (!biometricsEnabled) {
-        setSimulatingScan(true);
-        setSimulatingScanProgress(0);
-        const interval = setInterval(() => {
-          setSimulatingScanProgress(p => {
-            if (p >= 100) {
-              clearInterval(interval);
-              setBiometricsEnabled(true);
-              setTimeout(() => {
-                setSimulatingScan(false);
-                alert("Dados biométricos registados e ativados com sucesso!");
-              }, 600);
-              return 100;
-            }
-            return p + 25;
-          });
-        }, 150);
+        const resultado = await registarBiometriaNesteDispositivo();
+        if (resultado.ok) {
+          setSimulatingScanProgress?.(100);
+          setBiometricsEnabled?.(true);
+          setTimeout(() => alert("✅ Biometria registada e ativada com sucesso neste dispositivo!"), 300);
+        } else {
+          alert(`❌ ${resultado.error || "Não foi possível ativar a biometria."}`);
+        }
       } else {
-        setBiometricsEnabled(false);
-        alert("Acesso biométrico desativado com sucesso.");
+        const resultado = await removerBiometriaNesteDispositivo();
+        setSimulatingScanProgress?.(100);
+        setBiometricsEnabled?.(false);
+        if (!resultado.ok) {
+          console.warn("[Biometria] Aviso ao remover credencial no servidor:", resultado.error);
+        }
+        setTimeout(() => alert("Acesso biométrico desativado neste dispositivo."), 300);
       }
-    } else {
-      alert(biometricsEnabled ? "Biometria desativada." : "Biometria ativada com sucesso no perfil!");
+    } catch (err: any) {
+      if (err?.name !== "NotAllowedError") {
+        alert(`❌ Não foi possível confirmar a biometria: ${err?.message || "erro desconhecido"}`);
+      }
+    } finally {
+      setTimeout(() => {
+        setSimulatingScan?.(false);
+        setSimulatingScanProgress?.(0);
+      }, 400);
     }
   };
 

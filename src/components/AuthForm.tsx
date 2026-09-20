@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from '@/lib/supabaseClient';
 import { createSecurityLog } from "../lib/authSecurity";
+import { browserSupportsWebAuthn, loginComBiometria } from "../utils/webauthn";
 
 interface AuthFormProps {
   initialEmail?: string;
@@ -22,6 +23,8 @@ export default function AuthForm({
   const [resetSent, setResetSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
+  const [autenticandoComBiometria, setAutenticandoComBiometria] = useState(false);
+  const suportaBiometria = typeof window !== "undefined" && browserSupportsWebAuthn();
 
   useEffect(() => {
     if (initialErrorMessage) {
@@ -63,6 +66,29 @@ export default function AuthForm({
       onLoginSuccess(data.user.email || cleanEmail);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLoginBiometria = async () => {
+    const cleanEmail = (email || "").trim().toLowerCase();
+    if (!cleanEmail) {
+      setErrorMessage("Indique o seu email de utilizador para continuar com biometria.");
+      return;
+    }
+    setErrorMessage("");
+    setAutenticandoComBiometria(true);
+    try {
+      const resultado = await loginComBiometria(cleanEmail);
+      if (resultado.cancelado) return;
+      if (!resultado.ok) {
+        setErrorMessage(`ℹ️ ${resultado.error || "Não foi possível autenticar com biometria."}`);
+        createSecurityLog(cleanEmail, "LOGIN_FAILED", resultado.error || "Falha na autenticação biométrica.");
+        return;
+      }
+      createSecurityLog(cleanEmail, "LOGIN_SUCCESS", "Login efetuado com sucesso via Biometria (WebAuthn).");
+      onLoginSuccess(cleanEmail);
+    } finally {
+      setAutenticandoComBiometria(false);
     }
   };
 
@@ -252,6 +278,18 @@ export default function AuthForm({
             >
               <span>{loading ? "A verificar..." : "➔] ENTRAR"}</span>
             </button>
+
+            {suportaBiometria && (
+              <button
+                type="button"
+                disabled={autenticandoComBiometria}
+                onClick={handleLoginBiometria}
+                className="w-full bg-slate-900 hover:bg-slate-800 border border-emerald-500/40 disabled:opacity-50 text-emerald-300 font-bold py-2.5 rounded-xl text-center text-xs tracking-wider uppercase cursor-pointer transition-all shadow-md flex items-center justify-center space-x-2"
+              >
+                <span>👆</span>
+                <span>{autenticandoComBiometria ? "A confirmar biometria..." : "Entrar com Biometria"}</span>
+              </button>
+            )}
 
             {onOpenSecurityLogs && (
               <div className="flex justify-end items-center pt-2 border-t border-slate-800/80 text-[9px]">
