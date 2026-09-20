@@ -435,9 +435,15 @@ export default async function handler(req, res) {
           id: c.credential_id,
           transports: c.transports || undefined
         })),
+        // "discouraged" (em vez de "preferred") evita que o Android/Chrome
+        // ofereça criar uma passkey sincronizada no Google Password Manager
+        // ou usar uma chave de segurança externa — com "platform" +
+        // "discouraged" + userVerification "required" o pedido do sistema
+        // vai direto ao Face ID/Touch ID/impressão digital DESTE aparelho.
         authenticatorSelection: {
-          residentKey: "preferred",
-          userVerification: "preferred",
+          residentKey: "discouraged",
+          requireResidentKey: false,
+          userVerification: "required",
           authenticatorAttachment: "platform"
         }
       });
@@ -520,7 +526,7 @@ export default async function handler(req, res) {
 
       const options = await generateAuthenticationOptions({
         rpID,
-        userVerification: "preferred",
+        userVerification: "required",
         allowCredentials: credenciais.map((c) => ({ id: c.credential_id, transports: c.transports || undefined }))
       });
 

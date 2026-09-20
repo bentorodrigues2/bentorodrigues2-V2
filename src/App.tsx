@@ -2584,7 +2584,7 @@ export default function App() {
                 {(activeSection === "fracoes" || activeSection === "fracoes_nova" || activeSection === "fracoes_proprietario" || activeSection === "fracoes_perfis") && "Gestão de Frações, Proprietários & Perfis"}
                 {activeSection === "fornecedores" && "Fichas de Fornecedores"}
                 {activeSection === "contas" && "Contas Bancárias do Condomínio"}
-                {activeSection === "quotas_orcamento" && "Quotas & Orçamento Anual (Interligadas com Contas Bancárias)"}
+                {activeSection === "quotas_orcamento" && "Quotas & Orçamento Anual"}
                 {activeSection === "movimentos" && "Registo de Movimentos Financeiros"}
                 {activeSection === "financeiro_recibos" && "Emissão de Recibos Manuais (100% Editável)"}
                 {activeSection === "financeiro_relatorios" && "Relatórios de Dívidas (por Condómino & Pro Condomínio)"}
