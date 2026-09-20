@@ -2104,6 +2104,7 @@ export async function savePushSubscriptionToSupabase(params: {
   idFracao?: string;
   userId?: string;
   subscription: PushSubscription;
+  isAdmin?: boolean;
 }): Promise<boolean> {
   const raw = params.subscription.toJSON();
   if (!raw.endpoint) return false;
@@ -2113,6 +2114,7 @@ export async function savePushSubscriptionToSupabase(params: {
     user_id: params.userId || null,
     endpoint: raw.endpoint,
     subscription: raw,
+    is_admin: params.isAdmin || false,
     updated_at: new Date().toISOString()
   }, { onConflict: "endpoint" });
 }

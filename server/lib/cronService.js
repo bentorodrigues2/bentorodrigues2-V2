@@ -1,3 +1,4 @@
+import { jsPDF } from "jspdf";
 import { supabase } from "./supabaseServer.js";
 import { generateOfficialReceiptPDF, nomeFicheiroRecibo } from "./receiptGenerator.js";
 import { guardarNoArquivo, registarDocumento, enviarEmailPDF } from "./pdfService.js";
@@ -913,10 +914,113 @@ export async function enviarFelicitacoesAniversario() {
   return { job: "enviarFelicitacoesAniversario", total: resultados.length, resultados };
 }
 
+/**
+ * Diário: arquiva automaticamente conversas de mensagens sem atividade há
+ * mais de 7 dias (respondidas ou não) — gera um PDF com o histórico
+ * completo, arquiva-o no Arquivo Digital (Mensagens, organizado por
+ * ano/fração) e remove a conversa das tabelas ativas (conversas/
+ * mensagens_conversa), para a caixa de entrada da Administração não ficar
+ * a acumular indefinidamente.
+ */
+export async function arquivarConversasAntigas() {
+  const limiteISO = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data: conversas, error: errConv } = await supabase
+    .from("conversas")
+    .select("*")
+    .lt("updated_at", limiteISO);
+
+  if (errConv) {
+    console.error("[cronService] Erro ao obter conversas para arquivar:", errConv.message);
+    return { job: "arquivarConversasAntigas", total: 0, resultados: [] };
+  }
+
+  const resultados = [];
+  for (const conversa of conversas || []) {
+    try {
+      const { data: mensagens } = await supabase
+        .from("mensagens_conversa")
+        .select("*")
+        .eq("id_conversa", conversa.id_conversa)
+        .order("created_at", { ascending: true });
+
+      const { data: fracao } = await supabase
+        .from("fracoes")
+        .select("fracao_nome")
+        .eq("id_fracao", conversa.id_fracao)
+        .maybeSingle();
+      const fracaoNome = fracao?.fracao_nome || conversa.id_fracao;
+      const ano = new Date(conversa.created_at || Date.now()).getFullYear();
+
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text(`HISTÓRICO DE MENSAGENS — Fração ${fracaoNome}`, 105, 18, { align: "center" });
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.text(`Condómino: ${conversa.proprietario_nome || "—"} | Assunto: ${conversa.assunto || "—"}`, 15, 27);
+      doc.text(`Arquivado automaticamente em ${new Date().toLocaleDateString("pt-PT")} (sem atividade há mais de 7 dias)`, 15, 32);
+
+      let y = 42;
+      doc.setFontSize(8.5);
+      for (const m of mensagens || []) {
+        if (y > 275) { doc.addPage(); y = 20; }
+        const autor = m.autor === "administracao" ? "Administração" : (conversa.proprietario_nome || "Condómino");
+        const dataHora = m.created_at ? new Date(m.created_at).toLocaleString("pt-PT") : "";
+        doc.setFont("helvetica", "bold");
+        doc.text(`${autor} (${dataHora}):`, 15, y);
+        y += 4.5;
+        doc.setFont("helvetica", "normal");
+        const linhas = doc.splitTextToSize(m.texto || "", 180);
+        doc.text(linhas, 15, y);
+        y += linhas.length * 4.2 + 3;
+      }
+
+      const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
+      const nomeFicheiro = `Mensagens_${fracaoNome}_${conversa.id_conversa}.pdf`;
+
+      const caminho = await guardarNoArquivo({
+        pdfBuffer,
+        ano,
+        tema: "Mensagens",
+        tipo: "Histórico de Conversa",
+        predio: conversa.id_predio,
+        fracao: conversa.id_fracao,
+        fluxo: "arquivamento_mensagens",
+        nomeFicheiro
+      });
+
+      await registarDocumento({
+        caminho,
+        ano,
+        tema: "Mensagens",
+        tipo: "Histórico de Conversa",
+        predio: conversa.id_predio,
+        fracao: conversa.id_fracao,
+        fluxo: "arquivamento_mensagens",
+        origem: "cron_arquivar_mensagens",
+        nomeFicheiro,
+        categoria: "Mensagens Arquivadas",
+        visibilidade: "Administração"
+      });
+
+      await supabase.from("mensagens_conversa").delete().eq("id_conversa", conversa.id_conversa);
+      await supabase.from("conversas").delete().eq("id_conversa", conversa.id_conversa);
+
+      resultados.push({ id_conversa: conversa.id_conversa, fracao: fracaoNome, mensagens: (mensagens || []).length });
+    } catch (errConversa) {
+      console.error(`[cronService] Erro ao arquivar conversa ${conversa.id_conversa}:`, errConversa);
+    }
+  }
+
+  return { job: "arquivarConversasAntigas", total: resultados.length, resultados };
+}
+
 export default {
   emitirQuotasMensais,
   emitirNotasEmAtrasoFracao,
   reenviarNotaCobrancaCorrigida,
+  arquivarConversasAntigas,
   enviarLembretesQuotas,
   avisarQuotasEmMora,
   enviarFelicitacoesAniversario

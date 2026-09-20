@@ -498,25 +498,20 @@ export default function PWACondominoView({
       texto
     });
 
-    // Notifica a Administração por email — mesma lógica que
-    // PortalCondomino.tsx (versão browser), para o admin não depender de
-    // entrar manualmente em Gestão de Comunicações para saber que chegou
-    // uma mensagem nova.
+    // Notifica a Administração por notificação push real (não email) —
+    // mesma lógica que PortalCondomino.tsx (versão browser). Só chega a
+    // quem ativou "Notificações Push da Administração" no menu de
+    // Segurança.
     const nomeRemetenteMsg = `${loggedUser.nome} (Fração ${condominoFracao?.fracao_nome || "A"})`;
-    fracoes
-      .filter(f => f.id_predio === predio.id_predio && f.administrador_interno === "Sim" && f.proprietario?.email)
-      .forEach(adm => {
-        fetch("/api/email?acao=notificar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: adm.proprietario.email,
-            nomeDestinatario: adm.proprietario.nome,
-            assunto: `Nova mensagem de ${nomeRemetenteMsg}`,
-            mensagem: `Mensagem Direta<br><br>${texto}`
-          })
-        }).catch(console.error);
-      });
+    fetch("/api/admin?acao=enviar-push-admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id_predio: predio.id_predio,
+        title: `💬 Nova mensagem — ${nomeRemetenteMsg}`,
+        body: texto.length > 120 ? texto.slice(0, 117) + "..." : texto
+      })
+    }).catch(console.error);
 
     await carregarMensagensReais();
   };

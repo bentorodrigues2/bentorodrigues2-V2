@@ -4,10 +4,13 @@ import { ActionIcon } from "./ActionIcon";
 import { playNotificationTone } from "../lib/soundService";
 import { createSecurityLog } from "../lib/authSecurity";
 import { supabase } from "../lib/supabaseClient";
+import { subscribeUserToPush } from "../utils/subscribeUser";
+import { savePushSubscriptionToSupabase } from "../lib/supabaseService";
 
 interface UserSecuritySubmenuProps {
   userEmail: string;
   userRole: string;
+  idPredio?: string;
   biometricsEnabled?: boolean;
   setBiometricsEnabled?: (val: boolean) => void;
   setSimulatingScan?: (val: boolean) => void;
@@ -23,6 +26,7 @@ interface UserSecuritySubmenuProps {
 export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
   userEmail,
   userRole,
+  idPredio,
   biometricsEnabled = false,
   setBiometricsEnabled,
   setSimulatingScan,
@@ -35,6 +39,46 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
   setShowTestingBar
 }) => {
   const [isOpen, setIsOpen] = useState<boolean>(defaultOpen || isFirstAccessMode);
+
+  // Notificações Push do Administrador — antes só condóminos/fornecedores
+  // conseguiam subscrever-se; sem isto o admin nunca recebia push nenhum
+  // (ex: aviso de mensagem nova de um condómino), só email.
+  const [ativandoPushAdmin, setAtivandoPushAdmin] = useState(false);
+  const [pushAdminAtivo, setPushAdminAtivo] = useState(false);
+  const handleAtivarPushAdmin = async () => {
+    if (ativandoPushAdmin) return;
+    setAtivandoPushAdmin(true);
+    try {
+      if (typeof Notification === "undefined") {
+        alert("Este dispositivo/navegador não suporta notificações push.");
+        return;
+      }
+      const permissao = await Notification.requestPermission();
+      if (permissao !== "granted") {
+        alert("Permissão de notificações não concedida.");
+        return;
+      }
+      const subscription = await subscribeUserToPush();
+      if (!subscription) {
+        alert("❌ Não foi possível ativar as notificações neste dispositivo.");
+        return;
+      }
+      const ok = await savePushSubscriptionToSupabase({
+        idPredio,
+        userId: userEmail,
+        subscription,
+        isAdmin: true
+      });
+      if (ok) {
+        setPushAdminAtivo(true);
+        alert("✅ Notificações push da Administração ativadas neste dispositivo — vai receber um aviso sempre que chegar uma mensagem nova de um condómino.");
+      } else {
+        alert("❌ Não foi possível guardar a subscrição no Supabase. Tente novamente.");
+      }
+    } finally {
+      setAtivandoPushAdmin(false);
+    }
+  };
 
   // Redefinição de Password
   const [currentPass, setCurrentPass] = useState<string>("");
@@ -291,6 +335,41 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
               </button>
             </div>
           </div>
+
+          {/* 2.1 NOTIFICAÇÕES PUSH DA ADMINISTRAÇÃO — só ADMIN/GESTOR/EMPRESA_GESTORA */}
+          {["ADMIN", "GESTOR", "EMPRESA_GESTORA"].includes(userRole) && (
+            <div className="space-y-2.5 pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center space-x-2 text-slate-800 dark:text-white font-extrabold text-[11px] uppercase tracking-wider">
+                <Bell className="h-3.5 w-3.5 text-emerald-500" />
+                <span>2.1 Notificações Push da Administração</span>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-3">
+                <div className="flex items-center space-x-2.5 min-w-0">
+                  <div className="h-8 w-8 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                    <Bell className="h-4.5 w-4.5" />
+                  </div>
+                  <div className="text-left min-w-0">
+                    <span className="font-extrabold text-[10px] text-slate-800 dark:text-white block">Avisar quando chegar mensagem nova</span>
+                    <span className="text-[8px] text-slate-400">Notificação push neste dispositivo, identificando a fração</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAtivarPushAdmin}
+                  disabled={ativandoPushAdmin || pushAdminAtivo}
+                  className={`shrink-0 text-[9px] font-extrabold px-3 py-1.5 rounded-lg transition-colors cursor-pointer disabled:cursor-default ${
+                    pushAdminAtivo
+                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"
+                      : "bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60"
+                  }`}
+                >
+                  {pushAdminAtivo ? "Ativado ✓" : ativandoPushAdmin ? "A ativar..." : "Ativar"}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* 3. GESTÃO DE SOM E VIBRAÇÃO */}
           <div className="space-y-2.5 pb-4 border-b border-slate-100 dark:border-slate-800">

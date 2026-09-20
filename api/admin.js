@@ -269,6 +269,56 @@ export default async function handler(req, res) {
     }
   }
 
+  // Envia só às subscrições marcadas como Administração (push_subscriptions.
+  // is_admin = true) — separado de "enviar-push" porque esse filtra por
+  // id_predio/id_fracao sem distinguir administrador de condómino, o que
+  // notificaria por engano todos os condóminos sobre algo dirigido só ao
+  // admin (ex: mensagem nova de outro condómino). Aberto a qualquer sessão
+  // válida — é o próprio condómino que aciona isto ao enviar a sua mensagem.
+  if (acao === "enviar-push-admin") {
+    const chamador = await exigirSessaoValida(req, res);
+    if (!chamador) return;
+    try {
+      if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+        return res.status(500).json({ error: "Chaves VAPID não configuradas no servidor." });
+      }
+      const { id_predio, title, body, url } = req.body || {};
+      if (!id_predio || !title || !body) {
+        return res.status(400).json({ error: "id_predio, title e body são obrigatórios" });
+      }
+
+      const { data: subs, error: errSubs } = await supabase
+        .from("push_subscriptions")
+        .select("id, endpoint, subscription")
+        .eq("id_predio", id_predio)
+        .eq("is_admin", true);
+      if (errSubs) throw new Error(errSubs.message);
+
+      const payload = JSON.stringify({ title, body, url: url || "/" });
+      let enviados = 0;
+      let expirados = 0;
+
+      for (const row of subs || []) {
+        try {
+          await webpush.sendNotification(row.subscription, payload);
+          enviados += 1;
+        } catch (err) {
+          if (err?.statusCode === 404 || err?.statusCode === 410) {
+            await supabase.from("push_subscriptions").delete().eq("id", row.id);
+            expirados += 1;
+          } else {
+            console.warn("[api/admin?acao=enviar-push-admin] Falha ao enviar para uma subscrição:", err?.message || err);
+          }
+        }
+      }
+
+      return res.status(200).json({ ok: true, total_subscricoes: (subs || []).length, enviados, expirados_removidas: expirados });
+    } catch (err) {
+      console.error("Erro em /api/admin?acao=enviar-push-admin:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao enviar notificações push ao administrador" });
+    }
+  }
+
   if (acao === "recuperar-password") {
     try {
       const { email } = req.body || {};

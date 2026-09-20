@@ -1,4 +1,4 @@
-import { emitirQuotasMensais, emitirNotasEmAtrasoFracao, enviarLembretesQuotas, avisarQuotasEmMora, enviarFelicitacoesAniversario, sincronizarOrcamentosVigentes, processarContratosFornecedores } from "../server/lib/cronService.js";
+import { emitirQuotasMensais, emitirNotasEmAtrasoFracao, enviarLembretesQuotas, avisarQuotasEmMora, enviarFelicitacoesAniversario, sincronizarOrcamentosVigentes, processarContratosFornecedores, arquivarConversasAntigas } from "../server/lib/cronService.js";
 
 // Ação pontual (agendada para 2026-09-20 09:00 Lisboa, ver vercel.json —
 // "0 8 20 9 *", só volta a coincidir com esta data daqui a um ano) pedida
@@ -38,6 +38,7 @@ async function emitirNotasAtrasoRegistados() {
  *   - todos os dias: felicitações de aniversário
  *   - todos os dias: aplica adendas ao orçamento cuja data de vigência já chegou
  *   - todos os dias: renova/expira contratos de fornecedores e envia alertas de fim de contrato
+ *   - todos os dias: arquiva conversas de mensagens sem atividade há mais de 7 dias
  * Protegido por um segredo partilhado (?secret= ou header x-cron-secret),
  * para não poder ser invocado por terceiros.
  */
@@ -86,6 +87,12 @@ export default async function handler(req, res) {
 
     if (forcar === "contratos" || (!forcar && true)) {
       resultados.push(await processarContratosFornecedores());
+    }
+
+    // Todos os dias: arquiva conversas de mensagens sem atividade há mais
+    // de 7 dias para o Arquivo Digital (Mensagens, por ano/fração).
+    if (forcar === "arquivar-mensagens" || (!forcar && true)) {
+      resultados.push(await arquivarConversasAntigas());
     }
 
     // Ação pontual agendada — ver comentário junto de emitirNotasAtrasoRegistados.

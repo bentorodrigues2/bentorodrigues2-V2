@@ -3237,6 +3237,7 @@ export default function App() {
         isOpen={userProfileModalOpen}
         onClose={() => setUserProfileModalOpen(false)}
         loggedUser={loggedUser}
+        idPredio={predioAtivo?.id_predio}
         biometricsEnabled={biometricsEnabled}
         setBiometricsEnabled={setBiometricsEnabled}
         showTestingBar={showTestingBar}

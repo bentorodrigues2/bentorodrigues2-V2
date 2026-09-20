@@ -8,6 +8,7 @@ interface UserSecurityModalProps {
   isOpen: boolean;
   onClose: () => void;
   loggedUser: LoggedUser;
+  idPredio?: string;
   biometricsEnabled?: boolean;
   setBiometricsEnabled?: (val: boolean) => void;
   isFirstAccessMode?: boolean;
@@ -19,6 +20,7 @@ export const UserSecurityModal: React.FC<UserSecurityModalProps> = ({
   isOpen,
   onClose,
   loggedUser,
+  idPredio,
   biometricsEnabled = false,
   setBiometricsEnabled,
   isFirstAccessMode = false,
@@ -94,6 +96,7 @@ export const UserSecurityModal: React.FC<UserSecurityModalProps> = ({
             <UserSecuritySubmenu
               userEmail={loggedUser.email}
               userRole={loggedUser.role}
+              idPredio={idPredio}
               biometricsEnabled={biometricsEnabled}
               setBiometricsEnabled={setBiometricsEnabled}
               defaultOpen={true}

@@ -597,103 +597,113 @@ export function GestaoComunicacoes({
 
         {/* SUB-MENU 2: MENSAGENS & INBOX (CHAT) */}
         {commSubTab === "chat" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-4 space-y-3 border-r border-slate-200 pr-0 lg:pr-4">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 mb-2">Mensagens Recebidas</h4>
-              <div className="space-y-2">
-                {loadingConversas ? (
-                  <div className="text-center text-slate-400 py-8 text-xs"><i className="fa-solid fa-spinner fa-spin mr-2"></i>A carregar...</div>
-                ) : conversas.length === 0 ? (
-                  <div className="text-center text-slate-400 py-8 px-2 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
-                    <i className="fa-regular fa-comments text-2xl mb-1 text-slate-300 block"></i>
-                    Nenhuma mensagem recebida na caixa de entrada.
-                  </div>
-                ) : (
-                  conversas.map(c => (
-                    <button
-                      key={c.id_conversa}
-                      onClick={() => setSelectedConversaId(c.id_conversa)}
-                      className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer space-y-1 ${
-                        selectedConversaId === c.id_conversa
-                          ? "bg-emerald-50 border-emerald-300 ring-2 ring-emerald-400/20"
-                          : "bg-slate-50 border-slate-200 hover:bg-slate-100"
-                      }`}
-                    >
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-xs text-slate-900 truncate">{c.proprietario_nome}</span>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${c.estado === "pendente" ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-600"}`}>
-                          {c.estado === "pendente" ? "Pendente" : "Arquivada"}
-                        </span>
-                      </div>
-                      <div className="text-[11px] font-semibold text-emerald-800 truncate">{fracoes.find(f => f.id_fracao === c.id_fracao)?.fracao_nome || c.id_fracao}</div>
-                      <div className="text-[10px] text-slate-500 truncate">{c.assunto}</div>
-                    </button>
-                  ))
-                )}
-              </div>
+          <div className="space-y-3">
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 mb-2">Mensagens Recebidas</h4>
+            <div className="space-y-2 max-w-2xl">
+              {loadingConversas ? (
+                <div className="text-center text-slate-400 py-8 text-xs"><i className="fa-solid fa-spinner fa-spin mr-2"></i>A carregar...</div>
+              ) : conversas.length === 0 ? (
+                <div className="text-center text-slate-400 py-8 px-2 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
+                  <i className="fa-regular fa-comments text-2xl mb-1 text-slate-300 block"></i>
+                  Nenhuma mensagem recebida na caixa de entrada.
+                </div>
+              ) : (
+                conversas.map(c => (
+                  <button
+                    key={c.id_conversa}
+                    onClick={() => setSelectedConversaId(c.id_conversa)}
+                    className="w-full text-left p-3 rounded-xl border transition-all cursor-pointer space-y-1 bg-slate-50 border-slate-200 hover:bg-slate-100"
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-xs text-slate-900 truncate">{c.proprietario_nome}</span>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${c.estado === "pendente" ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-600"}`}>
+                        {c.estado === "pendente" ? "Pendente" : "Arquivada"}
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-semibold text-emerald-800 truncate">{fracoes.find(f => f.id_fracao === c.id_fracao)?.fracao_nome || c.id_fracao}</div>
+                    <div className="text-[10px] text-slate-500 truncate">{c.assunto}</div>
+                  </button>
+                ))
+              )}
             </div>
 
-            <div className="lg:col-span-8 flex flex-col justify-between space-y-4">
-              {selectedConversa ? (
-                <div className="space-y-4 flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="border-b border-slate-200 pb-3 mb-4 flex justify-between items-start">
-                      <div>
-                        <h3 className="font-bold text-sm text-slate-900">{selectedConversa.assunto}</h3>
-                        <p className="text-xs text-slate-500">
-                          {fracoes.find(f => f.id_fracao === selectedConversa.id_fracao)?.fracao_nome} — {selectedConversa.proprietario_nome}
-                        </p>
+            {/* MODAL DE CONVERSA (estilo WhatsApp) — abre ao selecionar uma
+                mensagem, em vez de mostrar a conversa inline ao lado da
+                lista. */}
+            {selectedConversa && (
+              <div
+                onClick={(e) => { if (e.target === e.currentTarget) setSelectedConversaId(""); }}
+                className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+              >
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-white w-full sm:max-w-lg sm:rounded-2xl shadow-2xl flex flex-col h-[85vh] sm:h-[600px] overflow-hidden"
+                >
+                  {/* Cabeçalho estilo WhatsApp */}
+                  <div className="bg-emerald-700 text-white px-4 py-3 flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <button onClick={() => setSelectedConversaId("")} className="text-white/90 hover:text-white cursor-pointer shrink-0">
+                        <i className="fa-solid fa-arrow-left"></i>
+                      </button>
+                      <div className="w-9 h-9 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-xs shrink-0">
+                        {selectedConversa.proprietario_nome.slice(0, 2).toUpperCase()}
                       </div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-xs truncate">{selectedConversa.proprietario_nome}</div>
+                        <div className="text-[10px] text-emerald-100 truncate">
+                          Fração {fracoes.find(f => f.id_fracao === selectedConversa.id_fracao)?.fracao_nome || selectedConversa.id_fracao}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
                       {selectedConversa.estado === "pendente" && (
                         <button
                           onClick={() => handleArquivarConversa(selectedConversa.id_conversa)}
-                          className="text-[10px] font-bold text-slate-500 hover:text-slate-800 border border-slate-300 rounded-lg px-2.5 py-1.5 cursor-pointer"
+                          className="text-[10px] font-bold text-white/90 hover:text-white border border-white/30 rounded-lg px-2.5 py-1.5 cursor-pointer"
                         >
                           <i className="fa-solid fa-box-archive mr-1"></i> Arquivar
                         </button>
                       )}
-                    </div>
-
-                    <div className="space-y-3 max-h-[300px] overflow-y-auto p-2">
-                      {mensagensSelecionadas.map((m) => (
-                        <div key={m.id_mensagem} className={`flex ${m.autor === "administracao" ? "justify-end" : "justify-start"}`}>
-                          <div className={`max-w-[80%] p-3 rounded-xl text-xs space-y-1 ${m.autor === "administracao" ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-800 border border-slate-200"}`}>
-                            <div className="font-bold text-[10px] opacity-80">{m.autor === "administracao" ? "Administração" : selectedConversa.proprietario_nome}</div>
-                            <div>{m.texto}</div>
-                            <div className="text-[9px] opacity-70 text-right">{m.created_at ? new Date(m.created_at).toLocaleString("pt-PT") : ""}</div>
-                          </div>
-                        </div>
-                      ))}
+                      <button onClick={() => setSelectedConversaId("")} className="text-white/80 hover:text-white cursor-pointer p-1">
+                        <i className="fa-solid fa-xmark"></i>
+                      </button>
                     </div>
                   </div>
 
-                  <form onSubmit={handleSendResposta} className="space-y-2 pt-3 border-t border-slate-200">
-                    <label className="block text-[11px] font-bold text-slate-700">Responder ao Condómino:</label>
+                  {/* Corpo de mensagens (fundo estilo WhatsApp) */}
+                  <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[#e5ddd5] bg-[radial-gradient(#d9d0c7_1px,transparent_1px)] bg-[length:14px_14px]">
+                    <div className="text-center text-[10px] text-slate-500 bg-white/70 rounded-lg px-2 py-1 inline-block mx-auto block w-fit">{selectedConversa.assunto}</div>
+                    {mensagensSelecionadas.map((m) => (
+                      <div key={m.id_mensagem} className={`flex ${m.autor === "administracao" ? "justify-end" : "justify-start"}`}>
+                        <div className={`max-w-[80%] p-2.5 rounded-xl text-xs space-y-1 shadow-xs ${m.autor === "administracao" ? "bg-emerald-100 text-slate-800" : "bg-white text-slate-800"}`}>
+                          <div>{m.texto}</div>
+                          <div className="text-[9px] text-slate-400 text-right">{m.created_at ? new Date(m.created_at).toLocaleString("pt-PT") : ""}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Campo de resposta */}
+                  <form onSubmit={handleSendResposta} className="p-3 border-t border-slate-200 bg-white flex items-center gap-2 shrink-0">
                     <textarea
-                      rows={3}
+                      rows={1}
                       required
                       placeholder="Escreva a resposta oficial da administração..."
                       value={respostaTexto}
                       onChange={e => setRespostaTexto(e.target.value)}
-                      className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500"
+                      className="flex-1 text-xs p-2.5 rounded-full border border-slate-300 focus:ring-2 focus:ring-emerald-500 resize-none"
                     />
                     <button
                       type="submit"
                       disabled={enviandoResposta}
-                      className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold px-4 py-2 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-2"
+                      className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white w-10 h-10 rounded-full transition-all cursor-pointer flex items-center justify-center shrink-0"
                     >
-                      {enviandoResposta ? <i className="fa-solid fa-spinner fa-spin text-xs"></i> : <i className="fa-solid fa-reply text-xs"></i>}
-                      <span>Enviar Resposta</span>
+                      {enviandoResposta ? <i className="fa-solid fa-spinner fa-spin text-xs"></i> : <i className="fa-solid fa-paper-plane text-xs"></i>}
                     </button>
                   </form>
                 </div>
-              ) : (
-                <div className="text-center text-slate-400 py-16 text-xs bg-slate-50 border border-dashed border-slate-200 rounded-xl">
-                  <i className="fa-solid fa-inbox text-3xl mb-2 text-slate-300 block"></i>
-                  Nenhuma mensagem selecionada ou recebida.
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
 

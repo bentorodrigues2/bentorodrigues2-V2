@@ -613,27 +613,22 @@ export function PortalCondomino({
         texto: textoFinal
       });
 
-      // Notifica a Administração por email — antes a mensagem só ficava
-      // visível se o admin entrasse manualmente em Gestão de Comunicações,
-      // sem nenhum aviso de que tinha chegado algo novo. Não usa push aqui:
-      // /api/admin?acao=enviar-push só filtra por id_predio/id_fracao, sem
-      // distinguir administrador de condómino — dispará-lo aqui notificaria
-      // por engano todos os condóminos subscritos sobre uma mensagem
-      // privada de outro condómino.
+      // Notifica a Administração por notificação push real (não email) —
+      // antes a mensagem só ficava visível se o admin entrasse manualmente
+      // em Gestão de Comunicações. Usa /api/admin?acao=enviar-push-admin
+      // (distinto de "enviar-push", que notificaria por engano todos os
+      // condóminos do prédio) — só chega a quem ativou "Notificações Push
+      // da Administração" no menu de Segurança.
       const nomeRemetenteMsg = `${loggedUser.nome} (Fração ${userFracao?.fracao_nome || "A"})`;
-      const adminsInternos = fracoes.filter(f => f.id_predio === predio.id_predio && f.administrador_interno === "Sim" && f.proprietario?.email);
-      adminsInternos.forEach(adm => {
-        fetch("/api/email?acao=notificar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: adm.proprietario.email,
-            nomeDestinatario: adm.proprietario.nome,
-            assunto: `Nova mensagem de ${nomeRemetenteMsg}`,
-            mensagem: `${conversa.assunto}<br><br>${textoFinal}`
-          })
-        }).catch(console.error);
-      });
+      fetch("/api/admin?acao=enviar-push-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_predio: predio.id_predio,
+          title: `💬 Nova mensagem — ${nomeRemetenteMsg}`,
+          body: textoFinal.length > 120 ? textoFinal.slice(0, 117) + "..." : textoFinal
+        })
+      }).catch(console.error);
 
       const novaMsg: MensagemAdministracao = {
         id: idConversa,
