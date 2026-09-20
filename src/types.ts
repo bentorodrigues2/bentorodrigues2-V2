@@ -630,6 +630,7 @@ export interface ProcessoProva {
   destinatario?: string;
   observacoes_juridicas?: string;
   arquivado_no_arquivo_digital?: boolean;
+  tipo_documento_outro?: string; // Identificação manual do tipo, quando tipo === "OUTRO_COMPROVATIVO" e o documento não se enquadra nos tipos pré-definidos
 }
 
 export interface ProcessoJuridico {

@@ -101,6 +101,12 @@ export function ConstituicaoProcessosJuridicos({
   const [novaProvaDataEntrega, setNovaProvaDataEntrega] = useState<string>("");
   const [novaProvaDestinatario, setNovaProvaDestinatario] = useState<string>("");
   const [novaProvaObsJuridica, setNovaProvaObsJuridica] = useState<string>("");
+  // Identificação manual do tipo de documento quando não se enquadra em
+  // nenhum dos modelos pré-definidos (novaProvaTipo === "OUTRO_COMPROVATIVO")
+  // — permite juntar ao dossiê qualquer documento necessário (declarações,
+  // certidões, faturas de custos judiciais, etc.) sem estar limitado à
+  // lista fixa de tipos sugeridos.
+  const [novaProvaTipoOutraIdentificacao, setNovaProvaTipoOutraIdentificacao] = useState<string>("");
   const [novaProvaFileNome, setNovaProvaFileNome] = useState<string>("");
   const [novaProvaTipoFicheiro, setNovaProvaTipoFicheiro] = useState<"imagem" | "pdf" | "documento">("imagem");
   const [novaProvaUrlPreview, setNovaProvaUrlPreview] = useState<string>("");
@@ -203,6 +209,7 @@ export function ConstituicaoProcessosJuridicos({
   // Preset proof templates
   const applyPresetProof = (presetType: TipoProvaJuridica) => {
     setNovaProvaTipo(presetType);
+    setNovaProvaTipoOutraIdentificacao("");
     const dest = currentProcesso ? `${currentProcesso.nome_reu} (Fração ${currentProcesso.fracao_nome})` : "Condómino Devedor";
     setNovaProvaDestinatario(dest);
 
@@ -248,6 +255,20 @@ export function ConstituicaoProcessosJuridicos({
       setNovaProvaFileNome("");
       setNovaProvaTipoFicheiro("pdf");
       setNovaProvaObsJuridica("Liquidação aritmética da dívida nos termos do art. 716.º do Código de Processo Civil.");
+    } else if (presetType === "CERTIDAO_REGISTO_PREDIAL") {
+      setNovaProvaTitulo("Certidão Permanente do Registo Predial da Fração");
+      setNovaProvaDescricao("Certidão do registo predial que identifica o(s) proprietário(s) registado(s) da fração autónoma, para efeitos de legitimidade processual.");
+      setNovaProvaFileNome("");
+      setNovaProvaTipoFicheiro("pdf");
+      setNovaProvaUrlPreview("");
+      setNovaProvaObsJuridica("Prova da titularidade do direito de propriedade nos termos do Código do Registo Predial.");
+    } else if (presetType === "OUTRO_COMPROVATIVO") {
+      setNovaProvaTitulo("");
+      setNovaProvaDescricao("");
+      setNovaProvaFileNome("");
+      setNovaProvaTipoFicheiro("documento");
+      setNovaProvaUrlPreview("");
+      setNovaProvaObsJuridica("");
     }
   };
 
@@ -411,12 +432,17 @@ export function ConstituicaoProcessosJuridicos({
       showToast("Indique o título do documento comprovativo.");
       return;
     }
+    if (novaProvaTipo === "OUTRO_COMPROVATIVO" && !novaProvaTipoOutraIdentificacao.trim()) {
+      showToast("Identifique o tipo de documento (ex: Declaração de Não Dívida, Custas de Tribunal, etc.).");
+      return;
+    }
 
     const novaProva: ProcessoProva = {
       id_prova: `prv-${Date.now()}`,
       id_processo: currentProcesso.id_processo,
       tipo: novaProvaTipo,
       titulo: novaProvaTitulo,
+      tipo_documento_outro: novaProvaTipo === "OUTRO_COMPROVATIVO" ? novaProvaTipoOutraIdentificacao.trim() : undefined,
       descricao: novaProvaDescricao,
       data_documento: novaProvaDataDoc,
       data_adicao: new Date().toISOString().split("T")[0],
@@ -491,6 +517,7 @@ export function ConstituicaoProcessosJuridicos({
     setNovaProvaDataEntrega("");
     setNovaProvaFileNome("");
     setNovaProvaUrlPreview("");
+    setNovaProvaTipoOutraIdentificacao("");
     showToast(`Doc. ${novaProva.numero_documento_ordem} adicionado ao processo e arquivado na pasta de Contencioso.`);
   };
 
@@ -604,7 +631,7 @@ export function ConstituicaoProcessosJuridicos({
         content: currentProcesso.provas.length > 0 
           ? currentProcesso.provas.map(pr => 
               `[DOC. ${pr.numero_documento_ordem}] ${pr.titulo}\n` +
-              `   • Tipo: ${pr.tipo.replace(/_/g, " ")} | Data: ${formatDatePT(pr.data_documento)}\n` +
+              `   • Tipo: ${pr.tipo_documento_outro || pr.tipo.replace(/_/g, " ")} | Data: ${formatDatePT(pr.data_documento)}\n` +
               `   • Ficheiro: ${pr.ficheiro_nome} (${pr.tamanho})\n` +
               (pr.codigo_rastreio_ctt ? `   • Registo CTT / AR: ${pr.codigo_rastreio_ctt} (Entregue a: ${pr.data_entrega_ctt || "Conforme aviso"})\n` : "") +
               (pr.observacoes_juridicas ? `   • Valor Probatório: ${pr.observacoes_juridicas}\n` : "") +
@@ -685,6 +712,18 @@ export function ConstituicaoProcessosJuridicos({
           icon: "fa-calculator",
           label: "Extrato Conta-Corrente & Juros",
           color: "bg-teal-500/20 text-teal-300 border-teal-500/40"
+        };
+      case "CERTIDAO_REGISTO_PREDIAL":
+        return {
+          icon: "fa-stamp",
+          label: "Certidão Registo Predial",
+          color: "bg-indigo-500/20 text-indigo-300 border-indigo-500/40"
+        };
+      case "OUTRO_COMPROVATIVO":
+        return {
+          icon: "fa-file-lines",
+          label: "Outro Documento",
+          color: "bg-slate-500/20 text-slate-300 border-slate-500/40"
         };
       default:
         return {
@@ -1041,7 +1080,9 @@ export function ConstituicaoProcessosJuridicos({
                       { id: "PRINT_CONVERSA_WHATSAPP", label: "Prints WhatsApp" },
                       { id: "PRINT_EMAIL_COMUNICACAO", label: "Prints E-mail" },
                       { id: "FOTOGRAFIA_DANO_INFRACAO", label: "Fotografias" },
-                      { id: "ATA_ASSEMBLEIA_TITULO_EXECUTIVO", label: "Atas" }
+                      { id: "ATA_ASSEMBLEIA_TITULO_EXECUTIVO", label: "Atas" },
+                      { id: "CERTIDAO_REGISTO_PREDIAL", label: "Certidões Prediais" },
+                      { id: "OUTRO_COMPROVATIVO", label: "Outros Documentos" }
                     ].map(f => (
                       <button
                         key={f.id}
@@ -1108,7 +1149,7 @@ export function ConstituicaoProcessosJuridicos({
                                 </span>
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${badge.color}`}>
                                   <i className={`fa-solid ${badge.icon} mr-1`}></i>
-                                  {badge.label}
+                                  {prova.tipo_documento_outro || badge.label}
                                 </span>
                                 <span className="text-[10px] text-slate-400 font-mono">
                                   {formatDatePT(prova.data_documento)}
@@ -1298,7 +1339,9 @@ export function ConstituicaoProcessosJuridicos({
                     { type: "PRINT_EMAIL_COMUNICACAO" as TipoProvaJuridica, label: "📧 Print E-mail", icon: "fa-at" },
                     { type: "FOTOGRAFIA_DANO_INFRACAO" as TipoProvaJuridica, label: "📸 Fotografia Danos", icon: "fa-camera" },
                     { type: "ATA_ASSEMBLEIA_TITULO_EXECUTIVO" as TipoProvaJuridica, label: "📜 Ata Executiva", icon: "fa-file-shield" },
-                    { type: "EXTRATO_CONTA_CORRENTE_DIVIDA" as TipoProvaJuridica, label: "📊 Extrato Juros", icon: "fa-calculator" }
+                    { type: "EXTRATO_CONTA_CORRENTE_DIVIDA" as TipoProvaJuridica, label: "📊 Extrato Juros", icon: "fa-calculator" },
+                    { type: "CERTIDAO_REGISTO_PREDIAL" as TipoProvaJuridica, label: "🏛️ Certidão Predial", icon: "fa-stamp" },
+                    { type: "OUTRO_COMPROVATIVO" as TipoProvaJuridica, label: "➕ Outro Documento (Identificar)", icon: "fa-file-circle-plus" }
                   ].map(preset => (
                     <button
                       key={preset.type}
@@ -1391,6 +1434,28 @@ export function ConstituicaoProcessosJuridicos({
                       />
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Identificação manual do tipo, quando o documento não se
+                  enquadra em nenhum dos modelos pré-definidos acima */}
+              {novaProvaTipo === "OUTRO_COMPROVATIVO" && (
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700 rounded-xl space-y-2">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <i className="fa-solid fa-tag text-slate-500"></i>
+                    Identifique o Tipo de Documento *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={novaProvaTipoOutraIdentificacao}
+                    onChange={(e) => setNovaProvaTipoOutraIdentificacao(e.target.value)}
+                    placeholder="Ex: Declaração de Não Dívida, Fatura de Custas de Tribunal, Carta de Resposta do Réu..."
+                    className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-white font-medium"
+                  />
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                    Use este campo para juntar qualquer documento necessário ao dossiê que não se enquadre nos modelos pré-definidos (declarações, certidões, custos de tribunal, correspondência do réu, etc.).
+                  </p>
                 </div>
               )}
 
