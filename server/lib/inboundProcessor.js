@@ -723,10 +723,12 @@ async function algumHashJaProcessado(hashes) {
  * responder) o MESMO email duas vezes quando chega por dois caminhos
  * diferentes (ex: o cron do gmail-reader.js processa-o diretamente, e um
  * Worker externo que lê a mesma caixa de correio reencaminha-o em separado
- * para /api/ai-studio?acao=inbound). O hash cobre remetente+assunto+corpo,
- * com uma janela de 1h — mais do que suficiente para o mesmo email real
- * chegar por dois caminhos quase em simultâneo, sem impedir um condómino de
- * genuinamente reenviar mais tarde um email com o mesmo texto.
+ * para /api/ai-studio?acao=inbound). O hash cobre remetente+assunto+corpo.
+ * Janela curta (3 min) — chega para apanhar os dois caminhos a processar
+ * quase em simultâneo (a razão de existir isto), mas sem impedir alguém de
+ * reenviar minutos/horas depois o mesmo email de propósito (ex: depois de
+ * uma falha de leitura, ou simplesmente a testar de novo) — uma janela de
+ * 1h estava a bloquear reenvios genuínos como se fossem duplicados.
  */
 function calcularHashEmail(cleanFrom, subject, body) {
   return "EMAIL-" + createHash("sha256").update(`${cleanFrom}|${subject}|${(body || "").slice(0, 2000)}`).digest("hex");
@@ -734,7 +736,7 @@ function calcularHashEmail(cleanFrom, subject, body) {
 
 async function emailJaProcessadoRecentemente(hashEmail) {
   try {
-    const desde = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const desde = new Date(Date.now() - 3 * 60 * 1000).toISOString();
     const { data } = await supabase
       .from("ai_auditoria")
       .select("id_log")
