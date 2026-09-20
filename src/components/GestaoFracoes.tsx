@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Pencil, Trash2, Plus, ArrowLeftRight, History } from "lucide-react";
 import { Predio, Fracao, LoggedUser, Aviso, Proprietario, Documento } from "../types";
-import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCondominoVaziaPDF, downloadFichaCondominoPreenchidaPDF, downloadListaCondominosPDF, gerarReferenciaBR23E, parseValorMonetario, procurarLocalidadePorCodigoPostal, separarMoradaAlternativa, combinarMoradaAlternativa } from "../utils";
+import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCondominoVaziaPDF, downloadFichaCondominoPreenchidaPDF, downloadListaCondominosPDF, downloadProprietariosFiltradosPDF, gerarReferenciaBR23E, parseValorMonetario, procurarLocalidadePorCodigoPostal, separarMoradaAlternativa, combinarMoradaAlternativa } from "../utils";
 import { ModalFichaCondominoEditavel } from "./ModalFichaCondominoEditavel";
 import { MoneyInput } from "./MoneyInput";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
@@ -385,6 +385,41 @@ export function GestaoFracoes({
 
     return list;
   }, [predioFracoes, unassignedProprietarios]);
+
+  // Filtros da tabela dinâmica "Proprietários Registados" — por fração,
+  // texto livre (nome/NIF/email/telemóvel) e presença de inquilino.
+  const [filtroPropFracao, setFiltroPropFracao] = useState<string>("TODAS");
+  const [filtroPropTexto, setFiltroPropTexto] = useState<string>("");
+  const [filtroPropInquilino, setFiltroPropInquilino] = useState<"TODOS" | "COM_INQUILINO" | "SEM_INQUILINO">("TODOS");
+
+  const proprietariosFiltrados = useMemo(() => {
+    const termo = filtroPropTexto.trim().toLowerCase();
+    return todosProprietarios.filter(p => {
+      if (filtroPropFracao !== "TODAS" && p.id_fracao !== filtroPropFracao) return false;
+      if (termo) {
+        const alvo = `${p.nome} ${p.nif || ""} ${p.email || ""} ${p.tlm || ""}`.toLowerCase();
+        if (!alvo.includes(termo)) return false;
+      }
+      if (filtroPropInquilino !== "TODOS") {
+        const fracaoDoProp = predioFracoes.find(f => f.id_fracao === p.id_fracao);
+        const temInquilino = Boolean(fracaoDoProp?.is_arrendada && fracaoDoProp?.inquilino);
+        if (filtroPropInquilino === "COM_INQUILINO" && !temInquilino) return false;
+        if (filtroPropInquilino === "SEM_INQUILINO" && temInquilino) return false;
+      }
+      return true;
+    });
+  }, [todosProprietarios, filtroPropFracao, filtroPropTexto, filtroPropInquilino, predioFracoes]);
+
+  const exportarProprietariosFiltradosXLS = () => {
+    const headers = ["Proprietário", "NIF", "E-mail", "Telemóvel", "Admin Interno", "Notificação", "Fração Associada"];
+    const rows = proprietariosFiltrados.map(p => [
+      p.nome, p.nif || "", p.email || "", p.tlm || "",
+      p.administrador_interno === "Sim" ? "Sim" : "Não",
+      (p.notificacao_preferencial || "").includes("Digital") ? "Digital" : "Postal",
+      p.fracao_nome || ""
+    ]);
+    exportToXLS(`Proprietarios_Registados_${predio.nome.replace(/\s+/g, "_")}`, headers, rows);
+  };
 
   useEffect(() => {
     if (!selectedFracaoId && predioFracoes.length > 0) {
@@ -2696,13 +2731,31 @@ export function GestaoFracoes({
               <div>
                 <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                   <i className="fa-solid fa-users text-emerald-600"></i>
-                  <span>Proprietários Registados ({todosProprietarios.length})</span>
+                  <span>Proprietários Registados ({proprietariosFiltrados.length}{proprietariosFiltrados.length !== todosProprietarios.length ? ` de ${todosProprietarios.length}` : ""})</span>
                 </h3>
                 <p className="text-xs text-slate-500">
                   Lista tabular completa de condóminos, administradores internos e contactos
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => downloadProprietariosFiltradosPDF(predio.nome, proprietariosFiltrados)}
+                  className="bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Exportar lista filtrada em PDF"
+                >
+                  <i className="fa-solid fa-file-pdf text-xs text-rose-500"></i>
+                  <span>PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={exportarProprietariosFiltradosXLS}
+                  className="bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Exportar lista filtrada em Excel"
+                >
+                  <i className="fa-solid fa-file-excel text-xs text-emerald-600"></i>
+                  <span>Excel</span>
+                </button>
                 <button
                   type="button"
                   onClick={limparFormProprietario}
@@ -2712,6 +2765,48 @@ export function GestaoFracoes({
                   <span>Novo Proprietário</span>
                 </button>
               </div>
+            </div>
+
+            {/* Filtros da tabela dinâmica */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pb-1">
+              <div className="relative flex-1">
+                <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <input
+                  type="text"
+                  value={filtroPropTexto}
+                  onChange={e => setFiltroPropTexto(e.target.value)}
+                  placeholder="Pesquisar por nome, NIF, e-mail ou telemóvel..."
+                  className="w-full pl-8 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-emerald-500"
+                />
+              </div>
+              <select
+                value={filtroPropFracao}
+                onChange={e => setFiltroPropFracao(e.target.value)}
+                className="border border-slate-200 rounded-lg px-2.5 py-2 text-xs bg-white"
+              >
+                <option value="TODAS">Todas as Frações</option>
+                {predioFracoes.map(f => (
+                  <option key={f.id_fracao} value={f.id_fracao}>Fração {f.fracao_nome}</option>
+                ))}
+              </select>
+              <select
+                value={filtroPropInquilino}
+                onChange={e => setFiltroPropInquilino(e.target.value as any)}
+                className="border border-slate-200 rounded-lg px-2.5 py-2 text-xs bg-white"
+              >
+                <option value="TODOS">Com ou Sem Inquilino</option>
+                <option value="COM_INQUILINO">Com Inquilino</option>
+                <option value="SEM_INQUILINO">Sem Inquilino</option>
+              </select>
+              {(filtroPropTexto || filtroPropFracao !== "TODAS" || filtroPropInquilino !== "TODOS") && (
+                <button
+                  type="button"
+                  onClick={() => { setFiltroPropTexto(""); setFiltroPropFracao("TODAS"); setFiltroPropInquilino("TODOS"); }}
+                  className="text-xs font-bold text-slate-500 hover:text-slate-700 px-2 cursor-pointer whitespace-nowrap"
+                >
+                  Limpar filtros
+                </button>
+              )}
             </div>
 
             <div className="overflow-x-auto">
@@ -2729,14 +2824,16 @@ export function GestaoFracoes({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {todosProprietarios.length === 0 ? (
+                  {proprietariosFiltrados.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="py-8 text-center text-slate-400">
-                        Nenhum proprietário registado ainda. Preencha o formulário acima para registar o primeiro condómino.
+                        {todosProprietarios.length === 0
+                          ? "Nenhum proprietário registado ainda. Preencha o formulário acima para registar o primeiro condómino."
+                          : "Nenhum proprietário corresponde aos filtros ativos."}
                       </td>
                     </tr>
                   ) : (
-                    todosProprietarios.map((prop, idx) => (
+                    proprietariosFiltrados.map((prop, idx) => (
                       <tr key={prop.nif || `${prop.nome}-${idx}`} className="hover:bg-slate-50/70 transition-colors">
                         <td className="py-2.5 px-3 font-semibold text-slate-800">
                           <div className="flex items-center gap-2.5">

@@ -1,5 +1,5 @@
 import { jsPDF } from "jspdf";
-import { Predio, GestorCarteira, Fracao, Reuniao, Fornecedor, Aviso } from "./types";
+import { Predio, GestorCarteira, Fracao, Reuniao, Fornecedor, Aviso, Proprietario } from "./types";
 import { 
   LOGO_HORIZONTAL_BASE64, 
   WATERMARK_BASE64, 
@@ -1153,6 +1153,86 @@ export function separarMoradaAlternativa(moradaCompleta?: string | null): { mora
 export function combinarMoradaAlternativa(morada: string, codigoPostal: string, localidade: string): string {
   const partes = [morada.trim(), [codigoPostal.trim(), localidade.trim()].filter(Boolean).join(" ")].filter(Boolean);
   return partes.join(", ");
+}
+
+// PDF da tabela dinâmica de "Proprietários Registados" (Gestão de Frações)
+// — recebe já a lista filtrada (por fração, texto de pesquisa, inquilino),
+// para o PDF refletir exatamente os filtros ativos no ecrã.
+export function downloadProprietariosFiltradosPDF(predioNome: string, proprietarios: (Proprietario & { fracao_nome?: string })[]) {
+  try {
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    let y = addPdfHeaderWithLogo(doc);
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(`PROPRIETÁRIOS REGISTADOS — ${predioNome}`, 148, y, { align: "center" });
+    y += 6;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Total: ${proprietarios.length} | Emitido em ${new Date().toLocaleDateString("pt-PT")}`, 148, y, { align: "center" });
+    y += 8;
+
+    const cols = [
+      { label: "PROPRIETÁRIO", x: 14, w: 55 },
+      { label: "NIF", x: 69, w: 25 },
+      { label: "E-MAIL", x: 94, w: 60 },
+      { label: "TELEMÓVEL", x: 154, w: 30 },
+      { label: "ADMIN.", x: 184, w: 20 },
+      { label: "NOTIFICAÇÃO", x: 204, w: 35 },
+      { label: "FRAÇÃO", x: 239, w: 40 }
+    ];
+
+    const desenharCabecalho = () => {
+      doc.setFillColor(4, 120, 87);
+      doc.rect(14, y, 265, 7, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.5);
+      cols.forEach(c => doc.text(c.label, c.x + 2, y + 4.8));
+      y += 7;
+    };
+
+    desenharCabecalho();
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(15, 23, 42);
+
+    proprietarios.forEach((p, idx) => {
+      if (y > 190) {
+        doc.addPage();
+        y = 20;
+        desenharCabecalho();
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(15, 23, 42);
+      }
+      if (idx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(14, y, 265, 7, "F");
+      }
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(14, y, 265, 7, "S");
+
+      const truncar = (s: string, n: number) => (s && s.length > n ? s.slice(0, n - 1) + "…" : s || "—");
+      doc.text(truncar(p.nome, 32), 16, y + 4.8);
+      doc.text(truncar(p.nif || "—", 15), 71, y + 4.8);
+      doc.text(truncar(p.email || "—", 38), 96, y + 4.8);
+      doc.text(truncar(p.tlm || "—", 18), 156, y + 4.8);
+      doc.text(p.administrador_interno === "Sim" ? "Sim" : "Não", 186, y + 4.8);
+      doc.text((p.notificacao_preferencial || "").includes("Digital") ? "Digital" : "Postal", 206, y + 4.8);
+      doc.text(truncar(p.fracao_nome || "—", 24), 241, y + 4.8);
+
+      y += 7;
+    });
+
+    const blob = doc.output("blob");
+    downloadBlob(blob, `Proprietarios_Registados_${predioNome.replace(/\s+/g, "_")}.pdf`);
+  } catch (err) {
+    console.error("Erro ao gerar PDF de Proprietários Registados:", err);
+  }
 }
 
 export function formatQuotaReceiptNumber(identifier: string | number): string {
