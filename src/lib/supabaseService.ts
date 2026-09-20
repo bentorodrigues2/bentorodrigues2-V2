@@ -2099,6 +2099,8 @@ export async function saveIncidenciaLimpezaToSupabase(inc: IncidenciaLimpezaRow)
 // NOTIFICAÇÕES PUSH (subscrições reais — ver src/utils/subscribeUser.ts)
 // ============================================================================
 
+const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function savePushSubscriptionToSupabase(params: {
   idPredio?: string;
   idFracao?: string;
@@ -2108,10 +2110,16 @@ export async function savePushSubscriptionToSupabase(params: {
 }): Promise<boolean> {
   const raw = params.subscription.toJSON();
   if (!raw.endpoint) return false;
+  // push_subscriptions.user_id é UUID na base de dados — mas em toda a app
+  // o "userId" que temos à mão é sempre o email (loggedUser.email), nunca
+  // um UUID. Enviar o email fazia o upsert falhar sempre com erro de tipo
+  // ("invalid input syntax for type uuid"), impedindo qualquer subscrição
+  // push de ser gravada. Sem uma coluna de texto dedicada ao email nesta
+  // tabela, omite-se o campo quando não é mesmo um UUID válido.
   return dbUpsert("push_subscriptions", {
     id_predio: params.idPredio || null,
     id_fracao: params.idFracao || null,
-    user_id: params.userId || null,
+    user_id: params.userId && REGEX_UUID.test(params.userId) ? params.userId : null,
     endpoint: raw.endpoint,
     subscription: raw,
     is_admin: params.isAdmin || false,

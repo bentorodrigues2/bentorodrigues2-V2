@@ -40,14 +40,34 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState<boolean>(defaultOpen || isFirstAccessMode);
 
-  // Notificações Push do Administrador — antes só condóminos/fornecedores
-  // conseguiam subscrever-se; sem isto o admin nunca recebia push nenhum
-  // (ex: aviso de mensagem nova de um condómino), só email.
-  const [ativandoPushAdmin, setAtivandoPushAdmin] = useState(false);
-  const [pushAdminAtivo, setPushAdminAtivo] = useState(false);
-  const handleAtivarPushAdmin = async () => {
-    if (ativandoPushAdmin) return;
-    setAtivandoPushAdmin(true);
+  // Redefinição de Password
+  const [currentPass, setCurrentPass] = useState<string>("");
+  const [newPass, setNewPass] = useState<string>("");
+  const [confirmPass, setConfirmPass] = useState<string>("");
+  const [passMsg, setPassMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Gestão de Som e Vibração
+  const [soundAppEnabled, setSoundAppEnabled] = useState<boolean>(true);
+  const [vibrationEnabled, setVibrationEnabled] = useState<boolean>(true);
+
+  // Som da Notificação
+  const [selectedNotificationSound, setSelectedNotificationSound] = useState<string>("CondoManager Padronizado");
+
+  // Tipos de Notificação & Edição
+  const [pushEnabled, setPushEnabled] = useState<boolean>(false);
+  const [ativandoPush, setAtivandoPush] = useState(false);
+  const [emailEnabled, setEmailEnabled] = useState<boolean>(true);
+  const [smsEnabled, setSmsEnabled] = useState<boolean>(true);
+  const [popupEnabled, setPopupEnabled] = useState<boolean>(true);
+
+  // Liga/desliga notificações push reais neste dispositivo (subscrição Web Push guardada no Supabase)
+  const handleTogglePush = async () => {
+    if (ativandoPush) return;
+    if (pushEnabled) {
+      setPushEnabled(false);
+      return;
+    }
+    setAtivandoPush(true);
     try {
       if (typeof Notification === "undefined") {
         alert("Este dispositivo/navegador não suporta notificações push.");
@@ -63,41 +83,25 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
         alert("❌ Não foi possível ativar as notificações neste dispositivo.");
         return;
       }
+      const isAdmin = ["ADMIN", "GESTOR", "EMPRESA_GESTORA"].includes(userRole);
       const ok = await savePushSubscriptionToSupabase({
         idPredio,
         userId: userEmail,
         subscription,
-        isAdmin: true
+        isAdmin
       });
       if (ok) {
-        setPushAdminAtivo(true);
-        alert("✅ Notificações push da Administração ativadas neste dispositivo — vai receber um aviso sempre que chegar uma mensagem nova de um condómino.");
+        setPushEnabled(true);
+        alert(isAdmin
+          ? "✅ Notificações push da Administração ativadas neste dispositivo — vai receber um aviso sempre que chegar uma mensagem nova de um condómino."
+          : "✅ Notificações push ativadas neste dispositivo.");
       } else {
         alert("❌ Não foi possível guardar a subscrição no Supabase. Tente novamente.");
       }
     } finally {
-      setAtivandoPushAdmin(false);
+      setAtivandoPush(false);
     }
   };
-
-  // Redefinição de Password
-  const [currentPass, setCurrentPass] = useState<string>("");
-  const [newPass, setNewPass] = useState<string>("");
-  const [confirmPass, setConfirmPass] = useState<string>("");
-  const [passMsg, setPassMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
-
-  // Gestão de Som e Vibração
-  const [soundAppEnabled, setSoundAppEnabled] = useState<boolean>(true);
-  const [vibrationEnabled, setVibrationEnabled] = useState<boolean>(true);
-
-  // Som da Notificação
-  const [selectedNotificationSound, setSelectedNotificationSound] = useState<string>("CondoManager Padronizado");
-
-  // Tipos de Notificação & Edição
-  const [pushEnabled, setPushEnabled] = useState<boolean>(true);
-  const [emailEnabled, setEmailEnabled] = useState<boolean>(true);
-  const [smsEnabled, setSmsEnabled] = useState<boolean>(true);
-  const [popupEnabled, setPopupEnabled] = useState<boolean>(true);
 
   const [contactEmail, setContactEmail] = useState<string>(userEmail || "usuario@condomanager.pt");
   const [contactSms, setContactSms] = useState<string>("+351 912 345 678");
@@ -336,41 +340,6 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
             </div>
           </div>
 
-          {/* 2.1 NOTIFICAÇÕES PUSH DA ADMINISTRAÇÃO — só ADMIN/GESTOR/EMPRESA_GESTORA */}
-          {["ADMIN", "GESTOR", "EMPRESA_GESTORA"].includes(userRole) && (
-            <div className="space-y-2.5 pb-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center space-x-2 text-slate-800 dark:text-white font-extrabold text-[11px] uppercase tracking-wider">
-                <Bell className="h-3.5 w-3.5 text-emerald-500" />
-                <span>2.1 Notificações Push da Administração</span>
-              </div>
-
-              <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3 rounded-xl flex items-center justify-between gap-3">
-                <div className="flex items-center space-x-2.5 min-w-0">
-                  <div className="h-8 w-8 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-                    <Bell className="h-4.5 w-4.5" />
-                  </div>
-                  <div className="text-left min-w-0">
-                    <span className="font-extrabold text-[10px] text-slate-800 dark:text-white block">Avisar quando chegar mensagem nova</span>
-                    <span className="text-[8px] text-slate-400">Notificação push neste dispositivo, identificando a fração</span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleAtivarPushAdmin}
-                  disabled={ativandoPushAdmin || pushAdminAtivo}
-                  className={`shrink-0 text-[9px] font-extrabold px-3 py-1.5 rounded-lg transition-colors cursor-pointer disabled:cursor-default ${
-                    pushAdminAtivo
-                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"
-                      : "bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60"
-                  }`}
-                >
-                  {pushAdminAtivo ? "Ativado ✓" : ativandoPushAdmin ? "A ativar..." : "Ativar"}
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* 3. GESTÃO DE SOM E VIBRAÇÃO */}
           <div className="space-y-2.5 pb-4 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center space-x-2 text-slate-800 dark:text-white font-extrabold text-[11px] uppercase tracking-wider">
@@ -478,8 +447,9 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
                   </div>
                   <button
                     type="button"
-                    onClick={() => setPushEnabled(!pushEnabled)}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                    onClick={handleTogglePush}
+                    disabled={ativandoPush}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out disabled:opacity-60 disabled:cursor-wait ${
                       pushEnabled ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-800"
                     }`}
                   >
