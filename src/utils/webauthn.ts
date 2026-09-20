@@ -13,8 +13,9 @@ export async function registarBiometriaNesteDispositivo(): Promise<{ ok: boolean
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) return { ok: false, error: "Sessão expirada — inicie sessão novamente." };
 
-  const respOpcoes = await fetch("/api/webauthn?acao=registo-opcoes", {
-    headers: { Authorization: `Bearer ${session.access_token}` }
+  const respOpcoes = await fetch("/api/admin?acao=webauthn-registo-opcoes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` }
   });
   const dadosOpcoes = await respOpcoes.json();
   if (!respOpcoes.ok || !dadosOpcoes.ok) {
@@ -23,7 +24,7 @@ export async function registarBiometriaNesteDispositivo(): Promise<{ ok: boolean
 
   const attestationResponse = await startRegistration({ optionsJSON: dadosOpcoes.options });
 
-  const respVerificar = await fetch("/api/webauthn?acao=registo-verificar", {
+  const respVerificar = await fetch("/api/admin?acao=webauthn-registo-verificar", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
     body: JSON.stringify({
@@ -59,7 +60,7 @@ export async function removerBiometriaNesteDispositivo(): Promise<{ ok: boolean;
   } catch {}
   if (!credentialId) return { ok: true };
 
-  const resp = await fetch("/api/webauthn?acao=remover-credencial", {
+  const resp = await fetch("/api/admin?acao=webauthn-remover-credencial", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
     body: JSON.stringify({ credentialId })
@@ -80,7 +81,11 @@ export async function loginComBiometria(email: string): Promise<{ ok: boolean; e
   const emailLimpo = (email || "").trim().toLowerCase();
   if (!emailLimpo) return { ok: false, error: "Indique o seu email para continuar com biometria." };
 
-  const respOpcoes = await fetch(`/api/webauthn?acao=login-opcoes&email=${encodeURIComponent(emailLimpo)}`);
+  const respOpcoes = await fetch("/api/admin?acao=webauthn-login-opcoes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: emailLimpo })
+  });
   const dadosOpcoes = await respOpcoes.json();
   if (!respOpcoes.ok || !dadosOpcoes.ok) {
     return { ok: false, error: dadosOpcoes.error || "Sem biometria registada para este email neste dispositivo." };
@@ -94,7 +99,7 @@ export async function loginComBiometria(email: string): Promise<{ ok: boolean; e
     return { ok: false, error: err?.message || "Não foi possível ler a biometria." };
   }
 
-  const respVerificar = await fetch("/api/webauthn?acao=login-verificar", {
+  const respVerificar = await fetch("/api/admin?acao=webauthn-login-verificar", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ response: authResponse, challengeToken: dadosOpcoes.challengeToken, email: emailLimpo })

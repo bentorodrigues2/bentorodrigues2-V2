@@ -1,3 +1,10 @@
+import crypto from "crypto";
+import {
+  generateRegistrationOptions,
+  verifyRegistrationResponse,
+  generateAuthenticationOptions,
+  verifyAuthenticationResponse
+} from "@simplewebauthn/server";
 import { emitirQuotasMensais, enviarLembretesQuotas, avisarQuotasEmMora, enviarFelicitacoesAniversario } from "../server/lib/cronService.js";
 import { supabase } from "../server/lib/supabaseServer.js";
 import { enviarEmailSemAnexo } from "../server/lib/mailer.js";
@@ -5,6 +12,52 @@ import { gerarHtmlResposta } from "../server/lib/htmlemail.js";
 import { enviarEmailResend } from "../server/lib/inboundProcessor.js";
 import { exigirSessaoValida, exigirSessaoComPapel } from "../server/lib/verificarSessao.js";
 import webpush from "web-push";
+
+// --- Biometria real (WebAuthn) — fundido aqui (era api/webauthn.js) para
+// não ultrapassar o limite de 12 Serverless Functions do plano Hobby da
+// Vercel (cada ficheiro em /api conta como uma função). ---
+const RP_NAME = "CondoManager AI";
+const ORIGENS_PERMITIDAS_WEBAUTHN = [
+  "https://bentorodrigues2.condomanagerai.com",
+  "https://bentorodrigues2.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000"
+];
+
+function obterRpIdEOriginWebAuthn(req) {
+  const origin = req.headers.origin || "";
+  if (ORIGENS_PERMITIDAS_WEBAUTHN.includes(origin)) {
+    return { rpID: new URL(origin).hostname, origin };
+  }
+  const site = process.env.SITE_URL || "https://bentorodrigues2.condomanagerai.com";
+  return { rpID: new URL(site).hostname, origin: site };
+}
+
+// O desafio (challenge) do WebAuthn vai assinado (HMAC) e com validade de 5
+// minutos, sem guardar estado nenhum no servidor entre pedidos (ambiente
+// serverless) — reaproveita a service role key como segredo (só existe no servidor).
+const CHALLENGE_SECRET_WEBAUTHN = process.env.SUPABASE_SERVICE_ROLE_KEY || "fallback-dev-secret";
+
+function assinarChallengeWebAuthn(challenge, extra) {
+  const payload = JSON.stringify({ challenge, extra, exp: Date.now() + 5 * 60 * 1000 });
+  const payloadB64 = Buffer.from(payload, "utf8").toString("base64url");
+  const hmac = crypto.createHmac("sha256", CHALLENGE_SECRET_WEBAUTHN).update(payloadB64).digest("hex");
+  return `${payloadB64}.${hmac}`;
+}
+
+function verificarChallengeTokenWebAuthn(token) {
+  if (!token || typeof token !== "string" || !token.includes(".")) return null;
+  const [payloadB64, hmac] = token.split(".");
+  const hmacEsperado = crypto.createHmac("sha256", CHALLENGE_SECRET_WEBAUTHN).update(payloadB64).digest("hex");
+  if (hmac !== hmacEsperado) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
+    if (!parsed.exp || parsed.exp < Date.now()) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
@@ -130,11 +183,12 @@ export default async function handler(req, res) {
 
   const acao = req.query?.acao;
 
-  // "recuperar-password" tem de continuar acessível sem sessão — é chamado
-  // a partir do ecrã de login, antes de existir qualquer sessão. Todas as
-  // outras ações (aprovar/rejeitar respostas de IA, enviar push, convidar
-  // novos utilizadores, forçar jobs internos) exigem sessão válida.
-  if (acao !== "recuperar-password") {
+  // "recuperar-password" e o login por biometria (webauthn-login-opcoes/
+  // -verificar) têm de continuar acessíveis sem sessão — são chamados a
+  // partir do próprio ecrã de login, antes de existir qualquer sessão.
+  // Todas as outras ações exigem sessão válida.
+  const acoesSemSessao = ["recuperar-password", "webauthn-login-opcoes", "webauthn-login-verificar"];
+  if (!acoesSemSessao.includes(acao)) {
     const utilizador = await exigirSessaoValida(req, res);
     if (!utilizador) return;
   }
@@ -356,6 +410,235 @@ export default async function handler(req, res) {
     } catch (err) {
       console.error("Erro em /api/admin?acao=convidar:", err);
       return res.status(500).json({ error: err?.message || String(err) });
+    }
+  }
+
+  if (acao === "webauthn-registo-opcoes") {
+    const utilizador = await exigirSessaoValida(req, res);
+    if (!utilizador) return;
+    try {
+      const { rpID } = obterRpIdEOriginWebAuthn(req);
+      const email = (utilizador.email || "").trim().toLowerCase();
+
+      const { data: existentes } = await supabase
+        .from("webauthn_credentials")
+        .select("credential_id, transports")
+        .eq("user_email", email);
+
+      const options = await generateRegistrationOptions({
+        rpName: RP_NAME,
+        rpID,
+        userName: email,
+        userDisplayName: email,
+        attestationType: "none",
+        excludeCredentials: (existentes || []).map((c) => ({
+          id: c.credential_id,
+          transports: c.transports || undefined
+        })),
+        authenticatorSelection: {
+          residentKey: "preferred",
+          userVerification: "preferred",
+          authenticatorAttachment: "platform"
+        }
+      });
+
+      const challengeToken = assinarChallengeWebAuthn(options.challenge, { email });
+      return res.status(200).json({ ok: true, options, challengeToken });
+    } catch (err) {
+      console.error("Erro em /api/admin?acao=webauthn-registo-opcoes:", err);
+      return res.status(500).json({ ok: false, error: err?.message || "Erro interno." });
+    }
+  }
+
+  if (acao === "webauthn-registo-verificar") {
+    const utilizador = await exigirSessaoValida(req, res);
+    if (!utilizador) return;
+    try {
+      const { origin, rpID } = obterRpIdEOriginWebAuthn(req);
+      const email = (utilizador.email || "").trim().toLowerCase();
+      const { response, challengeToken, deviceLabel } = req.body || {};
+
+      const dadosChallenge = verificarChallengeTokenWebAuthn(challengeToken);
+      if (!dadosChallenge || dadosChallenge.extra?.email !== email) {
+        return res.status(400).json({ ok: false, error: "Pedido de registo expirado ou inválido. Tente novamente." });
+      }
+
+      let verification;
+      try {
+        verification = await verifyRegistrationResponse({
+          response,
+          expectedChallenge: dadosChallenge.challenge,
+          expectedOrigin: origin,
+          expectedRPID: rpID
+        });
+      } catch (errVerify) {
+        return res.status(400).json({ ok: false, error: "Não foi possível verificar a biometria: " + errVerify.message });
+      }
+
+      if (!verification.verified || !verification.registrationInfo) {
+        return res.status(400).json({ ok: false, error: "Não foi possível verificar a biometria." });
+      }
+
+      const { credential, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
+      const { error } = await supabase.from("webauthn_credentials").insert({
+        user_email: email,
+        credential_id: credential.id,
+        public_key: Buffer.from(credential.publicKey).toString("base64url"),
+        counter: credential.counter,
+        transports: response?.response?.transports || null,
+        device_type: credentialDeviceType,
+        backed_up: credentialBackedUp,
+        device_label: (deviceLabel || "").slice(0, 120) || null
+      });
+
+      if (error) {
+        console.error("[webauthn] Erro ao guardar credencial:", error);
+        return res.status(500).json({ ok: false, error: "Não foi possível guardar a credencial biométrica no Supabase." });
+      }
+
+      return res.status(200).json({ ok: true, credentialId: credential.id });
+    } catch (err) {
+      console.error("Erro em /api/admin?acao=webauthn-registo-verificar:", err);
+      return res.status(500).json({ ok: false, error: err?.message || "Erro interno." });
+    }
+  }
+
+  if (acao === "webauthn-login-opcoes") {
+    try {
+      const email = ((req.body || {}).email || "").trim().toLowerCase();
+      if (!email) return res.status(400).json({ ok: false, error: "Email é obrigatório." });
+      const { rpID } = obterRpIdEOriginWebAuthn(req);
+
+      const { data: credenciais } = await supabase
+        .from("webauthn_credentials")
+        .select("credential_id, transports")
+        .eq("user_email", email);
+
+      if (!credenciais || credenciais.length === 0) {
+        return res.status(404).json({ ok: false, error: "Não há biometria registada para este email neste dispositivo/servidor." });
+      }
+
+      const options = await generateAuthenticationOptions({
+        rpID,
+        userVerification: "preferred",
+        allowCredentials: credenciais.map((c) => ({ id: c.credential_id, transports: c.transports || undefined }))
+      });
+
+      const challengeToken = assinarChallengeWebAuthn(options.challenge, { email });
+      return res.status(200).json({ ok: true, options, challengeToken });
+    } catch (err) {
+      console.error("Erro em /api/admin?acao=webauthn-login-opcoes:", err);
+      return res.status(500).json({ ok: false, error: err?.message || "Erro interno." });
+    }
+  }
+
+  if (acao === "webauthn-login-verificar") {
+    try {
+      const { response, challengeToken, email: emailBody } = req.body || {};
+      const email = (emailBody || "").trim().toLowerCase();
+      const { origin, rpID } = obterRpIdEOriginWebAuthn(req);
+
+      const dadosChallenge = verificarChallengeTokenWebAuthn(challengeToken);
+      if (!dadosChallenge || dadosChallenge.extra?.email !== email) {
+        return res.status(400).json({ ok: false, error: "Pedido de autenticação expirado ou inválido. Tente novamente." });
+      }
+
+      const { data: credencial } = await supabase
+        .from("webauthn_credentials")
+        .select("*")
+        .eq("user_email", email)
+        .eq("credential_id", response?.id)
+        .maybeSingle();
+
+      if (!credencial) {
+        return res.status(400).json({ ok: false, error: "Credencial biométrica não reconhecida." });
+      }
+
+      let verification;
+      try {
+        verification = await verifyAuthenticationResponse({
+          response,
+          expectedChallenge: dadosChallenge.challenge,
+          expectedOrigin: origin,
+          expectedRPID: rpID,
+          credential: {
+            id: credencial.credential_id,
+            publicKey: Buffer.from(credencial.public_key, "base64url"),
+            counter: credencial.counter,
+            transports: credencial.transports || undefined
+          }
+        });
+      } catch (errVerify) {
+        return res.status(400).json({ ok: false, error: "Não foi possível verificar a biometria: " + errVerify.message });
+      }
+
+      if (!verification.verified) {
+        return res.status(400).json({ ok: false, error: "Não foi possível verificar a biometria." });
+      }
+
+      await supabase
+        .from("webauthn_credentials")
+        .update({ counter: verification.authenticationInfo.newCounter, last_used_at: new Date().toISOString() })
+        .eq("id", credencial.id);
+
+      // A identidade já foi confirmada pela assinatura biométrica verificada
+      // acima — gera uma sessão real do Supabase Auth sem pedir a password
+      // (mesmo padrão de generateLink já usado em "convidar"/"recuperar-password").
+      const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+        type: "magiclink",
+        email
+      });
+
+      if (linkError || !linkData?.properties?.hashed_token) {
+        console.error("[webauthn] Erro ao gerar sessão pós-biometria:", linkError);
+        return res.status(500).json({ ok: false, error: "Biometria confirmada, mas não foi possível iniciar sessão. Tente com a password." });
+      }
+
+      return res.status(200).json({ ok: true, hashedToken: linkData.properties.hashed_token, email });
+    } catch (err) {
+      console.error("Erro em /api/admin?acao=webauthn-login-verificar:", err);
+      return res.status(500).json({ ok: false, error: err?.message || "Erro interno." });
+    }
+  }
+
+  if (acao === "webauthn-listar-credenciais") {
+    const utilizador = await exigirSessaoValida(req, res);
+    if (!utilizador) return;
+    try {
+      const email = (utilizador.email || "").trim().toLowerCase();
+      const { data, error } = await supabase
+        .from("webauthn_credentials")
+        .select("id, credential_id, device_label, device_type, created_at, last_used_at")
+        .eq("user_email", email)
+        .order("created_at", { ascending: false });
+
+      if (error) return res.status(500).json({ ok: false, error: "Não foi possível listar as credenciais." });
+      return res.status(200).json({ ok: true, credenciais: data || [] });
+    } catch (err) {
+      console.error("Erro em /api/admin?acao=webauthn-listar-credenciais:", err);
+      return res.status(500).json({ ok: false, error: err?.message || "Erro interno." });
+    }
+  }
+
+  if (acao === "webauthn-remover-credencial") {
+    const utilizador = await exigirSessaoValida(req, res);
+    if (!utilizador) return;
+    try {
+      const email = (utilizador.email || "").trim().toLowerCase();
+      const { credentialId } = req.body || {};
+      if (!credentialId) return res.status(400).json({ ok: false, error: "credentialId é obrigatório." });
+
+      const { error } = await supabase
+        .from("webauthn_credentials")
+        .delete()
+        .eq("user_email", email)
+        .eq("credential_id", credentialId);
+
+      if (error) return res.status(500).json({ ok: false, error: "Não foi possível remover a credencial." });
+      return res.status(200).json({ ok: true });
+    } catch (err) {
+      console.error("Erro em /api/admin?acao=webauthn-remover-credencial:", err);
+      return res.status(500).json({ ok: false, error: err?.message || "Erro interno." });
     }
   }
 
