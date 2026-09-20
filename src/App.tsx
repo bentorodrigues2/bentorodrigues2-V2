@@ -2836,6 +2836,7 @@ export default function App() {
               documentos={documentos}
               setDocumentos={setDocumentos}
               loggedUser={loggedUser}
+              reunioes={reunioes}
             />
           )}
 

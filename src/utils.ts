@@ -1114,6 +1114,47 @@ export function escolherIbanContaPorTipo(contas: { iban: string; is_principal?: 
   return (contaPrincipal || contas[0])?.iban || "";
 }
 
+// Procura a localidade a partir de um código postal português (formato
+// "XXXX-XXX") usando a API pública gratuita geoapi.pt — usada para
+// preenchimento automático de localidade em moradas (ex: morada alternativa
+// do proprietário). Devolve null se o formato for inválido, a API falhar,
+// ou não encontrar correspondência (nunca lança erro).
+export async function procurarLocalidadePorCodigoPostal(codigoPostal: string): Promise<string | null> {
+  const cpLimpo = (codigoPostal || "").trim();
+  if (!/^\d{4}-\d{3}$/.test(cpLimpo)) return null;
+  try {
+    const resp = await fetch(`https://geoapi.pt/cp/${cpLimpo}`);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return data?.Distrito && data?.Concelho
+      ? (data?.text || data?.Localidade || `${data.Concelho}`)
+      : (data?.text || data?.Localidade || null);
+  } catch {
+    return null;
+  }
+}
+
+// Separa uma morada alternativa gravada como string única (formato usado em
+// toda a app: "Rua X, nº Y, 1234-567 Localidade") nos 3 campos estruturados
+// do formulário — parse best-effort, usado só para pré-preencher o
+// formulário de edição a partir de dados já existentes; a gravação volta a
+// juntar tudo na mesma string via combinarMoradaAlternativa, mantendo
+// compatibilidade total com o resto da app, que continua a ler uma string.
+export function separarMoradaAlternativa(moradaCompleta?: string | null): { morada: string; codigoPostal: string; localidade: string } {
+  if (!moradaCompleta) return { morada: "", codigoPostal: "", localidade: "" };
+  const match = moradaCompleta.match(/(\d{4}-\d{3})\s*(.*)$/);
+  if (!match) return { morada: moradaCompleta.trim(), codigoPostal: "", localidade: "" };
+  const codigoPostal = match[1];
+  const localidade = match[2].trim();
+  const morada = moradaCompleta.slice(0, match.index).replace(/,\s*$/, "").trim();
+  return { morada, codigoPostal, localidade };
+}
+
+export function combinarMoradaAlternativa(morada: string, codigoPostal: string, localidade: string): string {
+  const partes = [morada.trim(), [codigoPostal.trim(), localidade.trim()].filter(Boolean).join(" ")].filter(Boolean);
+  return partes.join(", ");
+}
+
 export function formatQuotaReceiptNumber(identifier: string | number): string {
   if (!identifier) return "BR2 00001";
   const str = String(identifier);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Pencil, Trash2, Plus, ArrowLeftRight, History } from "lucide-react";
 import { Predio, Fracao, LoggedUser, Aviso, Proprietario, Documento } from "../types";
-import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCondominoVaziaPDF, downloadFichaCondominoPreenchidaPDF, downloadListaCondominosPDF, gerarReferenciaBR23E, parseValorMonetario } from "../utils";
+import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCondominoVaziaPDF, downloadFichaCondominoPreenchidaPDF, downloadListaCondominosPDF, gerarReferenciaBR23E, parseValorMonetario, procurarLocalidadePorCodigoPostal, separarMoradaAlternativa, combinarMoradaAlternativa } from "../utils";
 import { ModalFichaCondominoEditavel } from "./ModalFichaCondominoEditavel";
 import { MoneyInput } from "./MoneyInput";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
@@ -59,7 +59,13 @@ export function GestaoFracoes({
   // na conciliação quando o pagamento vem de uma conta diferente (cônjuge,
   // conta conjunta, etc.)
   const [propContasAdicionais, setPropContasAdicionais] = useState<{ titular: string; iban: string; entidade_bancaria?: string }[]>([]);
+  // Morada alternativa estruturada (Morada, Código-Postal, Localidade) —
+  // continua gravada como uma única string em morada_alternativa (é o que
+  // todo o resto da app já lê/mostra), montada a partir destes 3 campos.
   const [propMoradaAlt, setPropMoradaAlt] = useState("");
+  const [propMoradaAltCP, setPropMoradaAltCP] = useState("");
+  const [propMoradaAltLocalidade, setPropMoradaAltLocalidade] = useState("");
+  const [aProcurarLocalidadeAlt, setAProcurarLocalidadeAlt] = useState(false);
   const [propFoto, setPropFoto] = useState<string | null>(null);
 
   // Estados para Co-Proprietários (Vários proprietários por fração)
@@ -460,7 +466,12 @@ export function GestaoFracoes({
     setPropTitular(prop.titular_conta || prop.nome || "");
     setPropBanco(prop.entidade_bancaria || "");
     setPropContasAdicionais(prop.contas_bancarias_adicionais || []);
-    setPropMoradaAlt(prop.morada_alternativa || "");
+    {
+      const { morada, codigoPostal, localidade } = separarMoradaAlternativa(prop.morada_alternativa);
+      setPropMoradaAlt(morada);
+      setPropMoradaAltCP(codigoPostal);
+      setPropMoradaAltLocalidade(localidade);
+    }
     setPropFoto(prop.foto || null);
     setAdminInterno(prop.administrador_interno || "Não");
     setNotificacao(prop.notificacao_preferencial || "Digital (E-mail e Mensagens Push)");
@@ -518,6 +529,8 @@ export function GestaoFracoes({
     setPropBanco("");
     setPropContasAdicionais([]);
     setPropMoradaAlt("");
+    setPropMoradaAltCP("");
+    setPropMoradaAltLocalidade("");
     setPropFoto(null);
     setAdminInterno("Não");
     setNotificacao("Digital (E-mail e Mensagens Push)");
@@ -927,7 +940,7 @@ export function GestaoFracoes({
       titular_conta: propTitular.trim() || propNome.trim(),
       entidade_bancaria: propBanco.trim() || "",
       contas_bancarias_adicionais: propContasAdicionais.filter(c => c.iban.trim()),
-      morada_alternativa: arrendada ? propMoradaAlt || null : null,
+      morada_alternativa: arrendada ? combinarMoradaAlternativa(propMoradaAlt, propMoradaAltCP, propMoradaAltLocalidade) || null : null,
       foto: propFoto,
       administrador_interno: adminInterno,
       notificacao_preferencial: notificacao,
@@ -2608,9 +2621,32 @@ export function GestaoFracoes({
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                    <div className="flex flex-col col-span-3">
-                      <label className="text-xs font-semibold text-slate-500 mb-1">Morada de Residência Alternativa do Proprietário (Obrigatório se Arrendado)</label>
-                      <input type="text" value={propMoradaAlt} onChange={e => setPropMoradaAlt(e.target.value)} placeholder="Morada onde o proprietário vive" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+                    <div className="col-span-3 grid grid-cols-1 sm:grid-cols-4 gap-3">
+                      <div className="flex flex-col sm:col-span-2">
+                        <label className="text-xs font-semibold text-slate-500 mb-1">Morada Alternativa do Proprietário (Obrigatório se Arrendado)</label>
+                        <input type="text" value={propMoradaAlt} onChange={e => setPropMoradaAlt(e.target.value)} placeholder="Rua, nº, andar" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+                      </div>
+                      <div className="flex flex-col">
+                        <label className="text-xs font-semibold text-slate-500 mb-1">Código-Postal</label>
+                        <input
+                          type="text"
+                          value={propMoradaAltCP}
+                          onChange={e => setPropMoradaAltCP(e.target.value)}
+                          onBlur={async () => {
+                            if (!/^\d{4}-\d{3}$/.test(propMoradaAltCP.trim())) return;
+                            setAProcurarLocalidadeAlt(true);
+                            const loc = await procurarLocalidadePorCodigoPostal(propMoradaAltCP.trim());
+                            setAProcurarLocalidadeAlt(false);
+                            if (loc) setPropMoradaAltLocalidade(loc);
+                          }}
+                          placeholder="2840-124"
+                          className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono"
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <label className="text-xs font-semibold text-slate-500 mb-1">Localidade{aProcurarLocalidadeAlt ? " (a procurar...)" : ""}</label>
+                        <input type="text" value={propMoradaAltLocalidade} onChange={e => setPropMoradaAltLocalidade(e.target.value)} placeholder="Reconhecida automaticamente pelo código-postal" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+                      </div>
                     </div>
                     <div className="flex flex-col">
                       <label className="text-xs font-semibold text-slate-500 mb-1">Fotografia do Inquilino</label>

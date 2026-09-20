@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Predio, Fracao, Aviso, LoggedUser, Documento, RevisaoOrcamento, Conta, Movimento } from "../types";
+import { Predio, Fracao, Aviso, LoggedUser, Documento, RevisaoOrcamento, Conta, Movimento, Reuniao } from "../types";
 import { formatDatePT, formatQuotaReceiptNumber, parseValorMonetario, escolherIbanContaPorTipo } from "../utils";
 import { downloadOfficialReceiptPDF } from "../utils/receiptGenerator";
 import { MoneyInput } from "./MoneyInput";
@@ -29,9 +29,14 @@ interface GestaoEmissaoProps {
   documentos?: Documento[];
   setDocumentos?: React.Dispatch<React.SetStateAction<Documento[]>>;
   loggedUser: LoggedUser;
+  reunioes?: Reuniao[];
 }
 
-export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setContas, movements, setMovements, documentos, setDocumentos, loggedUser }: GestaoEmissaoProps) {
+export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setContas, movements, setMovements, documentos, setDocumentos, loggedUser, reunioes = [] }: GestaoEmissaoProps) {
+  // Atas reais já emitidas (com nº atribuído) deste prédio — usadas para
+  // ligar a revisão de orçamento à ata que a aprovou, em vez de texto livre
+  // digitado à mão que podia divergir da ata realmente emitida.
+  const atasEmitidas = reunioes.filter(r => r.id_predio === predio.id_predio && (r.numero_ata || r.ata)).sort((a, b) => b.data.localeCompare(a.data));
   const [orcamentoAnual, setOrcamentoAnual] = useState(() => {
     const guardado = (predio.patrimonio as any)?.orcamento_anual;
     return guardado ? String(guardado) : "";
@@ -67,6 +72,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
   const [novaRevisaoData, setNovaRevisaoData] = useState(() => new Date().toISOString().split("T")[0]);
   const [novaRevisaoAssembleia, setNovaRevisaoAssembleia] = useState(false);
   const [novaRevisaoMotivo, setNovaRevisaoMotivo] = useState("");
+  const [novaRevisaoAtaId, setNovaRevisaoAtaId] = useState("");
 
   useEffect(() => {
     fetchRevisoesOrcamentoFromSupabase(predio.id_predio).then(r => setRevisoesOrcamento(r || []));
@@ -83,13 +89,19 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
     const novoValorRevisao = parseValorMonetario(novaRevisaoValor);
     if (novoValorRevisao <= 0) return alert("Indique um valor válido para a revisão do orçamento.");
 
+    const ataSelecionada = atasEmitidas.find(r => r.id_reuniao === novaRevisaoAtaId);
+    const motivoFinal = ataSelecionada
+      ? `Ata ${ataSelecionada.numero_ata || "s/nº"} — ${ataSelecionada.tema} (${formatDatePT(ataSelecionada.data)})${novaRevisaoMotivo ? ` — ${novaRevisaoMotivo}` : ""}`
+      : (novaRevisaoMotivo || undefined);
+
     const nova: RevisaoOrcamento = {
       id_revisao: "rev-" + Date.now(),
       id_predio: predio.id_predio,
       valor: novoValorRevisao,
       data_vigencia: novaRevisaoData,
-      aprovado_em_assembleia: novaRevisaoAssembleia,
-      motivo: novaRevisaoMotivo || undefined
+      aprovado_em_assembleia: novaRevisaoAssembleia || Boolean(ataSelecionada),
+      motivo: motivoFinal,
+      id_reuniao_ata: ataSelecionada?.id_reuniao || undefined
     };
     const ok = await saveRevisaoOrcamentoToSupabase(nova);
     if (!ok) return alert("❌ Não foi possível gravar a revisão no Supabase. Tente novamente.");
@@ -109,6 +121,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
     setNovaRevisaoValor("");
     setNovaRevisaoMotivo("");
     setNovaRevisaoAssembleia(false);
+    setNovaRevisaoAtaId("");
     alert(
       maisRecenteVigente?.id_revisao === nova.id_revisao
         ? "✅ Revisão registada e já aplicada — o orçamento anual em vigor foi atualizado."
@@ -128,7 +141,10 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
   const [docType, setDocType] = useState<"RECIBO" | "NOTA_COBRANCA">("NOTA_COBRANCA");
   
   // Customization states for the generated document
-  const [customIban, setCustomIban] = useState(predio.iban || "PT50 0033 0000 12345678901 23");
+  // Vazio por omissão — quando vazio, o IBAN é escolhido automaticamente
+  // pelo tipo do aviso (escolherIbanContaPorTipo, ver handleGeneratePdf);
+  // só é usado quando o admin o preenche manualmente de propósito.
+  const [customIban, setCustomIban] = useState("");
   const [customDataLimite, setCustomDataLimite] = useState("");
   const [customDataPagamento, setCustomDataPagamento] = useState("");
   const [customQuotaMensal, setCustomQuotaMensal] = useState<number>(0);
@@ -546,8 +562,29 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
               <input type="date" value={novaRevisaoData} onChange={e => setNovaRevisaoData(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
             </div>
             <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-500 mb-1">Motivo / Ata</label>
-              <input type="text" value={novaRevisaoMotivo} onChange={e => setNovaRevisaoMotivo(e.target.value)} placeholder="Ex: Ata da AG de 12/06" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+              <label className="text-xs font-semibold text-slate-500 mb-1">Ata da Decisão</label>
+              <select
+                value={novaRevisaoAtaId}
+                onChange={e => setNovaRevisaoAtaId(e.target.value)}
+                className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white"
+              >
+                <option value="">— Sem ata associada —</option>
+                {atasEmitidas.map(r => (
+                  <option key={r.id_reuniao} value={r.id_reuniao}>
+                    Ata {r.numero_ata || "s/nº"} — {r.tema} ({formatDatePT(r.data)})
+                  </option>
+                ))}
+              </select>
+              {atasEmitidas.length === 0 && (
+                <span className="text-[10px] text-amber-600 mt-0.5">Nenhuma ata emitida ainda em Assembleias — pode continuar sem associar.</span>
+              )}
+              <input
+                type="text"
+                value={novaRevisaoMotivo}
+                onChange={e => setNovaRevisaoMotivo(e.target.value)}
+                placeholder="Nota adicional (opcional)"
+                className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 mt-1.5"
+              />
             </div>
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 cursor-pointer">
@@ -864,6 +901,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                     type="text"
                     value={customIban}
                     onChange={e => setCustomIban(e.target.value)}
+                    placeholder={selectedAviso ? `Automático: ${escolherIbanContaPorTipo(contas, selectedAviso.tipo) || predio.iban || "—"}` : "Automático conforme o tipo de aviso"}
                     className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-900 text-xs px-2.5 py-1.5 rounded-lg focus:outline-indigo-500 dark:text-white font-mono"
                   />
                 </div>
@@ -1063,7 +1101,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                 <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-lg p-3 text-[10px] text-slate-500 dark:text-slate-400 space-y-1">
                   <p><strong className="text-slate-700 dark:text-slate-300">Emissão:</strong> {formatDatePT(selectedAviso.data)}</p>
                   <p><strong className="text-slate-700 dark:text-slate-300">{docType === "RECIBO" ? "Data de Liquidação" : "Limite de Pagamento"}:</strong> {formatDatePT(docType === "RECIBO" ? customDataPagamento : customDataLimite)}</p>
-                  <p><strong className="text-slate-700 dark:text-slate-300">IBAN:</strong> {customIban}</p>
+                  <p><strong className="text-slate-700 dark:text-slate-300">IBAN:</strong> {customIban || escolherIbanContaPorTipo(contas, selectedAviso.tipo) || predio.iban || "—"}</p>
                 </div>
 
                 <p className="text-[9px] text-slate-400 text-center leading-relaxed">

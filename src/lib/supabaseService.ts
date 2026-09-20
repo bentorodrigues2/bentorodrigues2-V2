@@ -1657,6 +1657,7 @@ export async function fetchRevisoesOrcamentoFromSupabase(idPredio?: string): Pro
       data_vigencia: row.data_vigencia,
       aprovado_em_assembleia: Boolean(row.aprovado_em_assembleia),
       motivo: row.motivo || undefined,
+      id_reuniao_ata: row.id_reuniao_ata || undefined,
       created_at: row.created_at || undefined
     }));
   } catch (err) {
@@ -1672,7 +1673,8 @@ export async function saveRevisaoOrcamentoToSupabase(revisao: RevisaoOrcamento):
     valor: revisao.valor,
     data_vigencia: revisao.data_vigencia,
     aprovado_em_assembleia: revisao.aprovado_em_assembleia,
-    motivo: revisao.motivo || null
+    motivo: revisao.motivo || null,
+    id_reuniao_ata: revisao.id_reuniao_ata || null
   });
 }
 

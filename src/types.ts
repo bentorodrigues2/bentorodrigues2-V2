@@ -96,6 +96,10 @@ export interface RevisaoOrcamento {
   data_vigencia: string;
   aprovado_em_assembleia: boolean;
   motivo?: string;
+  // Liga a revisão à ata REAL (Reuniao.ata/numero_ata) que a aprovou, em vez
+  // de o motivo ser só texto livre digitado à mão — evita inconsistências
+  // entre a data/nº de ata referida aqui e a ata realmente emitida.
+  id_reuniao_ata?: string;
   created_at?: string;
 }
 
