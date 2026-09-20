@@ -813,7 +813,7 @@ export default function App() {
               title="Ir para a Página Inicial (Dashboard)"
             >
               <img 
-                src={sidebarCollapsed ? "/marca/04-icone-app.png" : (whiteLabelLogo || "/marca/18-versao-horizontal-1.webp")}
+                src={sidebarCollapsed ? "/marca/21-icone-sem-moldura.png" : (whiteLabelLogo || "/marca/18-versao-horizontal-1.webp")}
                 alt="CondoManager AI" 
                 className={`w-full h-full object-contain select-none transition-transform duration-300 drop-shadow-xl ${sidebarCollapsed ? "max-h-12 max-w-12 p-1" : "scale-145 sm:scale-155 max-w-[290px]"}`} 
                 referrerPolicy="no-referrer"
@@ -2545,7 +2545,7 @@ export default function App() {
                   return fotoUtilizador ? (
                     <img src={fotoUtilizador} alt={loggedUser.nome} className="h-full w-full object-cover" />
                   ) : (
-                    <img src="/marca/04-icone-app.png" alt="CondoManager App Icon" className="h-full w-full object-contain p-0.5" />
+                    <img src="/marca/21-icone-sem-moldura.png" alt="CondoManager App Icon" className="h-full w-full object-contain p-0.5" />
                   );
                 })()}
               </div>

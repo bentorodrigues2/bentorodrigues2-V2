@@ -5,7 +5,7 @@ const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/manifest.json",
-  "/marca/04-icone-app.png"
+  "/marca/21-icone-sem-moldura.png"
 ];
 
 // 1. Install Event - Pre-cache critical offline shell
@@ -85,8 +85,8 @@ self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : { title: "CondoManager AI", body: "Nova notificação do condomínio." };
   const options = {
     body: data.body,
-    icon: "/marca/04-icone-app.png",
-    badge: "/marca/04-icone-app.png",
+    icon: "/marca/21-icone-sem-moldura.png",
+    badge: "/marca/21-icone-sem-moldura.png",
     vibrate: [100, 50, 100],
     data: {
       url: data.url || "/"

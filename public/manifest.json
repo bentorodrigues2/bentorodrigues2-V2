@@ -11,10 +11,16 @@
   "theme_color": "#10b981",
   "icons": [
     {
-      "src": "/marca/04-icone-app.png",
+      "src": "/marca/21-icone-sem-moldura.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
+    },
+    {
+      "src": "/marca/21-icone-sem-moldura.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
     }
   ]
 }
