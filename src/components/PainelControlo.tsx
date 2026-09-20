@@ -53,6 +53,9 @@ export function PainelControlo({
   // Global list references derived from props
   const predioFracoes = fracoes.filter(f => f.id_predio === predio?.id_predio);
   const predioMovements = movements.filter(m => m.id_predio === predio?.id_predio);
+  const lancamentosPorConfirmarCount = predioMovements.filter(
+    (m: any) => m.is_movimento_cego || m.estado === "Movimento Cego / Por Justificar"
+  ).length;
   const predioAvisos = avisos.filter(a => a.id_predio === predio?.id_predio);
   const predioContas = contas.filter(c => c.id_predio === predio?.id_predio);
 
@@ -259,6 +262,21 @@ export function PainelControlo({
             section: "financeiro_relatorios",
             fixo: false,
             contagem: predioAvisos.filter(a => a.estado === 'Pendente' || a.estado === 'Paga Parcialmente').length
+          },
+          {
+            // Movimentos "cegos" chegados por email (comprovativos/faturas
+            // reconhecidos automaticamente) que ainda esperam confirmação
+            // manual do administrador — cor vermelha (corSinal + !positivo)
+            // para se destacar dos restantes indicadores, dado tratar-se de
+            // dinheiro por justificar.
+            name: "Lançamentos por Confirmar",
+            val: lancamentosPorConfirmarCount === 1 ? "1 Por Justificar" : `${lancamentosPorConfirmarCount} Por Justificar`,
+            icon: "/modulos/66-exportacao-financeira.png",
+            section: "movimentos",
+            fixo: false,
+            contagem: lancamentosPorConfirmarCount,
+            corSinal: true,
+            positivo: false
           },
           {
             name: "Alertas Jurídicos",

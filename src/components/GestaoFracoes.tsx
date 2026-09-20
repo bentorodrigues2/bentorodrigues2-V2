@@ -982,6 +982,32 @@ export function GestaoFracoes({
       referencia_br23e: refBR23E
     };
 
+    // Salvaguardas para evitar associar por engano o proprietário errado a
+    // uma fração (ex: dropdown de fração ainda com a seleção anterior ao
+    // gravar) — pede confirmação explícita em vez de sobrescrever ou
+    // duplicar em silêncio.
+    if (
+      targetFracao?.proprietario?.nif &&
+      targetFracao.proprietario.nif !== novoProprietarioObj.nif &&
+      !transferindoPropriedadeDe
+    ) {
+      const confirmar = window.confirm(
+        `A Fração ${targetFracao.fracao_nome} já tem um proprietário registado: ${targetFracao.proprietario.nome} (NIF ${targetFracao.proprietario.nif}).\n\nTem a certeza que quer substituí-lo por ${novoProprietarioObj.nome} (NIF ${novoProprietarioObj.nif})?\n\nSe pretende transferir a propriedade, cancele e use o botão "Transferir" em vez de editar diretamente.`
+      );
+      if (!confirmar) return;
+    }
+    if (novoProprietarioObj.nif && novoProprietarioObj.nif.toUpperCase() !== "NA") {
+      const outraFracaoComMesmoNif = predioFracoes.find(
+        f => f.id_fracao !== selectedFracaoId && f.proprietario?.nif === novoProprietarioObj.nif
+      );
+      if (outraFracaoComMesmoNif) {
+        const confirmar = window.confirm(
+          `O NIF ${novoProprietarioObj.nif} já está associado à Fração ${outraFracaoComMesmoNif.fracao_nome}.\n\nSe esta pessoa é realmente dona de mais do que uma fração, confirme. Se foi engano (fração errada selecionada), cancele e verifique.`
+        );
+        if (!confirmar) return;
+      }
+    }
+
     try {
       // Com NIF "NA" (recusado), usar o NIF como parte do id_proprietario
       // faria colidir dois proprietários diferentes que ambos recusaram
