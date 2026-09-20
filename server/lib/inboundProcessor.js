@@ -706,6 +706,36 @@ async function algumHashJaProcessado(hashes) {
   }
 }
 
+/**
+ * Deduplicação ao nível do email inteiro — evita processar (e sobretudo
+ * responder) o MESMO email duas vezes quando chega por dois caminhos
+ * diferentes (ex: o cron do gmail-reader.js processa-o diretamente, e um
+ * Worker externo que lê a mesma caixa de correio reencaminha-o em separado
+ * para /api/ai-studio?acao=inbound). O hash cobre remetente+assunto+corpo,
+ * com uma janela de 1h — mais do que suficiente para o mesmo email real
+ * chegar por dois caminhos quase em simultâneo, sem impedir um condómino de
+ * genuinamente reenviar mais tarde um email com o mesmo texto.
+ */
+function calcularHashEmail(cleanFrom, subject, body) {
+  return "EMAIL-" + createHash("sha256").update(`${cleanFrom}|${subject}|${(body || "").slice(0, 2000)}`).digest("hex");
+}
+
+async function emailJaProcessadoRecentemente(hashEmail) {
+  try {
+    const desde = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { data } = await supabase
+      .from("ai_auditoria")
+      .select("id_log")
+      .eq("file_hash", hashEmail)
+      .gte("criado_em", desde)
+      .limit(1);
+    return Boolean(data && data.length > 0);
+  } catch (e) {
+    console.warn("[inboundProcessor] Aviso ao verificar deduplicação de email:", e?.message || e);
+    return false;
+  }
+}
+
 function htmlParaTexto(html) {
   if (!html) return "";
   return html
@@ -767,6 +797,20 @@ export async function processInboundEmail(payload) {
   const semRespostaAutomatica = isSemRespostaAutomatica(from);
   const cleanFrom = extrairEmailLimpo(from);
   const textoEmail = (body && String(body).trim()) || "(Email recebido sem texto no corpo)";
+
+  // 1b. Deduplicação — o mesmo email pode chegar por dois caminhos (cron do
+  // Gmail + eventual reencaminhamento externo para acao=inbound); sem isto
+  // o condómino recebia o aviso de receção e a resposta institucional 2x.
+  const hashEmail = calcularHashEmail(cleanFrom, subject, textoEmail);
+  if (await emailJaProcessadoRecentemente(hashEmail)) {
+    console.log(`[inboundProcessor] Email de ${cleanFrom} (assunto: ${subject}) já foi processado nos últimos 60 minutos — ignorado para evitar duplicação.`);
+    return { ok: true, status: 200, autoresponder: false, motivo: "email_duplicado_ja_processado" };
+  }
+  try {
+    await supabase.from("ai_auditoria").insert({ origem: "email_inbound_dedup", file_hash: hashEmail });
+  } catch (e) {
+    console.warn("[inboundProcessor] Aviso ao registar hash de deduplicação:", e?.message || e);
+  }
 
   console.log(`[inboundProcessor] A processar email de ${cleanFrom} | Assunto: ${subject}`);
 
@@ -1061,7 +1105,7 @@ export async function processInboundEmail(payload) {
     if (reciboReal) {
       anexosParaEnviar.push(reciboReal);
     } else if (aiData?.message) {
-      aiData.message = `Ainda não temos nenhum recibo emitido para a sua fração no nosso sistema.<br><br>Assim que o seu pagamento for confirmado pela administração, o recibo oficial de pagamento ser-lhe-á enviado automaticamente por email. Se já efetuou o pagamento e ainda não recebeu confirmação, contacte a administração do condomínio.`;
+      aiData.message = `Assim que o seu pagamento for confirmado pela administração, o recibo oficial de pagamento ser-lhe-á enviado automaticamente por email. Se já efetuou o pagamento e ainda não recebeu confirmação, contacte a administração do condomínio.<br><br>Pode consultar também o estado da sua fração na aplicação.`;
     }
   }
 
