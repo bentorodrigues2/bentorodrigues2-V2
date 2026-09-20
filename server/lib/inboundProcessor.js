@@ -632,6 +632,16 @@ export async function processInboundEmail(payload) {
   let body = webhookData?.text || webhookData?.body || payload?.body || payload?.bodyText || "";
   let attachments = webhookData?.attachments || payload?.attachments || [];
 
+  // Payload vindo do pipeline Gmail (gmail-reader.js -> Worker externo ->
+  // acao=inbound): usa o campo "anexos" (português), já com o conteúdo em
+  // base64 embutido diretamente (lido da API do Gmail) — nada a ver com o
+  // formato "attachments" do webhook do Resend, que só traz metadados e
+  // exige um pedido extra à API do Resend para obter o conteúdo. Sem este
+  // reconhecimento, qualquer email chegado via Gmail nunca tinha os seus
+  // anexos processados: isRealResendWebhook ficava sempre false (o payload
+  // não tem type "email.received") e "attachments" ficava sempre vazio.
+  const anexosGmail = Array.isArray(payload?.anexos) ? payload.anexos : (Array.isArray(webhookData?.anexos) ? webhookData.anexos : []);
+
   // Payload real do Resend: ir buscar o corpo e a lista completa de anexos
   if (isRealResendWebhook) {
     const completo = await obterConteudoCompleto(webhookData.email_id);
@@ -769,15 +779,30 @@ export async function processInboundEmail(payload) {
   let comprovativoRegisto = null;
   let comprovativoIgnoradoDuplicado = false;
 
-  console.log(`[inboundProcessor] isRealResendWebhook=${isRealResendWebhook} | attachments recebidos=${Array.isArray(attachments) ? attachments.length : "n/a"}`);
+  console.log(`[inboundProcessor] isRealResendWebhook=${isRealResendWebhook} | attachments (Resend)=${Array.isArray(attachments) ? attachments.length : "n/a"} | anexos (Gmail)=${anexosGmail.length}`);
 
-  if (isRealResendWebhook && Array.isArray(attachments) && attachments.length > 0) {
-    const anexosComConteudo = [];
-    for (const anexo of attachments.slice(0, 3)) {
-      const conteudo = await obterConteudoAnexo(webhookData.email_id, anexo.id);
-      if (conteudo) anexosComConteudo.push(conteudo);
+  if ((isRealResendWebhook && Array.isArray(attachments) && attachments.length > 0) || anexosGmail.length > 0) {
+    let anexosComConteudo = [];
+    if (anexosGmail.length > 0) {
+      // Já vêm com o base64 embutido — só decodificar e calcular o hash,
+      // sem nenhum pedido de rede adicional.
+      anexosComConteudo = anexosGmail.slice(0, 3).map((a) => {
+        const buffer = Buffer.from(a.base64, "base64");
+        return {
+          filename: a.filename || "anexo",
+          mimeType: a.mimeType || "application/octet-stream",
+          buffer,
+          base64: a.base64,
+          hash: createHash("sha256").update(buffer).digest("hex")
+        };
+      });
+    } else {
+      for (const anexo of attachments.slice(0, 3)) {
+        const conteudo = await obterConteudoAnexo(webhookData.email_id, anexo.id);
+        if (conteudo) anexosComConteudo.push(conteudo);
+      }
     }
-    console.log(`[inboundProcessor] Anexos com conteúdo obtido com sucesso: ${anexosComConteudo.length} de ${attachments.slice(0, 3).length}`);
+    console.log(`[inboundProcessor] Anexos com conteúdo obtido com sucesso: ${anexosComConteudo.length}`);
 
     if (anexosComConteudo.length > 0) {
       const hashes = anexosComConteudo.map((a) => a.hash);
