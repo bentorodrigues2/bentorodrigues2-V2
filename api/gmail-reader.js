@@ -8,6 +8,23 @@ function base64UrlParaPadrao(str) {
   return (str || "").replace(/-/g, "+").replace(/_/g, "/");
 }
 
+// O corpo de um email do Gmail raramente é uma lista plana de partes — é
+// normal vir aninhado (ex: multipart/mixed > multipart/alternative >
+// text/plain + text/html, com o anexo como irmão do multipart/alternative,
+// não do text/plain). Um "payload.parts.forEach" de um só nível nunca
+// encontrava anexos aninhados destas estruturas (o caso comum de emails
+// reencaminhados, faturas eletrónicas, etc.) — por isso faturas como as da
+// Nowo nunca tinham o seu anexo reconhecido. Achata a árvore toda primeiro.
+function achatarPartesGmail(parts, acumulador = []) {
+  for (const part of parts || []) {
+    acumulador.push(part);
+    if (part.parts?.length) {
+      achatarPartesGmail(part.parts, acumulador);
+    }
+  }
+  return acumulador;
+}
+
 export default async function handler(req, res) {
   try {
     const oauth2Client = new google.auth.OAuth2(
@@ -44,33 +61,34 @@ export default async function handler(req, res) {
       const from = headers.find(h => h.name === "From")?.value || "";
       const subject = headers.find(h => h.name === "Subject")?.value || "";
 
-      // Corpo do email
+      // Corpo do email (própria mensagem pode já não ter "parts" nenhuma —
+      // um email simples de texto único vem direto em payload.body).
+      const todasAsPartes = payload.parts ? achatarPartesGmail(payload.parts) : [];
+
       let body = "";
-      if (payload.parts) {
-        const part = payload.parts.find(p => p.mimeType === "text/plain");
-        if (part?.body?.data) {
-          body = Buffer.from(part.body.data, "base64").toString("utf8");
-        }
+      const partePlana = todasAsPartes.find(p => p.mimeType === "text/plain");
+      if (partePlana?.body?.data) {
+        body = Buffer.from(base64UrlParaPadrao(partePlana.body.data), "base64").toString("utf8");
+      } else if (!payload.parts && payload.body?.data) {
+        body = Buffer.from(base64UrlParaPadrao(payload.body.data), "base64").toString("utf8");
       }
 
-      // Extrair anexos
+      // Extrair anexos — em qualquer profundidade da árvore MIME.
       const anexos = [];
 
-      if (payload.parts) {
-        for (const part of payload.parts) {
-          if (part.filename && part.body?.attachmentId) {
-            const attachment = await gmail.users.messages.attachments.get({
-              userId: "me",
-              messageId: msg.id,
-              id: part.body.attachmentId
-            });
+      for (const part of todasAsPartes) {
+        if (part.filename && part.body?.attachmentId) {
+          const attachment = await gmail.users.messages.attachments.get({
+            userId: "me",
+            messageId: msg.id,
+            id: part.body.attachmentId
+          });
 
-            anexos.push({
-              filename: part.filename,
-              mimeType: part.mimeType,
-              base64: base64UrlParaPadrao(attachment.data.data)
-            });
-          }
+          anexos.push({
+            filename: part.filename,
+            mimeType: part.mimeType,
+            base64: base64UrlParaPadrao(attachment.data.data)
+          });
         }
       }
 
