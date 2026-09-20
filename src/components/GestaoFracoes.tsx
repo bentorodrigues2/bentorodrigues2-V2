@@ -90,6 +90,8 @@ export function GestaoFracoes({
   const [reenviandoConviteCoIdx, setReenviandoConviteCoIdx] = useState<number | null>(null);
   const [editingCoIndex, setEditingCoIndex] = useState<number | null>(null);
   const [enviandoConvites, setEnviandoConvites] = useState(false);
+  const [reenviandoConviteProprietario, setReenviandoConviteProprietario] = useState(false);
+  const [reenviandoConviteInquilino, setReenviandoConviteInquilino] = useState(false);
 
   const [arrendada, setArrendada] = useState(false);
   const [inqNome, setInqNome] = useState("");
@@ -550,7 +552,12 @@ export function GestaoFracoes({
 
     setEditingOwnerKey(prop.nif || prop.nome);
     setCurrentSubTab("fracoes_proprietario");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    // "Editar leva ao campo": salta mesmo para o formulário, não só para o
+    // topo da página — antes disto era preciso continuar a fazer scroll até
+    // encontrar o formulário depois de mudar de subseparador.
+    setTimeout(() => {
+      document.getElementById("form-editar-proprietario")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
   };
 
   const limparFormProprietario = () => {
@@ -585,6 +592,46 @@ export function GestaoFracoes({
     setInqFoto(null);
     setEditingOwnerKey(null);
     setTransferindoPropriedadeDe(null);
+  };
+
+  // Reenvia manualmente o link de acesso/definição de password ao mesmo
+  // email, sem alterar dados nem enviar de novo o guia de boas-vindas —
+  // usado quando o link original expirou (24h) ou nunca chegou. Espelha o
+  // botão já existente para coproprietários (ver reenviandoConviteCoIdx).
+  const reenviarConviteAcesso = async (
+    email: string,
+    nome: string,
+    role: "USER" | "INQUILINO",
+    setAEnviar: (v: boolean) => void
+  ) => {
+    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+      alert("Não há um email válido registado para reenviar o convite.");
+      return;
+    }
+    setAEnviar(true);
+    try {
+      const resp = await fetch("/api/admin?acao=convidar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          nome,
+          role,
+          id_predio: predio.id_predio,
+          id_fracao: selectedFracaoId
+        })
+      });
+      const data = await resp.json();
+      if (resp.ok && data.ok) {
+        alert(`✅ Convite de acesso reenviado para ${email}. O link anterior deixa de ser válido — só o novo email funciona.`);
+      } else {
+        alert(`❌ Não foi possível reenviar o convite: ${data?.error || "erro desconhecido"}.`);
+      }
+    } catch (err) {
+      alert(`❌ Não foi possível reenviar o convite: ${err instanceof Error ? err.message : "erro de rede"}.`);
+    } finally {
+      setAEnviar(false);
+    }
   };
 
   // Inicia a transferência de propriedade de uma fração: limpa o formulário
@@ -1047,7 +1094,14 @@ export function GestaoFracoes({
       // Se houver fração selecionada, atualiza a fração no Supabase
       if (selectedFracaoId) {
         if (targetFracao) {
-          const isNewEmail = targetFracao.proprietario?.email !== propEmail.trim();
+          // Só é um OCUPANTE NOVO (a receber boas-vindas/ativação pela
+          // primeira vez) quando a fração não tinha proprietário nenhum, ou
+          // quando isto é de facto uma Transferência de Propriedade — nunca
+          // apenas por o email ter mudado numa edição normal, para não
+          // reenviar estes emails sempre que se corrige/atualiza qualquer
+          // dado do mesmo proprietário. Para reenviar manualmente (ex: link
+          // expirado), usa-se o botão "Reenviar" junto ao email.
+          const isNovoOcupanteProprietario = !targetFracao.proprietario || !!transferindoPropriedadeDe;
           // Com email "NA" (condómino recusou fornecer), não faz sentido
           // tentar enviar convites/boas-vindas reais para um endereço que
           // não existe — a API do Resend rejeitaria o envio na mesma. E
@@ -1165,7 +1219,7 @@ export function GestaoFracoes({
           // o alerta com o relatório de envio continua a aparecer no fim,
           // só que já sem bloquear o ecrã entretanto.
           (async () => {
-          if ((isNewEmail || !targetFracao.proprietario) && emailValidoParaEnvio) {
+          if (isNovoOcupanteProprietario && emailValidoParaEnvio) {
             setEnviandoConvites(true);
 
             // Primeiro registo do proprietário desta fração: emite e envia
@@ -1247,9 +1301,11 @@ export function GestaoFracoes({
           // Convite real de acesso ao inquilino — antes era só um registo
           // informativo, nunca recebia email nenhum nem conseguia entrar na
           // plataforma. Mesma ordem: boas-vindas primeiro, 60s depois a
-          // ativação. Só dispara quando o email do inquilino é novo/mudou.
-          const isNewInquilinoEmail = arrendada && inqNome.trim() && inqEmail.trim() && /\S+@\S+\.\S+/.test(inqEmail.trim()) && targetFracao.inquilino?.email !== inqEmail.trim();
-          if (isNewInquilinoEmail) {
+          // ativação. Só dispara quando a fração não tinha inquilino nenhum
+          // antes — nunca por o email ter sido corrigido numa edição normal
+          // do mesmo inquilino (usa-se o botão "Reenviar" para isso).
+          const isNovoInquilino = arrendada && inqNome.trim() && inqEmail.trim() && /\S+@\S+\.\S+/.test(inqEmail.trim()) && !targetFracao.inquilino;
+          if (isNovoInquilino) {
             setEnviandoConvites(true);
             try {
               await fetch("/api/pdf?tipo=boas-vindas", {
@@ -1928,7 +1984,7 @@ export function GestaoFracoes({
       {/* SUB-MENU 2: CADASTRAR / EDITAR PROPRIETÁRIO */}
       {currentSubTab === "fracoes_proprietario" && (loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA') && (
         <div className="space-y-6">
-          <form onSubmit={submeterEditarProprietario} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6 no-print">
+          <form id="form-editar-proprietario" onSubmit={submeterEditarProprietario} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6 no-print">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div className="flex items-center space-x-2">
                 <span className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
@@ -2022,11 +2078,24 @@ export function GestaoFracoes({
                   <span className="p-1 bg-emerald-50 text-emerald-600 rounded"><i className="fa-solid fa-user-check text-xs"></i></span>
                   <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Identificação do Proprietário Principal</h4>
                 </div>
-                {selectedFracaoId && (
-                  <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">
-                    Ligado a: {predioFracoes.find(f => f.id_fracao === selectedFracaoId)?.fracao_nome || selectedFracaoId}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {editingOwnerKey && propEmail && (
+                    <button
+                      type="button"
+                      disabled={reenviandoConviteProprietario}
+                      onClick={() => reenviarConviteAcesso(propEmail.trim(), propNome.trim(), "USER", setReenviandoConviteProprietario)}
+                      className="text-emerald-600 hover:text-emerald-800 disabled:opacity-40 p-1 text-xs cursor-pointer"
+                      title="Reenviar email de definição de password (link expirado ou nunca recebido)"
+                    >
+                      <i className={`fa-solid ${reenviandoConviteProprietario ? "fa-spinner fa-spin" : "fa-paper-plane"}`}></i>
+                    </button>
+                  )}
+                  {selectedFracaoId && (
+                    <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">
+                      Ligado a: {predioFracoes.find(f => f.id_fracao === selectedFracaoId)?.fracao_nome || selectedFracaoId}
+                    </span>
+                  )}
+                </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -2650,11 +2719,24 @@ export function GestaoFracoes({
 
               {arrendada && (
                 <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200 animate-fadeIn">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-violet-600"><i className="fa-solid fa-house-user"></i></span>
-                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Identificação do Inquilino</h4>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-violet-600"><i className="fa-solid fa-house-user"></i></span>
+                      <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Identificação do Inquilino</h4>
+                    </div>
+                    {predioFracoes.find(f => f.id_fracao === selectedFracaoId)?.inquilino && inqEmail && (
+                      <button
+                        type="button"
+                        disabled={reenviandoConviteInquilino}
+                        onClick={() => reenviarConviteAcesso(inqEmail.trim(), inqNome.trim(), "INQUILINO", setReenviandoConviteInquilino)}
+                        className="text-emerald-600 hover:text-emerald-800 disabled:opacity-40 p-1 text-xs cursor-pointer"
+                        title="Reenviar email de definição de password (link expirado ou nunca recebido)"
+                      >
+                        <i className={`fa-solid ${reenviandoConviteInquilino ? "fa-spinner fa-spin" : "fa-paper-plane"}`}></i>
+                      </button>
+                    )}
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div className="flex flex-col">
                       <label className="text-xs font-semibold text-slate-500 mb-1">Nome Completo do Inquilino</label>
