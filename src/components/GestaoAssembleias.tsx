@@ -485,6 +485,7 @@ Com os meus cumprimentos,
     setLocalReuniao(r.local_reuniao || "Sala Comum do Condomínio");
     setOrdensTrabalho(r.ordens_trabalho);
     setObrasRelacionadasIds(r.id_obras_relacionadas || []);
+    document.getElementById("form-assembleia")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const eliminarReuniao = (id: string) => {
@@ -1422,7 +1423,7 @@ Com os meus cumprimentos,
   return (
     <div className="space-y-6">
       {loggedUser.role === 'ADMIN' && (
-        <form onSubmit={submeterForm} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4 no-print">
+        <form id="form-assembleia" onSubmit={submeterForm} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4 no-print">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="text-lg font-bold text-slate-800">{editingId ? "Editar Reunião / Convocatória" : "Agendar Nova Reunião & Convocatória"}</h3>
             <button

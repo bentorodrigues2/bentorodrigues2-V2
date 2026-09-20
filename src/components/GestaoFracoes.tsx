@@ -654,7 +654,9 @@ export function GestaoFracoes({
     setSelectedFracaoId(fracaoId);
     setTransferindoPropriedadeDe(targetFracao.proprietario);
     setCurrentSubTab("fracoes_proprietario");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(() => {
+      document.getElementById("form-editar-proprietario")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
   };
 
   // Arquivo manual de um registo (documento à escolha do admin) na pasta de
@@ -711,7 +713,9 @@ export function GestaoFracoes({
     setArrecadacao(Boolean(f.tem_arrecadacao_box));
     setEditingFracaoId(f.id_fracao);
     setCurrentSubTab("fracoes_nova");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(() => {
+      document.getElementById("form-registo-fracao")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
   };
 
   const cancelarEdicaoFracao = () => {
@@ -2821,6 +2825,17 @@ export function GestaoFracoes({
                 <img src="/estados-acoes/12-adicionar.png" alt="Guardar" className="h-4 w-4 object-contain" />
                 <span>{enviandoConvites ? "A enviar emails (não feche esta janela)..." : editingOwnerKey ? "Guardar Alterações do Proprietário" : "Guardar Proprietário"}</span>
               </button>
+
+              {editingOwnerKey && (
+                <button
+                  type="button"
+                  onClick={limparFormProprietario}
+                  disabled={enviandoConvites}
+                  className="bg-white hover:bg-slate-50 text-slate-600 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border border-slate-300 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Cancelar
+                </button>
+              )}
 
               <button
                 type="button"
