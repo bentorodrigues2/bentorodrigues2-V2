@@ -19,7 +19,7 @@ function getAudioContext(): AudioContext | null {
   }
 }
 
-export function playNotificationTone(soundType: string = "CondoManager Padronizado", volume: number = 0.3) {
+export function playNotificationTone(soundType: string = "CondoManager Padronizado", volume: number = 0.7) {
   try {
     if (soundType.includes("Silencioso")) return;
     const ctx = getAudioContext();

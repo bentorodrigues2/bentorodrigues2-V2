@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Shield, Lock, Fingerprint, Volume2, VolumeX, Bell, Smartphone, Mail, MessageSquare, Check, ChevronDown, ChevronUp, Play } from "lucide-react";
 import { ActionIcon } from "./ActionIcon";
 import { playNotificationTone } from "../lib/soundService";
 import { createSecurityLog } from "../lib/authSecurity";
 import { supabase } from "../lib/supabaseClient";
 import { subscribeUserToPush } from "../utils/subscribeUser";
-import { savePushSubscriptionToSupabase } from "../lib/supabaseService";
+import { savePushSubscriptionToSupabase, dbSelect, dbUpdate } from "../lib/supabaseService";
 import { browserSupportsWebAuthn, registarBiometriaNesteDispositivo, removerBiometriaNesteDispositivo } from "../utils/webauthn";
 
 interface UserSecuritySubmenuProps {
@@ -93,9 +93,13 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
         alert("Permissão de notificações não concedida.");
         return;
       }
+      if (!import.meta.env.VITE_VAPID_PUBLIC_KEY) {
+        alert("❌ As notificações push ainda não estão configuradas neste ambiente (falta a chave VAPID). Contacte o suporte técnico.");
+        return;
+      }
       const subscription = await subscribeUserToPush();
       if (!subscription) {
-        alert("❌ Não foi possível ativar as notificações neste dispositivo.");
+        alert("❌ Não foi possível ativar as notificações neste dispositivo. Verifique se deu permissão de notificações ao site nas definições do telemóvel/navegador.");
         return;
       }
       const isAdmin = ["ADMIN", "GESTOR", "EMPRESA_GESTORA"].includes(userRole);
@@ -118,9 +122,38 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
     }
   };
 
-  const [contactEmail, setContactEmail] = useState<string>(userEmail || "usuario@condomanager.pt");
-  const [contactSms, setContactSms] = useState<string>("+351 912 345 678");
+  const [contactEmail, setContactEmail] = useState<string>(userEmail || "");
+  const [contactSms, setContactSms] = useState<string>("");
   const [notifyMsg, setNotifyMsg] = useState<string | null>(null);
+  const [aCarregarPreferencias, setACarregarPreferencias] = useState(true);
+  const [aGuardarPreferencias, setAGuardarPreferencias] = useState(false);
+
+  // Carrega o telemóvel e as preferências de notificação reais guardadas no
+  // perfil (profiles.telefone / profiles.notificacoes_preferencias) — antes
+  // isto era só estado local com valores de exemplo fixos, "Guardar" não
+  // persistia nada em lado nenhum.
+  useEffect(() => {
+    let cancelado = false;
+    const emailLimpo = (userEmail || "").trim().toLowerCase();
+    if (!emailLimpo) { setACarregarPreferencias(false); return; }
+    (async () => {
+      const linhas = await dbSelect("profiles", { colunas: "telefone,notificacoes_preferencias", filtros: [["email", "eq", emailLimpo]], limit: 1 });
+      if (cancelado) return;
+      const perfil = linhas?.[0];
+      if (perfil) {
+        if (perfil.telefone) setContactSms(perfil.telefone);
+        const prefs = perfil.notificacoes_preferencias || {};
+        if (typeof prefs.push === "boolean") setPushEnabled(prefs.push);
+        if (typeof prefs.email === "boolean") setEmailEnabled(prefs.email);
+        if (typeof prefs.sms === "boolean") setSmsEnabled(prefs.sms);
+        if (typeof prefs.popup === "boolean") setPopupEnabled(prefs.popup);
+        if (prefs.emailContacto) setContactEmail(prefs.emailContacto);
+        if (prefs.somNotificacao) setSelectedNotificationSound(prefs.somNotificacao);
+      }
+      setACarregarPreferencias(false);
+    })();
+    return () => { cancelado = true; };
+  }, [userEmail]);
 
   // Play synthetic tone preview for notification sounds
   const handleTestSound = (soundName?: string) => {
@@ -129,7 +162,7 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
       alert("O Som da Aplicação está desativado. Ative-o para escutar as notificações.");
       return;
     }
-    playNotificationTone(tone, 0.4);
+    playNotificationTone(tone, 0.85);
     if (vibrationEnabled && typeof navigator !== "undefined" && "vibrate" in navigator) {
       try {
         navigator.vibrate([100, 50, 100]);
@@ -237,10 +270,30 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
     }
   };
 
-  const handleSaveNotifications = (e: React.FormEvent) => {
+  const handleSaveNotifications = async (e: React.FormEvent) => {
     e.preventDefault();
-    setNotifyMsg("Preferências de notificação e contactos guardados com sucesso!");
-    setTimeout(() => setNotifyMsg(null), 3000);
+    const emailLimpo = (userEmail || "").trim().toLowerCase();
+    if (!emailLimpo) return;
+    setAGuardarPreferencias(true);
+    try {
+      const ok = await dbUpdate("profiles", {
+        telefone: contactSms.trim() || null,
+        notificacoes_preferencias: {
+          push: pushEnabled,
+          email: emailEnabled,
+          sms: smsEnabled,
+          popup: popupEnabled,
+          emailContacto: contactEmail.trim(),
+          somNotificacao: selectedNotificationSound
+        }
+      }, [["email", "eq", emailLimpo]]);
+      setNotifyMsg(ok
+        ? "✅ Preferências de notificação e contactos guardados com sucesso!"
+        : "❌ Não foi possível guardar as preferências no Supabase. Tente novamente.");
+    } finally {
+      setAGuardarPreferencias(false);
+      setTimeout(() => setNotifyMsg(null), 4000);
+    }
   };
 
   return (
@@ -573,10 +626,11 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-extrabold rounded-xl text-[10px] uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center space-x-1.5"
+                disabled={aGuardarPreferencias || aCarregarPreferencias}
+                className="w-full py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-60 text-white font-extrabold rounded-xl text-[10px] uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center space-x-1.5"
               >
                 <img src="/estados-acoes/04-concluido.png" alt="Guardar" className="h-4 w-4 object-contain inline-block" />
-                <span>Guardar Preferências de Notificação</span>
+                <span>{aGuardarPreferencias ? "A guardar..." : "Guardar Preferências de Notificação"}</span>
               </button>
             </form>
           </div>

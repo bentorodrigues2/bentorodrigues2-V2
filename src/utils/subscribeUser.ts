@@ -13,7 +13,11 @@ export async function subscribeUserToPush(registration?: ServiceWorkerRegistrati
     if (!subscription) {
       const applicationServerKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
       if (!applicationServerKey) {
-        console.warn('[WebPush] VITE_VAPID_PUBLIC_KEY não configurada — não é possível subscrever notificações reais.');
+        // Esta env var é lida em BUILD TIME pelo Vite — definir só no .env
+        // local não chega, tem de estar nas Environment Variables do
+        // projeto na Vercel (mesmo valor de VAPID_PUBLIC_KEY) e o site tem
+        // de ser reconstruído a seguir para o valor ficar embutido no bundle.
+        console.error('[WebPush] VITE_VAPID_PUBLIC_KEY não está definida neste build — falta configurar nas Environment Variables da Vercel e voltar a fazer deploy.');
         return null;
       }
       // Se a subscrição real falhar (chave inválida, permissão negada pelo
