@@ -6,30 +6,41 @@ import { extrairDadosDocumento, arquivarAnexoOriginal } from "./multimodalServic
 import { cruzarMovimentoComFornecedor } from "./fornecedorMatching.js";
 
 /**
- * Filtro de remetentes automatizados e newsletters/spam.
- * NOTA: não bloquear domínios de fornecedores reais (EDP, Galp, Vodafone,
- * seguradoras, empreiteiros, etc.) — são precisamente quem envia as
- * faturas/comprovativos que o motor de OCR deve processar. Um bloqueio
- * anterior aqui estava a descartar em silêncio faturas reais destes
- * fornecedores antes de sequer chegarem à extração por IA.
+ * Remetentes cujo email é 100% técnico/automático e nunca traz conteúdo
+ * probatório real (bounces, confirmações de entrega, avisos do próprio
+ * servidor de correio) — estes SIM são descartados por completo, sem
+ * qualquer processamento.
  */
-const FORNECEDORES_E_NOREPLY = [
-  "noreply",
-  "no-reply",
-  "do-not-reply",
-  "donotreply",
-  "automated",
-  "mailer-daemon",
-  "postmaster",
-  "newsletter",
-  "marketing",
-  "promo",
-  "campaign"
-];
+const DESCARTE_TOTAL = ["mailer-daemon", "postmaster"];
 
-function isBloqueado(email) {
+/**
+ * Remetentes automáticos de envio unidirecional (não conseguem receber
+ * resposta) — mas cuja mensagem pode perfeitamente ser uma fatura real
+ * (EDP, Galp, Vodafone, NOWO, seguradoras, etc. enviam faturas eletrónicas
+ * de um endereço "noreply@"). Um filtro anterior descartava a mensagem
+ * inteira ao ver "noreply" no remetente, o que impedia a extração/lançamento
+ * de faturas reais de chegar sequer a correr — confirmado em produção com o
+ * email real "NOWO Fatura Electrónica" <noreply@nowo.pt>, descartado sem
+ * processar nada. Para estes, processa-se tudo (classificação, extração de
+ * anexos, lançamento de fatura/comprovativo, arquivo) — só se suprime o
+ * envio de resposta automática (que de qualquer forma nunca seria lida).
+ */
+const SEM_RESPOSTA_AUTOMATICA = ["noreply", "no-reply", "do-not-reply", "donotreply", "automated"];
+
+/** Newsletters/marketing genuínos — nunca trazem faturas, descartam-se por completo. */
+const NEWSLETTER_MARKETING = ["newsletter", "marketing", "promo", "campaign"];
+
+function contemAlgumTermo(email, termos) {
   const e = (email || "").toLowerCase();
-  return FORNECEDORES_E_NOREPLY.some((termo) => e.includes(termo));
+  return termos.some((termo) => e.includes(termo));
+}
+
+function isDescartadoTotalmente(email) {
+  return contemAlgumTermo(email, DESCARTE_TOTAL) || contemAlgumTermo(email, NEWSLETTER_MARKETING);
+}
+
+function isSemRespostaAutomatica(email) {
+  return contemAlgumTermo(email, SEM_RESPOSTA_AUTOMATICA);
 }
 
 function extrairEmailLimpo(fromStr) {
@@ -629,12 +640,16 @@ export async function processInboundEmail(payload) {
     return { ok: false, status: 400, error: "Remetente ('from') é obrigatório." };
   }
 
-  // 1. Filtro anti-fornecedores e no-reply
-  if (isBloqueado(from)) {
-    console.log("[inboundProcessor] Email descartado (fornecedor/noreply):", from);
-    return { ok: true, status: 200, autoresponder: false, motivo: "fornecedor_ou_noreply" };
+  // 1. Filtro de descarte total (newsletters/marketing/bounces técnicos) —
+  // remetentes "noreply"/"no-reply"/"automated" NÃO são descartados aqui,
+  // porque muitas vezes são precisamente quem envia faturas reais (ver
+  // isSemRespostaAutomatica mais abaixo, que só suprime a resposta).
+  if (isDescartadoTotalmente(from)) {
+    console.log("[inboundProcessor] Email descartado (newsletter/marketing/bounce técnico):", from);
+    return { ok: true, status: 200, autoresponder: false, motivo: "newsletter_marketing_ou_bounce" };
   }
 
+  const semRespostaAutomatica = isSemRespostaAutomatica(from);
   const cleanFrom = extrairEmailLimpo(from);
   const textoEmail = (body && String(body).trim()) || "(Email recebido sem texto no corpo)";
 
@@ -696,15 +711,20 @@ export async function processInboundEmail(payload) {
 
   // 5. Enviar Autoresponder imediato — mero aviso de receção ("recebemos o
   // seu contacto"), não uma resposta com conteúdo decidido pela IA, por
-  // isso sai sempre de imediato mesmo em modo "confirmacao_previa".
-  const htmlAutoresponder = gerarHtmlAutoresponder(nomeRemetente);
-  await enviarEmailResend({
-    to: cleanFrom,
-    subject: `Recebemos o seu contacto - ${subject}`,
-    html: htmlAutoresponder,
-    fromAddress,
-    replyTo
-  });
+  // isso sai sempre de imediato mesmo em modo "confirmacao_previa". Exceto
+  // para remetentes "noreply"/"automated" (semRespostaAutomatica) — enviar
+  // uma resposta a um endereço que não recebe correio seria inútil/faria
+  // ricochete, mas a extração/lançamento da fatura corre na mesma abaixo.
+  if (!semRespostaAutomatica) {
+    const htmlAutoresponder = gerarHtmlAutoresponder(nomeRemetente);
+    await enviarEmailResend({
+      to: cleanFrom,
+      subject: `Recebemos o seu contacto - ${subject}`,
+      html: htmlAutoresponder,
+      fromAddress,
+      replyTo
+    });
+  }
 
   // 6. Preparar Anexos da resposta institucional
   let anexosParaEnviar = [];
@@ -882,7 +902,7 @@ export async function processInboundEmail(payload) {
   let respostaEnviada = false;
   let respostaPendenteConfirmacao = false;
   const aguardaConfirmacaoPagamento = Boolean(comprovativoRegisto?.pagamento);
-  if (aiData?.subject && aiData?.message) {
+  if (aiData?.subject && aiData?.message && !semRespostaAutomatica) {
     const htmlInstitucional = gerarHtmlResposta(nomeRemetente, aiData.message);
 
     if (modoAutoresponder === "confirmacao_previa" && aguardaConfirmacaoPagamento) {

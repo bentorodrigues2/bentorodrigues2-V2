@@ -34,13 +34,13 @@ export default async function handler(req, res) {
       }
     }
 
-    // 4. MULTIMODAL (PDFs, imagens, anexos → Gemini → lançamentos contabilísticos)
-    if (acao === "multimodal") {
-      const mod = await import("../api_handlers_backup/ai-studio-multimodal.js");
-      return mod.default(req, res);
-    }
-
-    // 5. Ação inválida
+    // Ação inválida
+    // (a antiga acao=multimodal, api_handlers_backup/ai-studio-multimodal.js,
+    // foi removida: era um segundo caminho de lançamento de movimentos, não
+    // chamado por nada no código atual, que duplicava mal o que o
+    // inboundProcessor.js já faz corretamente — não definia id_movimento no
+    // insert, coluna sem default, o que falhava sempre com "null value in
+    // column id_movimento" quando algo externo ainda lhe chamava.)
     return res.status(400).json({
       ok: false,
       error: "Ação inválida"
