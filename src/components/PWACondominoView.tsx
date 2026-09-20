@@ -596,7 +596,7 @@ export default function PWACondominoView({
   const [comprovativoExtractedData, setComprovativoExtractedData] = useState<any | null>(null);
   const [financeiroMovimentos, setFinanceiroMovimentos] = useState<Array<{
     id: string;
-    tipo: "Quota Ordinária" | "Cota Extraordinária" | "Comprovativo Enviado";
+    tipo: "Quota Ordinária" | "Quota Extraordinária" | "Comprovativo Enviado";
     data: string;
     descricao: string;
     valor: number;
@@ -604,7 +604,7 @@ export default function PWACondominoView({
     referencia?: string;
   }>>([
     { id: "MOV-302", tipo: "Quota Ordinária", data: "01/07/2026", descricao: "Quota Mensal - Fração 3ºE (Julho 2026)", valor: 45.00, estado: "Pago", referencia: "RB23E" },
-    { id: "MOV-301", tipo: "Cota Extraordinária", data: "15/06/2026", descricao: "Pintura das fachadas e escadas - Prestação 1/1", valor: 35.00, estado: "Pago", referencia: "RB23E_PINTURA" },
+    { id: "MOV-301", tipo: "Quota Extraordinária", data: "15/06/2026", descricao: "Pintura das fachadas e escadas - Prestação 1/1", valor: 35.00, estado: "Pago", referencia: "RB23E_PINTURA" },
     { id: "MOV-300", tipo: "Quota Ordinária", data: "01/06/2026", descricao: "Quota Mensal - Fração 3ºE (Junho 2026)", valor: 45.00, estado: "Pago", referencia: "RB23E" }
   ]);
 
@@ -1852,7 +1852,7 @@ export default function PWACondominoView({
 
                 {/* Dinamic message according to selected state */}
                 <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 text-[9px] text-slate-500 font-medium">
-                  {quotaState === "pago" && "A sua cota ordinária referente ao mês de Julho de 2026 encontra-se integralmente LIQUIDADA. Obrigado!"}
+                  {quotaState === "pago" && "A sua quota ordinária referente ao mês de Julho de 2026 encontra-se integralmente LIQUIDADA. Obrigado!"}
                   {quotaState === "atraso" && "Atenção: Existe 1 quota em atraso (45.00€). Por favor efetue a transferência e envie o comprovativo no painel abaixo."}
                   {quotaState === "processamento" && "O seu comprovativo de transferência encontra-se pendente de validação pela administração técnica."}
                   {quotaState === "multiplo" && "Alerta: Pagamento múltiplo detetado pela IA. Foram identificados múltiplos depósitos sob a mesma referência de forma acumulada."}
@@ -1860,7 +1860,7 @@ export default function PWACondominoView({
                 </div>
               </div>
 
-              {/* 8.1.4 Cota Extraordinária Simulação */}
+              {/* 8.1.4 Quota Extraordinária Simulação */}
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-[8px] font-extrabold text-indigo-500 uppercase tracking-wider block">8.1.4 Quota Extraordinária Ativa</span>

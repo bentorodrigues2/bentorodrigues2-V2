@@ -623,13 +623,13 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     setDetalheMovId(null);
   };
 
-  // Dívida real por fração: soma dos avisos de "Cota Ordinária" vencidos e
+  // Dívida real por fração: soma dos avisos de "Quota Ordinária" vencidos e
   // por pagar (o campo divida_total da fração nunca chegou a ser lido/
   // escrito do Supabase, ficando sempre vazio).
   const hojeISO = new Date().toISOString().split("T")[0];
   const calcularDividaFracao = (idFracao: string): number =>
     avisos
-      .filter(a => a.id_fracao === idFracao && a.tipo === "Cota Ordinária" && (a.estado === "Pendente" || a.estado === "Paga Parcialmente") && a.vencimento && a.vencimento < hojeISO)
+      .filter(a => a.id_fracao === idFracao && a.tipo === "Quota Ordinária" && (a.estado === "Pendente" || a.estado === "Paga Parcialmente") && a.vencimento && a.vencimento < hojeISO)
       .reduce((soma, a) => soma + ((Number(a.valor) || 0) - (Number(a.valor_pago) || 0)), 0);
 
   // Frações com dívidas para seleção rápida

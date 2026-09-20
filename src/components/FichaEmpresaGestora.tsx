@@ -374,7 +374,7 @@ export function FichaEmpresaGestora({
 
   const hoje = new Date();
   const anoMesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`;
-  const avisosQuotaOrdinaria = avisos.filter(a => a.tipo === "Cota Ordinária");
+  const avisosQuotaOrdinaria = avisos.filter(a => a.tipo === "Quota Ordinária");
 
   const totalFaturacaoMensal = avisosQuotaOrdinaria
     .filter(a => String(a.data || a.vencimento || "").slice(0, 7) === anoMesAtual)

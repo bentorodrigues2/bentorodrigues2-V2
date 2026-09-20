@@ -255,7 +255,7 @@ export function ConfiguracaoArranqueSaldos({
         id_aviso: `aviso-inicial-${p.id}`,
         id_predio: predio.id_predio,
         id_fracao: sf.id_fracao,
-        tipo: "Cota Ordinária",
+        tipo: "Quota Ordinária",
         data: dataAbertura,
         vencimento: dataAbertura,
         descricao: `Quotas Ordinárias em dívida da administração anterior — desde ${p.data_inicio} (${p.meses_em_divida} ${p.meses_em_divida === 1 ? "mês" : "meses"} × ${p.valor_quota_mensal.toFixed(2)}€). ${sf.observacoes}`.trim(),

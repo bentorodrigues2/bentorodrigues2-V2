@@ -222,7 +222,7 @@ export function GestaoQuotasOrcamento({
         id_aviso: idAviso,
         id_predio: predio.id_predio,
         id_fracao: f.id_fracao,
-        tipo: "Cota Ordinária",
+        tipo: "Quota Ordinária",
         data: dataDoc,
         vencimento,
         descricao: `Quota de Condomínio (Ordinária + Fundo de Reserva) - ${mes} / ${anoNum}`,
@@ -1475,7 +1475,7 @@ export function GestaoQuotasOrcamento({
                       <td className="p-3 text-slate-600">{a.descricao}</td>
                       <td className="p-3">
                         <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${
-                          a.tipo === 'Cota Ordinária'
+                          a.tipo === 'Quota Ordinária'
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                             : a.tipo.includes('Extra')
                             ? 'bg-amber-50 text-amber-700 border-amber-100'

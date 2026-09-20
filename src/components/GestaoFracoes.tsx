@@ -1481,7 +1481,7 @@ export function GestaoFracoes({
           id_aviso: "av-" + Math.floor(10000 + Math.random() * 90000),
           id_predio: predio.id_predio,
           id_fracao: f.id_fracao,
-          tipo: "Cota Ordinária",
+          tipo: "Quota Ordinária",
           data: dataDoc,
           vencimento: dataLimiteRegular,
           descricao: `Quota Ordinária Proporcional - Ref Permilagem ${f.permilagem}‰`,

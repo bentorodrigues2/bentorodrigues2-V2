@@ -188,13 +188,13 @@ export function FinanceiroAvancado({
   const [reciboNum, setReciboNum] = useState<string>(() => formatQuotaReceiptNumber(Math.floor(1000 + Math.random() * 9000)));
   const [reciboData, setReciboData] = useState<string>(() => new Date().toISOString().split("T")[0]);
   const [reciboQuotaMensal, setReciboQuotaMensal] = useState<string>(() => {
-    // Pré-preenche com o valor da "Cota Ordinária" mais recente emitida para
+    // Pré-preenche com o valor da "Quota Ordinária" mais recente emitida para
     // a fração (Gestão de Emissão) — o campo quota_mensal da fração nunca
     // chegou a ser lido/escrito do Supabase em lado nenhum, ficando sempre
     // vazio. Continua totalmente editável antes de emitir o recibo.
     if (predioFracoes.length > 0) {
       const avisosFracao = predioAvisos
-        .filter(a => a.id_fracao === predioFracoes[0].id_fracao && a.tipo === "Cota Ordinária")
+        .filter(a => a.id_fracao === predioFracoes[0].id_fracao && a.tipo === "Quota Ordinária")
         .sort((a, b) => (b.data || "").localeCompare(a.data || ""));
       if (avisosFracao[0]?.valor) return Number(avisosFracao[0].valor).toFixed(2);
     }

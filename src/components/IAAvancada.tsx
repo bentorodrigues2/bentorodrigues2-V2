@@ -1896,7 +1896,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                     </div>
                     <div className="text-right shrink-0 font-mono">
                       <span className="text-sm font-extrabold text-violet-300 block">€12.000,00</span>
-                      <span className="text-[10px] text-violet-400 block">Sugerida cota extraordinária fracionada em 18x</span>
+                      <span className="text-[10px] text-violet-400 block">Sugerida quota extraordinária fracionada em 18x</span>
                     </div>
                   </div>
 

@@ -1258,7 +1258,7 @@ export interface LinhaReciboEmitido {
   fracao_nome: string;
   proprietario_nome: string;
   numero_recibo: string;
-  tipo: string; // "Cota Ordinária" | "Quota Extraordinária"
+  tipo: string; // "Quota Ordinária" | "Quota Extraordinária"
   parcela: string; // "Quota Mensal" | "Fundo de Reserva" | "Quota Extraordinária"
   data_emissao: string;
   data_limite_pagamento: string;
