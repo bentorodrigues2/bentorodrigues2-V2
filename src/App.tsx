@@ -1,5 +1,5 @@
 import { Shield, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import { ActionIcon } from "./components/ActionIcon";
 import { LoggedUser, Predio, Conta, Fornecedor, Fracao, Aviso, Movimento, Reuniao, Documento, Ocorrencia, Reserva, CapacidadeLimite } from "./types";
 import { initialPredios, initialContas, initialFornecedores, initialFracoes, initialAvisos, initialMovements, initialReunioes, initialDocumentos, initialOcorrencias, defaultEmptyPredio } from "./data";
@@ -300,7 +300,14 @@ export default function App() {
     }
   }, [theme]);
 
-  const [activeSection, setActiveSection] = useState("painel"); 
+  const [activeSection, setActiveSection] = useState("painel");
+  // Grupo do menu principal (prefixo antes do primeiro "_") — usado como key
+  // do painel de conteúdo para forçar o React a desmontar/remontar tudo o
+  // que estiver aberto (seleções, painéis expandidos, modais locais) sempre
+  // que se muda de menu principal na coluna central, mas SEM reiniciar nada
+  // ao navegar entre sub-secções do mesmo módulo (ex: "fracoes_nova" ↔
+  // "fracoes_perfis" continuam no mesmo grupo "fracoes").
+  const grupoMenuPrincipal = activeSection.split("_")[0];
   const [userProfileModalOpen, setUserProfileModalOpen] = useState(false);
   const [biometricsEnabled, setBiometricsEnabled] = useState<boolean>(true);
   const [openMenuPredios, setOpenMenuPredios] = useState(false);
@@ -2715,7 +2722,7 @@ export default function App() {
               setCapacidades={setCapacidades}
             />
           ) : (
-            <>
+            <Fragment key={grupoMenuPrincipal}>
               {activeSection === "ficha_gestora" && (
                 <FichaEmpresaGestora
                   predios={predios}
@@ -3219,7 +3226,7 @@ export default function App() {
               onUpdatePredio={handleUpdatePredio}
             />
           )}
-            </>
+            </Fragment>
           )}
         </div>
       </main>

@@ -1081,14 +1081,17 @@ export function GestaoFracoes({
             setTransferindoPropriedadeDe(null);
           }
 
+          // Envio de boas-vindas/ativação/notas em atraso e o alerta final
+          // com o relatório corre em segundo plano (não aguardado) — o
+          // administrador não fica preso no ecrã à espera do intervalo real
+          // de 60 segundos entre o email de boas-vindas e o de ativação
+          // (necessário para o DESTINATÁRIO ler o primeiro antes do
+          // segundo chegar, não para o administrador esperar). O formulário
+          // limpa-se e liberta-se de imediato, logo a seguir a este bloco;
+          // o alerta com o relatório de envio continua a aparecer no fim,
+          // só que já sem bloquear o ecrã entretanto.
+          (async () => {
           if ((isNewEmail || !targetFracao.proprietario) && emailValidoParaEnvio) {
-            // Ordem deliberada: primeiro o email de boas-vindas (com o PDF
-            // de instruções do site & instalação da PWA em anexo), só depois
-            // o email de ativação — para a pessoa abrir o 1º email, ler o
-            // anexo e perceber o que tem de fazer, em vez de receber os dois
-            // juntos e arriscar ver primeiro o link de ativação. Entre os
-            // dois há um intervalo real de 60 segundos (não é decorativo:
-            // este pedido só é feito depois de a Promise abaixo resolver).
             setEnviandoConvites(true);
 
             // Primeiro registo do proprietário desta fração: emite e envia
@@ -1210,7 +1213,9 @@ export function GestaoFracoes({
               setEnviandoConvites(false);
             }
           }
+          })().catch(err => console.error("[GestaoFracoes] Erro em segundo plano ao processar convites/notas em atraso:", err));
 
+          alert(`✅ Proprietário associado com sucesso à Fração ${targetFracao.fracao_nome}! Os emails de boas-vindas/ativação (e eventuais notas de cobrança em atraso) estão a ser enviados em segundo plano — vai receber um relatório de confirmação assim que terminar.`);
           limparFormProprietario();
           return;
         }
