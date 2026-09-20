@@ -244,12 +244,16 @@ export function PainelControlo({
             contagem: documentosCount
           },
           {
+            // Sempre visível (fixo) — o número de mensagens por ler mostra-se
+            // como emblema vermelho no canto superior direito do ícone, estilo
+            // WhatsApp/SMS, em vez de depender do cartão aparecer/desaparecer.
             name: "Mensagens",
-            val: mensagensCount === 1 ? "1 Pendente" : `${mensagensCount} Pendentes`,
+            val: mensagensCount === 0 ? "Sem Pendentes" : mensagensCount === 1 ? "1 Pendente" : `${mensagensCount} Pendentes`,
             icon: "/modulos/75-mensagem.png",
             section: "comunicacao_chat",
-            fixo: false,
-            contagem: mensagensCount
+            fixo: true,
+            contagem: 1,
+            emblemaContagem: mensagensCount
           },
           {
             name: "Cobranças",
@@ -339,13 +343,14 @@ export function PainelControlo({
               {indicadores.map((ind, idx) => {
                 const corVerde = ind.destaque || (ind.corSinal && ind.positivo);
                 const corVermelha = ind.corSinal && !ind.positivo;
+                const emblema = ind.emblemaContagem;
                 return (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => onSelectSection?.(ind.section)}
                     title={ind.corSinal ? "Total = Saldos Bancários (Ordem + Fundo de Reserva) − Dívidas Pendentes a Fornecedores" : undefined}
-                    className={`w-full h-[115px] rounded-2xl flex flex-col items-center justify-between text-center p-2.5 relative select-none hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-xs ${
+                    className={`w-full min-h-[115px] rounded-2xl flex flex-col items-center justify-between text-center p-2.5 relative select-none hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-xs overflow-hidden ${
                       corVermelha
                         ? "bg-red-100 hover:bg-red-200 text-red-950 border border-red-400"
                         : corVerde
@@ -353,11 +358,18 @@ export function PainelControlo({
                         : "bg-[#ECFDF5] hover:bg-[#D1FAE5] text-[#064E3B] border border-[#A7F3D0]"
                     }`}
                   >
-                    <img src={ind.icon} alt={ind.name} className="h-9 w-9 object-contain mb-0.5 shrink-0 rounded-lg drop-shadow-xs" />
-                    <div className="flex flex-col items-center leading-none">
-                      <span className={`text-[10px] font-black leading-tight block truncate max-w-full text-center uppercase tracking-tight ${corVermelha ? "text-red-950" : corVerde ? "text-[#022c22]" : "text-[#064E3B]"}`}>{ind.name}</span>
+                    <div className="relative shrink-0 mb-0.5">
+                      <img src={ind.icon} alt={ind.name} className="h-9 w-9 object-contain rounded-lg drop-shadow-xs" />
+                      {!!emblema && emblema > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center shadow-sm ring-2 ring-white animate-pulse">
+                          {emblema > 99 ? "99+" : emblema}
+                        </span>
+                      )}
                     </div>
-                    <span className={`bg-white/95 border text-[8.5px] font-black px-2.5 py-0.5 rounded-full shadow-xs uppercase tracking-wider truncate max-w-[92%] leading-none ${
+                    <div className="flex flex-col items-center leading-none w-full px-0.5">
+                      <span className={`text-[9.5px] font-black leading-[1.15] line-clamp-2 break-words text-center uppercase tracking-tight ${corVermelha ? "text-red-950" : corVerde ? "text-[#022c22]" : "text-[#064E3B]"}`}>{ind.name}</span>
+                    </div>
+                    <span className={`bg-white/95 border text-[8px] font-black px-2 py-0.5 rounded-full shadow-xs uppercase tracking-wide leading-tight max-w-full text-center break-words line-clamp-1 ${
                       corVermelha ? "text-red-700 border-red-400" : corVerde ? "text-[#022c22] border-[#34D399]" : "text-[#064E3B] border-[#6EE7B7]"
                     }`}>
                       {ind.val}
