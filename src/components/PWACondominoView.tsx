@@ -870,6 +870,22 @@ export default function PWACondominoView({
         style={{ backgroundColor: theme === "dark" ? "#020617" : "#ece7e7" }}
       >
 
+        {/* BOTÃO VOLTAR — visível em todos os separadores exceto o início.
+            O botão físico/gesto do telemóvel já está ligado ao histórico
+            (ver activeTabAnteriorRef acima), mas num PWA instalado em modo
+            standalone (sobretudo iOS) esse gesto muitas vezes não existe ou
+            não é óbvio — sem isto não havia nenhuma forma visível de voltar. */}
+        {activeTab !== "home" && (
+          <button
+            type="button"
+            onClick={() => setActiveTab("home")}
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer -mt-1 mb-1 py-1 px-1 -mx-1 rounded-lg active:bg-slate-200/60 dark:active:bg-slate-800/60 transition-colors"
+          >
+            <i className="fa-solid fa-chevron-left text-[10px]"></i>
+            <span>Voltar ao Início</span>
+          </button>
+        )}
+
         {/* ========================================== */}
         {activeTab === "home" && (
           <div className="space-y-3.5 animate-fade-in" id="pwa-modulo-dashboard">
