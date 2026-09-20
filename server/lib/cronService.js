@@ -655,6 +655,24 @@ export async function emitirQuotasMensais() {
       continue;
     }
 
+    // Não emitir quotas de meses anteriores ao início real da gestão deste
+    // prédio (definido no Assistente de Arranque Inicial) — sem isto, um
+    // prédio cuja gestão só arranca numa data futura já começava a receber
+    // quotas mensais automáticas assim que tivesse orçamento configurado,
+    // independentemente de a atividade ainda não ter começado.
+    const dataInicioGestao = predio.patrimonio?.data_inicio_gestao;
+    if (dataInicioGestao) {
+      const inicioGestao = new Date(dataInicioGestao);
+      if (!isNaN(inicioGestao.getTime())) {
+        const inicioDoMesAFaturar = new Date(Date.UTC(anoRef, mesRef, 1));
+        const inicioDoMesDeGestao = new Date(Date.UTC(inicioGestao.getUTCFullYear(), inicioGestao.getUTCMonth(), 1));
+        if (inicioDoMesAFaturar < inicioDoMesDeGestao) {
+          console.log(`[cronService] Prédio "${predio.nome}" ainda não iniciou gestão (início: ${dataInicioGestao}) — a saltar emissão de quotas de ${mesRef + 1}/${anoRef}.`);
+          continue;
+        }
+      }
+    }
+
     const fracoes = await obterFracoesDoPredio(predio.id_predio);
     const prefixoEdificio = derivarPrefixoEdificio(predio.nome);
     const rates = calcularRatesPredio(predio, fracoes);

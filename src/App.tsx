@@ -3177,6 +3177,7 @@ export default function App() {
               documentos={documentos}
               setDocumentos={setDocumentos}
               onConcluir={() => setActiveSection("painel")}
+              onUpdatePredio={handleUpdatePredio}
             />
           )}
 

@@ -153,7 +153,8 @@ export async function fetchPrediosFromSupabase(): Promise<Predio[] | null> {
       email: row.email || null,
       email_condominio: row.email_condominio || row.email || null,
       autoresponder_ativo: row.autoresponder_ativo ?? true,
-      autoresponder_modo: row.autoresponder_modo || "confirmacao_previa"
+      autoresponder_modo: row.autoresponder_modo || "confirmacao_previa",
+      data_inicio_gestao: row.patrimonio?.data_inicio_gestao || null
     }));
   } catch (err) {
     console.warn("[Supabase] Exception fetching predios:", err);
@@ -173,7 +174,9 @@ export async function savePredioToSupabase(predio: Predio): Promise<boolean> {
     codigo_postal: predio.codigo_postal,
     localidade: predio.localidade,
     nif: predio.nif,
-    patrimonio: predio.patrimonio,
+    patrimonio: predio.data_inicio_gestao
+      ? { ...predio.patrimonio, data_inicio_gestao: predio.data_inicio_gestao }
+      : predio.patrimonio,
     iban: predio.iban,
     email: predio.email,
     email_condominio: predio.email_condominio || predio.email,

@@ -67,6 +67,12 @@ export interface Predio {
     notif_canal_email?: boolean;
     notif_canal_push?: boolean;
   };
+  // Data oficial de início da gestão deste prédio (definida no Assistente de
+  // Arranque Inicial) — usada pelo cron mensal para nunca emitir quotas de
+  // meses anteriores a este arranque, mesmo que o orçamento já esteja
+  // configurado. Não é uma coluna dedicada na BD, vai dentro de "patrimonio"
+  // (jsonb), tal como já acontece com orcamento_anual.
+  data_inicio_gestao?: string | null;
 }
 
 export interface Conta {

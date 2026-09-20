@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Predio, Fracao, Conta, Movimento, Aviso, LoggedUser, Documento } from "../types";
 import { parseValorMonetario } from "../utils";
-import { saveContaToSupabase, saveAvisosToSupabase, deleteAvisoFromSupabase, saveMovimentoToSupabase, registarLogAuditoria, fetchObrasExtraFromSupabase, uploadDocumentoToStorage, saveDocumentoToSupabase } from "../lib/supabaseService";
+import { saveContaToSupabase, saveAvisosToSupabase, deleteAvisoFromSupabase, saveMovimentoToSupabase, registarLogAuditoria, fetchObrasExtraFromSupabase, uploadDocumentoToStorage, saveDocumentoToSupabase, savePredioToSupabase } from "../lib/supabaseService";
 import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { 
   Sliders, 
@@ -46,6 +46,7 @@ interface ConfiguracaoArranqueSaldosProps {
   documentos?: Documento[];
   setDocumentos?: React.Dispatch<React.SetStateAction<Documento[]>>;
   onConcluir?: () => void;
+  onUpdatePredio?: (predio: Predio) => void;
 }
 
 export interface ContaArranqueItem {
@@ -128,12 +129,13 @@ export function ConfiguracaoArranqueSaldos({
   loggedUser,
   documentos,
   setDocumentos,
-  onConcluir
+  onConcluir,
+  onUpdatePredio
 }: ConfiguracaoArranqueSaldosProps) {
   const [currentStep, setCurrentStep] = useState<number>(1);
 
   // --- PASSO 1: DATA E SALDOS BANCÁRIOS DE ABERTURA (MÚLTIPLAS CONTAS & INTERVENÇÕES) ---
-  const [dataAbertura, setDataAbertura] = useState<string>("2026-08-01");
+  const [dataAbertura, setDataAbertura] = useState<string>(predio.data_inicio_gestao || "2026-08-01");
 
   // Lista dinâmica de contas de arranque
   const [contasArranque, setContasArranque] = useState<ContaArranqueItem[]>(() => {
@@ -679,6 +681,15 @@ export function ConfiguracaoArranqueSaldos({
   // --- FINALIZAR E GRAVAR NA PLATAFORMA ---
   const handleGravarConfiguracaoArranque = () => {
     triggerSendReaction("email", "A inicializar todas as contas bancárias, saldos de intervenção e mapa de arranque...");
+
+    // 0. Gravar a Data Oficial de Abertura/Transição como a data de início
+    // de gestão do prédio — o cron mensal de emissão de quotas passa a
+    // respeitá-la, nunca gerando quotas de meses anteriores a este arranque.
+    if (dataAbertura && dataAbertura !== predio.data_inicio_gestao) {
+      const predioAtualizado: Predio = { ...predio, data_inicio_gestao: dataAbertura };
+      savePredioToSupabase(predioAtualizado).catch(console.error);
+      onUpdatePredio?.(predioAtualizado);
+    }
 
     // 1. Criar ou Atualizar todas as contas configuradas
     const novasContas: Conta[] = contasArranque.map(ca => ({
