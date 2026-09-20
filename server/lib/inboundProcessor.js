@@ -375,13 +375,25 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
     // 2. Inserir em movimentos (estado: 'Movimento Cego / Por Justificar', is_movimento_cego: true, estado_conciliacao: 'PENDENTE')
     // "id_movimento" é a PK (text) e não tem default — tem de ser gerado aqui.
     const idMovimentoGerado = `MOV-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    // Quando a extração multimodal falha por completo (dadosExtraidos é
+    // null — erro da IA, anexo ilegível, etc.), o lançamento cego criava-se
+    // na mesma com valor 0€ sem nenhuma indicação de que a leitura falhou,
+    // indistinguível de um comprovativo genuinamente sem valor legível. Isto
+    // marca claramente o lançamento como "falha na leitura", para o
+    // administrador saber que tem de abrir o anexo e corrigir manualmente,
+    // em vez de assumir por engano que o valor real é mesmo 0€.
+    const falhaLeituraTotal = !dadosExtraidos;
+    const descricaoBase = `${entidadeExtraida || (isFatura ? "Fatura de fornecedor" : "Comprovativo")} via Email (${fracaoNome} - ${extrairEmailLimpo(remetenteEmail)})${pagamento?.id ? ` [pagamento:${pagamento.id}]` : ""}`;
+
     const { data: movimento, error: errMov } = await supabase
       .from("movimentos")
       .insert({
         id_movimento: idMovimentoGerado,
         id_predio: contexto?.id_predio || null,
         fracao_id: contexto?.id_fracao || null,
-        descricao: `${entidadeExtraida || (isFatura ? "Fatura de fornecedor" : "Comprovativo")} via Email (${fracaoNome} - ${extrairEmailLimpo(remetenteEmail)})${pagamento?.id ? ` [pagamento:${pagamento.id}]` : ""}`,
+        descricao: falhaLeituraTotal
+          ? `⚠️ FALHA NA LEITURA AUTOMÁTICA — ${descricaoBase} (abrir o anexo e corrigir o valor manualmente)`
+          : descricaoBase,
         valor: valorExtraido || 0,
         tipo: tipoMovimento,
         categoria: categoriaMovimento,
