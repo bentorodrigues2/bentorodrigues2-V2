@@ -41,6 +41,20 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState<boolean>(defaultOpen || isFirstAccessMode);
 
+  // Estado real da biometria — fica LOCAL a este componente, em vez de
+  // depender só da prop biometricsEnabled (que atravessa 3 componentes,
+  // PWASimulator → PWACondominoView → aqui, e podia ficar dessincronizada,
+  // fazendo o interruptor não se mexer visualmente ao desativar). A fonte
+  // da verdade é sempre se este dispositivo tem mesmo uma credencial
+  // WebAuthn guardada (localStorage, gravado/limpo em src/utils/webauthn.ts).
+  const [biometriaAtiva, setBiometriaAtiva] = useState<boolean>(() => {
+    try {
+      return Boolean(localStorage.getItem("webauthn_credential_id"));
+    } catch {
+      return biometricsEnabled;
+    }
+  });
+
   // Redefinição de Password
   const [currentPass, setCurrentPass] = useState<string>("");
   const [newPass, setNewPass] = useState<string>("");
@@ -191,10 +205,11 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
     setSimulatingScan?.(true);
     setSimulatingScanProgress?.(35);
     try {
-      if (!biometricsEnabled) {
+      if (!biometriaAtiva) {
         const resultado = await registarBiometriaNesteDispositivo();
         if (resultado.ok) {
           setSimulatingScanProgress?.(100);
+          setBiometriaAtiva(true);
           setBiometricsEnabled?.(true);
           setTimeout(() => alert("✅ Biometria registada e ativada com sucesso neste dispositivo!"), 300);
         } else {
@@ -203,6 +218,7 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
       } else {
         const resultado = await removerBiometriaNesteDispositivo();
         setSimulatingScanProgress?.(100);
+        setBiometriaAtiva(false);
         setBiometricsEnabled?.(false);
         if (!resultado.ok) {
           console.warn("[Biometria] Aviso ao remover credencial no servidor:", resultado.error);
@@ -343,12 +359,12 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
                 type="button"
                 onClick={handleToggleBiometrics}
                 className={`relative inline-flex h-5.5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  biometricsEnabled ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-800"
+                  biometriaAtiva ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-800"
                 }`}
               >
                 <span
                   className={`pointer-events-none inline-block h-4.5 w-4.5 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-                    biometricsEnabled ? "translate-x-4.5" : "translate-x-0"
+                    biometriaAtiva ? "translate-x-4.5" : "translate-x-0"
                   }`}
                 />
               </button>

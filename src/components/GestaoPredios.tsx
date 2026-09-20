@@ -54,6 +54,12 @@ export function extrairIniciaisCodigoPredio(predio?: Predio | null): string {
 }
 
 export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePredio, loggedUser, activeSubSection }: GestaoPrediosProps) {
+  // Um condómino/inquilino só pode consultar a ficha do prédio (morada, NIF,
+  // email oficial, contas/IBAN) — nunca editar nem eliminar, e sem o
+  // património comum (elevador/garagem/piscina/etc., informação de gestão
+  // interna, não de autoconsulta).
+  const podeEditarPredio = ["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role);
+
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -1392,8 +1398,8 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                   <th className="py-3 px-4">Morada & Localidade</th>
                   <th className="py-3 px-4">NIF</th>
                   <th className="py-3 px-4">E-mail Oficial (IA / Autoresponder)</th>
-                  <th className="py-3 px-4">Património Comum</th>
-                  <th className="py-3 px-4 text-right">Ações</th>
+                  {podeEditarPredio && <th className="py-3 px-4">Património Comum</th>}
+                  {podeEditarPredio && <th className="py-3 px-4 text-right">Ações</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1412,11 +1418,11 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                     return (
                       <tr
                         key={p.id_predio}
-                        onClick={() => setSelectedPredioId(p.id_predio)}
-                        className={`transition-all cursor-pointer ${
+                        onClick={podeEditarPredio ? () => setSelectedPredioId(p.id_predio) : undefined}
+                        className={`transition-all ${podeEditarPredio ? "cursor-pointer" : ""} ${
                           isSelected
                             ? "bg-blue-50/80 font-semibold text-slate-900 border-l-4 border-l-blue-600"
-                            : "hover:bg-slate-50/80 text-slate-700"
+                            : podeEditarPredio ? "hover:bg-slate-50/80 text-slate-700" : "text-slate-700"
                         }`}
                       >
                         {/* Foto & Nome */}
@@ -1474,36 +1480,39 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                           )}
                         </td>
 
-                        {/* Património */}
-                        <td className="py-3 px-4">
-                          <div className="flex flex-wrap gap-1">
-                            {p.patrimonio?.tem_elevador && (
-                              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] px-1.5 py-0.5 rounded font-medium">
-                                🛗 {p.patrimonio.num_elevadores || 1} Elevador
-                              </span>
-                            )}
-                            {p.patrimonio?.tem_garagem && (
-                              <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] px-1.5 py-0.5 rounded font-medium">
-                                🅿️ Garagem
-                              </span>
-                            )}
-                            {p.patrimonio?.tem_piscina && (
-                              <span className="bg-cyan-50 text-cyan-700 border border-cyan-200 text-[10px] px-1.5 py-0.5 rounded font-medium">
-                                🏊 Piscina
-                              </span>
-                            )}
-                            {p.patrimonio?.tem_sala_comum && (
-                              <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] px-1.5 py-0.5 rounded font-medium">
-                                👥 Sala Comum
-                              </span>
-                            )}
-                            {!p.patrimonio?.tem_elevador && !p.patrimonio?.tem_garagem && !p.patrimonio?.tem_piscina && !p.patrimonio?.tem_sala_comum && (
-                              <span className="text-slate-400 text-[11px] font-normal">Básico</span>
-                            )}
-                          </div>
-                        </td>
+                        {/* Património — só de gestão interna, não é para autoconsulta */}
+                        {podeEditarPredio && (
+                          <td className="py-3 px-4">
+                            <div className="flex flex-wrap gap-1">
+                              {p.patrimonio?.tem_elevador && (
+                                <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] px-1.5 py-0.5 rounded font-medium">
+                                  🛗 {p.patrimonio.num_elevadores || 1} Elevador
+                                </span>
+                              )}
+                              {p.patrimonio?.tem_garagem && (
+                                <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] px-1.5 py-0.5 rounded font-medium">
+                                  🅿️ Garagem
+                                </span>
+                              )}
+                              {p.patrimonio?.tem_piscina && (
+                                <span className="bg-cyan-50 text-cyan-700 border border-cyan-200 text-[10px] px-1.5 py-0.5 rounded font-medium">
+                                  🏊 Piscina
+                                </span>
+                              )}
+                              {p.patrimonio?.tem_sala_comum && (
+                                <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] px-1.5 py-0.5 rounded font-medium">
+                                  👥 Sala Comum
+                                </span>
+                              )}
+                              {!p.patrimonio?.tem_elevador && !p.patrimonio?.tem_garagem && !p.patrimonio?.tem_piscina && !p.patrimonio?.tem_sala_comum && (
+                                <span className="text-slate-400 text-[11px] font-normal">Básico</span>
+                              )}
+                            </div>
+                          </td>
+                        )}
 
-                        {/* Ações */}
+                        {/* Ações — Editar/Eliminar exclusivos de ADMIN/EMPRESA_GESTORA/GESTOR */}
+                        {podeEditarPredio && (
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end space-x-1.5">
                             {/* Botão Editar (Ícone Lápis 13-editar.png) */}
@@ -1541,6 +1550,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                             </button>
                           </div>
                         </td>
+                        )}
                       </tr>
                     );
                   })
@@ -1551,7 +1561,9 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
         </div>
       </div>
 
-      {/* SECÇÃO 2: FORMULÁRIO DE CADASTRO / EDIÇÃO / REMOÇÃO DO PRÉDIO SELECIONADO */}
+      {/* SECÇÃO 2: FORMULÁRIO DE CADASTRO / EDIÇÃO / REMOÇÃO DO PRÉDIO SELECIONADO —
+          exclusivo de ADMIN/EMPRESA_GESTORA/GESTOR; um condómino/inquilino só consulta a tabela acima. */}
+      {podeEditarPredio && (
       <form onSubmit={submeterForm} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-3">
           <div>
@@ -1759,6 +1771,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
           </button>
         </div>
       </form>
+      )}
         </>
       )}
     </div>
