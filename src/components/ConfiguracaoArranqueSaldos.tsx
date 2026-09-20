@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Predio, Fracao, Conta, Movimento, Aviso, LoggedUser, Documento } from "../types";
 import { parseValorMonetario } from "../utils";
-import { saveContaToSupabase, saveAvisosToSupabase, saveMovimentoToSupabase, registarLogAuditoria, fetchObrasExtraFromSupabase, uploadDocumentoToStorage, saveDocumentoToSupabase } from "../lib/supabaseService";
+import { saveContaToSupabase, saveAvisosToSupabase, deleteAvisoFromSupabase, saveMovimentoToSupabase, registarLogAuditoria, fetchObrasExtraFromSupabase, uploadDocumentoToStorage, saveDocumentoToSupabase } from "../lib/supabaseService";
 import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { 
   Sliders, 
@@ -236,6 +236,82 @@ export function ConfiguracaoArranqueSaldos({
     return Math.round((totalOrdinarias + totalExtras) * 100) / 100;
   };
 
+  // Constrói a lista real de Avisos (Quotas Ordinárias + Extra) a partir da
+  // discriminação de uma fração — reaproveitado tanto para gravar de
+  // imediato ao fechar o modal de dívidas, como no botão final "Concluir"
+  // do assistente, para nunca haver duas fórmulas diferentes a divergir.
+  // Os ids são estáveis (derivados do id local de cada período/item), para
+  // voltar a gravar o mesmo item atualizar em vez de duplicar no Supabase.
+  const construirAvisosDividaFracao = (sf: SaldoInicialFracao): Aviso[] => {
+    if (sf.tipo_saldo !== "DIVIDA") return [];
+    const fracaoRef = predioFracoes.find(f => f.id_fracao === sf.id_fracao);
+    const resultado: Aviso[] = [];
+
+    sf.dividasQuotasOrdinarias.forEach((p) => {
+      if (p.valor_quota_mensal <= 0 || p.meses_em_divida <= 0) return;
+      const valorFCR = Math.round(p.valor_quota_mensal * 0.1 * p.meses_em_divida * 100) / 100;
+      const valorTotal = Math.round(p.valor_quota_mensal * p.meses_em_divida * 100) / 100;
+      resultado.push({
+        id_aviso: `aviso-inicial-${p.id}`,
+        id_predio: predio.id_predio,
+        id_fracao: sf.id_fracao,
+        tipo: "Cota Ordinária",
+        data: dataAbertura,
+        vencimento: dataAbertura,
+        descricao: `Quotas Ordinárias em dívida da administração anterior — desde ${p.data_inicio} (${p.meses_em_divida} ${p.meses_em_divida === 1 ? "mês" : "meses"} × ${p.valor_quota_mensal.toFixed(2)}€). ${sf.observacoes}`.trim(),
+        valor: valorTotal,
+        valor_fundo_reserva: valorFCR,
+        estado: "Pendente",
+        proprietario_nome: fracaoRef?.proprietario?.nome,
+        proprietario_nif: fracaoRef?.proprietario?.nif
+      });
+    });
+
+    sf.dividasQuotasExtras.forEach((it) => {
+      if (it.valor_total <= 0) return;
+      resultado.push({
+        id_aviso: `aviso-inicial-${it.id}`,
+        id_predio: predio.id_predio,
+        id_fracao: sf.id_fracao,
+        tipo: "Quota Extraordinária",
+        data: dataAbertura,
+        vencimento: dataAbertura,
+        descricao: `Quota Extraordinária em dívida da administração anterior — ${it.descricao || "Obra"} (${it.data_inicio_pagamentos} a ${it.data_fim_pagamentos}, ${it.valor_mensal.toFixed(2)}€/mês). ${sf.observacoes}`.trim(),
+        valor: it.valor_total,
+        estado: "Pendente",
+        id_obra: it.id_obra || undefined,
+        proprietario_nome: fracaoRef?.proprietario?.nome,
+        proprietario_nif: fracaoRef?.proprietario?.nif
+      });
+    });
+
+    return resultado;
+  };
+
+  // Grava já no Supabase os avisos da dívida discriminada de uma fração —
+  // chamado ao fechar o modal, em vez de depender de chegar ao botão final
+  // "Concluir" do assistente (passo 4). Sem isto, fechar o modal com
+  // "Concluído" dava a sensação de ter gravado mas nada persistia: os dados
+  // só existiam no estado local do formulário, perdidos ao sair do passo 2.
+  const [aGravarDividaFracao, setAGravarDividaFracao] = useState(false);
+  const persistirDividaFracaoImediatamente = async (id_fracao: string) => {
+    const sf = saldosFracoes.find(s => s.id_fracao === id_fracao);
+    if (!sf) return;
+    const avisosParaGravar = construirAvisosDividaFracao(sf);
+    if (avisosParaGravar.length === 0) return;
+    setAGravarDividaFracao(true);
+    const ok = await saveAvisosToSupabase(avisosParaGravar);
+    setAGravarDividaFracao(false);
+    if (!ok) {
+      alert("❌ Não foi possível gravar a dívida desta fração no Supabase. Verifique a ligação e tente novamente antes de fechar esta janela.");
+      return;
+    }
+    setAvisos(prev => {
+      const semAntigos = prev.filter(a => !avisosParaGravar.some(n => n.id_aviso === a.id_aviso));
+      return [...semAntigos, ...avisosParaGravar];
+    });
+  };
+
   // Atualizador de linha de saldo de fração
   const handleUpdateSaldoFracao = (id_fracao: string, fields: Partial<SaldoInicialFracao>) => {
     setSaldosFracoes(prev => prev.map(s => {
@@ -285,6 +361,11 @@ export function ConfiguracaoArranqueSaldos({
       updated.valor_saldo = calcularTotalDivida(updated);
       return updated;
     }));
+    // Elimina já o aviso real correspondente, caso já tivesse sido gravado
+    // numa passagem anterior por este modal — para não ficar órfão.
+    const idAvisoReal = `aviso-inicial-${id_periodo}`;
+    deleteAvisoFromSupabase(idAvisoReal).catch(console.error);
+    setAvisos(prev => prev.filter(a => a.id_aviso !== idAvisoReal));
   };
 
   // --- Gestão dos itens de dívida discriminados (Quotas Extra / Obras) ---
@@ -341,6 +422,9 @@ export function ConfiguracaoArranqueSaldos({
       updated.valor_saldo = calcularTotalDivida(updated);
       return updated;
     }));
+    const idAvisoReal = `aviso-inicial-${id_item}`;
+    deleteAvisoFromSupabase(idAvisoReal).catch(console.error);
+    setAvisos(prev => prev.filter(a => a.id_aviso !== idAvisoReal));
   };
 
   // --- Comprovativo da transição: prova documental de cada dívida (ex:
@@ -611,61 +695,24 @@ export function ConfiguracaoArranqueSaldos({
     novasContas.forEach(c => saveContaToSupabase(c).catch(console.error));
 
     // 2. Criar Avisos de Débito reais e discriminados para as Frações com
-    // Dívida Inicial — um aviso por cada período de quota ordinária e por
-    // cada quota extra/obra, em vez de um único valor genérico. Sendo
-    // avisos reais (estado "Pendente"), entram automaticamente nos
-    // cálculos de dívida pendente já usados em Contencioso Jurídico,
-    // Dashboard e Relatórios, sem precisar de nenhuma ligação extra.
+    // Dívida Inicial — reaproveita construirAvisosDividaFracao (mesma
+    // função usada ao gravar de imediato ao fechar o modal de dívidas),
+    // para nunca haver duas fórmulas a divergir. Sendo avisos reais (estado
+    // "Pendente"), entram automaticamente nos cálculos de dívida pendente
+    // já usados em Contencioso Jurídico, Dashboard e Relatórios.
     const novosAvisos: Aviso[] = [];
     saldosFracoes.forEach((sf) => {
       if (sf.tipo_saldo !== "DIVIDA") return;
-      // Fotografia do proprietário — mesma regra usada em todos os outros
-      // pontos de emissão de avisos, para o documento nunca "mudar de dono"
-      // se a fração for transferida mais tarde.
-      const fracaoRef = predioFracoes.find(f => f.id_fracao === sf.id_fracao);
-
-      sf.dividasQuotasOrdinarias.forEach((p, idx) => {
-        if (p.valor_quota_mensal <= 0 || p.meses_em_divida <= 0) return;
-        const valorFCR = Math.round(p.valor_quota_mensal * 0.1 * p.meses_em_divida * 100) / 100;
-        const valorTotal = Math.round(p.valor_quota_mensal * p.meses_em_divida * 100) / 100;
-        novosAvisos.push({
-          id_aviso: `aviso-inicial-qord-${sf.id_fracao}-${idx}-${Date.now()}`,
-          id_predio: predio.id_predio,
-          id_fracao: sf.id_fracao,
-          tipo: "Cota Ordinária",
-          data: dataAbertura,
-          vencimento: dataAbertura,
-          descricao: `Quotas Ordinárias em dívida da administração anterior — desde ${p.data_inicio} (${p.meses_em_divida} ${p.meses_em_divida === 1 ? "mês" : "meses"} × ${p.valor_quota_mensal.toFixed(2)}€). ${sf.observacoes}`.trim(),
-          valor: valorTotal,
-          valor_fundo_reserva: valorFCR,
-          estado: "Pendente",
-          proprietario_nome: fracaoRef?.proprietario?.nome,
-          proprietario_nif: fracaoRef?.proprietario?.nif
-        });
-      });
-
-      sf.dividasQuotasExtras.forEach((it, idx) => {
-        if (it.valor_total <= 0) return;
-        novosAvisos.push({
-          id_aviso: `aviso-inicial-qext-${sf.id_fracao}-${idx}-${Date.now()}`,
-          id_predio: predio.id_predio,
-          id_fracao: sf.id_fracao,
-          tipo: "Quota Extraordinária",
-          data: dataAbertura,
-          vencimento: dataAbertura,
-          descricao: `Quota Extraordinária em dívida da administração anterior — ${it.descricao || "Obra"} (${it.data_inicio_pagamentos} a ${it.data_fim_pagamentos}, ${it.valor_mensal.toFixed(2)}€/mês). ${sf.observacoes}`.trim(),
-          valor: it.valor_total,
-          estado: "Pendente",
-          id_obra: it.id_obra || undefined,
-          proprietario_nome: fracaoRef?.proprietario?.nome,
-          proprietario_nif: fracaoRef?.proprietario?.nif
-        });
-      });
-
+      const avisosFracao = construirAvisosDividaFracao(sf);
+      if (avisosFracao.length > 0) {
+        novosAvisos.push(...avisosFracao);
+        return;
+      }
       // Compatibilidade: fração marcada como DIVIDA mas sem nenhum item
       // discriminado (admin não chegou a abrir o modal) — mantém o
       // comportamento anterior como resguardo, para não perder o registo.
-      if (sf.dividasQuotasOrdinarias.length === 0 && sf.dividasQuotasExtras.length === 0 && sf.valor_saldo > 0) {
+      if (sf.valor_saldo > 0) {
+        const fracaoRef = predioFracoes.find(f => f.id_fracao === sf.id_fracao);
         novosAvisos.push({
           id_aviso: "aviso-inicial-" + sf.id_fracao,
           id_predio: predio.id_predio,
@@ -1479,10 +1526,14 @@ export function ConfiguracaoArranqueSaldos({
                   Total desta fração: <strong className="text-red-600 dark:text-red-400 font-mono">{sf.valor_saldo.toFixed(2)} €</strong>
                 </span>
                 <button
-                  onClick={() => setModalDividaFracaoId(null)}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition-all cursor-pointer"
+                  disabled={aGravarDividaFracao}
+                  onClick={async () => {
+                    await persistirDividaFracaoImediatamente(sf.id_fracao);
+                    setModalDividaFracaoId(null);
+                  }}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-black text-xs transition-all cursor-pointer"
                 >
-                  Concluído
+                  {aGravarDividaFracao ? "A gravar..." : "Gravar e Fechar"}
                 </button>
               </div>
             </div>

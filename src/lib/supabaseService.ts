@@ -1281,6 +1281,11 @@ export async function saveAvisosToSupabase(novosAvisos: any[]): Promise<boolean>
   return dbUpsert("avisos", payload);
 }
 
+export async function deleteAvisoFromSupabase(idAviso: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbDelete("avisos", [["id_aviso", "eq", idAviso]]);
+}
+
 // ============================================================================
 // DOCUMENTOS (ARQUIVO DIGITAL)
 // ============================================================================
