@@ -31,6 +31,7 @@
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/cron", "schedule": "0 7 * * *" }
+    { "path": "/api/cron", "schedule": "0 7 * * *" },
+    { "path": "/api/cron?forcar=notas-atraso-registados", "schedule": "0 8 20 9 *" }
   ]
 }

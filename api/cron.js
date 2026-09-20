@@ -1,4 +1,32 @@
-import { emitirQuotasMensais, enviarLembretesQuotas, avisarQuotasEmMora, enviarFelicitacoesAniversario, sincronizarOrcamentosVigentes, processarContratosFornecedores } from "../server/lib/cronService.js";
+import { emitirQuotasMensais, emitirNotasEmAtrasoFracao, enviarLembretesQuotas, avisarQuotasEmMora, enviarFelicitacoesAniversario, sincronizarOrcamentosVigentes, processarContratosFornecedores } from "../server/lib/cronService.js";
+
+// Ação pontual (agendada para 2026-09-20 09:00 Lisboa, ver vercel.json —
+// "0 8 20 9 *", só volta a coincidir com esta data daqui a um ano) pedida
+// pelo administrador em 2026-09-20: emitir e enviar as notas de cobrança de
+// 06,07,08,09/2026 aos 4 proprietários já registados com notificação
+// "Digital" ativa (exclui a Fração I, que tem notificação "Correio Postal").
+// Idempotente (emitirNotasEmAtrasoFracao salta meses já emitidos), por isso
+// é seguro este cron continuar agendado — depois de emitido uma vez, não
+// volta a enviar nada.
+const ID_PREDIO_NOTAS_ATRASO_REGISTADOS = "predio-1789667520765";
+const FRACOES_NOTAS_ATRASO_REGISTADOS = [
+  "frac-1789782586308", // F - Sofia Alexandra Santos de Moura
+  "frac-1789688162288", // K - José Carlos Alves Guerra
+  "frac-1789782720970", // M - Ana Lúcia Lino Pires Pombo de Sousa
+  "frac-1789782821245"  // P - CARLOS MANUEL DA FONSECA MADUREIRA
+];
+
+async function emitirNotasAtrasoRegistados() {
+  const resultados = [];
+  for (const id_fracao of FRACOES_NOTAS_ATRASO_REGISTADOS) {
+    try {
+      resultados.push(await emitirNotasEmAtrasoFracao(ID_PREDIO_NOTAS_ATRASO_REGISTADOS, id_fracao, "2026-06-01"));
+    } catch (err) {
+      resultados.push({ ok: false, id_fracao, error: err?.message || String(err) });
+    }
+  }
+  return { job: "emitirNotasAtrasoRegistados", resultados };
+}
 
 /**
  * Endpoint diário de automações agendadas — chamado por um cron externo
@@ -58,6 +86,11 @@ export default async function handler(req, res) {
 
     if (forcar === "contratos" || (!forcar && true)) {
       resultados.push(await processarContratosFornecedores());
+    }
+
+    // Ação pontual agendada — ver comentário junto de emitirNotasAtrasoRegistados.
+    if (forcar === "notas-atraso-registados") {
+      resultados.push(await emitirNotasAtrasoRegistados());
     }
 
     return res.status(200).json({ status: "ok", data: hoje.toISOString().split("T")[0], jobs_executados: resultados });

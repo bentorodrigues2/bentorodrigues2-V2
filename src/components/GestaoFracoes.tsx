@@ -239,11 +239,10 @@ export function GestaoFracoes({
   const [isFiltroRelatoriosOpen, setIsFiltroRelatoriosOpen] = useState(false);
   const [isOpcoesExportacaoOpen, setIsOpcoesExportacaoOpen] = useState(false);
 
-  const [currentSubTab, setCurrentSubTab] = useState<"fracoes_nova" | "fracoes_proprietario" | "fracoes_perfis" | "residentes_inquilinos" | "permilagens_auto">(
+  const [currentSubTab, setCurrentSubTab] = useState<"fracoes_nova" | "fracoes_proprietario" | "fracoes_perfis" | "residentes_inquilinos">(
     activeSubSection === "fracoes_nova" ? "fracoes_nova" :
     activeSubSection === "fracoes_proprietario" ? "fracoes_proprietario" :
-    activeSubSection === "residentes_inquilinos" ? "residentes_inquilinos" :
-    activeSubSection === "permilagens_auto" ? "permilagens_auto" : "fracoes_perfis"
+    activeSubSection === "residentes_inquilinos" ? "residentes_inquilinos" : "fracoes_perfis"
   );
 
   useEffect(() => {
@@ -253,8 +252,6 @@ export function GestaoFracoes({
       setCurrentSubTab("fracoes_proprietario");
     } else if (activeSubSection === "residentes_inquilinos") {
       setCurrentSubTab("residentes_inquilinos");
-    } else if (activeSubSection === "permilagens_auto") {
-      setCurrentSubTab("permilagens_auto");
     } else if (activeSubSection === "fracoes_perfis") {
       setCurrentSubTab("fracoes_perfis");
     }
@@ -319,17 +316,6 @@ export function GestaoFracoes({
   const [resValorRenda, setResValorRenda] = useState("850");
   const [resCaucao, setResCaucao] = useState("1700");
   const [resChaves, setResChaves] = useState("2 Comandos Garagem + 2 Chaves Portal");
-
-  // Task 13: Permilagens Automáticas States
-  const [areaCoberta, setAreaCoberta] = useState<Record<string, number>>({
-    "frac-1": 110, "frac-2": 95, "frac-3": 120, "frac-4": 85
-  });
-  const [areaVarandas, setAreaVarandas] = useState<Record<string, number>>({
-    "frac-1": 15, "frac-2": 10, "frac-3": 20, "frac-4": 8
-  });
-  const [coefPiso, setCoefPiso] = useState<Record<string, number>>({
-    "frac-1": 1.0, "frac-2": 1.05, "frac-3": 1.10, "frac-4": 1.15
-  });
 
   useEffect(() => {
     if (activeSubSection === "fracoes_nova") {
@@ -1535,19 +1521,6 @@ export function GestaoFracoes({
         >
           <i className="fa-solid fa-users-rectangle text-xs"></i>
           <span>4. Residentes & Inquilinos</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setCurrentSubTab("permilagens_auto")}
-          className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-            currentSubTab === "permilagens_auto"
-              ? "bg-emerald-600 text-white shadow-sm"
-              : "bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60"
-          }`}
-        >
-          <i className="fa-solid fa-calculator text-xs"></i>
-          <span>5. Cálculo Permilagens</span>
         </button>
       </div>
 
@@ -3055,121 +3028,6 @@ export function GestaoFracoes({
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* SUB-MENU 5: PERMILAGENS AUTOMÁTICAS (TASK 13) */}
-      {currentSubTab === "permilagens_auto" && (
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6 no-print animate-fadeIn">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
-            <div>
-              <span className="text-[10px] font-black uppercase text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded border border-indigo-100">
-                🔥 13. CÁLCULO E ATUALIZAÇÃO AUTOMÁTICA DE PERMILAGENS
-              </span>
-              <h3 className="text-base font-bold text-slate-800 mt-1 flex items-center gap-2">
-                <i className="fa-solid fa-calculator text-indigo-600"></i>
-                <span>Cálculo Científico por Áreas m², Coeficientes e Rebatimento para 1000‰ Legais</span>
-              </h3>
-            </div>
-            <button
-              type="button"
-              onClick={async () => {
-                let totalAreaWeighted = 0;
-                const weightedByFracao: Record<string, number> = {};
-                predioFracoes.forEach(f => {
-                  const areaC = areaCoberta[f.id_fracao] || 90;
-                  const areaV = areaVarandas[f.id_fracao] || 10;
-                  const coef = coefPiso[f.id_fracao] || 1.0;
-                  const totalW = (areaC + (areaV * 0.5)) * coef;
-                  weightedByFracao[f.id_fracao] = totalW;
-                  totalAreaWeighted += totalW;
-                });
-
-                let sumPerm = 0;
-                const updated = fracoes.map(f => {
-                  if (f.id_predio === predio.id_predio) {
-                    const weight = weightedByFracao[f.id_fracao] || 1;
-                    const calculatedPerm = Math.round((weight / totalAreaWeighted) * 1000);
-                    sumPerm += calculatedPerm;
-                    return { ...f, permilagem: calculatedPerm };
-                  }
-                  return f;
-                });
-
-                // Adjust remaining difference to make strict sum = 1000‰
-                if (sumPerm !== 1000 && predioFracoes.length > 0) {
-                  const diff = 1000 - sumPerm;
-                  const targetId = predioFracoes[0].id_fracao;
-                  const idx = updated.findIndex(f => f.id_fracao === targetId);
-                  if (idx !== -1) updated[idx].permilagem += diff;
-                }
-
-                const ok = await persistirPermilagens(updated);
-                alert(ok ? "Permilagens recalculadas e atualizadas com sucesso para exatamente 1000‰ legais com base nas áreas e coeficientes!" : "As permilagens foram recalculadas no ecrã, mas houve um erro a gravar no Supabase — tente novamente.");
-              }}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg text-xs shadow-sm transition-all cursor-pointer flex items-center gap-2"
-            >
-              <i className="fa-solid fa-wand-magic-sparkles"></i>
-              <span>Recalcular & Atualizar Todas as Permilagens (1000‰ Exatos)</span>
-            </button>
-          </div>
-
-          {/* Tabela de Áreas e Coeficientes por Fração */}
-          <div className="overflow-x-auto border border-slate-200 rounded-xl">
-            <table className="w-full text-xs text-left border-collapse">
-              <thead className="bg-slate-100 text-slate-600 font-mono text-[10px] uppercase">
-                <tr>
-                  <th className="p-3">Fração / Piso</th>
-                  <th className="p-3 text-center">Área Coberta (m²)</th>
-                  <th className="p-3 text-center">Varandas/Terraço (m²)</th>
-                  <th className="p-3 text-center">Coeficiente Piso</th>
-                  <th className="p-3 text-center">Permilagem Atual</th>
-                  <th className="p-3 text-center">Permilagem Ponderada IA</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-mono">
-                {predioFracoes.map(f => {
-                  const areaC = areaCoberta[f.id_fracao] || 90;
-                  const areaV = areaVarandas[f.id_fracao] || 10;
-                  const coef = coefPiso[f.id_fracao] || 1.0;
-                  return (
-                    <tr key={f.id_fracao} className="hover:bg-slate-50">
-                      <td className="p-3 font-bold text-slate-900 font-sans">
-                        Fração {f.fracao_nome} ({f.piso})
-                      </td>
-                      <td className="p-3 text-center">
-                        <MoneyInput
-                          value={areaC}
-                          onChange={valor => setAreaCoberta({ ...areaCoberta, [f.id_fracao]: valor })}
-                          className="w-16 border border-slate-300 rounded text-center p-1 font-mono font-bold"
-                        />
-                      </td>
-                      <td className="p-3 text-center">
-                        <MoneyInput
-                          value={areaV}
-                          onChange={valor => setAreaVarandas({ ...areaVarandas, [f.id_fracao]: valor })}
-                          className="w-16 border border-slate-300 rounded text-center p-1 font-mono font-bold"
-                        />
-                      </td>
-                      <td className="p-3 text-center">
-                        <MoneyInput
-                          value={coef}
-                          onChange={valor => setCoefPiso({ ...coefPiso, [f.id_fracao]: valor })}
-                          className="w-16 border border-slate-300 rounded text-center p-1 font-mono font-bold"
-                        />
-                      </td>
-                      <td className="p-3 text-center font-bold text-slate-800">
-                        {f.permilagem}‰
-                      </td>
-                      <td className="p-3 text-center font-bold text-indigo-600 bg-indigo-50/50">
-                        {Math.round(((areaC + (areaV * 0.5)) * coef) / 100 * 200)}‰
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
           </div>
         </div>
       )}
