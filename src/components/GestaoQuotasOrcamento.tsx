@@ -287,11 +287,13 @@ export function GestaoQuotasOrcamento({
 
   const [orcamentoExtra, setOrcamentoExtra] = useState<string>("");
   const [numPrestacoesExtra, setNumPrestacoesExtra] = useState<number>(1);
-  const [dataLimiteExtra, setDataLimiteExtra] = useState<string>(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() + 2);
-    return d.toISOString().split("T")[0];
-  });
+  // Data de início do pagamento das prestações da quota extraordinária —
+  // antes não existia nenhuma, só uma "data limite" solta, e o sistema só
+  // chegava a criar UM aviso rotulado "(1/N)" mesmo quando N > 1 (as
+  // prestações 2..N nunca eram geradas). A data final deixa de ser
+  // escolhida à parte — é sempre a data de início + N meses, calculada
+  // automaticamente (ver dataLimiteExtraCalculada mais abaixo).
+  const [dataInicioExtra, setDataInicioExtra] = useState<string>(() => new Date().toISOString().split("T")[0]);
   const [descricaoExtra, setDescricaoExtra] = useState<string>("");
 
   const [obrasExtra, setObrasExtra] = useState<ObraExtraordinaria[]>([]);
@@ -334,6 +336,14 @@ export function GestaoQuotasOrcamento({
 
   const extVal = parseValorMonetario(orcamentoExtra) || 0;
   const extraPorMesTotal = extVal / (numPrestacoesExtra || 1);
+  // Data limite = data de início + (N prestações - 1) meses, ou seja, o mês
+  // de vencimento da ÚLTIMA prestação. Deixou de ser escolhida à parte.
+  const dataLimiteExtraCalculada = useMemo(() => {
+    const inicio = new Date(dataInicioExtra);
+    if (isNaN(inicio.getTime())) return "";
+    const fim = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth() + Math.max(0, (numPrestacoesExtra || 1) - 1), inicio.getUTCDate()));
+    return fim.toISOString().split("T")[0];
+  }, [dataInicioExtra, numPrestacoesExtra]);
 
   const { rateNormalOrdinaria, rateLojaOrdinaria } = useMemo(() => {
     let permilagemLoja = 0;
@@ -367,19 +377,28 @@ export function GestaoQuotasOrcamento({
 
     const d = new Date();
     const dataEmissao = d.toISOString().split("T")[0];
+    const inicio = new Date(dataInicioExtra);
     const novosAvisos: Aviso[] = [];
+    const numPrestacoes = Math.max(1, numPrestacoesExtra || 1);
 
+    // Antes, era criado sempre UM único aviso por fração rotulado "(1/N)",
+    // mesmo com N prestações configuradas — as prestações 2..N nunca eram
+    // lançadas, e por isso nunca cobradas. Gera agora mesmo as N
+    // prestações, uma por mês a partir da data de início.
     predioFracoes.forEach((f) => {
-      if (extVal > 0) {
-        const valorExtraMensal = Math.round((extraPorMesTotal * (f.permilagem / 1000)) * 100) / 100;
+      if (extVal <= 0) return;
+      const valorExtraMensal = Math.round((extraPorMesTotal * (f.permilagem / 1000)) * 100) / 100;
+      for (let i = 0; i < numPrestacoes; i++) {
+        const vencimentoPrestacao = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth() + i, inicio.getUTCDate()))
+          .toISOString().split("T")[0];
         novosAvisos.push({
-          id_aviso: `av-ext-${Date.now()}-${f.id_fracao}`,
+          id_aviso: `av-ext-${Date.now()}-${f.id_fracao}-${i}`,
           id_predio: predio.id_predio,
           id_fracao: f.id_fracao,
           tipo: "Quota Extraordinária",
           data: dataEmissao,
-          vencimento: dataLimiteExtra,
-          descricao: `Quota Extraordinária (1/${numPrestacoesExtra}): ${descricaoExtra} (IBAN: ${contaExtraSel?.iban || "FCR"})`,
+          vencimento: vencimentoPrestacao,
+          descricao: `Quota Extraordinária (${i + 1}/${numPrestacoes}): ${descricaoExtra} (IBAN: ${contaExtraSel?.iban || "FCR"})`,
           valor: valorExtraMensal,
           estado: "Pendente",
           id_obra: obraSelecionadaId || undefined,
@@ -400,7 +419,8 @@ export function GestaoQuotasOrcamento({
       orcamento_extra: extVal,
       num_prestacoes_extra: numPrestacoesExtra,
       descricao_extra: descricaoExtra,
-      data_limite_extra: dataLimiteExtra,
+      data_inicio_extra: dataInicioExtra,
+      data_limite_extra: dataLimiteExtraCalculada,
       id_conta_extraordinaria: contaExtraId
     }).catch(console.error);
 
@@ -425,7 +445,7 @@ export function GestaoQuotasOrcamento({
           body: JSON.stringify({
             destinatarios,
             assunto: `Aviso de Quota Extraordinária — ${descricaoExtra || predio.nome}`,
-            mensagem: `Foi emitida uma quota extraordinária: <strong>${descricaoExtra}</strong>.<br><br>A liquidar em ${numPrestacoesExtra} prestação(ões), com data limite da primeira prestação a ${dataLimiteExtra}.<br><br>Consulte o valor correspondente à sua fração na plataforma.`
+            mensagem: `Foi emitida uma quota extraordinária: <strong>${descricaoExtra}</strong>.<br><br>A liquidar em ${numPrestacoesExtra} prestação(ões) mensal(is), de ${new Date(dataInicioExtra).toLocaleDateString("pt-PT")} a ${new Date(dataLimiteExtraCalculada).toLocaleDateString("pt-PT")}.<br><br>Consulte o valor correspondente à sua fração na plataforma.`
           })
         }).catch(console.error);
       }
@@ -1192,13 +1212,18 @@ export function GestaoQuotasOrcamento({
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Prazo Limite (1.ª Prestação)</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Data de Início do Pagamento</label>
                 <input
                   type="date"
-                  value={dataLimiteExtra}
-                  onChange={(e) => setDataLimiteExtra(e.target.value)}
+                  value={dataInicioExtra}
+                  onChange={(e) => setDataInicioExtra(e.target.value)}
                   className="w-full border border-slate-200 px-3 py-2 text-xs rounded-xl focus:outline-sky-500 bg-white font-medium"
                 />
+                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                  {numPrestacoesExtra > 1
+                    ? `Última prestação em ${new Date(dataLimiteExtraCalculada).toLocaleDateString("pt-PT")} (${numPrestacoesExtra} meses a partir daqui).`
+                    : "Pagamento único, sem prestações seguintes."}
+                </span>
               </div>
             </div>
 

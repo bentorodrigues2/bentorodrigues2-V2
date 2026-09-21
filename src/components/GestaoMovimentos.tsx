@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso, Fornecedor } from "../types";
 import { formatDatePT, parseValorMonetario } from "../utils";
-import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria, fetchMovimentosFromSupabase, fetchPagamentosPendentesInfoFromSupabase } from "../lib/supabaseService";
+import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria, fetchMovimentosFromSupabase, fetchPagamentosPendentesInfoFromSupabase, dbInsert } from "../lib/supabaseService";
 import { cruzarMovimentoComFornecedor } from "../lib/fornecedorMatching";
 import { Save, CheckCircle2 } from "lucide-react";
 import { MoneyInput } from "./MoneyInput";
@@ -193,12 +193,36 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   };
 
   const confirmarPagamentoEEnviarRecibo = async (mov: Movimento) => {
-    const match = mov.descricao?.match(/\[pagamento:([^\]]+)\]/);
-    const idPagamento = match?.[1];
-    if (!idPagamento) return;
+    let idPagamento = mov.descricao?.match(/\[pagamento:([^\]]+)\]/)?.[1];
 
     setConfirmandoPagamentoMovId(mov.id_mov);
     try {
+      if (!idPagamento) {
+        // Este movimento nunca chegou a ter um registo em "pagamentos"
+        // ligado (ex: falha pontual nessa gravação no momento em que o
+        // email foi reconhecido) — cria-se agora, a partir dos próprios
+        // dados do movimento, para o fluxo de confirmação/recibo
+        // funcionar da mesma forma que para os que já têm a ligação.
+        idPagamento = crypto.randomUUID();
+        const fracaoRef = fracoes.find(f => f.id_fracao === mov.id_fracao);
+        const ok = await dbInsert("pagamentos", {
+          id: idPagamento,
+          referencia: `MOV-${mov.id_mov}`,
+          estado: "pendente",
+          fracao: fracaoRef?.fracao_nome || "",
+          id_fracao: mov.id_fracao || null,
+          valor: mov.valor,
+          data_pagamento: mov.data,
+          entidade: mov.descricao,
+          tipo: "quota_mensal",
+          criado_em: new Date().toISOString()
+        });
+        if (!ok) {
+          alert("❌ Não foi possível preparar este pagamento para confirmação. Tente novamente.");
+          return;
+        }
+      }
+
       const resp = await fetch("/api/pagamento?acao=confirmar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -663,13 +687,17 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
   // Contabilizar movimentos cegos não justificados
   const todosCegosPendentes = predioMovements.filter(m => m.is_movimento_cego && m.estado === "Movimento Cego / Por Justificar");
-  // Movimentos ligados a um pagamento pendente (criado automaticamente por um
-  // comprovativo recebido por email — ver server/lib/inboundProcessor.js) têm
-  // a marca "[pagamento:<id>]" na descrição e são confirmados com 1 clique,
-  // que dispara o envio do recibo oficial; os restantes são despesas cegas
-  // genuínas que precisam mesmo de fatura anexada.
-  const cegosPendentesPagamento = todosCegosPendentes.filter(m => m.descricao?.includes("[pagamento:"));
-  const cegosPendentes = todosCegosPendentes.filter(m => !m.descricao?.includes("[pagamento:"));
+  // Antes, esta separação dependia só da marca "[pagamento:<id>]" na
+  // descrição (gravada por server/lib/inboundProcessor.js quando o
+  // registo em "pagamentos" tinha sucesso) — se esse registo falhasse por
+  // qualquer motivo pontual, o movimento ficava sem a marca e caía na
+  // secção errada, mostrado como se fosse uma despesa cega genuína (sinal
+  // errado incluído). Usa-se agora sempre o tipo real do movimento:
+  // Receita = comprovativo de condómino a confirmar, Despesa = precisa
+  // mesmo de fatura anexada. A marca continua a ser usada, quando existe,
+  // para ligar ao pagamento certo ao confirmar (ver confirmarPagamentoEEnviarRecibo).
+  const cegosPendentesPagamento = todosCegosPendentes.filter(m => m.tipo === "Receita");
+  const cegosPendentes = todosCegosPendentes.filter(m => m.tipo !== "Receita");
 
   // Ver detalhe / corrigir valor / eliminar um movimento cego reconhecido
   // automaticamente por email — antes só era possível anexar um comprovativo

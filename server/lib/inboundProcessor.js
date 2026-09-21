@@ -437,28 +437,36 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
     // omite-se "origem" (fica NULL, o que o constraint aceita).
     let pagamento = null;
     if (!isFatura) {
-      const referenciaGerada = `EMAIL-${Date.now().toString(36).toUpperCase()}`;
-      const { data, error: errPag } = await supabase
-        .from("pagamentos")
-        .insert({
-          referencia: referenciaGerada,
-          estado: "pendente",
-          fracao: fracaoNome,
-          id_fracao: contexto?.id_fracao || contexto?.id || null,
-          id_proprietario: contexto?.id_proprietario || contexto?.id || null,
-          valor: valorExtraido,
-          data_pagamento: dataExtraida,
-          entidade: entidadeExtraida,
-          comprovativo_url: comprovativoUrl || null,
-          tipo: "quota_mensal",
-          descricao: mesesDetectados ? `MESES_DETECTADOS:${mesesDetectados}|QUOTA:${quotaMensalDetectada.toFixed(2)}` : null,
-          criado_em: new Date().toISOString()
-        })
-        .select()
-        .maybeSingle();
-      pagamento = data;
-      if (errPag) {
-        console.warn("[inboundProcessor] Aviso ao inserir pagamento pendente:", errPag.message);
+      const dadosPagamento = {
+        estado: "pendente",
+        fracao: fracaoNome,
+        id_fracao: contexto?.id_fracao || contexto?.id || null,
+        id_proprietario: contexto?.id_proprietario || contexto?.id || null,
+        valor: valorExtraido,
+        data_pagamento: dataExtraida,
+        entidade: entidadeExtraida,
+        comprovativo_url: comprovativoUrl || null,
+        tipo: "quota_mensal",
+        descricao: mesesDetectados ? `MESES_DETECTADOS:${mesesDetectados}|QUOTA:${quotaMensalDetectada.toFixed(2)}` : null,
+        criado_em: new Date().toISOString()
+      };
+      // Sem este registo, o movimento fica sem a marca "[pagamento:<id>]"
+      // na descrição e o botão "Confirmar e Enviar Recibo" no frontend não
+      // tem nada a que se ligar (o frontend hoje já tem um contorno para
+      // esse caso, mas é melhor nunca acontecer). Uma segunda tentativa,
+      // com uma referência nova, cobre qualquer falha pontual/transitória.
+      for (let tentativa = 0; tentativa < 2 && !pagamento; tentativa++) {
+        const referenciaGerada = `EMAIL-${Date.now().toString(36).toUpperCase()}-${tentativa}`;
+        const { data, error: errPag } = await supabase
+          .from("pagamentos")
+          .insert({ ...dadosPagamento, referencia: referenciaGerada })
+          .select()
+          .maybeSingle();
+        if (data) {
+          pagamento = data;
+        } else if (errPag) {
+          console.warn(`[inboundProcessor] Aviso ao inserir pagamento pendente (tentativa ${tentativa + 1}):`, errPag.message);
+        }
       }
     }
 

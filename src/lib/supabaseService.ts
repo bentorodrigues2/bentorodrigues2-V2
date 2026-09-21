@@ -1255,6 +1255,7 @@ export async function saveConfiguracaoQuotasToSupabase(config: any): Promise<boo
     orcamento_extra: config.orcamento_extra || 0,
     num_prestacoes_extra: config.num_prestacoes_extra || 1,
     descricao_extra: config.descricao_extra || null,
+    data_inicio_extra: config.data_inicio_extra || null,
     data_limite_extra: config.data_limite_extra || null,
     id_conta_extraordinaria: config.id_conta_extraordinaria || null
   });
