@@ -721,7 +721,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                 <div key={m.id_mov} className="flex justify-between items-center text-xs bg-white p-2.5 rounded-lg border border-amber-300">
                   <div className="space-y-0.5">
                     <p className="font-semibold text-slate-800 line-clamp-1">{m.descricao}</p>
-                    <p className="text-[10px] text-slate-500 font-mono-custom">Banco: {cta?.banco} | Valor: <span className="font-bold text-red-600">-{m.valor.toFixed(2)}€</span></p>
+                    <p className="text-[10px] text-slate-500 font-mono-custom">Banco: {cta?.banco} | Valor: <span className="font-bold text-red-600">{m.tipo === "Receita" ? "+" : "-"}{m.valor.toFixed(2)}€</span></p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {justifyingMovId === m.id_mov ? (

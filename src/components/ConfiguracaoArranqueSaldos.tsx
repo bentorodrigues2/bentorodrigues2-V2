@@ -137,6 +137,23 @@ export function ConfiguracaoArranqueSaldos({
   // --- PASSO 1: DATA E SALDOS BANCÁRIOS DE ABERTURA (MÚLTIPLAS CONTAS & INTERVENÇÕES) ---
   const [dataAbertura, setDataAbertura] = useState<string>(predio.data_inicio_gestao || "2026-08-01");
 
+  // Antes, a data só era gravada no Supabase quando se completava o
+  // assistente inteiro até ao botão final "Concluir" (handleGravarConfiguracaoArranque,
+  // passo 4) — se o utilizador só viesse aqui corrigir esta data sem
+  // reconfigurar tudo o resto, a alteração nunca chegava a persistir e
+  // voltava sempre ao valor antigo num F5. Grava agora de imediato, assim
+  // que a data muda, independente do resto do fluxo do assistente.
+  const [aGuardarDataAbertura, setAGuardarDataAbertura] = useState(false);
+  const handleAlterarDataAbertura = async (novaData: string) => {
+    setDataAbertura(novaData);
+    if (!novaData) return;
+    setAGuardarDataAbertura(true);
+    const predioAtualizado: Predio = { ...predio, data_inicio_gestao: novaData };
+    const ok = await savePredioToSupabase(predioAtualizado);
+    setAGuardarDataAbertura(false);
+    if (ok) onUpdatePredio?.(predioAtualizado);
+  };
+
   // Lista dinâmica de contas de arranque
   const [contasArranque, setContasArranque] = useState<ContaArranqueItem[]>(() => {
     const existing = contas.filter(c => c.id_predio === predio.id_predio);
@@ -995,10 +1012,13 @@ export function ConfiguracaoArranqueSaldos({
               <input
                 type="date"
                 value={dataAbertura}
-                onChange={(e) => setDataAbertura(e.target.value)}
+                onChange={(e) => handleAlterarDataAbertura(e.target.value)}
                 className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold text-slate-900 dark:text-white"
               />
-              <span className="text-[10px] text-slate-400 mt-0.5 block">Data do extrato de transição ou início de mandato.</span>
+              <span className="text-[10px] text-slate-400 mt-0.5 block">
+                Data do extrato de transição ou início de mandato.{" "}
+                {aGuardarDataAbertura ? "A guardar…" : predio.data_inicio_gestao === dataAbertura ? "✓ Guardada." : ""}
+              </span>
             </div>
 
             <div className="sm:col-span-2 flex flex-col justify-center">
