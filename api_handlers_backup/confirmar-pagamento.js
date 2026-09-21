@@ -168,7 +168,10 @@ export default async function handler(req, res) {
       permilagem: fracao?.permilagem || 0,
       data_emissao: new Date().toISOString().split("T")[0],
       data_pagamento: pagamento.data_pagamento || new Date().toISOString().split("T")[0],
-      metodo_pagamento: "Transferência Bancária",
+      // "entidade" é o banco que emitiu o comprovativo (ver
+      // multimodalService.js), nunca o nome do condómino — mostra-se aqui,
+      // junto do método, nunca em nome_condomino.
+      metodo_pagamento: pagamento.entidade ? `Transferência Bancária — ${pagamento.entidade}` : "Transferência Bancária",
       valor_total: Number(pagamento.valor || 0),
       // Divisão legal mínima (DL 268/94, Art. 4.º): 10% do valor da quota
       // reverte obrigatoriamente para o Fundo Comum de Reserva.

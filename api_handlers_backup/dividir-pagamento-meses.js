@@ -160,7 +160,7 @@ export default async function handler(req, res) {
       permilagem: fracao.permilagem || 0,
       data_emissao: new Date().toISOString().split("T")[0],
       data_pagamento: pagamento.data_pagamento || new Date().toISOString().split("T")[0],
-      metodo_pagamento: "Transferência Bancária",
+      metodo_pagamento: pagamento.entidade ? `Transferência Bancária — ${pagamento.entidade}` : "Transferência Bancária",
       valor_total: valorTotal,
       rubricas,
       iban_predio: escolherIbanContaPorTipo(contasPredio, "Quota Ordinária") || predio?.iban || "",

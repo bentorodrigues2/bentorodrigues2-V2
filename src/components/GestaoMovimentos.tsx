@@ -1990,9 +1990,13 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                       {m.tipo}
                     </span>
                     <span className="flex-1 text-slate-700 font-medium truncate">{m.descricao}</span>
-                    {isCego && (
+                    {isCego ? (
                       <span className="text-[9px] bg-red-100 text-red-800 border border-red-200 px-1.5 py-0.5 rounded font-bold shrink-0">
                         {m.tipo === "Receita" ? "Por Confirmar" : "Falta Fatura!"}
+                      </span>
+                    ) : m.tipo === "Despesa" && (
+                      <span className="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded font-bold shrink-0 flex items-center gap-1">
+                        <i className="fa-solid fa-check"></i> Fatura
                       </span>
                     )}
                     <span className={`font-bold font-mono-custom text-sm shrink-0 ${m.tipo === 'Receita' ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -2042,6 +2046,19 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                           </div>
                         </div>
                       )}
+                      {(() => {
+                        const idPagamentoLinha = m.descricao?.match(/\[pagamento:([^\]]+)\]/)?.[1];
+                        const infoMesesLinha = idPagamentoLinha ? pagamentosInfo[idPagamentoLinha] : undefined;
+                        if (!infoMesesLinha) return null;
+                        return (
+                          <div className="col-span-2 sm:col-span-4">
+                            <span className="block text-slate-400 font-bold uppercase text-[9px] mb-1">Meses Cobertos</span>
+                            <span className="text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 inline-block">
+                              💡 Este pagamento equivale a <strong>{infoMesesLinha.mesesDetectados} meses</strong> da quota ({infoMesesLinha.quotaMensal.toFixed(2)}€/mês) — provavelmente: <strong>{nomesDosMesesCobertos(infoMesesLinha.mesInicioSugerido, infoMesesLinha.mesesDetectados)}</strong>.
+                            </span>
+                          </div>
+                        );
+                      })()}
                       <div className="col-span-2 sm:col-span-4 flex justify-end">
                         <button
                           type="button"

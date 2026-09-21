@@ -483,6 +483,17 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
     const falhaLeituraTotal = !dadosExtraidos;
     const descricaoBase = `${entidadeExtraida || (isFatura ? "Fatura de fornecedor" : "Comprovativo")} via Email (${fracaoNome} - ${extrairEmailLimpo(remetenteEmail)})${pagamento?.id ? ` [pagamento:${pagamento.id}]` : ""}`;
 
+    // Uma fatura de fornecedor É o próprio documento justificativo da
+    // despesa — quando chega por email e a IA a leu com sucesso, o anexo já
+    // fica arquivado em comprovativo_url nesse mesmo momento. Antes o
+    // movimento nascia sempre "Movimento Cego / Por Justificar" mesmo assim,
+    // obrigando o administrador a voltar a anexar um documento que já lá
+    // estava. Só continua "por justificar" quando a leitura falhou por
+    // completo (nesse caso não há garantia de que o valor/documento estejam
+    // corretos) ou quando é um comprovativo de condómino, cujo fluxo próprio
+    // (Pagamentos por Confirmar) é que decide quando fica justificado.
+    const jaJustificadaPelaPropriaFatura = isFatura && !falhaLeituraTotal && Boolean(comprovativoUrl);
+
     const { data: movimento, error: errMov } = await supabase
       .from("movimentos")
       .insert({
@@ -496,9 +507,9 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
         tipo: tipoMovimento,
         categoria: categoriaMovimento,
         data: dataExtraida,
-        estado: "Movimento Cego / Por Justificar",
-        is_movimento_cego: true,
-        estado_conciliacao: "PENDENTE",
+        estado: jaJustificadaPelaPropriaFatura ? "Justificado" : "Movimento Cego / Por Justificar",
+        is_movimento_cego: !jaJustificadaPelaPropriaFatura,
+        estado_conciliacao: jaJustificadaPelaPropriaFatura ? "CONCILIADO" : "PENDENTE",
         comprovativo_url: comprovativoUrl || null,
         origem: "email_inbound"
       })
