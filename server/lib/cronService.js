@@ -153,13 +153,36 @@ async function existeNotaCobrancaMes(id_fracao, anoRef, mesIndex0) {
 }
 
 /**
+ * Há uma prestação de "Quota Extraordinária" (já criada de uma vez só ao
+ * configurar-se em GestaoQuotasOrcamento.tsx, uma por mês) com vencimento
+ * neste mês de referência, ainda não paga? Devolve o aviso, para a nota de
+ * cobrança deste mês poder incluí-la — junto com a Ordinária se a conta
+ * bancária for a mesma, ou numa nota à parte se for diferente.
+ */
+async function obterExtraordinariaPendenteDoMes(id_fracao, anoRef, mesIndex0) {
+  const inicioMes = isoDate(anoRef, mesIndex0, 1);
+  const fimMes = isoDate(anoRef, mesIndex0, ultimoDiaMesUTC(anoRef, mesIndex0));
+  const { data } = await supabase
+    .from("avisos")
+    .select("*")
+    .eq("id_fracao", id_fracao)
+    .eq("tipo", "Quota Extraordinária")
+    .eq("estado", "Pendente")
+    .gte("vencimento", inicioMes)
+    .lte("vencimento", fimMes)
+    .limit(1)
+    .maybeSingle();
+  return data || null;
+}
+
+/**
  * Cria o aviso "Quota Ordinária" de UM mês de referência para UMA fração e,
  * se houver email do proprietário, gera o PDF da nota de cobrança, arquiva-o
  * e envia-o por email — exatamente a mesma lógica por-fração que
  * emitirQuotasMensais usava inline, extraída para poder ser reutilizada pela
  * emissão retroativa (emitirNotasEmAtrasoFracao) sem duplicar a fórmula.
  */
-async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, anoRef, mesIndex0, prefixoEdificio, fluxo, contas }) {
+async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, anoRef, mesIndex0, prefixoEdificio, fluxo, contas, extraordinariaMesma }) {
   const mesRefLabel = nomeMesUTC(anoRef, mesIndex0);
   const hojeUTC = new Date();
   const dataEmissao = isoDate(hojeUTC.getUTCFullYear(), hojeUTC.getUTCMonth(), hojeUTC.getUTCDate());
@@ -204,6 +227,21 @@ async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, ano
   const sequencial = String(totalNotas || 1).padStart(5, "0");
   const idNota = `${prefixoEdificio} ${sequencial}`;
 
+  // extraordinariaMesma: aviso "Quota Extraordinária" pendente deste mês, só
+  // passado aqui pelo chamador quando a conta bancária da extraordinária é a
+  // MESMA da ordinária — nesse caso entra como rubrica extra na MESMA
+  // nota/recibo (só no documento impresso — o registo do aviso extraordinário
+  // continua separado na BD, com o seu próprio valor e estado de pagamento)
+  // em vez de gerar um documento à parte (ver emitirQuotasMensais).
+  const rubricas = [
+    { descricao: `Quota de Condomínio Ordinária - ${mesRefLabel} / ${anoRef}`, valor: valorOrdinario, tipo: "Quota Ordinária" },
+    { descricao: `Fundo Comum de Reserva (FCR) - ${mesRefLabel} / ${anoRef}`, valor: valorFCR, tipo: "Fundo Comum de Reserva" }
+  ];
+  if (extraordinariaMesma) {
+    rubricas.push({ descricao: extraordinariaMesma.descricao || `Quota Extraordinária - ${mesRefLabel} / ${anoRef}`, valor: extraordinariaMesma.valor, tipo: "Quota Extraordinária" });
+  }
+  const valorTotalNota = Math.round(rubricas.reduce((s, r) => s + r.valor, 0) * 100) / 100;
+
   const nota = {
     id_recibo: idNota,
     tipoDocumento: "nota_cobranca",
@@ -218,11 +256,8 @@ async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, ano
     data_emissao: dataEmissao,
     data_pagamento: vencimento,
     metodo_pagamento: "Transferência Bancária",
-    valor_total: valorTotal,
-    rubricas: [
-      { descricao: `Quota de Condomínio Ordinária - ${mesRefLabel} / ${anoRef}`, valor: valorOrdinario, tipo: "Quota Ordinária" },
-      { descricao: `Fundo Comum de Reserva (FCR) - ${mesRefLabel} / ${anoRef}`, valor: valorFCR, tipo: "Fundo Comum de Reserva" }
-    ],
+    valor_total: valorTotalNota,
+    rubricas,
     iban_predio: escolherIbanContaPorTipo(contas, "Quota Ordinária") || predio.iban || "",
     emitido_por: "Administração do Condomínio",
     adminSignatureBase64: predio.patrimonio?.assinatura_admin_base64 || "sem-assinatura-digital"
@@ -261,11 +296,12 @@ async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, ano
   const valoresCobranca = {
     nome: proprietario.nome,
     fracao: f.fracao_nome,
-    valor: `${valorTotal.toFixed(2)} €`,
+    valor: `${valorTotalNota.toFixed(2)} €`,
     data: formatarDataPT(vencimento)
   };
 
   const ehRetroativa = fluxo === "emissao_quotas_retroativa";
+  const notaTextoExtra = extraordinariaMesma ? " Este valor inclui também a prestação da quota extraordinária deste mês, discriminada em separado na nota." : "";
   const emailEnviado = await enviarEmailPDF({
     to: proprietario.email,
     nomeDestinatario: proprietario.nome,
@@ -274,7 +310,101 @@ async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, ano
       : `Nota de Cobrança — Quota de ${mesRefLabel} / ${anoRef} — Fração ${f.fracao_nome}`,
     mensagem: modeloCobranca
       ? interpolarModeloEmail(modeloCobranca.body, valoresCobranca).replace(/\n/g, "<br>")
-      : `Segue em anexo a nota de cobrança referente à quota de condomínio de <strong>${mesRefLabel} de ${anoRef}</strong>, no valor de <strong>${valorTotal.toFixed(2)} €</strong>, com vencimento a <strong>${formatarDataPT(vencimento)}</strong>.${ehRetroativa ? " Esta nota refere-se a um mês anterior ao seu registo na plataforma, emitida agora retroativamente desde o início de atividade da administração." : ""}<br><br>Assim que o pagamento for confirmado pela administração, receberá o respetivo recibo de pagamento oficial. Para um rápido cruzamento de dados, envie o comprovativo do pagamento para o email <strong>bentorodrgues2@gmail.com</strong>.`,
+      : `Segue em anexo a nota de cobrança referente à quota de condomínio de <strong>${mesRefLabel} de ${anoRef}</strong>, no valor de <strong>${valorTotalNota.toFixed(2)} €</strong>, com vencimento a <strong>${formatarDataPT(vencimento)}</strong>.${notaTextoExtra}${ehRetroativa ? " Esta nota refere-se a um mês anterior ao seu registo na plataforma, emitida agora retroativamente desde o início de atividade da administração." : ""}<br><br>Assim que o pagamento for confirmado pela administração, receberá o respetivo recibo de pagamento oficial. Para um rápido cruzamento de dados, envie o comprovativo do pagamento para o email <strong>bentorodrgues2@gmail.com</strong>.`,
+    pdfBuffer,
+    nome: nomeFicheiro
+  });
+
+  return { ok: true, emailEnviado };
+}
+
+/**
+ * Emite a nota de cobrança de UMA prestação de "Quota Extraordinária" JÁ
+ * EXISTENTE (criada de uma vez só ao configurar-se em
+ * GestaoQuotasOrcamento.tsx), à parte da nota da Quota Ordinária — usada
+ * quando as duas usam contas bancárias diferentes, caso em que não podem
+ * ser combinadas na mesma nota/recibo (ver emitirQuotasMensais). Não cria
+ * nenhum aviso novo, só gera e envia o documento do que já existe.
+ */
+async function emitirNotaExtraordinariaSeparada({ predio, f, proprietario, avisoExtra, prefixoEdificio, contas }) {
+  if (!proprietario?.email) return { ok: true, emailEnviado: false };
+
+  const { count: totalNotas } = await supabase
+    .from("avisos")
+    .select("id_aviso", { count: "exact", head: true })
+    .eq("tipo", "Quota Extraordinária");
+
+  const sequencial = String(totalNotas || 1).padStart(5, "0");
+  const idNota = `${prefixoEdificio} ${sequencial}`;
+  const dataEmissaoHoje = new Date().toISOString().split("T")[0];
+
+  const nota = {
+    id_recibo: idNota,
+    tipoDocumento: "nota_cobranca",
+    numero_sequencial: totalNotas || 1,
+    ano: new Date(avisoExtra.vencimento).getUTCFullYear(),
+    id_predio: predio.id_predio,
+    id_fracao: f.id_fracao,
+    nome_condomino: proprietario.nome,
+    nif_condomino: proprietario.nif || "",
+    fracao_nome: f.fracao_nome,
+    permilagem: f.permilagem,
+    data_emissao: dataEmissaoHoje,
+    data_pagamento: avisoExtra.vencimento,
+    metodo_pagamento: "Transferência Bancária",
+    valor_total: avisoExtra.valor,
+    rubricas: [{ descricao: avisoExtra.descricao, valor: avisoExtra.valor, tipo: "Quota Extraordinária" }],
+    iban_predio: escolherIbanContaPorTipo(contas, "Quota Extraordinária") || predio.iban || "",
+    emitido_por: "Administração do Condomínio",
+    adminSignatureBase64: predio.patrimonio?.assinatura_admin_base64 || "sem-assinatura-digital"
+  };
+
+  const doc = generateOfficialReceiptPDF(nota, predio, f);
+  const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
+  const nomeFicheiro = nomeFicheiroRecibo(nota);
+
+  const caminho = await guardarNoArquivo({
+    pdfBuffer,
+    ano: nota.ano,
+    tema: "Financeiro",
+    tipo: "Nota de Cobrança",
+    predio: predio.id_predio,
+    fracao: f.id_fracao,
+    fluxo: "emissao_quota_extraordinaria",
+    nomeFicheiro
+  });
+
+  await registarDocumento({
+    caminho,
+    ano: nota.ano,
+    tema: "Financeiro",
+    tipo: "Nota de Cobrança",
+    predio: predio.id_predio,
+    fracao: f.id_fracao,
+    fluxo: "emissao_quota_extraordinaria",
+    origem: "cron_emissao_quotas",
+    nomeFicheiro,
+    categoria: "Pasta Paga. Quotas",
+    visibilidade: "Público"
+  });
+
+  const modeloCobranca = await obterModeloEmail(predio.id_predio, "aviso_cobranca");
+  const valoresCobranca = {
+    nome: proprietario.nome,
+    fracao: f.fracao_nome,
+    valor: `${avisoExtra.valor.toFixed(2)} €`,
+    data: formatarDataPT(avisoExtra.vencimento)
+  };
+
+  const emailEnviado = await enviarEmailPDF({
+    to: proprietario.email,
+    nomeDestinatario: proprietario.nome,
+    assunto: modeloCobranca
+      ? interpolarModeloEmail(modeloCobranca.subject, valoresCobranca)
+      : `Nota de Cobrança — Quota Extraordinária — Fração ${f.fracao_nome}`,
+    mensagem: modeloCobranca
+      ? interpolarModeloEmail(modeloCobranca.body, valoresCobranca).replace(/\n/g, "<br>")
+      : `Segue em anexo a nota de cobrança referente à quota extraordinária (${avisoExtra.descricao}), no valor de <strong>${avisoExtra.valor.toFixed(2)} €</strong>, com vencimento a <strong>${formatarDataPT(avisoExtra.vencimento)}</strong>.<br><br>Assim que o pagamento for confirmado pela administração, receberá o respetivo recibo de pagamento oficial. Para um rápido cruzamento de dados, envie o comprovativo do pagamento para o email <strong>bentorodrgues2@gmail.com</strong>.`,
     pdfBuffer,
     nome: nomeFicheiro
   });
@@ -692,6 +822,17 @@ export async function emitirQuotasMensais() {
         // Propriedade mostrava sempre o proprietário ATUAL da fração.
         const proprietario = await obterProprietarioDaFracao(f.id_fracao);
 
+        // Há alguma prestação de Quota Extraordinária desta fração a vencer
+        // no mesmo mês (já criadas de uma vez só ao configurar-se em
+        // GestaoQuotasOrcamento.tsx)? Se a conta bancária for a mesma da
+        // Ordinária, entra como rubrica extra na MESMA nota/recibo; se for
+        // diferente, é emitida uma nota à parte, só para essa prestação —
+        // exatamente o mesmo fluxo (nota de cobrança + recibo) das quotas
+        // ordinárias, como pedido.
+        const avisoExtraDoMes = await obterExtraordinariaPendenteDoMes(f.id_fracao, anoRef, mesIndex0);
+        const contasIguais = avisoExtraDoMes
+          && escolherIbanContaPorTipo(contas, "Quota Ordinária") === escolherIbanContaPorTipo(contas, "Quota Extraordinária");
+
         const resultado = await emitirNotaCobrancaFracaoMes({
           predio,
           f,
@@ -701,10 +842,19 @@ export async function emitirQuotasMensais() {
           mesIndex0,
           prefixoEdificio,
           fluxo: "emissao_quotas_mensal",
-          contas
+          contas,
+          extraordinariaMesma: contasIguais ? avisoExtraDoMes : undefined
         });
 
         if (!resultado.ok) continue;
+
+        if (avisoExtraDoMes && !contasIguais) {
+          try {
+            await emitirNotaExtraordinariaSeparada({ predio, f, proprietario, avisoExtra: avisoExtraDoMes, prefixoEdificio, contas });
+          } catch (errExtra) {
+            console.error(`[cronService] Erro ao emitir nota extraordinária separada da fração ${f.fracao_nome}:`, errExtra);
+          }
+        }
 
         await marcarExecutadoHoje("cron_emissao_quotas", f.id_fracao, f.fracao_nome, predio.id_predio);
         if (proprietario?.email) {
