@@ -148,19 +148,41 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   // (inboundProcessor.js) já grava o indício no campo "descricao" da
   // tabela pagamentos; aqui só se lê e mostra, a divisão em si fica
   // sempre sujeita a esta confirmação explícita do administrador.
-  const [pagamentosInfo, setPagamentosInfo] = useState<Record<string, { mesesDetectados: number; quotaMensal: number }>>({});
+  const [pagamentosInfo, setPagamentosInfo] = useState<Record<string, { mesesDetectados: number; quotaMensal: number; mesInicioSugerido: string }>>({});
   useEffect(() => {
     const idsFracoesPredio = fracoes.filter(f => f.id_predio === predio.id_predio).map(f => f.id_fracao);
     if (idsFracoesPredio.length === 0) { setPagamentosInfo({}); return; }
     fetchPagamentosPendentesInfoFromSupabase(idsFracoesPredio).then(lista => {
-      const mapa: Record<string, { mesesDetectados: number; quotaMensal: number }> = {};
+      const mapa: Record<string, { mesesDetectados: number; quotaMensal: number; mesInicioSugerido: string }> = {};
       lista.forEach(p => {
         const m = p.descricao?.match(/^MESES_DETECTADOS:(\d+)\|QUOTA:([\d.]+)$/);
-        if (m) mapa[p.id] = { mesesDetectados: parseInt(m[1], 10), quotaMensal: parseFloat(m[2]) };
+        if (m) {
+          // Sugere como mês inicial o mês do próprio comprovativo (a data que
+          // o condómino indicou como referência do pagamento), não o mês
+          // corrente — evita o administrador ter de adivinhar/corrigir
+          // sempre manualmente a que meses o pagamento se refere.
+          const dataValida = p.data_pagamento && !isNaN(new Date(p.data_pagamento).getTime());
+          const mesInicioSugerido = dataValida ? p.data_pagamento!.slice(0, 7) : new Date().toISOString().slice(0, 7);
+          mapa[p.id] = { mesesDetectados: parseInt(m[1], 10), quotaMensal: parseFloat(m[2]), mesInicioSugerido };
+        }
       });
       setPagamentosInfo(mapa);
     });
   }, [predio.id_predio, fracoes, movements]);
+
+  // Nomes dos meses cobertos por uma divisão, a partir do mês inicial (AAAA-MM)
+  // e do número de prestações — mostrado no aviso para o administrador ver
+  // logo a que meses o pagamento vai ficar associado, sem ter de adivinhar.
+  const nomesDosMesesCobertos = (mesInicioAAAAMM: string, numMeses: number): string => {
+    const [ano, mes] = mesInicioAAAAMM.split("-").map(Number);
+    if (!ano || !mes) return "";
+    const nomes: string[] = [];
+    for (let i = 0; i < numMeses; i++) {
+      const d = new Date(Date.UTC(ano, mes - 1 + i, 1));
+      nomes.push(d.toLocaleDateString("pt-PT", { month: "long", year: "numeric", timeZone: "UTC" }));
+    }
+    return nomes.join(", ");
+  };
 
   const [dividindoMesesMovId, setDividindoMesesMovId] = useState<string | null>(null);
   const [mesInicioDivisao, setMesInicioDivisao] = useState<string>(() => new Date().toISOString().slice(0, 7));
@@ -981,34 +1003,39 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                 {infoMeses && idPagamento && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 space-y-1.5">
                     <p className="text-[10px] text-amber-800">
-                      💡 Este valor equivale a <strong>{infoMeses.mesesDetectados} meses</strong> da quota desta fração ({infoMeses.quotaMensal.toFixed(2)}€/mês).
+                      💡 Este valor equivale a <strong>{infoMeses.mesesDetectados} meses</strong> da quota desta fração ({infoMeses.quotaMensal.toFixed(2)}€/mês) — provavelmente: <strong>{nomesDosMesesCobertos(infoMeses.mesInicioSugerido, infoMeses.mesesDetectados)}</strong>.
                     </p>
                     {aDividirEste ? (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <label className="text-[10px] text-amber-700 font-semibold">Mês inicial:</label>
-                        <input
-                          type="month"
-                          value={mesInicioDivisao}
-                          onChange={(e) => setMesInicioDivisao(e.target.value)}
-                          className="border border-amber-300 rounded px-1.5 py-0.5 text-[10px]"
-                        />
-                        <button
-                          onClick={() => confirmarDivisaoEmMeses(idPagamento, infoMeses.mesesDetectados)}
-                          disabled={aDividirMeses}
-                          className="bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
-                        >
-                          {aDividirMeses ? "A dividir…" : `Confirmar ${infoMeses.mesesDetectados} recibos`}
-                        </button>
-                        <button
-                          onClick={() => setDividindoMesesMovId(null)}
-                          className="text-amber-600 hover:text-amber-800 text-[10px] underline cursor-pointer"
-                        >
-                          Cancelar
-                        </button>
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <label className="text-[10px] text-amber-700 font-semibold">Mês inicial:</label>
+                          <input
+                            type="month"
+                            value={mesInicioDivisao}
+                            onChange={(e) => setMesInicioDivisao(e.target.value)}
+                            className="border border-amber-300 rounded px-1.5 py-0.5 text-[10px]"
+                          />
+                          <button
+                            onClick={() => confirmarDivisaoEmMeses(idPagamento, infoMeses.mesesDetectados)}
+                            disabled={aDividirMeses}
+                            className="bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                          >
+                            {aDividirMeses ? "A dividir…" : `Confirmar ${infoMeses.mesesDetectados} recibos`}
+                          </button>
+                          <button
+                            onClick={() => setDividindoMesesMovId(null)}
+                            className="text-amber-600 hover:text-amber-800 text-[10px] underline cursor-pointer"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-amber-700">
+                          Vai cobrir: <strong>{nomesDosMesesCobertos(mesInicioDivisao, infoMeses.mesesDetectados)}</strong>
+                        </p>
                       </div>
                     ) : (
                       <button
-                        onClick={() => setDividindoMesesMovId(m.id_mov)}
+                        onClick={() => { setMesInicioDivisao(infoMeses.mesInicioSugerido); setDividindoMesesMovId(m.id_mov); }}
                         className="bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
                       >
                         Dividir em {infoMeses.mesesDetectados} recibos mensais

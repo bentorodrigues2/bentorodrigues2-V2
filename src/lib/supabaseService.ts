@@ -1624,6 +1624,7 @@ export interface PagamentoPendenteInfo {
   id: string;
   id_fracao: string;
   descricao: string | null;
+  data_pagamento: string | null;
 }
 
 export async function fetchPagamentosPendentesInfoFromSupabase(idFracoes: string[]): Promise<PagamentoPendenteInfo[]> {
@@ -1635,7 +1636,8 @@ export async function fetchPagamentosPendentesInfoFromSupabase(idFracoes: string
     return (data || []).map((row: any) => ({
       id: row.id,
       id_fracao: row.id_fracao,
-      descricao: row.descricao || null
+      descricao: row.descricao || null,
+      data_pagamento: row.data_pagamento || null
     }));
   } catch (err) {
     return [];

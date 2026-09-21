@@ -153,7 +153,14 @@ export default function App() {
   // mantêm-se, para a app nunca ficar em branco.
   const [browserIsLoggedOut, setBrowserIsLoggedOut] = useState<boolean>(true);
 
+  // Indicador visível de atualização — antes a atualização automática dos
+  // dados só era percetível no Dashboard de KPIs (o único ecrã com um botão
+  // próprio); passa a estar sempre visível no cabeçalho, em qualquer ecrã.
+  const [ultimaAtualizacaoGlobal, setUltimaAtualizacaoGlobal] = useState<Date>(new Date());
+  const [aAtualizarGlobal, setAAtualizarGlobal] = useState<boolean>(false);
+
   const carregarDadosReais = useCallback(async () => {
+    setAAtualizarGlobal(true);
     const [
       prediosReais,
       fracoesReais,
@@ -188,6 +195,8 @@ export default function App() {
     if (reservasReais) setReservas(reservasReais);
     if (fornecedoresReais) setFornecedores(fornecedoresReais);
     if (reunioesReais) setReunioes(reunioesReais);
+    setUltimaAtualizacaoGlobal(new Date());
+    setAAtualizarGlobal(false);
   }, []);
 
   useEffect(() => {
@@ -2659,6 +2668,17 @@ export default function App() {
               NIF: {predioAtivo?.id_predio !== "predio-temp" ? predioAtivo?.nif : "---"}
             </span>
             <div className={`hidden sm:block h-6 w-px transition-colors duration-300 ${theme === "dark" ? "bg-slate-800" : "bg-slate-200"}`}></div>
+            <button
+              type="button"
+              onClick={() => carregarDadosReais()}
+              disabled={aAtualizarGlobal}
+              title="Atualizar dados agora"
+              className={`hidden lg:flex items-center gap-1.5 text-[11px] font-mono-custom px-2 py-0.5 rounded border transition-colors duration-300 disabled:opacity-60 cursor-pointer ${theme === "dark" ? "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700" : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"}`}
+            >
+              <i className={`fa-solid fa-rotate ${aAtualizarGlobal ? "animate-spin" : ""}`}></i>
+              <span>{aAtualizarGlobal ? "A atualizar…" : `Atualizado às ${ultimaAtualizacaoGlobal.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}`}</span>
+            </button>
+            <div className={`hidden lg:block h-6 w-px transition-colors duration-300 ${theme === "dark" ? "bg-slate-800" : "bg-slate-200"}`}></div>
             <span className={`hidden md:flex text-[11px] ${getColorClasses("bgLight")} ${getColorClasses("text")} font-semibold px-2 py-0.5 rounded border ${getColorClasses("border")} items-center transition-all duration-300`}>
               <span className={`h-1.5 w-1.5 rounded-full ${getColorClasses("bg")} mr-1 animate-pulse`}></span>
               {loggedUser.role === "ADMIN" ? "👑 Admin" : 
