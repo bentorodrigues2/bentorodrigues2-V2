@@ -402,12 +402,12 @@ export function CentralDocumentosMinutas({
         triggerSendReaction("email", "Notificação Formal de Dívida (PDF com Título Executivo) descarregada com sucesso!");
       } else if (emailId === "envio_ata_aprovada") {
         gerarAtaAprovadaOficialPDF(
-          "42",
+          "30",
           "15/09/2026",
           predio.nome || "Condomínio Edifício Estrela da Barra",
           predio.nif || "900 123 456"
         );
-        triggerSendReaction("email", "Ata N.º 42 Aprovada da Assembleia (PDF Oficial) descarregada com sucesso!");
+        triggerSendReaction("email", "Ata N.º 30 Aprovada da Assembleia (PDF Oficial) descarregada com sucesso!");
       } else if (emailId === "sinistro_comunicacao") {
         gerarParticipacaoSinistroPDF(
           "SIN-2026-014",

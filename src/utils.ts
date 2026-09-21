@@ -3486,6 +3486,24 @@ export function gerarNotificacaoDividaPDF(
  * Gerador de PDF Oficial: Ata Aprovada de Assembleia Geral
  * Layout Oficial CondoManager AI com Marca de Água e Assinaturas da Mesa
  */
+// Cabeçalho simples, só texto (sem logótipo nem marca de água) — pedido
+// especificamente para a Ata por ser um documento oficial nos termos do
+// Código Civil/DL 268/94; os restantes documentos (recibos, notas de
+// cobrança, etc.) continuam a usar addPdfHeaderWithLogo normalmente.
+function addSimpleTextHeaderAta(doc: jsPDF, predioNome: string, predioNif: string): number {
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text(predioNome.toUpperCase().startsWith("CONDOMÍNIO") ? predioNome.toUpperCase() : `CONDOMÍNIO ${predioNome.toUpperCase()}`, 105, 14, { align: "center" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`NIF: ${predioNif}`, 105, 19, { align: "center" });
+  doc.setDrawColor(203, 213, 225);
+  doc.line(14, 23, 196, 23);
+  return 28;
+}
+
 export function gerarAtaAprovadaOficialPDF(
   ataNumero: string = "42",
   dataAssembleia: string = "15/09/2026",
@@ -3509,7 +3527,7 @@ export function gerarAtaAprovadaOficialPDF(
       format: "a4"
     });
 
-    let y = addPdfHeaderWithLogo(doc, predioNome);
+    let y = addSimpleTextHeaderAta(doc, predioNome, predioNif);
 
     // Banner Principal
     doc.setFillColor(15, 23, 42);
