@@ -494,6 +494,12 @@ export function GestaoFracoes({
 
   // Helper para carregar dados de proprietário para o formulário (apenas em cliques explícitos!)
   const carregarProprietarioParaEdicao = (prop: Proprietario, fracaoId?: string) => {
+    // Uma edição normal nunca é uma Transferência de Propriedade — sem isto,
+    // se o admin tivesse clicado antes em "Transferir" para outra fração e
+    // desistido sem usar o "Cancelar" do formulário, esse estado ficava
+    // pendurado e a próxima edição normal era tratada como transferência,
+    // reenviando por engano o email de boas-vindas/ativação.
+    setTransferindoPropriedadeDe(null);
     setPropNome(prop.nome || "");
     setPropNif(prop.nif || "");
     setPropEmail(prop.email || "");
