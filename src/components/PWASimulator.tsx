@@ -23,7 +23,6 @@ import { GestaoDocumentos } from "./GestaoDocumentos";
 import { GestaoMovimentos } from "./GestaoMovimentos";
 import { GestaoFracoes } from "./GestaoFracoes";
 import { GestaoAssembleias } from "./GestaoAssembleias";
-import { IAConciliacao } from "./IAConciliacao";
 import { GestaoContas } from "./GestaoContas";
 import { GestaoFundoReserva } from "./GestaoFundoReserva";
 import { GestaoEmissao } from "./GestaoEmissao";
@@ -2656,8 +2655,7 @@ export function PWASimulator({
                           {selectedPwaSubmenu === "financas" && [
                             { id: "financas_movimentos", label: "Saldos & Extrato de Movimentos", image: "/modulos/59-recibo.png" },
                             { id: "financas_contas", label: "Contas Bancárias do Condomínio", image: "/modulos/59-recibo.png" },
-                            { id: "financas_fundo", label: "Fundo de Reserva Comum", image: "/modulos/59-recibo.png" },
-                            { id: "financas_conciliacao", label: "Conciliação Bancária com IA", image: "/modulos/82-automacao.png" }
+                            { id: "financas_fundo", label: "Fundo de Reserva Comum", image: "/modulos/59-recibo.png" }
                           ].map(opt => (
                             <button
                               key={opt.id}
@@ -3182,18 +3180,6 @@ export function PWASimulator({
                           predio={predio}
                           loggedUser={loggedUser}
                           contas={contas}
-                        />
-                      )}
-                      {activePwaSubMenuDetails === "financas_conciliacao" && (
-                        <IAConciliacao 
-                          predio={predio}
-                          fracoes={fracoes}
-                          avisos={avisos}
-                          setAvisos={setAvisos}
-                          movements={movements}
-                          setMovements={setMovements}
-                          contas={contas}
-                          loggedUser={loggedUser}
                         />
                       )}
                       {activePwaSubMenuDetails === "fracoes_predios" && (

@@ -40,7 +40,6 @@ import { GestaoFornecedores } from "./components/GestaoFornecedores";
 import { GestaoContas } from "./components/GestaoContas";
 import { GestaoQuotasOrcamento } from "./components/GestaoQuotasOrcamento";
 import { GestaoMovimentos } from "./components/GestaoMovimentos";
-import { IAConciliacao } from "./components/IAConciliacao";
 import { AgendadorAutomatico } from "./components/AgendadorAutomatico";
 import { LeitorAnexosIA } from "./components/LeitorAnexosIA";
 import { GestaoAssembleias } from "./components/GestaoAssembleias";
@@ -1503,21 +1502,6 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => {
-                    setActiveSection("conciliacao");
-                    setViewMode("BROWSER");
-                    setIaInitialTab(undefined);
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "conciliacao"
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
-                  }`}
-                >
-                  <img src="/modulos/63-lista-de-pagamentos.png" alt="Conciliação" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Conciliação Bancária (OFX/CSV)</span>
-                </button>
-                <button
-                  onClick={() => {
                     setActiveSection("ocr_faturas");
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
@@ -2908,19 +2892,6 @@ export default function App() {
               fracoes={fracoes}
               documentos={documentos}
               contas={contas}
-            />
-          )}
-
-          {activeSection === "conciliacao" && (
-            <IAConciliacao 
-              predio={predioAtivo} 
-              fracoes={fracoes}
-              avisos={avisos}
-              setAvisos={setAvisos}
-              movements={movements}
-              setMovements={setMovements}
-              contas={contas}
-              loggedUser={loggedUser}
             />
           )}
 

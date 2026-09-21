@@ -3,6 +3,7 @@ import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso, Fornecedor } from 
 import { formatDatePT, parseValorMonetario } from "../utils";
 import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria, fetchMovimentosFromSupabase, fetchPagamentosPendentesInfoFromSupabase, dbInsert } from "../lib/supabaseService";
 import { cruzarMovimentoComFornecedor } from "../lib/fornecedorMatching";
+import { matchBankTransactions } from "../utils/bankStatementParser";
 import { Save, CheckCircle2 } from "lucide-react";
 import { MoneyInput } from "./MoneyInput";
 
@@ -95,6 +96,21 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   const [extractedItems, setExtractedItems] = useState<any[]>([]);
   const [erroExtrato, setErroExtrato] = useState<string | null>(null);
   const extratoFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Conta bancária a que pertence o extrato importado — antes não existia
+  // nenhuma forma de o indicar de uma vez só (era preciso escolher a conta
+  // linha a linha, repetidamente); passa a ser escolhida uma única vez,
+  // pré-selecionada com a conta principal, e usada como valor por omissão
+  // em cada linha (continua a poder ser corrigida por linha se necessário).
+  const [contaExtratoId, setContaExtratoId] = useState<string>("");
+  React.useEffect(() => {
+    const contasDoPredio = contas.filter(c => c.id_predio === predio.id_predio);
+    const principal = contasDoPredio.find(c => c.is_principal) || contasDoPredio[0];
+    setContaExtratoId(principal?.id_conta || "");
+  }, [predio.id_predio, contas]);
+
+  const [aprovandoCondominoIndex, setAprovandoCondominoIndex] = useState<number | null>(null);
+  const [aprovandoTodosCondominos, setAprovandoTodosCondominos] = useState(false);
 
   // Caixa de Entrada IA (Gmail) States - Base limpa sem dados de simulação
   const [emails, setEmails] = useState<SimulatedEmail[]>([]);
@@ -610,8 +626,51 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       if (!resp.ok || !data.ok) throw new Error(data?.error || "Não foi possível analisar o(s) ficheiro(s).");
 
       const predioFornecedores = fornecedores.filter(f => f.id_predio === predio.id_predio);
+      const predioFracoesAtual = fracoes.filter(f => f.id_predio === predio.id_predio);
+      // Só os avisos ainda por pagar entram na correspondência — um aviso já
+      // liquidado não deve voltar a "encontrar" um crédito do extrato.
+      const predioAvisosPendentesAtual = avisos.filter(a => a.id_predio === predio.id_predio && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"));
+
+      // Cruzamento com condóminos/avisos — mesma lógica já usada e testada
+      // em "Conciliação Bancária" (bankStatementParser.ts), aplicada agora
+      // aos movimentos extraídos pela IA em vez de só a ficheiros OFX/CSV.
+      // Só faz sentido para receitas (pagamentos recebidos), nunca despesas.
+      const receitasParaCruzarFracao = (data.movimentos || [])
+        .filter((m: any) => String(m.tipo || "").toLowerCase().startsWith("rec"))
+        .map((m: any) => ({ data: m.data, tipo: "CREDITO" as const, valor: Math.abs(Number(m.valor) || 0), descricao: m.descricao }));
+      const matchesFracao = matchBankTransactions(receitasParaCruzarFracao, predioFracoesAtual, predioAvisosPendentesAtual);
+      let idxReceita = 0;
+
+      // Deteção de duplicados — nem este assistente nem o antigo "Conciliação
+      // Bancária" verificavam se o movimento já tinha sido lançado por outra
+      // via (ex: um comprovativo já reconhecido por email). Importar um
+      // extrato histórico arriscava sempre duplicar pagamentos já registados.
+      // Considera "já lançado" quando há um movimento muito semelhante (mesmo
+      // tipo, valor a ±0,05€, dentro de 10 dias da data) já existente, ou —
+      // para receitas — quando já existe um aviso PAGO com o mesmo valor.
+      const JANELA_DUPLICADO_MS = 10 * 24 * 60 * 60 * 1000;
+      const jaLancadoAntes = (dataMov: string, valorMov: number, tipoMov: "Receita" | "Despesa"): boolean => {
+        const tData = new Date(dataMov).getTime();
+        const movDuplicado = predioMovements.some(mv => {
+          if (mv.tipo !== tipoMov || Math.abs(mv.valor - valorMov) > 0.05) return false;
+          const dm = new Date(mv.data).getTime();
+          return !isNaN(dm) && !isNaN(tData) && Math.abs(dm - tData) <= JANELA_DUPLICADO_MS;
+        });
+        if (movDuplicado) return true;
+        if (tipoMov === "Receita") {
+          return avisos.some(a => a.id_predio === predio.id_predio && ["Paga", "Pago", "Liquidado"].includes(a.estado) && Math.abs(a.valor - valorMov) < 0.05);
+        }
+        return false;
+      };
+
       const comCruzamento = (data.movimentos || []).map((m: any) => {
-        const resultado = cruzarMovimentoComFornecedor(predioFornecedores, {
+        const ehReceita = String(m.tipo || "").toLowerCase().startsWith("rec");
+        const valorAbs = Math.abs(Number(m.valor) || 0);
+        const jaLancado = jaLancadoAntes(m.data, valorAbs, ehReceita ? "Receita" : "Despesa");
+        const matchFracao = ehReceita ? matchesFracao[idxReceita++] : undefined;
+        const ehPagamentoCondomino = !!matchFracao && matchFracao.confianca_percent >= 65 && !!matchFracao.fracao_sugerida_id;
+
+        const resultado = ehPagamentoCondomino ? null : cruzarMovimentoComFornecedor(predioFornecedores, {
           iban_credor: m.iban_credor,
           numero_adc: m.numero_adc,
           entidade_credora: m.entidade_credora,
@@ -620,8 +679,8 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
         return {
           data: m.data,
           descricao: m.descricao,
-          valor: Math.abs(Number(m.valor) || 0),
-          tipo: String(m.tipo || "").toLowerCase().startsWith("rec") ? "Receita" : "Despesa",
+          valor: valorAbs,
+          tipo: ehReceita ? "Receita" : "Despesa",
           categoria: m.categoria || "Outro",
           id_fornecedor: resultado?.fornecedor.id_fornecedor,
           fornecedor_nome_sugerido: resultado?.fornecedor.nome,
@@ -631,7 +690,17 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
           // referência/IBAN para a próxima vez (ver handleAssociarFornecedorAprendido).
           numero_adc: m.numero_adc || undefined,
           iban_credor: m.iban_credor || undefined,
-          entidade_credora: m.entidade_credora || undefined
+          entidade_credora: m.entidade_credora || undefined,
+          jaLancado,
+          // Pagamento de condómino reconhecido (fração + aviso pendente) —
+          // fecha o aviso e emite o recibo oficial, em vez de só lançar um
+          // movimento simples como as despesas de fornecedor.
+          ehPagamentoCondomino,
+          fracaoSugeridaId: matchFracao?.fracao_sugerida_id || undefined,
+          fracaoSugeridaNome: matchFracao?.fracao_sugerida_nome || undefined,
+          confiancaFracao: matchFracao?.confianca_percent,
+          motivoCorrespondenciaFracao: matchFracao?.motivo_correspondencia,
+          avisosPendentesIds: matchFracao?.avisos_pendentes_ids || []
         };
       });
 
@@ -705,6 +774,163 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
     setExtractedItems(prev => prev.filter(x => x.descricao !== item.descricao));
     alert(`Movimento financeiro de ${item.valor.toFixed(2)}€ lançado com sucesso!${fornecedorIdOverride && !item.id_fornecedor ? "\n\n🧠 A associação a este fornecedor foi memorizada — da próxima vez o mesmo débito é reconhecido automaticamente." : ""}`);
+  };
+
+  // Fecha um pagamento de condómino reconhecido no extrato: liquida o(s)
+  // aviso(s) correspondente(s), lança o movimento, e emite o recibo oficial
+  // (PDF + email ao condómino) através do mesmo pipeline real já usado em
+  // toda a app (/api/pagamento?acao=confirmar) — antes só existia esta
+  // capacidade no ecrã "Conciliação Bancária", à parte deste assistente.
+  const aprovarPagamentoCondomino = async (item: any, index: number) => {
+    if (!setAvisos) {
+      alert("Sistema de avisos não disponível de momento.");
+      return;
+    }
+    const contaAlvo = contas.find(c => c.id_conta === contaExtratoId);
+    if (!contaAlvo) {
+      alert("Escolha a conta bancária do extrato antes de aprovar pagamentos.");
+      return;
+    }
+    const fracao = fracoes.find(f => f.id_fracao === item.fracaoSugeridaId);
+
+    setAprovandoCondominoIndex(index);
+    try {
+      // 1. Liquidar os avisos correspondentes
+      if (item.avisosPendentesIds?.length) {
+        const avisosPagos: Aviso[] = [];
+        setAvisos(prev => prev.map(a => {
+          if (item.avisosPendentesIds.includes(a.id_aviso)) {
+            const atualizado = { ...a, estado: "Paga" };
+            avisosPagos.push(atualizado);
+            return atualizado;
+          }
+          return a;
+        }));
+        await saveAvisosToSupabase(avisosPagos);
+      }
+
+      // 2. Atualizar saldo da conta
+      const contaAtualizada: Conta = { ...contaAlvo, saldo: (contaAlvo.saldo || 0) + item.valor };
+      saveContaToSupabase(contaAtualizada).catch(console.error);
+
+      // 3. Lançar o movimento
+      const novoMov: Movimento = {
+        id_mov: "mov-extrato-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+        id_predio: predio.id_predio,
+        id_conta: contaExtratoId,
+        id_fracao: item.fracaoSugeridaId,
+        data: item.data,
+        tipo: "Receita",
+        valor: item.valor,
+        descricao: `[Extraído por IA] ${item.descricao}`,
+        categoria: "Quotas",
+        estado: "Justificado",
+        is_movimento_cego: false,
+        metodo_pagamento: "Transferência Bancária"
+      };
+      setMovements(prev => [novoMov, ...prev]);
+      saveMovimentoToSupabase(novoMov).catch(console.error);
+
+      // 4. Pagamento real + recibo oficial (PDF, arquivo, email) — mesmo
+      // pipeline usado em toda a app para confirmar pagamentos.
+      const idPagamento = `pag-extrato-${Date.now().toString(36)}-${Math.floor(Math.random() * 1000)}`;
+      const okPagamento = await dbInsert("pagamentos", {
+        id: idPagamento,
+        referencia: `EXTRATO-${novoMov.id_mov}`,
+        id_proprietario: fracao?.proprietario?.id_proprietario || null,
+        id_fracao: item.fracaoSugeridaId || null,
+        valor: item.valor,
+        descricao: `Extrato bancário: ${item.descricao}`,
+        estado: "pendente",
+        data_pagamento: item.data
+      });
+
+      let emailEnviado = false;
+      if (okPagamento) {
+        const resp = await fetch("/api/pagamento?acao=confirmar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id_pagamento: idPagamento })
+        });
+        const resultado = await resp.json();
+        if (resp.ok && resultado?.status === "ok") {
+          emailEnviado = Boolean(resultado.email_enviado);
+        } else {
+          alert(`⚠️ O pagamento foi lançado mas houve um erro ao emitir o recibo oficial: ${resultado?.error || "erro desconhecido"}`);
+        }
+      }
+
+      registarLogAuditoria("Financeira", "Aprovou um pagamento de condómino reconhecido no extrato bancário", predio.id_predio, loggedUser, novoMov.descricao);
+      setExtractedItems(prev => prev.filter((_, i) => i !== index));
+      alert(emailEnviado
+        ? `✅ Pagamento de ${item.valor.toFixed(2)}€ confirmado (Fração ${item.fracaoSugeridaNome || fracao?.fracao_nome || "?"}) e recibo oficial enviado por email.`
+        : `✅ Pagamento de ${item.valor.toFixed(2)}€ confirmado e recibo gerado. (Sem email enviado — condómino sem email registado ou associado.)`);
+    } catch (err: any) {
+      alert(`Erro ao aprovar este pagamento: ${err?.message || "erro desconhecido"}`);
+    } finally {
+      setAprovandoCondominoIndex(null);
+    }
+  };
+
+  // Aprova em lote todos os pagamentos de condóminos detetados com boa
+  // confiança — equivalente ao "Conciliar Todas as Quotas (1-Clique)" que
+  // existia só no ecrã "Conciliação Bancária".
+  const aprovarTodosPagamentosCondominos = async () => {
+    const pendentes = extractedItems
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => item.ehPagamentoCondomino && !item.jaLancado);
+    if (pendentes.length === 0) {
+      alert("Não há pagamentos de condóminos prontos a aprovar.");
+      return;
+    }
+    setAprovandoTodosCondominos(true);
+    // Do fim para o início, para os índices não desalinharem à medida que
+    // cada aprovação remove o item de extractedItems.
+    for (const { item, index } of [...pendentes].reverse()) {
+      await aprovarPagamentoCondomino(item, index);
+    }
+    setAprovandoTodosCondominos(false);
+  };
+
+  // Descartar a leitura inteira (limpa a pré-visualização, sem tocar em
+  // nada já gravado — nada aqui chega à BD enquanto não for aprovado/
+  // lançado) — útil para recomeçar um teste ou uma importação errada.
+  const [aLancarTodosDespesas, setALancarTodosDespesas] = useState(false);
+  const descartarLeituraExtrato = () => {
+    setExtractedItems([]);
+    setExtratoFicheiros([]);
+    setErroExtrato(null);
+  };
+
+  // Remove uma única linha da pré-visualização, sem a lançar.
+  const descartarItemExtraido = (index: number) => {
+    setExtractedItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Lança em lote todos os movimentos que não são pagamentos de condómino
+  // (despesas de fornecedor e receitas sem fração reconhecida) — antes só
+  // era possível lançar um de cada vez, obrigando a repetir a ação linha a
+  // linha para um extrato inteiro.
+  const lancarTodosOsMovimentos = async () => {
+    const alvos = extractedItems
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => !item.jaLancado && !item.ehPagamentoCondomino);
+    if (alvos.length === 0) {
+      alert("Não há movimentos por lançar (só faltam pagamentos de condóminos ou itens já lançados).");
+      return;
+    }
+    if (!contaExtratoId) {
+      alert("Escolha a conta bancária do extrato antes de lançar todos os movimentos.");
+      return;
+    }
+    setALancarTodosDespesas(true);
+    // Usa sempre a correspondência automática de fornecedor já feita (se
+    // houver) — a associação manual por linha continua disponível para
+    // corrigir um item antes de usar este botão de lote.
+    for (const { item } of [...alvos].reverse()) {
+      await lancarItemExtraido(item, contaExtratoId, undefined);
+    }
+    setALancarTodosDespesas(false);
   };
 
   // Contabilizar movimentos cegos não justificados
@@ -1309,7 +1535,10 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
       </div>
 
-      {/* Assistente de Extração de Extratos por IA */}
+      {/* Assistente de Extração de Extratos por IA — também faz o que antes
+          era um ecrã à parte ("Conciliação Bancária"): reconhece pagamentos
+          de condóminos, fecha os avisos correspondentes e emite o recibo
+          oficial, além de continuar a cruzar despesas com fornecedores. */}
       <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <h3 className="text-base font-bold text-slate-800 flex items-center space-x-2">
@@ -1323,6 +1552,20 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-3">
+            <div>
+              <label className="text-xs font-bold text-slate-600 block mb-1">Conta Bancária deste Extrato</label>
+              <select
+                value={contaExtratoId}
+                onChange={e => setContaExtratoId(e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-violet-500"
+              >
+                <option value="">— Escolha a conta —</option>
+                {predioContas.map(c => (
+                  <option key={c.id_conta} value={c.id_conta}>{c.banco} ({c.tipo.split(" ")[0]})</option>
+                ))}
+              </select>
+            </div>
+
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-600 block">Ficheiro(s) do Extrato / Aviso a Analisar</label>
               <span className="text-[10px] text-slate-400 font-mono">PDF, foto, Excel, CSV ou TXT</span>
@@ -1351,15 +1594,47 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
               {isExtracting ? (
                 <>
                   <i className="fa-solid fa-spinner animate-spin"></i>
-                  <span>A extrair movimentos e cruzar com fornecedores...</span>
+                  <span>A extrair movimentos e cruzar com condóminos/fornecedores...</span>
                 </>
               ) : (
                 <>
                   <i className="fa-solid fa-wand-magic-sparkles"></i>
-                  <span>Extrair Movimentos e Cruzar Fornecedores</span>
+                  <span>Extrair Movimentos e Cruzar Condóminos/Fornecedores</span>
                 </>
               )}
             </button>
+
+            {extractedItems.some(it => it.ehPagamentoCondomino && !it.jaLancado) && (
+              <button
+                onClick={aprovarTodosPagamentosCondominos}
+                disabled={aprovandoTodosCondominos}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center space-x-2 cursor-pointer"
+              >
+                <i className={`fa-solid ${aprovandoTodosCondominos ? "fa-spinner animate-spin" : "fa-check-double"}`}></i>
+                <span>{aprovandoTodosCondominos ? "A aprovar e a emitir recibos..." : "Aprovar Todos os Pagamentos de Condóminos & Emitir Recibos"}</span>
+              </button>
+            )}
+
+            {extractedItems.some(it => !it.jaLancado && !it.ehPagamentoCondomino) && (
+              <button
+                onClick={lancarTodosOsMovimentos}
+                disabled={aLancarTodosDespesas}
+                className="w-full bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center space-x-2 cursor-pointer"
+              >
+                <i className={`fa-solid ${aLancarTodosDespesas ? "fa-spinner animate-spin" : "fa-layer-group"}`}></i>
+                <span>{aLancarTodosDespesas ? "A lançar todos..." : "Lançar Todos os Movimentos"}</span>
+              </button>
+            )}
+
+            {extractedItems.length > 0 && (
+              <button
+                onClick={descartarLeituraExtrato}
+                className="w-full bg-white hover:bg-red-50 text-red-600 border border-red-200 text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center space-x-2 cursor-pointer"
+              >
+                <i className="fa-solid fa-trash-can"></i>
+                <span>Descartar Esta Leitura</span>
+              </button>
+            )}
           </div>
 
           <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col justify-between">
@@ -1368,7 +1643,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                 <i className="fa-solid fa-list-check text-slate-500"></i>
                 <span>Movimentos Detetados pela IA</span>
               </h4>
-              <p className="text-[11px] text-slate-500 mb-3">Cada movimento tenta cruzar-se sozinho com um fornecedor já registado (IBAN, referência de contrato/ADC ou nome). Valide antes de lançar:</p>
+              <p className="text-[11px] text-slate-500 mb-3">Receitas tentam cruzar-se com um condómino/fração; despesas com um fornecedor já registado (IBAN, referência de contrato/ADC ou nome). Movimentos já lançados por outra via não pedem aprovação. Valide antes de lançar:</p>
 
               <div className="space-y-2 overflow-y-auto max-h-[280px] pr-1">
                 {extractedItems.length === 0 ? (
@@ -1376,13 +1651,73 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                     Nenhuma parcela ou transação extraída pendente. Anexe um ficheiro à esquerda.
                   </div>
                 ) : (
-                  extractedItems.map((item, index) => (
+                  extractedItems.map((item, index) => {
+                    if (item.jaLancado) {
+                      return (
+                        <div key={index} className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs space-y-1 opacity-70">
+                          <div className="flex justify-between items-center">
+                            <span className="font-mono-custom text-[10px] text-slate-400">{item.data}</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold px-1.5 rounded bg-slate-200 text-slate-600 flex items-center gap-1">
+                                <i className="fa-solid fa-check"></i> Já Lançado
+                              </span>
+                              <button onClick={() => descartarItemExtraido(index)} title="Remover da lista" className="text-slate-400 hover:text-red-500 cursor-pointer">
+                                <i className="fa-solid fa-xmark"></i>
+                              </button>
+                            </div>
+                          </div>
+                          <p className="font-semibold text-slate-500 line-clamp-1">{item.descricao}</p>
+                          <p className="text-slate-400 font-mono-custom">{item.tipo === "Receita" ? "+" : "-"}{item.valor.toFixed(2)}€ — não requer aprovação (já existe um lançamento/aviso equivalente).</p>
+                        </div>
+                      );
+                    }
+
+                    if (item.ehPagamentoCondomino) {
+                      return (
+                        <div key={index} className="bg-white p-3 rounded-lg border border-emerald-200 text-xs space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-mono-custom text-[10px] text-slate-500">{item.data}</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold px-1.5 rounded bg-emerald-50 text-emerald-800">Receita — Condómino</span>
+                              <button onClick={() => descartarItemExtraido(index)} title="Remover da lista, sem lançar" className="text-slate-400 hover:text-red-500 cursor-pointer">
+                                <i className="fa-solid fa-trash-can"></i>
+                              </button>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-800">{item.descricao}</p>
+                            <p className="text-[10px] text-emerald-700 font-bold flex items-center mt-1">
+                              <i className="fa-solid fa-circle-check mr-1"></i>
+                              <span>Fração {item.fracaoSugeridaNome} — confiança {item.confiancaFracao}% ({item.motivoCorrespondenciaFracao})</span>
+                            </p>
+                          </div>
+                          <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                            <span className="font-bold text-emerald-700 font-mono-custom text-sm">+{item.valor.toFixed(2)}€</span>
+                            <button
+                              onClick={() => aprovarPagamentoCondomino(item, index)}
+                              disabled={aprovandoCondominoIndex === index || aprovandoTodosCondominos}
+                              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                              <i className={`fa-solid ${aprovandoCondominoIndex === index ? "fa-spinner animate-spin" : "fa-check"}`}></i>
+                              <span>{aprovandoCondominoIndex === index ? "A aprovar..." : "Aprovar & Emitir Recibo"}</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
                     <div key={index} className="bg-white p-3 rounded-lg border border-slate-200 text-xs space-y-2">
                       <div className="flex justify-between items-center">
                         <span className="font-mono-custom text-[10px] text-slate-500">{item.data}</span>
-                        <span className={`text-[10px] font-bold px-1.5 rounded ${item.tipo === "Receita" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>
-                          {item.tipo === "Receita" ? "Receita" : "Despesa"}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[10px] font-bold px-1.5 rounded ${item.tipo === "Receita" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>
+                            {item.tipo === "Receita" ? "Receita" : "Despesa"}
+                          </span>
+                          <button onClick={() => descartarItemExtraido(index)} title="Remover da lista, sem lançar" className="text-slate-400 hover:text-red-500 cursor-pointer">
+                            <i className="fa-solid fa-trash-can"></i>
+                          </button>
+                        </div>
                       </div>
                       <div>
                         <p className="font-semibold text-slate-800">{item.descricao}</p>
@@ -1413,6 +1748,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                           <select
                             id={`extract-cta-select-${index}`}
                             className="bg-slate-50 border text-[10px] rounded px-1.5 py-0.5 focus:outline-none focus:border-violet-500"
+                            defaultValue={contaExtratoId}
                           >
                             <option value="">Lançar em...</option>
                             {predioContas.map(c => (
@@ -1433,7 +1769,8 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                         </div>
                       </div>
                     </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
