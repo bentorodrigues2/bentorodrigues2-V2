@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso, Fornecedor } from "../types";
 import { formatDatePT, parseValorMonetario } from "../utils";
-import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria } from "../lib/supabaseService";
+import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria, fetchMovimentosFromSupabase } from "../lib/supabaseService";
 import { cruzarMovimentoComFornecedor } from "../lib/fornecedorMatching";
 import { Save, CheckCircle2 } from "lucide-react";
 import { MoneyInput } from "./MoneyInput";
@@ -259,12 +259,36 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   };
 
   // Sincronização Real de Caixa de Correio (sem simulações fictícias)
-  const sincronizarEmailsReais = () => {
+  // Antes, isto era 100% decorativo: um setTimeout de 800ms que mostrava
+  // sempre a mesma mensagem fixa "Não existem novas faturas pendentes",
+  // sem nunca ligar à caixa de correio real. O botão "Sincronizar" passa a
+  // chamar mesmo o /api/gmail-reader (o mesmo endpoint que o gmail-cron da
+  // Cloudflare chama a cada 4 minutos) — útil para forçar uma leitura
+  // imediata sem esperar pelo próximo ciclo automático. Os movimentos
+  // reconhecidos já são criados diretamente pelo backend (Movimento Cego /
+  // Por Justificar); aqui só se recarrega a lista para os mostrar de
+  // imediato, sem precisar de F5.
+  const sincronizarEmailsReais = async () => {
     setSincronizandoEmails(true);
-    setTimeout(() => {
+    try {
+      const resp = await fetch("/api/gmail-reader");
+      const data = await resp.json();
+      if (!resp.ok || !data?.ok) {
+        throw new Error(data?.error || `Erro ${resp.status} ao ligar à caixa de correio.`);
+      }
+      const total = Array.isArray(data.emails) ? data.emails.length : 0;
+      const novos = await fetchMovimentosFromSupabase(predio.id_predio);
+      if (novos) setMovements(novos);
+      alert(
+        total === 0
+          ? `✓ Caixa de correio "${predio.email_condominio || predio.email || "—"}" sincronizada. Não há e-mails novos por ler.`
+          : `✓ Sincronizado: ${total} e-mail${total === 1 ? "" : "s"} lido${total === 1 ? "" : "s"}. Verifique "Lançamentos por Confirmar" para os que foram reconhecidos automaticamente.`
+      );
+    } catch (err: any) {
+      alert(`❌ Não foi possível sincronizar a caixa de correio: ${err?.message || "erro desconhecido"}. Tente novamente dentro de momentos.`);
+    } finally {
       setSincronizandoEmails(false);
-      alert(`✓ Caixa de correio "${predio.email_condominio || 'administracao@condomanager.pt'}" sincronizada com sucesso. Não existem novas faturas pendentes de fornecedores.`);
-    }, 800);
+    }
   };
 
   // Registo Manual de E-mail de Fatura de Fornecedor
