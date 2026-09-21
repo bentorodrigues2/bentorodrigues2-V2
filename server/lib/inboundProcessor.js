@@ -341,7 +341,30 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
       (dadosExtraidos?.valor_total > 0) ||
       (!dadosExtraidos && !!fileHash);
 
-    if (!isComprovativo) return null;
+    if (!isComprovativo) {
+      // A IA leu o anexo com sucesso (dadosExtraidos não é null) mas nada
+      // classificou como comprovativo/fatura/recibo/extrato nem encontrou
+      // um valor > 0 — ficava completamente silencioso, sem nenhum registo
+      // em lado nenhum, indistinguível de "não havia anexo nenhum". Regista
+      // pelo menos um rasto de diagnóstico (sem criar movimento nenhum),
+      // para nunca mais ter de adivinhar às cegas porque é que um anexo
+      // real não gerou nada.
+      if (dadosExtraidos) {
+        try {
+          await supabase.from("ai_auditoria").insert({
+            origem: "email_inbound_nao_qualificado",
+            tipo_documento: tipoDocumento || null,
+            entidade: dadosExtraidos?.entidade || null,
+            valor: dadosExtraidos?.valor_total || null,
+            file_hash: fileHash || null,
+            raw_json: dadosExtraidos
+          });
+        } catch (errAud) {
+          console.warn("[inboundProcessor] Aviso ao gravar rasto de anexo não qualificado:", errAud?.message || errAud);
+        }
+      }
+      return null;
+    }
 
     const isFatura = tipoDocumento === "fatura";
     const valorExtraido = dadosExtraidos?.valor_total || null;

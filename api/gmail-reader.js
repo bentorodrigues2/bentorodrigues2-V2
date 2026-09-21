@@ -118,8 +118,24 @@ export default async function handler(req, res) {
       // deduplicação de 3 minutos) e fica registado um erro visível.
       let processadoComSucesso = false;
       try {
-        await processInboundEmail({ from, subject, body, anexos });
+        const resultado = await processInboundEmail({ from, subject, body, anexos });
         processadoComSucesso = true;
+        // O processamento pode terminar "com sucesso" (sem exceção) mas na
+        // prática não ter feito nada visível — ex: o anexo foi ignorado por
+        // deduplicação de hash. Sem isto, esses casos não deixavam nenhum
+        // rasto, obrigando a adivinhar às cegas porque é que nada aparecia.
+        if (resultado?.comprovativoIgnoradoDuplicado) {
+          try {
+            await supabase.from("ai_auditoria").insert({
+              origem: "gmail_reader_ignorado_duplicado",
+              entidade: from,
+              referencia: subject,
+              raw_json: resultado
+            });
+          } catch (errLog) {
+            console.error("[gmail-reader] Falha ao registar ignorado-duplicado:", errLog);
+          }
+        }
       } catch (errProc) {
         console.error("[gmail-reader] Erro ao processar email inbound:", errProc);
         try {
