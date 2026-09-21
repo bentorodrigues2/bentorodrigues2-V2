@@ -238,21 +238,79 @@ export function ConfiguracaoArranqueSaldos({
     return Math.max(1, meses);
   };
 
-  const [saldosFracoes, setSaldosFracoes] = useState<SaldoInicialFracao[]>(() => {
-    return predioFracoes.map((f) => {
+  // Reconstrói o estado discriminado (períodos de quota ordinária/extra por
+  // fração) a partir dos Avisos "aviso-inicial-*" já gravados no Supabase —
+  // sem isto, o estado nascia sempre em branco a cada F5/remontagem deste
+  // ecrã, dando a sensação de que a dívida lançada tinha desaparecido,
+  // quando na realidade continuava gravada (visível em Contencioso,
+  // Dashboard, etc.) só não era relida de volta para este formulário.
+  // A discriminação por período não tem coluna própria na BD (evitar DDL) —
+  // é recuperada a partir do texto de "descricao", que este próprio
+  // ficheiro controla por inteiro (ver construirAvisosDividaFracao acima);
+  // se o formato não for reconhecido (aviso mais antigo/manual), cai para
+  // um único período que preserva pelo menos o valor total.
+  const reconstruirSaldosFracoes = (fs: Fracao[], avisosAtuais: Aviso[]): SaldoInicialFracao[] => {
+    return fs.map((f) => {
+      const avisosFracao = avisosAtuais.filter(a =>
+        a.id_predio === predio.id_predio && a.id_fracao === f.id_fracao && a.id_aviso.startsWith("aviso-inicial-")
+      );
+      const dividasQuotasOrdinarias: DividaQuotaOrdinariaPeriodo[] = [];
+      const dividasQuotasExtras: DividaQuotaExtraItem[] = [];
+      let observacoesReconstruidas = "";
+
+      avisosFracao.forEach((a) => {
+        const idPeriodo = a.id_aviso.replace("aviso-inicial-", "");
+        if (a.tipo === "Quota Ordinária") {
+          const m = a.descricao.match(/desde (\d{4}-\d{2}-\d{2}) \((\d+) (?:mês|meses) × ([\d.,]+)€\)\.?\s*(.*)$/);
+          if (m) {
+            dividasQuotasOrdinarias.push({
+              id: idPeriodo,
+              data_inicio: m[1],
+              meses_em_divida: parseInt(m[2], 10),
+              valor_quota_mensal: parseFloat(m[3].replace(",", "."))
+            });
+            if (m[4]) observacoesReconstruidas = m[4];
+          } else {
+            dividasQuotasOrdinarias.push({ id: idPeriodo, data_inicio: a.data, meses_em_divida: 1, valor_quota_mensal: a.valor });
+          }
+        } else if (a.tipo === "Quota Extraordinária") {
+          const m = a.descricao.match(/— (.*) \((\d{4}-\d{2}-\d{2}) a (\d{4}-\d{2}-\d{2}), ([\d.,]+)€\/mês\)\.?\s*(.*)$/);
+          if (m) {
+            dividasQuotasExtras.push({
+              id: idPeriodo,
+              id_obra: a.id_obra,
+              descricao: m[1],
+              data_inicio_pagamentos: m[2],
+              data_fim_pagamentos: m[3],
+              valor_mensal: parseFloat(m[4].replace(",", ".")),
+              valor_total: a.valor
+            });
+            if (m[5]) observacoesReconstruidas = m[5];
+          } else {
+            dividasQuotasExtras.push({ id: idPeriodo, id_obra: a.id_obra, descricao: a.descricao, data_inicio_pagamentos: a.data, data_fim_pagamentos: a.data, valor_mensal: a.valor, valor_total: a.valor });
+          }
+        }
+      });
+
+      const temDivida = dividasQuotasOrdinarias.length > 0 || dividasQuotasExtras.length > 0;
+      const valorSaldo = dividasQuotasOrdinarias.reduce((s, p) => s + p.valor_quota_mensal * p.meses_em_divida, 0)
+        + dividasQuotasExtras.reduce((s, e) => s + e.valor_total, 0);
+
       return {
         id_fracao: f.id_fracao,
         fracao_nome: f.fracao_nome,
         proprietario_nome: f.proprietario.nome,
-        tipo_saldo: "REGULARIZADO",
-        valor_saldo: 0,
+        tipo_saldo: temDivida ? "DIVIDA" : "REGULARIZADO",
+        valor_saldo: Math.round(valorSaldo * 100) / 100,
         meses_atraso: 0,
-        observacoes: "",
-        dividasQuotasOrdinarias: [],
-        dividasQuotasExtras: []
+        observacoes: observacoesReconstruidas,
+        dividasQuotasOrdinarias,
+        dividasQuotasExtras
       };
     });
-  });
+  };
+
+  const [saldosFracoes, setSaldosFracoes] = useState<SaldoInicialFracao[]>(() => reconstruirSaldosFracoes(predioFracoes, avisos));
 
   // Obras Extraordinárias reais já adjudicadas — para ligar uma dívida de
   // quota extra a uma obra concreta em vez de um valor solto sem contexto.
