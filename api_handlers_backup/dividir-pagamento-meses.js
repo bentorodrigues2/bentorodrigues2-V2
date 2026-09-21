@@ -69,8 +69,15 @@ export default async function handler(req, res) {
       supabase.from("contas").select("iban, is_principal").eq("id_predio", fracao.id_predio)
     ]);
 
+    // "NA" é o valor usado em toda a app para um condómino que recusou
+    // fornecer o email — não é um endereço válido para tentar enviar.
+    const emailValidoDivisao = (valor) => {
+      const v = (valor || "").trim();
+      return v && v.toUpperCase() !== "NA" && /\S+@\S+\.\S+/.test(v) ? v : null;
+    };
+
     const proprietarioNome = fracao.proprietario?.nome || pagamento.entidade || "Condómino(a)";
-    const proprietarioEmail = fracao.proprietario?.email || null;
+    const proprietarioEmail = emailValidoDivisao(fracao.proprietario?.email);
     const proprietarioNif = fracao.proprietario?.nif || "";
     const fracaoNome = fracao.fracao_nome || pagamento.fracao || "Fração";
 

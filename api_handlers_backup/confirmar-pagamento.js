@@ -101,13 +101,20 @@ export default async function handler(req, res) {
     }
 
     // 2) Buscar proprietário e fração separadamente (sem depender de relações
-    // embutidas do PostgREST, que exigem FKs registadas na cache do schema)
+    // embutidas do PostgREST, que exigem FKs registadas na cache do schema).
+    // A tabela "proprietarios" tem registos com formatos de id inconsistentes
+    // (ex: "prop-<nif>" vs "<nif>" cru) e nem sempre existe uma linha ligada
+    // a este pagamento (id_proprietario pode ficar null nalguns fluxos) — por
+    // isso o JSON fracoes.proprietario, que é a cópia que a app efetivamente
+    // mantém sempre atualizada (ver o mesmo raciocínio em
+    // server/lib/inboundProcessor.js/obterContexto), é a fonte principal do
+    // nome/email/NIF; a tabela "proprietarios" fica só como resguardo.
     const [{ data: proprietario }, { data: fracao }] = await Promise.all([
       pagamento.id_proprietario
         ? supabase.from("proprietarios").select("nome, email, nif").eq("id_proprietario", pagamento.id_proprietario).maybeSingle()
         : Promise.resolve({ data: null }),
       pagamento.id_fracao
-        ? supabase.from("fracoes").select("fracao_nome, id_predio, piso, permilagem").eq("id_fracao", pagamento.id_fracao).maybeSingle()
+        ? supabase.from("fracoes").select("fracao_nome, id_predio, piso, permilagem, proprietario").eq("id_fracao", pagamento.id_fracao).maybeSingle()
         : Promise.resolve({ data: null })
     ]);
 
@@ -119,8 +126,18 @@ export default async function handler(req, res) {
       ? await supabase.from("contas").select("iban, is_principal").eq("id_predio", fracao.id_predio)
       : { data: [] };
 
-    const nomeDestinatario = proprietario?.nome || pagamento.entidade || "Condómino(a)";
-    const emailDestinatario = proprietario?.email || null;
+    // "NA" é o valor usado em toda a app para um condómino que recusou
+    // fornecer o email (ver GestaoFracoes.tsx) — não é um endereço válido
+    // para tentar enviar, conta como "sem email" tal como null/vazio.
+    const emailValido = (valor) => {
+      const v = (valor || "").trim();
+      return v && v.toUpperCase() !== "NA" && /\S+@\S+\.\S+/.test(v) ? v : null;
+    };
+
+    const proprietarioFracao = fracao?.proprietario;
+    const nomeDestinatario = proprietarioFracao?.nome || proprietario?.nome || pagamento.entidade || "Condómino(a)";
+    const emailDestinatario = emailValido(proprietarioFracao?.email) || emailValido(proprietario?.email);
+    const nifDestinatario = proprietarioFracao?.nif || proprietario?.nif || "";
     const fracaoNome = fracao?.fracao_nome || pagamento.fracao || "Fração";
     const ano = new Date(pagamento.data_pagamento || pagamento.criado_em || Date.now()).getFullYear();
 
@@ -146,7 +163,7 @@ export default async function handler(req, res) {
       id_predio: fracao?.id_predio || "",
       id_fracao: pagamento.id_fracao || "",
       nome_condomino: nomeDestinatario,
-      nif_condomino: proprietario?.nif || "",
+      nif_condomino: nifDestinatario,
       fracao_nome: fracaoNome,
       permilagem: fracao?.permilagem || 0,
       data_emissao: new Date().toISOString().split("T")[0],
