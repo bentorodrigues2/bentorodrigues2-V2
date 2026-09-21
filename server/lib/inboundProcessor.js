@@ -981,7 +981,26 @@ export async function processInboundEmail(payload) {
 
   console.log(`[inboundProcessor] isRealResendWebhook=${isRealResendWebhook} | attachments (Resend)=${Array.isArray(attachments) ? attachments.length : "n/a"} | anexos (Gmail)=${anexosGmail.length}`);
 
-  if ((isRealResendWebhook && Array.isArray(attachments) && attachments.length > 0) || anexosGmail.length > 0) {
+  const temAnexoDetetado = (isRealResendWebhook && Array.isArray(attachments) && attachments.length > 0) || anexosGmail.length > 0;
+  if (!temAnexoDetetado) {
+    // Nenhum anexo foi sequer detetado no email (nem no payload do Gmail,
+    // nem no webhook do Resend) — sem isto, um email que devia trazer um
+    // comprovativo/fatura mas cujo anexo não chegou a ser reconhecido (ex:
+    // encaminhado de forma a que o PDF ficasse embutido como
+    // "mensagem reencaminhada" em vez de anexo direto) desaparecia por
+    // completo, sem nenhum rasto de que sequer se tentou.
+    try {
+      await supabase.from("ai_auditoria").insert({
+        origem: "email_inbound_sem_anexo_detetado",
+        entidade: cleanFrom,
+        referencia: subject,
+        id_predio: contexto?.id_predio || null
+      });
+    } catch (errAud) {
+      console.warn("[inboundProcessor] Aviso ao gravar rasto de email sem anexo:", errAud?.message || errAud);
+    }
+  }
+  if (temAnexoDetetado) {
     let anexosComConteudo = [];
     if (anexosGmail.length > 0) {
       // Já vêm com o base64 embutido — só decodificar e calcular o hash,
