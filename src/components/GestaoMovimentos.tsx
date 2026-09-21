@@ -374,7 +374,40 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
   const handleJustificationFileChange = (e: React.ChangeEvent<HTMLInputElement>, movId: string) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
+
+    const aplicarAnexo = (dataUrl: string) => {
+      let movimentoAtualizado: Movimento | null = null;
+      setMovements(prev => prev.map(m => {
+        if (m.id_mov === movId) {
+          movimentoAtualizado = {
+            ...m,
+            estado: "Justificado",
+            fotos: [...(m.fotos || []), dataUrl],
+            is_movimento_cego: false
+          };
+          return movimentoAtualizado;
+        }
+        return m;
+      }));
+      if (movimentoAtualizado) {
+        saveMovimentoToSupabase(movimentoAtualizado).catch(console.error);
+        registarLogAuditoria("Financeira", "Justificou um movimento cego com comprovativo", predio.id_predio, loggedUser, movimentoAtualizado.descricao);
+      }
+      setJustifyingMovId(null);
+      alert("Fatura/Comprovativo anexado com sucesso! O Movimento Cego foi devidamente justificado.");
+    };
+
+    // PDF vai direto para base64, sem passar pelo canvas de compressão de
+    // imagem (que só sabe processar formatos que o <img> consegue abrir).
+    const ehPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if (ehPdf) {
+      const reader = new FileReader();
+      reader.onload = (event) => aplicarAnexo(event.target?.result as string);
+      reader.readAsDataURL(file);
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -396,27 +429,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
         ctx?.drawImage(img, 0, 0, width, height);
 
         const webpDataUrl = canvas.toDataURL("image/webp", 0.8);
-        
-        // Update the movement with the justification photo and change state to Justificado
-        let movimentoAtualizado: Movimento | null = null;
-        setMovements(prev => prev.map(m => {
-          if (m.id_mov === movId) {
-            movimentoAtualizado = {
-              ...m,
-              estado: "Justificado",
-              fotos: [...(m.fotos || []), webpDataUrl],
-              is_movimento_cego: false
-            };
-            return movimentoAtualizado;
-          }
-          return m;
-        }));
-        if (movimentoAtualizado) {
-          saveMovimentoToSupabase(movimentoAtualizado).catch(console.error);
-          registarLogAuditoria("Financeira", "Justificou um movimento cego com comprovativo", predio.id_predio, loggedUser, movimentoAtualizado.descricao);
-        }
-        setJustifyingMovId(null);
-        alert("Fatura/Comprovativo em WebP anexado com sucesso! O Movimento Cego foi devidamente justificado.");
+        aplicarAnexo(webpDataUrl);
       };
       img.src = event.target?.result as string;
     };
@@ -1123,7 +1136,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
             <i className="fa-solid fa-triangle-exclamation text-xl animate-bounce"></i>
             <div>
               <h4 className="font-bold text-sm">Atenção: Existem Movimentos Cegos sem Fatura Justificativa!</h4>
-              <p className="text-xs">Foi detetada saída ou débito na conta bancária sem o comprovativo/fatura correspondente anexado. Anexe os documentos em WebP para regularizar o saldo.</p>
+              <p className="text-xs">Foi detetada saída ou débito na conta bancária sem o comprovativo/fatura correspondente anexado. Anexe a fatura (imagem ou PDF) para regularizar o saldo.</p>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 pt-2 border-t border-amber-200">
@@ -1140,7 +1153,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                       <div className="flex items-center space-x-1.5">
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/*,.pdf,application/pdf"
                           onChange={(e) => handleJustificationFileChange(e, m.id_mov)}
                           className="hidden"
                           id={`input-justificar-${m.id_mov}`}
@@ -2018,8 +2031,12 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                           <span className="block text-slate-400 font-bold uppercase text-[9px] mb-1">Anexos</span>
                           <div className="flex space-x-1">
                             {m.fotos.map((f, i) => (
-                              <a key={i} href={f} target="_blank" rel="noopener noreferrer" className="h-7 w-7 rounded border border-slate-200 overflow-hidden shrink-0 block hover:scale-110 transition-transform">
-                                <img src={f} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                              <a key={i} href={f} target="_blank" rel="noopener noreferrer" className="h-7 w-7 rounded border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center hover:scale-110 transition-transform bg-white">
+                                {f.startsWith("data:application/pdf") ? (
+                                  <i className="fa-solid fa-file-pdf text-red-500"></i>
+                                ) : (
+                                  <img src={f} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                                )}
                               </a>
                             ))}
                           </div>
