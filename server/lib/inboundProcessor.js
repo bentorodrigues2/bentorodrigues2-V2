@@ -322,6 +322,37 @@ async function obterReciboMaisRecente(contexto) {
   }
 }
 
+// Mesma fórmula (permilagem × rate, com o coeficiente real das lojas com
+// acesso direto pelo exterior) já usada em vários pontos do frontend
+// (GestaoQuotasOrcamento.tsx) e em cronService.js — replicada aqui porque
+// não está exportada de lá. Devolve null se não houver orçamento anual
+// configurado ou a fração não existir.
+const COEF_LOJA_EXTERIOR = 0.4528;
+async function calcularQuotaMensalFracao(idPredio, idFracao) {
+  try {
+    const [{ data: predioRow }, { data: fracoesPredio }] = await Promise.all([
+      supabase.from("predios").select("patrimonio").eq("id_predio", idPredio).maybeSingle(),
+      supabase.from("fracoes").select("id_fracao, permilagem, tipologia, tipo_access").eq("id_predio", idPredio)
+    ]);
+    const orcamentoAnual = Number(predioRow?.patrimonio?.orcamento_anual || 0);
+    if (!orcamentoAnual || !fracoesPredio?.length) return null;
+    const fracaoAlvo = fracoesPredio.find((f) => f.id_fracao === idFracao);
+    if (!fracaoAlvo) return null;
+    const isLojaExterior = (f) => f.tipologia === "Loja Comercial" && (f.tipo_access || "").includes("Exterior");
+    const orcamentoMensal = orcamentoAnual / 12;
+    let permilagemLoja = 0;
+    fracoesPredio.forEach((f) => { if (isLojaExterior(f)) permilagemLoja += f.permilagem; });
+    const permilagemNormal = 1000 - permilagemLoja;
+    const denominador = permilagemNormal + permilagemLoja * COEF_LOJA_EXTERIOR;
+    const rateNormal = denominador > 0 ? orcamentoMensal / denominador : 0;
+    const rateLoja = rateNormal * COEF_LOJA_EXTERIOR;
+    const quota = fracaoAlvo.permilagem * (isLojaExterior(fracaoAlvo) ? rateLoja : rateNormal);
+    return Math.round(quota * 100) / 100;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Lançar comprovativo pendente diretamente em pagamentos e movimentos
  * Mantém conformidade com o frontend (GestaoMovimentos.tsx / GestaoPagamentos.tsx)
@@ -380,6 +411,25 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
     // categoria da IA é útil o suficiente para mostrar (ex: "Eletricidade").
     const categoriaMovimento = isFatura ? (dadosExtraidos?.categoria_contabilistica || "Fornecedores") : "Quotas";
 
+    // Deteção de pagamento de vários meses adiantados (ex: fração paga
+    // 10€/mês mas envia de uma vez um comprovativo de 120€, referente ao
+    // ano inteiro). Compara o valor recebido com a quota mensal real da
+    // fração — só um indício gravado na descrição do pagamento, nunca
+    // divide sozinho: a divisão em N recibos fica sempre sujeita a
+    // confirmação do administrador (ver dividir-pagamento-meses.js).
+    let mesesDetectados = null;
+    let quotaMensalDetectada = null;
+    if (!isFatura && valorExtraido && contexto?.id_fracao && contexto?.id_predio) {
+      quotaMensalDetectada = await calcularQuotaMensalFracao(contexto.id_predio, contexto.id_fracao);
+      if (quotaMensalDetectada && quotaMensalDetectada > 0) {
+        const razao = valorExtraido / quotaMensalDetectada;
+        const razaoArredondada = Math.round(razao);
+        if (razaoArredondada >= 2 && razaoArredondada <= 24 && Math.abs(razao - razaoArredondada) < 0.05) {
+          mesesDetectados = razaoArredondada;
+        }
+      }
+    }
+
     // 1. Inserir em pagamentos (estado: 'pendente') — só faz sentido para receitas de condómino
     // "referencia" é NOT NULL sem default na tabela real, e "origem" tem um
     // CHECK constraint que só aceita um conjunto fechado de valores (não
@@ -401,6 +451,7 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
           entidade: entidadeExtraida,
           comprovativo_url: comprovativoUrl || null,
           tipo: "quota_mensal",
+          descricao: mesesDetectados ? `MESES_DETECTADOS:${mesesDetectados}|QUOTA:${quotaMensalDetectada.toFixed(2)}` : null,
           criado_em: new Date().toISOString()
         })
         .select()
@@ -740,27 +791,30 @@ async function obterConteudoAnexo(emailId, attachmentId) {
 }
 
 /**
- * Verifica se algum destes hashes já foi processado antes (evita lançar
- * o mesmo comprovativo duas vezes se o Resend reentregar o webhook).
+ * Devolve o subconjunto destes hashes que já foi processado com sucesso
+ * antes (evita lançar o mesmo comprovativo duas vezes se o Resend
+ * reentregar o webhook, ou se o mesmo anexo aparecer em dois emails).
  * Só conta como "já processado" um hash cuja tentativa anterior teve
  * mesmo sucesso a extrair dados (raw_json preenchido) — sem isto, a
  * primeira tentativa falhada ("FALHA NA LEITURA AUTOMÁTICA", raw_json
  * null) bloqueava para sempre qualquer reenvio seguinte do mesmo
  * ficheiro, mesmo que o condómino reenviasse de propósito à espera de
  * uma nova tentativa — o documento nunca mais era sequer tentado.
+ * Verificado por hash individual (não "algum destes") para que, num email
+ * com vários anexos, um duplicado não bloqueie os restantes que sejam
+ * mesmo novos.
  */
-async function algumHashJaProcessado(hashes) {
-  if (!hashes.length) return false;
+async function hashesJaProcessados(hashes) {
+  if (!hashes.length) return new Set();
   try {
     const { data } = await supabase
       .from("ai_auditoria")
       .select("file_hash")
       .in("file_hash", hashes)
-      .not("raw_json", "is", null)
-      .limit(1);
-    return Boolean(data && data.length > 0);
+      .not("raw_json", "is", null);
+    return new Set((data || []).map((d) => d.file_hash));
   } catch {
-    return false;
+    return new Set();
   }
 }
 
@@ -1024,146 +1078,176 @@ export async function processInboundEmail(payload) {
     console.log(`[inboundProcessor] Anexos com conteúdo obtido com sucesso: ${anexosComConteudo.length}`);
 
     if (anexosComConteudo.length > 0) {
-      const hashes = anexosComConteudo.map((a) => a.hash);
-      comprovativoIgnoradoDuplicado = await algumHashJaProcessado(hashes);
+      const hashesDupes = await hashesJaProcessados(anexosComConteudo.map((a) => a.hash));
+      // Um email pode trazer vários anexos, cada um já processado ou não
+      // independentemente uns dos outros — um duplicado não pode bloquear
+      // os restantes que sejam mesmo novos.
+      const anexosNovos = anexosComConteudo.filter((a) => !hashesDupes.has(a.hash));
+      comprovativoIgnoradoDuplicado = anexosNovos.length === 0;
 
-      if (!comprovativoIgnoradoDuplicado) {
+      if (anexosNovos.length > 0) {
+        let documentosExtraidos = [];
         try {
-          dadosExtraidos = await extrairDadosDocumento(
-            anexosComConteudo.map((a) => ({ mimeType: a.mimeType, base64: a.base64 }))
+          documentosExtraidos = await extrairDadosDocumento(
+            anexosNovos.map((a) => ({ mimeType: a.mimeType, base64: a.base64 }))
           );
-          console.log("[inboundProcessor] Dados extraídos do anexo:", JSON.stringify(dadosExtraidos));
+          console.log(`[inboundProcessor] ${documentosExtraidos.length} documento(s) extraído(s) dos anexos:`, JSON.stringify(documentosExtraidos));
         } catch (err) {
           console.warn("[inboundProcessor] Aviso na extração multimodal:", err?.message || err);
         }
-
-        // O comprovativo pertence a quem PAGOU, não necessariamente a quem
-        // enviou o email — um condómino pode reencaminhar o comprovativo de
-        // outra fração a partir da sua própria conta (ex: administrador
-        // interno a reencaminhar comprovativos que outros lhe enviaram).
-        // Por isso o IBAN do ordenante (extraído por IA do próprio
-        // documento) tem sempre prioridade sobre o contexto do remetente
-        // quando disponível, mesmo que o remetente já corresponda a um
-        // condómino registado — só cai para o contexto do remetente quando
-        // o IBAN não corresponde a nenhum proprietário/coproprietário
-        // conhecido.
-        let contextoIdentificadoPorDocumento = false;
-
-        if (dadosExtraidos?.ordenante_iban) {
-          const contextoPorIban = await obterContextoPorIban(dadosExtraidos.ordenante_iban);
-          if (contextoPorIban && contextoPorIban.id_fracao !== contexto?.id_fracao) {
-            console.log(`[inboundProcessor] Fração identificada pelo IBAN do ordenante (${contextoPorIban.fracao}), diferente da fração do remetente do email (${contexto?.fracao || "nenhuma"}).`);
-            contexto = contextoPorIban;
-            contextoIdentificadoPorDocumento = true;
-          } else if (contextoPorIban) {
-            contexto = contextoPorIban;
-            contextoIdentificadoPorDocumento = true;
-          } else if (!contexto?.id_fracao) {
-            console.log("[inboundProcessor] IBAN do ordenante não corresponde a nenhum condómino registado; a tentar por referência/nome.");
-          }
+        if (!Array.isArray(documentosExtraidos) || documentosExtraidos.length === 0) {
+          // Falha total da IA a ler — regista pelo menos uma tentativa por
+          // anexo novo, para nunca perder silenciosamente um documento que
+          // chegou realmente (ver isComprovativo em registarComprovativoPendente).
+          documentosExtraidos = anexosNovos.map(() => null);
         }
 
-        // Referência individual BR23E escrita no descritivo da transferência
-        // — segunda prioridade, usada quando o IBAN não vem no documento ou
-        // não corresponde a nenhum proprietário conhecido.
-        if (!contextoIdentificadoPorDocumento && dadosExtraidos?.descritivo_transferencia) {
-          const contextoPorRef = await obterContextoPorReferencia(dadosExtraidos.descritivo_transferencia);
-          if (contextoPorRef) {
-            if (contextoPorRef.id_fracao !== contexto?.id_fracao) {
-              console.log(`[inboundProcessor] Fração identificada pela referência BR23E no descritivo da transferência (${contextoPorRef.fracao}), diferente da fração do remetente do email (${contexto?.fracao || "nenhuma"}).`);
+        // Corresponde cada documento extraído ao anexo físico respetivo —
+        // normalmente 1:1, mas se o Gemini agrupar de forma diferente do
+        // número de anexos enviados (ex: juntou páginas de forma
+        // inesperada), associa tudo ao primeiro anexo novo como resguardo,
+        // em vez de rebentar por um índice inexistente.
+        const pares = documentosExtraidos.length === anexosNovos.length
+          ? documentosExtraidos.map((d, i) => ({ dados: d, anexo: anexosNovos[i] }))
+          : documentosExtraidos.map((d) => ({ dados: d, anexo: anexosNovos[0] }));
+
+        const registosDesteEmail = [];
+
+        for (const { dados: dadosExtraidosDoc, anexo } of pares) {
+          dadosExtraidos = dadosExtraidosDoc; // última iteração fica disponível para o resumo final da função
+
+          // O comprovativo pertence a quem PAGOU, não necessariamente a quem
+          // enviou o email — um condómino pode reencaminhar o comprovativo de
+          // outra fração a partir da sua própria conta (ex: administrador
+          // interno a reencaminhar comprovativos que outros lhe enviaram).
+          // Por isso o IBAN do ordenante (extraído por IA do próprio
+          // documento) tem sempre prioridade sobre o contexto do remetente
+          // quando disponível. Usa-se um contexto LOCAL a este documento
+          // (nunca o `contexto` global, usado para a resposta ao
+          // remetente) — num email com vários comprovativos de frações
+          // diferentes, cada um tem de resolver a sua própria fração sem
+          // contaminar os restantes.
+          let contextoDocumento = contexto;
+          let contextoIdentificadoPorDocumento = false;
+
+          if (dadosExtraidosDoc?.ordenante_iban) {
+            const contextoPorIban = await obterContextoPorIban(dadosExtraidosDoc.ordenante_iban);
+            if (contextoPorIban) {
+              if (contextoPorIban.id_fracao !== contexto?.id_fracao) {
+                console.log(`[inboundProcessor] Fração identificada pelo IBAN do ordenante (${contextoPorIban.fracao}), diferente da fração do remetente do email (${contexto?.fracao || "nenhuma"}).`);
+              }
+              contextoDocumento = contextoPorIban;
+              contextoIdentificadoPorDocumento = true;
+            } else if (!contexto?.id_fracao) {
+              console.log("[inboundProcessor] IBAN do ordenante não corresponde a nenhum condómino registado; a tentar por referência/nome.");
             }
-            contexto = contextoPorRef;
-            contextoIdentificadoPorDocumento = true;
           }
-        }
 
-        // Nome do titular/ordenante — última prioridade, só quando nem o
-        // IBAN nem a referência permitiram identificar a fração.
-        if (!contextoIdentificadoPorDocumento && dadosExtraidos?.ordenante_nome) {
-          const contextoPorNome = await obterContextoPorNome(dadosExtraidos.ordenante_nome);
-          if (contextoPorNome) {
-            if (contextoPorNome.id_fracao !== contexto?.id_fracao) {
-              console.log(`[inboundProcessor] Fração identificada pelo nome do titular/ordenante (${contextoPorNome.fracao}), diferente da fração do remetente do email (${contexto?.fracao || "nenhuma"}).`);
+          // Referência individual BR23E escrita no descritivo da transferência
+          // — segunda prioridade, usada quando o IBAN não vem no documento ou
+          // não corresponde a nenhum proprietário conhecido.
+          if (!contextoIdentificadoPorDocumento && dadosExtraidosDoc?.descritivo_transferencia) {
+            const contextoPorRef = await obterContextoPorReferencia(dadosExtraidosDoc.descritivo_transferencia);
+            if (contextoPorRef) {
+              if (contextoPorRef.id_fracao !== contexto?.id_fracao) {
+                console.log(`[inboundProcessor] Fração identificada pela referência BR23E no descritivo da transferência (${contextoPorRef.fracao}), diferente da fração do remetente do email (${contexto?.fracao || "nenhuma"}).`);
+              }
+              contextoDocumento = contextoPorRef;
+              contextoIdentificadoPorDocumento = true;
             }
-            contexto = contextoPorNome;
           }
-        }
 
-        const principal = anexosComConteudo[0];
-        comprovativoUrl = principal.filename;
+          // Nome do titular/ordenante — última prioridade, só quando nem o
+          // IBAN nem a referência permitiram identificar a fração.
+          if (!contextoIdentificadoPorDocumento && dadosExtraidosDoc?.ordenante_nome) {
+            const contextoPorNome = await obterContextoPorNome(dadosExtraidosDoc.ordenante_nome);
+            if (contextoPorNome) {
+              if (contextoPorNome.id_fracao !== contexto?.id_fracao) {
+                console.log(`[inboundProcessor] Fração identificada pelo nome do titular/ordenante (${contextoPorNome.fracao}), diferente da fração do remetente do email (${contexto?.fracao || "nenhuma"}).`);
+              }
+              contextoDocumento = contextoPorNome;
+            }
+          }
 
-        const tipoDocLower = (dadosExtraidos?.tipo_documento || "").toLowerCase();
-        const isFaturaDoc = tipoDocLower === "fatura";
-        const isComprovativoDoc = tipoDocLower === "comprovativo";
-        const mesDocumento = String(new Date(dadosExtraidos?.data_documento || Date.now()).getMonth() + 1).padStart(2, "0");
+          let comprovativoUrlDoc = anexo.filename;
 
-        // Para faturas, cruza já aqui com o fornecedor real (por IBAN → nº
-        // ADC/referência de contrato → nome) — usado tanto para nomear a
-        // pasta de arquivo como para lançar a dívida a pagar mais abaixo,
-        // em vez de correr o mesmo cruzamento duas vezes.
-        let fornecedorCruzado = null;
-        if (isFaturaDoc && contexto?.id_predio) {
-          const { data: fornecedoresPredio } = await supabase
-            .from("fornecedores")
-            .select("id_fornecedor, nome, iban, referencias_contrato")
-            .eq("id_predio", contexto.id_predio);
-          if (fornecedoresPredio) {
-            fornecedorCruzado = cruzarMovimentoComFornecedor(fornecedoresPredio, {
-              iban_credor: dadosExtraidos.iban_credor,
-              numero_adc: dadosExtraidos.numero_adc,
-              referencia_credor: dadosExtraidos.referencia_credor,
-              entidade_credora: dadosExtraidos.entidade_credora,
-              entidade: dadosExtraidos.entidade
+          const tipoDocLower = (dadosExtraidosDoc?.tipo_documento || "").toLowerCase();
+          const isFaturaDoc = tipoDocLower === "fatura";
+          const isComprovativoDoc = tipoDocLower === "comprovativo";
+          const mesDocumento = String(new Date(dadosExtraidosDoc?.data_documento || Date.now()).getMonth() + 1).padStart(2, "0");
+
+          // Para faturas, cruza já aqui com o fornecedor real (por IBAN → nº
+          // ADC/referência de contrato → nome) — usado tanto para nomear a
+          // pasta de arquivo como para lançar a dívida a pagar mais abaixo,
+          // em vez de correr o mesmo cruzamento duas vezes.
+          let fornecedorCruzado = null;
+          if (isFaturaDoc && contextoDocumento?.id_predio) {
+            const { data: fornecedoresPredio } = await supabase
+              .from("fornecedores")
+              .select("id_fornecedor, nome, iban, referencias_contrato")
+              .eq("id_predio", contextoDocumento.id_predio);
+            if (fornecedoresPredio) {
+              fornecedorCruzado = cruzarMovimentoComFornecedor(fornecedoresPredio, {
+                iban_credor: dadosExtraidosDoc.iban_credor,
+                numero_adc: dadosExtraidosDoc.numero_adc,
+                referencia_credor: dadosExtraidosDoc.referencia_credor,
+                entidade_credora: dadosExtraidosDoc.entidade_credora,
+                entidade: dadosExtraidosDoc.entidade
+              });
+            }
+          }
+
+          // Arquiva o ficheiro original no Arquivo Digital — cada tipo de
+          // documento na pasta que realmente faz sentido para o encontrar
+          // depois: Comprovativos de Transferências por ano/mês, Faturas de
+          // Fornecedores pelo nome do fornecedor (não pela fração, que não se
+          // aplica a uma fatura), Recibos/Extratos como antes.
+          const TIPOS_ARQUIVAVEIS = { fatura: "Fatura de Fornecedor", comprovativo: "Comprovativo de Pagamento", recibo: "Recibo", extrato: "Extrato Bancário" };
+          if (TIPOS_ARQUIVAVEIS[tipoDocLower]) {
+            try {
+              const caminhoArquivo = await arquivarAnexoOriginal({
+                buffer: anexo.buffer,
+                filename: anexo.filename,
+                mimeType: anexo.mimeType,
+                ano: new Date().getFullYear(),
+                mes: isComprovativoDoc ? mesDocumento : undefined,
+                tema: isComprovativoDoc ? "Comprovativos de Transferências" : isFaturaDoc ? "Faturas de Fornecedores" : "Faturas & Recibos",
+                tipo: TIPOS_ARQUIVAVEIS[tipoDocLower],
+                predio: contextoDocumento?.id_predio || null,
+                fracao: isFaturaDoc ? null : (contextoDocumento?.fracao || null),
+                fornecedor: isFaturaDoc ? (fornecedorCruzado?.fornecedor?.nome || dadosExtraidosDoc?.entidade || "Não Identificado") : undefined,
+                fluxo: `${tipoDocLower}_email_inbound`
+              });
+              comprovativoUrlDoc = caminhoArquivo;
+            } catch (errArquivo) {
+              console.warn("[inboundProcessor] Aviso ao arquivar documento:", errArquivo?.message || errArquivo);
+            }
+          }
+          comprovativoUrl = comprovativoUrlDoc;
+
+          if (isFaturaDoc) {
+            await registarFaturaFornecedor({
+              dadosExtraidos: dadosExtraidosDoc,
+              comprovativoUrl: comprovativoUrlDoc,
+              idPredio: contextoDocumento?.id_predio,
+              fornecedorJaCruzado: fornecedorCruzado
             });
           }
-        }
 
-        // Arquiva o ficheiro original no Arquivo Digital — cada tipo de
-        // documento na pasta que realmente faz sentido para o encontrar
-        // depois: Comprovativos de Transferências por ano/mês, Faturas de
-        // Fornecedores pelo nome do fornecedor (não pela fração, que não se
-        // aplica a uma fatura), Recibos/Extratos como antes.
-        const TIPOS_ARQUIVAVEIS = { fatura: "Fatura de Fornecedor", comprovativo: "Comprovativo de Pagamento", recibo: "Recibo", extrato: "Extrato Bancário" };
-        if (TIPOS_ARQUIVAVEIS[tipoDocLower]) {
-          try {
-            const caminhoArquivo = await arquivarAnexoOriginal({
-              buffer: principal.buffer,
-              filename: principal.filename,
-              mimeType: principal.mimeType,
-              ano: new Date().getFullYear(),
-              mes: isComprovativoDoc ? mesDocumento : undefined,
-              tema: isComprovativoDoc ? "Comprovativos de Transferências" : isFaturaDoc ? "Faturas de Fornecedores" : "Faturas & Recibos",
-              tipo: TIPOS_ARQUIVAVEIS[tipoDocLower],
-              predio: contexto?.id_predio || null,
-              fracao: isFaturaDoc ? null : (contexto?.fracao || null),
-              fornecedor: isFaturaDoc ? (fornecedorCruzado?.fornecedor?.nome || dadosExtraidos?.entidade || "Não Identificado") : undefined,
-              fluxo: `${tipoDocLower}_email_inbound`
-            });
-            comprovativoUrl = caminhoArquivo;
-          } catch (errArquivo) {
-            console.warn("[inboundProcessor] Aviso ao arquivar documento:", errArquivo?.message || errArquivo);
-          }
-        }
-
-        if (isFaturaDoc) {
-          await registarFaturaFornecedor({
-            dadosExtraidos,
-            comprovativoUrl,
-            idPredio: contexto?.id_predio,
-            fornecedorJaCruzado: fornecedorCruzado
+          const registo = await registarComprovativoPendente({
+            categoria,
+            dadosExtraidos: dadosExtraidosDoc,
+            contexto: contextoDocumento,
+            comprovativoUrl: comprovativoUrlDoc,
+            remetenteEmail: cleanFrom,
+            fileHash: anexo.hash
           });
+          registosDesteEmail.push(registo);
         }
 
-        comprovativoRegisto = await registarComprovativoPendente({
-          categoria,
-          dadosExtraidos,
-          contexto,
-          comprovativoUrl,
-          remetenteEmail: cleanFrom,
-          fileHash: principal.hash
-        });
+        comprovativoRegisto = registosDesteEmail.find((r) => r?.pagamento) || registosDesteEmail[0] || null;
       } else {
-        console.log("[inboundProcessor] Anexo já processado anteriormente (hash duplicado) — a ignorar novo lançamento.");
+        console.log("[inboundProcessor] Todos os anexos já tinham sido processados anteriormente (hash duplicado) — a ignorar novo lançamento.");
       }
     }
   }

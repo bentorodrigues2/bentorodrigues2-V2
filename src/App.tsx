@@ -208,7 +208,23 @@ export default function App() {
       }
     };
     document.addEventListener("visibilitychange", aoVoltarAoSeparador);
-    return () => document.removeEventListener("visibilitychange", aoVoltarAoSeparador);
+
+    // E também sozinha em intervalos regulares, com o separador aberto — sem
+    // isto, qualquer ecrã da app (não só o Dashboard de KPIs) só mostrava
+    // dados novos (emails reconhecidos, pagamentos, avisos, etc.) depois de
+    // um F5 ou sair/entrar manual, o que não é prático num painel pensado
+    // para ficar aberto no ecrã. 60s chega para se sentir "ao vivo" sem
+    // sobrecarregar o Supabase com pedidos constantes.
+    const intervaloAtualizacao = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        carregarDadosReais();
+      }
+    }, 60000);
+
+    return () => {
+      document.removeEventListener("visibilitychange", aoVoltarAoSeparador);
+      clearInterval(intervaloAtualizacao);
+    };
   }, [browserIsLoggedOut, carregarDadosReais]);
 
   const [capacidades, setCapacidades] = useState<CapacidadeLimite[]>([

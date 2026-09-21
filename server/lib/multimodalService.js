@@ -4,8 +4,15 @@ import { sanitizarSegmentoStorage, sanitizarNomeFicheiro } from "./storageUtils.
 
 const PROMPT_EXTRACAO = `
 Analisa o(s) documento(s) anexo(s) (comprovativos, faturas, recibos, extratos,
-avisos de débito direto).
-Extrai:
+avisos de débito direto). Os anexos podem conter MAIS DE UM DOCUMENTO
+FINANCEIRO DISTINTO (ex: dois comprovativos de pagamentos diferentes, ou uma
+fatura e um comprovativo separados) — trata cada documento financeiro
+distinto como um item à parte. Um documento de várias páginas (ex: um PDF
+com 2 páginas do MESMO comprovativo) continua a ser um único item. Ignora
+anexos que não sejam documentos financeiros (ex: logótipos, assinaturas,
+imagens decorativas).
+
+Para CADA documento financeiro distinto encontrado, extrai:
 - entidade (quem emitiu)
 - valor_total (número, sem símbolo de moeda)
 - data_documento (YYYY-MM-DD)
@@ -19,18 +26,21 @@ Extrai:
 - iban_credor (IBAN da entidade credora, remove espaços — só em avisos de débito direto; null se não aplicável)
 - referencia_credor (o campo "Referência do credor" tal como aparece; null se não aplicável)
 - numero_adc (o campo "Número da ADC" — identifica o contrato/cliente específico deste débito direto, é o dado mais fiável para saber a que fornecedor/contrato pertence, já que o IBAN do credor costuma ser partilhado por todos os clientes dessa entidade; null se não aplicável)
-Responde em JSON estrito, sem texto à volta, com um ÚNICO OBJETO (nunca um
-array) — mesmo que haja mais do que um documento anexo, usa os dados do
-documento principal/mais relevante (o comprovativo/fatura em si, não um
-anexo secundário como um logótipo ou assinatura).
+
+Responde em JSON estrito, sem texto à volta, com um ARRAY na base — um
+objeto por documento financeiro distinto encontrado (mesmo que só haja um,
+devolve ainda assim um array com um único elemento).
 `.trim();
 
 /**
  * Chama o Gemini multimodal sobre os anexos (cada um com base64 + mimeType)
- * e devolve os dados estruturados extraídos.
+ * e devolve um array com os dados estruturados de cada documento financeiro
+ * distinto encontrado (normalmente um por anexo, mas pode ser menos se o
+ * Gemini agrupar páginas do mesmo documento, ou mais se um único anexo
+ * tiver várias faturas digitalizadas juntas).
  */
 export async function extrairDadosDocumento(anexos) {
-  if (!Array.isArray(anexos) || anexos.length === 0) return null;
+  if (!Array.isArray(anexos) || anexos.length === 0) return [];
 
   const parts = [
     { text: PROMPT_EXTRACAO },
@@ -46,20 +56,15 @@ export async function extrairDadosDocumento(anexos) {
 
   try {
     const parsed = typeof content === "string" ? JSON.parse(content) : content;
-    // Apesar do prompt pedir sempre um único objeto, o Gemini por vezes
-    // devolve na mesma um array com um único elemento (ex: quando interpreta
-    // "documento(s)" como implicando sempre uma lista) — todo o resto do
-    // código lê os campos diretamente em dadosExtraidos.valor_total,
-    // .entidade, etc., o que numa array resulta sempre em undefined, sem
-    // nenhum erro visível: o comprovativo era "reconhecido" mas todos os
-    // valores ficavam silenciosamente vazios/a zero. Desembrulha sempre.
-    if (Array.isArray(parsed)) {
-      return parsed[0] || null;
-    }
-    return parsed;
+    // Apesar do prompt pedir sempre um array, o Gemini por vezes devolve um
+    // único objeto na mesma (sobretudo quando só há mesmo um documento) —
+    // todo o código chamador itera sobre um array, por isso embrulha-se
+    // sempre um objeto solto, e filtram-se entradas vazias/inválidas.
+    const lista = Array.isArray(parsed) ? parsed : [parsed];
+    return lista.filter((item) => item && typeof item === "object");
   } catch (e) {
     console.warn("[multimodalService] Resposta do Gemini não é JSON válido:", content);
-    return null;
+    return [];
   }
 }
 

@@ -1614,6 +1614,33 @@ export async function deleteDividaFornecedorFromSupabase(idDivida: string): Prom
   return dbDelete("dividas_fornecedores", [["id_divida", "eq", idDivida]]);
 }
 
+// A tabela "pagamentos" (condóminos, não fornecedores) não tem id_predio
+// próprio — só id_fracao — por isso filtra-se pela lista de frações do
+// prédio ativo. Usado só para ler a marca "MESES_DETECTADOS:N|QUOTA:X" que
+// o inboundProcessor.js grava no campo "descricao" quando um comprovativo
+// parece cobrir vários meses adiantados (ver registarComprovativoPendente).
+export interface PagamentoPendenteInfo {
+  id: string;
+  id_fracao: string;
+  descricao: string | null;
+}
+
+export async function fetchPagamentosPendentesInfoFromSupabase(idFracoes: string[]): Promise<PagamentoPendenteInfo[]> {
+  if (!isSupabaseConfigured() || idFracoes.length === 0) return [];
+  try {
+    const data = await dbSelect("pagamentos", {
+      filtros: [["estado", "eq", "pendente"], ["id_fracao", "in", idFracoes]]
+    });
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      id_fracao: row.id_fracao,
+      descricao: row.descricao || null
+    }));
+  } catch (err) {
+    return [];
+  }
+}
+
 // ============================================================================
 // PAGAMENTOS EM TRANCHE DE DÍVIDAS A FORNECEDORES
 // ============================================================================

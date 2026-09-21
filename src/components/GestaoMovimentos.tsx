@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso, Fornecedor } from "../types";
 import { formatDatePT, parseValorMonetario } from "../utils";
-import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria, fetchMovimentosFromSupabase } from "../lib/supabaseService";
+import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria, fetchMovimentosFromSupabase, fetchPagamentosPendentesInfoFromSupabase } from "../lib/supabaseService";
 import { cruzarMovimentoComFornecedor } from "../lib/fornecedorMatching";
 import { Save, CheckCircle2 } from "lucide-react";
 import { MoneyInput } from "./MoneyInput";
@@ -142,6 +142,55 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   };
 
   const [confirmandoPagamentoMovId, setConfirmandoPagamentoMovId] = useState<string | null>(null);
+
+  // Deteção de pagamento de vários meses adiantados (ex: fração paga
+  // 10€/mês mas envia de uma vez um comprovativo de 120€) — o backend
+  // (inboundProcessor.js) já grava o indício no campo "descricao" da
+  // tabela pagamentos; aqui só se lê e mostra, a divisão em si fica
+  // sempre sujeita a esta confirmação explícita do administrador.
+  const [pagamentosInfo, setPagamentosInfo] = useState<Record<string, { mesesDetectados: number; quotaMensal: number }>>({});
+  useEffect(() => {
+    const idsFracoesPredio = fracoes.filter(f => f.id_predio === predio.id_predio).map(f => f.id_fracao);
+    if (idsFracoesPredio.length === 0) { setPagamentosInfo({}); return; }
+    fetchPagamentosPendentesInfoFromSupabase(idsFracoesPredio).then(lista => {
+      const mapa: Record<string, { mesesDetectados: number; quotaMensal: number }> = {};
+      lista.forEach(p => {
+        const m = p.descricao?.match(/^MESES_DETECTADOS:(\d+)\|QUOTA:([\d.]+)$/);
+        if (m) mapa[p.id] = { mesesDetectados: parseInt(m[1], 10), quotaMensal: parseFloat(m[2]) };
+      });
+      setPagamentosInfo(mapa);
+    });
+  }, [predio.id_predio, fracoes, movements]);
+
+  const [dividindoMesesMovId, setDividindoMesesMovId] = useState<string | null>(null);
+  const [mesInicioDivisao, setMesInicioDivisao] = useState<string>(() => new Date().toISOString().slice(0, 7));
+  const [aDividirMeses, setADividirMeses] = useState(false);
+
+  const confirmarDivisaoEmMeses = async (idPagamento: string, numMeses: number) => {
+    setADividirMeses(true);
+    try {
+      const resp = await fetch("/api/pagamento?acao=dividir-pagamento-meses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_pagamento: idPagamento, num_meses: numMeses, mes_inicio: mesInicioDivisao })
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        alert(`Erro ao dividir o pagamento: ${data?.error || "erro desconhecido"}`);
+        return;
+      }
+      const novos = await fetchMovimentosFromSupabase(predio.id_predio);
+      if (novos) setMovements(novos);
+      setDividindoMesesMovId(null);
+      alert(data.email_enviado
+        ? `✅ Pagamento dividido em ${numMeses} meses! O recibo único (com uma rubrica por mês) foi gerado e enviado por email ao condómino.`
+        : `✅ Pagamento dividido em ${numMeses} meses e recibo gerado. (O condómino não tem email registado — o recibo está disponível no Arquivo Digital.)`);
+    } catch (err: any) {
+      alert(`Erro ao dividir o pagamento: ${err?.message || "erro desconhecido"}`);
+    } finally {
+      setADividirMeses(false);
+    }
+  };
 
   const confirmarPagamentoEEnviarRecibo = async (mov: Movimento) => {
     const match = mov.descricao?.match(/\[pagamento:([^\]]+)\]/);
@@ -864,38 +913,84 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 pt-2 border-t border-teal-200">
-            {cegosPendentesPagamento.map(m => (
-              <div key={m.id_mov} className="flex justify-between items-center text-xs bg-white p-2.5 rounded-lg border border-teal-300">
-                <div className="space-y-0.5">
-                  <p className="font-semibold text-slate-800 line-clamp-1">{m.descricao.replace(/\s*\[pagamento:[^\]]+\]/, "")}</p>
-                  <p className="text-[10px] text-slate-500 font-mono-custom">Valor: <span className="font-bold text-teal-700">{m.valor.toFixed(2)}€</span></p>
+            {cegosPendentesPagamento.map(m => {
+              const idPagamento = m.descricao?.match(/\[pagamento:([^\]]+)\]/)?.[1];
+              const infoMeses = idPagamento ? pagamentosInfo[idPagamento] : undefined;
+              const aDividirEste = dividindoMesesMovId === m.id_mov;
+              return (
+              <div key={m.id_mov} className="flex flex-col gap-2 text-xs bg-white p-2.5 rounded-lg border border-teal-300">
+                <div className="flex justify-between items-center">
+                  <div className="space-y-0.5">
+                    <p className="font-semibold text-slate-800 line-clamp-1">{m.descricao.replace(/\s*\[pagamento:[^\]]+\]/, "")}</p>
+                    <p className="text-[10px] text-slate-500 font-mono-custom">Valor: <span className="font-bold text-teal-700">{m.valor.toFixed(2)}€</span></p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => abrirDetalheMov(m)}
+                      title="Ver detalhe / Corrigir valor"
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-600 p-1.5 rounded text-[10px] font-bold transition-colors cursor-pointer"
+                    >
+                      <i className="fa-solid fa-eye"></i>
+                    </button>
+                    <button
+                      onClick={() => handleEliminarMov(m.id_mov)}
+                      title="Eliminar"
+                      className="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded text-[10px] font-bold transition-colors cursor-pointer"
+                    >
+                      <i className="fa-solid fa-trash-can"></i>
+                    </button>
+                    <button
+                      onClick={() => confirmarPagamentoEEnviarRecibo(m)}
+                      disabled={confirmandoPagamentoMovId === m.id_mov}
+                      className="bg-teal-600 hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-2.5 py-1 rounded text-[10px] font-bold flex items-center space-x-1 transition-colors cursor-pointer"
+                    >
+                      <i className={`fa-solid ${confirmandoPagamentoMovId === m.id_mov ? "fa-spinner fa-spin" : "fa-check"} mr-1`}></i>
+                      <span>{confirmandoPagamentoMovId === m.id_mov ? "A confirmar..." : "Confirmar e Enviar Recibo"}</span>
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    onClick={() => abrirDetalheMov(m)}
-                    title="Ver detalhe / Corrigir valor"
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-600 p-1.5 rounded text-[10px] font-bold transition-colors cursor-pointer"
-                  >
-                    <i className="fa-solid fa-eye"></i>
-                  </button>
-                  <button
-                    onClick={() => handleEliminarMov(m.id_mov)}
-                    title="Eliminar"
-                    className="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded text-[10px] font-bold transition-colors cursor-pointer"
-                  >
-                    <i className="fa-solid fa-trash-can"></i>
-                  </button>
-                  <button
-                    onClick={() => confirmarPagamentoEEnviarRecibo(m)}
-                    disabled={confirmandoPagamentoMovId === m.id_mov}
-                    className="bg-teal-600 hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-2.5 py-1 rounded text-[10px] font-bold flex items-center space-x-1 transition-colors cursor-pointer"
-                  >
-                    <i className={`fa-solid ${confirmandoPagamentoMovId === m.id_mov ? "fa-spinner fa-spin" : "fa-check"} mr-1`}></i>
-                    <span>{confirmandoPagamentoMovId === m.id_mov ? "A confirmar..." : "Confirmar e Enviar Recibo"}</span>
-                  </button>
-                </div>
+
+                {infoMeses && idPagamento && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 space-y-1.5">
+                    <p className="text-[10px] text-amber-800">
+                      💡 Este valor equivale a <strong>{infoMeses.mesesDetectados} meses</strong> da quota desta fração ({infoMeses.quotaMensal.toFixed(2)}€/mês).
+                    </p>
+                    {aDividirEste ? (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <label className="text-[10px] text-amber-700 font-semibold">Mês inicial:</label>
+                        <input
+                          type="month"
+                          value={mesInicioDivisao}
+                          onChange={(e) => setMesInicioDivisao(e.target.value)}
+                          className="border border-amber-300 rounded px-1.5 py-0.5 text-[10px]"
+                        />
+                        <button
+                          onClick={() => confirmarDivisaoEmMeses(idPagamento, infoMeses.mesesDetectados)}
+                          disabled={aDividirMeses}
+                          className="bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                        >
+                          {aDividirMeses ? "A dividir…" : `Confirmar ${infoMeses.mesesDetectados} recibos`}
+                        </button>
+                        <button
+                          onClick={() => setDividindoMesesMovId(null)}
+                          className="text-amber-600 hover:text-amber-800 text-[10px] underline cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setDividindoMesesMovId(m.id_mov)}
+                        className="bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                      >
+                        Dividir em {infoMeses.mesesDetectados} recibos mensais
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
