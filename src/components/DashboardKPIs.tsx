@@ -291,7 +291,7 @@ export function DashboardKPIs({
           <h2 className="text-xl font-bold text-slate-800 dark:text-white">Indicadores de Desempenho & KPIs do Condomínio</h2>
           <p className="text-xs text-slate-400">Análise financeira, jurídica e de operações do Edifício {predio.nome || "Exemplo"}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center space-x-2 font-mono-custom text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3.5 py-1.5 w-fit">
             <Clock size={13} className="text-slate-400" />
             <span>Data de Referência: <strong>{anchorDate.toLocaleDateString("pt-PT")}</strong></span>
