@@ -715,6 +715,12 @@ async function obterConteudoAnexo(emailId, attachmentId) {
 /**
  * Verifica se algum destes hashes já foi processado antes (evita lançar
  * o mesmo comprovativo duas vezes se o Resend reentregar o webhook).
+ * Só conta como "já processado" um hash cuja tentativa anterior teve
+ * mesmo sucesso a extrair dados (raw_json preenchido) — sem isto, a
+ * primeira tentativa falhada ("FALHA NA LEITURA AUTOMÁTICA", raw_json
+ * null) bloqueava para sempre qualquer reenvio seguinte do mesmo
+ * ficheiro, mesmo que o condómino reenviasse de propósito à espera de
+ * uma nova tentativa — o documento nunca mais era sequer tentado.
  */
 async function algumHashJaProcessado(hashes) {
   if (!hashes.length) return false;
@@ -723,6 +729,7 @@ async function algumHashJaProcessado(hashes) {
       .from("ai_auditoria")
       .select("file_hash")
       .in("file_hash", hashes)
+      .not("raw_json", "is", null)
       .limit(1);
     return Boolean(data && data.length > 0);
   } catch {
