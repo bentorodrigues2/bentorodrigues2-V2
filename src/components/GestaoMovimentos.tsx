@@ -1195,6 +1195,8 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       {detalheMovId && (() => {
         const mov = predioMovements.find(m => m.id_mov === detalheMovId);
         if (!mov) return null;
+        const idPagamentoDetalhe = mov.descricao?.match(/\[pagamento:([^\]]+)\]/)?.[1];
+        const infoMesesDetalhe = idPagamentoDetalhe ? pagamentosInfo[idPagamentoDetalhe] : undefined;
         return (
           <div
             onClick={(e) => { if (e.target === e.currentTarget) setDetalheMovId(null); }}
@@ -1218,6 +1220,13 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                   <p><strong className="text-slate-600">Estado:</strong> {mov.estado}</p>
                   {mov.id_fracao && <p><strong className="text-slate-600">Fração:</strong> {fracoes.find(f => f.id_fracao === mov.id_fracao)?.fracao_nome || mov.id_fracao}</p>}
                 </div>
+
+                {infoMesesDetalhe && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-[11px] text-amber-800">
+                    💡 Este valor equivale a <strong>{infoMesesDetalhe.mesesDetectados} meses</strong> da quota desta fração ({infoMesesDetalhe.quotaMensal.toFixed(2)}€/mês) — provavelmente: <strong>{nomesDosMesesCobertos(infoMesesDetalhe.mesInicioSugerido, infoMesesDetalhe.mesesDetectados)}</strong>.
+                    <br />Para dividir em {infoMesesDetalhe.mesesDetectados} recibos mensais, feche este detalhe e use o botão "Dividir em {infoMesesDetalhe.mesesDetectados} recibos mensais" no cartão deste pagamento em "Pagamentos por Confirmar".
+                  </div>
+                )}
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-700 block">Descrição</label>

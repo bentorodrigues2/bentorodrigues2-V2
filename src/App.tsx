@@ -3159,11 +3159,13 @@ export default function App() {
           )}
 
           {["minutas_oficiais", "simulador_emails", "pasta_provisoria"].includes(activeSection) && (
-            <CentralDocumentosMinutas 
+            <CentralDocumentosMinutas
               predio={predioAtivo}
               fracoes={fracoes}
               loggedUser={loggedUser}
               contas={contas}
+              documentos={documentos}
+              setDocumentos={setDocumentos}
               activeTab={activeSection === "simulador_emails" ? "simulador_emails" : "minutas_oficiais"}
               onSelectTab={(tab) => setActiveSection(tab)}
               onOpenArranque={() => setActiveSection("configuracao_arranque")}

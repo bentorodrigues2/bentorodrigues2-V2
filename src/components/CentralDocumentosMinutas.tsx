@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { jsPDF } from "jspdf";
-import { Predio, Fracao, LoggedUser, Conta } from "../types";
+import { Predio, Fracao, LoggedUser, Conta, Documento } from "../types";
+import { uploadDocumentoToStorage, saveDocumentoToSupabase } from "../lib/supabaseService";
 import { 
   formatDatePT, 
   addPdfHeaderWithLogo, 
@@ -52,7 +53,14 @@ interface CentralDocumentosMinutasProps {
   onOpenArranque?: () => void;
   activeTab?: TabMode;
   onSelectTab?: (tab: TabMode) => void;
+  documentos?: Documento[];
+  setDocumentos?: React.Dispatch<React.SetStateAction<Documento[]>>;
 }
+
+// Nº de ata a partir do qual se dá continuidade ao histórico anterior (a
+// gestão anterior já tinha emitido atas até este número) — a primeira ata
+// emitida nesta plataforma fica com este valor.
+const NUMERO_ATA_INICIAL = 29;
 
 type TabMode = "minutas_oficiais" | "simulador_emails";
 
@@ -63,7 +71,9 @@ export function CentralDocumentosMinutas({
   contas = [],
   onOpenArranque,
   activeTab: activeTabProp,
-  onSelectTab
+  onSelectTab,
+  documentos = [],
+  setDocumentos
 }: CentralDocumentosMinutasProps) {
   const [internalTab, setInternalTab] = useState<TabMode>("minutas_oficiais");
   const activeTab = activeTabProp || internalTab;
@@ -302,7 +312,7 @@ export function CentralDocumentosMinutas({
   };
 
   // --- DESCARREGAR ANEXO DO E-MAIL SIMULADO ---
-  const handleDescarregarAnexoEmail = (emailId: string) => {
+  const handleDescarregarAnexoEmail = async (emailId: string) => {
     try {
       if (emailId === "boas_vindas_condomino") {
         generateCondominoPwaManualPDF(
@@ -401,13 +411,66 @@ export function CentralDocumentosMinutas({
         );
         triggerSendReaction("email", "Notificação Formal de Dívida (PDF com Título Executivo) descarregada com sucesso!");
       } else if (emailId === "envio_ata_aprovada") {
-        gerarAtaAprovadaOficialPDF(
-          "30",
-          "15/09/2026",
+        // Numeração real e persistida: conta quantas atas já foram geradas e
+        // arquivadas para este prédio (categoria "Ata Aprovada" no Arquivo
+        // Digital) e continua a partir de NUMERO_ATA_INICIAL — antes o
+        // número "42"/"30" estava sempre fixo no código, nunca avançava.
+        const atasJaArquivadas = documentos.filter(d => d.id_predio === predio.id_predio && d.categoria === "Ata Aprovada").length;
+        const numeroAtaReal = String(NUMERO_ATA_INICIAL + atasJaArquivadas + 1);
+        const dataHojePT = new Date().toLocaleDateString("pt-PT");
+
+        const doc = gerarAtaAprovadaOficialPDF(
+          numeroAtaReal,
+          dataHojePT,
           predio.nome || "Condomínio Edifício Estrela da Barra",
-          predio.nif || "900 123 456"
+          predio.nif || "900 123 456",
+          true // devolverDoc — trata-se aqui o descarregar/arquivar em vez da função descarregar sozinha
         );
-        triggerSendReaction("email", "Ata N.º 30 Aprovada da Assembleia (PDF Oficial) descarregada com sucesso!");
+
+        if (doc && typeof doc !== "boolean") {
+          const pdfBlob = doc.output("blob");
+          const nomeFicheiro = `ata_n${numeroAtaReal}_${predio.id_predio}.pdf`;
+
+          // Descarrega já para o utilizador ver, independentemente de o
+          // arquivo (Supabase) ter sucesso ou não.
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(pdfBlob);
+          link.download = nomeFicheiro;
+          link.click();
+          URL.revokeObjectURL(link.href);
+
+          // Arquiva no Arquivo Digital — é esta gravação que faz o próximo
+          // número avançar sozinho, tal como as notas de cobrança já fazem.
+          try {
+            const ficheiro = new File([pdfBlob], nomeFicheiro, { type: "application/pdf" });
+            const caminhoStorage = `${predio.id_predio}/atas/${nomeFicheiro}`;
+            const urlArquivado = await uploadDocumentoToStorage(ficheiro, caminhoStorage);
+            if (urlArquivado) {
+              const novoDoc: Documento = {
+                id_doc: `doc-ata-${Date.now()}`,
+                id_predio: predio.id_predio,
+                nome: `Ata N.º ${numeroAtaReal} Aprovada`,
+                tipo: "PDF",
+                data_upload: new Date().toISOString().split("T")[0],
+                tamanho: `${Math.round(pdfBlob.size / 1024)} KB`,
+                categoria: "Ata Aprovada",
+                tema: "Atas de Assembleia",
+                ano: String(new Date().getFullYear()),
+                visibilidade: "Público",
+                autor: loggedUser?.nome || "Administração do Condomínio",
+                caminho: caminhoStorage
+              };
+              const okArquivo = await saveDocumentoToSupabase(novoDoc);
+              if (okArquivo && setDocumentos) {
+                setDocumentos(prev => [novoDoc, ...prev]);
+              }
+            }
+          } catch (errArquivo) {
+            console.warn("[CentralDocumentosMinutas] Aviso ao arquivar a ata:", errArquivo);
+          }
+        }
+
+        triggerSendReaction("email", `Ata N.º ${numeroAtaReal} Aprovada da Assembleia (PDF Oficial) descarregada e arquivada com sucesso!`);
       } else if (emailId === "sinistro_comunicacao") {
         gerarParticipacaoSinistroPDF(
           "SIN-2026-014",
