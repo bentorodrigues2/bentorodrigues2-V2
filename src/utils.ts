@@ -172,6 +172,92 @@ export function downloadBlob(blob: Blob, fileName: string) {
   }
 }
 
+// Exporta uma tabela genérica (data/descrição/valor/etc.) para PDF, com
+// cabeçalho, colunas alinhadas e paginação automática — usado pelo Extrato
+// Consolidado (relatório filtrado) e reutilizável para qualquer outra
+// listagem tabular. Sem depender de jspdf-autotable (não instalado);
+// desenha as colunas à mão, ao mesmo estilo dos restantes PDFs desta app.
+export function exportarTabelaParaPDF(
+  titulo: string,
+  subtitulo: string,
+  colunas: { label: string; largura: number; alinhamento?: "left" | "right" }[],
+  linhas: string[][],
+  fileName: string,
+  buildingName?: string
+) {
+  try {
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    let y = addPdfHeaderWithLogo(doc, buildingName);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(15, 23, 42);
+    doc.text(titulo, 14, y);
+    y += 5;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(subtitulo, 14, y);
+    y += 6;
+
+    const margemEsquerda = 14;
+    const alturaLinha = 6;
+
+    const desenharCabecalho = () => {
+      doc.setFillColor(15, 23, 42);
+      doc.rect(margemEsquerda, y, colunas.reduce((s, c) => s + c.largura, 0), alturaLinha, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.5);
+      doc.setTextColor(255, 255, 255);
+      let x = margemEsquerda;
+      colunas.forEach(c => {
+        doc.text(c.label, c.alinhamento === "right" ? x + c.largura - 2 : x + 2, y + 4, { align: c.alinhamento === "right" ? "right" : "left" });
+        x += c.largura;
+      });
+      y += alturaLinha;
+    };
+
+    desenharCabecalho();
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    linhas.forEach((linha, idx) => {
+      if (y > 195) {
+        doc.addPage();
+        y = 16;
+        desenharCabecalho();
+      }
+      if (idx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margemEsquerda, y, colunas.reduce((s, c) => s + c.largura, 0), alturaLinha, "F");
+      }
+      doc.setTextColor(30, 41, 59);
+      let x = margemEsquerda;
+      linha.forEach((valor, i) => {
+        const largura = colunas[i]?.largura || 20;
+        const alinhado = colunas[i]?.alinhamento === "right";
+        const texto = doc.splitTextToSize(String(valor ?? ""), largura - 4)[0] || "";
+        doc.text(texto, alinhado ? x + largura - 2 : x + 2, y + 4, { align: alinhado ? "right" : "left" });
+        x += largura;
+      });
+      y += alturaLinha;
+    });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text(`Gerado por CondoManager AI em ${new Date().toLocaleString("pt-PT")} — ${linhas.length} registo(s)`, margemEsquerda, 204);
+
+    const blob = doc.output("blob");
+    downloadBlob(blob, fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`);
+    return true;
+  } catch (err) {
+    console.error("Erro ao exportar tabela para PDF:", err);
+    if (typeof alert !== "undefined") alert("Ocorreu um erro ao gerar o PDF do relatório.");
+    return false;
+  }
+}
+
 export function exportToXLS(filename: string, headers: string[], rows: string[][]) {
   let csvContent = "\uFEFF"; // BOM for Portuguese characters
   csvContent += headers.join(";") + "\n";

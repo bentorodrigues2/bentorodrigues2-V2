@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso, Fornecedor } from "../types";
-import { formatDatePT, parseValorMonetario } from "../utils";
+import { formatDatePT, parseValorMonetario, exportToXLS, exportarTabelaParaPDF } from "../utils";
 import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria, fetchMovimentosFromSupabase, fetchPagamentosPendentesInfoFromSupabase, dbInsert } from "../lib/supabaseService";
 import { cruzarMovimentoComFornecedor } from "../lib/fornecedorMatching";
 import { matchBankTransactions } from "../utils/bankStatementParser";
@@ -118,6 +118,93 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
   const predioContas = contas.filter(c => c.id_predio === predio.id_predio);
   const predioMovements = movements.filter(m => m.id_predio === predio.id_predio);
+
+  // Extrato Consolidado — filtros tipo Excel (só mostram valores realmente
+  // presentes nos dados), tabela em acordeão (linha resumida, expande para
+  // o detalhe) e exportação PDF/Excel do que estiver filtrado.
+  const [filtroExtratoBusca, setFiltroExtratoBusca] = useState("");
+  const [filtroExtratoTipo, setFiltroExtratoTipo] = useState<"TODOS" | "Receita" | "Despesa">("TODOS");
+  const [filtroExtratoCategoria, setFiltroExtratoCategoria] = useState("TODAS");
+  const [filtroExtratoFracao, setFiltroExtratoFracao] = useState("TODAS");
+  const [filtroExtratoFornecedor, setFiltroExtratoFornecedor] = useState("TODOS");
+  const [filtroExtratoConta, setFiltroExtratoConta] = useState("TODAS");
+  const [filtroExtratoEstado, setFiltroExtratoEstado] = useState<"TODOS" | "Justificado" | "Por Justificar">("TODOS");
+  const [filtroExtratoDataDe, setFiltroExtratoDataDe] = useState("");
+  const [filtroExtratoDataAte, setFiltroExtratoDataAte] = useState("");
+  const [linhaExtratoExpandida, setLinhaExtratoExpandida] = useState<string | null>(null);
+
+  const categoriasExtratoDisponiveis = Array.from(new Set(predioMovements.map(m => formatarCategoriaMovimento(m.categoria)))).sort();
+  const fracoesExtratoDisponiveis = fracoes.filter(f => f.id_predio === predio.id_predio && predioMovements.some(m => m.id_fracao === f.id_fracao));
+  const fornecedoresExtratoDisponiveis = fornecedores.filter(f => f.id_predio === predio.id_predio && predioMovements.some(m => m.id_fornecedor === f.id_fornecedor));
+
+  const extratoConsolidadoFiltrado = predioMovements.filter(m => {
+    if (filtroExtratoBusca && !m.descricao.toLowerCase().includes(filtroExtratoBusca.toLowerCase())) return false;
+    if (filtroExtratoTipo !== "TODOS" && m.tipo !== filtroExtratoTipo) return false;
+    if (filtroExtratoCategoria !== "TODAS" && formatarCategoriaMovimento(m.categoria) !== filtroExtratoCategoria) return false;
+    if (filtroExtratoFracao !== "TODAS" && m.id_fracao !== filtroExtratoFracao) return false;
+    if (filtroExtratoFornecedor !== "TODOS" && m.id_fornecedor !== filtroExtratoFornecedor) return false;
+    if (filtroExtratoConta !== "TODAS" && m.id_conta !== filtroExtratoConta) return false;
+    if (filtroExtratoEstado !== "TODOS") {
+      const isCegoLinha = m.is_movimento_cego || m.estado === "Movimento Cego / Por Justificar";
+      if (filtroExtratoEstado === "Justificado" && isCegoLinha) return false;
+      if (filtroExtratoEstado === "Por Justificar" && !isCegoLinha) return false;
+    }
+    if (filtroExtratoDataDe && m.data < filtroExtratoDataDe) return false;
+    if (filtroExtratoDataAte && m.data > filtroExtratoDataAte) return false;
+    return true;
+  }).sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0));
+
+  const limparFiltrosExtrato = () => {
+    setFiltroExtratoBusca(""); setFiltroExtratoTipo("TODOS"); setFiltroExtratoCategoria("TODAS");
+    setFiltroExtratoFracao("TODAS"); setFiltroExtratoFornecedor("TODOS"); setFiltroExtratoConta("TODAS");
+    setFiltroExtratoEstado("TODOS"); setFiltroExtratoDataDe(""); setFiltroExtratoDataAte("");
+  };
+
+  const exportarExtratoParaExcel = () => {
+    const headers = ["Data", "Banco", "Tipo", "Descrição", "Categoria", "Fração", "Fornecedor", "Estado", "Valor (€)"];
+    const rows = extratoConsolidadoFiltrado.map(m => {
+      const cta = contas.find(c => c.id_conta === m.id_conta);
+      const frac = fracoes.find(f => f.id_fracao === m.id_fracao);
+      const forn = fornecedores.find(f => f.id_fornecedor === m.id_fornecedor);
+      const isCegoLinha = m.is_movimento_cego || m.estado === "Movimento Cego / Por Justificar";
+      return [
+        formatDatePT(m.data), cta?.banco || "", m.tipo, m.descricao,
+        formatarCategoriaMovimento(m.categoria), frac?.fracao_nome || "", forn?.nome || "",
+        isCegoLinha ? "Por Justificar" : "Justificado",
+        `${m.tipo === "Receita" ? "+" : "-"}${m.valor.toFixed(2)}`
+      ];
+    });
+    exportToXLS(`extrato_${(predio.nome || "condominio").trim().replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}`, headers, rows);
+  };
+
+  const exportarExtratoParaPDFDoc = () => {
+    const colunas = [
+      { label: "Data", largura: 22 },
+      { label: "Tipo", largura: 18 },
+      { label: "Descrição", largura: 95 },
+      { label: "Categoria", largura: 32 },
+      { label: "Fração", largura: 18 },
+      { label: "Estado", largura: 28 },
+      { label: "Valor", largura: 26, alinhamento: "right" as const }
+    ];
+    const linhas = extratoConsolidadoFiltrado.map(m => {
+      const frac = fracoes.find(f => f.id_fracao === m.id_fracao);
+      const isCegoLinha = m.is_movimento_cego || m.estado === "Movimento Cego / Por Justificar";
+      return [
+        formatDatePT(m.data), m.tipo, m.descricao, formatarCategoriaMovimento(m.categoria),
+        frac?.fracao_nome || "—", isCegoLinha ? "Por Justificar" : "Justificado",
+        `${m.tipo === "Receita" ? "+" : "-"}${m.valor.toFixed(2)}€`
+      ];
+    });
+    exportarTabelaParaPDF(
+      "Extrato Consolidado do Condomínio",
+      `${predio.nome || "Condomínio"} — ${extratoConsolidadoFiltrado.length} movimento(s) filtrado(s) de ${predioMovements.length} total`,
+      colunas,
+      linhas,
+      `extrato_${(predio.nome || "condominio").trim().replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}`,
+      predio.nome || undefined
+    );
+  };
 
   // Process uploaded files and silently convert to WebP
   const handleMultipleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1778,88 +1865,158 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
         </div>
       </div>
 
-      {/* Extrato Histórico de Lançamentos */}
+      {/* Extrato Consolidado — filtros tipo Excel, linhas em acordeão e
+          exportação PDF/Excel do que estiver filtrado */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-bold text-slate-800">Extrato Consolidado do Condomínio</h3>
-          <span className="text-xs bg-slate-100 text-slate-600 font-semibold px-2.5 py-1 rounded">Total de Transações: {predioMovements.length}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs bg-slate-100 text-slate-600 font-semibold px-2.5 py-1 rounded">
+              {extratoConsolidadoFiltrado.length} de {predioMovements.length} transaç{predioMovements.length === 1 ? "ão" : "ões"}
+            </span>
+            <button
+              type="button"
+              onClick={exportarExtratoParaExcel}
+              disabled={extratoConsolidadoFiltrado.length === 0}
+              className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+              title="Exportar Excel (.xls) com os filtros aplicados"
+            >
+              <i className="fa-solid fa-file-excel"></i> Excel
+            </button>
+            <button
+              type="button"
+              onClick={exportarExtratoParaPDFDoc}
+              disabled={extratoConsolidadoFiltrado.length === 0}
+              className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+              title="Exportar PDF com os filtros aplicados"
+            >
+              <i className="fa-solid fa-file-pdf"></i> PDF
+            </button>
+          </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-                <th className="p-3">Data</th>
-                <th className="p-3">Banco Afetado</th>
-                <th className="p-3">Tipo</th>
-                <th className="p-3">Descrição do Lançamento</th>
-                <th className="p-3">Categoria</th>
-                <th className="p-3">Documentos/Estado</th>
-                <th className="p-3 text-right">Valor</th>
-                <th className="p-3 text-center">Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {predioMovements.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="p-4 text-center text-slate-400 font-medium">
-                    Nenhum movimento lançado para este condomínio.
-                  </td>
-                </tr>
-              ) : (
-                predioMovements.map(m => {
-                  const cta = contas.find(c => c.id_conta === m.id_conta);
-                  const isCego = m.is_movimento_cego || m.estado === "Movimento Cego / Por Justificar";
-                  return (
-                    <tr key={m.id_mov} className={`border-b border-slate-100 hover:bg-slate-50/50 ${isCego ? "bg-amber-50/30" : ""}`}>
-                      <td className="p-3 font-mono-custom whitespace-nowrap">{formatDatePT(m.data)}</td>
-                      <td className="p-3 font-semibold text-slate-600">{cta?.banco} ({cta?.tipo.split(" ")[0]})</td>
-                      <td className="p-3">
-                        <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${m.tipo === 'Receita' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
-                          {m.tipo}
-                        </span>
-                      </td>
-                      <td className="p-3 text-slate-700 font-medium">
-                        <div>
-                          <span>{m.descricao}</span>
-                          {isCego && (
-                            <span className="text-[9px] bg-red-100 text-red-800 border border-red-200 px-1.5 py-0.5 rounded font-bold ml-2">
-                              {m.tipo === "Receita" ? "Por Confirmar" : "Falta Fatura!"}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-3 text-slate-500 font-semibold">{formatarCategoriaMovimento(m.categoria)}</td>
-                      <td className="p-3">
-                        <div className="flex items-center space-x-1.5">
-                          {isCego ? (
-                            <div className="flex items-center space-x-1.5 text-amber-600 font-bold text-[10px]">
-                              <i className="fa-solid fa-triangle-exclamation"></i>
-                              <span>Por Justificar</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center space-x-1 text-emerald-600 font-bold text-[10px]">
-                              <i className="fa-solid fa-circle-check"></i>
-                              <span>Justificado</span>
-                            </div>
-                          )}
+        {/* Barra de filtros dinâmicos, tipo Excel — só mostram valores que
+            existem mesmo nos dados deste prédio */}
+        <div className="px-6 py-3 bg-slate-50/70 border-b border-slate-100 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-2">
+          <input
+            type="text"
+            value={filtroExtratoBusca}
+            onChange={e => setFiltroExtratoBusca(e.target.value)}
+            placeholder="Pesquisar descrição..."
+            className="col-span-2 lg:col-span-2 border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] focus:outline-emerald-500"
+          />
+          <select value={filtroExtratoTipo} onChange={e => setFiltroExtratoTipo(e.target.value as any)} className="border border-slate-200 rounded-lg px-1.5 py-1.5 text-[11px] focus:outline-emerald-500">
+            <option value="TODOS">Tipo: Todos</option>
+            <option value="Receita">Receita</option>
+            <option value="Despesa">Despesa</option>
+          </select>
+          <select value={filtroExtratoCategoria} onChange={e => setFiltroExtratoCategoria(e.target.value)} className="border border-slate-200 rounded-lg px-1.5 py-1.5 text-[11px] focus:outline-emerald-500">
+            <option value="TODAS">Categoria: Todas</option>
+            {categoriasExtratoDisponiveis.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select value={filtroExtratoFracao} onChange={e => setFiltroExtratoFracao(e.target.value)} className="border border-slate-200 rounded-lg px-1.5 py-1.5 text-[11px] focus:outline-emerald-500">
+            <option value="TODAS">Fração: Todas</option>
+            {fracoesExtratoDisponiveis.map(f => <option key={f.id_fracao} value={f.id_fracao}>{f.fracao_nome}</option>)}
+          </select>
+          <select value={filtroExtratoFornecedor} onChange={e => setFiltroExtratoFornecedor(e.target.value)} className="border border-slate-200 rounded-lg px-1.5 py-1.5 text-[11px] focus:outline-emerald-500">
+            <option value="TODOS">Fornecedor: Todos</option>
+            {fornecedoresExtratoDisponiveis.map(f => <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}</option>)}
+          </select>
+          <select value={filtroExtratoEstado} onChange={e => setFiltroExtratoEstado(e.target.value as any)} className="border border-slate-200 rounded-lg px-1.5 py-1.5 text-[11px] focus:outline-emerald-500">
+            <option value="TODOS">Estado: Todos</option>
+            <option value="Justificado">Justificado</option>
+            <option value="Por Justificar">Por Justificar</option>
+          </select>
+          <select value={filtroExtratoConta} onChange={e => setFiltroExtratoConta(e.target.value)} className="border border-slate-200 rounded-lg px-1.5 py-1.5 text-[11px] focus:outline-emerald-500">
+            <option value="TODAS">Conta: Todas</option>
+            {predioContas.map(c => <option key={c.id_conta} value={c.id_conta}>{c.banco}</option>)}
+          </select>
+          <div className="flex items-center gap-1">
+            <input type="date" value={filtroExtratoDataDe} onChange={e => setFiltroExtratoDataDe(e.target.value)} className="w-full border border-slate-200 rounded-lg px-1 py-1.5 text-[10px] focus:outline-emerald-500" title="Data de" />
+            <span className="text-slate-400 text-[10px]">–</span>
+            <input type="date" value={filtroExtratoDataAte} onChange={e => setFiltroExtratoDataAte(e.target.value)} className="w-full border border-slate-200 rounded-lg px-1 py-1.5 text-[10px] focus:outline-emerald-500" title="Data até" />
+          </div>
+          {(filtroExtratoBusca || filtroExtratoTipo !== "TODOS" || filtroExtratoCategoria !== "TODAS" || filtroExtratoFracao !== "TODAS" || filtroExtratoFornecedor !== "TODOS" || filtroExtratoConta !== "TODAS" || filtroExtratoEstado !== "TODOS" || filtroExtratoDataDe || filtroExtratoDataAte) && (
+            <button type="button" onClick={limparFiltrosExtrato} className="col-span-2 sm:col-span-1 text-[10px] text-slate-500 hover:text-red-600 underline cursor-pointer self-center">
+              Limpar filtros
+            </button>
+          )}
+        </div>
 
-                          {/* Render photos attached */}
-                          {m.fotos && m.fotos.length > 0 && (
-                            <div className="flex space-x-0.5 ml-2">
-                              {m.fotos.map((f, i) => (
-                                <a key={i} href={f} target="_blank" rel="noopener noreferrer" className="h-5 w-5 rounded border border-slate-200 overflow-hidden shrink-0 block hover:scale-110 transition-transform">
-                                  <img src={f} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-                                </a>
-                              ))}
-                            </div>
-                          )}
+        <div className="divide-y divide-slate-100">
+          {extratoConsolidadoFiltrado.length === 0 ? (
+            <div className="p-6 text-center text-slate-400 font-medium text-xs">
+              {predioMovements.length === 0 ? "Nenhum movimento lançado para este condomínio." : "Nenhum movimento corresponde aos filtros aplicados."}
+            </div>
+          ) : (
+            extratoConsolidadoFiltrado.map(m => {
+              const cta = contas.find(c => c.id_conta === m.id_conta);
+              const frac = fracoes.find(f => f.id_fracao === m.id_fracao);
+              const forn = fornecedores.find(f => f.id_fornecedor === m.id_fornecedor);
+              const isCego = m.is_movimento_cego || m.estado === "Movimento Cego / Por Justificar";
+              const expandida = linhaExtratoExpandida === m.id_mov;
+              return (
+                <div key={m.id_mov} className={isCego ? "bg-amber-50/30" : ""}>
+                  <button
+                    type="button"
+                    onClick={() => setLinhaExtratoExpandida(expandida ? null : m.id_mov)}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50/70 transition-colors cursor-pointer text-xs"
+                  >
+                    <i className={`fa-solid fa-chevron-right text-[9px] text-slate-400 transition-transform ${expandida ? "rotate-90" : ""}`}></i>
+                    <span className="font-mono-custom text-slate-500 whitespace-nowrap w-[72px] shrink-0">{formatDatePT(m.data)}</span>
+                    <span className={`px-2 py-0.5 rounded font-bold text-[10px] shrink-0 ${m.tipo === 'Receita' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
+                      {m.tipo}
+                    </span>
+                    <span className="flex-1 text-slate-700 font-medium truncate">{m.descricao}</span>
+                    {isCego && (
+                      <span className="text-[9px] bg-red-100 text-red-800 border border-red-200 px-1.5 py-0.5 rounded font-bold shrink-0">
+                        {m.tipo === "Receita" ? "Por Confirmar" : "Falta Fatura!"}
+                      </span>
+                    )}
+                    <span className={`font-bold font-mono-custom text-sm shrink-0 ${m.tipo === 'Receita' ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {m.tipo === 'Receita' ? '+' : '-'}{m.valor.toFixed(2)}€
+                    </span>
+                  </button>
+
+                  {expandida && (
+                    <div className="px-4 pb-3 pl-9 grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px] bg-slate-50/60">
+                      <div>
+                        <span className="block text-slate-400 font-bold uppercase text-[9px]">Banco</span>
+                        <span className="text-slate-700">{cta ? `${cta.banco} (${cta.tipo.split(" ")[0]})` : "—"}</span>
+                      </div>
+                      <div>
+                        <span className="block text-slate-400 font-bold uppercase text-[9px]">Categoria</span>
+                        <span className="text-slate-700">{formatarCategoriaMovimento(m.categoria)}</span>
+                      </div>
+                      <div>
+                        <span className="block text-slate-400 font-bold uppercase text-[9px]">Fração</span>
+                        <span className="text-slate-700">{frac?.fracao_nome || "—"}</span>
+                      </div>
+                      <div>
+                        <span className="block text-slate-400 font-bold uppercase text-[9px]">Fornecedor</span>
+                        <span className="text-slate-700">{forn?.nome || "—"}</span>
+                      </div>
+                      <div>
+                        <span className="block text-slate-400 font-bold uppercase text-[9px]">Estado</span>
+                        {isCego ? (
+                          <span className="text-amber-600 font-bold flex items-center gap-1"><i className="fa-solid fa-triangle-exclamation"></i> Por Justificar</span>
+                        ) : (
+                          <span className="text-emerald-600 font-bold flex items-center gap-1"><i className="fa-solid fa-circle-check"></i> Justificado</span>
+                        )}
+                      </div>
+                      {m.fotos && m.fotos.length > 0 && (
+                        <div>
+                          <span className="block text-slate-400 font-bold uppercase text-[9px] mb-1">Anexos</span>
+                          <div className="flex space-x-1">
+                            {m.fotos.map((f, i) => (
+                              <a key={i} href={f} target="_blank" rel="noopener noreferrer" className="h-7 w-7 rounded border border-slate-200 overflow-hidden shrink-0 block hover:scale-110 transition-transform">
+                                <img src={f} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                              </a>
+                            ))}
+                          </div>
                         </div>
-                      </td>
-                      <td className={`p-3 text-right font-bold font-mono-custom text-sm ${m.tipo === 'Receita' ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {m.tipo === 'Receita' ? '+' : '-'}{m.valor.toFixed(2)}€
-                      </td>
-                      <td className="p-3 text-center">
+                      )}
+                      <div className="col-span-2 sm:col-span-4 flex justify-end">
                         <button
                           type="button"
                           onClick={() => {
@@ -1867,18 +2024,17 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                               setMovements(prev => prev.filter(x => x.id_mov !== m.id_mov));
                             }
                           }}
-                          className="p-1 rounded text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
-                          title="Eliminar Movimento"
+                          className="flex items-center gap-1.5 text-red-600 hover:text-red-800 font-bold text-[10px] cursor-pointer"
                         >
-                          <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="h-4 w-4 object-contain" />
+                          <i className="fa-solid fa-trash-can"></i> Eliminar Movimento
                         </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
