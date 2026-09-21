@@ -374,7 +374,11 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
 
     // Faturas de fornecedor são despesa; comprovativos/recibos de condómino são receita
     const tipoMovimento = isFatura ? "Despesa" : "Receita";
-    const categoriaMovimento = dadosExtraidos?.categoria_contabilistica || (isFatura ? "Fornecedores" : "Quotas");
+    // Para comprovativos de condómino (não fatura), a "categoria_contabilistica"
+    // que a IA devolve é texto livre pouco fiável (ex: "condominio") — usa-se
+    // sempre "Quotas" diretamente. Só para faturas de fornecedor é que essa
+    // categoria da IA é útil o suficiente para mostrar (ex: "Eletricidade").
+    const categoriaMovimento = isFatura ? (dadosExtraidos?.categoria_contabilistica || "Fornecedores") : "Quotas";
 
     // 1. Inserir em pagamentos (estado: 'pendente') — só faz sentido para receitas de condómino
     // "referencia" é NOT NULL sem default na tabela real, e "origem" tem um

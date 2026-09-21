@@ -35,6 +35,17 @@ interface SimulatedEmail {
   imported: boolean;
 }
 
+// A IA que lê comprovativos por email devolve categorias em texto livre
+// (ex: "condominio") em vez de um rótulo pronto a mostrar — abrevia os
+// casos conhecidos para o extrato ficar legível sem alterar o valor
+// gravado na BD (usado também para filtros/relatórios).
+function formatarCategoriaMovimento(categoria?: string): string {
+  const normalizada = (categoria || "").trim().toLowerCase();
+  if (normalizada === "condominio" || normalizada === "condomínio") return "Quotas";
+  if (!categoria) return "—";
+  return categoria;
+}
+
 export function GestaoMovimentos({ predio, contas, movements, setMovements, fracoes = [], avisos = [], setAvisos, fornecedores = [], setFornecedores, loggedUser }: GestaoMovimentosProps) {
   // Lançamento Manual / Movimento Cego Form States
   const [contaId, setContaId] = useState("");
@@ -1325,11 +1336,13 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                         <div>
                           <span>{m.descricao}</span>
                           {isCego && (
-                            <span className="text-[9px] bg-red-100 text-red-800 border border-red-200 px-1.5 py-0.5 rounded font-bold ml-2">Falta Fatura!</span>
+                            <span className="text-[9px] bg-red-100 text-red-800 border border-red-200 px-1.5 py-0.5 rounded font-bold ml-2">
+                              {m.tipo === "Receita" ? "Por Confirmar" : "Falta Fatura!"}
+                            </span>
                           )}
                         </div>
                       </td>
-                      <td className="p-3 text-slate-500 font-semibold">{m.categoria}</td>
+                      <td className="p-3 text-slate-500 font-semibold">{formatarCategoriaMovimento(m.categoria)}</td>
                       <td className="p-3">
                         <div className="flex items-center space-x-1.5">
                           {isCego ? (
