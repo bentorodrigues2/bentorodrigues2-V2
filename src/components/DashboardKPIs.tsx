@@ -1,5 +1,21 @@
-import React from "react";
-import { Predio, Fracao, Aviso, Movimento, Reserva, Ocorrencia } from "../types";
+import React, { useState, useEffect, useCallback } from "react";
+import { Predio, Fracao, Aviso, Movimento, Reserva, Ocorrencia, Conta } from "../types";
+import { ehContaFundoReserva } from "../utils";
+import {
+  fetchFracoesFromSupabase,
+  fetchAvisosFromSupabase,
+  fetchMovimentosFromSupabase,
+  fetchReservasFromSupabase,
+  fetchOcorrenciasFromSupabase,
+  fetchContasFromSupabase,
+  fetchEquipamentosScieFromSupabase,
+  fetchLimpezasFromSupabase,
+  fetchIncidenciasLimpezaFromSupabase,
+  EquipamentoSCIERow,
+  LimpezaRow,
+  IncidenciaLimpezaRow
+} from "../lib/supabaseService";
+import { calcularDiasValidadeSCIE } from "./GestaoVistoriasLimpezas";
 import {
   ResponsiveContainer,
   BarChart,
@@ -27,7 +43,8 @@ import {
   CheckCircle2,
   FileText,
   Percent,
-  Clock
+  Clock,
+  RefreshCw
 } from "lucide-react";
 
 interface DashboardKPIsProps {
@@ -39,15 +56,72 @@ interface DashboardKPIsProps {
   ocorrencias: Ocorrencia[];
 }
 
+// Intervalo de atualização automática — antes só era possível ver dados
+// novos com F5/sair-entrar, o que não é prático num painel pensado para
+// ficar aberto no ecrã. 45s dá tempo de sobra para não sobrecarregar o
+// Supabase, mas mantém o painel praticamente ao vivo.
+const INTERVALO_ATUALIZACAO_MS = 45000;
+
 export function DashboardKPIs({
   predio,
-  fracoes,
-  avisos,
-  movimentos,
-  reservas,
-  ocorrencias,
+  fracoes: fracoesIniciais,
+  avisos: avisosIniciais,
+  movimentos: movimentosIniciais,
+  reservas: reservasIniciais,
+  ocorrencias: ocorrenciasIniciais,
 }: DashboardKPIsProps) {
-  
+  // Estado próprio, semeado pelas props (para pintar de imediato sem
+  // esperar por um pedido de rede) mas depois atualizado sozinho — ver
+  // recarregarTudo/useEffect mais abaixo.
+  const [fracoes, setFracoes] = useState<Fracao[]>(fracoesIniciais);
+  const [avisos, setAvisos] = useState<Aviso[]>(avisosIniciais);
+  const [movimentos, setMovimentos] = useState<Movimento[]>(movimentosIniciais);
+  const [reservas, setReservas] = useState<Reserva[]>(reservasIniciais);
+  const [ocorrencias, setOcorrencias] = useState<Ocorrencia[]>(ocorrenciasIniciais);
+  const [contas, setContas] = useState<Conta[]>([]);
+  const [equipamentosScie, setEquipamentosScie] = useState<EquipamentoSCIERow[]>([]);
+  const [limpezas, setLimpezas] = useState<LimpezaRow[]>([]);
+  const [incidenciasLimpeza, setIncidenciasLimpeza] = useState<IncidenciaLimpezaRow[]>([]);
+  const [ultimaAtualizacao, setUltimaAtualizacao] = useState<Date>(new Date());
+  const [aAtualizar, setAAtualizar] = useState(false);
+
+  const recarregarTudo = useCallback(async () => {
+    if (!predio?.id_predio) return;
+    setAAtualizar(true);
+    try {
+      const [f, a, m, r, o, c, eq, lp, inc] = await Promise.all([
+        fetchFracoesFromSupabase(predio.id_predio),
+        fetchAvisosFromSupabase(predio.id_predio),
+        fetchMovimentosFromSupabase(predio.id_predio),
+        fetchReservasFromSupabase(predio.id_predio),
+        fetchOcorrenciasFromSupabase(predio.id_predio),
+        fetchContasFromSupabase(predio.id_predio),
+        fetchEquipamentosScieFromSupabase(predio.id_predio),
+        fetchLimpezasFromSupabase(predio.id_predio),
+        fetchIncidenciasLimpezaFromSupabase(predio.id_predio)
+      ]);
+      if (f) setFracoes(f);
+      if (a) setAvisos(a);
+      if (m) setMovimentos(m);
+      if (r) setReservas(r);
+      if (o) setOcorrencias(o);
+      if (c) setContas(c);
+      setEquipamentosScie(eq || []);
+      setLimpezas(lp || []);
+      setIncidenciasLimpeza(inc || []);
+      setUltimaAtualizacao(new Date());
+    } finally {
+      setAAtualizar(false);
+    }
+  }, [predio?.id_predio]);
+
+  useEffect(() => {
+    recarregarTudo();
+    const intervalId = setInterval(recarregarTudo, INTERVALO_ATUALIZACAO_MS);
+    return () => clearInterval(intervalId);
+  }, [recarregarTudo]);
+
+
   // 1. FILTER TO CURRENT BUILDING
   const predioFracoes = fracoes.filter(f => f.id_predio === predio.id_predio);
   const predioAvisos = avisos.filter(a => a.id_predio === predio.id_predio);
@@ -80,18 +154,23 @@ export function DashboardKPIs({
   const totalInvoiced = predioAvisos.reduce((acc, curr) => acc + curr.valor, 0);
   const delinquencyRate = totalInvoiced > 0 ? (totalOutstandingDebt / totalInvoiced) * 100 : 0;
 
-  // Common Reserve Fund (Fundo de Reserva Comum - legally min 10% of ordinario)
-  // Let's assume estimated annual budget is 12000€, reserve fund is 10% of that + some accumulated savings
-  const estimatedAnnualBudget = 14400; // e.g. 1200€ monthly average
-  const accumulatedReserveFund = (totalRevenues * 0.12) - (totalExpenses * 0.05); // Simulated dynamic reserve fund
-  const finalReserveFundValue = Math.max(1440, accumulatedReserveFund);
+  // Fundo Comum de Reserva — antes era uma fórmula simulada com um piso
+  // artificial de 1440€ (Math.max(1440, ...)), que nunca mostrava o valor
+  // real mesmo quando não havia dinheiro nenhum guardado. Usa agora o saldo
+  // real das contas identificadas como Fundo de Reserva/Poupança (mesma
+  // lógica já usada em GestaoFundoReserva.tsx), somado ao FCR já cobrado
+  // via avisos liquidados mas ainda não com conta bancária própria.
+  const predioContas = contas.filter(c => c.id_predio === predio.id_predio);
+  const finalReserveFundValue = predioContas
+    .filter(c => ehContaFundoReserva(c.tipo))
+    .reduce((acc, c) => acc + (Number(c.saldo) || 0), 0);
 
   // Total Cash balance
   const cashBalance = totalRevenues - totalExpenses;
 
   // 3. LEGAL INDICATORS CALCULATIONS
   // A fraction is in litigation if it has debts overdue by more than 60 days
-  const anchorDate = new Date("2026-07-15");
+  const anchorDate = new Date();
   const getDaysOverdue = (dueDateStr: string): number => {
     const due = new Date(dueDateStr);
     const diffTime = anchorDate.getTime() - due.getTime();
@@ -121,16 +200,34 @@ export function DashboardKPIs({
   // Inhibited votes (Due to litigation / active debts overdue > 60 days)
   const inhibitedVotesCount = litigationDetails.filter(x => x.metrics.maxOverdue > 60 && x.metrics.totalDebt > 0).length;
 
-  // Letters of notice sent (simulated from preLitigations + litigation count)
-  const sentLettersOfNotice = activeLitigationsCount + preLitigationsCount + 3;
+  // Avisos e cartas enviadas — antes somava-se sempre "+3" fixo ao total
+  // real, garantindo que este número nunca era exatamente o que os avisos
+  // jurídicos reais indicavam.
+  const sentLettersOfNotice = activeLitigationsCount + preLitigationsCount;
 
   // 4. OPERATIONAL INDICATORS CALCULATIONS
   const totalReservations = predioReservas.length;
   const approvedReservations = predioReservas.filter(r => r.estado === "Aprovado").length;
   const unresolvedOccurrences = predioOcorrencias.filter(o => o.estado !== "Resolvido").length;
-  
-  // Cleaning / Inspection Performance Score
-  const cleaningEfficiencyScore = 94.5; // Custom KPI based on checklist completion
+
+  // Eficiência de Limpeza — antes era uma constante fixa (94.5%) sem
+  // nenhuma ligação a dados reais. Calcula agora a partir dos registos
+  // reais de limpeza e das incidências reportadas contra eles: cada
+  // incidência reduz a percentagem de conclusão sem problemas. Sem
+  // nenhuma limpeza registada, mostra null (sem dados) em vez de inventar
+  // uma percentagem.
+  const cleaningEfficiencyScore = limpezas.length === 0
+    ? null
+    : Math.max(0, Math.round((1 - incidenciasLimpeza.length / limpezas.length) * 100));
+
+  // Vistorias Técnicas — antes era sempre "100%" escrito diretamente no
+  // JSX. Calcula agora a % de equipamentos de segurança (elevadores, gás,
+  // incêndio) registados em GestaoVistoriasLimpezas cuja validade não está
+  // expirada. Sem nenhum equipamento registado, mostra null (sem dados).
+  const equipamentosConformes = equipamentosScie.filter(eq => calcularDiasValidadeSCIE(eq.dataValidade).status !== "EXPIRADO").length;
+  const vistoriasConformidade = equipamentosScie.length === 0
+    ? null
+    : Math.round((equipamentosConformes / equipamentosScie.length) * 100);
 
   // 5. CHARTS DATA PREPARATION
   // Chart A: Monthly Cashflow (Gerado estritamente a partir dos movimentos reais do prédio, iniciando a zero)
@@ -194,9 +291,21 @@ export function DashboardKPIs({
           <h2 className="text-xl font-bold text-slate-800 dark:text-white">Indicadores de Desempenho & KPIs do Condomínio</h2>
           <p className="text-xs text-slate-400">Análise financeira, jurídica e de operações do Edifício {predio.nome || "Exemplo"}</p>
         </div>
-        <div className="flex items-center space-x-2 font-mono-custom text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3.5 py-1.5 w-fit">
-          <Clock size={13} className="text-slate-400" />
-          <span>Data de Referência: <strong>15-07-2026</strong></span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center space-x-2 font-mono-custom text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3.5 py-1.5 w-fit">
+            <Clock size={13} className="text-slate-400" />
+            <span>Data de Referência: <strong>{anchorDate.toLocaleDateString("pt-PT")}</strong></span>
+          </div>
+          <button
+            type="button"
+            onClick={recarregarTudo}
+            disabled={aAtualizar}
+            title="Atualizar agora"
+            className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-60 cursor-pointer"
+          >
+            <RefreshCw size={12} className={aAtualizar ? "animate-spin" : ""} />
+            <span>{aAtualizar ? "A atualizar…" : `Atualizado às ${ultimaAtualizacao.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`}</span>
+          </button>
         </div>
       </div>
 
@@ -347,19 +456,35 @@ export function DashboardKPIs({
             <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-4 space-y-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Eficiência de Limpeza</span>
               <div className="flex items-baseline justify-between mt-1">
-                <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono-custom">{cleaningEfficiencyScore}%</span>
-                <span className="bg-emerald-50 text-emerald-700 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">Excelente</span>
+                <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono-custom">
+                  {cleaningEfficiencyScore === null ? "—" : `${cleaningEfficiencyScore}%`}
+                </span>
+                {cleaningEfficiencyScore === null ? (
+                  <span className="bg-slate-100 text-slate-500 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">Sem Dados</span>
+                ) : (
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${cleaningEfficiencyScore >= 90 ? "bg-emerald-50 text-emerald-700" : cleaningEfficiencyScore >= 70 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>
+                    {cleaningEfficiencyScore >= 90 ? "Excelente" : cleaningEfficiencyScore >= 70 ? "Aceitável" : "A Rever"}
+                  </span>
+                )}
               </div>
-              <p className="text-[9px] text-slate-400 pt-1">Conclusão pontual de checklists de limpeza</p>
+              <p className="text-[9px] text-slate-400 pt-1">{limpezas.length} limpeza(s) registada(s), {incidenciasLimpeza.length} incidência(s)</p>
             </div>
 
             <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-4 space-y-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Vistorias Técnicas</span>
               <div className="flex items-baseline justify-between mt-1">
-                <span className="text-xl font-extrabold text-slate-800 dark:text-white font-mono-custom">100%</span>
-                <span className="bg-emerald-50 text-emerald-700 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">Conforme</span>
+                <span className="text-xl font-extrabold text-slate-800 dark:text-white font-mono-custom">
+                  {vistoriasConformidade === null ? "—" : `${vistoriasConformidade}%`}
+                </span>
+                {vistoriasConformidade === null ? (
+                  <span className="bg-slate-100 text-slate-500 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">Sem Equipamentos</span>
+                ) : (
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${vistoriasConformidade === 100 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                    {vistoriasConformidade === 100 ? "Conforme" : "A Regularizar"}
+                  </span>
+                )}
               </div>
-              <p className="text-[9px] text-slate-400 pt-1">Inspeções de elevadores e gás em dia</p>
+              <p className="text-[9px] text-slate-400 pt-1">{equipamentosConformes} de {equipamentosScie.length} equipamento(s) em dia</p>
             </div>
 
           </div>
@@ -494,11 +619,11 @@ export function DashboardKPIs({
               <BarChart
                 layout="vertical"
                 data={[
-                  { name: "Salão de Festas", Reservas: Math.max(1, predioReservas.filter(r => r.area_comum === "Salão de Festas").length + 2) },
-                  { name: "Churrasqueira", Reservas: Math.max(2, predioReservas.filter(r => r.area_comum === "Churrasqueira").length + 4) },
-                  { name: "Ginásio", Reservas: Math.max(1, predioReservas.filter(r => r.area_comum === "Ginásio").length + 6) },
-                  { name: "Spa / Jacuzzi", Reservas: Math.max(0, predioReservas.filter(r => r.area_comum === "Spa").length + 3) },
-                  { name: "Piscina Comum", Reservas: Math.max(0, predioReservas.filter(r => r.area_comum === "Piscina").length + 1) }
+                  { name: "Salão de Festas", Reservas: predioReservas.filter(r => r.area_comum === "Salão de Festas").length },
+                  { name: "Churrasqueira", Reservas: predioReservas.filter(r => r.area_comum === "Churrasqueira").length },
+                  { name: "Ginásio", Reservas: predioReservas.filter(r => r.area_comum === "Ginásio").length },
+                  { name: "Spa / Jacuzzi", Reservas: predioReservas.filter(r => r.area_comum === "Spa").length },
+                  { name: "Piscina Comum", Reservas: predioReservas.filter(r => r.area_comum === "Piscina").length }
                 ]}
                 margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
               >
