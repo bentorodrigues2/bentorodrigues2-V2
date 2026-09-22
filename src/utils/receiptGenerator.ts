@@ -160,7 +160,7 @@ export function generateOfficialReceiptPDF(
   doc.setFontSize(6.5);
   doc.setTextColor(51, 65, 85);
   doc.text(`Morada: ${moradaCondomino}`, col2X + 3, y + 15.5);
-  doc.text(`Fração: ${recibo.fracao_nome}`, col2X + 3, y + 19.5);
+  doc.text(`Fração: ${recibo.fracao_nome}${fracao?.piso ? ` (${fracao.piso})` : ""}`, col2X + 3, y + 19.5);
   doc.text(`NIF: ${recibo.nif_condomino || "—"}`, col2X + 3, y + 23.5);
   // Referência individual da fração, usada pelo motor de IA para conciliação automática via extrato
   doc.text(`Referência: ${prefixo}-FRA-${recibo.fracao_nome}`, col2X + 3, y + 27.5);

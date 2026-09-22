@@ -79,7 +79,8 @@ const TABELAS_PERMITIDAS = new Set([
   "propostas",
   "dividas_fornecedores",
   "revisoes_orcamento",
-  "pagamentos_dividas_fornecedores"
+  "pagamentos_dividas_fornecedores",
+  "pagamentos"
 ]);
 
 // Registos de auditoria: só select e insert, mesmo por este proxy — para
@@ -106,6 +107,7 @@ const TABELAS_ESCRITA_SO_GESTAO = new Set([
   "movimentos",
   "dividas_fornecedores",
   "pagamentos_dividas_fornecedores",
+  "pagamentos",
   "revisoes_orcamento",
   "configuracao_quotas_predio",
   "contratos",
@@ -145,7 +147,12 @@ const TABELAS_COM_ID_PREDIO = new Set([
 
 // Tabelas sem id_predio próprio, mas com id_fracao — isoladas pela fração
 // do próprio utilizador em vez do prédio inteiro.
-const TABELAS_COM_ID_FRACAO = new Set(["sondagens_votos", "questionarios_respostas"]);
+// "pagamentos" (comprovativos de condóminos) não tem id_predio próprio, só
+// id_fracao — ver fetchPagamentosPendentesInfoFromSupabase em
+// supabaseService.ts. Hoje só é lida/escrita por este proxy em ecrãs de
+// gestão (papel de gestão ignora esta isolação de qualquer forma), mas
+// entra aqui pela mesma defesa em profundidade das restantes tabelas.
+const TABELAS_COM_ID_FRACAO = new Set(["sondagens_votos", "questionarios_respostas", "pagamentos"]);
 
 // Tabelas cuja coluna de isolamento tem um nome diferente do habitual
 // (id_predio/id_fracao) — mapeadas explicitamente para o nome real.
