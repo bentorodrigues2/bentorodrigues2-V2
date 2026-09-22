@@ -141,7 +141,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
           <button
             type="button"
             onClick={() => {
-              exportarBalanceteMapaAnualXLS(predio, fracoes, parseInt(anoSelecionado) || 2026, [], movimentos);
+              exportarBalanceteMapaAnualXLS(predio, fracoes, parseInt(anoSelecionado) || 2026, avisos, movimentos);
             }}
             className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all cursor-pointer flex items-center gap-2 shadow-sm"
             title="Exportar Grelha das 12 Quotas Mensais de todas as Frações num único ficheiro Excel/CSV"

@@ -2801,104 +2801,92 @@ export function exportarBalanceteMapaAnualXLS(
 ) {
   try {
     const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    const anoNum = Number(ano);
     const predioFracoes = fracoes.filter(f => f.id_predio === predio.id_predio || !f.id_predio || fracoes.length <= 10);
-    const totalPermilagem = predioFracoes.reduce((acc, f) => acc + (f.permilagem || 0), 0) || 1000;
+
+    // Antes esta função inventava os 12 meses (pago/pendente a partir de
+    // "permilagem % 3") e todo o balancete sintético (despesas fixas
+    // fictícias) — um documento com números que não existiam. Passa a usar
+    // sempre os avisos e movimentos reais recebidos; sem esses dados mostra
+    // "—"/"Sem dados", nunca um valor inventado.
+    const avisosOrdinariosAno = avisos.filter(a => {
+      if (!a?.data) return false;
+      const d = new Date(a.data);
+      return !isNaN(d.getTime()) && d.getFullYear() === anoNum && String(a.tipo || "").includes("Ordinária");
+    });
 
     const headers = [
       "Fração",
       "Piso",
-      "Tipologia",
       "Proprietário",
       "NIF",
       "Email",
       "Permilagem (‰)",
-      "Quota Ordinária (€)",
-      "Fundo Reserva (10%) (€)",
-      "Mensalidade Total (€)",
       ...meses.map(m => `${m}/${ano}`),
-      "Total Anual Previsto (€)",
+      "Total Emitido (€)",
       "Total Liquidado (€)",
       "Saldo Pendente / Dívida (€)",
       "Situação"
     ];
 
     let sumPermilagem = 0;
-    let sumQuotaOrd = 0;
-    let sumFundoRes = 0;
-    let sumTotalMensal = 0;
-    let sumTotalPrevisto = 0;
+    let sumTotalEmitido = 0;
     let sumTotalLiquidado = 0;
     let sumSaldoPendente = 0;
     const sumMeses: number[] = new Array(12).fill(0);
 
-    const rows: string[][] = predioFracoes.map((f, idx) => {
-      // Calculate fraction base quota
-      const perm = f.permilagem || 100;
+    const rows: string[][] = predioFracoes.map((f) => {
+      const perm = f.permilagem || 0;
       sumPermilagem += perm;
-      
-      const quotaOrd = 1200 * (perm / totalPermilagem);
-      const fundoRes = quotaOrd * 0.10;
-      const mensalidadeTotal = quotaOrd + fundoRes;
 
-      sumQuotaOrd += quotaOrd;
-      sumFundoRes += fundoRes;
-      sumTotalMensal += mensalidadeTotal;
-
-      const totalPrevisto = mensalidadeTotal * 12;
-      sumTotalPrevisto += totalPrevisto;
-
-      // Simulated realistic payment state based on permilagem or avisos
-      const isDefaulting = (perm % 3 === 0);
-      const mesesPagos = isDefaulting ? 8 : 12; // 8 months paid if in debt, 12 if in good standing
-      const totalLiquidado = isDefaulting ? mensalidadeTotal * 8 : totalPrevisto;
-      const saldoPendente = totalPrevisto - totalLiquidado;
-
-      sumTotalLiquidado += totalLiquidado;
-      sumSaldoPendente += saldoPendente;
+      const avisosFracao = avisosOrdinariosAno.filter(a => a.id_fracao === f.id_fracao);
+      let totalEmitido = 0;
+      let totalLiquidado = 0;
 
       const mesesValues = meses.map((_, mIdx) => {
-        sumMeses[mIdx] += (mIdx < mesesPagos ? mensalidadeTotal : 0);
-        return mIdx < mesesPagos 
-          ? `${mensalidadeTotal.toFixed(2)} (Pago)` 
-          : `${mensalidadeTotal.toFixed(2)} (Pendente)`;
+        const avisoMes = avisosFracao.find(a => new Date(a.data).getMonth() === mIdx);
+        if (!avisoMes) return "—";
+        const valor = Number(avisoMes.valor || 0);
+        totalEmitido += valor;
+        sumMeses[mIdx] += valor;
+        const pago = ["Paga", "Pago", "Liquidado"].includes(avisoMes.estado);
+        if (pago) totalLiquidado += valor;
+        return `${valor.toFixed(2)} (${pago ? "Pago" : "Pendente"})`;
       });
+
+      sumTotalEmitido += totalEmitido;
+      sumTotalLiquidado += totalLiquidado;
+      const saldoPendente = totalEmitido - totalLiquidado;
+      sumSaldoPendente += saldoPendente;
 
       return [
         `Fração ${f.fracao_nome}`,
-        f.piso || "0",
-        f.tipologia || "T2",
+        f.piso || "—",
         f.proprietario?.nome || "Sem Proprietário",
-        f.proprietario?.nif || "N/A",
-        f.proprietario?.email || "N/A",
+        f.proprietario?.nif || "—",
+        f.proprietario?.email || "—",
         `${perm}‰`,
-        quotaOrd.toFixed(2),
-        fundoRes.toFixed(2),
-        mensalidadeTotal.toFixed(2),
         ...mesesValues,
-        totalPrevisto.toFixed(2),
+        totalEmitido.toFixed(2),
         totalLiquidado.toFixed(2),
-        saldoPendente > 0 ? `-${saldoPendente.toFixed(2)}` : "0.00",
-        saldoPendente > 0 ? "Em Dívida / Mora" : "Regularizado (Em Dia)"
+        saldoPendente > 0.01 ? `-${saldoPendente.toFixed(2)}` : "0.00",
+        saldoPendente > 0.01 ? "Em Dívida / Mora" : (totalEmitido > 0 ? "Regularizado (Em Dia)" : "Sem Emissões")
       ];
     });
 
-    // Summary Totals Row
+    // Linha de totais
     const totalsRow = [
       "TOTAIS GLOBAIS",
       "—",
       "—",
       "—",
       "—",
-      "—",
       `${sumPermilagem}‰`,
-      sumQuotaOrd.toFixed(2),
-      sumFundoRes.toFixed(2),
-      sumTotalMensal.toFixed(2),
       ...sumMeses.map(val => val.toFixed(2)),
-      sumTotalPrevisto.toFixed(2),
+      sumTotalEmitido.toFixed(2),
       sumTotalLiquidado.toFixed(2),
-      sumSaldoPendente > 0 ? `-${sumSaldoPendente.toFixed(2)}` : "0.00",
-      sumSaldoPendente > 0 ? `Incumprimento: €${sumSaldoPendente.toFixed(2)}` : "100% Em Dia"
+      sumSaldoPendente > 0.01 ? `-${sumSaldoPendente.toFixed(2)}` : "0.00",
+      sumSaldoPendente > 0.01 ? `Incumprimento: €${sumSaldoPendente.toFixed(2)}` : "100% Em Dia"
     ];
 
     rows.push(totalsRow);
@@ -2908,7 +2896,7 @@ export function exportarBalanceteMapaAnualXLS(
     csvContent += `CONDOMÍNIO: ${predio.nome.toUpperCase() || "EDIFÍCIO"};;;;;;;;;;;;;;;;;;\n`;
     csvContent += `MORADA: ${predio.morada_linha1 || ""}, ${predio.localidade || ""};;;;;;;;;;;;;;;;;;\n`;
     csvContent += `NIPC / NIF: ${predio.nif || "999 999 999"};;;;;;;;;;;;;;;;;;\n`;
-    csvContent += `DOCUMENTO OFICIAL: MAPA ANUAL DE QUOTAS (12 MESES) & BALANCETE DE CONTAS - EXERCÍCIO ${ano};;;;;;;;;;;;;;;;;;\n`;
+    csvContent += `MAPA ANUAL DE QUOTAS (12 MESES) & BALANCETE DE CONTAS - EXERCÍCIO ${ano};;;;;;;;;;;;;;;;;;\n`;
     csvContent += `DATA DE EMISSÃO: ${new Date().toLocaleDateString("pt-PT")};;;;;;;;;;;;;;;;;;\n\n`;
 
     csvContent += headers.join(";") + "\n";
@@ -2916,28 +2904,35 @@ export function exportarBalanceteMapaAnualXLS(
       csvContent += r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(";") + "\n";
     });
 
-    // Add Second Section: Balancete Sintético do Exercício
-    const recQuotas = sumTotalLiquidado;
-    const recExtra = 8750.00;
-    const despesasManutencao = 3450.00;
-    const despesasEletricidade = 890.45;
-    const despesasLimpeza = 1920.00;
-    const despesasSeguro = 1450.00;
-    const totalDespesas = despesasManutencao + despesasEletricidade + despesasLimpeza + despesasSeguro;
-    const saldoExercicio = (recQuotas + recExtra) - totalDespesas;
+    // Balancete sintético — só a partir de movimentos reais do ano; sem
+    // isso não há despesas reais a mostrar (nunca se inventa uma rubrica).
+    const movimentosAno = movimentos.filter(m => {
+      if (!m?.data) return false;
+      const d = new Date(m.data);
+      return !isNaN(d.getTime()) && d.getFullYear() === anoNum;
+    });
 
-    csvContent += `\n\n=== BALANCETE FINANCEIRO SINTÉTICO (PRESTAÇÃO DE CONTAS EM ASSEMBLEIA - ANO ${ano}) ===;;;;;;;;;;;;;;;;;\n`;
-    csvContent += `RUBRICA;TIPO;VALOR ORÇAMENTADO (€);VALOR EXECUTADO (€);DESVIO (€);TAXA EXECUÇÃO\n`;
-    csvContent += `1. Quotas Ordinárias de Condomínio;Receita;${sumTotalPrevisto.toFixed(2)};${recQuotas.toFixed(2)};${(recQuotas - sumTotalPrevisto).toFixed(2)};${Math.round((recQuotas / sumTotalPrevisto) * 100)}%\n`;
-    csvContent += `2. Quotas Extraordinárias (Fundo de Obras);Receita;12500.00;${recExtra.toFixed(2)};-3750.00;70%\n`;
-    csvContent += `3. Fundo Comum de Reserva (10%);Receita;${sumFundoRes.toFixed(2)};${sumFundoRes.toFixed(2)};0.00;100%\n`;
-    csvContent += `4. Manutenção Técnica & Elevadores;Despesa;3600.00;${despesasManutencao.toFixed(2)};-150.00;96%\n`;
-    csvContent += `5. Eletricidade Áreas Comuns (EDP/Endesa);Despesa;950.00;${despesasEletricidade.toFixed(2)};-59.55;94%\n`;
-    csvContent += `6. Serviço de Limpeza & Consumíveis;Despesa;1920.00;${despesasLimpeza.toFixed(2)};0.00;100%\n`;
-    csvContent += `7. Seguro Multirriscos Condomínio;Despesa;1450.00;${despesasSeguro.toFixed(2)};0.00;100%\n`;
-    csvContent += `TOTAL RECEITAS EXECUTADAS;RECEITA;—;${(recQuotas + recExtra).toFixed(2)};—;—\n`;
-    csvContent += `TOTAL DESPESAS EXECUTADAS;DESPESA;—;${totalDespesas.toFixed(2)};—;—\n`;
-    csvContent += `SALDO LÍQUIDO DO EXERCÍCIO;SALDO;—;${saldoExercicio.toFixed(2)};—;—\n`;
+    csvContent += `\n\n=== BALANCETE FINANCEIRO SINTÉTICO (dados reais de movimentos - ANO ${ano}) ===;;;\n`;
+    if (movimentosAno.length > 0) {
+      const totalReceitas = movimentosAno.filter(m => m.tipo === "Receita").reduce((s, m) => s + (Number(m.valor) || 0), 0);
+      const despesasPorCategoria: Record<string, number> = {};
+      movimentosAno.filter(m => m.tipo === "Despesa").forEach(m => {
+        const cat = m.categoria || "Outras Despesas";
+        despesasPorCategoria[cat] = (despesasPorCategoria[cat] || 0) + (Number(m.valor) || 0);
+      });
+      const totalDespesas = Object.values(despesasPorCategoria).reduce((s, v) => s + v, 0);
+
+      csvContent += `RUBRICA;TIPO;VALOR (€)\n`;
+      csvContent += `Total de Quotas Liquidadas (avisos pagos);Receita;${sumTotalLiquidado.toFixed(2)}\n`;
+      Object.entries(despesasPorCategoria).forEach(([cat, val]) => {
+        csvContent += `${cat};Despesa;${val.toFixed(2)}\n`;
+      });
+      csvContent += `TOTAL RECEITAS (Movimentos Reais);RECEITA;${totalReceitas.toFixed(2)}\n`;
+      csvContent += `TOTAL DESPESAS (Movimentos Reais);DESPESA;${totalDespesas.toFixed(2)}\n`;
+      csvContent += `SALDO LÍQUIDO DO EXERCÍCIO;SALDO;${(totalReceitas - totalDespesas).toFixed(2)}\n`;
+    } else {
+      csvContent += `Sem movimentos lançados em ${ano} para calcular o balancete sintético de despesas.;;\n`;
+    }
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const fileName = `Balancete_Mapa_Anual_Quotas_${predio.nome.replace(/\s+/g, "_")}_${ano}.csv`;

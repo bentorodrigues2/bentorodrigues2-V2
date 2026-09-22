@@ -2949,15 +2949,17 @@ export default function App() {
           )}
 
           {activeSection === "assembleias" && (
-            <GestaoAssembleias 
-              predio={predioAtivo} 
+            <GestaoAssembleias
+              predio={predioAtivo}
               fracoes={fracoes}
-              reunioes={reunioes} 
+              reunioes={reunioes}
               onAddReuniao={handleAddReuniao}
               setReunioes={setReunioes}
               loggedUser={loggedUser}
               onAddDocumento={handleAddDocumento}
               documentos={documentos}
+              avisos={avisos}
+              movements={movements}
             />
           )}
 

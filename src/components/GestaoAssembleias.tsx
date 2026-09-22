@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { jsPDF } from "jspdf";
-import { Predio, Fracao, Reuniao, LoggedUser, ReuniaoAssinatura, Documento } from "../types";
+import { Predio, Fracao, Reuniao, LoggedUser, ReuniaoAssinatura, Documento, Aviso, Movimento } from "../types";
 import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { 
   formatDatePT, 
@@ -28,9 +28,11 @@ interface GestaoAssembleiasProps {
   loggedUser: LoggedUser;
   onAddDocumento?: (novoDoc: Documento) => void;
   documentos?: Documento[];
+  avisos?: Aviso[];
+  movements?: Movimento[];
 }
 
-export function GestaoAssembleias({ predio, fracoes, reunioes, onAddReuniao, setReunioes, loggedUser, onAddDocumento, documentos }: GestaoAssembleiasProps) {
+export function GestaoAssembleias({ predio, fracoes, reunioes, onAddReuniao, setReunioes, loggedUser, onAddDocumento, documentos, avisos = [], movements = [] }: GestaoAssembleiasProps) {
   // Form state
   const [tema, setTema] = useState("");
   const [data, setData] = useState("");
@@ -1920,7 +1922,7 @@ Com os meus cumprimentos,
 
                   <button
                     type="button"
-                    onClick={() => exportarBalanceteMapaAnualXLS(predio, fracoes, 2026)}
+                    onClick={() => exportarBalanceteMapaAnualXLS(predio, fracoes, new Date().getFullYear(), avisos, movements)}
                     className="bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
                     title="Descarregar Grelha das 12 Quotas Mensais de todas as Frações num ficheiro Excel/CSV para a Assembleia"
                   >
