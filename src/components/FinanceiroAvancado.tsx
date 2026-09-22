@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Predio, Fracao, Aviso, Movimento, LoggedUser, Documento, Conta } from "../types";
-import { formatDatePT, formatQuotaReceiptNumber, downloadReceiptPDF, exportarBalanceteMapaAnualXLS, parseValorMonetario } from "../utils";
+import { formatDatePT, formatQuotaReceiptNumber, downloadReceiptPDF, exportarBalanceteMapaAnualXLS, parseValorMonetario, exportToXLS, exportarTabelaParaPDF } from "../utils";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
 import { fetchCaucoesFromSupabase, saveCaucaoToSupabase, registarLogAuditoria } from "../lib/supabaseService";
 
@@ -62,6 +62,7 @@ export function FinanceiroAvancado({
     if (t === "financeiro_relatorios" || t === "relatorio_dividas") return "relatorio_dividas";
     if (t === "financeiro_extratos" || t === "extrato_saldos" || t === "extrato_saldo") return "extrato_saldo";
     if (t === "financeiro_caucoes" || t === "gestao_caucoes") return "gestao_caucoes";
+    if (t === "financeiro_mapa_pagamentos" || t === "mapa_pagamentos") return "mapa_pagamentos";
     return t;
   };
 
@@ -87,6 +88,92 @@ export function FinanceiroAvancado({
     () => predioFracoes.find(f => (f.proprietario?.email || "").trim().toLowerCase() === emailLogado),
     [predioFracoes, emailLogado]
   );
+
+  // Mapa de Pagamentos: grelha fração × mês, tipo Excel — usa sempre os
+  // avisos reais já emitidos (nunca inventa valores). Um condómino só vê a
+  // sua própria linha, tal como já acontece no Extrato de Dívidas e Saldo.
+  const MESES_ABREV = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  const [mapaTipo, setMapaTipo] = useState<"ordinaria" | "extraordinaria">("ordinaria");
+  const [mapaBusca, setMapaBusca] = useState("");
+  const anosComAvisos = useMemo(() => {
+    const anos = new Set<number>();
+    predioAvisos.forEach(a => {
+      const d = new Date(a.data);
+      if (!isNaN(d.getTime())) anos.add(d.getFullYear());
+    });
+    anos.add(new Date().getFullYear());
+    return Array.from(anos).sort((a, b) => b - a);
+  }, [predioAvisos]);
+  const [mapaAno, setMapaAno] = useState<number>(new Date().getFullYear());
+
+  const mapaFracoesVisiveis = useMemo(() => {
+    const base = ehCondomino ? (fracaoPropria ? [fracaoPropria] : []) : predioFracoes;
+    const buscaLimpa = mapaBusca.trim().toLowerCase();
+    const filtradas = buscaLimpa
+      ? base.filter(f => f.fracao_nome.toLowerCase().includes(buscaLimpa) || (f.proprietario?.nome || "").toLowerCase().includes(buscaLimpa))
+      : base;
+    return [...filtradas].sort((a, b) => a.fracao_nome.localeCompare(b.fracao_nome));
+  }, [ehCondomino, fracaoPropria, predioFracoes, mapaBusca]);
+
+  const mapaAvisosDoTipoAno = useMemo(() => {
+    return predioAvisos.filter(a => {
+      const d = new Date(a.data);
+      if (isNaN(d.getTime()) || d.getFullYear() !== mapaAno) return false;
+      const ehExtra = String(a.tipo || "").includes("Extraordinária");
+      return mapaTipo === "extraordinaria" ? ehExtra : !ehExtra;
+    });
+  }, [predioAvisos, mapaAno, mapaTipo]);
+
+  interface CelulaMapa { valor: number; pago: boolean }
+  const mapaLinhas = useMemo(() => {
+    return mapaFracoesVisiveis.map(f => {
+      const avisosFracao = mapaAvisosDoTipoAno.filter(a => a.id_fracao === f.id_fracao);
+      const meses: (CelulaMapa | null)[] = MESES_ABREV.map((_, mIdx) => {
+        const aviso = avisosFracao.find(a => new Date(a.data).getMonth() === mIdx);
+        if (!aviso) return null;
+        return { valor: Number(aviso.valor || 0), pago: ["Paga", "Pago", "Liquidado"].includes(aviso.estado) };
+      });
+      const total = meses.reduce((s, c) => s + (c?.valor || 0), 0);
+      return { fracao: f, meses, total };
+    });
+  }, [mapaFracoesVisiveis, mapaAvisosDoTipoAno]);
+
+  const exportarMapaXLS = () => {
+    const headers = ["Fração", "Piso", "Proprietário", ...MESES_ABREV.map(m => `${m}/${mapaAno}`), "Total (€)"];
+    const rows = mapaLinhas.map(l => [
+      l.fracao.fracao_nome,
+      l.fracao.piso || "—",
+      l.fracao.proprietario?.nome || "—",
+      ...l.meses.map(c => c ? `${c.valor.toFixed(2)} (${c.pago ? "Pago" : "Pendente"})` : "—"),
+      l.total.toFixed(2)
+    ]);
+    const nomeTipo = mapaTipo === "extraordinaria" ? "Extraordinarias" : "Ordinarias";
+    exportToXLS(`Mapa_Pagamentos_${nomeTipo}_${predio.nome.replace(/\s+/g, "_")}_${mapaAno}`, headers, rows);
+  };
+
+  const exportarMapaPDF = () => {
+    const colunas = [
+      { label: "Fração", largura: 16, alinhamento: "left" as const },
+      { label: "Proprietário", largura: 34, alinhamento: "left" as const },
+      ...MESES_ABREV.map(m => ({ label: m, largura: 11, alinhamento: "right" as const })),
+      { label: "Total (€)", largura: 16, alinhamento: "right" as const }
+    ];
+    const linhas = mapaLinhas.map(l => [
+      l.fracao.fracao_nome,
+      l.fracao.proprietario?.nome || "—",
+      ...l.meses.map(c => c ? c.valor.toFixed(2) : "—"),
+      l.total.toFixed(2)
+    ]);
+    const nomeTipo = mapaTipo === "extraordinaria" ? "Extraordinárias" : "Ordinárias";
+    exportarTabelaParaPDF(
+      `Mapa de Pagamentos — Quotas ${nomeTipo}`,
+      `Exercício ${mapaAno}`,
+      colunas,
+      linhas,
+      `Mapa_Pagamentos_${nomeTipo}_${mapaAno}`,
+      predio.nome
+    );
+  };
 
   // Cauções State — carregadas do Supabase (tabela real "caucoes")
   const [caucoes, setCaucoes] = useState<Caucao[]>([]);
@@ -1561,6 +1648,128 @@ export function FinanceiroAvancado({
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {currentTab === "mapa_pagamentos" && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="bg-white dark:bg-[#0f172a] p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-base font-black text-slate-800 dark:text-white flex items-center gap-2.5">
+                  <span className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-sm">
+                    <i className="fa-solid fa-table-cells"></i>
+                  </span>
+                  <span>Mapa de Pagamentos — Quotas {mapaTipo === "extraordinaria" ? "Extraordinárias" : "Ordinárias"}</span>
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  {ehCondomino
+                    ? "Consulta o histórico mensal de pagamentos da sua fração."
+                    : "Grelha de todas as frações por mês, a partir dos avisos reais já emitidos — verde quando liquidado, âmbar quando pendente."}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <select
+                  value={mapaAno}
+                  onChange={e => setMapaAno(Number(e.target.value))}
+                  className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  {anosComAvisos.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+                <button
+                  onClick={exportarMapaXLS}
+                  className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                >
+                  <i className="fa-solid fa-file-excel"></i> Excel
+                </button>
+                <button
+                  onClick={exportarMapaPDF}
+                  className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                >
+                  <i className="fa-solid fa-file-pdf"></i> PDF
+                </button>
+              </div>
+            </div>
+
+            {/* Separadores Ordinárias / Extraordinárias — duas grelhas independentes */}
+            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800">
+              {(["ordinaria", "extraordinaria"] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setMapaTipo(t)}
+                  className={`px-3.5 py-2 text-xs font-bold rounded-t-lg transition-colors cursor-pointer border-b-2 ${
+                    mapaTipo === t
+                      ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                      : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                  }`}
+                >
+                  {t === "ordinaria" ? "Quotas Ordinárias" : "Quotas Extraordinárias"}
+                </button>
+              ))}
+            </div>
+
+            {!ehCondomino && (
+              <div className="relative max-w-xs">
+                <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <input
+                  type="text"
+                  value={mapaBusca}
+                  onChange={e => setMapaBusca(e.target.value)}
+                  placeholder="Filtrar por fração ou proprietário..."
+                  className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 dark:border-slate-700 dark:bg-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+            )}
+
+            {ehCondomino && !fracaoPropria && (
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold">
+                Não encontrámos nenhuma fração associada ao seu email neste condomínio.
+              </div>
+            )}
+
+            <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl">
+              <table className="w-full text-[11px] font-mono-custom">
+                <thead>
+                  <tr className="bg-slate-900 text-white">
+                    <th className="py-2 px-3 text-left font-bold whitespace-nowrap">Fração</th>
+                    {!ehCondomino && <th className="py-2 px-3 text-left font-bold whitespace-nowrap">Proprietário</th>}
+                    {MESES_ABREV.map(m => (
+                      <th key={m} className="py-2 px-2 text-right font-bold whitespace-nowrap">{m}/{String(mapaAno).slice(2)}</th>
+                    ))}
+                    <th className="py-2 px-3 text-right font-bold whitespace-nowrap">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mapaLinhas.map((l, idx) => (
+                    <tr key={l.fracao.id_fracao} className={idx % 2 === 0 ? "bg-white dark:bg-transparent" : "bg-slate-50 dark:bg-slate-900/40"}>
+                      <td className="py-2 px-3 font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                        {l.fracao.fracao_nome} <span className="text-slate-400 font-normal">({l.fracao.piso})</span>
+                      </td>
+                      {!ehCondomino && (
+                        <td className="py-2 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">{l.fracao.proprietario?.nome || "—"}</td>
+                      )}
+                      {l.meses.map((c, mIdx) => (
+                        <td key={mIdx} className={`py-2 px-2 text-right whitespace-nowrap ${
+                          !c ? "text-slate-300 dark:text-slate-700" :
+                          c.pago ? "text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50/60 dark:bg-emerald-950/20" :
+                          "text-amber-700 dark:text-amber-400 font-bold bg-amber-50/60 dark:bg-amber-950/20"
+                        }`}>
+                          {c ? `${c.valor.toFixed(2)}€` : "—"}
+                        </td>
+                      ))}
+                      <td className="py-2 px-3 text-right font-black text-slate-800 dark:text-white whitespace-nowrap">{l.total.toFixed(2)}€</td>
+                    </tr>
+                  ))}
+                  {mapaLinhas.length === 0 && (
+                    <tr>
+                      <td colSpan={15} className="py-6 text-center text-slate-400 text-xs italic">
+                        Sem frações para mostrar.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

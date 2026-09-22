@@ -401,7 +401,7 @@ export default function App() {
 
   // Sincronização automática para manter aberto o menu Área Financeira quando uma das suas secções está ativa
   useEffect(() => {
-    if (["quotas_orcamento", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "saldos_iniciais", "contas", "fundo_reserva"].includes(activeSection)) {
+    if (["quotas_orcamento", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "financeiro_mapa_pagamentos", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "saldos_iniciais", "contas", "fundo_reserva"].includes(activeSection)) {
       setOpenMenuFinanceiro(true);
     }
   }, [activeSection]);
@@ -1336,14 +1336,14 @@ export default function App() {
               id="sidebar-item-financeiro"
               onClick={() => {
                 setOpenMenuFinanceiro(!openMenuFinanceiro);
-                if (!["quotas_orcamento", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection)) {
+                if (!["quotas_orcamento", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "financeiro_mapa_pagamentos", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection)) {
                   setActiveSection("configuracao_arranque");
                 }
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                ["quotas_orcamento", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection) 
+                ["quotas_orcamento", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "financeiro_mapa_pagamentos", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection) 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
                   : "text-slate-400 hover:text-white hover:bg-slate-800/30"
               }`}
@@ -1585,6 +1585,21 @@ export default function App() {
                 >
                   <img src="/modulos/64-saldo.png" alt="Extrato" className="w-4 h-4 object-contain shrink-0" />
                   <span>Extrato de Dívidas e Saldo</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveSection("financeiro_mapa_pagamentos");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "financeiro_mapa_pagamentos"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <i className="fa-solid fa-table-cells text-emerald-400 text-xs"></i>
+                  <span>Mapa de Pagamentos</span>
                 </button>
               </div>
             )}
@@ -2597,6 +2612,7 @@ export default function App() {
                 {activeSection === "movimentos" && "Registo de Movimentos Financeiros"}
                 {activeSection === "financeiro_recibos" && "Emissão de Recibos Manuais (100% Editável)"}
                 {activeSection === "financeiro_relatorios" && "Relatórios de Dívidas (por Condómino & Pro Condomínio)"}
+                {activeSection === "financeiro_mapa_pagamentos" && "Mapa de Pagamentos por Fração & Mês"}
                 {activeSection === "relatorios_automaticos" && "Relatórios Financeiros (Prestação de Contas)"}
                 {activeSection === "contabilidade_interna" && "Contabilidade Interna"}
                 {activeSection === "agenda_manutencao" && "Plano de Manutenção Obrigatória"}
@@ -2839,7 +2855,7 @@ export default function App() {
             />
           )}
 
-          {["financeiro_recibos", "financeiro_relatorios", "financeiro_extratos"].includes(activeSection) && (
+          {["financeiro_recibos", "financeiro_relatorios", "financeiro_extratos", "financeiro_mapa_pagamentos"].includes(activeSection) && (
             <FinanceiroAvancado
               predio={predioAtivo}
               fracoes={fracoes}
@@ -2852,7 +2868,8 @@ export default function App() {
               initialTab={
                 activeSection === "financeiro_recibos" ? "recibos_manuais" :
                 activeSection === "financeiro_relatorios" ? "relatorio_dividas" :
-                activeSection === "financeiro_extratos" ? "extrato_saldos" : "recibos_manuais"
+                activeSection === "financeiro_extratos" ? "extrato_saldos" :
+                activeSection === "financeiro_mapa_pagamentos" ? "mapa_pagamentos" : "recibos_manuais"
               }
             />
           )}
