@@ -628,10 +628,14 @@ export function GestaoFracoes({
         })
       });
       const data = await resp.json();
-      if (resp.ok && data.ok) {
+      // O endpoint devolve ok:true mesmo quando o email não chegou a ser
+      // enviado (ex: Resend indisponível) — só data.email_enviado confirma
+      // a entrega. Sem verificar isto, o admin via sempre "convite
+      // reenviado com sucesso" mesmo quando o condómino não recebia nada.
+      if (resp.ok && data.ok && data.email_enviado) {
         alert(`✅ Convite de acesso reenviado para ${email}. O link anterior deixa de ser válido — só o novo email funciona.`);
       } else {
-        alert(`❌ Não foi possível reenviar o convite: ${data?.error || "erro desconhecido"}.`);
+        alert(`❌ Não foi possível reenviar o convite: ${data?.error || "o email não chegou a ser enviado, tente novamente"}.`);
       }
     } catch (err) {
       alert(`❌ Não foi possível reenviar o convite: ${err instanceof Error ? err.message : "erro de rede"}.`);
@@ -1294,7 +1298,10 @@ export function GestaoFracoes({
                 })
               });
               const data = await resp.json();
-              convidado = resp.ok && data.ok;
+              // ok:true não significa email enviado (ver reenviarConviteAcesso) —
+              // sem checar email_enviado, o admin via sempre "sucesso" mesmo
+              // quando o link de ativação nunca chegou a sair do servidor.
+              convidado = resp.ok && data.ok && data.email_enviado;
             } catch (err) {
               console.warn("[GestaoFracoes] Aviso ao enviar convite de ativação:", err);
             }
@@ -1344,10 +1351,10 @@ export function GestaoFracoes({
                 })
               });
               const dataConviteInq = await respConviteInq.json();
-              if (respConviteInq.ok && dataConviteInq.ok) {
+              if (respConviteInq.ok && dataConviteInq.ok && dataConviteInq.email_enviado) {
                 alert(`✅ Inquilino ${inqNome.trim()} convidado com sucesso! Foi enviado um email para ${inqEmail.trim()} com o guia de boas-vindas e, 60 segundos depois, o link para ativar o acesso e definir a password.`);
               } else {
-                alert(`⚠️ Dados do inquilino gravados, mas houve um erro a enviar o convite de acesso. Pode reenviá-lo mais tarde.`);
+                alert(`⚠️ Dados do inquilino gravados, mas houve um erro a enviar o convite de acesso (o email não chegou a sair). Pode reenviá-lo mais tarde.`);
               }
             } finally {
               setEnviandoConvites(false);
@@ -2481,10 +2488,10 @@ export function GestaoFracoes({
                                   })
                                 });
                                 const data = await resp.json();
-                                if (resp.ok && data.ok) {
+                                if (resp.ok && data.ok && data.email_enviado) {
                                   alert(`✅ Convite de acesso reenviado para ${co.email}. O link anterior deixa de ser válido — só o novo email funciona.`);
                                 } else {
-                                  alert(`❌ Não foi possível reenviar o convite: ${data?.error || "erro desconhecido"}.`);
+                                  alert(`❌ Não foi possível reenviar o convite: ${data?.error || "o email não chegou a ser enviado, tente novamente"}.`);
                                 }
                               } catch (err) {
                                 alert(`❌ Não foi possível reenviar o convite: ${err instanceof Error ? err.message : "erro de rede"}.`);
@@ -2689,10 +2696,10 @@ export function GestaoFracoes({
                               })
                             });
                             const dataConvite = await respConvite.json();
-                            if (respConvite.ok && dataConvite.ok) {
+                            if (respConvite.ok && dataConvite.ok && dataConvite.email_enviado) {
                               alert(`✅ Coproprietário ${coNome.trim()} convidado com sucesso! Foi enviado um email para ${coEmail.trim()} com o guia de boas-vindas e, 60 segundos depois, o link para ativar o acesso e definir a password.`);
                             } else {
-                              alert(`⚠️ Coproprietário gravado, mas houve um erro a enviar o convite de acesso. Pode reenviá-lo mais tarde.`);
+                              alert(`⚠️ Coproprietário gravado, mas houve um erro a enviar o convite de acesso (o email não chegou a sair). Pode reenviá-lo mais tarde.`);
                             }
                           } finally {
                             setEnviandoConviteCoproprietario(false);

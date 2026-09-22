@@ -256,7 +256,9 @@ export function FichaEmpresaGestora({
         })
       });
       const resultado = await resp.json();
-      if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar o email de ativação");
+      // ok:true não significa email enviado — só resultado.email_enviado
+      // confirma a entrega real (o Resend pode falhar sem o pedido em si dar erro).
+      if (!resp.ok || !resultado.ok || !resultado.email_enviado) throw new Error(resultado?.error || "O email não chegou a ser enviado");
       return true;
     } catch (err: any) {
       alert(`❌ Erro ao enviar o email de ativação: ${err?.message || "erro desconhecido"}`);
