@@ -224,7 +224,7 @@ export function FinanceiroAvancado({
       l.fracao.piso || "—",
       l.nomeExibido,
       l.periodoExibido || "—",
-      ...l.meses.map(c => c ? `${c.valor.toFixed(2)} (${c.pago ? "Pago" : "Pendente"})` : "—"),
+      ...l.meses.map(c => c&&c.pago ? `${c.valor.toFixed(2)} (Pago)` : "—"),
       l.total.toFixed(2)
     ]);
     const nomeTipo = mapaTipo === "extraordinaria" ? "Extraordinarias" : "Ordinarias";
@@ -242,7 +242,7 @@ export function FinanceiroAvancado({
     const linhas = todasAsLinhas.map(l => [
       l.fracao.fracao_nome,
       l.periodoExibido ? `${l.nomeExibido} (${l.periodoExibido})` : l.nomeExibido,
-      ...l.meses.map(c => c ? c.valor.toFixed(2) : "—"),
+      ...l.meses.map(c => c&&c.pago ? c.valor.toFixed(2) : "—"),
       l.total.toFixed(2)
     ]);
     const nomeTipo = mapaTipo === "extraordinaria" ? "Extraordinárias" : "Ordinárias";
@@ -1862,7 +1862,7 @@ export function FinanceiroAvancado({
                             ? "text-emerald-900 dark:text-emerald-200 font-black bg-emerald-200 dark:bg-emerald-800/70"
                             : "text-red-900 dark:text-red-200 font-black bg-red-200 dark:bg-red-800/70"
                         }`}>
-                          {c ? `${c.valor.toFixed(2)}€` : "—"}
+                          {c&&c.pago ? `${c.valor.toFixed(2)}€` : "—"}
                         </td>
                       ))}
                       <td className="py-2 px-3 text-right font-black text-slate-800 dark:text-white whitespace-nowrap">{l.total.toFixed(2)}€</td>
@@ -1897,7 +1897,7 @@ export function FinanceiroAvancado({
                                 ? "text-emerald-800 dark:text-emerald-300 font-bold bg-emerald-100/80 dark:bg-emerald-900/40"
                                 : "text-red-800 dark:text-red-300 font-bold bg-red-100/80 dark:bg-red-900/40"
                             }`}>
-                              {c ? `${c.valor.toFixed(2)}€` : "—"}
+                              {c&&c.pago ? `${c.valor.toFixed(2)}€` : "—"}
                             </td>
                           ))}
                           <td className="py-2 px-3 text-right font-black text-slate-600 dark:text-slate-300 whitespace-nowrap">{l.total.toFixed(2)}€</td>
