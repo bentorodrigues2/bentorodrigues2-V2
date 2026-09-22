@@ -129,6 +129,41 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Erro ao gravar os avisos mensais", detail: errAvisos.message });
     }
 
+    // Se a fração tiver uma dívida de arranque ("administração anterior")
+    // pendente, os meses agora pagos podem já estar incluídos nesse valor
+    // global — sem isto, a dívida de arranque ficava por saldar na mesma
+    // depois deste pagamento, fazendo a fração parecer que deve a dobrar
+    // (aconteceu de facto com a Fração J: 141,40€ divididos em 4 meses,
+    // mas os 212,10€ de dívida de arranque continuavam intactos).
+    try {
+      const { data: dividasArranque } = await supabase
+        .from("avisos")
+        .select("id_aviso, valor, descricao")
+        .eq("id_fracao", pagamento.id_fracao)
+        .eq("estado", "Pendente")
+        .ilike("descricao", "%administração anterior%");
+
+      for (const divida of dividasArranque || []) {
+        const valorAReduzir = Math.min(Number(divida.valor) || 0, valorTotal);
+        if (valorAReduzir <= 0) continue;
+        const novoValor = Math.round(((Number(divida.valor) || 0) - valorAReduzir) * 100) / 100;
+        if (novoValor <= 0.01) {
+          await supabase.from("avisos").update({ estado: "Pago" }).eq("id_aviso", divida.id_aviso);
+        } else {
+          await supabase
+            .from("avisos")
+            .update({
+              valor: novoValor,
+              valor_fundo_reserva: Math.round(novoValor * 0.10 * 100) / 100,
+              descricao: `${divida.descricao} (reduzido em ${valorAReduzir.toFixed(2)}€ por um pagamento de ${numMeses} meses confirmado em ${new Date().toLocaleDateString("pt-PT")}.)`
+            })
+            .eq("id_aviso", divida.id_aviso);
+        }
+      }
+    } catch (errDivida) {
+      console.warn("[dividir-pagamento-meses] Aviso ao reconciliar dívida de arranque:", errDivida?.message || errDivida);
+    }
+
     // Confirma o pagamento original (é UMA transação bancária real) e
     // liga o movimento já existente como justificado — nunca se criam N
     // pagamentos/movimentos para uma única entrada de dinheiro.
