@@ -83,7 +83,7 @@ export default async function handler(req, res) {
     // para juntar a uma ata a folha de assinaturas assinada em papel, para
     // quem preferir assinar fisicamente em vez de assinatura digital no ecrã.
     if (acao === "anexar") {
-      const { fileBase64, fileName, mimeType, predio, ano, tema, tipo, fluxo, descricao, categoria } = body;
+      const { fileBase64, fileName, mimeType, predio, ano, tema, tipo, fluxo, descricao, categoria, fracao, visibilidade } = body;
       if (!fileBase64 || !fileName) {
         return res.status(400).json({ error: "fileBase64 e fileName são obrigatórios" });
       }
@@ -97,11 +97,14 @@ export default async function handler(req, res) {
         tema: tema || "Assembleias",
         tipo: tipo || "Anexo",
         predio: predio || "geral",
-        fracao: "geral",
+        fracao: fracao || "geral",
         fluxo: fluxo || "anexo_manual",
         origem: "upload_admin",
         categoria: categoria || undefined,
-        visibilidade: "Público",
+        // "Administração" restringe a visibilidade a ADMIN/GESTOR/EMPRESA_GESTORA
+        // (ver GestaoDocumentos.tsx) — usado para documentos que nunca devem
+        // ser vistos por condóminos em geral (ex: procurações de representação).
+        visibilidade: visibilidade || "Público",
         descricao
       });
 

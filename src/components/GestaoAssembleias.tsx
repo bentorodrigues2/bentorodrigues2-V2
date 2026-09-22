@@ -81,6 +81,13 @@ export function GestaoAssembleias({ predio, fracoes, reunioes, onAddReuniao, set
   const [localReuniao, setLocalReuniao] = useState("");
   const [uploadingFolhaAssinaturas, setUploadingFolhaAssinaturas] = useState(false);
   const folhaAssinaturasInputRef = useRef<HTMLInputElement | null>(null);
+  // Declaração de representação (procuração) por fração — arquivada com
+  // visibilidade restrita (nunca aparece a condóminos nem sai no PDF da
+  // ata/download partilhado, só é consultável no Arquivo Digital por
+  // ADMIN/GESTOR/EMPRESA_GESTORA).
+  const [uploadingDeclaracaoFracaoId, setUploadingDeclaracaoFracaoId] = useState<string | null>(null);
+  const declaracaoInputRef = useRef<HTMLInputElement | null>(null);
+  const [fracaoAlvoDeclaracao, setFracaoAlvoDeclaracao] = useState<string | null>(null);
 
   const predioReunioes = reunioes.filter(r => r.id_predio === predio.id_predio);
   const predioFracoes = fracoes.filter(f => f.id_predio === predio.id_predio);
@@ -945,6 +952,113 @@ Com os meus cumprimentos,
     }
   };
 
+  // Anexa a declaração de representação (procuração) de uma fração
+  // representada — arquivada com visibilidade "Administração" (nunca visível
+  // a condóminos, nunca embutida no PDF da ata gerado/partilhado), só
+  // consultável no Arquivo Digital pela administração.
+  const handleUploadDeclaracaoRepresentacao = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    const idFracao = fracaoAlvoDeclaracao;
+    setFracaoAlvoDeclaracao(null);
+    if (!file || !idFracao || !activeMeeting) return;
+
+    const fracaoAlvo = predioFracoes.find(f => f.id_fracao === idFracao);
+    const nomeRepresentante = activeMeeting.representantes?.[idFracao] || "Procurador";
+
+    const comprimirParaWebP = (imgFile: File): Promise<{ base64: string; mimeType: string; nome: string }> =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            const MAX_WIDTH = 1600;
+            let width = img.width;
+            let height = img.height;
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx?.drawImage(img, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL("image/webp", 0.85);
+            resolve({ base64: dataUrl.split(",")[1], mimeType: "image/webp", nome: `Declaracao_Representacao_Fracao_${fracaoAlvo?.fracao_nome || idFracao}.webp` });
+          };
+          img.onerror = reject;
+          img.src = event.target?.result as string;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(imgFile);
+      });
+
+    const lerComoBase64 = (anyFile: File): Promise<{ base64: string; mimeType: string; nome: string }> =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const dataUrl = event.target?.result as string;
+          resolve({ base64: dataUrl.split(",")[1], mimeType: anyFile.type || "application/octet-stream", nome: `Declaracao_Representacao_Fracao_${fracaoAlvo?.fracao_nome || idFracao}${anyFile.name.slice(anyFile.name.lastIndexOf("."))}` });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(anyFile);
+      });
+
+    setUploadingDeclaracaoFracaoId(idFracao);
+    try {
+      const { base64, mimeType, nome } = file.type.startsWith("image/")
+        ? await comprimirParaWebP(file)
+        : await lerComoBase64(file);
+
+      const resp = await fetch("/api/documento?acao=anexar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileBase64: base64,
+          fileName: nome,
+          mimeType,
+          predio: predio.id_predio,
+          fracao: idFracao,
+          ano: new Date().getFullYear(),
+          tema: "Declarações de Representação",
+          tipo: "Procuração",
+          fluxo: "declaracao_representacao",
+          categoria: "Assembleias",
+          visibilidade: "Administração",
+          descricao: `Declaração de representação (procuração) — Fração ${fracaoAlvo?.fracao_nome || idFracao}, representada por ${nomeRepresentante}, na Assembleia "${activeMeeting.tema}" de ${activeMeeting.data}.`
+        })
+      });
+      const resultado = await resp.json();
+      if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao anexar a declaração de representação");
+
+      if (onAddDocumento) {
+        onAddDocumento({
+          id_doc: `doc-declaracao-rep-${activeMeeting.id_reuniao}-${idFracao}-${Date.now()}`,
+          id_predio: predio.id_predio,
+          nome,
+          tipo: "Procuração",
+          data_upload: new Date().toLocaleDateString("pt-PT"),
+          tamanho: "",
+          categoria: "Assembleias",
+          tema: "Declarações de Representação",
+          ano: String(new Date().getFullYear()),
+          descricao: `Declaração de representação — Fração ${fracaoAlvo?.fracao_nome || idFracao}, representada por ${nomeRepresentante}.`,
+          visibilidade: "Administração",
+          autor: loggedUser.nome || "Administrador do Condomínio",
+          arquivado: true,
+          caminho: resultado.caminho
+        });
+      }
+
+      alert(`✅ Declaração de representação da Fração ${fracaoAlvo?.fracao_nome || idFracao} anexada com sucesso (acesso restrito à administração).`);
+    } catch (err: any) {
+      alert(`❌ Erro ao anexar a declaração de representação: ${err?.message || "erro desconhecido"}`);
+    } finally {
+      setUploadingDeclaracaoFracaoId(null);
+    }
+  };
+
   const notesToText = () => notasAta;
 
   // SIGNATURE DRAWING ENGINE
@@ -1024,7 +1138,11 @@ Com os meus cumprimentos,
     if (!canvas) return;
 
     const dataUrl = canvas.toDataURL("image/png");
-    const nomeSigner = signerNome || (signerFracao === "Administrador" ? loggedUser.nome : predioFracoes.find(f => f.fracao_nome === signerFracao)?.proprietario.nome || "Condómino");
+    const fracaoDoSigner = predioFracoes.find(f => f.fracao_nome === signerFracao);
+    const ehSignerRepresentado = fracaoDoSigner && activeMeeting.folha_presencas?.[fracaoDoSigner.id_fracao] === "Representado";
+    const nomeSigner = signerNome || (signerFracao === "Administrador"
+      ? loggedUser.nome
+      : (ehSignerRepresentado ? activeMeeting.representantes?.[fracaoDoSigner!.id_fracao] : undefined) || fracaoDoSigner?.proprietario.nome || "Condómino");
 
     const novaAss: ReuniaoAssinatura = {
       nome: nomeSigner,
@@ -2093,13 +2211,30 @@ Com os meus cumprimentos,
                                   </td>
                                   <td className="p-3">
                                     {presence === "Representado" ? (
-                                      <input
-                                        type="text"
-                                        value={representative}
-                                        onChange={e => handleUpdateRepresentative(f.id_fracao, e.target.value)}
-                                        placeholder="Nome do Procurador"
-                                        className="border border-slate-200 px-2 py-1 rounded text-xs w-full focus:outline-indigo-500 font-medium"
-                                      />
+                                      <div className="flex items-center gap-1.5">
+                                        <input
+                                          type="text"
+                                          value={representative}
+                                          onChange={e => handleUpdateRepresentative(f.id_fracao, e.target.value)}
+                                          placeholder="Nome do Procurador"
+                                          className="border border-slate-200 px-2 py-1 rounded text-xs w-full focus:outline-indigo-500 font-medium"
+                                        />
+                                        <button
+                                          type="button"
+                                          disabled={uploadingDeclaracaoFracaoId === f.id_fracao}
+                                          onClick={() => { setFracaoAlvoDeclaracao(f.id_fracao); declaracaoInputRef.current?.click(); }}
+                                          title={documentos?.some(d => d.tema === "Declarações de Representação" && d.descricao?.includes(`Fração ${f.fracao_nome}`) && d.descricao?.includes(activeMeeting.data))
+                                            ? "Já tem declaração de representação anexada — clique para substituir"
+                                            : "Anexar declaração de representação (procuração) — acesso restrito à administração"}
+                                          className={`shrink-0 px-2 py-1.5 rounded text-[10px] font-bold cursor-pointer border disabled:opacity-50 ${
+                                            documentos?.some(d => d.tema === "Declarações de Representação" && d.descricao?.includes(`Fração ${f.fracao_nome}`) && d.descricao?.includes(activeMeeting.data))
+                                              ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                                              : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200"
+                                          }`}
+                                        >
+                                          <i className={`fa-solid ${uploadingDeclaracaoFracaoId === f.id_fracao ? "fa-spinner fa-spin" : "fa-paperclip"}`}></i>
+                                        </button>
+                                      </div>
                                     ) : (
                                       <span className="text-slate-400 italic text-[10px]">Não se aplica</span>
                                     )}
@@ -2109,6 +2244,17 @@ Com os meus cumprimentos,
                             })}
                           </tbody>
                         </table>
+                        <input
+                          ref={declaracaoInputRef}
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={handleUploadDeclaracaoRepresentacao}
+                          className="hidden"
+                        />
+                        <p className="text-[10px] text-slate-400 mt-2 flex items-center gap-1.5">
+                          <i className="fa-solid fa-lock"></i>
+                          As declarações de representação (procurações) anexadas com o clipe ficam guardadas no Arquivo Digital com acesso restrito à administração — nunca aparecem aos condóminos nem no PDF da ata descarregado/partilhado.
+                        </p>
                       </div>
                     </div>
                   )}
@@ -2376,15 +2522,20 @@ Com os meus cumprimentos,
                               <div className="grid grid-cols-1 gap-2">
                                 <div className="flex flex-col">
                                   <label className="text-[10px] font-bold text-slate-400 mb-1">Escolher Condómino Presente</label>
-                                  <select 
-                                    value={signerFracao} 
+                                  <select
+                                    value={signerFracao}
                                     onChange={e => {
                                       setSignerFracao(e.target.value);
                                       if (e.target.value === "Presidente" || e.target.value === "Administrador") {
                                         setSignerNome(presidenteMesa || loggedUser.nome);
                                       } else {
                                         const matchingFrac = predioFracoes.find(f => f.fracao_nome === e.target.value);
-                                        setSignerNome(matchingFrac?.proprietario.nome || "");
+                                        const ehRepresentado = matchingFrac && (activeMeeting.folha_presencas?.[matchingFrac.id_fracao] === "Representado");
+                                        // Quem assina é sempre quem está fisicamente presente — o
+                                        // procurador quando há representação, nunca o proprietário
+                                        // ausente que a IA/gestão nunca chegaria a colher.
+                                        const nomeRep = ehRepresentado ? activeMeeting.representantes?.[matchingFrac!.id_fracao] : undefined;
+                                        setSignerNome(nomeRep || matchingFrac?.proprietario.nome || "");
                                       }
                                     }}
                                     className="border border-slate-200 p-1.5 text-xs rounded bg-white font-medium"
@@ -2393,20 +2544,31 @@ Com os meus cumprimentos,
                                     {predioFracoes.filter(f => {
                                       const presence = activeMeeting.folha_presencas?.[f.id_fracao] || "Ausente";
                                       return presence !== "Ausente";
-                                    }).map(f => (
-                                      <option key={f.id_fracao} value={f.fracao_nome}>Subscrição Fração {f.fracao_nome} - {f.proprietario.nome} ({f.permilagem}‰)</option>
-                                    ))}
+                                    }).map(f => {
+                                      const ehRepresentado = activeMeeting.folha_presencas?.[f.id_fracao] === "Representado";
+                                      const nomeRep = ehRepresentado ? activeMeeting.representantes?.[f.id_fracao] : undefined;
+                                      return (
+                                        <option key={f.id_fracao} value={f.fracao_nome}>
+                                          Subscrição Fração {f.fracao_nome} - {ehRepresentado ? `${nomeRep || "Procurador"} (em representação de ${f.proprietario.nome})` : f.proprietario.nome} ({f.permilagem}‰)
+                                        </option>
+                                      );
+                                    })}
                                   </select>
                                 </div>
 
                                 <div className="flex flex-col">
-                                  <label className="text-[10px] font-bold text-slate-400 mb-1">Nome Completo do Signatário</label>
-                                  <input 
-                                    type="text" 
-                                    value={signerNome || (signerFracao === "Administrador" ? loggedUser.nome : "")} 
-                                    onChange={e => setSignerNome(e.target.value)} 
-                                    placeholder="Confirmar nome para registo" 
-                                    className="border border-slate-200 px-2 py-1.5 text-xs rounded font-semibold text-slate-700" 
+                                  <label className="text-[10px] font-bold text-slate-400 mb-1">
+                                    Nome Completo do Signatário
+                                    {activeMeeting.folha_presencas?.[predioFracoes.find(f => f.fracao_nome === signerFracao)?.id_fracao || ""] === "Representado" && (
+                                      <span className="text-indigo-600 font-normal"> — assina em representação de {predioFracoes.find(f => f.fracao_nome === signerFracao)?.proprietario.nome}</span>
+                                    )}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={signerNome || (signerFracao === "Administrador" ? loggedUser.nome : "")}
+                                    onChange={e => setSignerNome(e.target.value)}
+                                    placeholder="Confirmar nome para registo"
+                                    className="border border-slate-200 px-2 py-1.5 text-xs rounded font-semibold text-slate-700"
                                   />
                                 </div>
                               </div>
@@ -2476,9 +2638,15 @@ Com os meus cumprimentos,
                                 {predioFracoes.filter(f => {
                                   const presence = activeMeeting.folha_presencas?.[f.id_fracao] || "Ausente";
                                   return presence !== "Ausente";
-                                }).map(f => (
-                                  <p key={f.id_fracao}>- Fração {f.fracao_nome} ({f.proprietario.nome})</p>
-                                ))}
+                                }).map(f => {
+                                  const ehRepresentado = activeMeeting.folha_presencas?.[f.id_fracao] === "Representado";
+                                  const nomeRep = ehRepresentado ? activeMeeting.representantes?.[f.id_fracao] : undefined;
+                                  return (
+                                    <p key={f.id_fracao}>
+                                      - Fração {f.fracao_nome} ({ehRepresentado ? `${nomeRep || "Procurador"}, em representação de ${f.proprietario.nome}` : f.proprietario.nome})
+                                    </p>
+                                  );
+                                })}
                               </div>
                             </div>
 
@@ -2543,7 +2711,10 @@ Com os meus cumprimentos,
                           </div>
 
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            {activeMeeting.assinaturas.map((ass, idx) => (
+                            {activeMeeting.assinaturas.map((ass, idx) => {
+                              const fracaoDaAss = predioFracoes.find(f => f.fracao_nome === ass.fracao);
+                              const ehRepresentacao = fracaoDaAss && activeMeeting.folha_presencas?.[fracaoDaAss.id_fracao] === "Representado";
+                              return (
                               <div key={idx} className="bg-white p-3 rounded-lg border border-slate-200 flex flex-col items-center text-center shadow-sm relative">
                                 <button
                                   type="button"
@@ -2562,6 +2733,9 @@ Com os meus cumprimentos,
                                 </button>
                                 <span className="text-[10px] font-bold text-slate-700 truncate w-full">{ass.nome}</span>
                                 <span className="text-[8px] uppercase tracking-wide font-bold text-slate-400 mb-1">{ass.fracao}</span>
+                                {ehRepresentacao && (
+                                  <span className="text-[7px] text-indigo-600 font-bold -mt-1 mb-1">em representação de {fracaoDaAss!.proprietario.nome}</span>
+                                )}
                                 <div className="bg-slate-50 border border-slate-100 p-1.5 rounded w-full flex items-center justify-center">
                                   <img src={ass.img} className="max-h-[40px] max-width-[100px] object-contain mix-blend-multiply" />
                                 </div>
@@ -2572,7 +2746,8 @@ Com os meus cumprimentos,
                                   </span>
                                 )}
                               </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}

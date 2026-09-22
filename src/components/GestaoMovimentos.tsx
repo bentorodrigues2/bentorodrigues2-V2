@@ -372,6 +372,41 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     }
   };
 
+  // Desfaz uma confirmação mal processada (ex: fração errada, devia ter
+  // sido dividida em vários meses, ou nem sequer era uma quota normal) —
+  // volta a colocar o pagamento e o movimento em "por confirmar", para se
+  // poder corrigir e voltar a processar corretamente.
+  const [aDesfazerConfirmacaoMovId, setADesfazerConfirmacaoMovId] = useState<string | null>(null);
+  const desfazerConfirmacaoPagamento = async (mov: Movimento) => {
+    const idPagamento = mov.descricao?.match(/\[pagamento:([^\]]+)\]/)?.[1];
+    if (!idPagamento) {
+      alert("Este movimento não tem nenhum pagamento ligado para desfazer.");
+      return;
+    }
+    if (!confirm("Desfazer a confirmação deste pagamento? O recibo já emitido mantém-se no Arquivo Digital, mas o pagamento volta a \"por confirmar\" para poderes corrigir e voltar a processar.")) return;
+
+    setADesfazerConfirmacaoMovId(mov.id_mov);
+    try {
+      const resp = await fetch("/api/pagamento?acao=desfazer-confirmacao", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_pagamento: idPagamento })
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) {
+        alert(`Não foi possível desfazer a confirmação: ${data?.error || "erro desconhecido"}`);
+        return;
+      }
+      setMovements(prev => prev.map(m => m.id_mov === mov.id_mov ? { ...m, estado: "Movimento Cego / Por Justificar", is_movimento_cego: true } : m));
+      registarLogAuditoria("Financeira", "Desfez a confirmação de um pagamento", predio.id_predio, loggedUser, mov.descricao);
+      alert("✅ Confirmação desfeita. O pagamento voltou a aparecer em \"Pagamentos por Confirmar\" — corrige o que for preciso (fração, dividir em vários meses, etc.) e confirma outra vez.");
+    } catch (err: any) {
+      alert(`Não foi possível desfazer a confirmação: ${err?.message || "erro de rede"}`);
+    } finally {
+      setADesfazerConfirmacaoMovId(null);
+    }
+  };
+
   const handleJustificationFileChange = (e: React.ChangeEvent<HTMLInputElement>, movId: string) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -2126,7 +2161,18 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                           </div>
                         );
                       })()}
-                      <div className="col-span-2 sm:col-span-4 flex justify-end">
+                      <div className="col-span-2 sm:col-span-4 flex justify-between items-center">
+                        {!isCego && m.tipo === "Receita" && /\[pagamento:/.test(m.descricao || "") && (
+                          <button
+                            type="button"
+                            disabled={aDesfazerConfirmacaoMovId === m.id_mov}
+                            onClick={() => desfazerConfirmacaoPagamento(m)}
+                            title="Volta a colocar este pagamento em 'por confirmar' — usa quando ficou mal processado (fração errada, devia ter sido dividido em vários meses, etc.)"
+                            className="flex items-center gap-1.5 text-amber-700 hover:text-amber-900 font-bold text-[10px] cursor-pointer disabled:opacity-50"
+                          >
+                            <i className={`fa-solid ${aDesfazerConfirmacaoMovId === m.id_mov ? "fa-spinner fa-spin" : "fa-rotate-left"}`}></i> Desfazer Confirmação
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => {
@@ -2134,7 +2180,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                               setMovements(prev => prev.filter(x => x.id_mov !== m.id_mov));
                             }
                           }}
-                          className="flex items-center gap-1.5 text-red-600 hover:text-red-800 font-bold text-[10px] cursor-pointer"
+                          className="flex items-center gap-1.5 text-red-600 hover:text-red-800 font-bold text-[10px] cursor-pointer ml-auto"
                         >
                           <i className="fa-solid fa-trash-can"></i> Eliminar Movimento
                         </button>
