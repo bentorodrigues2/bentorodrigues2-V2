@@ -2814,10 +2814,13 @@ export function exportarBalanceteMapaAnualXLS(
     // avisos retroativos (emissão em atraso de vários meses) são todos
     // emitidos no mesmo dia. O mês real está sempre em "vencimento".
     const mesReferenciaAviso = (a: any): Date => new Date(a.vencimento || a.data);
-    // Dívidas avulsas de anos/administração anteriores ("desde ...") não são
-    // de 1 só mês — ficam numa coluna própria em vez de distorcerem a
-    // coluna do mês onde calhassem.
-    const ehDividaAnteriorAvulsa = (a: any): boolean => /administra[cç][aã]o anterior/i.test(a.descricao || "");
+    // "administração anterior" aparece em dois contextos: dívidas avulsas
+    // por pagar (excluir da grelha mensal, não são de 1 só mês) e os
+    // lançamentos históricos de jan-maio já "liquidados junto da
+    // administração anterior" (mostrar como qualquer outro mês pago) —
+    // exclui só quando NÃO é um registo liquidado.
+    const ehDividaAnteriorAvulsa = (a: any): boolean =>
+      /administra[cç][aã]o anterior/i.test(a.descricao || "") && !/liquidad/i.test(a.descricao || "");
 
     const avisosOrdinariosAno = avisos.filter(a => {
       if (!a?.data && !a?.vencimento) return false;

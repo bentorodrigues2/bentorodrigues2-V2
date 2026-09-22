@@ -126,7 +126,12 @@ export function FinanceiroAvancado({
   // Pendente) emitido para esse mês; dívidas avulsas de anos anteriores
   // ("administração anterior", sem 1 mês certo) não entram aqui para não
   // distorcerem a coluna de um mês qualquer.
-  const ehDividaAvulsaAnterior = (a: Aviso): boolean => /administra[cç][aã]o anterior/i.test(a.descricao || "");
+  // "administração anterior" aparece em dois contextos: dívidas avulsas por
+  // pagar (excluir da grelha mensal) e os lançamentos históricos de
+  // jan-maio já "liquidados junto da administração anterior" (mostrar como
+  // qualquer outro mês pago) — exclui só quando NÃO é um registo liquidado.
+  const ehDividaAvulsaAnterior = (a: Aviso): boolean =>
+    /administra[cç][aã]o anterior/i.test(a.descricao || "") && !/liquidad/i.test(a.descricao || "");
   const mapaAvisosDoTipoAno = useMemo(() => {
     return predioAvisos.filter(a => {
       if (ehDividaAvulsaAnterior(a)) return false;
