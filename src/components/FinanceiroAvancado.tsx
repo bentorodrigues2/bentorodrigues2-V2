@@ -137,7 +137,9 @@ export function FinanceiroAvancado({
   }, [predioAvisos, mapaAno, mapaTipo]);
 
   interface CelulaMapa { valor: number }
-  const mapaLinhas = useMemo(() => {
+  interface LinhaMapa { fracao: Fracao; meses: (CelulaMapa | null)[]; total: number; nomeExibido: string; periodoExibido?: string }
+
+  const mapaLinhasBase = useMemo(() => {
     return mapaFracoesVisiveis.map(f => {
       const avisosFracao = mapaAvisosDoTipoAno.filter(a => a.id_fracao === f.id_fracao);
       const meses: (CelulaMapa | null)[] = MESES_ABREV.map((_, mIdx) => {
@@ -149,12 +151,59 @@ export function FinanceiroAvancado({
     });
   }, [mapaFracoesVisiveis, mapaAvisosDoTipoAno]);
 
+  // Se o proprietário de uma fração mudou a meio do ano selecionado, os
+  // meses pagos antes da transferência não podem continuar atribuídos ao
+  // novo proprietário (que ainda nem era dono) — divide-se a linha em duas:
+  // o antigo proprietário fica com os meses até à transferência, arrumado
+  // ao fundo da tabela como histórico; o novo continua na linha principal,
+  // com os meses a partir da transferência.
+  const { mapaLinhas, mapaLinhasHistoricas } = useMemo(() => {
+    const atuais: LinhaMapa[] = [];
+    const historicas: LinhaMapa[] = [];
+
+    mapaLinhasBase.forEach(l => {
+      const transferencias = (l.fracao.historico_proprietarios || [])
+        .filter(h => h.data_fim && new Date(h.data_fim).getFullYear() === mapaAno)
+        .sort((a, b) => new Date(a.data_fim).getTime() - new Date(b.data_fim).getTime());
+
+      if (transferencias.length === 0) {
+        atuais.push({ ...l, nomeExibido: l.fracao.proprietario?.nome || "—" });
+        return;
+      }
+
+      let cursor = 0;
+      transferencias.forEach(h => {
+        const mesCorte = new Date(h.data_fim!).getMonth();
+        const mesesAntigo = l.meses.map((c, i) => (i >= cursor && i <= mesCorte ? c : null));
+        const totalAntigo = mesesAntigo.reduce((s, c) => s + (c?.valor || 0), 0);
+        if (totalAntigo > 0) {
+          historicas.push({
+            fracao: l.fracao,
+            meses: mesesAntigo,
+            total: totalAntigo,
+            nomeExibido: h.proprietario?.nome || "Proprietário Anterior",
+            periodoExibido: `até ${new Date(h.data_fim!).toLocaleDateString("pt-PT")}`
+          });
+        }
+        cursor = mesCorte + 1;
+      });
+
+      const mesesAtual = l.meses.map((c, i) => (i >= cursor ? c : null));
+      const totalAtual = mesesAtual.reduce((s, c) => s + (c?.valor || 0), 0);
+      atuais.push({ fracao: l.fracao, meses: mesesAtual, total: totalAtual, nomeExibido: l.fracao.proprietario?.nome || "—" });
+    });
+
+    return { mapaLinhas: atuais, mapaLinhasHistoricas: historicas };
+  }, [mapaLinhasBase, mapaAno]);
+
   const exportarMapaXLS = () => {
-    const headers = ["Fração", "Piso", "Proprietário", ...MESES_ABREV.map(m => `${m}/${mapaAno}`), "Total (€)"];
-    const rows = mapaLinhas.map(l => [
+    const headers = ["Fração", "Piso", "Proprietário", "Período", ...MESES_ABREV.map(m => `${m}/${mapaAno}`), "Total (€)"];
+    const todasAsLinhas = [...mapaLinhas, ...mapaLinhasHistoricas];
+    const rows = todasAsLinhas.map(l => [
       l.fracao.fracao_nome,
       l.fracao.piso || "—",
-      l.fracao.proprietario?.nome || "—",
+      l.nomeExibido,
+      l.periodoExibido || "—",
       ...l.meses.map(c => c ? `${c.valor.toFixed(2)} (Pago)` : "—"),
       l.total.toFixed(2)
     ]);
@@ -164,14 +213,15 @@ export function FinanceiroAvancado({
 
   const exportarMapaPDF = () => {
     const colunas = [
-      { label: "Fração", largura: 16, alinhamento: "left" as const },
-      { label: "Proprietário", largura: 34, alinhamento: "left" as const },
-      ...MESES_ABREV.map(m => ({ label: m, largura: 11, alinhamento: "right" as const })),
-      { label: "Total (€)", largura: 16, alinhamento: "right" as const }
+      { label: "Fração", largura: 14, alinhamento: "left" as const },
+      { label: "Proprietário", largura: 28, alinhamento: "left" as const },
+      ...MESES_ABREV.map(m => ({ label: m, largura: 10, alinhamento: "right" as const })),
+      { label: "Total (€)", largura: 14, alinhamento: "right" as const }
     ];
-    const linhas = mapaLinhas.map(l => [
+    const todasAsLinhas = [...mapaLinhas, ...mapaLinhasHistoricas];
+    const linhas = todasAsLinhas.map(l => [
       l.fracao.fracao_nome,
-      l.fracao.proprietario?.nome || "—",
+      l.periodoExibido ? `${l.nomeExibido} (${l.periodoExibido})` : l.nomeExibido,
       ...l.meses.map(c => c ? c.valor.toFixed(2) : "—"),
       l.total.toFixed(2)
     ]);
@@ -1757,7 +1807,7 @@ export function FinanceiroAvancado({
                         {l.fracao.fracao_nome} <span className="text-slate-400 font-normal">({l.fracao.piso})</span>
                       </td>
                       {!ehCondomino && (
-                        <td className="py-2 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">{l.fracao.proprietario?.nome || "—"}</td>
+                        <td className="py-2 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">{l.nomeExibido}</td>
                       )}
                       {l.meses.map((c, mIdx) => (
                         <td key={mIdx} className={`py-2 px-2 text-right whitespace-nowrap ${
@@ -1776,6 +1826,33 @@ export function FinanceiroAvancado({
                         Sem frações para mostrar.
                       </td>
                     </tr>
+                  )}
+                  {!ehCondomino && mapaLinhasHistoricas.length > 0 && (
+                    <>
+                      <tr>
+                        <td colSpan={15} className="py-1.5 px-3 bg-slate-100 dark:bg-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          <i className="fa-solid fa-clock-rotate-left mr-1.5"></i>Proprietários Anteriores em {mapaAno} (fração transferida a meio do ano)
+                        </td>
+                      </tr>
+                      {mapaLinhasHistoricas.map((l, idx) => (
+                        <tr key={`${l.fracao.id_fracao}-hist-${idx}`} className="bg-slate-50/70 dark:bg-slate-900/20 italic">
+                          <td className="py-2 px-3 font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                            {l.fracao.fracao_nome} <span className="text-slate-400 font-normal">({l.fracao.piso})</span>
+                          </td>
+                          <td className="py-2 px-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                            {l.nomeExibido} <span className="text-slate-400 font-normal">({l.periodoExibido})</span>
+                          </td>
+                          {l.meses.map((c, mIdx) => (
+                            <td key={mIdx} className={`py-2 px-2 text-right whitespace-nowrap ${
+                              !c ? "text-slate-300 dark:text-slate-700" : "text-emerald-600/80 dark:text-emerald-400/80 font-bold"
+                            }`}>
+                              {c ? `${c.valor.toFixed(2)}€` : "—"}
+                            </td>
+                          ))}
+                          <td className="py-2 px-3 text-right font-black text-slate-600 dark:text-slate-300 whitespace-nowrap">{l.total.toFixed(2)}€</td>
+                        </tr>
+                      ))}
+                    </>
                   )}
                 </tbody>
               </table>
