@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso, Fornecedor } from "../types";
 import { formatDatePT, parseValorMonetario, exportToXLS, exportarTabelaParaPDF } from "../utils";
-import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria, fetchMovimentosFromSupabase, fetchPagamentosPendentesInfoFromSupabase, dbInsert } from "../lib/supabaseService";
+import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria, fetchMovimentosFromSupabase, fetchPagamentosPendentesInfoFromSupabase, dbInsert, dbUpdate } from "../lib/supabaseService";
 import { cruzarMovimentoComFornecedor } from "../lib/fornecedorMatching";
 import { matchBankTransactions } from "../utils/bankStatementParser";
 import { Save, CheckCircle2 } from "lucide-react";
@@ -1056,12 +1056,20 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   const [detalheMovId, setDetalheMovId] = useState<string | null>(null);
   const [editValorMov, setEditValorMov] = useState<number>(0);
   const [editDescricaoMov, setEditDescricaoMov] = useState("");
+  // Fração e data de referência do pagamento — antes só se conseguia
+  // corrigir descrição/valor; quando a IA não reconhecia a fração (ou
+  // reconhecia mal, ex: cruzou pelo IBAN errado) não havia forma nenhuma na
+  // interface de a corrigir, só apagando e lançando tudo manualmente.
+  const [editFracaoIdMov, setEditFracaoIdMov] = useState<string>("");
+  const [editDataMov, setEditDataMov] = useState<string>("");
   const [aGuardarDetalheMov, setAGuardarDetalheMov] = useState(false);
 
   const abrirDetalheMov = (m: Movimento) => {
     setDetalheMovId(m.id_mov);
     setEditValorMov(Math.abs(m.valor));
     setEditDescricaoMov(m.descricao);
+    setEditFracaoIdMov(m.id_fracao || "");
+    setEditDataMov(m.data || "");
   };
 
   const handleGuardarDetalheMov = async () => {
@@ -1069,10 +1077,34 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     if (!mov) return;
     setAGuardarDetalheMov(true);
     const sinal = mov.valor < 0 ? -1 : 1;
-    const atualizado: Movimento = { ...mov, valor: sinal * Math.abs(editValorMov), descricao: editDescricaoMov };
+    const fracaoMudou = (mov.id_fracao || "") !== editFracaoIdMov;
+    // Se a fração for corrigida, atualiza também a letra mostrada na
+    // descrição (ex: "(K - email)" -> "(E - email)"), para não ficar a
+    // mostrar a fração errada mesmo depois de corrigida por trás.
+    let descricaoFinal = editDescricaoMov;
+    if (fracaoMudou) {
+      const novaFracaoNome = editFracaoIdMov ? (fracoes.find(f => f.id_fracao === editFracaoIdMov)?.fracao_nome || "?") : "Fração Não Identificada";
+      descricaoFinal = descricaoFinal.replace(/\(([^-]+) -/, `(${novaFracaoNome} -`);
+    }
+    const atualizado: Movimento = {
+      ...mov,
+      valor: sinal * Math.abs(editValorMov),
+      descricao: descricaoFinal,
+      id_fracao: editFracaoIdMov || undefined,
+      data: editDataMov || mov.data
+    };
     const ok = await saveMovimentoToSupabase(atualizado);
+    if (!ok) {
+      setAGuardarDetalheMov(false);
+      return alert("❌ Não foi possível gravar a correção no Supabase.");
+    }
+    // O pagamento ligado (se existir) tem de acompanhar a correção de
+    // fração — é ele que decide para quem sai o recibo ao confirmar.
+    const idPagamentoLigado = mov.descricao?.match(/\[pagamento:([^\]]+)\]/)?.[1];
+    if (fracaoMudou && idPagamentoLigado) {
+      await dbUpdate("pagamentos", { id_fracao: editFracaoIdMov || null }, [["id", "eq", idPagamentoLigado]]);
+    }
     setAGuardarDetalheMov(false);
-    if (!ok) return alert("❌ Não foi possível gravar a correção no Supabase.");
     setMovements(prev => prev.map(m => m.id_mov === atualizado.id_mov ? atualizado : m));
     setDetalheMovId(null);
   };
@@ -1262,6 +1294,39 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                     onChange={setEditValorMov}
                     className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-mono"
                   />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 block">
+                    Fração {!editFracaoIdMov && <span className="text-amber-600 font-normal">— a IA não conseguiu identificar, escolha manualmente</span>}
+                  </label>
+                  <select
+                    value={editFracaoIdMov}
+                    onChange={e => setEditFracaoIdMov(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                  >
+                    <option value="">— Fração Não Identificada —</option>
+                    {fracoesComDivida.map(f => (
+                      <option key={f.id_fracao} value={f.id_fracao}>
+                        Fração {f.fracao_nome} ({f.piso}) — {f.proprietario?.nome || "sem proprietário"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 block">
+                    Data / Mês de Referência
+                  </label>
+                  <input
+                    type="date"
+                    value={editDataMov}
+                    onChange={e => setEditDataMov(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-mono"
+                  />
+                  <p className="text-[10px] text-slate-400">
+                    Ao confirmar o pagamento, o mês a marcar como pago é sempre escolhido pelo valor (não por esta data) — mas esta data determina em que mês/ano este movimento aparece no Mapa de Pagamentos e no Extrato.
+                  </p>
                 </div>
               </div>
               <div className="p-4 border-t border-slate-200 flex items-center justify-between gap-2">
