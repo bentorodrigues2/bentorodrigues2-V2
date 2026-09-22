@@ -59,47 +59,6 @@ export default async function handler(req, res) {
       console.warn("[confirmar-pagamento] Aviso ao atualizar movimento ligado:", errMovLink?.message || errMovLink);
     }
 
-    // 1.2) Marcar como "Pago" o(s) aviso(s) (nota de cobrança) correspondentes
-    // a este pagamento, para que os emails automáticos de lembrete/mora (ver
-    // server/lib/cronService.js) deixem de ser enviados a quem já pagou. Os
-    // avisos são criados aos pares (Quota Ordinária + Fundo de Reserva) com a
-    // mesma data de emissão — agrupa por data e escolhe o grupo pendente cuja
-    // soma bate certo com o valor pago; sem correspondência exata, assume o
-    // grupo pendente mais antigo (aviso é uma tabela sem FK direta para
-    // pagamentos, tal como os movimentos).
-    try {
-      if (pagamento.id_fracao) {
-        const { data: pendentesAvisos } = await supabase
-          .from("avisos")
-          .select("*")
-          .eq("id_fracao", pagamento.id_fracao)
-          .eq("estado", "Pendente");
-
-        if (pendentesAvisos?.length) {
-          // Antes agrupava-se por "data" (assumindo que avisos do mesmo mês
-          // partilham data de emissão) e, sem correspondência exata de
-          // valor, marcava-se o grupo inteiro como Pago. Mas avisos
-          // retroativos (emissão em atraso) são todos emitidos no MESMO dia
-          // para VÁRIOS meses — "data" é a data de emissão, o mês real da
-          // quota só está em "vencimento". Isto fazia um único pagamento de
-          // 1 mês marcar todos os meses em atraso da fração como pagos.
-          // Agora escolhe sempre o aviso individual mais antigo cujo valor
-          // bate certo com o que foi pago — nunca "o resto do grupo".
-          const valorPago = Number(pagamento.valor || 0);
-          const ordenados = [...pendentesAvisos].sort(
-            (a, b) => new Date(a.vencimento || a.data).getTime() - new Date(b.vencimento || b.data).getTime()
-          );
-          const avisoAlvo = ordenados.find((a) => Math.abs(Number(a.valor || 0) - valorPago) < 0.05);
-
-          if (avisoAlvo) {
-            await supabase.from("avisos").update({ estado: "Pago" }).eq("id_aviso", avisoAlvo.id_aviso);
-          }
-        }
-      }
-    } catch (errAvisos) {
-      console.warn("[confirmar-pagamento] Aviso ao atualizar avisos ligados:", errAvisos?.message || errAvisos);
-    }
-
     // 2) Buscar proprietário e fração separadamente (sem depender de relações
     // embutidas do PostgREST, que exigem FKs registadas na cache do schema).
     // A tabela "proprietarios" tem registos com formatos de id inconsistentes
@@ -140,6 +99,57 @@ export default async function handler(req, res) {
     const nifDestinatario = proprietarioFracao?.nif || proprietario?.nif || "";
     const fracaoNome = fracao?.fracao_nome || pagamento.fracao || "Fração";
     const ano = new Date(pagamento.data_pagamento || pagamento.criado_em || Date.now()).getFullYear();
+
+    // 2.1) Marcar como "Pago" o aviso (nota de cobrança) correspondente a
+    // este pagamento, para o Mapa de Pagamentos e os lembretes de mora (ver
+    // server/lib/cronService.js) refletirem que já foi liquidado. Escolhe
+    // sempre o aviso PENDENTE individual mais antigo cujo valor bate certo
+    // com o que foi pago (nunca "o resto de um grupo" — avisos retroativos
+    // partilham data de emissão, "data" nunca é o mês real, ver vencimento).
+    //
+    // Se não existir NENHUM aviso pendente que bata certo (ex: a fração
+    // nunca chegou a ter nota emitida para este mês — aconteceu com várias
+    // frações de teste), o pagamento ficava confirmado e o recibo enviado,
+    // mas nada aparecia no Mapa de Pagamentos nem no histórico de avisos,
+    // como se tivesse desaparecido. Cria-se agora, nesse caso, um aviso já
+    // "Pago" com o mês do próprio pagamento, para nunca ficar por registar.
+    try {
+      if (pagamento.id_fracao) {
+        const valorPago = Number(pagamento.valor || 0);
+        const { data: pendentesAvisos } = await supabase
+          .from("avisos")
+          .select("*")
+          .eq("id_fracao", pagamento.id_fracao)
+          .eq("estado", "Pendente");
+
+        const ordenados = [...(pendentesAvisos || [])].sort(
+          (a, b) => new Date(a.vencimento || a.data).getTime() - new Date(b.vencimento || b.data).getTime()
+        );
+        const avisoAlvo = ordenados.find((a) => Math.abs(Number(a.valor || 0) - valorPago) < 0.05);
+
+        if (avisoAlvo) {
+          await supabase.from("avisos").update({ estado: "Pago" }).eq("id_aviso", avisoAlvo.id_aviso);
+        } else {
+          const dataRef = pagamento.data_pagamento || new Date().toISOString().split("T")[0];
+          await supabase.from("avisos").insert({
+            id_aviso: `aviso-confirmado-${pagamento.id}`,
+            id_predio: fracao?.id_predio || null,
+            id_fracao: pagamento.id_fracao,
+            tipo: "Quota Ordinária",
+            data: dataRef,
+            vencimento: dataRef,
+            descricao: `Quota Ordinária — pagamento confirmado (${pagamento.entidade || "Transferência Bancária"}).`,
+            valor: valorPago,
+            valor_fundo_reserva: Math.round(valorPago * 0.10 * 100) / 100,
+            estado: "Pago",
+            proprietario_nome: nomeDestinatario,
+            proprietario_nif: nifDestinatario
+          });
+        }
+      }
+    } catch (errAvisos) {
+      console.warn("[confirmar-pagamento] Aviso ao atualizar avisos ligados:", errAvisos?.message || errAvisos);
+    }
 
     // 3) Montar e gerar o recibo oficial (mesmo template legal usado no
     // frontend em src/utils/receiptGenerator.ts — compilado para
