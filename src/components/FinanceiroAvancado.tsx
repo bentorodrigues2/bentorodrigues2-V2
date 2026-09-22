@@ -121,14 +121,14 @@ export function FinanceiroAvancado({
   // real está sempre em "vencimento" (dia 8 do mês de referência).
   const mesReferenciaAviso = (a: Aviso): Date => new Date(a.vencimento || a.data);
 
-  // Dívidas avulsas da administração anterior ("desde ...") não são de 1 só
-  // mês — não fazem sentido numa grelha mensal e distorceriam a coluna onde
-  // caíssem. Contam para a fração aparecer "em dívida" (linha vermelha),
-  // mas nunca ocupam uma célula de mês.
-  const ehDividaAvulsaAnterior = (a: Aviso): boolean => /administração anterior/i.test(a.descricao || "");
-
+  // Este mapa é só de PAGAMENTOS FINALIZADOS (recibo emitido) — uma nota de
+  // cobrança pendente não é um pagamento, por isso nunca aparece aqui. O
+  // acompanhamento de dívidas/pendentes já tem o seu próprio ecrã
+  // ("Relatórios de Dívidas"); misturar os dois tornava ambíguo se uma
+  // célula significava "cobrado" ou "recebido".
   const mapaAvisosDoTipoAno = useMemo(() => {
     return predioAvisos.filter(a => {
+      if (a.estado !== "Pago") return false;
       const d = mesReferenciaAviso(a);
       if (isNaN(d.getTime()) || d.getFullYear() !== mapaAno) return false;
       const ehExtra = String(a.tipo || "").includes("Extraordinária");
@@ -136,22 +136,16 @@ export function FinanceiroAvancado({
     });
   }, [predioAvisos, mapaAno, mapaTipo]);
 
-  interface CelulaMapa { valor: number; pago: boolean }
+  interface CelulaMapa { valor: number }
   const mapaLinhas = useMemo(() => {
     return mapaFracoesVisiveis.map(f => {
       const avisosFracao = mapaAvisosDoTipoAno.filter(a => a.id_fracao === f.id_fracao);
-      const avisosMensais = avisosFracao.filter(a => !ehDividaAvulsaAnterior(a));
       const meses: (CelulaMapa | null)[] = MESES_ABREV.map((_, mIdx) => {
-        const aviso = avisosMensais.find(a => mesReferenciaAviso(a).getMonth() === mIdx);
-        if (!aviso) return null;
-        return { valor: Number(aviso.valor || 0), pago: aviso.estado === "Pago" };
+        const aviso = avisosFracao.find(a => mesReferenciaAviso(a).getMonth() === mIdx);
+        return aviso ? { valor: Number(aviso.valor || 0) } : null;
       });
       const total = meses.reduce((s, c) => s + (c?.valor || 0), 0);
-      // Considera-se "em dívida" mesmo que a dívida não caiba num mês (ex:
-      // dívida avulsa da administração anterior) — a fração deve continuar
-      // sinalizada a vermelho até estar mesmo regularizada.
-      const emDivida = avisosFracao.some(a => a.estado === "Pendente");
-      return { fracao: f, meses, total, emDivida };
+      return { fracao: f, meses, total };
     });
   }, [mapaFracoesVisiveis, mapaAvisosDoTipoAno]);
 
@@ -161,7 +155,7 @@ export function FinanceiroAvancado({
       l.fracao.fracao_nome,
       l.fracao.piso || "—",
       l.fracao.proprietario?.nome || "—",
-      ...l.meses.map(c => c ? `${c.valor.toFixed(2)} (${c.pago ? "Pago" : "Pendente"})` : "—"),
+      ...l.meses.map(c => c ? `${c.valor.toFixed(2)} (Pago)` : "—"),
       l.total.toFixed(2)
     ]);
     const nomeTipo = mapaTipo === "extraordinaria" ? "Extraordinarias" : "Ordinarias";
@@ -1681,8 +1675,8 @@ export function FinanceiroAvancado({
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   {ehCondomino
-                    ? "Consulta o histórico mensal de pagamentos da sua fração."
-                    : "Grelha de todas as frações por mês, a partir dos avisos reais já emitidos — verde quando liquidado, âmbar quando pendente."}
+                    ? "Consulta os pagamentos já confirmados da sua fração, mês a mês."
+                    : "Só pagamentos finalizados (recibo emitido) — notas de cobrança pendentes não aparecem aqui, consulta os Relatórios de Dívidas para essas."}
                 </p>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -1758,9 +1752,8 @@ export function FinanceiroAvancado({
                 </thead>
                 <tbody>
                   {mapaLinhas.map((l, idx) => (
-                    <tr key={l.fracao.id_fracao} className={l.emDivida ? "bg-red-50/70 dark:bg-red-950/20" : idx % 2 === 0 ? "bg-white dark:bg-transparent" : "bg-slate-50 dark:bg-slate-900/40"}>
-                      <td className={`py-2 px-3 font-bold whitespace-nowrap ${l.emDivida ? "text-red-700 dark:text-red-400" : "text-slate-700 dark:text-slate-200"}`}>
-                        {l.emDivida && <i className="fa-solid fa-triangle-exclamation mr-1" title="Fração com quotas em dívida"></i>}
+                    <tr key={l.fracao.id_fracao} className={idx % 2 === 0 ? "bg-white dark:bg-transparent" : "bg-slate-50 dark:bg-slate-900/40"}>
+                      <td className="py-2 px-3 font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">
                         {l.fracao.fracao_nome} <span className="text-slate-400 font-normal">({l.fracao.piso})</span>
                       </td>
                       {!ehCondomino && (
@@ -1769,8 +1762,7 @@ export function FinanceiroAvancado({
                       {l.meses.map((c, mIdx) => (
                         <td key={mIdx} className={`py-2 px-2 text-right whitespace-nowrap ${
                           !c ? "text-slate-300 dark:text-slate-700" :
-                          c.pago ? "text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50/60 dark:bg-emerald-950/20" :
-                          "text-amber-700 dark:text-amber-400 font-bold bg-amber-50/60 dark:bg-amber-950/20"
+                          "text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50/60 dark:bg-emerald-950/20"
                         }`}>
                           {c ? `${c.valor.toFixed(2)}€` : "—"}
                         </td>
