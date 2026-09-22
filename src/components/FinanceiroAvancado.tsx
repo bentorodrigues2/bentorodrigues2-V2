@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { Predio, Fracao, Aviso, Movimento, LoggedUser, Documento, Conta } from "../types";
 import { formatDatePT, formatQuotaReceiptNumber, downloadReceiptPDF, exportarBalanceteMapaAnualXLS, parseValorMonetario, exportToXLS, exportarTabelaParaPDF } from "../utils";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
@@ -95,6 +95,20 @@ export function FinanceiroAvancado({
   const MESES_ABREV = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
   const [mapaTipo, setMapaTipo] = useState<"ordinaria" | "extraordinaria">("ordinaria");
   const [mapaBusca, setMapaBusca] = useState("");
+  // Barra de deslocamento horizontal duplicada no topo (além da do fundo,
+  // que fica longe de vista numa tabela alta) — sincronizada com a tabela
+  // via scrollLeft, para não ter de descer até ao fundo para deslocar.
+  const mapaScrollTopoRef = useRef<HTMLDivElement>(null);
+  const mapaScrollTabelaRef = useRef<HTMLDivElement>(null);
+  const [mapaLarguraTabela, setMapaLarguraTabela] = useState(1400);
+  const mapaSincronizarScroll = (origem: "topo" | "tabela") => (e: React.UIEvent<HTMLDivElement>) => {
+    const alvo = origem === "topo" ? mapaScrollTabelaRef.current : mapaScrollTopoRef.current;
+    if (alvo) alvo.scrollLeft = e.currentTarget.scrollLeft;
+  };
+  React.useEffect(() => {
+    const largura = mapaScrollTabelaRef.current?.scrollWidth;
+    if (largura) setMapaLarguraTabela(largura);
+  });
   const anosComAvisos = useMemo(() => {
     const anos = new Set<number>();
     predioAvisos.forEach(a => {
@@ -1804,12 +1818,27 @@ export function FinanceiroAvancado({
               </div>
             )}
 
-            <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl">
+            {/* Régua de deslocamento duplicada no topo — sincronizada com a
+                tabela, para não obrigar a descer até ao fundo para a usar */}
+            <div
+              ref={mapaScrollTopoRef}
+              onScroll={mapaSincronizarScroll("topo")}
+              className="overflow-x-auto overflow-y-hidden"
+              style={{ height: 14 }}
+            >
+              <div style={{ width: mapaLarguraTabela, height: 1 }}></div>
+            </div>
+
+            <div
+              ref={mapaScrollTabelaRef}
+              onScroll={mapaSincronizarScroll("tabela")}
+              className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl"
+            >
               <table className="w-full text-[11px] font-mono-custom">
                 <thead>
                   <tr className="bg-slate-900 text-white">
-                    <th className="py-2 px-3 text-left font-bold whitespace-nowrap">Fração</th>
-                    {!ehCondomino && <th className="py-2 px-3 text-left font-bold whitespace-nowrap">Proprietário</th>}
+                    <th className="sticky left-0 z-20 bg-slate-900 py-2 px-3 text-left font-bold whitespace-nowrap min-w-[90px]">Fração</th>
+                    {!ehCondomino && <th className="sticky left-[90px] z-20 bg-slate-900 py-2 px-3 text-left font-bold whitespace-nowrap min-w-[160px] shadow-[2px_0_4px_rgba(0,0,0,0.15)]">Proprietário</th>}
                     {MESES_ABREV.map(m => (
                       <th key={m} className="py-2 px-2 text-right font-bold whitespace-nowrap">{m}/{String(mapaAno).slice(2)}</th>
                     ))}
@@ -1817,26 +1846,29 @@ export function FinanceiroAvancado({
                   </tr>
                 </thead>
                 <tbody>
-                  {mapaLinhas.map((l, idx) => (
-                    <tr key={l.fracao.id_fracao} className={idx % 2 === 0 ? "bg-white dark:bg-transparent" : "bg-slate-50 dark:bg-slate-900/40"}>
-                      <td className="py-2 px-3 font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                  {mapaLinhas.map((l, idx) => {
+                    const corLinha = idx % 2 === 0 ? "bg-white dark:bg-slate-950" : "bg-slate-50 dark:bg-slate-900";
+                    return (
+                    <tr key={l.fracao.id_fracao} className={corLinha}>
+                      <td className={`sticky left-0 z-10 ${corLinha} py-2 px-3 font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap min-w-[90px]`}>
                         {l.fracao.fracao_nome} <span className="text-slate-400 font-normal">({l.fracao.piso})</span>
                       </td>
                       {!ehCondomino && (
-                        <td className="py-2 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">{l.nomeExibido}</td>
+                        <td className={`sticky left-[90px] z-10 ${corLinha} py-2 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap min-w-[160px] shadow-[2px_0_4px_rgba(0,0,0,0.08)]`}>{l.nomeExibido}</td>
                       )}
                       {l.meses.map((c, mIdx) => (
                         <td key={mIdx} className={`py-2 px-2 text-right whitespace-nowrap border-r border-white dark:border-slate-950 ${
-                          !c ? "text-slate-300 dark:text-slate-700" :
-                          c.pago ? "text-emerald-900 dark:text-emerald-200 font-black bg-emerald-200 dark:bg-emerald-800/70" :
-                          "text-red-900 dark:text-red-200 font-black bg-red-200 dark:bg-red-800/70"
+                          c?.pago
+                            ? "text-emerald-900 dark:text-emerald-200 font-black bg-emerald-200 dark:bg-emerald-800/70"
+                            : "text-red-900 dark:text-red-200 font-black bg-red-200 dark:bg-red-800/70"
                         }`}>
                           {c ? `${c.valor.toFixed(2)}€` : "—"}
                         </td>
                       ))}
                       <td className="py-2 px-3 text-right font-black text-slate-800 dark:text-white whitespace-nowrap">{l.total.toFixed(2)}€</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                   {mapaLinhas.length === 0 && (
                     <tr>
                       <td colSpan={15} className="py-6 text-center text-slate-400 text-xs italic">
@@ -1853,16 +1885,17 @@ export function FinanceiroAvancado({
                       </tr>
                       {mapaLinhasHistoricas.map((l, idx) => (
                         <tr key={`${l.fracao.id_fracao}-hist-${idx}`} className="bg-slate-50/70 dark:bg-slate-900/20 italic">
-                          <td className="py-2 px-3 font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                          <td className="sticky left-0 z-10 bg-slate-50 dark:bg-slate-900 py-2 px-3 font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap min-w-[90px]">
                             {l.fracao.fracao_nome} <span className="text-slate-400 font-normal">({l.fracao.piso})</span>
                           </td>
-                          <td className="py-2 px-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                          <td className="sticky left-[90px] z-10 bg-slate-50 dark:bg-slate-900 py-2 px-3 text-slate-500 dark:text-slate-400 whitespace-nowrap min-w-[160px] shadow-[2px_0_4px_rgba(0,0,0,0.08)]">
                             {l.nomeExibido} <span className="text-slate-400 font-normal">({l.periodoExibido})</span>
                           </td>
                           {l.meses.map((c, mIdx) => (
                             <td key={mIdx} className={`py-2 px-2 text-right whitespace-nowrap ${
-                              !c ? "text-slate-300 dark:text-slate-700" :
-                              c.pago ? "text-emerald-800 dark:text-emerald-300 font-bold bg-emerald-100/80 dark:bg-emerald-900/40" : "text-red-800 dark:text-red-300 font-bold bg-red-100/80 dark:bg-red-900/40"
+                              c?.pago
+                                ? "text-emerald-800 dark:text-emerald-300 font-bold bg-emerald-100/80 dark:bg-emerald-900/40"
+                                : "text-red-800 dark:text-red-300 font-bold bg-red-100/80 dark:bg-red-900/40"
                             }`}>
                               {c ? `${c.valor.toFixed(2)}€` : "—"}
                             </td>
