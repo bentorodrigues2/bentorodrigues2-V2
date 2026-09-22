@@ -115,7 +115,10 @@ export default async function handler(req, res) {
         descricao: `Quota Ordinária paga adiantadamente — ${nomeMes} (comprovativo único de ${valorTotal.toFixed(2)}€ dividido em ${numMeses} meses).`,
         valor: valorMes,
         valor_fundo_reserva: valorFCR,
-        estado: "Liquidado",
+        // "avisos.estado" tem um check constraint na base de dados que só
+        // aceita "Pendente"/"Pago" — "Liquidado"/"Paga" são sempre
+        // rejeitados (silenciosamente, se o erro não for verificado).
+        estado: "Pago",
         proprietario_nome: proprietarioNome,
         proprietario_nif: proprietarioNif
       });

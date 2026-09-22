@@ -454,12 +454,21 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
       // na descrição e o botão "Confirmar e Enviar Recibo" no frontend não
       // tem nada a que se ligar (o frontend hoje já tem um contorno para
       // esse caso, mas é melhor nunca acontecer). Uma segunda tentativa,
-      // com uma referência nova, cobre qualquer falha pontual/transitória.
+      // com uma referência nova, cobre qualquer falha pontual/transitória —
+      // mas a causa real mais comum não é transitória: pagamentos.id_proprietario
+      // tem uma foreign key para "proprietarios", e essa tabela paralela nem
+      // sempre tem uma linha para o NIF (a mesma razão pela qual obterContexto,
+      // acima, já preferia o JSON fracoes.proprietario a esta tabela). Sem
+      // detetar isto, as duas tentativas falhavam sempre da mesma forma. Na
+      // 2ª tentativa larga-se o id_proprietario — id_fracao já é o vínculo
+      // fiável e é o que confirmar-pagamento.js usa para encontrar o email.
       for (let tentativa = 0; tentativa < 2 && !pagamento; tentativa++) {
         const referenciaGerada = `EMAIL-${Date.now().toString(36).toUpperCase()}-${tentativa}`;
+        const payload = { ...dadosPagamento, referencia: referenciaGerada };
+        if (tentativa > 0) payload.id_proprietario = null;
         const { data, error: errPag } = await supabase
           .from("pagamentos")
-          .insert({ ...dadosPagamento, referencia: referenciaGerada })
+          .insert(payload)
           .select()
           .maybeSingle();
         if (data) {

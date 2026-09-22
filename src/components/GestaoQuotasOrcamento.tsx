@@ -710,7 +710,10 @@ export function GestaoQuotasOrcamento({
 
     const novoValorPago = Math.round(((aviso.valor_pago || 0) + valorInformado) * 100) / 100;
     const atualizacaoAviso = {
-      estado: ehQuitacaoTotal ? "Paga" : "Paga Parcialmente",
+      // "avisos.estado" só aceita "Pendente"/"Pago" (check constraint) — um
+      // pagamento parcial fica "Pendente" na mesma; valor_pago (abaixo) é
+      // quem regista quanto já foi pago, sem precisar de um 3º estado.
+      estado: ehQuitacaoTotal ? "Pago" : "Pendente",
       valor_pago: novoValorPago,
       id_movimento: novoMovimento.id_mov,
       id_conta: idConta
@@ -1512,13 +1515,13 @@ export function GestaoQuotasOrcamento({
                       <td className="p-3 text-right font-bold font-mono">{a.valor.toFixed(2)}€</td>
                       <td className="p-3 text-center">
                         <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
-                          a.estado === 'Paga'
+                          a.estado === 'Pago'
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                            : a.estado === 'Paga Parcialmente'
+                            : (a.valor_pago || 0) > 0
                             ? 'bg-sky-50 text-sky-700 border border-sky-100'
                             : 'bg-amber-50 text-amber-700 border border-amber-100'
                         }`}>
-                          {a.estado}
+                          {a.estado === 'Pago' ? 'Pago' : (a.valor_pago || 0) > 0 ? 'Paga Parcialmente' : a.estado}
                         </span>
                       </td>
                       <td className="p-3 text-center no-print">
@@ -1639,23 +1642,23 @@ export function GestaoQuotasOrcamento({
                     </button>
                     <button
                       type="button"
-                      disabled={selectedAviso.estado === "Paga"}
+                      disabled={selectedAviso.estado === "Pago"}
                       onClick={() => {
                         const saldoDevedor = Math.round((selectedAviso.valor - (selectedAviso.valor_pago || 0)) * 100) / 100;
                         setPagamentoValorInput(saldoDevedor.toFixed(2).replace(".", ","));
                         setARegistarPagamento(true);
                       }}
-                      className={`flex-1 py-1 text-[9px] font-extrabold rounded-md border disabled:cursor-not-allowed ${selectedAviso.estado === "Paga" ? "bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-slate-50 border-slate-200 text-slate-400"}`}
+                      className={`flex-1 py-1 text-[9px] font-extrabold rounded-md border disabled:cursor-not-allowed ${selectedAviso.estado === "Pago" ? "bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-slate-50 border-slate-200 text-slate-400"}`}
                     >
                       Marcar Pago
                     </button>
                   </div>
-                  {selectedAviso.estado === "Paga" && selectedAviso.id_movimento && (
+                  {selectedAviso.estado === "Pago" && selectedAviso.id_movimento && (
                     <p className="text-[9px] text-emerald-600 dark:text-emerald-400 pt-0.5">
                       <i className="fa-solid fa-check-circle mr-1"></i>Depósito registado na Tesouraria ({movements.find(m => m.id_mov === selectedAviso.id_movimento)?.categoria || "Movimento"})
                     </p>
                   )}
-                  {selectedAviso.estado === "Paga Parcialmente" && (
+                  {selectedAviso.estado === "Pendente" && (selectedAviso.valor_pago || 0) > 0 && (
                     <p className="text-[9px] text-amber-600 dark:text-amber-400 pt-0.5">
                       <i className="fa-solid fa-hourglass-half mr-1"></i>Pago {((selectedAviso.valor_pago || 0)).toFixed(2)}€ de {selectedAviso.valor.toFixed(2)}€ — falta {(selectedAviso.valor - (selectedAviso.valor_pago || 0)).toFixed(2)}€
                     </p>

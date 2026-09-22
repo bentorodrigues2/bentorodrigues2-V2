@@ -592,7 +592,9 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
         if (aviso.id_fracao === dividaFracaoId && aviso.estado === "Pendente" && (aviso.tipo?.includes("Dívida") || aviso.tipo?.includes("Transição") || aviso.tipo?.includes("Anterior") || aviso.descricao?.includes("Anterior") || aviso.descricao?.includes("Transição"))) {
           if (restanteParaAbater >= aviso.valor) {
             restanteParaAbater -= aviso.valor;
-            const atualizado = { ...aviso, estado: "Paga" as const };
+            // "avisos.estado" só aceita "Pendente"/"Pago" (check constraint
+            // na base de dados) — "Paga" era sempre rejeitado em silêncio.
+            const atualizado = { ...aviso, estado: "Pago" as const };
             avisosAtualizados.push(atualizado);
             return atualizado;
           } else if (restanteParaAbater > 0) {
@@ -900,7 +902,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
         const avisosPagos: Aviso[] = [];
         setAvisos(prev => prev.map(a => {
           if (item.avisosPendentesIds.includes(a.id_aviso)) {
-            const atualizado = { ...a, estado: "Paga" };
+            const atualizado = { ...a, estado: "Pago" };
             avisosPagos.push(atualizado);
             return atualizado;
           }
