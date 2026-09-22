@@ -73,26 +73,26 @@ export default async function handler(req, res) {
           .from("avisos")
           .select("*")
           .eq("id_fracao", pagamento.id_fracao)
-          .eq("estado", "Pendente")
-          .order("data", { ascending: true });
+          .eq("estado", "Pendente");
 
         if (pendentesAvisos?.length) {
-          const grupos = {};
-          for (const av of pendentesAvisos) {
-            (grupos[av.data] = grupos[av.data] || []).push(av);
-          }
-          const chavesOrdenadas = Object.keys(grupos).sort();
+          // Antes agrupava-se por "data" (assumindo que avisos do mesmo mês
+          // partilham data de emissão) e, sem correspondência exata de
+          // valor, marcava-se o grupo inteiro como Pago. Mas avisos
+          // retroativos (emissão em atraso) são todos emitidos no MESMO dia
+          // para VÁRIOS meses — "data" é a data de emissão, o mês real da
+          // quota só está em "vencimento". Isto fazia um único pagamento de
+          // 1 mês marcar todos os meses em atraso da fração como pagos.
+          // Agora escolhe sempre o aviso individual mais antigo cujo valor
+          // bate certo com o que foi pago — nunca "o resto do grupo".
           const valorPago = Number(pagamento.valor || 0);
-          let grupoAlvo = chavesOrdenadas
-            .map((k) => grupos[k])
-            .find((g) => Math.abs(g.reduce((s, a) => s + Number(a.valor || 0), 0) - valorPago) < 0.05);
-          if (!grupoAlvo) grupoAlvo = grupos[chavesOrdenadas[0]];
+          const ordenados = [...pendentesAvisos].sort(
+            (a, b) => new Date(a.vencimento || a.data).getTime() - new Date(b.vencimento || b.data).getTime()
+          );
+          const avisoAlvo = ordenados.find((a) => Math.abs(Number(a.valor || 0) - valorPago) < 0.05);
 
-          if (grupoAlvo?.length) {
-            await supabase
-              .from("avisos")
-              .update({ estado: "Pago" })
-              .in("id_aviso", grupoAlvo.map((a) => a.id_aviso));
+          if (avisoAlvo) {
+            await supabase.from("avisos").update({ estado: "Pago" }).eq("id_aviso", avisoAlvo.id_aviso);
           }
         }
       }
