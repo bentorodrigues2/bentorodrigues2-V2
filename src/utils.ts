@@ -2809,9 +2809,19 @@ export function exportarBalanceteMapaAnualXLS(
     // fictícias) — um documento com números que não existiam. Passa a usar
     // sempre os avisos e movimentos reais recebidos; sem esses dados mostra
     // "—"/"Sem dados", nunca um valor inventado.
+    //
+    // "data" no aviso é a data de EMISSÃO da nota, não o mês da quota —
+    // avisos retroativos (emissão em atraso de vários meses) são todos
+    // emitidos no mesmo dia. O mês real está sempre em "vencimento".
+    const mesReferenciaAviso = (a: any): Date => new Date(a.vencimento || a.data);
+    // Dívidas avulsas de anos/administração anteriores ("desde ...") não são
+    // de 1 só mês — ficam numa coluna própria em vez de distorcerem a
+    // coluna do mês onde calhassem.
+    const ehDividaAnteriorAvulsa = (a: any): boolean => /administra[cç][aã]o anterior/i.test(a.descricao || "");
+
     const avisosOrdinariosAno = avisos.filter(a => {
-      if (!a?.data) return false;
-      const d = new Date(a.data);
+      if (!a?.data && !a?.vencimento) return false;
+      const d = mesReferenciaAviso(a);
       return !isNaN(d.getTime()) && d.getFullYear() === anoNum && String(a.tipo || "").includes("Ordinária");
     });
 
@@ -2825,6 +2835,7 @@ export function exportarBalanceteMapaAnualXLS(
       ...meses.map(m => `${m}/${ano}`),
       "Total Emitido (€)",
       "Total Liquidado (€)",
+      "Dívida de Anos Anteriores (€)",
       "Saldo Pendente / Dívida (€)",
       "Situação"
     ];
@@ -2832,6 +2843,7 @@ export function exportarBalanceteMapaAnualXLS(
     let sumPermilagem = 0;
     let sumTotalEmitido = 0;
     let sumTotalLiquidado = 0;
+    let sumDividaAnterior = 0;
     let sumSaldoPendente = 0;
     const sumMeses: number[] = new Array(12).fill(0);
 
@@ -2840,23 +2852,30 @@ export function exportarBalanceteMapaAnualXLS(
       sumPermilagem += perm;
 
       const avisosFracao = avisosOrdinariosAno.filter(a => a.id_fracao === f.id_fracao);
+      const avisosMensais = avisosFracao.filter(a => !ehDividaAnteriorAvulsa(a));
+      const avisosDividaAnterior = avisosFracao.filter(ehDividaAnteriorAvulsa);
       let totalEmitido = 0;
       let totalLiquidado = 0;
 
       const mesesValues = meses.map((_, mIdx) => {
-        const avisoMes = avisosFracao.find(a => new Date(a.data).getMonth() === mIdx);
+        const avisoMes = avisosMensais.find(a => mesReferenciaAviso(a).getMonth() === mIdx);
         if (!avisoMes) return "—";
         const valor = Number(avisoMes.valor || 0);
         totalEmitido += valor;
         sumMeses[mIdx] += valor;
-        const pago = ["Paga", "Pago", "Liquidado"].includes(avisoMes.estado);
+        const pago = avisoMes.estado === "Pago";
         if (pago) totalLiquidado += valor;
         return `${valor.toFixed(2)} (${pago ? "Pago" : "Pendente"})`;
       });
 
+      const dividaAnteriorPendente = avisosDividaAnterior
+        .filter(a => a.estado !== "Pago")
+        .reduce((s, a) => s + (Number(a.valor) || 0), 0);
+      sumDividaAnterior += dividaAnteriorPendente;
+
       sumTotalEmitido += totalEmitido;
       sumTotalLiquidado += totalLiquidado;
-      const saldoPendente = totalEmitido - totalLiquidado;
+      const saldoPendente = (totalEmitido - totalLiquidado) + dividaAnteriorPendente;
       sumSaldoPendente += saldoPendente;
 
       return [
@@ -2869,6 +2888,7 @@ export function exportarBalanceteMapaAnualXLS(
         ...mesesValues,
         totalEmitido.toFixed(2),
         totalLiquidado.toFixed(2),
+        dividaAnteriorPendente.toFixed(2),
         saldoPendente > 0.01 ? `-${saldoPendente.toFixed(2)}` : "0.00",
         saldoPendente > 0.01 ? "Em Dívida / Mora" : (totalEmitido > 0 ? "Regularizado (Em Dia)" : "Sem Emissões")
       ];
@@ -2885,6 +2905,7 @@ export function exportarBalanceteMapaAnualXLS(
       ...sumMeses.map(val => val.toFixed(2)),
       sumTotalEmitido.toFixed(2),
       sumTotalLiquidado.toFixed(2),
+      sumDividaAnterior.toFixed(2),
       sumSaldoPendente > 0.01 ? `-${sumSaldoPendente.toFixed(2)}` : "0.00",
       sumSaldoPendente > 0.01 ? `Incumprimento: €${sumSaldoPendente.toFixed(2)}` : "100% Em Dia"
     ];

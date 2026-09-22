@@ -43,9 +43,16 @@ export function generateOfficialReceiptPDF(
   predio: Predio,
   fracao?: Fracao
 ): jsPDF {
-  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a5" });
-  const pageWidth = doc.internal.pageSize.getWidth(); // 210mm
-  const pageHeight = doc.internal.pageSize.getHeight(); // 148mm
+  // A5 paisagem (148mm de altura) só tem espaço garantido até ~4 rubricas
+  // (2 meses) sem cortar a assinatura da Administração no fundo da página —
+  // um recibo com um pagamento dividido em vários meses tem 2 rubricas por
+  // mês (Quota + Fundo de Reserva) e facilmente ultrapassa isso. A4 paisagem
+  // (210mm) tem espaço até ~12 rubricas (6 meses). O resto do layout usa
+  // sempre pageWidth/pageHeight, por isso adapta-se sozinho ao formato.
+  const formatoPagina = recibo.rubricas.length > 4 ? "a4" : "a5";
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: formatoPagina });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   const tipoDocumento: "recibo" | "nota_cobranca" = (recibo as any).tipoDocumento || "recibo";
   const { prefixo, sequencial } = partirReciboNum(recibo.id_recibo);
 
