@@ -1726,9 +1726,19 @@ export function FinanceiroAvancado({
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   {ehCondomino
-                    ? "Consulta os pagamentos da sua fração, mês a mês — vermelho por pagar, verde já liquidado."
-                    : "Vermelho = mês por pagar, verde = mês liquidado. Atualiza automaticamente assim que um pagamento for confirmado."}
+                    ? "Consulta os pagamentos da sua fração, mês a mês."
+                    : "Grelha de todas as frações por mês. Atualiza sozinha assim que um pagamento for confirmado."}
                 </p>
+                <div className="flex items-center gap-3 mt-1.5">
+                  <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                    <span className="w-3 h-3 rounded bg-red-200 dark:bg-red-800/70 border border-red-300 dark:border-red-700"></span>
+                    Por pagar
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                    <span className="w-3 h-3 rounded bg-emerald-200 dark:bg-emerald-800/70 border border-emerald-300 dark:border-emerald-700"></span>
+                    Liquidado
+                  </span>
+                </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <select
@@ -1811,10 +1821,10 @@ export function FinanceiroAvancado({
                         <td className="py-2 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">{l.nomeExibido}</td>
                       )}
                       {l.meses.map((c, mIdx) => (
-                        <td key={mIdx} className={`py-2 px-2 text-right whitespace-nowrap ${
+                        <td key={mIdx} className={`py-2 px-2 text-right whitespace-nowrap border-r border-white dark:border-slate-950 ${
                           !c ? "text-slate-300 dark:text-slate-700" :
-                          c.pago ? "text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50/60 dark:bg-emerald-950/20" :
-                          "text-red-700 dark:text-red-400 font-bold bg-red-50/60 dark:bg-red-950/20"
+                          c.pago ? "text-emerald-900 dark:text-emerald-200 font-black bg-emerald-200 dark:bg-emerald-800/70" :
+                          "text-red-900 dark:text-red-200 font-black bg-red-200 dark:bg-red-800/70"
                         }`}>
                           {c ? `${c.valor.toFixed(2)}€` : "—"}
                         </td>
@@ -1847,7 +1857,7 @@ export function FinanceiroAvancado({
                           {l.meses.map((c, mIdx) => (
                             <td key={mIdx} className={`py-2 px-2 text-right whitespace-nowrap ${
                               !c ? "text-slate-300 dark:text-slate-700" :
-                              c.pago ? "text-emerald-600/80 dark:text-emerald-400/80 font-bold" : "text-red-600/80 dark:text-red-400/80 font-bold"
+                              c.pago ? "text-emerald-800 dark:text-emerald-300 font-bold bg-emerald-100/80 dark:bg-emerald-900/40" : "text-red-800 dark:text-red-300 font-bold bg-red-100/80 dark:bg-red-900/40"
                             }`}>
                               {c ? `${c.valor.toFixed(2)}€` : "—"}
                             </td>

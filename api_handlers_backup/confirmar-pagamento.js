@@ -127,9 +127,18 @@ export default async function handler(req, res) {
         );
         const avisoAlvo = ordenados.find((a) => Math.abs(Number(a.valor || 0) - valorPago) < 0.05);
 
+        // Se este pagamento já foi dividido em N meses (ver dividir-pagamento-meses.js),
+        // já existem avisos "aviso-dividido-<id_pagamento>-*" a representá-lo —
+        // criar aqui mais um aviso avulso duplicaria o valor.
+        const { data: jaDivididoEm } = await supabase
+          .from("avisos")
+          .select("id_aviso")
+          .ilike("id_aviso", `aviso-dividido-${pagamento.id}-%`)
+          .limit(1);
+
         if (avisoAlvo) {
           await supabase.from("avisos").update({ estado: "Pago" }).eq("id_aviso", avisoAlvo.id_aviso);
-        } else {
+        } else if (!jaDivididoEm?.length) {
           const dataRef = pagamento.data_pagamento || new Date().toISOString().split("T")[0];
           await supabase.from("avisos").insert({
             id_aviso: `aviso-confirmado-${pagamento.id}`,

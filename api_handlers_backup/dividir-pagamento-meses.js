@@ -129,6 +129,31 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Erro ao gravar os avisos mensais", detail: errAvisos.message });
     }
 
+    // Se algum dos meses agora criados já tinha um aviso regular (emissão
+    // mensal normal, id diferente de "aviso-dividido-...") para a mesma
+    // fração e o mesmo mês, esse aviso fica redundante — sem isto, o mês
+    // ficava duplicado (um "Pago" pelo split, outro "Pendente" a mais,
+    // aconteceu de facto com a Fração A) e a fração parecia dever na mesma
+    // um mês já liquidado por este pagamento.
+    try {
+      for (const av of novosAvisos) {
+        const inicioMes = av.vencimento.slice(0, 7); // "AAAA-MM"
+        const { data: regularesDoMesmoMes } = await supabase
+          .from("avisos")
+          .select("id_aviso")
+          .eq("id_fracao", pagamento.id_fracao)
+          .gte("vencimento", `${inicioMes}-01`)
+          .lt("vencimento", `${inicioMes}-32`)
+          .not("id_aviso", "ilike", "aviso-dividido-%");
+        const idsRedundantes = (regularesDoMesmoMes || []).map((a) => a.id_aviso);
+        if (idsRedundantes.length > 0) {
+          await supabase.from("avisos").delete().in("id_aviso", idsRedundantes);
+        }
+      }
+    } catch (errRedundante) {
+      console.warn("[dividir-pagamento-meses] Aviso ao remover avisos redundantes do mesmo mês:", errRedundante?.message || errRedundante);
+    }
+
     // Se a fração tiver uma dívida de arranque ("administração anterior")
     // pendente, os meses agora pagos podem já estar incluídos nesse valor
     // global — sem isto, a dívida de arranque ficava por saldar na mesma
