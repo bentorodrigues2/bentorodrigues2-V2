@@ -53,6 +53,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   const [valor, setValor] = useState("");
   const [descricao, setDescricao] = useState("");
   const [categoria, setCategoria] = useState("Manutenção");
+  const [justificacaoOutros, setJustificacaoOutros] = useState("");
   const [tipo, setTipo] = useState("Despesa");
   const [isCegoChecked, setIsCegoChecked] = useState(false);
   const [uploadedFotos, setUploadedFotos] = useState<string[]>([]);
@@ -476,6 +477,9 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     e.preventDefault();
     if (loggedUser.role !== 'ADMIN') return alert("Apenas administradores podem lançar movimentos financeiros!");
     if (!contaId || !valor || !descricao || !categoria) return alert("Preencha todos os campos obrigatórios (*)");
+    if (categoria === "Outros" && !justificacaoOutros.trim()) {
+      return alert("Categoria \"Outros\" exige uma justificação do motivo.");
+    }
 
     const valorNumerico = parseValorMonetario(valor);
     if (valorNumerico <= 0) {
@@ -483,6 +487,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     }
 
     const isCego = tipo === "Despesa" && isCegoChecked;
+    const descricaoFinal = categoria === "Outros" ? `${descricao} — Motivo: ${justificacaoOutros.trim()}` : descricao;
 
     const novo: Movimento = {
       id_mov: "mov-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
@@ -491,7 +496,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       data: new Date().toISOString().split('T')[0],
       tipo,
       valor: valorNumerico,
-      descricao,
+      descricao: descricaoFinal,
       categoria,
       fotos: uploadedFotos,
       estado: isCego ? "Movimento Cego / Por Justificar" : "Justificado",
@@ -510,6 +515,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     registarLogAuditoria("Financeira", `Lançou manualmente um movimento de ${tipo.toLowerCase()}`, predio.id_predio, loggedUser, `${descricao} — ${valorNumerico.toFixed(2)}€`);
     setValor("");
     setDescricao("");
+    setJustificacaoOutros("");
     setUploadedFotos([]);
     setIsCegoChecked(false);
     alert(isCego ? "Movimento Cego lançado e guardado no Supabase! Necessita de justificar posteriormente com fatura." : "Movimento lançado e guardado no Supabase com sucesso!");
@@ -1568,10 +1574,24 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                       <option value="Seguros">Seguros Multirriscos Edifício</option>
                       <option value="Inspeções e Certificações">Inspeções e Certificações Obrigatórias</option>
                       <option value="Honorários de Gestão">Honorários de Administração e Gestão</option>
-                      <option value="Diversos">Despesas Diversas / Outros</option>
+                      <option value="Impostos">Impostos (IMI, Taxas Camarárias, etc.)</option>
+                      <option value="Outros">Outros (justificar abaixo)</option>
                     </optgroup>
                   </select>
                 </div>
+
+                {categoria === "Outros" && (
+                  <div className="flex flex-col md:col-span-2">
+                    <label className="text-xs font-semibold text-slate-500 mb-1">Justificação do Motivo "Outros" *</label>
+                    <input
+                      type="text"
+                      value={justificacaoOutros}
+                      onChange={e => setJustificacaoOutros(e.target.value)}
+                      placeholder="Explica a que se refere esta despesa/receita, já que não se encaixa nas restantes categorias..."
+                      className="border border-amber-300 bg-amber-50 px-3 py-2 text-sm rounded-lg focus:outline-amber-500"
+                    />
+                  </div>
+                )}
 
                 {/* Movimento Cego toggle (apenas para despesa) */}
                 {tipo === "Despesa" && (
@@ -2177,18 +2197,28 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                           </div>
                         );
                       })()}
-                      <div className="col-span-2 sm:col-span-4 flex justify-between items-center">
-                        {!isCego && m.tipo === "Receita" && /\[pagamento:/.test(m.descricao || "") && (
+                      <div className="col-span-2 sm:col-span-4 flex justify-between items-center gap-3">
+                        <div className="flex items-center gap-3">
                           <button
                             type="button"
-                            disabled={aDesfazerConfirmacaoMovId === m.id_mov}
-                            onClick={() => desfazerConfirmacaoPagamento(m)}
-                            title="Volta a colocar este pagamento em 'por confirmar' — usa quando ficou mal processado (fração errada, devia ter sido dividido em vários meses, etc.)"
-                            className="flex items-center gap-1.5 text-amber-700 hover:text-amber-900 font-bold text-[10px] cursor-pointer disabled:opacity-50"
+                            onClick={() => abrirDetalheMov(m)}
+                            title="Editar fração, data, descrição ou valor deste movimento"
+                            className="flex items-center gap-1.5 text-blue-700 hover:text-blue-900 font-bold text-[10px] cursor-pointer"
                           >
-                            <i className={`fa-solid ${aDesfazerConfirmacaoMovId === m.id_mov ? "fa-spinner fa-spin" : "fa-rotate-left"}`}></i> Desfazer Confirmação
+                            <i className="fa-solid fa-pen"></i> Editar
                           </button>
-                        )}
+                          {!isCego && m.tipo === "Receita" && /\[pagamento:/.test(m.descricao || "") && (
+                            <button
+                              type="button"
+                              disabled={aDesfazerConfirmacaoMovId === m.id_mov}
+                              onClick={() => desfazerConfirmacaoPagamento(m)}
+                              title="Volta a colocar este pagamento em 'por confirmar' — usa quando ficou mal processado (fração errada, devia ter sido dividido em vários meses, etc.)"
+                              className="flex items-center gap-1.5 text-amber-700 hover:text-amber-900 font-bold text-[10px] cursor-pointer disabled:opacity-50"
+                            >
+                              <i className={`fa-solid ${aDesfazerConfirmacaoMovId === m.id_mov ? "fa-spinner fa-spin" : "fa-rotate-left"}`}></i> Desfazer Confirmação
+                            </button>
+                          )}
+                        </div>
                         <button
                           type="button"
                           onClick={() => {
@@ -2445,6 +2475,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                   <option value="Limpezas">Limpezas</option>
                   <option value="Seguros">Seguros</option>
                   <option value="Inspeções e Certificações">Inspeções e Certificações</option>
+                  <option value="Impostos">Impostos</option>
                   <option value="Diversos">Outros / Diversos</option>
                 </select>
               </div>
