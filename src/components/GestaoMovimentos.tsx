@@ -1138,6 +1138,22 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     const idPagamentoLigado = mov.descricao?.match(/\[pagamento:([^\]]+)\]/)?.[1];
     if (fracaoMudou && idPagamentoLigado) {
       await dbUpdate("pagamentos", { id_fracao: editFracaoIdMov || null }, [["id", "eq", idPagamentoLigado]]);
+      // A deteção de "vários meses" só corre quando o email chega (precisa
+      // da fração já identificada para saber a quota) — corrigir a fração
+      // agora não recalculava nada, por isso um pagamento de vários meses
+      // nunca ganhava a opção de dividir depois de corrigido. Recalcula-se
+      // aqui, já com a fração certa (só se de facto houver fração agora).
+      if (editFracaoIdMov) {
+        try {
+          await fetch("/api/pagamento?acao=recalcular-meses", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id_pagamento: idPagamentoLigado })
+          });
+        } catch (err) {
+          console.warn("[GestaoMovimentos] Aviso ao recalcular meses do pagamento:", err);
+        }
+      }
     }
     setAGuardarDetalheMov(false);
     setMovements(prev => prev.map(m => m.id_mov === atualizado.id_mov ? atualizado : m));

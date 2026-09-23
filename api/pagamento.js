@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   // feitas por quem gere o condomínio: sem esta distinção, qualquer conta
   // autenticada conseguia confirmar como paga ou emitir cobranças de
   // qualquer fração/prédio.
-  if (acao === "confirmar" || acao === "emitir-notas-atraso" || acao === "dividir-pagamento-meses" || acao === "desfazer-confirmacao") {
+  if (acao === "confirmar" || acao === "emitir-notas-atraso" || acao === "dividir-pagamento-meses" || acao === "desfazer-confirmacao" || acao === "recalcular-meses") {
     const chamador = await exigirSessaoComPapel(req, res, ["ADMIN", "GESTOR", "EMPRESA_GESTORA"]);
     if (!chamador) return;
   } else {
@@ -46,9 +46,14 @@ export default async function handler(req, res) {
       return mod.default(req, res);
     }
 
+    if (acao === "recalcular-meses") {
+      const mod = await import("../api_handlers_backup/recalcular-meses-pagamento.js");
+      return mod.default(req, res);
+    }
+
     return res.status(400).json({
       ok: false,
-      error: "Ação inválida. Use lancar | confirmar | emitir-notas-atraso | dividir-pagamento-meses | desfazer-confirmacao"
+      error: "Ação inválida. Use lancar | confirmar | emitir-notas-atraso | dividir-pagamento-meses | desfazer-confirmacao | recalcular-meses"
     });
 
   } catch (err) {

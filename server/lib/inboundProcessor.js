@@ -328,7 +328,7 @@ async function obterReciboMaisRecente(contexto) {
 // não está exportada de lá. Devolve null se não houver orçamento anual
 // configurado ou a fração não existir.
 const COEF_LOJA_EXTERIOR = 0.4528;
-async function calcularQuotaMensalFracao(idPredio, idFracao) {
+export async function calcularQuotaMensalFracao(idPredio, idFracao) {
   try {
     const [{ data: predioRow }, { data: fracoesPredio }] = await Promise.all([
       supabase.from("predios").select("patrimonio").eq("id_predio", idPredio).maybeSingle(),
