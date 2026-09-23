@@ -2137,6 +2137,10 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                                 const abrir = pagandoDividaId !== d.id_divida;
                                 setPagandoDividaId(abrir ? d.id_divida : null);
                                 setPagamentoValorTranche(abrir ? saldo.toFixed(2) : "");
+                                // A conta ligada à dívida (ex: definida automaticamente
+                                // ao adjudicar uma obra) fica já pré-selecionada — o
+                                // administrador continua a poder trocar antes de confirmar.
+                                setPagamentoContaId(abrir && d.id_conta_pagamento && predioContas.some(c => c.id_conta === d.id_conta_pagamento) ? d.id_conta_pagamento : "");
                               }}
                               className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
                               title="Pagar (total ou em tranche)"

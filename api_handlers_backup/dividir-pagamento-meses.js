@@ -35,11 +35,16 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: "Método não permitido" });
     }
 
-    const { id_pagamento, num_meses, mes_inicio } = req.body || {};
+    const { id_pagamento, num_meses, mes_inicio, tipo } = req.body || {};
     if (!id_pagamento || !num_meses || Number(num_meses) < 2 || !mes_inicio) {
       return res.status(400).json({ error: "id_pagamento, num_meses (mínimo 2) e mes_inicio (AAAA-MM) são obrigatórios." });
     }
     const numMeses = Number(num_meses);
+    // Aceita "Quota Ordinária" (omitido) ou "Quota Extraordinária" — antes
+    // ficava sempre fixo em Ordinária, mesmo quando o pagamento dividido
+    // era de uma quota extra, o que fazia os avisos criados aqui nunca
+    // aparecerem no Mapa de Pagamentos filtrado por "Extraordinária".
+    const tipoQuota = tipo === "Quota Extraordinária" ? "Quota Extraordinária" : "Quota Ordinária";
 
     const { data: pagamento, error: errPag } = await supabase
       .from("pagamentos")
@@ -103,17 +108,17 @@ export default async function handler(req, res) {
       const valorQuota = Math.round((valorMes - valorFCR) * 100) / 100;
       const nomeMes = dataMes.toLocaleDateString("pt-PT", { month: "long", year: "numeric", timeZone: "UTC" });
 
-      rubricas.push({ descricao: `Quota Ordinária — ${nomeMes}`, valor: valorQuota, tipo: "Quota Ordinária" });
+      rubricas.push({ descricao: `${tipoQuota} — ${nomeMes}`, valor: valorQuota, tipo: tipoQuota });
       rubricas.push({ descricao: `Fundo Comum de Reserva — ${nomeMes}`, valor: valorFCR, tipo: "Fundo Comum de Reserva" });
 
       novosAvisos.push({
         id_aviso: `aviso-dividido-${id_pagamento}-${i}`,
         id_predio: fracao.id_predio,
         id_fracao: pagamento.id_fracao,
-        tipo: "Quota Ordinária",
+        tipo: tipoQuota,
         data: isoMes,
         vencimento: isoMes,
-        descricao: `Quota Ordinária paga adiantadamente — ${nomeMes} (comprovativo único de ${valorTotal.toFixed(2)}€ dividido em ${numMeses} meses).`,
+        descricao: `${tipoQuota} paga adiantadamente — ${nomeMes} (comprovativo único de ${valorTotal.toFixed(2)}€ dividido em ${numMeses} meses).`,
         valor: valorMes,
         valor_fundo_reserva: valorFCR,
         // "avisos.estado" tem um check constraint na base de dados que só

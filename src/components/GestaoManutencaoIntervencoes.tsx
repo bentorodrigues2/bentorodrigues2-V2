@@ -905,6 +905,21 @@ export function GestaoManutencaoIntervencoes({
     // ao acaso (contas[0]) — o dinheiro só sai mesmo quando a dívida é paga
     // (a prestações ou de uma vez) em Financeiro → Dívidas a Fornecedores,
     // que já suporta tranches e escolha de conta em cada pagamento.
+    //
+    // "id_conta_pagamento" fica já pré-preenchido com a conta dedicada a
+    // obras/intervenções (ex: "Poupança Intervenções & Obras") assim que a
+    // obra é adjudicada — sem isto, a dívida ficava "solta", sem nenhuma
+    // conta associada, e o administrador tinha de escolher a conta certa à
+    // mão em cada tranche paga. Fica só como sugestão pré-preenchida (o
+    // formulário de "Pagar em Tranche" continua a permitir trocar a conta
+    // nesse momento) — cada pagamento real volta a atualizar este campo
+    // com a conta efetivamente usada nessa tranche.
+    const predioContas = contas.filter(c => c.id_predio === predio.id_predio);
+    const contaObrasDefault =
+      predioContas.find(c => /obras|interven/i.test(c.tipo || "")) ||
+      predioContas.find(c => c.is_principal) ||
+      predioContas[0];
+
     const novaDivida: DividaFornecedor = {
       id_divida: "div-obr-" + Date.now(),
       id_predio: predio.id_predio,
@@ -916,7 +931,8 @@ export function GestaoManutencaoIntervencoes({
       data_emissao: new Date().toISOString().split("T")[0],
       data_vencimento: target.dataFim,
       estado: "Pendente",
-      valor_pago: 0
+      valor_pago: 0,
+      id_conta_pagamento: contaObrasDefault?.id_conta
     };
     const dividaOk = await saveDividaFornecedorToSupabase(novaDivida);
     if (!dividaOk) {
@@ -964,13 +980,21 @@ export function GestaoManutencaoIntervencoes({
       .filter(f => f.id_predio === predio.id_predio && f.proprietario?.email)
       .map(f => ({ email: f.proprietario.email, nome: f.proprietario.nome }));
     if (destinatarios.length > 0) {
+      // Quando a obra é paga por quota extraordinária (não pelo Fundo de
+      // Reserva), o email informativo passa a incluir o valor total e a
+      // simulação da divisão em mensalidades — para os condóminos já
+      // saberem à partida o impacto mensal aproximado, mesmo antes de a
+      // quota extra ser efetivamente calculada e lançada por fração.
+      const infoQuotaExtra = target.necessitaCotaExtra
+        ? `<br><br><strong>Quota Extraordinária — Simulação:</strong><br>Valor total da obra: <strong>${target.custoTotal.toFixed(2)}€</strong><br>Fracionamento previsto: <strong>${target.mesesFracionamento}</strong> ${target.mesesFracionamento === 1 ? "prestação" : "mensalidades"}<br>Quota extra mensal de referência: <strong>${(target.custoTotal / target.mesesFracionamento).toFixed(2)}€</strong> (valor médio — o valor exato por fração depende da respetiva permilagem e será comunicado na nota de cobrança).`
+        : "";
       fetch("/api/email?acao=broadcast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           destinatarios,
           assunto: `Aviso de Obras — ${target.descricao}`,
-          mensagem: `Informamos que terão início obras no edifício:<br><br><strong>Intervenção:</strong> ${target.descricao}<br><strong>Fornecedor:</strong> ${target.fornecedorNome}<br><strong>Data prevista de início:</strong> ${target.dataInicio}<br><strong>Data prevista de conclusão:</strong> ${target.dataFim}<br><br>Agradecemos desde já a melhor compreensão para eventuais constrangimentos temporários.`
+          mensagem: `Informamos que terão início obras no edifício:<br><br><strong>Intervenção:</strong> ${target.descricao}<br><strong>Fornecedor:</strong> ${target.fornecedorNome}<br><strong>Data prevista de início:</strong> ${target.dataInicio}<br><strong>Data prevista de conclusão:</strong> ${target.dataFim}${infoQuotaExtra}<br><br>Agradecemos desde já a melhor compreensão para eventuais constrangimentos temporários.`
         })
       }).catch(console.error);
     }

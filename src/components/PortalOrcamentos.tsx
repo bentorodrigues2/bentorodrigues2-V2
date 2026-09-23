@@ -352,6 +352,7 @@ export function PortalOrcamentos({
   // fração para vários números de meses e escolher o plano de pagamento
   // faseado que vai mesmo ficar gravado na Obra Extraordinária criada.
   const [mesesFracionamentoEscolhido, setMesesFracionamentoEscolhido] = useState(1);
+  const [dataInicioObraEscolhida, setDataInicioObraEscolhida] = useState(() => new Date().toISOString().split("T")[0]);
   const [painelRejeicaoId, setPainelRejeicaoId] = useState<string | null>(null);
   const [motivoRejeicao, setMotivoRejeicao] = useState("");
 
@@ -408,8 +409,9 @@ export function PortalOrcamentos({
     // 3. Cria a Obra Extraordinária ou a Intervenção (Reparação) REAL — é
     // aqui que o trabalho adjudicado passa mesmo a aparecer em Manutenção
     // para o administrador gerir, em vez de "adjudicado" ficar só no papel.
+    const dataInicioObra = dataInicioObraEscolhida || new Date().toISOString().split("T")[0];
     const hoje = new Date().toISOString().split("T")[0];
-    const dataFimEstimada = new Date(Date.now() + (proposal.prazo_dias || 30) * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const dataFimEstimada = new Date(new Date(dataInicioObra).getTime() + (proposal.prazo_dias || 30) * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     let idObraCriada: string;
 
     if (destinoObraEscolhido === "obra_extraordinaria") {
@@ -422,7 +424,7 @@ export function PortalOrcamentos({
         descricao: `${rfpAlvo.titulo} (via Portal de Orçamentos)`,
         fornecedorId: idFornecedor || "forn-custom",
         fornecedorNome: proposal.nome_empresa,
-        dataInicio: hoje,
+        dataInicio: dataInicioObra,
         dataFim: dataFimEstimada,
         custoTotal: proposal.valor,
         necessitaCotaExtra: !usaFundoReservaEscolhido,
@@ -1099,6 +1101,16 @@ export function PortalOrcamentos({
                                   <Wrench size={13} /> Intervenção (Reparação)
                                 </button>
                               </div>
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] font-bold text-emerald-800 dark:text-emerald-400 block mb-1.5">Data de Início da Obra *</label>
+                              <input
+                                type="date"
+                                value={dataInicioObraEscolhida}
+                                onChange={e => setDataInicioObraEscolhida(e.target.value)}
+                                className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-[11px] font-bold px-2 py-1.5 rounded"
+                              />
                             </div>
 
                             {destinoObraEscolhido === "obra_extraordinaria" && (
