@@ -1,4 +1,5 @@
 import { supabase } from "../server/lib/supabaseServer.js";
+import { escolherContaPorTipo, ajustarSaldoConta } from "../server/lib/contaSaldo.js";
 
 /**
  * Reverte a confirmação de um pagamento: volta a marcar o pagamento como
@@ -61,6 +62,33 @@ export default async function handler(req, res) {
         await supabase.from("avisos").update({ estado: "Pendente" }).eq("id_aviso", alvo.id_aviso);
         resumo.avisosRevertidos = [alvo.id_aviso];
       }
+    }
+
+    // 2.1) Reverte o crédito feito na conta bancária quando este pagamento
+    // foi confirmado (ver confirmar-pagamento.js/dividir-pagamento-meses.js)
+    // — usa a mesma regra de escolha de conta (determinística, dá sempre o
+    // mesmo resultado para a mesma fração/tipo), para debitar exatamente a
+    // conta que tinha sido creditada.
+    try {
+      if (pagamento.id_fracao) {
+        const { data: fracaoDoPagamento } = await supabase
+          .from("fracoes")
+          .select("id_predio")
+          .eq("id_fracao", pagamento.id_fracao)
+          .maybeSingle();
+        if (fracaoDoPagamento?.id_predio) {
+          const { data: contasPredio } = await supabase
+            .from("contas")
+            .select("id_conta, is_principal")
+            .eq("id_predio", fracaoDoPagamento.id_predio);
+          const contaAlvo = escolherContaPorTipo(contasPredio, "Quota Ordinária");
+          if (contaAlvo?.id_conta) {
+            await ajustarSaldoConta(contaAlvo.id_conta, -Number(pagamento.valor || 0));
+          }
+        }
+      }
+    } catch (errSaldo) {
+      console.warn("[desfazer-confirmacao-pagamento] Aviso ao debitar saldo da conta:", errSaldo?.message || errSaldo);
     }
 
     // 3) Pagamento volta a pendente

@@ -4,6 +4,7 @@ import { gerarHtmlAutoresponder, gerarHtmlResposta } from "./htmlemail.js";
 import { classifyEmailCategory, generateCategoryResponse } from "../geminiService.js";
 import { extrairDadosDocumento, arquivarAnexoOriginal } from "./multimodalService.js";
 import { cruzarMovimentoComFornecedor } from "./fornecedorMatching.js";
+import { escolherContaPorTipo } from "./contaSaldo.js";
 
 /**
  * Remetentes cujo email é 100% técnico/automático e nunca traz conteúdo
@@ -503,11 +504,27 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
     // (Pagamentos por Confirmar) é que decide quando fica justificado.
     const jaJustificadaPelaPropriaFatura = isFatura && !falhaLeituraTotal && Boolean(comprovativoUrl);
 
+    // A conta bancária a debitar/creditar tem de ficar já ligada ao
+    // movimento no momento em que ele nasce (mesmo que ainda "por
+    // justificar") — sem isto era impossível, mais tarde, saber a que conta
+    // pertence uma entrada/saída chegada por email, e "contas.saldo" (o
+    // valor de verdade mostrado nos KPIs) nunca era atualizado por nenhum
+    // pagamento/fatura recebidos automaticamente.
+    let contaAlvo = null;
+    if (contexto?.id_predio) {
+      const { data: contasPredio } = await supabase
+        .from("contas")
+        .select("id_conta, is_principal")
+        .eq("id_predio", contexto.id_predio);
+      contaAlvo = escolherContaPorTipo(contasPredio, isFatura ? categoriaMovimento : "Quota Ordinária");
+    }
+
     const { data: movimento, error: errMov } = await supabase
       .from("movimentos")
       .insert({
         id_movimento: idMovimentoGerado,
         id_predio: contexto?.id_predio || null,
+        id_conta: contaAlvo?.id_conta || null,
         fracao_id: contexto?.id_fracao || null,
         descricao: falhaLeituraTotal
           ? `⚠️ FALHA NA LEITURA AUTOMÁTICA — ${descricaoBase} (abrir o anexo e corrigir o valor manualmente)`
@@ -528,6 +545,14 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
     if (errMov) {
       console.warn("[inboundProcessor] Aviso ao inserir movimento pendente:", errMov.message);
     }
+
+    // Nota: NÃO se debita o saldo da conta aqui, mesmo quando a fatura fica
+    // "Justificada" automaticamente — uma fatura recebida por email é só o
+    // documento (a dívida real fica registada em dividas_fornecedores por
+    // registarFaturaFornecedor, chamada por quem invoca esta função). O
+    // dinheiro só sai mesmo quando a dívida é paga de facto (tranche manual
+    // em Fornecedores, ou reconhecida num extrato bancário real importado) —
+    // debitar já aqui duplicaria a saída quando esse pagamento real chegasse.
 
     // 3. Log de auditoria (liga movimento + pagamento pelo mesmo evento, guarda o hash para deteção de duplicados)
     try {

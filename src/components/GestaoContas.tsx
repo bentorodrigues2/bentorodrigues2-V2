@@ -51,9 +51,47 @@ export function GestaoContas({
   const [emailGestor, setEmailGestor] = useState("");
   const [isPrincipal, setIsPrincipal] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
+  const [aReconciliarSaldo, setAReconciliarSaldo] = useState(false);
 
   const formRef = useRef<HTMLFormElement | null>(null);
   const predioContas = contas.filter(c => c.id_predio === predio.id_predio);
+
+  // Correção pontual (mas segura de repetir) para pagamentos confirmados
+  // antes de o saldo passar a ser creditado automaticamente ao confirmar —
+  // ver server/lib/contaSaldo.js. Fica disponível aqui como rede de
+  // segurança, mesmo já não sendo precisa para pagamentos confirmados a
+  // partir de agora.
+  const handleReconciliarSaldo = async () => {
+    if (loggedUser.role !== "ADMIN") return;
+    setAReconciliarSaldo(true);
+    try {
+      const resp = await fetch("/api/pagamento?acao=reconciliar-saldo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_predio: predio.id_predio })
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) {
+        alert(`Não foi possível reconciliar o saldo: ${data?.error || "erro desconhecido"}`);
+        return;
+      }
+      if (data.quantidade === 0) {
+        alert("✅ Nada a corrigir — todos os pagamentos confirmados já estão refletidos no saldo.");
+        return;
+      }
+      if (onUpdateConta && data.id_conta && data.saldo_novo !== null) {
+        const contaAtual = predioContas.find(c => c.id_conta === data.id_conta);
+        if (contaAtual) {
+          onUpdateConta({ ...contaAtual, saldo: Number(data.saldo_novo) });
+        }
+      }
+      alert(`✅ Saldo corrigido: +${Number(data.creditado).toFixed(2)}€ (${data.quantidade} pagamento(s) confirmado(s) que ainda não estavam refletidos). Novo saldo: ${Number(data.saldo_novo).toFixed(2)}€.`);
+    } catch (err: any) {
+      alert(`Não foi possível reconciliar o saldo: ${err?.message || "erro de rede"}`);
+    } finally {
+      setAReconciliarSaldo(false);
+    }
+  };
 
   const handleIniciarEdicao = (conta: Conta) => {
     setEditingContaId(conta.id_conta);
@@ -386,11 +424,25 @@ export function GestaoContas({
             </h4>
           </div>
           {predioContas.length > 0 && (
-            <span className="text-xs text-slate-500">
-              Saldo Total Acumulado: <strong className="font-mono text-slate-800 font-bold text-sm">
-                {predioContas.reduce((acc, c) => acc + (Number(c.saldo) || 0), 0).toFixed(2)}€
-              </strong>
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-slate-500">
+                Saldo Total Acumulado: <strong className="font-mono text-slate-800 font-bold text-sm">
+                  {predioContas.reduce((acc, c) => acc + (Number(c.saldo) || 0), 0).toFixed(2)}€
+                </strong>
+              </span>
+              {loggedUser.role === 'ADMIN' && (
+                <button
+                  type="button"
+                  onClick={handleReconciliarSaldo}
+                  disabled={aReconciliarSaldo}
+                  title="Verifica se há pagamentos confirmados que ainda não estão refletidos no saldo (ex: confirmados antes da correção automática) e credita a diferença."
+                  className="text-[11px] text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1.5 font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <i className={`fa-solid ${aReconciliarSaldo ? "fa-spinner fa-spin" : "fa-rotate"}`}></i>
+                  <span>{aReconciliarSaldo ? "A verificar..." : "Reconciliar Saldo"}</span>
+                </button>
+              )}
+            </div>
           )}
         </div>
 

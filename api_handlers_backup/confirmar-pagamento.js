@@ -4,6 +4,7 @@ import { guardarNoArquivo, registarDocumento, enviarEmailPDF } from "../server/l
 import { generateOfficialReceiptPDF, nomeFicheiroRecibo } from "../server/lib/receiptGenerator.js";
 import { derivarPrefixoEdificio } from "../server/lib/reciboUtils.js";
 import { obterModeloEmail, interpolarModeloEmail } from "../server/lib/emailTemplates.js";
+import { escolherContaPorTipo, ajustarSaldoConta } from "../server/lib/contaSaldo.js";
 
 // Escolhe o IBAN certo consoante o tipo de aviso: Quota Ordinária e Fundo
 // Comum de Reserva usam a conta corrente principal (is_principal), Quota
@@ -27,6 +28,20 @@ export default async function handler(req, res) {
     const { id_pagamento } = req.body || {};
     if (!id_pagamento) {
       return res.status(400).json({ error: "id_pagamento em falta" });
+    }
+
+    // 0) Impede confirmar duas vezes o mesmo pagamento (ex: duplo clique) —
+    // sem isto o saldo da conta seria creditado outra vez a mais abaixo.
+    const { data: pagamentoAntes } = await supabase
+      .from("pagamentos")
+      .select("estado")
+      .eq("id", id_pagamento)
+      .maybeSingle();
+    if (!pagamentoAntes) {
+      return res.status(404).json({ error: "Pagamento não encontrado" });
+    }
+    if (pagamentoAntes.estado === "confirmado") {
+      return res.status(400).json({ error: "Este pagamento já foi confirmado anteriormente." });
     }
 
     // 1) Confirmar pagamento
@@ -82,7 +97,7 @@ export default async function handler(req, res) {
       : { data: null };
 
     const { data: contasPredio } = fracao?.id_predio
-      ? await supabase.from("contas").select("iban, is_principal").eq("id_predio", fracao.id_predio)
+      ? await supabase.from("contas").select("id_conta, iban, is_principal").eq("id_predio", fracao.id_predio)
       : { data: [] };
 
     // "NA" é o valor usado em toda a app para um condómino que recusou
@@ -158,6 +173,19 @@ export default async function handler(req, res) {
       }
     } catch (errAvisos) {
       console.warn("[confirmar-pagamento] Aviso ao atualizar avisos ligados:", errAvisos?.message || errAvisos);
+    }
+
+    // 2.2) Creditar o saldo real da conta bancária — sem isto, confirmar um
+    // pagamento nunca refletia a entrada de dinheiro nos KPIs "Conta(s) à
+    // Ordem"/"Total Líquido" do Painel de Controlo (ficavam sempre parados
+    // no valor de arranque, apesar de haver pagamentos confirmados a mais).
+    try {
+      const contaAlvo = escolherContaPorTipo(contasPredio, "Quota Ordinária");
+      if (contaAlvo?.id_conta) {
+        await ajustarSaldoConta(contaAlvo.id_conta, Number(pagamento.valor || 0));
+      }
+    } catch (errSaldo) {
+      console.warn("[confirmar-pagamento] Aviso ao creditar saldo da conta:", errSaldo?.message || errSaldo);
     }
 
     // 3) Montar e gerar o recibo oficial (mesmo template legal usado no

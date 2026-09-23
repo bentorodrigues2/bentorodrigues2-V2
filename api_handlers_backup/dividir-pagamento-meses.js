@@ -4,6 +4,7 @@ import { guardarNoArquivo, registarDocumento, enviarEmailPDF } from "../server/l
 import { generateOfficialReceiptPDF, nomeFicheiroRecibo } from "../server/lib/receiptGenerator.js";
 import { derivarPrefixoEdificio } from "../server/lib/reciboUtils.js";
 import { obterModeloEmail, interpolarModeloEmail } from "../server/lib/emailTemplates.js";
+import { escolherContaPorTipo, ajustarSaldoConta } from "../server/lib/contaSaldo.js";
 
 // Mesma lógica de escolha de IBAN já usada em confirmar-pagamento.js e
 // server/lib/cronService.js — Quota Ordinária/FCR usa a conta corrente
@@ -66,7 +67,7 @@ export default async function handler(req, res) {
 
     const [{ data: predio }, { data: contasPredio }] = await Promise.all([
       supabase.from("predios").select("*").eq("id_predio", fracao.id_predio).maybeSingle(),
-      supabase.from("contas").select("iban, is_principal").eq("id_predio", fracao.id_predio)
+      supabase.from("contas").select("id_conta, iban, is_principal").eq("id_predio", fracao.id_predio)
     ]);
 
     // "NA" é o valor usado em toda a app para um condómino que recusou
@@ -200,6 +201,19 @@ export default async function handler(req, res) {
         .ilike("descricao", `%[pagamento:${id_pagamento}]%`);
     } catch (errMovLink) {
       console.warn("[dividir-pagamento-meses] Aviso ao atualizar movimento ligado:", errMovLink?.message || errMovLink);
+    }
+
+    // Credita o saldo real da conta pelo valor TOTAL do comprovativo (é uma
+    // única transação bancária real, mesmo dividida em N meses de quota) —
+    // mesma lógica de confirmar-pagamento.js, sem isto o Painel de Controlo
+    // nunca refletia estas entradas.
+    try {
+      const contaAlvo = escolherContaPorTipo(contasPredio, "Quota Ordinária");
+      if (contaAlvo?.id_conta) {
+        await ajustarSaldoConta(contaAlvo.id_conta, valorTotal);
+      }
+    } catch (errSaldo) {
+      console.warn("[dividir-pagamento-meses] Aviso ao creditar saldo da conta:", errSaldo?.message || errSaldo);
     }
 
     const hash = createHash("sha256").update(`${id_pagamento}-dividido-${numMeses}-${Date.now()}`).digest("hex");

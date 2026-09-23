@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso, Fornecedor } from "../types";
+import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso, Fornecedor, DividaFornecedor, PagamentoDivida } from "../types";
 import { formatDatePT, parseValorMonetario, exportToXLS, exportarTabelaParaPDF } from "../utils";
-import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria, fetchMovimentosFromSupabase, fetchPagamentosPendentesInfoFromSupabase, dbInsert, dbUpdate } from "../lib/supabaseService";
+import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria, fetchMovimentosFromSupabase, fetchPagamentosPendentesInfoFromSupabase, dbInsert, dbUpdate, fetchDividasFornecedoresFromSupabase, saveDividaFornecedorToSupabase, savePagamentoDividaToSupabase } from "../lib/supabaseService";
 import { cruzarMovimentoComFornecedor } from "../lib/fornecedorMatching";
 import { matchBankTransactions } from "../utils/bankStatementParser";
 import { Save, CheckCircle2 } from "lucide-react";
@@ -430,6 +430,17 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       if (movimentoAtualizado) {
         saveMovimentoToSupabase(movimentoAtualizado).catch(console.error);
         registarLogAuditoria("Financeira", "Justificou um movimento cego com comprovativo", predio.id_predio, loggedUser, movimentoAtualizado.descricao);
+        // Um Movimento Cego nunca tinha o seu valor refletido no saldo da
+        // conta enquanto esperava justificação — só ao ser justificado é que
+        // passa a contar como entrada/saída real confirmada.
+        const contaAlvo = contas.find(c => c.id_conta === movimentoAtualizado!.id_conta);
+        if (contaAlvo) {
+          const contaAtualizada: Conta = {
+            ...contaAlvo,
+            saldo: (contaAlvo.saldo || 0) + (movimentoAtualizado.tipo === "Receita" ? movimentoAtualizado.valor : -movimentoAtualizado.valor)
+          };
+          saveContaToSupabase(contaAtualizada).catch(console.error);
+        }
       }
       setJustifyingMovId(null);
       alert("Fatura/Comprovativo anexado com sucesso! O Movimento Cego foi devidamente justificado.");
@@ -858,6 +869,59 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     }
   };
 
+  // Quando um pagamento a um fornecedor é reconhecido no extrato bancário
+  // (Assistente de Extração) e esse fornecedor tem uma ou mais dívidas em
+  // aberto, o saldo em dívida tem de descer sozinho — sem isto, o
+  // administrador tinha sempre de ir a Fornecedores repetir manualmente
+  // "Pagar em Tranche" para o mesmo pagamento que acabou de lançar aqui, e
+  // era fácil esquecer, deixando a dívida "presa" mesmo depois de paga.
+  // Aplica o valor às dívidas mais antigas primeiro (ordem de emissão), tal
+  // como uma tranche manual — nunca cria uma dívida nova, só abate as que já existem.
+  const reconciliarDividasFornecedor = async (idFornecedor: string, valorPago: number, dataPagamento: string, idMovimento: string, idConta: string) => {
+    try {
+      const todasDividas = await fetchDividasFornecedoresFromSupabase(predio.id_predio);
+      const dividasAbertas = (todasDividas || [])
+        .filter(d => d.id_fornecedor === idFornecedor && (d.estado === "Pendente" || d.estado === "Paga Parcialmente"))
+        .sort((a, b) => (a.data_emissao || "").localeCompare(b.data_emissao || ""));
+
+      let restante = valorPago;
+      for (const divida of dividasAbertas) {
+        if (restante <= 0.005) break;
+        const saldoDevedor = Math.max(0, divida.valor - (divida.valor_pago || 0));
+        if (saldoDevedor <= 0.005) continue;
+        const valorAplicado = Math.round(Math.min(restante, saldoDevedor) * 100) / 100;
+
+        const novoPagamentoDivida: PagamentoDivida = {
+          id_pagamento: "pagdiv-auto-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+          id_divida: divida.id_divida,
+          id_predio: predio.id_predio,
+          id_fornecedor: divida.id_fornecedor,
+          valor: valorAplicado,
+          data: dataPagamento,
+          id_conta: idConta,
+          id_movimento: idMovimento,
+          observacoes: "Reconciliado automaticamente a partir do extrato bancário"
+        };
+        await savePagamentoDividaToSupabase(novoPagamentoDivida);
+
+        const novoValorPago = Math.round(((divida.valor_pago || 0) + valorAplicado) * 100) / 100;
+        const dividaAtualizada: DividaFornecedor = {
+          ...divida,
+          valor_pago: novoValorPago,
+          estado: novoValorPago >= divida.valor - 0.01 ? "Paga" : "Paga Parcialmente",
+          data_pagamento: dataPagamento,
+          id_conta_pagamento: idConta,
+          id_movimento_pagamento: idMovimento
+        };
+        await saveDividaFornecedorToSupabase(dividaAtualizada);
+
+        restante = Math.round((restante - valorAplicado) * 100) / 100;
+      }
+    } catch (errDivida) {
+      console.error("Erro ao reconciliar dívidas do fornecedor:", errDivida);
+    }
+  };
+
   const lancarItemExtraido = async (item: any, selectedContaId: string, fornecedorIdOverride?: string) => {
     if (!selectedContaId) {
       alert("Escolha a conta bancária para receber ou pagar este movimento!");
@@ -890,6 +954,10 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     setMovements([novo, ...movements]);
     saveMovimentoToSupabase(novo).catch(console.error);
     registarLogAuditoria("Financeira", "Lançou um item extraído do extrato bancário", predio.id_predio, loggedUser, novo.descricao);
+
+    if (item.tipo === "Despesa" && idFornecedorFinal) {
+      reconciliarDividasFornecedor(idFornecedorFinal, item.valor, item.data, novo.id_mov, selectedContaId).catch(console.error);
+    }
 
     // Aprendizagem: se o admin associou manualmente um fornecedor a um
     // movimento que a IA não tinha conseguido cruzar sozinha, guarda a
@@ -1021,7 +1089,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   const aprovarTodosPagamentosCondominos = async () => {
     const pendentes = extractedItems
       .map((item, index) => ({ item, index }))
-      .filter(({ item }) => item.ehPagamentoCondomino && !item.jaLancado);
+      .filter(({ item }) => item.ehPagamentoCondomino && !item.jaLancado && item.fracaoSugeridaId);
     if (pendentes.length === 0) {
       alert("Não há pagamentos de condóminos prontos a aprovar.");
       return;
@@ -1938,11 +2006,42 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                               <span>Fração {item.fracaoSugeridaNome} — confiança {item.confiancaFracao}% ({item.motivoCorrespondenciaFracao})</span>
                             </p>
                           </div>
+                          <div className="flex items-center gap-1.5">
+                            <label className="text-[10px] text-slate-500 font-semibold shrink-0">Fração errada? Corrige:</label>
+                            <select
+                              value={item.fracaoSugeridaId || ""}
+                              onChange={(e) => {
+                                const novaFracao = fracoes.find(f => f.id_fracao === e.target.value);
+                                // Ao corrigir a fração à mão, os avisos pendentes ligados
+                                // também têm de ser recalculados para a fração nova — senão
+                                // "Aprovar" continuava a liquidar os avisos da fração errada
+                                // original, mesmo já a mostrar o nome certo no ecrã.
+                                const avisosPendentesNovos = novaFracao
+                                  ? avisos.filter(a => a.id_fracao === novaFracao.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")).map(a => a.id_aviso)
+                                  : [];
+                                setExtractedItems(prev => prev.map((x, i) => i === index ? {
+                                  ...x,
+                                  fracaoSugeridaId: novaFracao?.id_fracao || "",
+                                  fracaoSugeridaNome: novaFracao?.fracao_nome || "?",
+                                  confiancaFracao: 100,
+                                  motivoCorrespondenciaFracao: "corrigido manualmente",
+                                  avisosPendentesIds: avisosPendentesNovos
+                                } : x));
+                              }}
+                              className="flex-1 border border-slate-300 rounded-lg px-1.5 py-1 text-[10px] focus:outline-emerald-500"
+                            >
+                              <option value="">— Escolher fração —</option>
+                              {fracoes.filter(f => f.id_predio === predio.id_predio).map(f => (
+                                <option key={f.id_fracao} value={f.id_fracao}>{f.fracao_nome} — {f.proprietario?.nome || "sem proprietário"}</option>
+                              ))}
+                            </select>
+                          </div>
                           <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                             <span className="font-bold text-emerald-700 font-mono-custom text-sm">+{item.valor.toFixed(2)}€</span>
                             <button
                               onClick={() => aprovarPagamentoCondomino(item, index)}
-                              disabled={aprovandoCondominoIndex === index || aprovandoTodosCondominos}
+                              disabled={aprovandoCondominoIndex === index || aprovandoTodosCondominos || !item.fracaoSugeridaId}
+                              title={!item.fracaoSugeridaId ? "Escolhe primeiro a fração correta" : undefined}
                               className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                             >
                               <i className={`fa-solid ${aprovandoCondominoIndex === index ? "fa-spinner animate-spin" : "fa-check"}`}></i>
