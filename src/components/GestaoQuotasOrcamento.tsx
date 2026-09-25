@@ -132,6 +132,7 @@ export function GestaoQuotasOrcamento({
   const [overridesQuotaFracao, setOverridesQuotaFracao] = useState<Record<string, string>>({});
   const [regraLoteTipoAlvo, setRegraLoteTipoAlvo] = useState<string>("todas");
   const [regraLoteDelta, setRegraLoteDelta] = useState<string>("");
+  const [regraLotePercent, setRegraLotePercent] = useState<string>("");
   const [criarDiferencaMesesPagos, setCriarDiferencaMesesPagos] = useState(true);
   const [enviarEmailRevisao, setEnviarEmailRevisao] = useState(true);
   const [aAplicarRevisao, setAAplicarRevisao] = useState(false);
@@ -437,7 +438,12 @@ export function GestaoQuotasOrcamento({
     return { rateNormalRevisao: rN, rateLojaRevisao: rN * COEF_LOJA_EXTERIOR };
   }, [predioFracoes, novaRevisaoValor]);
 
-  const quotaCalculadaRevisao = (f: Fracao) => Math.round(f.permilagem * (isLojaExterior(f) ? rateLojaRevisao : rateNormalRevisao) * 100) / 100;
+  // "Valor Atual" — a quota mensal REAL em vigor agora (a mesma fórmula do
+  // orçamento atualmente guardado, não um valor hipotético). Antes esta
+  // tabela calculava tudo a partir do "Novo Valor Anual" (rascunho de um
+  // orçamento total ainda por aplicar), o que gerava confusão porque os
+  // valores mostrados nunca correspondiam às quotas realmente em vigor.
+  const quotaCalculadaRevisao = (f: Fracao) => Math.round(calcularQuotaOrdinaria(f) * 100) / 100;
   const quotaFinalRevisao = (f: Fracao) => {
     const override = overridesQuotaFracao[f.id_fracao];
     if (override !== undefined && override.trim() !== "") {
@@ -447,13 +453,14 @@ export function GestaoQuotasOrcamento({
     return quotaCalculadaRevisao(f);
   };
 
-  // Regra em lote: soma (ou subtrai, com valor negativo) um montante fixo ao
-  // valor atual (calculado ou já corrigido) de todas as frações do âmbito
-  // escolhido — ex: "+5€ em todas as frações" e depois "+2,50€ só nas
-  // lojas", sem ter de escrever cada fração à mão.
+  // Regra em lote: soma (ou subtrai, com valor negativo) um montante fixo,
+  // e/ou uma percentagem, ao "Valor Atual" (ou a uma correção já feita) de
+  // todas as frações do âmbito escolhido — ex: "+5€ em todas as frações" ou
+  // "+3% só nas habitacionais", sem ter de escrever cada fração à mão.
   const handleAplicarRegraLote = () => {
     const delta = parseValorMonetario(regraLoteDelta);
-    if (!delta) return alert("Indique um valor a somar (ou negativo, para subtrair) na regra em lote.");
+    const percent = parseValorMonetario(regraLotePercent);
+    if (!delta && !percent) return alert("Indique um valor a somar (€) e/ou uma percentagem a aumentar na regra em lote.");
     const alvo = (f: Fracao) => {
       if (regraLoteTipoAlvo === "todas") return true;
       if (regraLoteTipoAlvo === "lojas") return isLojaExterior(f) || f.tipologia === "Loja Comercial";
@@ -464,11 +471,14 @@ export function GestaoQuotasOrcamento({
       const novo = { ...prev };
       predioFracoes.filter(alvo).forEach(f => {
         const atual = quotaFinalRevisao(f);
-        novo[f.id_fracao] = (Math.round((atual + delta) * 100) / 100).toFixed(2);
+        const comPercent = percent ? atual * (1 + percent / 100) : atual;
+        const novoValor = comPercent + (delta || 0);
+        novo[f.id_fracao] = (Math.round(novoValor * 100) / 100).toFixed(2);
       });
       return novo;
     });
     setRegraLoteDelta("");
+    setRegraLotePercent("");
   };
 
   const tipologiasDisponiveis = useMemo(
@@ -483,7 +493,7 @@ export function GestaoQuotasOrcamento({
   // de quota a meio do ano nunca chegava a ser cobrada a quem já tinha
   // adiantado pagamentos.
   const handleExportarTabelaRevisaoXLS = () => {
-    const headers = ["Fração", "Condómino", "Valor Calculado (€)", "Valor Final (€)", "Quota Mensal — 90% (€)", "Fundo de Reserva — 10% (€)"];
+    const headers = ["Fração", "Condómino", "Valor Atual (€)", `Nova Quota a partir de ${formatDatePT(novaRevisaoData)} (€)`, "Quota Mensal — 90% (€)", "Fundo de Reserva — 10% (€)"];
     const rows = predioFracoes.map(f => {
       const valorFinal = quotaFinalRevisao(f);
       const valorFCR = Math.round(valorFinal * 0.10 * 100) / 100;
@@ -507,7 +517,7 @@ export function GestaoQuotasOrcamento({
     const dataVigenciaAlvo = novaRevisaoData;
     if (!dataVigenciaAlvo) return alert("Indique a data de vigência da revisão (campo acima).");
     if (predioFracoes.some(f => quotaFinalRevisao(f) <= 0)) {
-      return alert("Uma ou mais frações ficariam com quota calculada a 0€ — preencha o Novo Valor Anual ou corrija manualmente cada fração antes de aplicar.");
+      return alert("Uma ou mais frações ficariam com a Nova Quota a 0€ — corrija manualmente essas frações antes de aplicar.");
     }
     if (!window.confirm(`Aplicar a revisão a partir de ${formatDatePT(dataVigenciaAlvo)}? Isto atualiza os avisos pendentes dessa data em diante e ${criarDiferencaMesesPagos ? "cria avisos de diferença para os meses já pagos" : "não mexe nos meses já pagos"}.`)) return;
 
@@ -1375,9 +1385,9 @@ export function GestaoQuotasOrcamento({
                 <div className="bg-amber-50 border-2 border-amber-300 rounded-xl px-3 py-2.5 flex items-start gap-2">
                   <i className="fa-solid fa-triangle-exclamation text-amber-600 mt-0.5"></i>
                   <p className="text-[11px] text-amber-900 font-semibold leading-snug">
-                    Isto é uma SIMULAÇÃO do que passaria a ser cobrado se aplicar {novaRevisaoValor}€/ano — ainda NADA foi alterado.
-                    As quotas atualmente em vigor são as já emitidas nos avisos (orçamento de {orcamentoAnual}€/ano).
-                    Só mudam depois de clicar em "Aplicar Revisão" mais abaixo.
+                    "Valor Atual" é a quota realmente em vigor agora. "Nova Quota" é esse valor + a regra de aumento
+                    aplicada abaixo (ou editada à mão) — ainda NADA foi alterado nos avisos.
+                    Só muda depois de clicar em "Aplicar Revisão" mais abaixo, e só a partir de {formatDatePT(novaRevisaoData)}.
                   </p>
                 </div>
 
@@ -1395,12 +1405,16 @@ export function GestaoQuotasOrcamento({
                     <label className="text-[10px] font-semibold text-slate-500 mb-1">Somar (€, negativo para subtrair)</label>
                     <input type="text" inputMode="decimal" value={regraLoteDelta} onChange={e => setRegraLoteDelta(e.target.value)} placeholder="Ex: 5 ou -2,50" className="border border-slate-200 px-2.5 py-1.5 text-xs rounded-lg font-mono w-32" />
                   </div>
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-semibold text-slate-500 mb-1">Aumentar (%, negativo para reduzir)</label>
+                    <input type="text" inputMode="decimal" value={regraLotePercent} onChange={e => setRegraLotePercent(e.target.value)} placeholder="Ex: 3 ou -1,5" className="border border-slate-200 px-2.5 py-1.5 text-xs rounded-lg font-mono w-28" />
+                  </div>
                   <button type="button" onClick={handleAplicarRegraLote} className="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer">
                     Aplicar Regra
                   </button>
                   {Object.keys(overridesQuotaFracao).length > 0 && (
                     <button type="button" onClick={() => setOverridesQuotaFracao({})} className="text-xs font-semibold text-slate-500 hover:text-red-600 cursor-pointer">
-                      Repor valores calculados
+                      Repor valores atuais
                     </button>
                   )}
                 </div>
@@ -1421,8 +1435,8 @@ export function GestaoQuotasOrcamento({
                       <tr className="border-b border-slate-200 text-slate-500 font-bold">
                         <th className="p-2.5">Fração</th>
                         <th className="p-2.5">Condómino</th>
-                        <th className="p-2.5 text-right">Calculado</th>
-                        <th className="p-2.5 text-right">Valor Final (editável)</th>
+                        <th className="p-2.5 text-right">Valor Atual</th>
+                        <th className="p-2.5 text-right">Nova Quota — a partir de {formatDatePT(novaRevisaoData)} (editável)</th>
                         <th className="p-2.5 text-right">Quota Mensal (90%)</th>
                         <th className="p-2.5 text-right">Fundo de Reserva (10%)</th>
                       </tr>
