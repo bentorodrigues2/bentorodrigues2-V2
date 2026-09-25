@@ -347,6 +347,16 @@ export default function App() {
   const [fornecedoresTab, setFornecedoresTab] = useState<"fornecedores" | "contratos" | "dividas">("fornecedores");
   const [iaInitialTab, setIaInitialTab] = useState<"juridico" | "orcamento_anual_ia" | "cerebro_ia" | undefined>(undefined);
   const [viewMode, setViewMode] = useState<"BROWSER" | "PWA">("BROWSER");
+  // Nenhum sítio da app alguma vez chamava setViewMode("PWA") — a vista PWA
+  // (PWASimulator/PWACondominoView, com o Perfil do Condómino, o IBAN da
+  // fração, etc.) era por isso inatingível em produção: TODOS os papéis,
+  // incluindo condóminos comuns (role "USER"), viam sempre o painel de
+  // administração completo (modo "BROWSER"), nunca a app móvel pensada para
+  // eles. Só quem gere o condomínio (ADMIN/GESTOR/EMPRESA_GESTORA) deve ver
+  // o painel de administração por defeito — todos os outros papéis entram
+  // sempre na vista PWA, independentemente do estado de viewMode.
+  const PAPEIS_GESTAO = ["ADMIN", "GESTOR", "EMPRESA_GESTORA"];
+  const modoVistaEfetivo: "BROWSER" | "PWA" = PAPEIS_GESTAO.includes(loggedUser?.role || "") ? viewMode : "PWA";
   const [brandingColor, setBrandingColorState] = useState<string>(() => {
     return localStorage.getItem("brandingColor") || "emerald";
   });
@@ -825,7 +835,13 @@ export default function App() {
         />
       )}
 
-      {/* BARRA LATERAL (MENU DINÂMICO RECOLHÍVEL E COMPATÍVEL COM MOBILE) */}
+      {/* BARRA LATERAL (MENU DINÂMICO RECOLHÍVEL E COMPATÍVEL COM MOBILE) —
+          só faz sentido no modo de administração (Browser); a vista PWA já
+          tem a sua própria navegação própria (barra inferior de separadores),
+          pensada para ecrã de telemóvel. Mostrá-la também aos papéis não-
+          gestão (condóminos, inquilinos, prestadores, etc.) expunha
+          navegação e secções de administração que não lhes pertencem. */}
+      {modoVistaEfetivo === "BROWSER" && (
       <aside className={`h-full flex flex-col select-none shrink-0 z-30 no-print transition-all duration-300 ${
         theme === "dark" ? "bg-[#030712] text-slate-300 border-r border-slate-900/50" : "bg-slate-900 text-slate-300"
       } ${
@@ -2572,10 +2588,15 @@ export default function App() {
           </div>
         </div>
       </aside>
+      )}
 
       {/* ÁREA DE TRABALHO PRINCIPAL (ADAPTÁVEL A MOBILE E DESKTOP) */}
       <main className={`flex-1 min-w-0 flex flex-col h-full overflow-hidden relative transition-all duration-300 ${theme === "dark" ? "bg-[#0b0f19]" : "bg-slate-50"}`}>
-        {/* Header superior */}
+        {/* Header superior — mantido sempre visível mesmo na vista PWA:
+            é aqui que fica o botão real de terminar sessão
+            (handleSecureLogout). O "Sair" dentro do PWASimulator é só um
+            estado local do simulador, não termina a sessão real — sem esta
+            barra, um condómino ficava sem forma nenhuma de sair da conta. */}
         <header className={`h-16 px-3 sm:px-6 md:px-8 flex items-center justify-between shrink-0 z-10 no-print transition-all duration-300 ${theme === "dark" ? "bg-[#111827] border-b border-slate-800 text-slate-100" : "bg-white border-b border-slate-200 text-slate-800"}`}>
           <div className="flex items-center space-x-2 sm:space-x-3 overflow-hidden pr-2">
             {/* Botão de Menu Mobile */}
@@ -2711,7 +2732,7 @@ export default function App() {
 
         {/* Conteúdo Dinâmico (Responsivo para Telemóveis e Desktops) */}
         <div className="flex-grow p-3 sm:p-5 md:p-8 overflow-y-auto">
-          {viewMode === "PWA" ? (
+          {modoVistaEfetivo === "PWA" ? (
             <PWASimulator 
               predio={predioAtivo}
               fracoes={fracoes}
