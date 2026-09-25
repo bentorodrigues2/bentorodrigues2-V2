@@ -7,6 +7,7 @@ import {
   LoggedUser,
   Predio,
   Fracao,
+  Conta,
   Documento,
   Ocorrencia,
   Reserva,
@@ -105,6 +106,7 @@ interface PWACondominoViewProps {
   predio: Predio;
   fracoes?: Fracao[];
   setFracoes?: React.Dispatch<React.SetStateAction<Fracao[]>>;
+  contas?: Conta[];
   condominoFracao: any;
   documentos: Documento[];
   setDocumentos?: React.Dispatch<React.SetStateAction<Documento[]>>;
@@ -129,6 +131,7 @@ export default function PWACondominoView({
   predio,
   fracoes = [],
   setFracoes,
+  contas = [],
   condominoFracao,
   documentos,
   setDocumentos,
@@ -2722,7 +2725,13 @@ export default function PWACondominoView({
                 do prédio (não simulados), sempre visível no Perfil para
                 qualquer condómino consultar rapidamente. */}
             {(() => {
-              const ibanPredio = predio.iban || "IBAN não configurado — contacte a administração";
+              // O IBAN real vive na conta bancária principal (contas.iban),
+              // não em predio.iban — esse campo nunca chegou a ser
+              // preenchido, por isso mostrava sempre "—" nos emails e neste
+              // cartão. A conta principal é a mesma usada em todo o resto da
+              // app para gerar recibos/IBAN de cobrança.
+              const contaPrincipal = contas.find(c => c.is_principal) || contas[0];
+              const ibanPredio = contaPrincipal?.iban || predio.iban || "IBAN não configurado — contacte a administração";
               const nifPredio = predio.nif || "—";
               const emailComprovativos = predio.email_condominio || predio.email || "bentorodrigues2@gmail.com";
               const referenciaFracao = condominoFracao?.referencia_br23e || "—";

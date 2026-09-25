@@ -538,28 +538,41 @@ export function GestaoQuotasOrcamento({
 
       let emailResumo = "";
       if (enviarEmailRevisao) {
-        const destinatarios = predioFracoes.filter(f => f.proprietario?.email && f.proprietario.email.toUpperCase() !== "NA").map(f => ({ email: f.proprietario.email, nome: f.proprietario.nome }));
-        if (destinatarios.length > 0) {
+        // Email individual por fração (não um broadcast genérico) — cada
+        // condómino tem de ver o valor exato e a referência da SUA fração,
+        // não uma mensagem igual para todos a mandá-los "consultar o
+        // Portal". O IBAN vem da conta principal (contas.iban) — predio.iban
+        // nunca chegou a ser preenchido, o que fazia o email sair sem IBAN.
+        const contaPrincipalEmail = predioContas.find(c => c.is_principal) || predioContas[0];
+        const ibanPredioEmail = contaPrincipalEmail?.iban || predio.iban || "—";
+        const emailComprovativosEmail = (predio as any).email_condominio || predio.email || "bentorodrigues2@gmail.com";
+        const destinatarios = predioFracoes.filter(f => f.proprietario?.email && f.proprietario.email.toUpperCase() !== "NA");
+        let enviados = 0;
+        for (const f of destinatarios) {
+          const valorFinalFracao = quotaFinalRevisao(f);
+          const valorFCRFracao = Math.round(valorFinalFracao * 0.10 * 100) / 100;
+          const valorOrdinariaFracao = Math.round((valorFinalFracao - valorFCRFracao) * 100) / 100;
           try {
-            await fetch("/api/email?acao=broadcast", {
+            const resp = await fetch("/api/email?acao=notificar", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                destinatarios,
+                to: f.proprietario.email,
+                nomeDestinatario: f.proprietario.nome,
                 assunto: `Atualização da Quota Mensal — ${predio.nome}`,
                 mensagem:
-                  `Informamos que, a partir de <strong>${formatDatePT(dataVigenciaAlvo)}</strong>, entra em vigor um novo valor de quota mensal, aprovada${novaRevisaoAssembleia ? " em assembleia" : ""}.` +
-                  `<br><br>O valor exato da sua fração está disponível na nota de cobrança/no Portal do Condómino (Quota Ordinária + Fundo Comum de Reserva = Quota Total).` +
-                  (criarDiferencaMesesPagos ? `<br><br>Se já tinha meses pagos a partir desta data à quota anterior, foi emitida uma nota de cobrança adicional só com a diferença — consulte o Portal.` : "") +
-                  `<br><br><strong>Dados para pagamento:</strong><br>IBAN: ${predio.iban || "—"}<br>Email para comprovativos: ${predio.email_condominio || predio.email || "bentorodrigues2@gmail.com"}`
+                  `Estimado(a) ${f.proprietario.nome},<br><br>Informamos que, a partir de <strong>${formatDatePT(dataVigenciaAlvo)}</strong>, entra em vigor um novo valor de quota mensal para a Fração ${f.fracao_nome}, aprovada${novaRevisaoAssembleia ? " em assembleia" : ""}.` +
+                  `<br><br><strong>Quota Ordinária:</strong> ${valorOrdinariaFracao.toFixed(2)} €<br><strong>Fundo Comum de Reserva:</strong> ${valorFCRFracao.toFixed(2)} €<br><strong>Quota Total Mensal:</strong> ${valorFinalFracao.toFixed(2)} €` +
+                  (criarDiferencaMesesPagos ? `<br><br>Se já tinha meses pagos a partir desta data à quota anterior, foi emitida uma nota de cobrança adicional só com a diferença — consulte o Portal do Condómino.` : "") +
+                  `<br><br><strong>Dados para pagamento:</strong><br>IBAN: ${ibanPredioEmail}<br>Referência da fração: ${f.referencia_br23e || "—"}<br>Email para comprovativos: ${emailComprovativosEmail}`
               })
             });
-            emailResumo = ` Email informativo enviado a ${destinatarios.length} condómino(s).`;
+            if (resp.ok) enviados++;
           } catch (errEmail) {
-            console.warn("Erro ao enviar email de revisão de quotas:", errEmail);
-            emailResumo = " ⚠️ Não foi possível enviar o email informativo.";
+            console.warn(`Erro ao enviar email de revisão de quotas à fração ${f.fracao_nome}:`, errEmail);
           }
         }
+        emailResumo = ` Email informativo enviado a ${enviados} de ${destinatarios.length} condómino(s).`;
       }
 
       alert(`✅ Revisão aplicada: ${contadorAtualizados} aviso(s) pendente(s) atualizado(s) e ${contadorDiferencas} aviso(s) de diferença criado(s).${emailResumo}`);

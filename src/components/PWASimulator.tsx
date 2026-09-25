@@ -1587,6 +1587,7 @@ export function PWASimulator({
                   predio={predio}
                   fracoes={fracoes}
                   setFracoes={setFracoes}
+                  contas={contas}
                   condominoFracao={condominoFracao}
                   documentos={documentos}
                   setDocumentos={setDocumentos}
