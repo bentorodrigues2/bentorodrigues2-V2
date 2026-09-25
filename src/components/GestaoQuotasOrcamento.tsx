@@ -186,7 +186,24 @@ export function GestaoQuotasOrcamento({
     if (!window.confirm(`Eliminar a revisão de ${revisao.valor.toFixed(2)} € (vigência ${formatDatePT(revisao.data_vigencia)})?`)) return;
     const ok = await deleteRevisaoOrcamentoFromSupabase(revisao.id_revisao);
     if (!ok) return alert("❌ Não foi possível eliminar a revisão no Supabase.");
-    setRevisoesOrcamento(prev => prev.filter(r => r.id_revisao !== revisao.id_revisao));
+    const novaLista = revisoesOrcamento.filter(r => r.id_revisao !== revisao.id_revisao);
+    setRevisoesOrcamento(novaLista);
+
+    // Eliminar a revisão em vigor não repunha o orçamento anual — ficava
+    // parado no valor da revisão apagada, mesmo já não havendo nenhum
+    // registo a justificá-lo. Recalcula qual revisão fica em vigor a seguir
+    // (a mais recente cuja vigência já passou) e repõe esse valor; se não
+    // sobrar nenhuma, avisa o administrador em vez de adivinhar um valor.
+    if (revisao.id_revisao === revisaoEmVigor?.id_revisao) {
+      const novaVigente = orcamentoVigente(novaLista);
+      if (novaVigente) {
+        setOrcamentoAnual(String(novaVigente.valor));
+        await persistirOrcamentoNoSupabase(novaVigente.valor);
+        alert(`✅ Revisão eliminada. O orçamento anual voltou ao valor da revisão anterior em vigor: ${novaVigente.valor.toFixed(2)} €.`);
+      } else {
+        alert("✅ Revisão eliminada. Não há mais nenhuma revisão registada — confirme/corrija manualmente o Orçamento Anual, que ficou com o último valor aplicado.");
+      }
+    }
   };
 
   const MESES_INDEX: Record<string, number> = {
