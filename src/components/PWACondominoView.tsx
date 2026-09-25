@@ -2652,6 +2652,46 @@ export default function PWACondominoView({
               <h3 className="text-sm font-black tracking-tight text-slate-800 dark:text-white">👤 Perfil do Condómino</h3>
             </div>
 
+            {/* Cartão fixo de dados para envio de comprovativos — dados reais
+                do prédio (não simulados), sempre visível no Perfil para
+                qualquer condómino consultar rapidamente. */}
+            {(() => {
+              const ibanPredio = predio.iban || "IBAN não configurado — contacte a administração";
+              const nifPredio = predio.nif || "—";
+              const emailComprovativos = predio.email_condominio || predio.email || "bentorodrigues2@gmail.com";
+              const referenciaFracao = condominoFracao?.referencia_br23e || "—";
+              const temQuotaExtraPendente = avisos.some(
+                (a: any) => a.id_fracao === condominoFracao?.id_fracao && String(a.tipo || "").includes("Extraordinária") && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")
+              );
+              const LinhaCopiavel = ({ label, valor, nota }: { label: string; valor: string; nota?: string }) => (
+                <div className="space-y-0.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[8px] text-amber-700/80 font-extrabold uppercase tracking-wider">{label}</span>
+                    <button
+                      onClick={() => handleCopyToClipboard(valor, label)}
+                      className="flex items-center space-x-1 text-amber-700 hover:text-amber-900 font-bold text-[8px] cursor-pointer"
+                    >
+                      <Copy className="h-2.5 w-2.5" />
+                      <span>Copiar</span>
+                    </button>
+                  </div>
+                  <strong className="text-amber-950 dark:text-amber-100 block font-mono text-[10px] tracking-tight break-all">{valor}</strong>
+                  {nota && <p className="text-[8px] text-amber-700/70">{nota}</p>}
+                </div>
+              );
+              return (
+                <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900 p-4 rounded-xl shadow-sm space-y-3 text-[10px]">
+                  <span className="text-[9px] font-extrabold text-orange-700 uppercase tracking-widest block flex items-center gap-1.5">
+                    <i className="fa-solid fa-circle-info"></i> Dados para Envio de Comprovativos
+                  </span>
+                  <LinhaCopiavel label="IBAN do Prédio" valor={ibanPredio} />
+                  <LinhaCopiavel label="NIF do Condomínio" valor={nifPredio} />
+                  <LinhaCopiavel label="Email para Comprovativos" valor={emailComprovativos} nota="Envie o comprovativo de transferência para este email — é lido e confirmado automaticamente." />
+                  <LinhaCopiavel label="Referência Individual da Fração" valor={referenciaFracao} nota={temQuotaExtraPendente ? "Usa-se também para a quota extraordinária em vigor." : "Indique esta referência no descritivo da transferência."} />
+                </div>
+              );
+            })()}
+
             {/* Profile fields */}
             <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-4 rounded-xl shadow-sm space-y-3.5 text-[10px]">
               <div className="flex items-center space-x-3.5 pb-3 border-b border-slate-100 dark:border-slate-850">
