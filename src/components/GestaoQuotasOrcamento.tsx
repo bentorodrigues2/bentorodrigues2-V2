@@ -165,14 +165,20 @@ export function GestaoQuotasOrcamento({
       await persistirOrcamentoNoSupabase(nova.valor);
     }
 
-    setNovaRevisaoValor("");
+    // Não se limpa novaRevisaoValor/novaRevisaoData — é exatamente o que
+    // mantém visível, logo a seguir, a tabela "Aplicar Revisão às Quotas por
+    // Fração" (correção manual + regras em lote + aplicar). Antes limpava-se
+    // logo o campo e a tabela desaparecia no mesmo instante em que a revisão
+    // era registada, sem dar tempo a corrigir nenhuma fração nem a aplicar
+    // nada — o administrador ficava sem conseguir terminar o processo.
     setNovaRevisaoMotivo("");
     setNovaRevisaoAssembleia(false);
     setNovaRevisaoAtaId("");
     alert(
-      maisRecenteVigente?.id_revisao === nova.id_revisao
+      (maisRecenteVigente?.id_revisao === nova.id_revisao
         ? "✅ Revisão registada e já aplicada — o orçamento anual em vigor foi atualizado."
-        : "✅ Revisão registada — entra em vigor automaticamente em " + formatDatePT(nova.data_vigencia) + "."
+        : "✅ Revisão registada — entra em vigor automaticamente em " + formatDatePT(nova.data_vigencia) + ".")
+      + "\n\nConfira/corrija agora o valor de cada fração na tabela abaixo e clique em \"Aplicar Revisão\" para relançar as quotas."
     );
   };
 
@@ -427,6 +433,24 @@ export function GestaoQuotasOrcamento({
   // para quem já tinha pago esse mês à quota antiga — sem isto, uma subida
   // de quota a meio do ano nunca chegava a ser cobrada a quem já tinha
   // adiantado pagamentos.
+  const handleExportarTabelaRevisaoXLS = () => {
+    const headers = ["Fração", "Condómino", "Valor Calculado (€)", "Valor Final (€)", "Quota Mensal — 90% (€)", "Fundo de Reserva — 10% (€)"];
+    const rows = predioFracoes.map(f => {
+      const valorFinal = quotaFinalRevisao(f);
+      const valorFCR = Math.round(valorFinal * 0.10 * 100) / 100;
+      const valorOrdinaria = Math.round((valorFinal - valorFCR) * 100) / 100;
+      return [
+        f.fracao_nome,
+        f.proprietario?.nome || "Vago",
+        quotaCalculadaRevisao(f).toFixed(2),
+        valorFinal.toFixed(2),
+        valorOrdinaria.toFixed(2),
+        valorFCR.toFixed(2)
+      ];
+    });
+    exportToXLS(`Revisao_Quotas_${predio.nome.replace(/\s+/g, "_")}_${novaRevisaoData || ""}`, headers, rows);
+  };
+
   const handleAplicarRevisaoQuotas = async () => {
     if (loggedUser.role !== "ADMIN" && loggedUser.role !== "EMPRESA_GESTORA") {
       return alert("Apenas administradores podem aplicar revisões de quota.");
@@ -1283,6 +1307,16 @@ export function GestaoQuotasOrcamento({
                   )}
                 </div>
 
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleExportarTabelaRevisaoXLS}
+                    className="text-xs font-bold text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <i className="fa-solid fa-file-excel"></i> Exportar Tabela (XLS)
+                  </button>
+                </div>
+
                 <div className="overflow-x-auto border border-slate-150 rounded-xl max-h-72 overflow-y-auto">
                   <table className="w-full text-xs text-left border-collapse">
                     <thead className="sticky top-0 bg-slate-50">
@@ -1291,10 +1325,16 @@ export function GestaoQuotasOrcamento({
                         <th className="p-2.5">Condómino</th>
                         <th className="p-2.5 text-right">Calculado</th>
                         <th className="p-2.5 text-right">Valor Final (editável)</th>
+                        <th className="p-2.5 text-right">Quota Mensal (90%)</th>
+                        <th className="p-2.5 text-right">Fundo de Reserva (10%)</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {predioFracoes.map(f => (
+                      {predioFracoes.map(f => {
+                        const valorFinal = quotaFinalRevisao(f);
+                        const valorFCR = Math.round(valorFinal * 0.10 * 100) / 100;
+                        const valorOrdinaria = Math.round((valorFinal - valorFCR) * 100) / 100;
+                        return (
                         <tr key={f.id_fracao} className="border-b border-slate-100">
                           <td className="p-2.5 font-bold text-slate-700">{f.fracao_nome}</td>
                           <td className="p-2.5 text-slate-500">{f.proprietario?.nome || "Vago"}</td>
@@ -1309,8 +1349,11 @@ export function GestaoQuotasOrcamento({
                               className="w-24 border border-slate-200 px-2 py-1 text-right text-xs rounded-lg font-mono focus:outline-indigo-500"
                             />
                           </td>
+                          <td className="p-2.5 text-right font-mono text-slate-600">{valorOrdinaria.toFixed(2)} €</td>
+                          <td className="p-2.5 text-right font-mono text-slate-600">{valorFCR.toFixed(2)} €</td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
