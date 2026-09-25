@@ -1361,7 +1361,6 @@ export function GestaoQuotasOrcamento({
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <h4 className="text-xs font-bold text-slate-800">Aplicar Revisão às Quotas por Fração</h4>
-                    <p className="text-[11px] text-slate-500">Pré-visualização calculada a partir do "Novo Valor Anual" acima — não são as quotas atualmente em vigor. Confere/corrige antes de aplicar; só afeta avisos com vencimento a partir da data de vigência indicada acima.</p>
                   </div>
                   <button
                     type="button"
@@ -1371,6 +1370,15 @@ export function GestaoQuotasOrcamento({
                   >
                     <i className="fa-solid fa-xmark"></i> Fechar
                   </button>
+                </div>
+
+                <div className="bg-amber-50 border-2 border-amber-300 rounded-xl px-3 py-2.5 flex items-start gap-2">
+                  <i className="fa-solid fa-triangle-exclamation text-amber-600 mt-0.5"></i>
+                  <p className="text-[11px] text-amber-900 font-semibold leading-snug">
+                    Isto é uma SIMULAÇÃO do que passaria a ser cobrado se aplicar {novaRevisaoValor}€/ano — ainda NADA foi alterado.
+                    As quotas atualmente em vigor são as já emitidas nos avisos (orçamento de {orcamentoAnual}€/ano).
+                    Só mudam depois de clicar em "Aplicar Revisão" mais abaixo.
+                  </p>
                 </div>
 
                 <div className="flex flex-wrap items-end gap-2 bg-slate-50 border border-slate-150 rounded-xl p-3">
