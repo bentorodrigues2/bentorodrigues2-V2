@@ -1163,11 +1163,50 @@ export function PortalCondomino({
                 </div>
               </div>
 
+              {/* Cartão fixo de dados para envio de comprovativos — mesmos
+                  dados reais (IBAN do prédio, NIF, email, referência da
+                  fração) mostrados na PWA, para não haver diferenças entre
+                  o que o condómino vê no browser e no telemóvel. */}
+              <div className="px-6 pt-6">
+                {(() => {
+                  const contaPrincipal = contas.find(c => c.is_principal) || contas[0];
+                  const ibanPredio = contaPrincipal?.iban || (predio as any).iban || "IBAN não configurado — contacte a administração";
+                  const nifPredio = (predio as any).nif || "—";
+                  const emailComprovativos = (predio as any).email_condominio || (predio as any).email || "bentorodrigues2@gmail.com";
+                  const referenciaFracao = activeUserFracao?.referencia_br23e || "—";
+                  const copiar = (valor: string) => { try { navigator.clipboard.writeText(valor); } catch {} };
+                  const LinhaCopiavel = ({ label, valor, nota }: { label: string; valor: string; nota?: string }) => (
+                    <div className="space-y-0.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] text-amber-700/80 font-extrabold uppercase tracking-wider">{label}</span>
+                        <button type="button" onClick={() => copiar(valor)} className="flex items-center space-x-1 text-amber-700 hover:text-amber-900 font-bold text-[9px] cursor-pointer">
+                          <i className="fa-solid fa-copy"></i>
+                          <span>Copiar</span>
+                        </button>
+                      </div>
+                      <strong className="text-amber-950 block font-mono text-[11px] tracking-tight break-all">{valor}</strong>
+                      {nota && <p className="text-[9px] text-amber-700/70">{nota}</p>}
+                    </div>
+                  );
+                  return (
+                    <div className="bg-orange-50 border border-orange-200 p-4 rounded-xl shadow-sm space-y-3 text-[10px]">
+                      <span className="text-[10px] font-extrabold text-orange-700 uppercase tracking-widest block flex items-center gap-1.5">
+                        <i className="fa-solid fa-circle-info"></i> Dados para Envio de Comprovativos
+                      </span>
+                      <LinhaCopiavel label="IBAN do Prédio" valor={ibanPredio} />
+                      <LinhaCopiavel label="NIF do Condomínio" valor={nifPredio} />
+                      <LinhaCopiavel label="Email para Comprovativos" valor={emailComprovativos} nota="Envie o comprovativo de transferência para este email — é lido e confirmado automaticamente." />
+                      <LinhaCopiavel label="Referência Individual da Fração" valor={referenciaFracao} nota="Indique esta referência no descritivo da transferência." />
+                    </div>
+                  );
+                })()}
+              </div>
+
               {/* Personal Data Form (Address is Read-only) */}
               <div className="p-6">
                 <form onSubmit={handleSaveProfile} className="space-y-4">
                   <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">Dados do Perfil</h4>
-                  
+
                   {profileSuccessMsg && (
                     <div className="bg-emerald-50 text-emerald-800 p-2.5 rounded text-xs font-medium">
                       {profileSuccessMsg}
