@@ -2607,6 +2607,11 @@ export async function saveRfpToSupabase(rfp: {
   });
 }
 
+export async function deleteRfpFromSupabase(idRfp: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbDelete("rfps", [["id_rfp", "eq", idRfp]]);
+}
+
 export async function fetchPropostasFromSupabase(idRfp: string): Promise<any[] | null> {
   if (!isSupabaseConfigured()) return null;
   const data = await dbSelect("propostas", {
@@ -2666,6 +2671,11 @@ export async function savePropostaToSupabase(proposta: {
     usa_fundo_reserva: proposta.usa_fundo_reserva ?? null,
     id_obra_criada: proposta.id_obra_criada || null
   });
+}
+
+export async function deletePropostaFromSupabase(idProposal: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbDelete("propostas", [["id_proposal", "eq", idProposal]]);
 }
 
 /**

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Predio, Fracao, Fornecedor, LoggedUser } from "../types";
-import { Loader2, ShieldCheck, BadgeAlert, Sparkles, Building, Coins, Calendar, Plus, ExternalLink, ThumbsUp, Table, FileText, CheckCircle2, XCircle, Paperclip, HardHat, Wrench, PiggyBank } from "lucide-react";
+import { Loader2, ShieldCheck, BadgeAlert, Sparkles, Building, Coins, Calendar, Plus, ExternalLink, ThumbsUp, Table, FileText, CheckCircle2, XCircle, Paperclip, HardHat, Wrench, PiggyBank, Pencil, Trash2, X } from "lucide-react";
 import {
   fetchRfpsFromSupabase,
   saveRfpToSupabase,
+  deleteRfpFromSupabase,
   fetchPropostasFromSupabase,
   savePropostaToSupabase,
+  deletePropostaFromSupabase,
   uploadPropostaFicheiros,
   saveFornecedorToSupabase,
   saveObraExtraToSupabase,
@@ -111,6 +113,7 @@ export function PortalOrcamentos({
 
   // Form states for new RFP (Admin only)
   const [showRfpForm, setShowRfpForm] = useState(false);
+  const [editingRfpId, setEditingRfpId] = useState<string | null>(null);
   const [rfpTitulo, setRfpTitulo] = useState("");
   const [rfpCategoria, setRfpCategoria] = useState("");
   const [rfpEstimativa, setRfpEstimativa] = useState("");
@@ -175,16 +178,18 @@ export function PortalOrcamentos({
       return alert("Indique uma estimativa máxima válida.");
     }
 
+    const rfpOriginal = editingRfpId ? predioRfps.find(r => r.id_rfp === editingRfpId) : null;
     const novoRfp: RequestForProposal = {
-      id_rfp: "rfp-" + Date.now() + "-" + Math.floor(Math.random() * 100),
+      id_rfp: editingRfpId || "rfp-" + Date.now() + "-" + Math.floor(Math.random() * 100),
       id_predio: predio.id_predio,
       titulo: rfpTitulo,
       categoria: rfpCategoria,
       estimativa: estimativaNum,
-      data_publicacao: new Date().toISOString().split("T")[0],
+      data_publicacao: rfpOriginal?.data_publicacao || new Date().toISOString().split("T")[0],
       data_limite: rfpLimite,
       descricao: rfpDescricao,
-      estado: "Aberto"
+      estado: rfpOriginal?.estado || "Aberto",
+      fornecedor_adjudicado: rfpOriginal?.fornecedor_adjudicado
     };
 
     setPublicandoRfp(true);
@@ -192,15 +197,21 @@ export function PortalOrcamentos({
     setPublicandoRfp(false);
 
     if (!ok) {
-      alert("❌ Erro ao publicar o concurso no Supabase. Tente novamente.");
+      alert(`❌ Erro ao ${editingRfpId ? "guardar as alterações do" : "publicar o"} concurso no Supabase. Tente novamente.`);
       return;
     }
 
-    setRfps([...rfps, novoRfp]);
-    setSelectedRfpForAnalysis(novoRfp.id_rfp);
-    alert(`Concurso Público/RFP "${rfpTitulo}" publicado no portal de orçamentos com sucesso!`);
+    if (editingRfpId) {
+      setRfps(prev => prev.map(r => r.id_rfp === editingRfpId ? novoRfp : r));
+      alert(`Concurso "${rfpTitulo}" atualizado com sucesso!`);
+    } else {
+      setRfps([...rfps, novoRfp]);
+      setSelectedRfpForAnalysis(novoRfp.id_rfp);
+      alert(`Concurso Público/RFP "${rfpTitulo}" publicado no portal de orçamentos com sucesso!`);
+    }
 
     // Reset Form
+    setEditingRfpId(null);
     setRfpTitulo("");
     setRfpCategoria("");
     setRfpEstimativa("");
@@ -209,8 +220,59 @@ export function PortalOrcamentos({
     setShowRfpForm(false);
   };
 
+  const handleIniciarEdicaoRfp = (r: RequestForProposal) => {
+    setEditingRfpId(r.id_rfp);
+    setRfpTitulo(r.titulo);
+    setRfpCategoria(r.categoria);
+    setRfpEstimativa(String(r.estimativa));
+    setRfpLimite(r.data_limite);
+    setRfpDescricao(r.descricao);
+    setShowRfpForm(true);
+  };
+
+  const handleCancelarEdicaoRfp = () => {
+    setEditingRfpId(null);
+    setRfpTitulo("");
+    setRfpCategoria("");
+    setRfpEstimativa("");
+    setRfpLimite("");
+    setRfpDescricao("");
+    setShowRfpForm(false);
+  };
+
+  // Eliminar um concurso — arrasta consigo as propostas recebidas para esse
+  // concurso (não faz sentido ficarem "órfãs", sem RFP a que responder), por
+  // isso avisa sempre quantas vão junto antes de confirmar.
+  const [eliminandoRfpId, setEliminandoRfpId] = useState<string | null>(null);
+  const handleEliminarRfp = async (r: RequestForProposal) => {
+    if (loggedUser.role !== "ADMIN") return alert("Apenas administradores podem eliminar concursos.");
+    const propostasDoConcurso = proposals.filter(p => p.id_rfp === r.id_rfp);
+    const aviso = propostasDoConcurso.length > 0
+      ? `Eliminar o concurso "${r.titulo}"? Isto elimina também as ${propostasDoConcurso.length} proposta(s) recebida(s) para ele. Esta ação não pode ser desfeita.`
+      : `Eliminar o concurso "${r.titulo}"? Esta ação não pode ser desfeita.`;
+    if (!window.confirm(aviso)) return;
+
+    setEliminandoRfpId(r.id_rfp);
+    try {
+      await Promise.all(propostasDoConcurso.map(p => deletePropostaFromSupabase(p.id_proposal)));
+      const ok = await deleteRfpFromSupabase(r.id_rfp);
+      if (!ok) {
+        alert("❌ Não foi possível eliminar o concurso no Supabase. Tente novamente.");
+        return;
+      }
+      setProposals(prev => prev.filter(p => p.id_rfp !== r.id_rfp));
+      setRfps(prev => prev.filter(x => x.id_rfp !== r.id_rfp));
+      if (selectedRfpForAnalysis === r.id_rfp) setSelectedRfpForAnalysis("");
+      if (editingRfpId === r.id_rfp) handleCancelarEdicaoRfp();
+      registarLogAuditoria("Fornecedores", "Eliminou um concurso do Portal de Orçamentos", predio.id_predio, loggedUser, r.titulo);
+    } finally {
+      setEliminandoRfpId(null);
+    }
+  };
+
   // Submit Proposal from Supplier
   const [submetendoProposta, setSubmetendoProposta] = useState(false);
+  const [editingPropostaId, setEditingPropostaId] = useState<string | null>(null);
   const handleSubmeterProposta = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRfpId) return alert("Selecione primeiro o pedido de orçamento correspondente.");
@@ -224,8 +286,13 @@ export function PortalOrcamentos({
 
     setSubmetendoProposta(true);
 
-    const idProposal = "prop-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
-    const anexos = await uploadPropostaFicheiros(propFicheiros, selectedRfpId, idProposal);
+    const propostaOriginal = editingPropostaId ? proposals.find(p => p.id_proposal === editingPropostaId) : null;
+    const idProposal = editingPropostaId || "prop-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+    // Só faz upload de novos ficheiros se o admin escolheu outros ao editar
+    // — senão mantém os anexos que já lá estavam.
+    const anexos = propFicheiros.length > 0
+      ? await uploadPropostaFicheiros(propFicheiros, selectedRfpId, idProposal)
+      : (propostaOriginal?.anexos || []);
 
     const novaProposta: Proposal = {
       id_proposal: idProposal,
@@ -238,26 +305,32 @@ export function PortalOrcamentos({
       prazo_dias: Number(propPrazo),
       garantia_anos: Number(propGarantia),
       descricao_tecnica: propDescricao,
-      ficheiro_nome: anexos[0]?.nome || "proposta_assinada_eletronicamente.pdf",
-      ficheiro_caminho: anexos[0]?.caminho || undefined,
+      ficheiro_nome: anexos[0]?.nome || propostaOriginal?.ficheiro_nome || "proposta_assinada_eletronicamente.pdf",
+      ficheiro_caminho: anexos[0]?.caminho || propostaOriginal?.ficheiro_caminho || undefined,
       anexos,
-      estado: "Pendente",
-      data_submissao: new Date().toISOString().split("T")[0]
+      estado: propostaOriginal?.estado || "Pendente",
+      data_submissao: propostaOriginal?.data_submissao || new Date().toISOString().split("T")[0]
     };
 
     const ok = await savePropostaToSupabase(novaProposta);
     setSubmetendoProposta(false);
 
     if (!ok) {
-      alert("❌ Erro ao submeter a proposta no Supabase. Tente novamente.");
+      alert(`❌ Erro ao ${editingPropostaId ? "guardar as alterações da" : "submeter a"} proposta no Supabase. Tente novamente.`);
       return;
     }
 
-    setProposals([...proposals, novaProposta]);
-    setSelectedRfpForAnalysis(selectedRfpId);
-    alert(`Parabéns! A proposta da empresa "${propEmpresa}" foi registada com sucesso para análise.\nNIF: ${propNif}\nValor: ${propValorNum.toLocaleString("pt-PT")} €`);
+    if (editingPropostaId) {
+      setProposals(prev => prev.map(p => p.id_proposal === editingPropostaId ? novaProposta : p));
+      alert(`Proposta da empresa "${propEmpresa}" atualizada com sucesso.`);
+    } else {
+      setProposals([...proposals, novaProposta]);
+      setSelectedRfpForAnalysis(selectedRfpId);
+      alert(`Parabéns! A proposta da empresa "${propEmpresa}" foi registada com sucesso para análise.\nNIF: ${propNif}\nValor: ${propValorNum.toLocaleString("pt-PT")} €`);
+    }
 
     // Reset Form
+    setEditingPropostaId(null);
     setPropEmpresa("");
     setPropNif("");
     setPropEmail("");
@@ -268,6 +341,53 @@ export function PortalOrcamentos({
     setPropDescricao("");
     setPropFicheiros([]);
     setSelectedRfpId("");
+  };
+
+  const handleIniciarEdicaoProposta = (p: Proposal) => {
+    setEditingPropostaId(p.id_proposal);
+    setSelectedRfpId(p.id_rfp);
+    setPropEmpresa(p.nome_empresa);
+    setPropNif(p.nif);
+    setPropEmail(p.email);
+    setPropContacto(p.contacto);
+    setPropValor(String(p.valor));
+    setPropPrazo(String(p.prazo_dias));
+    setPropGarantia(String(p.garantia_anos));
+    setPropDescricao(p.descricao_tecnica);
+    setPropFicheiros([]);
+  };
+
+  const handleCancelarEdicaoProposta = () => {
+    setEditingPropostaId(null);
+    setPropEmpresa("");
+    setPropNif("");
+    setPropEmail("");
+    setPropContacto("");
+    setPropValor("");
+    setPropPrazo("");
+    setPropGarantia("");
+    setPropDescricao("");
+    setPropFicheiros([]);
+    setSelectedRfpId("");
+  };
+
+  const [eliminandoPropostaId, setEliminandoPropostaId] = useState<string | null>(null);
+  const handleEliminarProposta = async (p: Proposal) => {
+    if (loggedUser.role !== "ADMIN") return alert("Apenas administradores podem eliminar propostas.");
+    if (!window.confirm(`Eliminar a proposta da empresa "${p.nome_empresa}"? Esta ação não pode ser desfeita.`)) return;
+    setEliminandoPropostaId(p.id_proposal);
+    try {
+      const ok = await deletePropostaFromSupabase(p.id_proposal);
+      if (!ok) {
+        alert("❌ Não foi possível eliminar a proposta no Supabase. Tente novamente.");
+        return;
+      }
+      setProposals(prev => prev.filter(x => x.id_proposal !== p.id_proposal));
+      if (editingPropostaId === p.id_proposal) handleCancelarEdicaoProposta();
+      registarLogAuditoria("Fornecedores", "Eliminou uma proposta do Portal de Orçamentos", predio.id_predio, loggedUser, `${p.nome_empresa} — ${p.valor.toFixed(2)}€`);
+    } finally {
+      setEliminandoPropostaId(null);
+    }
   };
 
   // Compare Proposals using server-side Gemini 3.5 Flash
@@ -544,17 +664,17 @@ export function PortalOrcamentos({
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Concursos de Obras (RFP)</h3>
               {loggedUser.role === "ADMIN" && (
                 <button
-                  onClick={() => setShowRfpForm(!showRfpForm)}
+                  onClick={() => (showRfpForm ? handleCancelarEdicaoRfp() : setShowRfpForm(true))}
                   className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1 text-[11px] rounded transition-colors cursor-pointer flex items-center"
                 >
-                  <Plus size={12} className="mr-1" /> Novo Concurso
+                  {showRfpForm ? <><X size={12} className="mr-1" /> Fechar</> : <><Plus size={12} className="mr-1" /> Novo Concurso</>}
                 </button>
               )}
             </div>
 
             {showRfpForm && (
               <form onSubmit={handleLancarRfp} className="space-y-3 pt-2 text-xs border-t border-slate-100 dark:border-slate-800">
-                <p className="font-semibold text-slate-700 dark:text-slate-300">Publicar Caderno de Encargos</p>
+                <p className="font-semibold text-slate-700 dark:text-slate-300">{editingRfpId ? "Editar Caderno de Encargos" : "Publicar Caderno de Encargos"}</p>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 block mb-1">Título do Concurso *</label>
                   <input
@@ -612,13 +732,24 @@ export function PortalOrcamentos({
                     className="w-full border border-slate-200 dark:border-slate-800 p-2 rounded bg-white dark:bg-slate-900 focus:outline-emerald-500 text-slate-700 dark:text-slate-200"
                   ></textarea>
                 </div>
-                <button
-                  type="submit"
-                  disabled={publicandoRfp}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-2 rounded shadow transition-all cursor-pointer"
-                >
-                  {publicandoRfp ? "A publicar..." : "Publicar Concurso Público"}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="submit"
+                    disabled={publicandoRfp}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-2 rounded shadow transition-all cursor-pointer"
+                  >
+                    {publicandoRfp ? "A guardar..." : editingRfpId ? "Guardar Alterações" : "Publicar Concurso Público"}
+                  </button>
+                  {editingRfpId && (
+                    <button
+                      type="button"
+                      onClick={handleCancelarEdicaoRfp}
+                      className="px-3 py-2 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition-all cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                </div>
               </form>
             )}
 
@@ -671,6 +802,26 @@ export function PortalOrcamentos({
                       <span>Até: <strong>{r.data_limite}</strong></span>
                     </div>
                   </div>
+
+                  {loggedUser.role === "ADMIN" && (
+                    <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleIniciarEdicaoRfp(r); }}
+                        className="flex-1 flex items-center justify-center gap-1 text-[10px] font-bold text-blue-700 hover:text-blue-900 hover:bg-blue-50 border border-blue-200 rounded px-2 py-1 cursor-pointer"
+                      >
+                        <Pencil size={11} /> Editar
+                      </button>
+                      <button
+                        type="button"
+                        disabled={eliminandoRfpId === r.id_rfp}
+                        onClick={(e) => { e.stopPropagation(); handleEliminarRfp(r); }}
+                        className="flex-1 flex items-center justify-center gap-1 text-[10px] font-bold text-red-600 hover:text-red-800 hover:bg-red-50 border border-red-200 rounded px-2 py-1 cursor-pointer disabled:opacity-50"
+                      >
+                        <Trash2 size={11} /> {eliminandoRfpId === r.id_rfp ? "A eliminar..." : "Eliminar"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -681,10 +832,12 @@ export function PortalOrcamentos({
           <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-5 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center">
               <ExternalLink size={13} className="text-emerald-500 mr-1.5" />
-              Submeter Proposta (Canal do Empreiteiro)
+              {editingPropostaId ? "Editar Proposta" : "Submeter Proposta (Canal do Empreiteiro)"}
             </h3>
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              Área pública destinada a construtores ou fornecedores externos para o envio de propostas técnicas e orçamentos comerciais.
+              {editingPropostaId
+                ? "A corrigir os dados de uma proposta já registada."
+                : "Área pública destinada a construtores ou fornecedores externos para o envio de propostas técnicas e orçamentos comerciais."}
             </p>
 
             <form onSubmit={handleSubmeterProposta} className="space-y-3 text-xs pt-2">
@@ -844,8 +997,17 @@ export function PortalOrcamentos({
                 disabled={submetendoProposta}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-2 rounded shadow transition-all cursor-pointer flex items-center justify-center space-x-1"
               >
-                <span>{submetendoProposta ? "A submeter..." : "Submeter Proposta Comercial"}</span>
+                <span>{submetendoProposta ? "A guardar..." : editingPropostaId ? "Guardar Alterações" : "Submeter Proposta Comercial"}</span>
               </button>
+              {editingPropostaId && (
+                <button
+                  type="button"
+                  onClick={handleCancelarEdicaoProposta}
+                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2 rounded transition-all cursor-pointer"
+                >
+                  Cancelar Edição
+                </button>
+              )}
             </form>
           </div>
         </div>
@@ -1020,28 +1182,51 @@ export function PortalOrcamentos({
                           </div>
                         )}
 
-                        {podeDecidir && (
-                          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                            <button
-                              onClick={() => { setPainelRejeicaoId(painelRejeicaoId === prop.id_proposal ? null : prop.id_proposal); setMotivoRejeicao(""); }}
-                              className="bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-bold py-1 px-3 text-[11px] rounded transition-colors cursor-pointer flex items-center space-x-1"
-                            >
-                              <XCircle size={11} />
-                              <span>Rejeitar</span>
-                            </button>
-                            <button
-                              onClick={() => {
-                                const abrir = painelAdjudicacaoId !== prop.id_proposal;
-                                setPainelAdjudicacaoId(abrir ? prop.id_proposal : null);
-                                setDestinoObraEscolhido("obra_extraordinaria");
-                                setUsaFundoReservaEscolhido(false);
-                                setMesesFracionamentoEscolhido(1);
-                              }}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1 px-3 text-[11px] rounded transition-colors cursor-pointer flex items-center space-x-1"
-                            >
-                              <CheckCircle2 size={11} />
-                              <span>Adjudicar Contrato</span>
-                            </button>
+                        {(podeDecidir || (loggedUser.role === "ADMIN" && estadoProp !== "Aprovada")) && (
+                          <div className="flex justify-end flex-wrap gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                            {loggedUser.role === "ADMIN" && estadoProp !== "Aprovada" && (
+                              <>
+                                <button
+                                  onClick={() => handleIniciarEdicaoProposta(prop)}
+                                  className="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-bold py-1 px-3 text-[11px] rounded transition-colors cursor-pointer flex items-center space-x-1"
+                                >
+                                  <Pencil size={11} />
+                                  <span>Editar</span>
+                                </button>
+                                <button
+                                  disabled={eliminandoPropostaId === prop.id_proposal}
+                                  onClick={() => handleEliminarProposta(prop)}
+                                  className="bg-white hover:bg-red-50 border border-red-200 text-red-600 font-bold py-1 px-3 text-[11px] rounded transition-colors cursor-pointer flex items-center space-x-1 disabled:opacity-50"
+                                >
+                                  <Trash2 size={11} />
+                                  <span>{eliminandoPropostaId === prop.id_proposal ? "A eliminar..." : "Eliminar"}</span>
+                                </button>
+                              </>
+                            )}
+                            {podeDecidir && (
+                              <>
+                                <button
+                                  onClick={() => { setPainelRejeicaoId(painelRejeicaoId === prop.id_proposal ? null : prop.id_proposal); setMotivoRejeicao(""); }}
+                                  className="bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-bold py-1 px-3 text-[11px] rounded transition-colors cursor-pointer flex items-center space-x-1"
+                                >
+                                  <XCircle size={11} />
+                                  <span>Rejeitar</span>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const abrir = painelAdjudicacaoId !== prop.id_proposal;
+                                    setPainelAdjudicacaoId(abrir ? prop.id_proposal : null);
+                                    setDestinoObraEscolhido("obra_extraordinaria");
+                                    setUsaFundoReservaEscolhido(false);
+                                    setMesesFracionamentoEscolhido(1);
+                                  }}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1 px-3 text-[11px] rounded transition-colors cursor-pointer flex items-center space-x-1"
+                                >
+                                  <CheckCircle2 size={11} />
+                                  <span>Adjudicar Contrato</span>
+                                </button>
+                              </>
+                            )}
                           </div>
                         )}
 

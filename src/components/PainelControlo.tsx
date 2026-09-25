@@ -305,6 +305,11 @@ export function PainelControlo({
             section: "contas",
             fixo: true,
             destaque: true,
+            // Uma conta à ordem pode ficar negativa (ex: despesa lançada
+            // antes de o reforço de fundos entrar) — antes "destaque: true"
+            // pintava sempre de verde, mesmo com saldo negativo.
+            corSinal: true,
+            positivo: totalContaOrdem >= 0,
             contagem: 1
           },
           {
@@ -316,6 +321,8 @@ export function PainelControlo({
             section: "fundo_reserva",
             fixo: true,
             destaque: true,
+            corSinal: true,
+            positivo: totalFundoReserva >= 0,
             contagem: 1
           },
           {
@@ -342,7 +349,7 @@ export function PainelControlo({
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
               {indicadores.map((ind, idx) => {
-                const corVerde = ind.destaque || (ind.corSinal && ind.positivo);
+                const corVerde = ind.corSinal ? ind.positivo : ind.destaque;
                 const corVermelha = ind.corSinal && !ind.positivo;
                 const emblema = ind.emblemaContagem;
                 return (

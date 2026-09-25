@@ -2065,6 +2065,31 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                           </button>
                         </div>
                       </div>
+                      {/* A IA por vezes lê mal a direção de uma transferência
+                          (ex: pagamento de quota extra classificado como
+                          Despesa numa conta dedicada a receber quotas) —
+                          este botão corrige isso, convertendo o cartão para
+                          "Pagamento de Condómino" (fração + aviso pendente +
+                          "Aprovar & Emitir Recibo"), sem ter de lançar às
+                          cegas nem perder o movimento. */}
+                      <button
+                        type="button"
+                        onClick={() => setExtractedItems(prev => prev.map((x, i) => i === index ? {
+                          ...x,
+                          tipo: "Receita",
+                          ehPagamentoCondomino: true,
+                          id_fornecedor: undefined,
+                          fornecedor_nome_sugerido: undefined,
+                          fracaoSugeridaId: "",
+                          fracaoSugeridaNome: "?",
+                          confiancaFracao: 0,
+                          motivoCorrespondenciaFracao: "corrigido manualmente",
+                          avisosPendentesIds: []
+                        } : x))}
+                        className="w-full text-[10px] font-bold text-violet-700 hover:text-violet-900 hover:bg-violet-50 border border-violet-200 rounded-lg px-2 py-1 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <i className="fa-solid fa-rotate"></i> Isto é um pagamento de condómino (corrigir para Receita)
+                      </button>
                       <div>
                         <p className="font-semibold text-slate-800">{item.descricao}</p>
                         {item.id_fornecedor ? (
