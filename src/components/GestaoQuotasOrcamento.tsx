@@ -426,6 +426,7 @@ export function GestaoQuotasOrcamento({
     const alvo = (f: Fracao) => {
       if (regraLoteTipoAlvo === "todas") return true;
       if (regraLoteTipoAlvo === "lojas") return isLojaExterior(f) || f.tipologia === "Loja Comercial";
+      if (regraLoteTipoAlvo === "habitacionais") return !isLojaExterior(f) && f.tipologia !== "Loja Comercial";
       return f.tipologia === regraLoteTipoAlvo;
     };
     setOverridesQuotaFracao(prev => {
@@ -1306,8 +1307,9 @@ export function GestaoQuotasOrcamento({
                     <label className="text-[10px] font-semibold text-slate-500 mb-1">Aplicar regra em lote a</label>
                     <select value={regraLoteTipoAlvo} onChange={e => setRegraLoteTipoAlvo(e.target.value)} className="border border-slate-200 px-2.5 py-1.5 text-xs rounded-lg bg-white">
                       <option value="todas">Todas as Frações</option>
+                      <option value="habitacionais">Frações Habitacionais (T1, T2, T3...)</option>
                       <option value="lojas">Só Lojas Comerciais</option>
-                      {tipologiasDisponiveis.map(t => <option key={t} value={t}>{t}</option>)}
+                      {tipologiasDisponiveis.map(t => <option key={t} value={t}>Só {t}</option>)}
                     </select>
                   </div>
                   <div className="flex flex-col">
