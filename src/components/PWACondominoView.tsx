@@ -34,7 +34,9 @@ import {
   saveVotoSondagemToSupabase,
   fetchQuestionariosFromSupabase,
   saveRespostaQuestionarioToSupabase,
-  savePushSubscriptionToSupabase
+  savePushSubscriptionToSupabase,
+  saveFracaoToSupabase,
+  saveProprietarioToSupabase
 } from "../lib/supabaseService";
 import { subscribeUserToPush } from "../utils/subscribeUser";
 import { loadUserPreferences, NotificationPreferences } from "../utils/loadUserPreferences";
@@ -102,6 +104,7 @@ interface PWACondominoViewProps {
   loggedUser: LoggedUser;
   predio: Predio;
   fracoes?: Fracao[];
+  setFracoes?: React.Dispatch<React.SetStateAction<Fracao[]>>;
   condominoFracao: any;
   documentos: Documento[];
   setDocumentos?: React.Dispatch<React.SetStateAction<Documento[]>>;
@@ -125,6 +128,7 @@ export default function PWACondominoView({
   loggedUser,
   predio,
   fracoes = [],
+  setFracoes,
   condominoFracao,
   documentos,
   setDocumentos,
@@ -608,16 +612,78 @@ export default function PWACondominoView({
     { id: "MOV-300", tipo: "Quota Ordinária", data: "01/06/2026", descricao: "Quota Mensal - Fração 3ºE (Junho 2026)", valor: 45.00, estado: "Pago", referencia: "RB23E" }
   ]);
 
-  // Módulo 10 - Perfil States
-  const [perfilNome, setPerfilNome] = useState(loggedUser.nome || "João Silva");
-  const [perfilEmail, setPerfilEmail] = useState(loggedUser.email || "joao.silva@gmail.com");
-  const [perfilTlm, setPerfilTlm] = useState("912 345 678");
-  const [perfilNif, setPerfilNif] = useState("245 889 112");
-  const [perfilNascimento, setPerfilNascimento] = useState("15/04/1988");
-  const perfilMorada = "Rua Bento Rodrigues, nº 23, 3º Esquerdo, 1200-112 Lisboa";
-  const [perfilIban, setPerfilIban] = useState("PT50 0033 0000 1234 5678 9012 3");
-  const [perfilBanco, setPerfilBanco] = useState("Banco Montepio");
-  const [perfilIbanTitular, setPerfilIbanTitular] = useState("João Silva");
+  // Módulo 10 - Perfil States — inicializados a partir dos dados reais do
+  // proprietário (fracoes.proprietario), não de valores fixos. Antes estes
+  // campos nunca liam nem gravavam nada real: qualquer edição (ex: data de
+  // nascimento) ficava só em memória e desaparecia ao sair do ecrã, porque
+  // não existia nenhum botão nem chamada ao Supabase ligada a eles.
+  const perfilProp = condominoFracao?.proprietario;
+  const [perfilNome, setPerfilNome] = useState(perfilProp?.nome || loggedUser.nome || "");
+  const [perfilEmail, setPerfilEmail] = useState(perfilProp?.email || loggedUser.email || "");
+  const [perfilTlm, setPerfilTlm] = useState(perfilProp?.tlm || "");
+  const [perfilNif, setPerfilNif] = useState(perfilProp?.nif || "");
+  const [perfilNascimento, setPerfilNascimento] = useState(perfilProp?.data_nascimento || "");
+  const perfilMorada = predio
+    ? `${predio.morada_linha1 || ""}${predio.num_porta ? `, Nº ${predio.num_porta}` : ""}${condominoFracao?.piso ? `, ${condominoFracao.piso}` : ""}, ${predio.codigo_postal || ""} ${predio.localidade || ""}`.trim()
+    : "";
+  const [perfilIban, setPerfilIban] = useState(perfilProp?.iban || "");
+  const [perfilBanco, setPerfilBanco] = useState(perfilProp?.entidade_bancaria || "");
+  const [perfilIbanTitular, setPerfilIbanTitular] = useState(perfilProp?.titular_conta || "");
+  const [aGuardarPerfil, setAGuardarPerfil] = useState(false);
+
+  // Ressincroniza sempre que os dados reais chegam depois da montagem (ex:
+  // condominoFracao só resolve depois do 1º fetch) ou mudam por outra via —
+  // sem isto, o formulário ficava preso nos valores iniciais para sempre.
+  useEffect(() => {
+    if (!perfilProp) return;
+    setPerfilNome(perfilProp.nome || loggedUser.nome || "");
+    setPerfilEmail(perfilProp.email || loggedUser.email || "");
+    setPerfilTlm(perfilProp.tlm || "");
+    setPerfilNif(perfilProp.nif || "");
+    setPerfilNascimento(perfilProp.data_nascimento || "");
+    setPerfilIban(perfilProp.iban || "");
+    setPerfilBanco(perfilProp.entidade_bancaria || "");
+    setPerfilIbanTitular(perfilProp.titular_conta || "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [condominoFracao?.id_fracao]);
+
+  // Grava as correções do condómino na fração real (fracoes.proprietario) —
+  // o mesmo objeto que a administração vê e usa para emitir avisos/recibos.
+  // Não usa o fluxo de "novo proprietário" da administração (sem envio de
+  // boas-vindas/notas em atraso), é só uma correção de dados já existentes.
+  const handleGuardarPerfil = async () => {
+    if (!condominoFracao?.id_fracao) {
+      alert("❌ Não foi possível identificar a sua fração para gravar as alterações.");
+      return;
+    }
+    setAGuardarPerfil(true);
+    try {
+      const proprietarioAtualizado = {
+        ...perfilProp,
+        nome: perfilNome.trim(),
+        email: perfilEmail.trim(),
+        tlm: perfilTlm.trim(),
+        nif: perfilNif.trim(),
+        data_nascimento: perfilNascimento.trim() || undefined,
+        iban: perfilIban.trim(),
+        entidade_bancaria: perfilBanco.trim(),
+        titular_conta: perfilIbanTitular.trim()
+      };
+      const fracaoAtualizada: Fracao = { ...condominoFracao, proprietario: proprietarioAtualizado };
+      const [okFracao] = await Promise.all([
+        saveFracaoToSupabase(fracaoAtualizada),
+        saveProprietarioToSupabase(proprietarioAtualizado, condominoFracao.id_fracao)
+      ]);
+      if (!okFracao) {
+        alert("❌ Não foi possível gravar as alterações no Supabase. Tente novamente.");
+        return;
+      }
+      setFracoes?.(prev => prev.map(f => f.id_fracao === condominoFracao.id_fracao ? fracaoAtualizada : f));
+      alert("✅ Dados do perfil atualizados com sucesso!");
+    } finally {
+      setAGuardarPerfil(false);
+    }
+  };
   const [perfilAvatar, setPerfilAvatar] = useState<string | null>(null);
   const [perfilPassword, setPerfilPassword] = useState("••••••••");
   const [perfilShowPassModal, setPerfilShowPassModal] = useState(false);
@@ -2815,6 +2881,15 @@ export default function PWACondominoView({
                     </div>
                   </div>
                 </div>
+
+                <button
+                  onClick={handleGuardarPerfil}
+                  disabled={aGuardarPerfil}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold py-2.5 rounded-lg text-[10px] uppercase tracking-wide transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <i className={`fa-solid ${aGuardarPerfil ? "fa-spinner fa-spin" : "fa-floppy-disk"}`}></i>
+                  {aGuardarPerfil ? "A guardar..." : "Guardar Alterações"}
+                </button>
 
                 {/* 🛡️ SUBMENU EXPANSÍVEL DE SEGURANÇA */}
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800">

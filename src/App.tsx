@@ -695,9 +695,15 @@ export default function App() {
     contasAtualizadas.forEach(c => saveContaToSupabase(c).catch(console.error));
   };
 
-  const handleAddReuniao = (novaReuniao: Reuniao) => {
+  // Devolve o resultado real da gravação (antes era "fire-and-forget": o
+  // ecrã mostrava sempre sucesso mesmo que o Supabase recusasse o registo,
+  // e a convocatória/reunião desaparecia silenciosamente ao recarregar a
+  // página, sem nenhum aviso ao administrador).
+  const handleAddReuniao = async (novaReuniao: Reuniao): Promise<boolean> => {
     setReunioes([...reunioes, novaReuniao]);
-    saveReuniaoToSupabase(novaReuniao).catch(console.error);
+    const ok = await saveReuniaoToSupabase(novaReuniao);
+    if (!ok) console.error("[handleAddReuniao] Falha ao gravar reunião no Supabase:", novaReuniao.id_reuniao);
+    return ok;
   };
 
   const handleAddOcorrencia = (novaOcorrencia: Ocorrencia) => {

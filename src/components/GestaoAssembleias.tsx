@@ -17,13 +17,13 @@ import {
 } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { VotacaoAssembleiaVirtual } from "./VotacaoAssembleiaVirtual";
-import { saveReuniaoToSupabase, deleteReuniaoFromSupabase, registarLogAuditoria, fetchObrasExtraFromSupabase } from "../lib/supabaseService";
+import { saveReuniaoToSupabase, deleteReuniaoFromSupabase, saveDocumentoToSupabase, registarLogAuditoria, fetchObrasExtraFromSupabase } from "../lib/supabaseService";
 
 interface GestaoAssembleiasProps {
   predio: Predio;
   fracoes: Fracao[];
   reunioes: Reuniao[];
-  onAddReuniao: (novaReuniao: Reuniao) => void;
+  onAddReuniao: (novaReuniao: Reuniao) => Promise<boolean>;
   setReunioes: React.Dispatch<React.SetStateAction<Reuniao[]>>;
   loggedUser: LoggedUser;
   onAddDocumento?: (novoDoc: Documento) => void;
@@ -278,7 +278,7 @@ Com os meus cumprimentos,
     }
   };
 
-  const submeterForm = (e: React.FormEvent) => {
+  const submeterForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loggedUser.role !== 'ADMIN') return alert("Apenas administradores podem gerir assembleias!");
     if (!tema || !data || !hora || !ordensTrabalho) return alert("Preencha todos os campos obrigatórios (*)");
@@ -346,7 +346,11 @@ Com os meus cumprimentos,
       });
       setReunioes(atualizadas);
       if (reuniaoAtualizada) {
-        saveReuniaoToSupabase(reuniaoAtualizada).catch(console.error);
+        const okEdicao = await saveReuniaoToSupabase(reuniaoAtualizada);
+        if (!okEdicao) {
+          alert("❌ Não foi possível gravar as alterações no Supabase — a ligação pode ter falhado. Tente guardar novamente antes de sair deste ecrã, para não perder os dados.");
+          return;
+        }
         registarLogAuditoria("Assembleias", `Editou a assembleia "${tema}"`, predio.id_predio, loggedUser);
       }
       setEditingId(null);
@@ -377,7 +381,11 @@ Com os meus cumprimentos,
       });
       nova.folha_presencas = defaultPresences;
 
-      onAddReuniao(nova);
+      const okNova = await onAddReuniao(nova);
+      if (!okNova) {
+        alert("❌ Não foi possível guardar a convocatória no Supabase — a ligação pode ter falhado. Tente novamente; se persistir, verifique a ligação à internet antes de sair deste ecrã.");
+        return;
+      }
 
       // Auto-arquivar Convocatória Oficial no Arquivo Digital (Pasta 'Atas & Convocatórias')
       if (onAddDocumento) {
@@ -399,6 +407,14 @@ Com os meus cumprimentos,
           arquivado: true
         };
         onAddDocumento(docConvocatoria);
+        // A gravação do documento em si também é "fire-and-forget" dentro de
+        // onAddDocumento (só regista o erro na consola) — grava aqui também
+        // diretamente, para poder avisar já se falhar, em vez de a
+        // convocatória parecer arquivada e nunca chegar a estar lá.
+        const okDoc = await saveDocumentoToSupabase(docConvocatoria);
+        if (!okDoc) {
+          alert("⚠️ A convocatória foi agendada, mas não foi possível arquivá-la automaticamente no Arquivo Digital. Pode arquivá-la manualmente a seguir.");
+        }
       }
 
       alert("Assembleia agendada com sucesso com Segunda Convocatória e arquivada automaticamente no Arquivo Digital!");

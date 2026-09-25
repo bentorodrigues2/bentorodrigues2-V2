@@ -1586,6 +1586,7 @@ export function PWASimulator({
                   loggedUser={loggedUser}
                   predio={predio}
                   fracoes={fracoes}
+                  setFracoes={setFracoes}
                   condominoFracao={condominoFracao}
                   documentos={documentos}
                   setDocumentos={setDocumentos}
@@ -3221,7 +3222,7 @@ export function PWASimulator({
                           predio={predio}
                           fracoes={fracoes}
                           reunioes={reunioes}
-                          onAddReuniao={(rn) => { setReunioes(prev => [...prev, rn]); saveReuniaoToSupabase(rn).catch(console.error); }}
+                          onAddReuniao={async (rn) => { setReunioes(prev => [...prev, rn]); return await saveReuniaoToSupabase(rn); }}
                           setReunioes={setReunioes}
                           loggedUser={loggedUser}
                         />
