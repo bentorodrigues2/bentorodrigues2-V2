@@ -189,20 +189,23 @@ export function GestaoQuotasOrcamento({
     const novaLista = revisoesOrcamento.filter(r => r.id_revisao !== revisao.id_revisao);
     setRevisoesOrcamento(novaLista);
 
-    // Eliminar a revisão em vigor não repunha o orçamento anual — ficava
-    // parado no valor da revisão apagada, mesmo já não havendo nenhum
-    // registo a justificá-lo. Recalcula qual revisão fica em vigor a seguir
-    // (a mais recente cuja vigência já passou) e repõe esse valor; se não
-    // sobrar nenhuma, avisa o administrador em vez de adivinhar um valor.
-    if (revisao.id_revisao === revisaoEmVigor?.id_revisao) {
-      const novaVigente = orcamentoVigente(novaLista);
-      if (novaVigente) {
-        setOrcamentoAnual(String(novaVigente.valor));
-        await persistirOrcamentoNoSupabase(novaVigente.valor);
-        alert(`✅ Revisão eliminada. O orçamento anual voltou ao valor da revisão anterior em vigor: ${novaVigente.valor.toFixed(2)} €.`);
-      } else {
-        alert("✅ Revisão eliminada. Não há mais nenhuma revisão registada — confirme/corrija manualmente o Orçamento Anual, que ficou com o último valor aplicado.");
-      }
+    // Eliminar QUALQUER revisão recalcula sempre o orçamento anual a partir
+    // do que sobra — antes só o fazia quando a eliminada era exatamente a
+    // "revisão em vigor" (por data), o que nunca disparava em casos reais
+    // com datas futuras/de teste, deixando o valor preso no da revisão já
+    // apagada. Usa a vigente por data; se não houver nenhuma vigente (ex:
+    // todas com data futura), usa a mais recente da lista como aproximação
+    // — mais correto do que ficar parado num valor de uma revisão que já
+    // não existe.
+    const novaVigente = orcamentoVigente(novaLista)
+      || [...novaLista].sort((a, b) => b.data_vigencia.localeCompare(a.data_vigencia))[0]
+      || null;
+    if (novaVigente) {
+      setOrcamentoAnual(String(novaVigente.valor));
+      await persistirOrcamentoNoSupabase(novaVigente.valor);
+      alert(`✅ Revisão eliminada. O orçamento anual voltou a ${novaVigente.valor.toFixed(2)} € (revisão anterior).`);
+    } else {
+      alert("✅ Revisão eliminada. Não há mais nenhuma revisão registada — confirme/corrija manualmente o Orçamento Anual, que ficou com o último valor aplicado.");
     }
   };
 
