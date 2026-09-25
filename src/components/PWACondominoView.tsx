@@ -3198,24 +3198,10 @@ export default function PWACondominoView({
           </div>
         )}
 
-        {/* Floating Alertas do Prédio after first scroll */}
-        {hasScrolled && activeTab === "home" && (
-          <div className="fixed bottom-16 left-4 right-4 mx-auto max-w-sm bg-amber-50 dark:bg-amber-950 border-2 border-amber-300 dark:border-amber-800 p-2.5 rounded-xl shadow-xl flex items-start space-x-2 text-[10px] z-40">
-            <span className="text-sm">⚠️</span>
-            <div className="flex-1 space-y-0.5 text-left">
-              <span className="font-extrabold text-amber-800 dark:text-amber-300 block">Alerta Importante (Detetado Scroll)</span>
-              <p className="text-slate-700 dark:text-slate-300 leading-normal">
-                Nota: A manutenção técnica do Elevador n.º 2 decorrerá dia 19/07 entre as 14h-16h. O elevador estará indisponível nesse período.
-              </p>
-            </div>
-            <button 
-              onClick={() => setHasScrolled(false)}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer font-black text-xs shrink-0"
-            >
-              ✕
-            </button>
-          </div>
-        )}
+        {/* Removido: era um alerta de demonstração com texto fixo (fala de
+            uma manutenção de elevador inventada, "dia 19/07") que aparecia
+            sempre que o condómino fazia scroll — nunca teve ligação a dados
+            reais, só existia para mostrar o padrão visual do alerta. */}
 
       </div>
 
