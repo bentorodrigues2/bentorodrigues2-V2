@@ -266,11 +266,15 @@ export default function PWACondominoView({
     }
   });
 
-  const allNotifs = [
-    { id: "notif-elevador", type: "amber", text: "Intervenção técnica aberta: Elevador nº 2" },
-    { id: "notif-sondagem", type: "indigo", text: "Nova sondagem disponível sobre o Prédio" },
-    { id: "notif-higiene", type: "emerald", text: "Higiene Semanal Concluída com sucesso" },
-  ];
+  // Antes era uma lista fixa de 3 notificações inventadas (elevador,
+  // sondagem, higiene) que apareciam sempre, para qualquer condómino, em
+  // qualquer prédio — nunca tiveram ligação a dados reais. `pwaNotifications`
+  // já existia como prop (alimentada por eventos reais: pagamento
+  // confirmado, seguro registado, resposta da administração, etc. — ver
+  // PWASimulator.tsx) mas nunca tinha chegado a ser usada aqui.
+  const allNotifs = (pwaNotifications || [])
+    .filter((n: any) => !n.isArchived)
+    .map((n: any) => ({ id: n.id, type: "indigo" as string, text: n.title || n.desc }));
 
   const activeNotifs = allNotifs.filter(n => !closedNotifs.includes(n.id));
 
