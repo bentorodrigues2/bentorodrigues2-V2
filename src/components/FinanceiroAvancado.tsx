@@ -183,7 +183,16 @@ export function FinanceiroAvancado({
     return mapaFracoesVisiveis.map(f => {
       const avisosFracao = mapaAvisosDoTipoAno.filter(a => a.id_fracao === f.id_fracao);
       const meses: (CelulaMapa | null)[] = MESES_ABREV.map((_, mIdx) => {
-        const aviso = avisosFracao.find(a => mesReferenciaAviso(a).getMonth() === mIdx);
+        // Pode haver mais do que um aviso para a mesma fração/mês (ex: um
+        // pagamento dividido em meses já marcado "Pago" e, à parte, a
+        // emissão mensal automática regular que criou outro aviso
+        // "Pendente" para o mesmo mês) — antes escolhia-se sempre o
+        // primeiro que aparecesse (find), o que podia mostrar a vermelho um
+        // mês já efetivamente pago, só por ordem de carregamento. Se
+        // qualquer um dos avisos desse mês estiver Pago, o mês conta como
+        // pago.
+        const avisosDoMes = avisosFracao.filter(a => mesReferenciaAviso(a).getMonth() === mIdx);
+        const aviso = avisosDoMes.find(a => a.estado === "Pago") || avisosDoMes[0];
         return aviso ? { valor: Number(aviso.valor || 0), pago: aviso.estado === "Pago" } : null;
       });
       const total = meses.reduce((s, c) => s + (c?.valor || 0), 0);

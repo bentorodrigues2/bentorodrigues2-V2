@@ -2861,7 +2861,12 @@ export function exportarBalanceteMapaAnualXLS(
       let totalLiquidado = 0;
 
       const mesesValues = meses.map((_, mIdx) => {
-        const avisoMes = avisosMensais.find(a => mesReferenciaAviso(a).getMonth() === mIdx);
+        // Pode haver mais do que um aviso para a mesma fração/mês (pagamento
+        // dividido já Pago + emissão mensal regular Pendente do mesmo mês)
+        // — se algum estiver Pago, o mês conta como pago, em vez de escolher
+        // sempre o primeiro por ordem de carregamento.
+        const avisosDoMes = avisosMensais.filter(a => mesReferenciaAviso(a).getMonth() === mIdx);
+        const avisoMes = avisosDoMes.find(a => a.estado === "Pago") || avisosDoMes[0];
         if (!avisoMes) return "—";
         const valor = Number(avisoMes.valor || 0);
         totalEmitido += valor;
