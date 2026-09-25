@@ -2889,6 +2889,7 @@ export default function App() {
               predio={predioAtivo}
               fracoes={fracoes}
               avisos={avisos}
+              setAvisos={setAvisos}
               contas={contas}
               movimentos={movements}
               setDocumentos={setDocumentos}
