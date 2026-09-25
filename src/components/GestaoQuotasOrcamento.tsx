@@ -115,6 +115,20 @@ export function GestaoQuotasOrcamento({
 
   const revisaoEmVigor = orcamentoVigente(revisoesOrcamento);
 
+  // Correção manual por fração + aplicação retroativa de uma revisão —
+  // antes, uma revisão ao orçamento só mudava o "orçamento anual" guardado,
+  // nunca recalculava os avisos já emitidos (pendentes ficavam com o valor
+  // antigo, e quem já tinha pago um mês à quota antiga nunca via cobrada a
+  // diferença). Guarda-se num Record (fracaoId -> valor em texto) para
+  // permitir corrigir o valor calculado de qualquer fração à mão antes de
+  // aplicar, e ainda aplicar regras em lote (ex: "+5€ em todas as frações").
+  const [overridesQuotaFracao, setOverridesQuotaFracao] = useState<Record<string, string>>({});
+  const [regraLoteTipoAlvo, setRegraLoteTipoAlvo] = useState<string>("todas");
+  const [regraLoteDelta, setRegraLoteDelta] = useState<string>("");
+  const [criarDiferencaMesesPagos, setCriarDiferencaMesesPagos] = useState(true);
+  const [enviarEmailRevisao, setEnviarEmailRevisao] = useState(true);
+  const [aAplicarRevisao, setAAplicarRevisao] = useState(false);
+
   const handleAddRevisaoOrcamento = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loggedUser.role !== "ADMIN" && loggedUser.role !== "EMPRESA_GESTORA") {
@@ -355,6 +369,163 @@ export function GestaoQuotasOrcamento({
   }, [predioFracoes, orcamentoRegular]);
 
   const calcularQuotaOrdinaria = (f: Fracao) => f.permilagem * (isLojaExterior(f) ? rateLojaOrdinaria : rateNormalOrdinaria);
+
+  // Mesma fórmula de calcularQuotaOrdinaria, mas parametrizada pelo NOVO
+  // orçamento anual da revisão em curso (em vez do orçamento atualmente em
+  // vigor) — usada só na pré-visualização/aplicação da revisão abaixo.
+  const { rateNormalRevisao, rateLojaRevisao } = useMemo(() => {
+    let permilagemLoja = 0;
+    predioFracoes.forEach((f) => { if (isLojaExterior(f)) permilagemLoja += f.permilagem; });
+    const permilagemNormal = 1000 - permilagemLoja;
+    const denominador = permilagemNormal + permilagemLoja * COEF_LOJA_EXTERIOR;
+    const orcamentoMensalRevisao = (parseValorMonetario(novaRevisaoValor) || 0) / 12;
+    const rN = denominador > 0 ? orcamentoMensalRevisao / denominador : 0;
+    return { rateNormalRevisao: rN, rateLojaRevisao: rN * COEF_LOJA_EXTERIOR };
+  }, [predioFracoes, novaRevisaoValor]);
+
+  const quotaCalculadaRevisao = (f: Fracao) => Math.round(f.permilagem * (isLojaExterior(f) ? rateLojaRevisao : rateNormalRevisao) * 100) / 100;
+  const quotaFinalRevisao = (f: Fracao) => {
+    const override = overridesQuotaFracao[f.id_fracao];
+    if (override !== undefined && override.trim() !== "") {
+      const parsed = parseValorMonetario(override);
+      if (parsed > 0) return Math.round(parsed * 100) / 100;
+    }
+    return quotaCalculadaRevisao(f);
+  };
+
+  // Regra em lote: soma (ou subtrai, com valor negativo) um montante fixo ao
+  // valor atual (calculado ou já corrigido) de todas as frações do âmbito
+  // escolhido — ex: "+5€ em todas as frações" e depois "+2,50€ só nas
+  // lojas", sem ter de escrever cada fração à mão.
+  const handleAplicarRegraLote = () => {
+    const delta = parseValorMonetario(regraLoteDelta);
+    if (!delta) return alert("Indique um valor a somar (ou negativo, para subtrair) na regra em lote.");
+    const alvo = (f: Fracao) => {
+      if (regraLoteTipoAlvo === "todas") return true;
+      if (regraLoteTipoAlvo === "lojas") return isLojaExterior(f) || f.tipologia === "Loja Comercial";
+      return f.tipologia === regraLoteTipoAlvo;
+    };
+    setOverridesQuotaFracao(prev => {
+      const novo = { ...prev };
+      predioFracoes.filter(alvo).forEach(f => {
+        const atual = quotaFinalRevisao(f);
+        novo[f.id_fracao] = (Math.round((atual + delta) * 100) / 100).toFixed(2);
+      });
+      return novo;
+    });
+    setRegraLoteDelta("");
+  };
+
+  const tipologiasDisponiveis = useMemo(
+    () => Array.from(new Set(predioFracoes.map(f => f.tipologia).filter(Boolean))),
+    [predioFracoes]
+  );
+
+  // Aplica a revisão em vigor (ou o valor do formulário acima) aos avisos já
+  // existentes a partir da data de vigência: atualiza os pendentes para o
+  // valor novo e, quando marcado, cria um aviso extra "Diferença de Quota"
+  // para quem já tinha pago esse mês à quota antiga — sem isto, uma subida
+  // de quota a meio do ano nunca chegava a ser cobrada a quem já tinha
+  // adiantado pagamentos.
+  const handleAplicarRevisaoQuotas = async () => {
+    if (loggedUser.role !== "ADMIN" && loggedUser.role !== "EMPRESA_GESTORA") {
+      return alert("Apenas administradores podem aplicar revisões de quota.");
+    }
+    const dataVigenciaAlvo = novaRevisaoData;
+    if (!dataVigenciaAlvo) return alert("Indique a data de vigência da revisão (campo acima).");
+    if (predioFracoes.some(f => quotaFinalRevisao(f) <= 0)) {
+      return alert("Uma ou mais frações ficariam com quota calculada a 0€ — preencha o Novo Valor Anual ou corrija manualmente cada fração antes de aplicar.");
+    }
+    if (!window.confirm(`Aplicar a revisão a partir de ${formatDatePT(dataVigenciaAlvo)}? Isto atualiza os avisos pendentes dessa data em diante e ${criarDiferencaMesesPagos ? "cria avisos de diferença para os meses já pagos" : "não mexe nos meses já pagos"}.`)) return;
+
+    setAAplicarRevisao(true);
+    try {
+      const avisosParaGuardar: Aviso[] = [];
+      let contadorAtualizados = 0;
+      let contadorDiferencas = 0;
+
+      for (const f of predioFracoes) {
+        const novoValorTotal = quotaFinalRevisao(f);
+        const novoValorFCR = Math.round(novoValorTotal * 0.10 * 100) / 100;
+        const avisosOrdinariosFracao = predioAvisos.filter(
+          a => a.id_fracao === f.id_fracao && a.tipo === "Quota Ordinária" && a.vencimento >= dataVigenciaAlvo && !a.id_aviso.startsWith("av-diferenca-")
+        );
+        for (const av of avisosOrdinariosFracao) {
+          if (av.estado === "Pendente" || av.estado === "Paga Parcialmente") {
+            avisosParaGuardar.push({ ...av, valor: novoValorTotal, valor_fundo_reserva: novoValorFCR });
+            contadorAtualizados++;
+          } else if (av.estado === "Pago" && criarDiferencaMesesPagos) {
+            const diferenca = Math.round((novoValorTotal - av.valor) * 100) / 100;
+            if (diferenca > 0.01) {
+              avisosParaGuardar.push({
+                id_aviso: `av-diferenca-${av.id_aviso}`,
+                id_predio: predio.id_predio,
+                id_fracao: f.id_fracao,
+                tipo: "Quota Ordinária",
+                data: new Date().toISOString().split("T")[0],
+                vencimento: av.vencimento,
+                descricao: `Diferença de Quota — ${av.descricao} (atualizada de ${av.valor.toFixed(2)}€ para ${novoValorTotal.toFixed(2)}€)`,
+                valor: diferenca,
+                valor_fundo_reserva: Math.round(diferenca * 0.10 * 100) / 100,
+                estado: "Pendente",
+                proprietario_nome: f.proprietario?.nome,
+                proprietario_nif: f.proprietario?.nif
+              });
+              contadorDiferencas++;
+            }
+          }
+        }
+      }
+
+      if (avisosParaGuardar.length > 0) {
+        setAvisos(prev => {
+          const porId = new Map(prev.map(a => [a.id_aviso, a]));
+          avisosParaGuardar.forEach(a => porId.set(a.id_aviso, a));
+          return Array.from(porId.values());
+        });
+        await saveAvisosToSupabase(avisosParaGuardar);
+      }
+
+      registarLogAuditoria(
+        "Financeira",
+        "Aplicou uma revisão de quota às frações",
+        predio.id_predio,
+        loggedUser,
+        `${contadorAtualizados} aviso(s) pendente(s) atualizado(s), ${contadorDiferencas} aviso(s) de diferença criado(s), a partir de ${formatDatePT(dataVigenciaAlvo)}`
+      );
+
+      let emailResumo = "";
+      if (enviarEmailRevisao) {
+        const destinatarios = predioFracoes.filter(f => f.proprietario?.email && f.proprietario.email.toUpperCase() !== "NA").map(f => ({ email: f.proprietario.email, nome: f.proprietario.nome }));
+        if (destinatarios.length > 0) {
+          try {
+            await fetch("/api/email?acao=broadcast", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                destinatarios,
+                assunto: `Atualização da Quota Mensal — ${predio.nome}`,
+                mensagem:
+                  `Informamos que, a partir de <strong>${formatDatePT(dataVigenciaAlvo)}</strong>, entra em vigor um novo valor de quota mensal, aprovada${novaRevisaoAssembleia ? " em assembleia" : ""}.` +
+                  `<br><br>O valor exato da sua fração está disponível na nota de cobrança/no Portal do Condómino (Quota Ordinária + Fundo Comum de Reserva = Quota Total).` +
+                  (criarDiferencaMesesPagos ? `<br><br>Se já tinha meses pagos a partir desta data à quota anterior, foi emitida uma nota de cobrança adicional só com a diferença — consulte o Portal.` : "") +
+                  `<br><br><strong>Dados para pagamento:</strong><br>IBAN: ${predio.iban || "—"}<br>Email para comprovativos: ${predio.email_condominio || predio.email || "bentorodrigues2@gmail.com"}`
+              })
+            });
+            emailResumo = ` Email informativo enviado a ${destinatarios.length} condómino(s).`;
+          } catch (errEmail) {
+            console.warn("Erro ao enviar email de revisão de quotas:", errEmail);
+            emailResumo = " ⚠️ Não foi possível enviar o email informativo.";
+          }
+        }
+      }
+
+      alert(`✅ Revisão aplicada: ${contadorAtualizados} aviso(s) pendente(s) atualizado(s) e ${contadorDiferencas} aviso(s) de diferença criado(s).${emailResumo}`);
+      setOverridesQuotaFracao({});
+    } finally {
+      setAAplicarRevisao(false);
+    }
+  };
 
   const handleEmitirQuotasEmLote = () => {
     if (totalPermilagem !== 1000) {
@@ -1077,6 +1248,93 @@ export function GestaoQuotasOrcamento({
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Aplicar a revisão às quotas por fração — corrige manualmente,
+                aplica regras em lote e recalcula os avisos já emitidos. */}
+            {novaRevisaoValor && parseValorMonetario(novaRevisaoValor) > 0 && (
+              <div className="border-t border-slate-100 pt-4 space-y-3">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800">Aplicar Revisão às Quotas por Fração</h4>
+                  <p className="text-[11px] text-slate-500">Confere/corrige o valor calculado de cada fração antes de aplicar. Só afeta avisos com vencimento a partir da data de vigência indicada acima.</p>
+                </div>
+
+                <div className="flex flex-wrap items-end gap-2 bg-slate-50 border border-slate-150 rounded-xl p-3">
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-semibold text-slate-500 mb-1">Aplicar regra em lote a</label>
+                    <select value={regraLoteTipoAlvo} onChange={e => setRegraLoteTipoAlvo(e.target.value)} className="border border-slate-200 px-2.5 py-1.5 text-xs rounded-lg bg-white">
+                      <option value="todas">Todas as Frações</option>
+                      <option value="lojas">Só Lojas Comerciais</option>
+                      {tipologiasDisponiveis.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-semibold text-slate-500 mb-1">Somar (€, negativo para subtrair)</label>
+                    <input type="text" inputMode="decimal" value={regraLoteDelta} onChange={e => setRegraLoteDelta(e.target.value)} placeholder="Ex: 5 ou -2,50" className="border border-slate-200 px-2.5 py-1.5 text-xs rounded-lg font-mono w-32" />
+                  </div>
+                  <button type="button" onClick={handleAplicarRegraLote} className="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer">
+                    Aplicar Regra
+                  </button>
+                  {Object.keys(overridesQuotaFracao).length > 0 && (
+                    <button type="button" onClick={() => setOverridesQuotaFracao({})} className="text-xs font-semibold text-slate-500 hover:text-red-600 cursor-pointer">
+                      Repor valores calculados
+                    </button>
+                  )}
+                </div>
+
+                <div className="overflow-x-auto border border-slate-150 rounded-xl max-h-72 overflow-y-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead className="sticky top-0 bg-slate-50">
+                      <tr className="border-b border-slate-200 text-slate-500 font-bold">
+                        <th className="p-2.5">Fração</th>
+                        <th className="p-2.5">Condómino</th>
+                        <th className="p-2.5 text-right">Calculado</th>
+                        <th className="p-2.5 text-right">Valor Final (editável)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {predioFracoes.map(f => (
+                        <tr key={f.id_fracao} className="border-b border-slate-100">
+                          <td className="p-2.5 font-bold text-slate-700">{f.fracao_nome}</td>
+                          <td className="p-2.5 text-slate-500">{f.proprietario?.nome || "Vago"}</td>
+                          <td className="p-2.5 text-right font-mono text-slate-400">{quotaCalculadaRevisao(f).toFixed(2)} €</td>
+                          <td className="p-2.5 text-right">
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={overridesQuotaFracao[f.id_fracao] ?? ""}
+                              placeholder={quotaCalculadaRevisao(f).toFixed(2)}
+                              onChange={e => setOverridesQuotaFracao(prev => ({ ...prev, [f.id_fracao]: e.target.value }))}
+                              className="w-24 border border-slate-200 px-2 py-1 text-right text-xs rounded-lg font-mono focus:outline-indigo-500"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4">
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 cursor-pointer">
+                    <input type="checkbox" checked={criarDiferencaMesesPagos} onChange={e => setCriarDiferencaMesesPagos(e.target.checked)} className="cursor-pointer" />
+                    Cobrar diferença a quem já pagou meses a partir da vigência
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 cursor-pointer">
+                    <input type="checkbox" checked={enviarEmailRevisao} onChange={e => setEnviarEmailRevisao(e.target.checked)} className="cursor-pointer" />
+                    Enviar email a todos os condóminos
+                  </label>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAplicarRevisaoQuotas}
+                  disabled={aAplicarRevisao}
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-2"
+                >
+                  <i className={`fa-solid ${aAplicarRevisao ? "fa-spinner fa-spin" : "fa-rotate"}`}></i>
+                  {aAplicarRevisao ? "A aplicar..." : `Aplicar Revisão a partir de ${novaRevisaoData ? formatDatePT(novaRevisaoData) : "—"}`}
+                </button>
               </div>
             )}
           </div>
