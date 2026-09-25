@@ -1,6 +1,6 @@
 // CondoManager AI - Service Worker (Offline Cache, Push Notifications, Background Sync)
 
-const CACHE_NAME = "condomanager-v2.2-cache";
+const CACHE_NAME = "condomanager-v2.3-cache";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
