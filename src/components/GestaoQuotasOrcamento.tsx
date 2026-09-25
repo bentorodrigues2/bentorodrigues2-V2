@@ -88,10 +88,17 @@ export function GestaoQuotasOrcamento({
   const [mes, setMes] = useState("Janeiro");
   const [anoEmissao, setAnoEmissao] = useState(String(new Date().getFullYear()));
 
+  // Reagia só a "mudar de prédio" (predio.id_predio), nunca ao valor do
+  // orçamento em si mudar dentro do MESMO prédio — por isso, depois de uma
+  // correção na base de dados (ex: eliminar uma adenda), este campo ficava
+  // "congelado" no valor antigo desde que a página carregou, e qualquer
+  // ação que gravasse este campo (ex: "Emitir Quotas em Lote") voltava a
+  // escrever esse valor antigo por cima da correção. Reage agora ao valor
+  // real guardado, não só ao prédio.
+  const orcamentoAnualGuardadoReal = (predio.patrimonio as any)?.orcamento_anual;
   useEffect(() => {
-    const guardado = (predio.patrimonio as any)?.orcamento_anual;
-    setOrcamentoAnual(guardado ? String(guardado) : "");
-  }, [predio.id_predio]);
+    setOrcamentoAnual(orcamentoAnualGuardadoReal ? String(orcamentoAnualGuardadoReal) : "");
+  }, [predio.id_predio, orcamentoAnualGuardadoReal]);
 
   const persistirOrcamentoNoSupabase = async (valor: number) => {
     if (!isSupabaseConfigured) return;
@@ -128,6 +135,24 @@ export function GestaoQuotasOrcamento({
   const [criarDiferencaMesesPagos, setCriarDiferencaMesesPagos] = useState(true);
   const [enviarEmailRevisao, setEnviarEmailRevisao] = useState(true);
   const [aAplicarRevisao, setAAplicarRevisao] = useState(false);
+  const [editingRevisaoId, setEditingRevisaoId] = useState<string | null>(null);
+
+  const handleIniciarEdicaoRevisao = (r: RevisaoOrcamento) => {
+    setEditingRevisaoId(r.id_revisao);
+    setNovaRevisaoValor(String(r.valor));
+    setNovaRevisaoData(r.data_vigencia);
+    setNovaRevisaoAssembleia(r.aprovado_em_assembleia);
+    setNovaRevisaoAtaId(r.id_reuniao_ata || "");
+    setNovaRevisaoMotivo(r.id_reuniao_ata ? "" : (r.motivo || ""));
+  };
+
+  const handleCancelarEdicaoRevisao = () => {
+    setEditingRevisaoId(null);
+    setNovaRevisaoValor("");
+    setNovaRevisaoMotivo("");
+    setNovaRevisaoAssembleia(false);
+    setNovaRevisaoAtaId("");
+  };
 
   const handleAddRevisaoOrcamento = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,7 +169,7 @@ export function GestaoQuotasOrcamento({
       : (novaRevisaoMotivo || undefined);
 
     const nova: RevisaoOrcamento = {
-      id_revisao: "rev-" + Date.now(),
+      id_revisao: editingRevisaoId || "rev-" + Date.now(),
       id_predio: predio.id_predio,
       valor: novoValorRevisao,
       data_vigencia: novaRevisaoData,
@@ -155,9 +180,12 @@ export function GestaoQuotasOrcamento({
     const ok = await saveRevisaoOrcamentoToSupabase(nova);
     if (!ok) return alert("❌ Não foi possível gravar a revisão no Supabase. Tente novamente.");
 
-    const novaLista = [nova, ...revisoesOrcamento];
+    const novaLista = editingRevisaoId
+      ? revisoesOrcamento.map(r => r.id_revisao === editingRevisaoId ? nova : r)
+      : [nova, ...revisoesOrcamento];
     setRevisoesOrcamento(novaLista);
-    registarLogAuditoria("Financeira", "Registou uma revisão ao orçamento anual", predio.id_predio, loggedUser, `Novo valor: ${nova.valor.toFixed(2)} € a partir de ${formatDatePT(nova.data_vigencia)}`);
+    registarLogAuditoria("Financeira", editingRevisaoId ? "Editou uma revisão ao orçamento anual" : "Registou uma revisão ao orçamento anual", predio.id_predio, loggedUser, `Novo valor: ${nova.valor.toFixed(2)} € a partir de ${formatDatePT(nova.data_vigencia)}`);
+    setEditingRevisaoId(null);
 
     const maisRecenteVigente = orcamentoVigente(novaLista);
     if (maisRecenteVigente && maisRecenteVigente.id_revisao === nova.id_revisao) {
@@ -1268,8 +1296,13 @@ export function GestaoQuotasOrcamento({
                   Aprovado em assembleia
                 </label>
                 <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0">
-                  Registar Revisão
+                  {editingRevisaoId ? "Guardar Alterações" : "Registar Revisão"}
                 </button>
+                {editingRevisaoId && (
+                  <button type="button" onClick={handleCancelarEdicaoRevisao} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3.5 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0">
+                    Cancelar
+                  </button>
+                )}
               </div>
             </form>
 
@@ -1304,9 +1337,14 @@ export function GestaoQuotasOrcamento({
                         </td>
                         <td className="p-2.5 text-right">
                           {loggedUser.role === "ADMIN" && (
-                            <button onClick={() => handleRemoverRevisaoOrcamento(r)} className="text-slate-400 hover:text-red-500 cursor-pointer" title="Eliminar">
-                              <i className="fa-solid fa-trash-can"></i>
-                            </button>
+                            <div className="flex items-center justify-end gap-2.5">
+                              <button onClick={() => handleIniciarEdicaoRevisao(r)} className="text-slate-400 hover:text-indigo-600 cursor-pointer" title="Editar">
+                                <i className="fa-solid fa-pen"></i>
+                              </button>
+                              <button onClick={() => handleRemoverRevisaoOrcamento(r)} className="text-slate-400 hover:text-red-500 cursor-pointer" title="Eliminar">
+                                <i className="fa-solid fa-trash-can"></i>
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>
