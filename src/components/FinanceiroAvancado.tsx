@@ -169,6 +169,14 @@ export function FinanceiroAvancado({
       if (ehDividaAvulsaAnterior(a)) return;
       const ehExtra = String(a.tipo || "").includes("Extraordinária");
       if ((mapaTipo === "extraordinaria") !== ehExtra) return;
+      // Ignora avisos "pagos adiantadamente" (um comprovativo único dividido
+      // por vários meses, com o valor congelado à taxa de quando o
+      // pagamento foi feito) e "Diferença de Quota" (só o valor do
+      // acerto, não a quota total) — nenhum dos dois representa a
+      // quota mensal EM VIGOR, mesmo tendo uma data de vencimento mais
+      // recente do que a emissão regular do lote mensal.
+      const desc = String(a.descricao || "");
+      if (desc.includes("paga adiantadamente") || desc.startsWith("Diferença de Quota")) return;
       const dAtual = mesReferenciaAviso(a);
       const existente = mapa[`${a.id_fracao}|d`];
       if (existente === undefined || dAtual.getTime() > existente) {

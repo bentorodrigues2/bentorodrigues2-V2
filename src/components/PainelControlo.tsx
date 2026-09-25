@@ -27,6 +27,7 @@ interface PainelControloProps {
   notificacoesCount?: number;
   dividasPendentesValor?: number;
   onSelectSection?: (section: string) => void;
+  isAdmin?: boolean;
 }
 
 export function PainelControlo({
@@ -47,7 +48,8 @@ export function PainelControlo({
   mensagensCount = 0,
   notificacoesCount = 0,
   dividasPendentesValor = 0,
-  onSelectSection
+  onSelectSection,
+  isAdmin = true
 }: PainelControloProps) {
 
   // Global list references derived from props
@@ -261,7 +263,8 @@ export function PainelControlo({
             icon: "/modulos/60-nota-de-cobranca.png",
             section: "financeiro_relatorios",
             fixo: false,
-            contagem: predioAvisos.filter(a => a.estado === 'Pendente' || a.estado === 'Paga Parcialmente').length
+            contagem: predioAvisos.filter(a => a.estado === 'Pendente' || a.estado === 'Paga Parcialmente').length,
+            apenasAdmin: true
           },
           {
             // Movimentos "cegos" chegados por email (comprovativos/faturas
@@ -277,7 +280,8 @@ export function PainelControlo({
             fixo: true,
             contagem: 1,
             corSinal: lancamentosPorConfirmarCount > 0,
-            positivo: false
+            positivo: false,
+            apenasAdmin: true
           },
           {
             name: "Alertas Jurídicos",
@@ -339,7 +343,7 @@ export function PainelControlo({
             positivo: totalLiquido >= 0,
             contagem: 1
           }
-        ].filter(ind => ind.fixo || ind.contagem > 0);
+        ].filter(ind => (ind.fixo || ind.contagem > 0) && (!ind.apenasAdmin || isAdmin));
 
         return (
           <div className="space-y-2">

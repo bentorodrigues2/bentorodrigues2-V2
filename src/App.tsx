@@ -2795,6 +2795,7 @@ export default function App() {
                   notificacoesCount={0}
                   dividasPendentesValor={dividasFornecedoresPendentesValor}
                   onSelectSection={selectSection}
+                  isAdmin={["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role)}
                 />
               )}
 
