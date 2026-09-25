@@ -349,18 +349,13 @@ export default function App() {
   const [viewMode, setViewMode] = useState<"BROWSER" | "PWA">("BROWSER");
   // Nenhum sítio da app alguma vez chamava setViewMode("PWA") — a vista PWA
   // (PWASimulator/PWACondominoView, com o Perfil do Condómino, o IBAN da
-  // fração, etc.) era por isso inatingível em produção: TODOS os papéis,
-  // incluindo condóminos comuns (role "USER"), viam sempre o painel de
-  // administração completo, nunca a app móvel pensada para eles. A correção
-  // é só a ESCOLHA INICIAL ao entrar — quem gere o condomínio começa no
-  // painel de administração, os restantes papéis começam na vista PWA — mas
-  // qualquer um continua a poder alternar livremente entre as duas depois
-  // (ver botão no cabeçalho), porque a mesma pessoa pode ser administrador
-  // E condómino ao mesmo tempo (ex: dono de uma fração que também gere o
-  // prédio) e precisa de aceder às duas vias pela mesma conta.
-  const PAPEIS_GESTAO = ["ADMIN", "GESTOR", "EMPRESA_GESTORA"];
+  // fração, etc.) era por isso inatingível em produção. A escolha certa
+  // (confirmada pelo utilizador) não depende do papel de quem entra — toda a
+  // gente entra pelo Painel de Administração por defeito, em qualquer
+  // dispositivo; é só no telemóvel que a app PWA se aplica automaticamente.
   useEffect(() => {
-    setViewMode(PAPEIS_GESTAO.includes(loggedUser?.role || "") ? "BROWSER" : "PWA");
+    const ehTelemovel = typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches;
+    setViewMode(ehTelemovel ? "PWA" : "BROWSER");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedUser?.email]);
   const [brandingColor, setBrandingColorState] = useState<string>(() => {
@@ -2723,21 +2718,6 @@ export default function App() {
                loggedUser.role === "JURIDICO" ? "⚖️ Jurídico" :
                loggedUser.role === "AUDITOR" ? "🕵️ Auditor" : "📈 Contabilista"}
             </span>
-
-            {/* Alternador Painel de Administração / App PWA — qualquer
-                perfil pode alternar (ex: quem é ao mesmo tempo administrador
-                e condómino de uma fração precisa de aceder às duas vias
-                pela mesma conta). Por defeito entra-se numa ou noutra
-                consoante o papel, mas nunca fica preso lá. */}
-            <button
-              type="button"
-              onClick={() => setViewMode(viewMode === "BROWSER" ? "PWA" : "BROWSER")}
-              title={viewMode === "BROWSER" ? "Ver como App PWA (Condómino)" : "Ver Painel de Administração"}
-              className={`hidden sm:flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${theme === "dark" ? "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700" : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"}`}
-            >
-              <i className={`fa-solid ${viewMode === "BROWSER" ? "fa-mobile-screen-button" : "fa-desktop"}`}></i>
-              <span>{viewMode === "BROWSER" ? "Ver como App" : "Painel de Administração"}</span>
-            </button>
 
             <button
               id="header-btn-logout"
