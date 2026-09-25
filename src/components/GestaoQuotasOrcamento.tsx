@@ -580,6 +580,13 @@ export function GestaoQuotasOrcamento({
 
       alert(`✅ Revisão aplicada: ${contadorAtualizados} aviso(s) pendente(s) atualizado(s) e ${contadorDiferencas} aviso(s) de diferença criado(s).${emailResumo}`);
       setOverridesQuotaFracao({});
+      // Limpa o campo que gera a tabela de pré-visualização — sem isto, o
+      // valor ficava esquecido no campo depois de aplicado, e a tabela
+      // continuava a mostrar (e a deixar corrigir) quotas calculadas a
+      // partir desse valor antigo, mesmo já não havendo nenhuma revisão
+      // pendente — foi isto que causou a confusão de "os valores continuam
+      // errados" depois de já estar tudo corrigido na base de dados.
+      setNovaRevisaoValor("");
     } finally {
       setAAplicarRevisao(false);
     }
@@ -1313,9 +1320,19 @@ export function GestaoQuotasOrcamento({
                 aplica regras em lote e recalcula os avisos já emitidos. */}
             {novaRevisaoValor && parseValorMonetario(novaRevisaoValor) > 0 && (
               <div className="border-t border-slate-100 pt-4 space-y-3">
-                <div>
-                  <h4 className="text-xs font-bold text-slate-800">Aplicar Revisão às Quotas por Fração</h4>
-                  <p className="text-[11px] text-slate-500">Confere/corrige o valor calculado de cada fração antes de aplicar. Só afeta avisos com vencimento a partir da data de vigência indicada acima.</p>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800">Aplicar Revisão às Quotas por Fração</h4>
+                    <p className="text-[11px] text-slate-500">Pré-visualização calculada a partir do "Novo Valor Anual" acima — não são as quotas atualmente em vigor. Confere/corrige antes de aplicar; só afeta avisos com vencimento a partir da data de vigência indicada acima.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setNovaRevisaoValor(""); setOverridesQuotaFracao({}); }}
+                    title="Fecha esta pré-visualização sem aplicar nada"
+                    className="text-[11px] font-semibold text-slate-400 hover:text-red-600 shrink-0 cursor-pointer flex items-center gap-1"
+                  >
+                    <i className="fa-solid fa-xmark"></i> Fechar
+                  </button>
                 </div>
 
                 <div className="flex flex-wrap items-end gap-2 bg-slate-50 border border-slate-150 rounded-xl p-3">
