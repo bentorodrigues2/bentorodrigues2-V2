@@ -224,7 +224,6 @@ export default function PWACondominoView({
   const [simulatingScanProgress, setSimulatingScanProgress] = useState(0);
 
   // Dynamic States for PWA Requirements
-  const [hasUnreadMessages, setHasUnreadMessages] = useState(true);
   const [selectedSubmenu, setSelectedSubmenu] = useState<string | null>(null);
   const [activePwaModal, setActivePwaModal] = useState<string | null>(null);
 
@@ -308,9 +307,10 @@ export default function PWACondominoView({
   // desta correção era tudo texto fixo/estado local sem qualquer ligação
   // ao backend.
   const [mensagens, setMensagens] = useState<TicketMensagem[]>([]);
+  const [showChatModal, setShowChatModal] = useState(false);
   const respostasPorLerPwa = mensagens.filter((m) => m.respostaAdmin && !respostasVistasPwa.has(chaveRespostaVistaPwa(m.id_conversa, m.dataResposta))).length;
   useEffect(() => {
-    if (activeTab !== "mensagens" || mensagens.length === 0) return;
+    if ((activeTab !== "mensagens" && !showChatModal) || mensagens.length === 0) return;
     setRespostasVistasPwa((prev) => {
       const novo = new Set(prev);
       mensagens.forEach((m) => { if (m.respostaAdmin) novo.add(chaveRespostaVistaPwa(m.id_conversa, m.dataResposta)); });
@@ -319,7 +319,7 @@ export default function PWACondominoView({
       } catch { /* localStorage pode não estar disponível — ignora */ }
       return novo;
     });
-  }, [activeTab, mensagens, loggedUser.email]);
+  }, [activeTab, showChatModal, mensagens, loggedUser.email]);
   const [comunicadosFeed, setComunicadosFeed] = useState<Comunicado[]>([]);
   const [sondagensFeed, setSondagensFeed] = useState<Sondagem[]>([]);
   const [questionariosFeed, setQuestionariosFeed] = useState<Questionario[]>([]);
@@ -605,7 +605,11 @@ export default function PWACondominoView({
   const getNotificationCount = (cardId: string) => {
     if (cardId === "ocorrencias") return ocorrenciasAbertasReais.length;
     if (cardId === "financas") return avisosPendentesFracaoReais.length;
-    if (cardId === "comunicacoes") return hasUnreadMessages ? 1 : 0;
+    // Era um useState(true) nunca recalculado a partir de dados reais — o
+    // cartão "Comunicados" mostrava sempre "+1 Nova" a piscar, mesmo sem
+    // nenhuma resposta por ler. Usa agora a mesma contagem real já correta
+    // do botão de mensagens (respostasPorLerPwa).
+    if (cardId === "comunicacoes") return respostasPorLerPwa > 0 ? 1 : 0;
     if (cardId === "sondagens") return sondagensPorVotar.length > 0 ? 1 : 0;
     return 0;
   };
@@ -614,7 +618,7 @@ export default function PWACondominoView({
     switch (cardId) {
       case "ocorrencias": return ocorrenciasAbertasReais.length > 0 ? `${ocorrenciasAbertasReais.length} Ativa(s)` : "Sem Registos";
       case "financas": return avisosPendentesFracaoReais.length > 0 ? `${avisosPendentesFracaoReais.length} Pendente(s)` : "Regularizado";
-      case "comunicacoes": return hasUnreadMessages ? "+1 Nova" : "Sem Alertas";
+      case "comunicacoes": return respostasPorLerPwa > 0 ? `${respostasPorLerPwa} Nova(s)` : "Sem Alertas";
       case "documentos": return `${documentosFracaoReais.length} Ficheiro(s)`;
       case "reservas_limpezas": return reservasFracaoReais.length > 0 ? `${reservasFracaoReais.length} Ativa(s)` : "Ativo";
       case "sondagens": return sondagensPorVotar.length > 0 ? `${sondagensPorVotar.length} Ativa(s)` : "Votado";
@@ -1377,7 +1381,7 @@ export default function PWACondominoView({
                           <span>Comunicados da Administração</span>
                         </button>
                         <button
-                          onClick={() => { setActivePwaModal("chat_admin"); setSelectedSubmenu(null); setHasUnreadMessages(false); }}
+                          onClick={() => { setShowChatModal(true); setSelectedSubmenu(null); }}
                           className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-black py-2.5 rounded-xl text-center cursor-pointer transition-colors flex items-center justify-center gap-2 text-xs"
                         >
                           <i className="fa-solid fa-comments"></i>
@@ -4627,21 +4631,21 @@ export default function PWACondominoView({
       {/* Antes só aparecia para USER/INQUILINO/COPROPRIETARIO — um
           administrador que é também condómino (como o proprietário desta
           conta) nunca via o botão ao testar/usar a PWA como ele próprio. */}
-      {/* Causa do ecrã a ficar negro ao tocar: o botão tinha `drag` do
-          framer-motion e o seu próprio onClick mudava activeTab, o que
-          desmontava este mesmo elemento (estava condicionado a
-          activeTab !== "mensagens") a meio do próprio gesto de toque —
-          o framer-motion tentava medir/atualizar um nó DOM já removido e
-          rebentava. Deixa de ser arrastável (não precisa de ser) e nunca
-          mais desmonta a meio de um clique: fica sempre montado, só se
-          esconde com CSS quando se está em Mensagens. */}
+      {/* Duas tentativas anteriores (tirar o drag do framer-motion; depois
+          deixar de desmontar o botão ao trocar de separador) não resolveram
+          — continuava a dar ecrã negro ao tocar. Em vez de continuar a
+          adivinhar a causa exata dentro do separador "Mensagens", o botão
+          deixa de lá navegar (setActiveTab) e passa a abrir um modal próprio
+          nesta mesma página — igual ao padrão que já existia antes e
+          funcionava (PWASimulator.tsx, removido sem se perceber que também
+          resolvia isto), mas agora ligado aos dados reais (mensagens reais
+          do Supabase e handleEnviarMensagemReal), não ao formulário
+          simulado antigo. */}
       {loggedUser.role !== undefined && (
         <button
           type="button"
-          onClick={() => setActiveTab("mensagens")}
-          className={`fixed bottom-20 right-4 z-40 select-none transition-opacity ${
-            activeTab === "mensagens" ? "opacity-0 pointer-events-none" : "opacity-100"
-          }`}
+          onClick={() => setShowChatModal(true)}
+          className="fixed bottom-20 right-4 z-40 select-none"
           title="Contactar Administração"
         >
           <div className="relative w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white shadow-2xl flex items-center justify-center border-2 border-white dark:border-slate-900 ring-4 ring-emerald-600/20 transition-all cursor-pointer">
@@ -4657,6 +4661,82 @@ export default function PWACondominoView({
             )}
           </div>
         </button>
+      )}
+
+      {showChatModal && (
+        <div
+          className="fixed inset-0 bg-slate-950/70 z-[90] flex items-end justify-center p-0 sm:p-4 sm:items-center"
+          onClick={() => setShowChatModal(false)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 w-full sm:max-w-sm max-h-[85vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-emerald-600 px-4 py-3 text-white flex justify-between items-center shrink-0">
+              <div>
+                <h4 className="text-xs font-bold flex items-center gap-1.5">
+                  <img src="/modulos/75-mensagem.png" alt="" className="w-4 h-4 object-contain" />
+                  Contactar Administração
+                </h4>
+                <p className="text-[8px] text-emerald-100">Mensagem direta para a gerência do condomínio</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowChatModal(false)}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-2 py-1 rounded-lg cursor-pointer shrink-0"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-3 space-y-2.5 bg-slate-50 dark:bg-slate-950/70 min-h-[200px]">
+              {mensagens.length === 0 && (
+                <p className="text-slate-400 text-[10px] text-center py-6">Sem conversas ainda — escreva à administração abaixo.</p>
+              )}
+              {mensagens.map((ticket) => (
+                <React.Fragment key={ticket.id_conversa}>
+                  <div className="p-2.5 bg-emerald-600 text-white rounded-2xl space-y-1 ml-auto max-w-[85%] shadow-xs">
+                    <div className="flex justify-between font-bold text-emerald-100 text-[8px] flex-row-reverse">
+                      <span>Você</span>
+                      <span>{ticket.data}</span>
+                    </div>
+                    <p className="text-white leading-normal text-[10px]">{ticket.mensagem}</p>
+                  </div>
+                  {ticket.respostaAdmin && (
+                    <div className="p-2.5 bg-white dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-750 space-y-1 max-w-[85%] shadow-xs">
+                      <div className="flex justify-between font-bold text-slate-400 text-[8px]">
+                        <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">🏢 Administração do Condomínio</span>
+                        <span>{ticket.dataResposta}</span>
+                      </div>
+                      <p className="text-slate-700 dark:text-slate-200 leading-normal text-[10px]">{ticket.respostaAdmin}</p>
+                    </div>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+
+            <form
+              onSubmit={(e) => { handleEnviarMensagemReal(e); }}
+              className="flex items-end gap-1.5 p-2.5 border-t border-slate-100 dark:border-slate-800 shrink-0"
+            >
+              <textarea
+                value={newMsgText}
+                onChange={(e) => setNewMsgText(e.target.value)}
+                placeholder="Escreva a sua mensagem..."
+                rows={1}
+                className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-[11px] text-slate-800 dark:text-white resize-none"
+              />
+              <button
+                type="submit"
+                disabled={!newMsgText.trim()}
+                className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white p-2.5 rounded-xl cursor-pointer shrink-0"
+                title="Enviar"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* PWA NATIVE BOTTOM NAVIGATION BAR (Specially customized for 5 key views with CondoManager AI colors) —

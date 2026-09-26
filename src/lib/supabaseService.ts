@@ -78,7 +78,20 @@ async function dbCall(body: Record<string, unknown>): Promise<{ ok: boolean; dat
       headers,
       body: JSON.stringify(body)
     });
-    if (!resp.ok) return { ok: false, error: `HTTP ${resp.status}` };
+    // /api/data devolve sempre um corpo JSON com {error: "..."} explicativo,
+    // mesmo em 401/403/500 — antes isto era ignorado sempre que resp.ok era
+    // false, e só ficava "HTTP 401"/"HTTP 403" na consola, sem a mensagem
+    // real (ex: "Sessão inválida ou expirada." vs "Sem permissão para esta
+    // operação nesta tabela."), tornando impossível perceber a causa real de
+    // um "erro ao publicar no Supabase" sem aceder aos logs do servidor.
+    if (!resp.ok) {
+      try {
+        const corpo = await resp.json();
+        return { ok: false, error: corpo?.error || `HTTP ${resp.status}` };
+      } catch {
+        return { ok: false, error: `HTTP ${resp.status}` };
+      }
+    }
     return await resp.json();
   } catch (err: any) {
     return { ok: false, error: err?.message || String(err) };
