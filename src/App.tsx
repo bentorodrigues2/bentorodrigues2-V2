@@ -1965,7 +1965,7 @@ export default function App() {
                   }`}
                 >
                   <img src="/modulos/41-obra.png" alt="Obras" className="w-4 h-4 object-contain shrink-0" />
-                  <span>2. Obras Adjudicadas & Execução</span>
+                  <span>2. Planeamento de Quotas</span>
                 </button>
               </div>
             )}
@@ -2681,7 +2681,7 @@ export default function App() {
                 {activeSection === "manutencao_ocorrencias" && "Ocorrências & Avarias Reportadas"}
                 {activeSection === "manutencao_agenda" && "Agenda de Manutenção & Vistorias"}
                 {activeSection === "manutencao_intervencoes" && "Intervenções (Pequenas Reparações)"}
-                {activeSection === "manutencao_extraordinarias" && "Intervenções Extraordinárias (Grandes Obras)"}
+                {activeSection === "manutencao_extraordinarias" && "Planeamento de Quotas (Obras Extraordinárias)"}
                 {activeSection === "manutencao_concluidas" && "Histórico de Manutenções Concluídas"}
                 {activeSection === "manutencao_arquivo" && "Arquivo Documental Registado"}
               </h2>

@@ -12,7 +12,7 @@ import {
 import { 
   Wrench, Calendar, TriangleAlert, Hammer, CheckSquare, FolderArchive,
   Plus, Upload, ShieldAlert, Check, RefreshCw, Sparkles, Send,
-  Clock, FileDown, Eye, FileText, Landmark, User, FileSpreadsheet, Play, Trash2
+  Clock, FileDown, Eye, FileText, Landmark, User, FileSpreadsheet, Play, Trash2, Calculator
 } from "lucide-react";
 
 interface GestaoManutencaoIntervencoesProps {
@@ -206,44 +206,8 @@ export function GestaoManutencaoIntervencoes({
   const [newObraCusto, setNewObraCusto] = useState("");
   const [newObraNecessitaCota, setNewObraNecessitaCota] = useState(true);
   const [newObraUsaFundoReserva, setNewObraUsaFundoReserva] = useState(false);
-  const [newObraMeses, setNewObraMeses] = useState<number>(12);
   const [newObraInicio, setNewObraInicio] = useState("");
   const [newObraFim, setNewObraFim] = useState("");
-
-  // Calculation display for IA prediction
-  const [iaPreviewTotal, setIaPreviewTotal] = useState<number>(0);
-  const [iaBreakdown, setIaBreakdown] = useState<any>(null);
-
-  // Trigger auto calculating whenever form values update
-  useEffect(() => {
-    const cost = parseValorMonetario(newObraCusto);
-    if (cost <= 0) {
-      setIaBreakdown(null);
-      return;
-    }
-
-    // IA Suggestion engine based on permilagem
-    const suggestValPerFraction: { [key: string]: number } = {};
-    fracoes.forEach(f => {
-      // Fraction pays based on its permilagem (value = total_cost * permilagem / 1000)
-      suggestValPerFraction[f.id_fracao] = (cost * f.permilagem) / 1000;
-    });
-
-    // Recommend legal/recommended reserve funds impact (e.g. 10% or remaining from reserve fund)
-    const reserveImpact = Math.min(cost * 0.2, 5000); // suggest taking 20% max 5000€ from FR
-    const outstandingQuotaCost = cost - reserveImpact;
-
-    setIaBreakdown({
-      total: cost,
-      reserveImpact,
-      outstandingQuotaCost,
-      byFraction: suggestValPerFraction,
-      monthlyBreakdown: [3, 6, 9, 12, 18, 24].reduce((acc: any, m) => {
-        acc[m] = outstandingQuotaCost / m;
-        return acc;
-      }, {})
-    });
-  }, [newObraCusto, fracoes]);
 
   // Utility to handle local image WebP simulator
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, isOcorr = true) => {
@@ -873,7 +837,9 @@ export function GestaoManutencaoIntervencoes({
       dataFim: newObraFim || new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
       custoTotal: cost,
       necessitaCotaExtra: newObraNecessitaCota,
-      mesesFracionamento: newObraMeses,
+      // O nº de prestações e o mês de início do pagamento passam a ser
+      // decididos só depois, em Financeiro → Quotas & Orçamento Anual.
+      mesesFracionamento: 1,
       valoresPorFracao: valuesByFraction,
       impactoFundoReserva: cost * 0.1, // recommended legal reserve fund contribution
       impactoSaldoAnual: -cost,
@@ -1841,19 +1807,34 @@ export function GestaoManutencaoIntervencoes({
       {/* ----------------- 4. INTERVENÇÕES EXTRAORDINÁRIAS (OBRAS GRANDES) ----------------- */}
       {activeSubSection === "manutencao_extraordinarias" && (
         <div className="space-y-4 animate-fadeIn">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center flex-wrap gap-3">
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Intervenções Extraordinárias (Obras Grandes)</h3>
-              <p className="text-xs text-slate-500">Planeamento técnico, cálculo inteligente de quotas extraordinárias e orçamentos de grande escala.</p>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Obras Extraordinárias (Grandes)</h3>
+              <p className="text-xs text-slate-500">Planeamento técnico e confirmação de obras grandes — cada obra que precise de quota extra fica disponível em "Cálculo & Emissão de Quotas".</p>
             </div>
 
-            <button
-              onClick={() => setShowNewObraForm(!showNewObraForm)}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md cursor-pointer flex items-center gap-1"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Planear Nova Obra</span>
-            </button>
+            <div className="flex items-center gap-2">
+              {/* O cálculo por fração (nº de prestações, mês de início, conta,
+                  tabela e emissão real dos avisos) deixou de se simular aqui —
+                  faz-se todo em Financeiro → Quotas & Orçamento Anual, que já
+                  lista automaticamente qualquer obra criada com "Requer Quota
+                  Extra" marcado. Link direto para lá em vez de duplicar o
+                  motor de cálculo neste ecrã também. */}
+              <button
+                onClick={() => setActiveSubSection("quotas_orcamento")}
+                className="bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 font-bold px-4 py-2 rounded-xl text-xs shadow-sm cursor-pointer flex items-center gap-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+              >
+                <Calculator className="h-4 w-4" />
+                <span>Ir para Cálculo & Emissão de Quotas</span>
+              </button>
+              <button
+                onClick={() => setShowNewObraForm(!showNewObraForm)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md cursor-pointer flex items-center gap-1"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Planear Nova Obra</span>
+              </button>
+            </div>
           </div>
 
           {showNewObraForm && (
@@ -1970,72 +1951,16 @@ export function GestaoManutencaoIntervencoes({
                   <span>Requer Lançamento de Quota Extraordinária?</span>
                 </label>
 
+                {/* O fracionamento, o mês de início do pagamento e a repartição por
+                    fração deixaram de se simular aqui — decidem-se depois, com
+                    dados reais, em Financeiro → Quotas & Orçamento Anual
+                    (Planeamento de Quotas), que já lista esta obra assim que for
+                    criada com esta caixa marcada. Ter o mesmo simulador duplicado
+                    aqui e na adjudicação (Portal de Orçamentos) era confuso. */}
                 {newObraNecessitaCota && (
-                  <div className="space-y-3 pt-2 pl-6 border-l-2 border-emerald-200 dark:border-emerald-900">
-                    <div>
-                      <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Fracionamento Recomendado (Meses)</label>
-                      <select
-                        value={newObraMeses}
-                        onChange={e => setNewObraMeses(parseInt(e.target.value))}
-                        className="border p-1.5 rounded bg-white dark:bg-slate-900"
-                      >
-                        <option value={3}>3 meses</option>
-                        <option value={6}>6 meses</option>
-                        <option value={9}>9 meses</option>
-                        <option value={12}>12 meses</option>
-                        <option value={18}>18 meses</option>
-                        <option value={24}>24 meses</option>
-                      </select>
-                    </div>
-
-                    {/* IA Prediction and Simulator Display */}
-                    {iaBreakdown && (
-                      <div className="space-y-2 text-slate-700 dark:text-slate-300 font-medium">
-                        <p className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 text-[11px]">
-                          <Sparkles className="h-4 w-4 text-emerald-600" />
-                          Sugestão Automática de Quotas Extraordinárias (IA Predictor)
-                        </p>
-                        
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white dark:bg-slate-950 p-3 rounded-lg border">
-                          <div>
-                            {/* Nota legal (DL 268/94): 10% do custo é sempre contabilizado como
-                                contribuição ao FCR, independentemente da caixa "Pagar a partir do
-                                Fundo de Reserva Comum" — essa caixa decide de ONDE sai o dinheiro
-                                da obra, não se esta nota legal se aplica (aplica-se sempre). O
-                                rótulo deixa isto explícito para não parecer que o FCR está a ser
-                                usado mesmo sem a caixa estar marcada. */}
-                            <span className="text-[9px] text-slate-400 uppercase block">Contrib. Legal ao FCR (10%, DL 268/94)</span>
-                            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{iaBreakdown.reserveImpact.toFixed(2)}€</span>
-                          </div>
-                          <div>
-                            <span className="text-[9px] text-slate-400 uppercase block">Financiamento por Quotas</span>
-                            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{iaBreakdown.outstandingQuotaCost.toFixed(2)}€</span>
-                          </div>
-                          <div>
-                            <span className="text-[9px] text-slate-400 uppercase block">Quota Mensal Global ({newObraMeses}m)</span>
-                            <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{iaBreakdown.monthlyBreakdown[newObraMeses].toFixed(2)}€/mês</span>
-                          </div>
-                        </div>
-
-                        <div className="pt-2">
-                          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Sugestão de Repartição por Fração (Permilagem)</span>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-32 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-900 rounded border">
-                            {fracoes.filter(f => f.id_predio === predio.id_predio).map(f => {
-                              const share = iaBreakdown.byFraction[f.id_fracao] || 0;
-                              const monthlyShare = share / newObraMeses;
-                              return (
-                                <div key={f.id_fracao} className="p-1.5 bg-white dark:bg-slate-950 border rounded text-[10px]">
-                                  <span className="font-bold text-slate-600 dark:text-slate-400 block">{f.fracao_nome} ({f.permilagem}‰)</span>
-                                  <span className="font-mono font-bold block">Total: {share.toFixed(2)}€</span>
-                                  <span className="font-mono text-slate-500">Mensal: {monthlyShare.toFixed(2)}€</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <p className="text-[10px] text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-950 border rounded-lg p-2.5 ml-1">
+                    O número de prestações, o mês de início do pagamento e a conta são decididos depois em <strong>Financeiro → Quotas &amp; Orçamento Anual</strong>.
+                  </p>
                 )}
               </div>
 

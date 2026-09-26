@@ -467,19 +467,7 @@ export function PortalOrcamentos({
   const [painelAdjudicacaoId, setPainelAdjudicacaoId] = useState<string | null>(null);
   const [destinoObraEscolhido, setDestinoObraEscolhido] = useState<"obra_extraordinaria" | "intervencao">("obra_extraordinaria");
   const [usaFundoReservaEscolhido, setUsaFundoReservaEscolhido] = useState(false);
-  // Antes o fracionamento ficava sempre fixo em 1 mês (pagamento único) —
-  // agora, antes de adjudicar, o admin pode simular o valor mensal por
-  // fração para vários números de meses e escolher o plano de pagamento
-  // faseado que vai mesmo ficar gravado na Obra Extraordinária criada.
-  const [mesesFracionamentoEscolhido, setMesesFracionamentoEscolhido] = useState(1);
   const [dataInicioObraEscolhida, setDataInicioObraEscolhida] = useState(() => new Date().toISOString().split("T")[0]);
-  // Mês em que a 1ª prestação da quota extra deve ser cobrada — pedido
-  // explícito do administrador: a obra pode começar num mês e só fazer
-  // sentido começar a cobrar a quota extra mais tarde (ex: só depois de
-  // orçamento aprovado/pago o adiantamento). Antes não existia nenhum
-  // campo para isto, e "Calcular & Lançar Quotas Mensais" assumia sempre
-  // "hoje + 2 meses" sem ligação nenhuma ao que foi decidido aqui.
-  const [mesInicioPagamentoEscolhido, setMesInicioPagamentoEscolhido] = useState(() => new Date().toISOString().split("T")[0]);
   const [painelRejeicaoId, setPainelRejeicaoId] = useState<string | null>(null);
   const [motivoRejeicao, setMotivoRejeicao] = useState("");
 
@@ -546,15 +534,6 @@ export function PortalOrcamentos({
       (fracoes || []).forEach(f => {
         valoresPorFracao[f.id_fracao] = (proposal.valor * (f.permilagem || 0)) / 1000;
       });
-      // Não existe coluna própria para o mês de início do pagamento na tabela
-      // obras_extraordinarias (e não é possível criar uma, DDL bloqueado) —
-      // guarda-se como uma chave reservada dentro do próprio JSONB
-      // valores_por_fracao, que já existe. Nunca colide com um id_fracao real
-      // (todos começam por "frac-"), e tudo o resto que lê este mapa só o faz
-      // por id_fracao específico, nunca a percorrer todas as chaves.
-      if (!usaFundoReservaEscolhido && mesInicioPagamentoEscolhido) {
-        valoresPorFracao["_mesInicioPagamento"] = Date.parse(mesInicioPagamentoEscolhido);
-      }
       const novaObra: ObraExtraordinaria = {
         id: "obr-" + Date.now(),
         descricao: `${rfpAlvo.titulo} (via Portal de Orçamentos)`,
@@ -564,7 +543,10 @@ export function PortalOrcamentos({
         dataFim: dataFimEstimada,
         custoTotal: proposal.valor,
         necessitaCotaExtra: !usaFundoReservaEscolhido,
-        mesesFracionamento: usaFundoReservaEscolhido ? 1 : mesesFracionamentoEscolhido,
+        // O nº de prestações e o mês de início do pagamento passam a ser
+        // decididos só depois, em Financeiro → Quotas & Orçamento Anual
+        // (Planeamento de Quotas) — não aqui na adjudicação.
+        mesesFracionamento: 1,
         valoresPorFracao,
         impactoFundoReserva: Math.round(proposal.valor * 0.10 * 100) / 100,
         impactoSaldoAnual: -proposal.valor,
@@ -1234,7 +1216,6 @@ export function PortalOrcamentos({
                                     setPainelAdjudicacaoId(abrir ? prop.id_proposal : null);
                                     setDestinoObraEscolhido("obra_extraordinaria");
                                     setUsaFundoReservaEscolhido(false);
-                                    setMesesFracionamentoEscolhido(1);
                                   }}
                                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1 px-3 text-[11px] rounded transition-colors cursor-pointer flex items-center space-x-1"
                                 >
@@ -1327,53 +1308,17 @@ export function PortalOrcamentos({
                               </label>
                             )}
 
+                            {/* O plano de pagamento (nº de prestações, mês de início, conta) deixou
+                                de se decidir aqui — a adjudicação só define O QUE se contratou.
+                                Decide-se tudo isso mais tarde, com dados reais e já sem pressa,
+                                em Financeiro → Quotas & Orçamento Anual (Planeamento de Quotas),
+                                que já lista esta obra assim que "Requer Quota Extra" ficar ativo
+                                (ou seja, sempre que não se usa o Fundo de Reserva). Ter os dois
+                                sítios a simular o mesmo fracionamento era confuso e duplicado. */}
                             {destinoObraEscolhido === "obra_extraordinaria" && !usaFundoReservaEscolhido && (
-                              <div className="bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900 rounded-lg p-3 space-y-2.5">
-                                <label className="text-[10px] font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wide block">
-                                  Simulação de Pagamento Faseado da Quota Extraordinária
-                                </label>
-                                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[10px] text-slate-500">Faseado em</span>
-                                    <select
-                                      value={mesesFracionamentoEscolhido}
-                                      onChange={e => setMesesFracionamentoEscolhido(Number(e.target.value))}
-                                      className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-[11px] font-bold px-2 py-1 rounded"
-                                    >
-                                      {[1, 2, 3, 6, 9, 12, 18, 24].map(m => (
-                                        <option key={m} value={m}>{m} {m === 1 ? "mês (pagamento único)" : "meses"}</option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[10px] text-slate-500">Início do pagamento</span>
-                                    <input
-                                      type="date"
-                                      value={mesInicioPagamentoEscolhido}
-                                      onChange={e => setMesInicioPagamentoEscolhido(e.target.value)}
-                                      className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-[11px] font-bold px-2 py-1 rounded"
-                                    />
-                                  </div>
-                                </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-32 overflow-y-auto pr-1">
-                                  {fracoes.filter(f => f.id_predio === predio.id_predio).map(f => {
-                                    const custoPorFracao = (prop.valor * (f.permilagem || 0)) / 1000;
-                                    const valorPrestacao = custoPorFracao / mesesFracionamentoEscolhido;
-                                    return (
-                                      <div key={f.id_fracao} className="p-1.5 bg-slate-50 dark:bg-slate-950 rounded border border-slate-100 dark:border-slate-800 text-[9px]">
-                                        <span className="font-bold text-slate-600 dark:text-slate-400 block">{f.fracao_nome}</span>
-                                        <span className="font-mono-custom block text-slate-500">Total: {custoPorFracao.toFixed(2)}€</span>
-                                        <span className="font-mono-custom font-bold text-emerald-600">
-                                          {mesesFracionamentoEscolhido === 1 ? "Único" : `${mesesFracionamentoEscolhido}x`}: {valorPrestacao.toFixed(2)}€
-                                        </span>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                                <p className="text-[9px] text-slate-400">
-                                  Este plano fica gravado na Obra Extraordinária criada e é usado depois em "Calcular & Lançar Quotas Mensais" para emitir os avisos de quota extra em {mesesFracionamentoEscolhido} {mesesFracionamentoEscolhido === 1 ? "prestação" : "prestações"}.
-                                </p>
-                              </div>
+                              <p className="text-[10px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 rounded-lg p-2.5">
+                                Esta obra vai pedir quota extraordinária aos condóminos. O número de prestações, o mês de início do pagamento e a conta são decididos depois em <strong>Financeiro → Quotas &amp; Orçamento Anual</strong>.
+                              </p>
                             )}
 
                             <div className="flex gap-2 justify-end pt-1 border-t border-emerald-100 dark:border-emerald-900">
