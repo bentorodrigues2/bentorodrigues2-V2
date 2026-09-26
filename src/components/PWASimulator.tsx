@@ -403,14 +403,10 @@ export function PWASimulator({
   // OUTRA fração, potencialmente de outro condómino).
   const condominoFracao = encontrarFracaoDoCondomino(fracoes, loggedUser) || fracoes[0];
 
-  // Um ADMIN/GESTOR que também é condómino (dono de uma fração deste
-  // prédio, como o próprio administrador desta conta) tem de ver, no
-  // telemóvel, a mesma vista real de condómino que qualquer outra pessoa —
-  // sem isto, ficava preso à vista de administração e nunca via o Início,
-  // o cartão de Dados Bancários, etc. (encontrarFracaoDoCondomino sem
-  // fallback, para distinguir "é mesmo dono de uma fração" de "só caiu no
-  // fracoes[0] por omissão").
-  const souTambemCondomino = !!encontrarFracaoDoCondomino(fracoes, loggedUser);
+  // Decisão confirmada pelo utilizador: um ADMIN/GESTOR vê sempre o menu
+  // completo de administração no telemóvel (a "coluna central" adaptada),
+  // mesmo sendo também condómino de uma fração — só o papel USER vê a
+  // vista de condómino (PWACondominoView).
 
   // Auto-route tab when role switches to avoid blank state
   useEffect(() => {
@@ -1572,7 +1568,7 @@ export function PWASimulator({
 
 
               {/* --- ROLE: CONDÓMINO (ou ADMIN/GESTOR que também é dono de uma fração) --- */}
-              {(loggedUser.role === "USER" || souTambemCondomino) && (
+              {loggedUser.role === "USER" && (
                 <PWACondominoView
                   loggedUser={loggedUser}
                   predio={predio}
@@ -3359,11 +3355,8 @@ export function PWASimulator({
               </div>
             )}
 
-            {/* FLOATING DRAGGABLE AI ASSISTANT FOR ADMIN & GESTOR (MOBILE VIEW - ONLY WHEN AUTHENTICATED IN DASHBOARD) —
-                nunca junto com o botão de mensagens da PWACondominoView: um
-                ADMIN que também é condómino já vê esse, dois botões
-                flutuantes ao mesmo tempo confundia mais do que ajudava. */}
-            {!souTambemCondomino && (loggedUser?.role === "ADMIN" || loggedUser?.role === "GESTOR" || loggedUser?.role === "EMPRESA_GESTORA") && (activeTab === "home" || activeTab === "painel") && (
+            {/* FLOATING DRAGGABLE AI ASSISTANT FOR ADMIN & GESTOR (MOBILE VIEW - ONLY WHEN AUTHENTICATED IN DASHBOARD) */}
+            {(loggedUser?.role === "ADMIN" || loggedUser?.role === "GESTOR" || loggedUser?.role === "EMPRESA_GESTORA") && (activeTab === "home" || activeTab === "painel") && (
               <DraggableAIFloatingButton
                 loggedUser={loggedUser}
                 predio={predio}
