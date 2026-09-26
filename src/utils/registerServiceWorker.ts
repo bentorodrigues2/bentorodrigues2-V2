@@ -28,6 +28,19 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
       registration.update().catch(() => {});
     }, 5 * 60 * 1000);
 
+    // O intervalo acima só corre enquanto a app está em primeiro plano — a
+    // maioria dos telemóveis suspende por completo o JavaScript de uma PWA
+    // em segundo plano, por isso o intervalo simplesmente não dispara
+    // enquanto a app está minimizada, por mais tempo que passe. Verifica
+    // também sempre que a app volta a ficar visível (reaberta a partir de
+    // segundo plano), que é precisamente o momento em que uma versão nova
+    // publicada entretanto tem de ser detetada.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        registration.update().catch(() => {});
+      }
+    });
+
     return registration;
   } catch (error) {
     console.error('[ServiceWorker] Falha ao registar Service Worker:', error);
