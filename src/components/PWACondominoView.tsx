@@ -1327,16 +1327,22 @@ export default function PWACondominoView({
 
                   {selectedSubmenu === "financas" && (
                     <div className="space-y-3">
-                      <p className="text-slate-700 text-[10px] leading-relaxed">Consulte o extrato ou faça o envio de comprovativos de pagamento:</p>
+                      <p className="text-slate-700 text-[10px] leading-relaxed">Consulte o mapa de pagamentos, o extrato ou envie comprovativos:</p>
                       <div className="flex flex-col gap-2">
-                        <button 
-                          onClick={() => { setActivePwaModal("enviar_comprovativo"); setSelectedSubmenu(null); }} 
+                        <button
+                          onClick={() => { setActiveTab("financeiro"); setSelectedSubmenu(null); }}
+                          className="w-full bg-teal-600 hover:bg-teal-700 text-white font-black py-2.5 rounded-xl text-center cursor-pointer transition-colors"
+                        >
+                          📋 Ver Mapa de Pagamentos
+                        </button>
+                        <button
+                          onClick={() => { setActivePwaModal("enviar_comprovativo"); setSelectedSubmenu(null); }}
                           className="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black py-2.5 rounded-xl text-center cursor-pointer transition-colors"
                         >
-                          📊 Enviar Comprovativo MB
+                          📊 Enviar Comprovativo de Transferência
                         </button>
-                        <button 
-                          onClick={() => { setActivePwaModal("consultar_referencias"); setSelectedSubmenu(null); }} 
+                        <button
+                          onClick={() => { setActivePwaModal("consultar_referencias"); setSelectedSubmenu(null); }}
                           className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl text-center border border-slate-700 cursor-pointer transition-colors"
                         >
                           Consultar Referências
