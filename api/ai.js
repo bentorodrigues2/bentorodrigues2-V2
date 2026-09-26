@@ -670,6 +670,64 @@ Se algum campo não constar no documento, usa null nesse campo. Nunca inventes v
     }
   }
 
+  // 9.7. RECONHECER PROPOSTA / ORÇAMENTO DE FORNECEDOR (?acao=reconhecer-proposta)
+  // Usado por PortalOrcamentos.tsx ao anexar o PDF de orçamento de um
+  // fornecedor à proposta — antes o administrador tinha sempre de
+  // transcrever à mão a empresa, NIF, contacto, valor, prazo, garantia e
+  // memória descritiva a partir do PDF recebido. Lê o documento real, como
+  // reconhecer-apolice.
+  if (acao === "reconhecer-proposta") {
+    if (req.method === "GET") {
+      return res.status(200).json({ status: "online", endpoint: "/api/ai?acao=reconhecer-proposta" });
+    }
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
+
+    try {
+      const { base64, mimeType } = req.body || {};
+      if (!base64 || !mimeType) {
+        return res.status(400).json({ error: "base64 e mimeType são obrigatórios" });
+      }
+
+      const prompt = `És um sistema de OCR e extração documental de propostas/orçamentos de fornecedores para obras e serviços de condomínio em Portugal.
+Analisa o documento em anexo (a imagem/PDF real da proposta) e extrai os dados reais nele contidos.
+Devolve APENAS JSON estrito com as chaves:
+{
+  "nome_empresa": "Nome legal real da empresa/fornecedor indicado no documento",
+  "nif": "NIF/Contribuinte real indicado no documento (só dígitos)",
+  "email": "Email de contacto real indicado no documento",
+  "contacto": "Telefone de contacto real indicado no documento",
+  "valor": 0,
+  "prazo_dias": 0,
+  "garantia_anos": 0,
+  "descricao_tecnica": "Resumo real da memória descritiva / especificações técnicas indicadas no documento"
+}
+Regras: "valor" é o valor total da proposta em euros, só o número (sem símbolo). "prazo_dias" é o prazo de execução em dias (converte semanas/meses para dias se necessário). "garantia_anos" é o período de garantia em anos (0 se não indicado). Se algum campo não constar no documento, usa null nesse campo (ou 0 para os numéricos). Nunca inventes valores que não constem no documento.`;
+
+      const rawResponse = await generateWithFallback({
+        contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType, data: base64 } }] }],
+        responseMimeType: "application/json"
+      });
+
+      let dados = null;
+      try {
+        dados = JSON.parse(rawResponse);
+      } catch {
+        const match = rawResponse.match(/\{[\s\S]*\}/);
+        if (match) dados = JSON.parse(match[0]);
+      }
+
+      if (!dados) {
+        return res.status(502).json({ error: "A IA não conseguiu extrair dados deste documento." });
+      }
+      return res.status(200).json({ ok: true, dados });
+    } catch (err) {
+      console.error("[api/ai?acao=reconhecer-proposta] Erro:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao reconhecer a proposta." });
+    }
+  }
+
   // 10. HUMANIZAR CONVOCATÓRIA (/api/humanize-convocatoria -> ?acao=humanize-convocatoria)
   // SUGESTÃO DE TEMA & ORDEM DE TRABALHOS PARA UMA NOVA ASSEMBLEIA
   // (?acao=sugerir-ordem-trabalhos) — antes disto, o botão "Elaborar com
@@ -852,6 +910,7 @@ Analisa o pedido face ao regulamento e à lei aplicável e devolve APENAS um JSO
         "reconhecer-anexo",
         "extrair-movimentos-historicos",
         "reconhecer-apolice",
+        "reconhecer-proposta",
         "humanize-convocatoria",
         "validar-regulamento"
       ]
@@ -859,6 +918,6 @@ Analisa o pedido face ao regulamento e à lei aplicável e devolve APENAS um JSO
   }
 
   return res.status(400).json({
-    error: "Ação não especificada ou inválida. Use ?acao=chat|generate-legal-notice|ai-query|predict-budget|predict-reserve-fund|compare-proposals|generate-minutes|parse-import|reconhecer-recibo|classificar-documento|reconhecer-anexo|extrair-movimentos-historicos|reconhecer-apolice|humanize-convocatoria|validar-regulamento"
+    error: "Ação não especificada ou inválida. Use ?acao=chat|generate-legal-notice|ai-query|predict-budget|predict-reserve-fund|compare-proposals|generate-minutes|parse-import|reconhecer-recibo|classificar-documento|reconhecer-anexo|extrair-movimentos-historicos|reconhecer-apolice|reconhecer-proposta|humanize-convocatoria|validar-regulamento"
   });
 }

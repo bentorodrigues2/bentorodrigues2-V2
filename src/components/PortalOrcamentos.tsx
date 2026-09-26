@@ -131,6 +131,7 @@ export function PortalOrcamentos({
   const [propGarantia, setPropGarantia] = useState("");
   const [propDescricao, setPropDescricao] = useState("");
   const [propFicheiros, setPropFicheiros] = useState<File[]>([]);
+  const [aLerPropostaIA, setALerPropostaIA] = useState(false);
 
   // IA comparative analysis states
   const [isComparing, setIsComparing] = useState(false);
@@ -267,6 +268,56 @@ export function PortalOrcamentos({
       registarLogAuditoria("Fornecedores", "Eliminou um concurso do Portal de Orçamentos", predio.id_predio, loggedUser, r.titulo);
     } finally {
       setEliminandoRfpId(null);
+    }
+  };
+
+  // Leitura por IA do PDF/imagem de orçamento anexado — antes o
+  // administrador tinha sempre de transcrever à mão a empresa, NIF,
+  // contacto, valor, prazo, garantia e memória descritiva a partir do
+  // documento recebido do fornecedor. Lê o(s) ficheiro(s) real(is) com o
+  // motor de IA multimodal (Gemini Vision, /api/ai?acao=reconhecer-proposta)
+  // e pré-preenche o formulário — o administrador continua a poder rever e
+  // corrigir tudo antes de submeter.
+  const lerFicheiroComoBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1] || "");
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const handlePreencherPropostaComIA = async () => {
+    if (propFicheiros.length === 0) {
+      alert("Anexe primeiro o PDF ou imagem do orçamento do fornecedor.");
+      return;
+    }
+    setALerPropostaIA(true);
+    try {
+      const ficheiro = propFicheiros[0];
+      const base64 = await lerFicheiroComoBase64(ficheiro);
+      const resp = await fetch("/api/ai?acao=reconhecer-proposta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base64, mimeType: ficheiro.type || "application/pdf" })
+      });
+      const resultado = await resp.json();
+      if (!resp.ok || !resultado.ok) {
+        throw new Error(resultado?.error || "A IA não conseguiu ler este documento.");
+      }
+      const dados = resultado.dados || {};
+      if (dados.nome_empresa) setPropEmpresa(dados.nome_empresa);
+      if (dados.nif) setPropNif(String(dados.nif));
+      if (dados.email) setPropEmail(dados.email);
+      if (dados.contacto) setPropContacto(String(dados.contacto));
+      if (dados.valor) setPropValor(String(dados.valor));
+      if (dados.prazo_dias) setPropPrazo(String(dados.prazo_dias));
+      if (dados.garantia_anos) setPropGarantia(String(dados.garantia_anos));
+      if (dados.descricao_tecnica) setPropDescricao(dados.descricao_tecnica);
+      alert("✅ Dados lidos do documento! Reveja os campos antes de submeter — a IA lê o que está no documento, mas pode sempre corrigir.");
+    } catch (err: any) {
+      alert(`❌ ${err?.message || "Erro ao ler o documento com IA."}`);
+    } finally {
+      setALerPropostaIA(false);
     }
   };
 
@@ -987,6 +1038,17 @@ export function PortalOrcamentos({
                       </li>
                     ))}
                   </ul>
+                )}
+                {propFicheiros.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handlePreencherPropostaComIA}
+                    disabled={aLerPropostaIA}
+                    className="w-full mt-2 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 border border-indigo-200 text-indigo-700 font-bold py-2 rounded text-[11px] transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Sparkles size={13} />
+                    <span>{aLerPropostaIA ? "A ler o documento..." : "Preencher dados com IA (a partir do 1º anexo)"}</span>
+                  </button>
                 )}
               </div>
 
