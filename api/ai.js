@@ -671,11 +671,14 @@ Se algum campo não constar no documento, usa null nesse campo. Nunca inventes v
   }
 
   // 9.7. RECONHECER PROPOSTA / ORÇAMENTO DE FORNECEDOR (?acao=reconhecer-proposta)
-  // Usado por PortalOrcamentos.tsx ao anexar o PDF de orçamento de um
-  // fornecedor à proposta — antes o administrador tinha sempre de
-  // transcrever à mão a empresa, NIF, contacto, valor, prazo, garantia e
-  // memória descritiva a partir do PDF recebido. Lê o documento real, como
-  // reconhecer-apolice.
+  // Usado por PortalOrcamentos.tsx ao anexar o(s) PDF(s)/imagem(ns) de
+  // orçamento de um fornecedor à proposta — antes o administrador tinha
+  // sempre de transcrever à mão a empresa, NIF, contacto, valor, prazo,
+  // garantia e memória descritiva a partir do(s) documento(s) recebido(s).
+  // Lê o(s) documento(s) real(is), como reconhecer-apolice. Aceita vários
+  // anexos na mesma proposta (proposta comercial + ficha técnica + seguro,
+  // por exemplo) — os dados podem estar espalhados por mais do que um
+  // ficheiro, e um só anexo raramente chega para preencher a ficha toda.
   if (acao === "reconhecer-proposta") {
     if (req.method === "GET") {
       return res.status(200).json({ status: "online", endpoint: "/api/ai?acao=reconhecer-proposta" });
@@ -685,28 +688,40 @@ Se algum campo não constar no documento, usa null nesse campo. Nunca inventes v
     }
 
     try {
-      const { base64, mimeType } = req.body || {};
-      if (!base64 || !mimeType) {
-        return res.status(400).json({ error: "base64 e mimeType são obrigatórios" });
+      // Aceita tanto { anexos: [{base64, mimeType}, ...] } (vários
+      // documentos) como { base64, mimeType } (um só, mantido por
+      // compatibilidade com chamadas antigas).
+      const body = req.body || {};
+      const anexos = Array.isArray(body.anexos) && body.anexos.length > 0
+        ? body.anexos
+        : (body.base64 && body.mimeType ? [{ base64: body.base64, mimeType: body.mimeType }] : []);
+      if (anexos.length === 0 || anexos.some(a => !a?.base64 || !a?.mimeType)) {
+        return res.status(400).json({ error: "Envie pelo menos um anexo válido (base64 + mimeType)." });
       }
 
       const prompt = `És um sistema de OCR e extração documental de propostas/orçamentos de fornecedores para obras e serviços de condomínio em Portugal.
-Analisa o documento em anexo (a imagem/PDF real da proposta) e extrai os dados reais nele contidos.
+Analisa TODOS os ${anexos.length} documento(s) em anexo (podem ser páginas/ficheiros diferentes da mesma proposta — ex: proposta comercial, ficha técnica, seguro) e extrai os dados reais neles contidos, combinando a informação de todos.
 Devolve APENAS JSON estrito com as chaves:
 {
-  "nome_empresa": "Nome legal real da empresa/fornecedor indicado no documento",
-  "nif": "NIF/Contribuinte real indicado no documento (só dígitos)",
-  "email": "Email de contacto real indicado no documento",
-  "contacto": "Telefone de contacto real indicado no documento",
+  "nome_empresa": "Nome legal real da empresa/fornecedor indicado nos documentos",
+  "nif": "NIF/Contribuinte real indicado nos documentos (só dígitos)",
+  "email": "Email de contacto real indicado nos documentos",
+  "contacto": "Telefone de contacto real indicado nos documentos",
   "valor": 0,
   "prazo_dias": 0,
   "garantia_anos": 0,
-  "descricao_tecnica": "Resumo real da memória descritiva / especificações técnicas indicadas no documento"
+  "descricao_tecnica": "Resumo real da memória descritiva / especificações técnicas indicadas nos documentos"
 }
-Regras: "valor" é o valor total da proposta em euros, só o número (sem símbolo). "prazo_dias" é o prazo de execução em dias (converte semanas/meses para dias se necessário). "garantia_anos" é o período de garantia em anos (0 se não indicado). Se algum campo não constar no documento, usa null nesse campo (ou 0 para os numéricos). Nunca inventes valores que não constem no documento.`;
+Regras: "valor" é o valor total da proposta em euros, só o número (sem símbolo). "prazo_dias" é o prazo de execução em dias (converte semanas/meses para dias se necessário). "garantia_anos" é o período de garantia em anos (0 se não indicado). Se algum campo não constar em nenhum documento, usa null nesse campo (ou 0 para os numéricos). Nunca inventes valores que não constem nos documentos.`;
 
       const rawResponse = await generateWithFallback({
-        contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType, data: base64 } }] }],
+        contents: [{
+          role: "user",
+          parts: [
+            { text: prompt },
+            ...anexos.map(a => ({ inlineData: { mimeType: a.mimeType, data: a.base64 } }))
+          ]
+        }],
         responseMimeType: "application/json"
       });
 

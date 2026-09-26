@@ -288,17 +288,24 @@ export function PortalOrcamentos({
 
   const handlePreencherPropostaComIA = async () => {
     if (propFicheiros.length === 0) {
-      alert("Anexe primeiro o PDF ou imagem do orçamento do fornecedor.");
+      alert("Anexe primeiro o(s) PDF(s) ou imagem(ns) do orçamento do fornecedor.");
       return;
     }
     setALerPropostaIA(true);
     try {
-      const ficheiro = propFicheiros[0];
-      const base64 = await lerFicheiroComoBase64(ficheiro);
+      // Lê TODOS os anexos, não só o primeiro — os dados de uma proposta
+      // costumam estar espalhados por mais do que um documento (proposta
+      // comercial + ficha técnica + seguro, por exemplo).
+      const anexos = await Promise.all(
+        propFicheiros.map(async (ficheiro) => ({
+          base64: await lerFicheiroComoBase64(ficheiro),
+          mimeType: ficheiro.type || "application/pdf"
+        }))
+      );
       const resp = await fetch("/api/ai?acao=reconhecer-proposta", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ base64, mimeType: ficheiro.type || "application/pdf" })
+        body: JSON.stringify({ anexos })
       });
       const resultado = await resp.json();
       if (!resp.ok || !resultado.ok) {
@@ -1047,7 +1054,7 @@ export function PortalOrcamentos({
                     className="w-full mt-2 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 border border-indigo-200 text-indigo-700 font-bold py-2 rounded text-[11px] transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <Sparkles size={13} />
-                    <span>{aLerPropostaIA ? "A ler o documento..." : "Preencher dados com IA (a partir do 1º anexo)"}</span>
+                    <span>{aLerPropostaIA ? `A ler ${propFicheiros.length > 1 ? `${propFicheiros.length} documentos` : "documento"}...` : `Preencher dados com IA${propFicheiros.length > 1 ? ` (${propFicheiros.length} anexos)` : ""}`}</span>
                   </button>
                 )}
               </div>
