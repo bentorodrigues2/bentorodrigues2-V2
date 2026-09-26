@@ -473,6 +473,13 @@ export function PortalOrcamentos({
   // faseado que vai mesmo ficar gravado na Obra Extraordinária criada.
   const [mesesFracionamentoEscolhido, setMesesFracionamentoEscolhido] = useState(1);
   const [dataInicioObraEscolhida, setDataInicioObraEscolhida] = useState(() => new Date().toISOString().split("T")[0]);
+  // Mês em que a 1ª prestação da quota extra deve ser cobrada — pedido
+  // explícito do administrador: a obra pode começar num mês e só fazer
+  // sentido começar a cobrar a quota extra mais tarde (ex: só depois de
+  // orçamento aprovado/pago o adiantamento). Antes não existia nenhum
+  // campo para isto, e "Calcular & Lançar Quotas Mensais" assumia sempre
+  // "hoje + 2 meses" sem ligação nenhuma ao que foi decidido aqui.
+  const [mesInicioPagamentoEscolhido, setMesInicioPagamentoEscolhido] = useState(() => new Date().toISOString().split("T")[0]);
   const [painelRejeicaoId, setPainelRejeicaoId] = useState<string | null>(null);
   const [motivoRejeicao, setMotivoRejeicao] = useState("");
 
@@ -539,6 +546,15 @@ export function PortalOrcamentos({
       (fracoes || []).forEach(f => {
         valoresPorFracao[f.id_fracao] = (proposal.valor * (f.permilagem || 0)) / 1000;
       });
+      // Não existe coluna própria para o mês de início do pagamento na tabela
+      // obras_extraordinarias (e não é possível criar uma, DDL bloqueado) —
+      // guarda-se como uma chave reservada dentro do próprio JSONB
+      // valores_por_fracao, que já existe. Nunca colide com um id_fracao real
+      // (todos começam por "frac-"), e tudo o resto que lê este mapa só o faz
+      // por id_fracao específico, nunca a percorrer todas as chaves.
+      if (!usaFundoReservaEscolhido && mesInicioPagamentoEscolhido) {
+        valoresPorFracao["_mesInicioPagamento"] = Date.parse(mesInicioPagamentoEscolhido);
+      }
       const novaObra: ObraExtraordinaria = {
         id: "obr-" + Date.now(),
         descricao: `${rfpAlvo.titulo} (via Portal de Orçamentos)`,
@@ -1316,17 +1332,28 @@ export function PortalOrcamentos({
                                 <label className="text-[10px] font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wide block">
                                   Simulação de Pagamento Faseado da Quota Extraordinária
                                 </label>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] text-slate-500">Faseado em</span>
-                                  <select
-                                    value={mesesFracionamentoEscolhido}
-                                    onChange={e => setMesesFracionamentoEscolhido(Number(e.target.value))}
-                                    className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-[11px] font-bold px-2 py-1 rounded"
-                                  >
-                                    {[1, 2, 3, 6, 9, 12, 18, 24].map(m => (
-                                      <option key={m} value={m}>{m} {m === 1 ? "mês (pagamento único)" : "meses"}</option>
-                                    ))}
-                                  </select>
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-slate-500">Faseado em</span>
+                                    <select
+                                      value={mesesFracionamentoEscolhido}
+                                      onChange={e => setMesesFracionamentoEscolhido(Number(e.target.value))}
+                                      className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-[11px] font-bold px-2 py-1 rounded"
+                                    >
+                                      {[1, 2, 3, 6, 9, 12, 18, 24].map(m => (
+                                        <option key={m} value={m}>{m} {m === 1 ? "mês (pagamento único)" : "meses"}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-slate-500">Início do pagamento</span>
+                                    <input
+                                      type="date"
+                                      value={mesInicioPagamentoEscolhido}
+                                      onChange={e => setMesInicioPagamentoEscolhido(e.target.value)}
+                                      className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-[11px] font-bold px-2 py-1 rounded"
+                                    />
+                                  </div>
                                 </div>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-32 overflow-y-auto pr-1">
                                   {fracoes.filter(f => f.id_predio === predio.id_predio).map(f => {

@@ -104,6 +104,15 @@ export function CalculoQuotas({
     if (obra.mesesFracionamento && obra.mesesFracionamento > 0) {
       setNumPrestacoesExtra(obra.mesesFracionamento);
     }
+    // Mês de início do pagamento escolhido na adjudicação (Portal de
+    // Orçamentos) — gravado como chave reservada dentro do próprio
+    // valoresPorFracao (não existe coluna própria, ver comentário lá).
+    // Sem isto, tinha sempre de se voltar a decidir aqui a data-limite da
+    // 1ª prestação, mesmo já tendo sido escolhida ao adjudicar a obra.
+    const mesInicioMs = obra.valoresPorFracao?.["_mesInicioPagamento"];
+    if (mesInicioMs) {
+      setDataLimiteExtra(new Date(mesInicioMs).toISOString().split("T")[0]);
+    }
   };
   const [contaExtraId, setContaExtraId] = useState<string>(() => {
     const fcr = predioContas.find(
