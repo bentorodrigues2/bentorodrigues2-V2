@@ -347,6 +347,20 @@ export default function App() {
   const [fornecedoresTab, setFornecedoresTab] = useState<"fornecedores" | "contratos" | "dividas">("fornecedores");
   const [iaInitialTab, setIaInitialTab] = useState<"juridico" | "orcamento_anual_ia" | "cerebro_ia" | undefined>(undefined);
   const [viewMode, setViewMode] = useState<"BROWSER" | "PWA">("BROWSER");
+  // Routing por dispositivo: telemóvel -> PWA, PC -> Painel de
+  // Administração (decisão confirmada pelo utilizador, não depende do
+  // papel de quem entra). Só a largura da janela (matchMedia max-width)
+  // não chega — no Android, "Pedir site para computador" no Chrome faz o
+  // browser reportar uma janela larga (normalmente 980px) mesmo num
+  // telemóvel real, o que fazia cair sempre no Painel de Administração.
+  // Cruza por isso com o user-agent do próprio dispositivo, que o modo
+  // "site para computador" não altera.
+  useEffect(() => {
+    const ehJanelaEstreita = typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches;
+    const ehUserAgentMovel = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+    setViewMode(ehJanelaEstreita || ehUserAgentMovel ? "PWA" : "BROWSER");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loggedUser?.email]);
   const [brandingColor, setBrandingColorState] = useState<string>(() => {
     return localStorage.getItem("brandingColor") || "emerald";
   });
@@ -825,7 +839,10 @@ export default function App() {
         />
       )}
 
-      {/* BARRA LATERAL (MENU DINÂMICO RECOLHÍVEL E COMPATÍVEL COM MOBILE) */}
+      {/* BARRA LATERAL (MENU DINÂMICO RECOLHÍVEL E COMPATÍVEL COM MOBILE) —
+          só faz sentido no modo de administração (Browser); a vista PWA já
+          tem a sua própria navegação (barra inferior de separadores). */}
+      {viewMode === "BROWSER" && (
       <aside className={`h-full flex flex-col select-none shrink-0 z-30 no-print transition-all duration-300 ${
         theme === "dark" ? "bg-[#030712] text-slate-300 border-r border-slate-900/50" : "bg-slate-900 text-slate-300"
       } ${
@@ -2572,10 +2589,15 @@ export default function App() {
           </div>
         </div>
       </aside>
+      )}
 
       {/* ÁREA DE TRABALHO PRINCIPAL (ADAPTÁVEL A MOBILE E DESKTOP) */}
       <main className={`flex-1 min-w-0 flex flex-col h-full overflow-hidden relative transition-all duration-300 ${theme === "dark" ? "bg-[#0b0f19]" : "bg-slate-50"}`}>
-        {/* Header superior */}
+        {/* Header superior — escondido em modo PWA (o Sair de dentro da
+            PWACondominoView/PWASimulator já chama o logout real, por isso
+            este cabeçalho de administração deixou de ser necessário como
+            rede de segurança). */}
+        {viewMode === "BROWSER" && (
         <header className={`h-16 px-3 sm:px-6 md:px-8 flex items-center justify-between shrink-0 z-10 no-print transition-all duration-300 ${theme === "dark" ? "bg-[#111827] border-b border-slate-800 text-slate-100" : "bg-white border-b border-slate-200 text-slate-800"}`}>
           <div className="flex items-center space-x-2 sm:space-x-3 overflow-hidden pr-2">
             {/* Botão de Menu Mobile */}
@@ -2708,9 +2730,12 @@ export default function App() {
             </button>
           </div>
         </header>
+        )}
 
-        {/* Conteúdo Dinâmico (Responsivo para Telemóveis e Desktops) */}
-        <div className="flex-grow p-3 sm:p-5 md:p-8 overflow-y-auto">
+        {/* Conteúdo Dinâmico (Responsivo para Telemóveis e Desktops) — sem
+            padding em modo PWA, para a app ficar edge-to-edge no
+            telemóvel real. */}
+        <div className={viewMode === "PWA" ? "flex-grow overflow-y-auto" : "flex-grow p-3 sm:p-5 md:p-8 overflow-y-auto"}>
           {viewMode === "PWA" ? (
             <PWASimulator
               predio={predioAtivo}
@@ -2737,6 +2762,7 @@ export default function App() {
               setReunioes={setReunioes}
               capacidades={capacidades}
               setCapacidades={setCapacidades}
+              onLogout={() => handleSecureLogout()}
             />
           ) : (
             <Fragment key={grupoMenuPrincipal}>

@@ -111,6 +111,7 @@ interface PWASimulatorProps {
   setReunioes: React.Dispatch<React.SetStateAction<Reuniao[]>>;
   capacidades: CapacidadeLimite[];
   setCapacidades: React.Dispatch<React.SetStateAction<CapacidadeLimite[]>>;
+  onLogout?: () => void;
 }
 
 export function PWASimulator({
@@ -137,7 +138,8 @@ export function PWASimulator({
   reunioes,
   setReunioes,
   capacidades,
-  setCapacidades
+  setCapacidades,
+  onLogout
 }: PWASimulatorProps) {
   // Mobile app navigation state
   const [activeTab, setActiveTab] = useState<string>("home");
@@ -1164,53 +1166,32 @@ export function PWASimulator({
   const pendingAvisosWithReceipts = avisos.filter(a => a.estado === "Pendente" && a.id_predio === predio.id_predio);
 
   return (
-    <div className="flex flex-col xl:flex-row gap-8 items-center justify-center p-4">
-      
-      {/* PHONE WRAPPER FRAME */}
-      <div className="relative">
-        {/* Notch & Screen boundary */}
-        <div className="w-[375px] h-[780px] bg-slate-900 rounded-[50px] p-3.5 shadow-2xl border-4 border-slate-700/80 dark:border-slate-800/80 relative flex flex-col overflow-hidden text-slate-800 select-none">
-          
-          {/* Internal Speaker */}
-          <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-32 h-4.5 bg-black rounded-full z-40 flex items-center justify-center">
-            <span className="w-12 h-1 bg-slate-800 rounded-full"></span>
-            <span className="w-2.5 h-2.5 bg-slate-900 rounded-full border border-slate-800 ml-2"></span>
-          </div>
+    <div className="w-full h-full">
+
+      {/* Sem moldura de telemóvel falsa (entalhe, altifalante, barra de
+          estado simulados) nem painel de instruções ao lado — este
+          componente só é montado quando o ecrã já É um telemóvel real
+          (routing por dispositivo em App.tsx), que já tem o seu próprio
+          entalhe e barra de estado. */}
+      <div className="w-full h-full relative flex flex-col overflow-hidden text-slate-800 select-none">
 
           {/* SCREEN INTERIOR */}
-          <div 
-            className={`w-full h-full pwa-screen rounded-[38px] overflow-hidden flex flex-col relative font-sans ${
+          <div
+            className={`w-full h-full pwa-screen overflow-hidden flex flex-col relative font-sans ${
               theme === "dark" ? "bg-slate-950 text-white" : "bg-[#ece7e7] text-slate-800"
-            }`} 
+            }`}
             data-pwa="true"
             style={{ backgroundColor: theme === "dark" ? "#020617" : "#ece7e7" }}
           >
-            
+
             {/* PWA BACKGROUND IMAGE TEMPLATE (Adaptive to space, sits behind cards) */}
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.08] z-0 p-8 select-none transition-all duration-300">
-              <img 
-                src={condomanagerLogo} 
-                alt="Background Logo" 
+              <img
+                src={condomanagerLogo}
+                alt="Background Logo"
                 className="w-full max-w-[280px] object-contain select-none"
                 referrerPolicy="no-referrer"
               />
-            </div>
-            
-            {/* STATUS BAR */}
-            <div 
-              className={`h-10 shrink-0 px-6 flex items-center justify-between text-[11px] font-bold z-30 pt-1 border-b ${
-                theme === "dark" 
-                  ? "bg-slate-950 text-white border-slate-800" 
-                  : "bg-[#ece7e7] text-slate-800 border-slate-300/40"
-              }`}
-              style={{ backgroundColor: theme === "dark" ? "#020617" : "#ece7e7" }}
-            >
-              <span>{currentTime || "15:21"}</span>
-              <div className="flex items-center space-x-1.5">
-                <Signal className="h-3 w-3" />
-                <Wifi className="h-3 w-3" />
-                <Battery className="h-3.5 w-3.5 rotate-90 origin-center text-emerald-500" />
-              </div>
             </div>
 
             {/* APP BANNER (Featuring CondoManager AI Logo - Perfectly Adapted & Prominent) */}
@@ -1270,13 +1251,14 @@ export function PWASimulator({
                   )}
                 </button>
 
-                {/* Simulated Logout button */}
-                <button 
+                {/* Termina a sessão real, não só o estado local do simulador */}
+                <button
                   onClick={() => {
                     setPwaIsLoggedOut(true);
+                    onLogout?.();
                   }}
                   className="px-2.5 py-1 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white border border-red-500 text-[10px] font-bold transition-all cursor-pointer flex items-center space-x-1 shadow-sm hover:scale-105 active:scale-95 active:ring-2 active:ring-red-400 shrink-0"
-                  title="Sair da Conta (Simulação)"
+                  title="Sair da Conta"
                 >
                     <img src="/estados-acoes/17-desligar.png" alt="Sair" className="h-4 w-4 object-contain" />
                   <span>Sair</span>
@@ -1610,7 +1592,7 @@ export function PWASimulator({
                   setNewMsgText={setNewMsgText}
                   pwaNotifications={pwaNotifications}
                   setPwaNotifications={setPwaNotifications}
-                  onLogout={() => setPwaIsLoggedOut(true)}
+                  onLogout={() => { setPwaIsLoggedOut(true); onLogout?.(); }}
                   biometricsEnabled={biometricsEnabled}
                   setBiometricsEnabled={setBiometricsEnabled}
                   theme={theme}
@@ -3389,38 +3371,6 @@ export function PWASimulator({
 
           </div>
         </div>
-      </div>
-
-      {/* TESTING INSTRUCTIONS PANEL FOR WORKSPACE VISIBILITY */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md space-y-4 shadow-sm self-stretch flex flex-col justify-between">
-        <div className="space-y-4">
-          <span className="text-[10px] bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 font-bold px-2.5 py-1 rounded border border-indigo-200 uppercase tracking-wider inline-block">
-            Guia de Teste do Simulador PWA
-          </span>
-          <h3 className="text-base font-bold text-slate-800 dark:text-white">Regras e Operações Mobile Simuladas</h3>
-          
-          <div className="space-y-2.5 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-            <p>
-              O simulador acima replica as especificações exatas de cada perfil em telemóveis e dispositivos móveis (PWAs):
-            </p>
-            <ul className="list-disc pl-5 space-y-1 text-[11px]">
-              <li><strong>Administrador & Empresa Gestora:</strong> Gestão de notificações, verificação de ocorrências de campo, consulta de documentos confidenciais, e aprovação imediata de reservas e pagamentos recebidos.</li>
-              <li><strong>Condómino:</strong> Consulta imediata de quotas em atraso, simulação de liquidação rápida tirando fotografia do recibo (WebP otimizado), reservas com auto-notificação e simulação de autenticação biométrica nativa.</li>
-              <li><strong>Técnico de Vistorias:</strong> Checklist de integridade física comum, anexar fotos e submeter relatórios de campo.</li>
-              <li><strong>Empresa de Limpezas:</strong> Assinalar áreas higienizadas da placa virtual do átrio para substituir a folha física de assinaturas.</li>
-            </ul>
-          </div>
-        </div>
-
-        <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800/80 space-y-2">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Estado de Ligação do Simulador</span>
-          <div className="flex items-center space-x-2 text-xs text-emerald-700 dark:text-emerald-400 font-bold">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
-            <span>Ativo (Ligar a: {predio.nome || "Edifício Principal"})</span>
-          </div>
-          <p className="text-[9px] text-slate-400">Toda a interação efetuada no telemóvel atualiza o estado global das faturas, quotas e reservas do backoffice em tempo real.</p>
-        </div>
-      </div>
 
       <SendingReactionModal
         isOpen={!!pwaSendingModal?.isOpen}
