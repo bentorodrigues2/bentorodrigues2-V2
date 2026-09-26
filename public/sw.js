@@ -1,6 +1,6 @@
 // CondoManager AI - Service Worker (Offline Cache, Push Notifications, Background Sync)
 
-const CACHE_NAME = "condomanager-v2.4-cache";
+const CACHE_NAME = "condomanager-v2.5-cache";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -52,7 +52,12 @@ self.addEventListener("fetch", (event) => {
   const isApiRequest = new URL(event.request.url).pathname.startsWith("/api/");
 
   event.respondWith(
-    fetch(event.request)
+    // cache: "no-store" força o pedido a ir mesmo à rede — sem isto, a
+    // cache HTTP do próprio telemóvel podia devolver uma versão antiga do
+    // index.html/JS ao fetch() abaixo sem sequer contactar o servidor,
+    // fazendo a PWA parecer "presa" numa versão antiga mesmo com o
+    // service worker a fazer tudo certo.
+    fetch(event.request, { cache: "no-store" })
       .then((networkResponse) => {
         // Cache só o "app shell" estático — nunca respostas de /api/*
         // (dados reais do condomínio/utilizador), para não haver risco
