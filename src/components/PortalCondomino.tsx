@@ -2110,7 +2110,7 @@ export function PortalCondomino({
                       <button 
                         type="button" 
                         onClick={() => setIsEmojiPickerOpen(false)}
-                        className="text-slate-400 hover:text-slate-600 dark:hover:text-white text-xs cursor-pointer"
+                        className="text-red-500 hover:text-red-600 text-xs cursor-pointer"
                       >
                         ✕
                       </button>
@@ -2141,7 +2141,7 @@ export function PortalCondomino({
                       <button 
                         type="button" 
                         onClick={() => setIsAttachmentMenuOpen(false)}
-                        className="text-slate-400 hover:text-slate-600 dark:hover:text-white text-xs cursor-pointer"
+                        className="text-red-500 hover:text-red-600 text-xs cursor-pointer"
                       >
                         ✕
                       </button>
@@ -2339,7 +2339,7 @@ export function PortalCondomino({
               <button 
                 type="button"
                 onClick={() => setPayModalOpen(false)} 
-                className="flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-red-600 active:scale-95 text-slate-300 hover:text-white rounded-lg text-xs font-bold transition-colors cursor-pointer border border-slate-700 hover:border-red-500"
+                className="flex items-center gap-1 px-2.5 py-1 bg-red-600 hover:bg-red-700 active:scale-95 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer border border-red-500"
                 title="Fechar e Sair"
                 aria-label="Fechar"
               >
@@ -2467,7 +2467,7 @@ export function PortalCondomino({
               <button 
                 type="button"
                 onClick={() => setWelcomeMailModal(null)} 
-                className="flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-red-600 active:scale-95 text-slate-300 hover:text-white rounded-lg text-xs font-bold transition-colors cursor-pointer border border-slate-700 hover:border-red-500"
+                className="flex items-center gap-1 px-2.5 py-1 bg-red-600 hover:bg-red-700 active:scale-95 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer border border-red-500"
                 title="Fechar e Sair"
                 aria-label="Fechar"
               >
