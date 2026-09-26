@@ -153,6 +153,21 @@ export default function PWACondominoView({
   // Mobile app navigation: handles both bottom quick tabs and the 10 modules
   const [activeTab, setActiveTab] = useState<string>("home");
 
+  // Uma PWA instalada normalmente não é "fechada" quando se troca de app no
+  // telemóvel — fica só em segundo plano, com este componente ainda montado
+  // e o separador onde ficou (ex: Perfil) por isso ao voltar a abrir parecia
+  // "entrar sempre no Perfil" em vez do Início. Sempre que a app volta a
+  // ficar visível, repõe o separador Início.
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        setActiveTab("home");
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
+
   // Botão físico de "voltar atrás" do telemóvel (Android) / gesto de swipe
   // (iOS): sem isto, o browser não tem nenhum registo de navegação interna
   // e o botão físico sai diretamente da app em vez de voltar ao ecrã

@@ -401,6 +401,15 @@ export function PWASimulator({
   // OUTRA fração, potencialmente de outro condómino).
   const condominoFracao = encontrarFracaoDoCondomino(fracoes, loggedUser) || fracoes[0];
 
+  // Um ADMIN/GESTOR que também é condómino (dono de uma fração deste
+  // prédio, como o próprio administrador desta conta) tem de ver, no
+  // telemóvel, a mesma vista real de condómino que qualquer outra pessoa —
+  // sem isto, ficava preso à vista de administração e nunca via o Início,
+  // o cartão de Dados Bancários, etc. (encontrarFracaoDoCondomino sem
+  // fallback, para distinguir "é mesmo dono de uma fração" de "só caiu no
+  // fracoes[0] por omissão").
+  const souTambemCondomino = !!encontrarFracaoDoCondomino(fracoes, loggedUser);
+
   // Auto-route tab when role switches to avoid blank state
   useEffect(() => {
     setActiveTab("home");
@@ -1580,8 +1589,8 @@ export function PWASimulator({
 
 
 
-              {/* --- ROLE: CONDÓMINO --- */}
-              {loggedUser.role === "USER" && (
+              {/* --- ROLE: CONDÓMINO (ou ADMIN/GESTOR que também é dono de uma fração) --- */}
+              {(loggedUser.role === "USER" || souTambemCondomino) && (
                 <PWACondominoView
                   loggedUser={loggedUser}
                   predio={predio}
