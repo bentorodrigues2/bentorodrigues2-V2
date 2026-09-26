@@ -1998,7 +1998,13 @@ export function GestaoManutencaoIntervencoes({
                         
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white dark:bg-slate-950 p-3 rounded-lg border">
                           <div>
-                            <span className="text-[9px] text-slate-400 uppercase block">Impacto Fundo Reserva</span>
+                            {/* Nota legal (DL 268/94): 10% do custo é sempre contabilizado como
+                                contribuição ao FCR, independentemente da caixa "Pagar a partir do
+                                Fundo de Reserva Comum" — essa caixa decide de ONDE sai o dinheiro
+                                da obra, não se esta nota legal se aplica (aplica-se sempre). O
+                                rótulo deixa isto explícito para não parecer que o FCR está a ser
+                                usado mesmo sem a caixa estar marcada. */}
+                            <span className="text-[9px] text-slate-400 uppercase block">Contrib. Legal ao FCR (10%, DL 268/94)</span>
                             <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{iaBreakdown.reserveImpact.toFixed(2)}€</span>
                           </div>
                           <div>
