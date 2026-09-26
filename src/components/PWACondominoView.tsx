@@ -281,11 +281,13 @@ export default function PWACondominoView({
     }
   });
 
-  const allNotifs = [
-    { id: "notif-elevador", type: "amber", text: "Intervenção técnica aberta: Elevador nº 2" },
-    { id: "notif-sondagem", type: "indigo", text: "Nova sondagem disponível sobre o Prédio" },
-    { id: "notif-higiene", type: "emerald", text: "Higiene Semanal Concluída com sucesso" },
-  ];
+  // Antes era uma lista fixa de 3 notificações inventadas que apareciam
+  // sempre — passa a usar a lista real de notificações (pagamento
+  // confirmado, seguro registado, resposta da administração, etc.). Sem
+  // eventos reais, o cartão fica vazio, como deve ser.
+  const allNotifs = (pwaNotifications || [])
+    .filter((n: any) => !n.isArchived)
+    .map((n: any) => ({ id: n.id, type: "indigo" as string, text: n.title || n.desc }));
 
   const activeNotifs = allNotifs.filter(n => !closedNotifs.includes(n.id));
 
@@ -556,30 +558,36 @@ export default function PWACondominoView({
   const [selectedDocPreview, setSelectedDocPreview] = useState<Documento | null>(null);
   usePwaBackButton(selectedDocPreview !== null, () => setSelectedDocPreview(null));
 
+  // Contagens reais por fração/prédio — antes a maioria destes cartões
+  // mostrava sempre o mesmo texto fixo ("1 Ativa", "4 Ficheiros", "Ativo"),
+  // independentemente de existir ou não alguma coisa real por trás.
+  const ocorrenciasAbertasReais = (ocorrencias || []).filter(
+    (o: any) => o.id_fracao === condominoFracao?.id_fracao && o.estado !== "Concluída" && o.estado !== "Resolvida"
+  );
+  const avisosPendentesFracaoReais = (avisos || []).filter(
+    (a: any) => a.id_fracao === condominoFracao?.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")
+  );
+  const documentosFracaoReais = (documentos || []).filter(
+    (d: any) => !d.id_fracao || d.id_fracao === condominoFracao?.id_fracao
+  );
+  const reservasFracaoReais = (reservas || []).filter((r: any) => r.id_fracao === condominoFracao?.id_fracao);
+
   const getNotificationCount = (cardId: string) => {
-    if (cardId === "ocorrencias") return 1;
-    if (cardId === "financas") return quotaState === 'atraso' ? 1 : 0;
+    if (cardId === "ocorrencias") return ocorrenciasAbertasReais.length;
+    if (cardId === "financas") return avisosPendentesFracaoReais.length;
     if (cardId === "comunicacoes") return hasUnreadMessages ? 1 : 0;
-    if (cardId === "documentos") return 0;
-    if (cardId === "reservas_limpezas") return 0;
-    if (cardId === "limpezas") return 0;
-    if (cardId === "fornecedores") return 0;
     if (cardId === "sondagens") return sondagensPorVotar.length > 0 ? 1 : 0;
-    if (cardId === "obras") return 0;
     return 0;
   };
 
   const getPillTextForCard = (cardId: string) => {
     switch (cardId) {
-      case "ocorrencias": return "1 Ativa";
-      case "financas": return quotaState === 'atraso' ? "1 Atraso" : "Regularizado";
+      case "ocorrencias": return ocorrenciasAbertasReais.length > 0 ? `${ocorrenciasAbertasReais.length} Ativa(s)` : "Sem Registos";
+      case "financas": return avisosPendentesFracaoReais.length > 0 ? `${avisosPendentesFracaoReais.length} Pendente(s)` : "Regularizado";
       case "comunicacoes": return hasUnreadMessages ? "+1 Nova" : "Sem Alertas";
-      case "documentos": return "4 Ficheiros";
-      case "reservas_limpezas": return "Ativo";
-      case "limpezas": return "Relatórios";
-      case "fornecedores": return "Ativos";
+      case "documentos": return `${documentosFracaoReais.length} Ficheiro(s)`;
+      case "reservas_limpezas": return reservasFracaoReais.length > 0 ? `${reservasFracaoReais.length} Ativa(s)` : "Ativo";
       case "sondagens": return sondagensPorVotar.length > 0 ? `${sondagensPorVotar.length} Ativa(s)` : "Votado";
-      case "obras": return "Histórico";
       default: return "Ativo";
     }
   };
@@ -1029,9 +1037,9 @@ export default function PWACondominoView({
                         }`}></span>
                         <span className="font-medium">{notif.text}</span>
                       </div>
-                      <button 
+                      <button
                         onClick={() => closeNotif(notif.id)}
-                        className="text-slate-400 hover:text-rose-500 font-black text-xs cursor-pointer px-1 z-10"
+                        className="text-red-500 hover:text-red-600 font-black text-xs cursor-pointer px-1 z-10"
                         title="Marcar como lida e fechar permanentemente"
                       >
                         ✕
@@ -1051,18 +1059,19 @@ export default function PWACondominoView({
                 <button
                   type="button"
                   onClick={() => setShowDadosBancariosModal(true)}
-                  className="w-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900 rounded-xl p-3 shadow-sm flex items-center justify-between text-left cursor-pointer hover:border-orange-400 transition-colors"
+                  className="w-full border border-[#FFAB91] rounded-xl p-3 shadow-sm flex items-center justify-between text-left cursor-pointer hover:brightness-95 transition-all"
+                  style={{ backgroundColor: "#FFDACC" }}
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="h-8 w-8 rounded-lg bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-300 flex items-center justify-center shrink-0">
+                    <span className="h-8 w-8 rounded-lg bg-white/60 text-[#C2410C] flex items-center justify-center shrink-0">
                       <i className="fa-solid fa-building-columns text-sm"></i>
                     </span>
                     <div>
-                      <span className="text-[10px] font-black text-orange-800 dark:text-orange-200 block">Dados Bancários</span>
-                      <span className="text-[8px] text-orange-600/80 dark:text-orange-400/80">IBAN, referências e email para comprovativos</span>
+                      <span className="text-[10px] font-black text-[#7C2D12] block">Dados Bancários</span>
+                      <span className="text-[8px] text-[#9A3412]">IBAN, referências e email para comprovativos</span>
                     </div>
                   </div>
-                  <i className="fa-solid fa-chevron-right text-orange-400 text-xs"></i>
+                  <i className="fa-solid fa-chevron-right text-[#C2410C] text-xs"></i>
                 </button>
               );
             })()}
@@ -1079,29 +1088,30 @@ export default function PWACondominoView({
               const LinhaCopiavelModal = ({ label, valor }: { label: string; valor: string }) => (
                 <div className="space-y-0.5">
                   <div className="flex justify-between items-center">
-                    <span className="text-[9px] text-amber-700/80 dark:text-amber-400/80 font-extrabold uppercase tracking-wider">{label}</span>
+                    <span className="text-[9px] text-[#9A3412] font-extrabold uppercase tracking-wider">{label}</span>
                     <button
                       onClick={() => handleCopyToClipboard(valor, label)}
-                      className="flex items-center space-x-1 text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-200 font-bold text-[9px] cursor-pointer"
+                      className="flex items-center space-x-1 text-[#C2410C] hover:text-[#7C2D12] font-bold text-[9px] cursor-pointer"
                     >
                       <Copy className="h-3 w-3" />
                       <span>Copiar</span>
                     </button>
                   </div>
-                  <strong className="text-amber-950 dark:text-amber-100 block font-mono text-[12px] tracking-tight break-all">{valor}</strong>
+                  <strong className="text-[#7C2D12] block font-mono text-[12px] tracking-tight break-all">{valor}</strong>
                 </div>
               );
               return (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" onClick={() => setShowDadosBancariosModal(false)}>
+                <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" onClick={() => setShowDadosBancariosModal(false)}>
                   <div
-                    className="bg-orange-50 dark:bg-orange-950/95 border border-orange-200 dark:border-orange-900 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm max-h-[85vh] overflow-y-auto p-4 space-y-3"
+                    className="border border-[#FFAB91] rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm max-h-[70vh] overflow-y-auto p-4 pb-8 space-y-3"
+                    style={{ backgroundColor: "#FFE4DC" }}
                     onClick={e => e.stopPropagation()}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-extrabold text-orange-700 dark:text-orange-300 uppercase tracking-widest flex items-center gap-1.5">
+                      <span className="text-[11px] font-extrabold text-[#7C2D12] uppercase tracking-widest flex items-center gap-1.5">
                         <i className="fa-solid fa-building-columns"></i> Dados Bancários
                       </span>
-                      <button onClick={() => setShowDadosBancariosModal(false)} className="text-orange-400 hover:text-orange-700 cursor-pointer p-1" title="Fechar">
+                      <button onClick={() => setShowDadosBancariosModal(false)} className="text-red-500 hover:text-red-600 cursor-pointer p-1" title="Fechar">
                         <i className="fa-solid fa-xmark"></i>
                       </button>
                     </div>
@@ -2832,22 +2842,22 @@ export default function PWACondominoView({
               const LinhaCopiavel = ({ label, valor, nota }: { label: string; valor: string; nota?: string }) => (
                 <div className="space-y-0.5">
                   <div className="flex justify-between items-center">
-                    <span className="text-[8px] text-amber-700/80 font-extrabold uppercase tracking-wider">{label}</span>
+                    <span className="text-[8px] text-[#9A3412] font-extrabold uppercase tracking-wider">{label}</span>
                     <button
                       onClick={() => handleCopyToClipboard(valor, label)}
-                      className="flex items-center space-x-1 text-amber-700 hover:text-amber-900 font-bold text-[8px] cursor-pointer"
+                      className="flex items-center space-x-1 text-[#C2410C] hover:text-[#7C2D12] font-bold text-[8px] cursor-pointer"
                     >
                       <Copy className="h-2.5 w-2.5" />
                       <span>Copiar</span>
                     </button>
                   </div>
-                  <strong className="text-amber-950 dark:text-amber-100 block font-mono text-[10px] tracking-tight break-all">{valor}</strong>
-                  {nota && <p className="text-[8px] text-amber-700/70">{nota}</p>}
+                  <strong className="text-[#7C2D12] block font-mono text-[10px] tracking-tight break-all">{valor}</strong>
+                  {nota && <p className="text-[8px] text-[#9A3412]/80">{nota}</p>}
                 </div>
               );
               return (
-                <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900 p-4 rounded-xl shadow-sm space-y-3 text-[10px]">
-                  <span className="text-[9px] font-extrabold text-orange-700 uppercase tracking-widest block flex items-center gap-1.5">
+                <div className="border border-[#FFAB91] p-4 rounded-xl shadow-sm space-y-3 text-[10px]" style={{ backgroundColor: "#FFDACC" }}>
+                  <span className="text-[9px] font-extrabold text-[#7C2D12] uppercase tracking-widest block flex items-center gap-1.5">
                     <i className="fa-solid fa-circle-info"></i> Dados para Envio de Comprovativos
                   </span>
                   <LinhaCopiavel label="IBAN do Prédio" valor={ibanPredio} />
@@ -3298,24 +3308,9 @@ export default function PWACondominoView({
           </div>
         )}
 
-        {/* Floating Alertas do Prédio after first scroll */}
-        {hasScrolled && activeTab === "home" && (
-          <div className="fixed bottom-16 left-4 right-4 mx-auto max-w-sm bg-amber-50 dark:bg-amber-950 border-2 border-amber-300 dark:border-amber-800 p-2.5 rounded-xl shadow-xl flex items-start space-x-2 text-[10px] z-40">
-            <span className="text-sm">⚠️</span>
-            <div className="flex-1 space-y-0.5 text-left">
-              <span className="font-extrabold text-amber-800 dark:text-amber-300 block">Alerta Importante (Detetado Scroll)</span>
-              <p className="text-slate-700 dark:text-slate-300 leading-normal">
-                Nota: A manutenção técnica do Elevador n.º 2 decorrerá dia 19/07 entre as 14h-16h. O elevador estará indisponível nesse período.
-              </p>
-            </div>
-            <button 
-              onClick={() => setHasScrolled(false)}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer font-black text-xs shrink-0"
-            >
-              ✕
-            </button>
-          </div>
-        )}
+        {/* Removido: alerta de demonstração com texto fixo (manutenção de
+            elevador inventada) que aparecia sempre ao fazer scroll — nunca
+            teve ligação a dados reais. */}
 
       </div>
 

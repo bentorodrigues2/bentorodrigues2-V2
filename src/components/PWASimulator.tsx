@@ -3359,8 +3359,11 @@ export function PWASimulator({
               </div>
             )}
 
-            {/* FLOATING DRAGGABLE AI ASSISTANT FOR ADMIN & GESTOR (MOBILE VIEW - ONLY WHEN AUTHENTICATED IN DASHBOARD) */}
-            {(loggedUser?.role === "ADMIN" || loggedUser?.role === "GESTOR" || loggedUser?.role === "EMPRESA_GESTORA") && (activeTab === "home" || activeTab === "painel") && (
+            {/* FLOATING DRAGGABLE AI ASSISTANT FOR ADMIN & GESTOR (MOBILE VIEW - ONLY WHEN AUTHENTICATED IN DASHBOARD) —
+                nunca junto com o botão de mensagens da PWACondominoView: um
+                ADMIN que também é condómino já vê esse, dois botões
+                flutuantes ao mesmo tempo confundia mais do que ajudava. */}
+            {!souTambemCondomino && (loggedUser?.role === "ADMIN" || loggedUser?.role === "GESTOR" || loggedUser?.role === "EMPRESA_GESTORA") && (activeTab === "home" || activeTab === "painel") && (
               <DraggableAIFloatingButton
                 loggedUser={loggedUser}
                 predio={predio}
