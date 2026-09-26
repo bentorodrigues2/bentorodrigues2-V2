@@ -1163,6 +1163,49 @@ export function PortalCondomino({
                 </div>
               </div>
 
+              {/* Cartão fixo de Dados Bancários — mesmo conteúdo e cor
+                  salmão da PWA, para não haver diferenças entre o que o
+                  condómino vê no browser e no telemóvel. Tinha sido
+                  acrescentado antes mas perdeu-se num revert desta noite. */}
+              <div className="px-6 pt-6">
+                {(() => {
+                  const contaPrincipalPortal = contas.find(c => c.is_principal) || contas[0];
+                  const contaExtraPortal = contas.find(c => !c.is_principal && c.id_conta !== contaPrincipalPortal?.id_conta);
+                  const ibanPredioPortal = contaPrincipalPortal?.iban || (predio as any).iban || "IBAN não configurado — contacte a administração";
+                  const emailComprovativosPortal = (predio as any).email_condominio || (predio as any).email || "bentorodrigues2@gmail.com";
+                  const referenciaFracaoPortal = activeUserFracao?.referencia_br23e || "—";
+                  const temQuotaExtraPortal = avisos.some(
+                    (a: any) => a.id_fracao === activeUserFracao?.id_fracao && String(a.tipo || "").includes("Extraordinária") && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")
+                  );
+                  const copiar = (valor: string) => { try { navigator.clipboard.writeText(valor); } catch {} };
+                  const LinhaCopiavelPortal = ({ label, valor }: { label: string; valor: string }) => (
+                    <div className="space-y-0.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] text-amber-700/80 font-extrabold uppercase tracking-wider">{label}</span>
+                        <button type="button" onClick={() => copiar(valor)} className="text-amber-700 hover:text-amber-900 font-bold text-[9px] cursor-pointer">Copiar</button>
+                      </div>
+                      <strong className="text-amber-950 block font-mono text-[11px] tracking-tight break-all">{valor}</strong>
+                    </div>
+                  );
+                  return (
+                    <div className="bg-orange-50 border border-orange-200 p-4 rounded-xl shadow-sm space-y-3 text-[10px]">
+                      <span className="text-[10px] font-extrabold text-orange-700 uppercase tracking-widest block flex items-center gap-1.5">
+                        <i className="fa-solid fa-circle-info"></i> Dados Bancários
+                      </span>
+                      <LinhaCopiavelPortal label="IBAN do Condomínio" valor={ibanPredioPortal} />
+                      {contaExtraPortal?.iban && (
+                        <LinhaCopiavelPortal label="IBAN da Conta de Quotas Extra" valor={contaExtraPortal.iban} />
+                      )}
+                      <LinhaCopiavelPortal label="Email para Comprovativos" valor={emailComprovativosPortal} />
+                      <LinhaCopiavelPortal label="Referência da Fração" valor={referenciaFracaoPortal} />
+                      {temQuotaExtraPortal && (
+                        <LinhaCopiavelPortal label="Referência da Fração — Quotas Extra" valor={referenciaFracaoPortal} />
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
               {/* Personal Data Form (Address is Read-only) */}
               <div className="p-6">
                 <form onSubmit={handleSaveProfile} className="space-y-4">
