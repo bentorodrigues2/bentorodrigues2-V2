@@ -17,7 +17,7 @@ import {
 } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { VotacaoAssembleiaVirtual } from "./VotacaoAssembleiaVirtual";
-import { saveReuniaoToSupabase, deleteReuniaoFromSupabase, saveDocumentoToSupabase, registarLogAuditoria, fetchObrasExtraFromSupabase } from "../lib/supabaseService";
+import { saveReuniaoToSupabase, deleteReuniaoFromSupabase, saveDocumentoToSupabase, registarLogAuditoria, fetchObrasExtraFromSupabase, extrairNumeroAtaDoTexto } from "../lib/supabaseService";
 
 interface GestaoAssembleiasProps {
   predio: Predio;
@@ -784,7 +784,7 @@ Com os meus cumprimentos,
   // prazo legal de 30 dias do Art. 1432.º do Código Civil. Antes existiam
   // dois botões separados ("Guardar Ata Final" só local/fictício e "Enviar
   // Ata" real); fundidos num só, para não haver um caminho falso.
-  const handleFinalizarEArquivarAta = () => {
+  const handleFinalizarEArquivarAta = async () => {
     if (!activeMeeting) return;
     if (!ataTexto.trim()) {
       alert("Escreva ou gere o texto da ata antes de a finalizar.");
@@ -800,13 +800,31 @@ Com os meus cumprimentos,
       return;
     }
 
-    const ataNumero = String(reunioes.filter(r => r.estado === "Realizada").length + 1);
+    // Numeração a começar em 31 (30 atas reais anteriores a esta plataforma)
+    // — nunca reutiliza um número já usado, mesmo que essa ata tenha sido
+    // criada fora de ordem. Como não há coluna numero_ata na tabela (DDL
+    // bloqueado), o número fica gravado como a própria primeira linha do
+    // texto da ata, e é isso que se procura aqui em todas as já realizadas.
+    const BASE_NUMERACAO_ATAS = 30;
+    const numerosExistentes = reunioes
+      .map(r => parseInt(extrairNumeroAtaDoTexto(r.ata) || "0", 10))
+      .filter(n => n > 0);
+    const ataNumero = String(Math.max(BASE_NUMERACAO_ATAS, ...numerosExistentes) + 1);
     const anoStr = activeMeeting.data ? (activeMeeting.data.includes("/") ? activeMeeting.data.split("/")[2] : activeMeeting.data.split("-")[0]) : new Date().getFullYear().toString();
 
-    const reuniaoFinalizada = { ...activeMeeting, ata: ataTexto, notas_ata: notesToText(), estado: "Realizada" as const, numero_ata: ataNumero };
+    // O cabeçalho "Ata n.º X" só é gravado no texto persistido (para poder
+    // ser recuperado depois de recarregar a página) — o rascunho no
+    // textarea e o PDF continuam a mostrar só o conteúdo real da ata, sem
+    // duplicar o número (o PDF já recebe ataNumero à parte, abaixo).
+    const ataParaGuardar = `Ata n.º ${ataNumero}\n\n${ataTexto}`;
+    const reuniaoFinalizada = { ...activeMeeting, ata: ataParaGuardar, notas_ata: notesToText(), estado: "Realizada" as const, numero_ata: ataNumero };
+    const guardouOk = await saveReuniaoToSupabase(reuniaoFinalizada);
+    if (!guardouOk) {
+      alert("❌ Não foi possível gravar a ata no Supabase. Tente novamente antes de enviar aos condóminos.");
+      return;
+    }
     setReunioes(reunioes.map(r => r.id_reuniao === activeMeeting.id_reuniao ? reuniaoFinalizada : r));
-    saveReuniaoToSupabase(reuniaoFinalizada).catch(console.error);
-    registarLogAuditoria("Assembleias", `Finalizou e arquivou a ata da assembleia "${activeMeeting.tema}"`, predio.id_predio, loggedUser);
+    registarLogAuditoria("Assembleias", `Finalizou e arquivou a ata nº ${ataNumero} da assembleia "${activeMeeting.tema}"`, predio.id_predio, loggedUser);
 
     triggerSendReaction("email", `A finalizar, arquivar e enviar a Ata a ${destinatarios.length} condómino(s)...`, async () => {
       try {

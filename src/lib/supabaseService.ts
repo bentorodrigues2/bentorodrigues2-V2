@@ -1085,6 +1085,18 @@ export async function deleteContratoFromSupabase(idContrato: string): Promise<bo
  * por isso o módulo de Reuniões/Assembleias nunca chegou sequer a tentar
  * ler do Supabase.
  */
+// O número da ata era calculado só em memória e NUNCA gravado no Supabase
+// — a coluna numero_ata não existe na tabela "reunioes" (e não é possível
+// criá-la, DDL bloqueado) — por isso, ao recarregar a página, qualquer
+// ata já finalizada perdia o número. Grava-se agora como a própria
+// primeira linha do texto da ata ("Ata n.º 31"), que é aliás a forma
+// normal de abrir uma ata real, e extrai-se daqui sempre que necessário.
+export function extrairNumeroAtaDoTexto(ataTexto?: string | null): string | undefined {
+  if (!ataTexto) return undefined;
+  const match = ataTexto.match(/^Ata\s+n\.?º\s*(\d+)/i);
+  return match ? match[1] : undefined;
+}
+
 export async function fetchReunioesFromSupabase(idPredio?: string): Promise<Reuniao[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
@@ -1105,6 +1117,7 @@ export async function fetchReunioesFromSupabase(idPredio?: string): Promise<Reun
       plataformaVideoconferencia: row.plataforma_videoconferencia || undefined,
       ata: row.ata || undefined,
       notas_ata: row.notas_ata || undefined,
+      numero_ata: extrairNumeroAtaDoTexto(row.ata),
       folha_presencas: row.folha_presencas || undefined,
       representantes: row.representantes || undefined,
       assinaturas: row.assinaturas || undefined,
