@@ -158,7 +158,7 @@ export function FinanceiroAvancado({
     });
   }, [predioAvisos, mapaAno, mapaTipo]);
 
-  interface CelulaMapa { valor: number; pago: boolean }
+  interface CelulaMapa { valor: number; pago: boolean; idAviso: string }
   interface LinhaMapa { fracao: Fracao; meses: (CelulaMapa | null)[]; total: number; nomeExibido: string; periodoExibido?: string; quotaMensal: number | null; quotaMensalIdAviso?: string | null }
 
   // Quota mensal atual de cada fração — não é recalculada por fórmula (isso
@@ -189,24 +189,35 @@ export function FinanceiroAvancado({
     return mapa;
   }, [predioAvisos, mapaTipo]);
 
-  const [editandoQuotaFracaoId, setEditandoQuotaFracaoId] = useState<string | null>(null);
+  // Célula em edição identificada por uma chave própria — "quota|<idFracao>"
+  // para a coluna de referência, "mes|<idFracao>|<mIdx>" para uma célula de
+  // um mês — para não ficar limitado a só um tipo de valor editável na
+  // tabela: o administrador tem de poder corrigir qualquer célula sem
+  // depender de outra pessoa fazer isso pela base de dados.
+  const [editandoCelulaChave, setEditandoCelulaChave] = useState<string | null>(null);
   const [valorQuotaEditado, setValorQuotaEditado] = useState("");
   const ehAdminOuGestor = ["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role);
+  const editandoQuotaFracaoId = editandoCelulaChave?.startsWith("quota|") ? editandoCelulaChave.slice(6) : null;
 
-  const handleGuardarQuotaEditada = async (idFracao: string) => {
-    const info = quotaMensalAtualPorFracao[idFracao];
-    if (!info) return;
-    const novoValor = parseValorMonetario(valorQuotaEditado);
-    if (!novoValor || novoValor <= 0) return alert("Indique um valor válido.");
-    const avisoOriginal = predioAvisos.find(a => a.id_aviso === info.idAviso);
+  const handleGuardarValorAviso = async (idAviso: string, novoValor: number, descricaoLog: string) => {
+    const avisoOriginal = predioAvisos.find(a => a.id_aviso === idAviso);
     if (!avisoOriginal) return;
     const novoFCR = Math.round(novoValor * 0.1 * 100) / 100;
     const avisoAtualizado = { ...avisoOriginal, valor: novoValor, valor_fundo_reserva: novoFCR };
     const ok = await saveAvisosToSupabase([avisoAtualizado]);
     if (!ok) return alert("❌ Não foi possível gravar a correção no Supabase.");
     setAvisos?.(prev => prev.map(a => a.id_aviso === avisoOriginal.id_aviso ? avisoAtualizado : a));
-    registarLogAuditoria("Financeira", "Corrigiu manualmente a quota mensal de uma fração", predio.id_predio, loggedUser, `Fração ${idFracao}: novo valor ${novoValor.toFixed(2)} €`);
-    setEditandoQuotaFracaoId(null);
+    registarLogAuditoria("Financeira", "Corrigiu manualmente um valor no Mapa de Pagamentos", predio.id_predio, loggedUser, `${descricaoLog}: novo valor ${novoValor.toFixed(2)} €`);
+    setEditandoCelulaChave(null);
+    setValorQuotaEditado("");
+  };
+
+  const handleGuardarQuotaEditada = async (idFracao: string) => {
+    const info = quotaMensalAtualPorFracao[idFracao];
+    if (!info) return;
+    const novoValor = parseValorMonetario(valorQuotaEditado);
+    if (!novoValor || novoValor <= 0) return alert("Indique um valor válido.");
+    await handleGuardarValorAviso(info.idAviso, novoValor, `Quota mensal da fração ${idFracao}`);
     setValorQuotaEditado("");
   };
 
@@ -224,7 +235,7 @@ export function FinanceiroAvancado({
         // pago.
         const avisosDoMes = avisosFracao.filter(a => mesReferenciaAviso(a).getMonth() === mIdx);
         const aviso = avisosDoMes.find(a => a.estado === "Pago") || avisosDoMes[0];
-        return aviso ? { valor: Number(aviso.valor || 0), pago: aviso.estado === "Pago" } : null;
+        return aviso ? { valor: Number(aviso.valor || 0), pago: aviso.estado === "Pago", idAviso: aviso.id_aviso } : null;
       });
       const total = meses.reduce((s, c) => s + (c?.valor || 0), 0);
       const infoQuota = quotaMensalAtualPorFracao[f.id_fracao];
@@ -1934,13 +1945,13 @@ export function FinanceiroAvancado({
                               autoFocus
                               value={valorQuotaEditado}
                               onChange={e => setValorQuotaEditado(e.target.value)}
-                              onKeyDown={e => { if (e.key === "Enter") handleGuardarQuotaEditada(l.fracao.id_fracao); if (e.key === "Escape") setEditandoQuotaFracaoId(null); }}
+                              onKeyDown={e => { if (e.key === "Enter") handleGuardarQuotaEditada(l.fracao.id_fracao); if (e.key === "Escape") setEditandoCelulaChave(null); }}
                               className="w-16 border border-indigo-300 rounded px-1 py-0.5 text-right text-[11px] font-mono focus:outline-indigo-500"
                             />
                             <button type="button" onClick={() => handleGuardarQuotaEditada(l.fracao.id_fracao)} className="text-emerald-600 hover:text-emerald-800 cursor-pointer" title="Guardar">
                               <i className="fa-solid fa-check"></i>
                             </button>
-                            <button type="button" onClick={() => setEditandoQuotaFracaoId(null)} className="text-slate-400 hover:text-red-500 cursor-pointer" title="Cancelar">
+                            <button type="button" onClick={() => setEditandoCelulaChave(null)} className="text-slate-400 hover:text-red-500 cursor-pointer" title="Cancelar">
                               <i className="fa-solid fa-xmark"></i>
                             </button>
                           </div>
@@ -1950,7 +1961,7 @@ export function FinanceiroAvancado({
                             {ehAdminOuGestor && l.quotaMensalIdAviso && (
                               <button
                                 type="button"
-                                onClick={() => { setEditandoQuotaFracaoId(l.fracao.id_fracao); setValorQuotaEditado(String(l.quotaMensal ?? "")); }}
+                                onClick={() => { setEditandoCelulaChave(`quota|${l.fracao.id_fracao}`); setValorQuotaEditado(String(l.quotaMensal ?? "")); }}
                                 className="text-slate-300 hover:text-indigo-600 cursor-pointer"
                                 title="Corrigir quota mensal"
                               >
@@ -1960,15 +1971,60 @@ export function FinanceiroAvancado({
                           </span>
                         )}
                       </td>
-                      {l.meses.map((c, mIdx) => (
-                        <td key={mIdx} className={`py-2 px-2 text-right whitespace-nowrap border-r border-white dark:border-slate-950 ${
+                      {l.meses.map((c, mIdx) => {
+                        const chaveCelula = `mes|${l.fracao.id_fracao}|${mIdx}`;
+                        const emEdicao = editandoCelulaChave === chaveCelula;
+                        return (
+                        <td key={mIdx} className={`py-2 px-2 text-right whitespace-nowrap border-r border-white dark:border-slate-950 group ${
+                          emEdicao ? "bg-white dark:bg-slate-900" :
                           c?.pago
                             ? "text-emerald-900 dark:text-emerald-200 font-black bg-emerald-200 dark:bg-emerald-800/70"
                             : "text-red-900 dark:text-red-200 font-black bg-red-200 dark:bg-red-800/70"
                         }`}>
-                          {c&&c.pago ? `${c.valor.toFixed(2)}€` : "—"}
+                          {emEdicao ? (
+                            <div className="flex items-center justify-end gap-1">
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                autoFocus
+                                value={valorQuotaEditado}
+                                onChange={e => setValorQuotaEditado(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === "Enter" && c) handleGuardarValorAviso(c.idAviso, parseValorMonetario(valorQuotaEditado), `${l.fracao.fracao_nome} — ${MESES_ABREV[mIdx]}/${mapaAno}`);
+                                  if (e.key === "Escape") setEditandoCelulaChave(null);
+                                }}
+                                className="w-14 border border-indigo-300 rounded px-1 py-0.5 text-right text-[10px] font-mono text-slate-800 focus:outline-indigo-500"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => c && handleGuardarValorAviso(c.idAviso, parseValorMonetario(valorQuotaEditado), `${l.fracao.fracao_nome} — ${MESES_ABREV[mIdx]}/${mapaAno}`)}
+                                className="text-emerald-700 hover:text-emerald-900 cursor-pointer"
+                                title="Guardar"
+                              >
+                                <i className="fa-solid fa-check"></i>
+                              </button>
+                              <button type="button" onClick={() => setEditandoCelulaChave(null)} className="text-slate-500 hover:text-red-600 cursor-pointer" title="Cancelar">
+                                <i className="fa-solid fa-xmark"></i>
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 justify-end">
+                              {c ? `${c.valor.toFixed(2)}€` : "—"}
+                              {ehAdminOuGestor && c && (
+                                <button
+                                  type="button"
+                                  onClick={() => { setEditandoCelulaChave(chaveCelula); setValorQuotaEditado(String(c.valor)); }}
+                                  className="opacity-0 group-hover:opacity-100 text-current hover:scale-110 cursor-pointer transition-opacity"
+                                  title="Corrigir este valor"
+                                >
+                                  <i className="fa-solid fa-pen text-[8px]"></i>
+                                </button>
+                              )}
+                            </span>
+                          )}
                         </td>
-                      ))}
+                        );
+                      })}
                       <td className="py-2 px-3 text-right font-black text-slate-800 dark:text-white whitespace-nowrap">{l.total.toFixed(2)}€</td>
                     </tr>
                     );

@@ -464,12 +464,40 @@ export function GestaoQuotasOrcamento({
     return { rateNormalRevisao: rN, rateLojaRevisao: rN * COEF_LOJA_EXTERIOR };
   }, [predioFracoes, novaRevisaoValor]);
 
-  // "Valor Atual" — a quota mensal REAL em vigor agora (a mesma fórmula do
-  // orçamento atualmente guardado, não um valor hipotético). Antes esta
-  // tabela calculava tudo a partir do "Novo Valor Anual" (rascunho de um
-  // orçamento total ainda por aplicar), o que gerava confusão porque os
-  // valores mostrados nunca correspondiam às quotas realmente em vigor.
-  const quotaCalculadaRevisao = (f: Fracao) => Math.round(calcularQuotaOrdinaria(f) * 100) / 100;
+  // "Valor Atual" — lê-se do aviso real mais recente já emitido por
+  // fração (o mesmo critério do Mapa de Pagamentos), não de uma fórmula
+  // recalculada a partir de "Orçamento Geral Anual". Duas fontes separadas
+  // para o "mesmo" valor é como o orçamento e as quotas reais desalinharam
+  // hoje: o campo do orçamento ficou preso num valor errado (uma adenda
+  // registada e depois apagada) enquanto os avisos reais continuavam
+  // corretos — mas esta tabela, ao recalcular pela fórmula, mostrava os
+  // valores errados na mesma. Lendo sempre do aviso real, esta tabela
+  // nunca pode divergir do que está realmente a ser cobrado a cada fração,
+  // mesmo que o campo do orçamento anual fique temporariamente errado.
+  const quotaRealAtualPorFracao = useMemo(() => {
+    const mapa: Record<string, number> = {};
+    const maisRecenteTs: Record<string, number> = {};
+    predioAvisos.forEach(a => {
+      if (String(a.tipo || "").includes("Extraordinária")) return;
+      const desc = String(a.descricao || "");
+      if (desc.includes("paga adiantadamente") || desc.startsWith("Diferença de Quota")) return;
+      if (/administra[cç][aã]o anterior/i.test(desc) && !/liquidad/i.test(desc)) return;
+      const d = new Date(a.vencimento || a.data);
+      if (isNaN(d.getTime())) return;
+      const existente = maisRecenteTs[a.id_fracao];
+      if (existente === undefined || d.getTime() > existente) {
+        maisRecenteTs[a.id_fracao] = d.getTime();
+        mapa[a.id_fracao] = Number(a.valor || 0);
+      }
+    });
+    return mapa;
+  }, [predioAvisos]);
+
+  const quotaCalculadaRevisao = (f: Fracao) => {
+    const real = quotaRealAtualPorFracao[f.id_fracao];
+    if (real !== undefined) return Math.round(real * 100) / 100;
+    return Math.round(calcularQuotaOrdinaria(f) * 100) / 100;
+  };
   const quotaFinalRevisao = (f: Fracao) => {
     const override = overridesQuotaFracao[f.id_fracao];
     if (override !== undefined && override.trim() !== "") {
