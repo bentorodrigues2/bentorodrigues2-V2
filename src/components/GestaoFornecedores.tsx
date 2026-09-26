@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Download, Save, FileText, Trash2, CheckCircle2, AlertTriangle, Pencil, X } from "lucide-react";
+import { Download, Save, FileText, Trash2, CheckCircle2, AlertTriangle, Pencil, X, Clock } from "lucide-react";
 import { Predio, Fornecedor, DividaFornecedor, PagamentoDivida, LoggedUser, Conta, Movimento, Documento } from "../types";
 import { exportToXLS, generateSupplierPwaManualPDF, gerarPdfRegistoFornecedorHomologado, gerarCartaoAniversarioCondominoPDF, parseValorMonetario } from "../utils";
 import {
@@ -214,6 +214,9 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
   const [dividaDataEmissao, setDividaDataEmissao] = useState(() => new Date().toISOString().split("T")[0]);
   const [dividaDataVencimento, setDividaDataVencimento] = useState("");
   const [editingDividaId, setEditingDividaId] = useState<string | null>(null);
+  const [dividaDocumentoFile, setDividaDocumentoFile] = useState<File | null>(null);
+  const [dividaDocumentoAnexoExistente, setDividaDocumentoAnexoExistente] = useState<string | undefined>(undefined);
+  const [aAnexarDocumentoDivida, setAAnexarDocumentoDivida] = useState(false);
 
   const handleEditarDivida = (d: DividaFornecedor) => {
     setEditingDividaId(d.id_divida);
@@ -224,12 +227,15 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     setDividaValor(String(d.valor));
     setDividaDataEmissao(d.data_emissao || "");
     setDividaDataVencimento(d.data_vencimento || "");
+    setDividaDocumentoFile(null);
+    setDividaDocumentoAnexoExistente(d.documento_anexo);
     document.getElementById("form-lancar-divida")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const handleCancelarEdicaoDivida = () => {
     setEditingDividaId(null);
     setDividaFornecedorId(""); setDividaFornecedorNome(""); setDividaDescricao(""); setDividaCategoria(""); setDividaValor(""); setDividaDataVencimento(""); setDividaDataEmissao(new Date().toISOString().split("T")[0]);
+    setDividaDocumentoFile(null); setDividaDocumentoAnexoExistente(undefined);
   };
 
   // Pagamento de dívida (em tranches — ver handleRegistarPagamentoTranche)
@@ -264,6 +270,49 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     if (dividaOriginal && novoValor < (dividaOriginal.valor_pago || 0)) {
       return alert(`Já foram pagos ${(dividaOriginal.valor_pago || 0).toFixed(2)} € desta dívida — o novo valor não pode ficar abaixo do que já foi pago.`);
     }
+    // Anexa a fatura/comprovativo da dívida ao Storage e arquiva também uma
+    // cópia em Arquivo → Fornecedores — antes o campo documento_anexo
+    // existia na base de dados mas nunca havia nenhum campo de ficheiro no
+    // formulário para o preencher, por isso ficava sempre vazio.
+    let documentoAnexoUrl = dividaDocumentoAnexoExistente;
+    if (dividaDocumentoFile) {
+      setAAnexarDocumentoDivida(true);
+      try {
+        const ano = new Date().getFullYear().toString();
+        const caminhoStorage = `${ano}/Fornecedores/${predio.id_predio}/dividas/${Date.now()}-${dividaDocumentoFile.name}`;
+        const urlReal = await uploadDocumentoToStorage(dividaDocumentoFile, caminhoStorage);
+        if (!urlReal) {
+          setAAnexarDocumentoDivida(false);
+          return alert("❌ Não foi possível enviar o documento anexo. Tente novamente.");
+        }
+        documentoAnexoUrl = urlReal;
+        const novoDoc: Documento = {
+          id_doc: "doc-divida-" + Date.now(),
+          id_predio: predio.id_predio,
+          nome: `Fatura — ${dividaFornecedorNome.trim()} (${dividaDescricao.trim()})`,
+          tipo: dividaDocumentoFile.type.includes("pdf") ? "PDF" : "Imagem",
+          data_upload: new Date().toISOString().split("T")[0],
+          tamanho: `${(dividaDocumentoFile.size / 1024).toFixed(0)} KB`,
+          categoria: "Fornecedores",
+          descricao: `Fatura/comprovativo da dívida a ${dividaFornecedorNome.trim()} — ${dividaDescricao.trim()}`,
+          visibilidade: "Administração",
+          autor: loggedUser.nome,
+          tema: "Fornecedores",
+          ano,
+          sub_pasta: dividaFornecedorNome.trim(),
+          fornecedor: dividaFornecedorNome.trim(),
+          caminho: urlReal,
+          arquivado: true,
+          data_arquivamento: new Date().toISOString().split("T")[0],
+          tipo_arquivo: "documento",
+          relevancia_perfis: ["ADMIN", "EMPRESA_GESTORA", "CONTABILISTA"]
+        } as Documento;
+        await saveDocumentoToSupabase(novoDoc);
+      } finally {
+        setAAnexarDocumentoDivida(false);
+      }
+    }
+
     const dividaAtualizada: DividaFornecedor = {
       id_divida: isEditing && dividaOriginal ? dividaOriginal.id_divida : "div-" + Date.now(),
       id_predio: predio.id_predio,
@@ -279,7 +328,8 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       valor_pago: dividaOriginal?.valor_pago || 0,
       data_pagamento: dividaOriginal?.data_pagamento,
       id_conta_pagamento: dividaOriginal?.id_conta_pagamento,
-      id_movimento_pagamento: dividaOriginal?.id_movimento_pagamento
+      id_movimento_pagamento: dividaOriginal?.id_movimento_pagamento,
+      documento_anexo: documentoAnexoUrl
     };
     const ok = await saveDividaFornecedorToSupabase(dividaAtualizada);
     if (!ok) return alert("❌ Não foi possível gravar a dívida no Supabase. Tente novamente.");
@@ -295,6 +345,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     setDividas(prev => [dividaAtualizada, ...prev]);
     registarLogAuditoria("Financeira", "Lançou uma dívida a fornecedor", predio.id_predio, loggedUser, `${dividaAtualizada.fornecedor_nome} — ${dividaAtualizada.descricao} (${dividaAtualizada.valor.toFixed(2)} €)`);
     setDividaFornecedorId(""); setDividaFornecedorNome(""); setDividaDescricao(""); setDividaCategoria(""); setDividaValor(""); setDividaDataVencimento("");
+    setDividaDocumentoFile(null); setDividaDocumentoAnexoExistente(undefined);
     alert("Dívida lançada com sucesso! Já entra no cálculo do saldo líquido do prédio.");
   };
 
@@ -2062,9 +2113,27 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                 </div>
               </div>
 
-              <button type="submit" className="bg-amber-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-amber-700 transition-colors cursor-pointer flex items-center space-x-1.5 shadow-xs">
-                {editingDividaId ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
-                <span>{editingDividaId ? "Guardar Alterações" : "Lançar Dívida"}</span>
+              <div className="flex flex-col">
+                <label className="text-xs font-semibold text-slate-500 mb-1">Anexar Fatura / Comprovativo (PDF ou imagem)</label>
+                <input
+                  type="file"
+                  accept=".pdf,image/*"
+                  onChange={e => setDividaDocumentoFile(e.target.files?.[0] || null)}
+                  className="border border-slate-200 px-3 py-2 text-xs rounded-lg focus:outline-emerald-500 bg-white cursor-pointer"
+                />
+                {dividaDocumentoFile && (
+                  <span className="text-[10px] text-emerald-700 mt-1"><i className="fa-solid fa-paperclip"></i> {dividaDocumentoFile.name}</span>
+                )}
+                {!dividaDocumentoFile && dividaDocumentoAnexoExistente && (
+                  <a href={dividaDocumentoAnexoExistente} target="_blank" rel="noreferrer" className="text-[10px] text-indigo-600 hover:underline mt-1">
+                    <i className="fa-solid fa-paperclip"></i> Ver documento já anexado
+                  </a>
+                )}
+              </div>
+
+              <button type="submit" disabled={aAnexarDocumentoDivida} className="bg-amber-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-amber-700 transition-colors cursor-pointer flex items-center space-x-1.5 shadow-xs disabled:opacity-60 disabled:cursor-wait">
+                {aAnexarDocumentoDivida ? <Clock className="w-3.5 h-3.5 animate-spin" /> : editingDividaId ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
+                <span>{aAnexarDocumentoDivida ? "A anexar documento..." : editingDividaId ? "Guardar Alterações" : "Lançar Dívida"}</span>
               </button>
             </form>
           )}
@@ -2093,7 +2162,14 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                   <React.Fragment key={d.id_divida}>
                     <tr className="border-b border-slate-100 hover:bg-slate-50/50">
                       <td className="p-3 font-semibold text-slate-700">{d.fornecedor_nome}</td>
-                      <td className="p-3 text-slate-600">{d.descricao}{d.categoria ? ` (${d.categoria})` : ""}</td>
+                      <td className="p-3 text-slate-600">
+                        {d.descricao}{d.categoria ? ` (${d.categoria})` : ""}
+                        {d.documento_anexo && (
+                          <a href={d.documento_anexo} target="_blank" rel="noreferrer" title="Ver fatura/comprovativo anexado" className="ml-1.5 text-indigo-500 hover:text-indigo-700">
+                            <i className="fa-solid fa-paperclip"></i>
+                          </a>
+                        )}
+                      </td>
                       <td className="p-3 text-slate-500 font-mono">{d.data_vencimento || "—"}</td>
                       <td className="p-3 text-right font-mono">
                         <span className="font-bold text-slate-800">{d.valor.toFixed(2)} €</span>
