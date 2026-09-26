@@ -405,10 +405,24 @@ export default function PWACondominoView({
   // Notificações push reais — a subscrição fica gravada no Supabase e passa
   // a receber os envios reais disparados em Gestão de Comunicações (novo
   // comunicado, sondagem ou questionário).
-  const [pushAtivo, setPushAtivo] = useState(
-    typeof Notification !== "undefined" && Notification.permission === "granted"
-  );
+  //
+  // O estado inicial estava a confundir "o browser já concedeu permissão de
+  // notificações a este site nalgum momento" (Notification.permission）com
+  // "este dispositivo tem mesmo uma subscrição push ativa e gravada" — a
+  // permissão granted não implica nenhuma subscrição real. Isto fazia o
+  // botão nascer já como "✓ Ativado" e desativado (disabled={pushAtivo}) em
+  // qualquer telemóvel que já tivesse aceitado notificações por qualquer
+  // outro motivo, sem nunca ter criado nem gravado uma subscrição — ficando
+  // impossível carregar no botão para ativar de verdade.
+  const [pushAtivo, setPushAtivo] = useState(false);
   const [ativandoPush, setAtivandoPush] = useState(false);
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .then((sub) => setPushAtivo(!!sub))
+      .catch(() => {});
+  }, []);
 
   // Preferências de notificação por categoria — reais, gravadas em
   // profiles.notificacoes_preferencias (sincronizam entre dispositivos).
@@ -4605,25 +4619,32 @@ export default function PWACondominoView({
           </div>
         )}
 
-      {/* --- DRAGGABLE FLOATING CONTACT BUTTON (FAB) --- */}
-      {/* Equivalente ao FAB deslocável do PortalCondomino.tsx (versão browser) —
-          antes só existia lá, faltava aqui na PWA. Navega para o separador
-          "Mensagens" em vez de abrir um modal próprio, reaproveitando o chat
-          já existente no Módulo 8 desta mesma vista. */}
+      {/* --- FLOATING CONTACT BUTTON (FAB) --- */}
+      {/* Equivalente ao FAB do PortalCondomino.tsx (versão browser) — antes só
+          existia lá, faltava aqui na PWA. Navega para o separador "Mensagens"
+          em vez de abrir um modal próprio, reaproveitando o chat já existente
+          no Módulo 8 desta mesma vista. */}
       {/* Antes só aparecia para USER/INQUILINO/COPROPRIETARIO — um
           administrador que é também condómino (como o proprietário desta
           conta) nunca via o botão ao testar/usar a PWA como ele próprio. */}
-      {loggedUser.role !== undefined && activeTab !== "mensagens" && (
-        <motion.div
-          drag
-          dragMomentum={false}
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.95 }}
+      {/* Causa do ecrã a ficar negro ao tocar: o botão tinha `drag` do
+          framer-motion e o seu próprio onClick mudava activeTab, o que
+          desmontava este mesmo elemento (estava condicionado a
+          activeTab !== "mensagens") a meio do próprio gesto de toque —
+          o framer-motion tentava medir/atualizar um nó DOM já removido e
+          rebentava. Deixa de ser arrastável (não precisa de ser) e nunca
+          mais desmonta a meio de um clique: fica sempre montado, só se
+          esconde com CSS quando se está em Mensagens. */}
+      {loggedUser.role !== undefined && (
+        <button
+          type="button"
           onClick={() => setActiveTab("mensagens")}
-          className="fixed bottom-20 right-4 z-40 cursor-grab active:cursor-grabbing select-none"
-          title="Contactar Administração (Deslocável)"
+          className={`fixed bottom-20 right-4 z-40 select-none transition-opacity ${
+            activeTab === "mensagens" ? "opacity-0 pointer-events-none" : "opacity-100"
+          }`}
+          title="Contactar Administração"
         >
-          <div className="relative w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xl flex items-center justify-center border-2 border-white dark:border-slate-900 ring-4 ring-emerald-600/20 transition-colors">
+          <div className="relative w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white shadow-2xl flex items-center justify-center border-2 border-white dark:border-slate-900 ring-4 ring-emerald-600/20 transition-all cursor-pointer">
             <img
               src="/modulos/75-mensagem.png"
               alt="Mensagens"
@@ -4635,7 +4656,7 @@ export default function PWACondominoView({
               </span>
             )}
           </div>
-        </motion.div>
+        </button>
       )}
 
       {/* PWA NATIVE BOTTOM NAVIGATION BAR (Specially customized for 5 key views with CondoManager AI colors) —
