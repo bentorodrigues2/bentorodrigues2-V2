@@ -2351,7 +2351,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                     </thead>
                     <tbody>
                       {rubricas.map((rub) => (
-                        <tr key={rub.id} className="border-b border-slate-150/50 hover:bg-white/60 transition-colors">
+                        <tr key={rub.id} className="border-b border-slate-100/50 hover:bg-white/60 transition-colors">
                           <td className="p-3 pl-4 font-semibold text-slate-700">{rub.nome}</td>
                           <td className="p-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
@@ -2971,7 +2971,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                                 </div>
                                 <div className="flex gap-1.5 flex-wrap pt-2.5 border-t border-slate-800">
                                   {((activeTrigger.previewContent as any).extractedData.tags as string[]).map((tag, i) => (
-                                    <span key={i} className="text-[9px] bg-slate-850 text-slate-300 px-2 py-0.5 rounded-full font-bold">#{tag}</span>
+                                    <span key={i} className="text-[9px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-bold">#{tag}</span>
                                   ))}
                                 </div>
                               </div>
@@ -3086,7 +3086,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                                     </div>
                                   ))}
                                 </div>
-                                <div className="p-2.5 bg-slate-900 rounded-lg text-[10px] text-slate-400 italic font-sans max-h-24 overflow-y-auto border border-slate-850">
+                                <div className="p-2.5 bg-slate-900 rounded-lg text-[10px] text-slate-400 italic font-sans max-h-24 overflow-y-auto border border-slate-800">
                                   <strong>Minuta de email gerada:</strong> "{(activeTrigger.previewContent as any).minuta}"
                                 </div>
                               </div>
@@ -3239,7 +3239,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
 
                           <div className="bg-slate-900/60 border border-slate-700 p-4 rounded-xl space-y-2">
                             <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Exemplo Prático (Documento FG)</span>
-                            <div className="p-2.5 bg-slate-950 rounded text-xs italic text-slate-300 font-sans border border-slate-850">
+                            <div className="p-2.5 bg-slate-950 rounded text-xs italic text-slate-300 font-sans border border-slate-800">
                               "{activeTable.example}"
                             </div>
                           </div>
@@ -3256,7 +3256,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                     Grafo de Relacionamentos do CondoManager ERP (1:N & 1:1)
                   </span>
 
-                  <div className="p-6 bg-slate-950 rounded-xl border border-slate-850/80 grid grid-cols-1 md:grid-cols-3 gap-6 text-center text-xs relative overflow-hidden">
+                  <div className="p-6 bg-slate-950 rounded-xl border border-slate-800/80 grid grid-cols-1 md:grid-cols-3 gap-6 text-center text-xs relative overflow-hidden">
                     {/* Columns representing Entity Blocks and relational paths */}
                     <div className="space-y-3 bg-slate-900/40 p-3 rounded-lg border border-slate-800">
                       <span className="text-[9px] font-black uppercase text-violet-400 block">Dimensões Centrais</span>
@@ -3273,7 +3273,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
 
                     <div className="space-y-3 bg-slate-900/40 p-3 rounded-lg border border-slate-800 flex flex-col justify-center">
                       <span className="text-[9px] font-black uppercase text-violet-400 block">Chaves de Ligação (FK)</span>
-                      <div className="py-2.5 px-3 bg-slate-950 rounded-lg font-mono text-[10px] text-slate-400 border border-slate-850 space-y-2 leading-relaxed">
+                      <div className="py-2.5 px-3 bg-slate-950 rounded-lg font-mono text-[10px] text-slate-400 border border-slate-800 space-y-2 leading-relaxed">
                         <div>id_predio <i className="fa-solid fa-arrows-left-right text-violet-500 mx-1"></i> FK Geral</div>
                         <div>id_condomino <i className="fa-solid fa-arrows-left-right text-violet-500 mx-1"></i> FK Responsável</div>
                         <div>id_documento <i className="fa-solid fa-arrows-left-right text-violet-500 mx-1"></i> FK Anexo</div>
@@ -3321,11 +3321,11 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                   <div className="space-y-2">
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-white">Aberta</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Reportada pelo morador na PWA</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Reportada pelo morador na PWA</p>
                     </div>
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-amber-400">Em Curso</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Técnico acionado / no local</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Técnico acionado / no local</p>
                     </div>
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-violet-400">Aguardando Fornecedor</span>
@@ -3333,11 +3333,11 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                     </div>
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-sky-400">Aguardando Validação</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Reparação feita, sob vistoria</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Reparação feita, sob vistoria</p>
                     </div>
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-emerald-400">Concluída</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Intervenção fechada e faturada</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Intervenção fechada e faturada</p>
                     </div>
                   </div>
                 </div>
@@ -3354,11 +3354,11 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                   <div className="space-y-2">
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-slate-400">Pendente</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Serviço semanal em escala</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Serviço semanal em escala</p>
                     </div>
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-emerald-400">Concluída</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Registada pelo operador com fotos</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Registada pelo operador com fotos</p>
                     </div>
                   </div>
                 </div>
@@ -3375,15 +3375,15 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                   <div className="space-y-2">
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-amber-500">Pendente</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Gerado pelo ERP / Sem comprovativo</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Gerado pelo ERP / Sem comprovativo</p>
                     </div>
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-violet-400">Validado</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Aprovado por OCR ou reconciliação</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Aprovado por OCR ou reconciliação</p>
                     </div>
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-emerald-400">Pago</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Transação liquidada com recibo</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Transação liquidada com recibo</p>
                     </div>
                   </div>
                 </div>
@@ -3400,15 +3400,15 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                   <div className="space-y-2">
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-red-400">Novo</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Submetido no ERP mas sem indexação</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Submetido no ERP mas sem indexação</p>
                     </div>
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-violet-400">Classificado</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Leitura efetuada e tags aplicadas</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Leitura efetuada e tags aplicadas</p>
                     </div>
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-emerald-400">Arquivado</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Pasta criada e arquivado em árvore</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Pasta criada e arquivado em árvore</p>
                     </div>
                   </div>
                 </div>
@@ -3425,15 +3425,15 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                   <div className="space-y-2">
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-slate-500">Enviada</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Disparada por canais automáticos</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Disparada por canais automáticos</p>
                     </div>
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-sky-400">Entregue</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Confirmada no telemóvel do morador</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Confirmada no telemóvel do morador</p>
                     </div>
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-emerald-400">Lida</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Aberta e consultada na PWA</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Aberta e consultada na PWA</p>
                     </div>
                   </div>
                 </div>
@@ -3450,19 +3450,19 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                   <div className="space-y-2">
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-slate-400">Planeada</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Em estudo técnico / rateio financeiro</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Em estudo técnico / rateio financeiro</p>
                     </div>
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-violet-400">Adjudicada</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Empreiteiro selecionado e adjudicado</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Empreiteiro selecionado e adjudicado</p>
                     </div>
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-amber-500">Em Curso</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Trabalhos físicos ativos no local</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Trabalhos físicos ativos no local</p>
                     </div>
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
                       <span className="text-xs font-mono font-bold text-emerald-400">Concluída</span>
-                      <p className="text-[10px] text-slate-450 font-medium">Obra encerrada e vistoriada</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Obra encerrada e vistoriada</p>
                     </div>
                   </div>
                 </div>
@@ -3623,7 +3623,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                       </thead>
                       <tbody>
                         {rubricas.map((rub, i) => (
-                          <tr key={rub.id} className="border-b border-slate-150">
+                          <tr key={rub.id} className="border-b border-slate-100">
                             <td className="p-3 pl-4 font-semibold text-slate-700">
                               {i+1}. {rub.nome}
                             </td>
@@ -3684,7 +3684,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                     </div>
                   </div>
 
-                  <p className="text-[10px] text-slate-500 italic bg-slate-50 p-3 rounded-lg border border-slate-150 leading-relaxed">
+                  <p className="text-[10px] text-slate-500 italic bg-slate-50 p-3 rounded-lg border border-slate-100 leading-relaxed">
                     <strong>Nota IA explicativa de quotas:</strong> {budgetResult.explicacao_quotas}
                   </p>
                 </div>

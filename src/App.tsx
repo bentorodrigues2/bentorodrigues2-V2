@@ -504,7 +504,7 @@ export default function App() {
         if (type === "bg") return "bg-indigo-600";
         if (type === "text") return "text-indigo-400";
         if (type === "border") return "border-indigo-600";
-        if (type === "hoverBg") return "hover:bg-indigo-850";
+        if (type === "hoverBg") return "hover:bg-indigo-800";
         if (type === "hoverText") return "hover:text-indigo-400";
         if (type === "bgLight") return "bg-indigo-500/10";
         return "indigo";
@@ -528,7 +528,7 @@ export default function App() {
         if (type === "bg") return "bg-teal-600";
         if (type === "text") return "text-teal-400";
         if (type === "border") return "border-teal-600";
-        if (type === "hoverBg") return "hover:bg-teal-850";
+        if (type === "hoverBg") return "hover:bg-teal-800";
         if (type === "hoverText") return "hover:text-teal-400";
         if (type === "bgLight") return "bg-teal-500/10";
         return "teal";

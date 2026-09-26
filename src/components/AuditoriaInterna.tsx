@@ -1065,7 +1065,7 @@ export function AuditoriaInterna({
                       {(isExpired || !hasApolice) && (
                         <button
                           onClick={() => handleSolicitarApolice(f)}
-                          className="mt-1.5 w-full py-1 text-[10px] font-bold text-center bg-indigo-50 hover:bg-indigo-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-indigo-600 dark:text-indigo-400 rounded border border-indigo-100 dark:border-slate-700 transition-all cursor-pointer"
+                          className="mt-1.5 w-full py-1 text-[10px] font-bold text-center bg-indigo-50 hover:bg-indigo-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-indigo-600 dark:text-indigo-400 rounded border border-indigo-100 dark:border-slate-700 transition-all cursor-pointer"
                         >
                           <i className="fa-solid fa-envelope mr-1"></i> Solicitar Apólice
                         </button>
@@ -1159,7 +1159,7 @@ export function AuditoriaInterna({
             <div className="pt-2 flex justify-end">
               <button 
                 onClick={() => setSelectedLog(null)}
-                className="px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-850 dark:bg-slate-800 dark:hover:bg-slate-750 text-white rounded-lg cursor-pointer"
+                className="px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-lg cursor-pointer"
               >
                 Fechar Ficha
               </button>

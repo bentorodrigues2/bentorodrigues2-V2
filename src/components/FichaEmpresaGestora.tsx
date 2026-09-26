@@ -461,7 +461,7 @@ export function FichaEmpresaGestora({
 
       {/* GLOBAL SUMMARY CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-        <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 p-5 rounded-2xl shadow-sm flex items-center space-x-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-5 rounded-2xl shadow-sm flex items-center space-x-4">
           <div className="h-12 w-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
             <Building2 className="h-6 w-6" />
           </div>
@@ -471,7 +471,7 @@ export function FichaEmpresaGestora({
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 p-5 rounded-2xl shadow-sm flex items-center space-x-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-5 rounded-2xl shadow-sm flex items-center space-x-4">
           <div className="h-12 w-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
             <Users className="h-6 w-6" />
           </div>
@@ -481,7 +481,7 @@ export function FichaEmpresaGestora({
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 p-5 rounded-2xl shadow-sm flex items-center space-x-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-5 rounded-2xl shadow-sm flex items-center space-x-4">
           <div className="h-12 w-12 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
             <DollarSign className="h-6 w-6" />
           </div>
@@ -491,7 +491,7 @@ export function FichaEmpresaGestora({
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 p-5 rounded-2xl shadow-sm flex items-center space-x-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-5 rounded-2xl shadow-sm flex items-center space-x-4">
           <div className="h-12 w-12 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
             <ShieldAlert className="h-6 w-6" />
           </div>
@@ -755,7 +755,7 @@ export function FichaEmpresaGestora({
                     const prediosAssociados = predios.filter(p => gestor.predios_atribuidos.includes(p.id_predio));
 
                     return (
-                      <tr key={gestor.id_gestor} className="hover:bg-slate-50/80 dark:hover:bg-slate-850/50 transition-colors">
+                      <tr key={gestor.id_gestor} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
                         {/* Nome & Foto */}
                         <td className="py-3.5 px-4 font-bold text-slate-800 dark:text-white">
                           <div className="flex items-center space-x-3">
@@ -895,7 +895,7 @@ export function FichaEmpresaGestora({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* EDIT PROFILE & WHITE LABEL BRANDING */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 p-6 rounded-2xl shadow-sm lg:col-span-2 space-y-5">
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-6 rounded-2xl shadow-sm lg:col-span-2 space-y-5">
           <div className="border-b border-slate-100 dark:border-slate-800/60 pb-3">
             <h3 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider flex items-center">
               <Palette className="h-4.5 w-4.5 mr-2 text-amber-500" /> Branding & Identidade Visual (White-Label)
@@ -915,7 +915,7 @@ export function FichaEmpresaGestora({
               }`}
             >
               <span className="text-[10px] font-bold text-slate-400 block uppercase">Logótipo da Empresa</span>
-              <div className="h-24 w-24 rounded-2xl mx-auto overflow-hidden shadow-sm flex items-center justify-center border bg-white dark:bg-slate-900 border-slate-150 dark:border-slate-800">
+              <div className="h-24 w-24 rounded-2xl mx-auto overflow-hidden shadow-sm flex items-center justify-center border bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800">
                 <img src={gestoraLogo} alt="Gestora Logo" className="object-contain h-full w-full max-h-full max-w-full p-1" referrerPolicy="no-referrer" />
               </div>
               
@@ -989,7 +989,7 @@ export function FichaEmpresaGestora({
           </div>
 
           {/* Color theme chooser (white label live colors) */}
-          <div className="border-t border-slate-100 dark:border-slate-850 pt-4 space-y-3">
+          <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-3">
             <span className="text-[10px] font-bold text-slate-400 block uppercase">Esquema de Cores do Portal de Marca (Branding)</span>
             <div className="flex flex-wrap gap-3">
               {brandingColors.map((color) => (
@@ -1008,7 +1008,7 @@ export function FichaEmpresaGestora({
         </div>
 
         {/* EVOLUÇÃO GRÁFICA DO PORTFOLIO */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 p-5 rounded-2xl shadow-sm space-y-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-5 rounded-2xl shadow-sm space-y-4">
           <div className="border-b border-slate-100 dark:border-slate-800/60 pb-3">
             <h3 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider flex items-center">
               <Briefcase className="h-4.5 w-4.5 mr-2 text-emerald-500" /> Segmentação de Portfólio

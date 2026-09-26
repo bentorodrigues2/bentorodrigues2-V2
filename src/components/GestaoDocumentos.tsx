@@ -2734,7 +2734,7 @@ export function GestaoDocumentos({
           {docsFiltrados.map(foto => (
             <div
               key={foto.id_doc}
-              className="bg-emerald-800 hover:bg-emerald-850 border border-emerald-700 hover:border-emerald-400 rounded-2xl overflow-hidden shadow-xl flex flex-col group transition-all text-white"
+              className="bg-emerald-800 hover:bg-emerald-800 border border-emerald-700 hover:border-emerald-400 rounded-2xl overflow-hidden shadow-xl flex flex-col group transition-all text-white"
             >
               {/* Imagem / Preview com Botão Zoom */}
               <div className="relative h-40 bg-emerald-950 overflow-hidden cursor-pointer" onClick={() => setActivePhotoModal(foto)}>

@@ -377,7 +377,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                       </span>
                     </div>
                     <h5 className="text-xs font-bold text-slate-800">{c.nome}</h5>
-                    <p className="text-[10px] text-slate-450 leading-relaxed">{c.descricao}</p>
+                    <p className="text-[10px] text-slate-400 leading-relaxed">{c.descricao}</p>
                   </div>
                 </div>
               ))}
@@ -492,10 +492,10 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
               </h4>
               <div className="space-y-2">
                 {movimentosReconciliacao.map(m => (
-                  <div key={m.id_mov} className="p-3 bg-slate-50 rounded-xl border border-slate-150 flex items-center justify-between">
+                  <div key={m.id_mov} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
                     <div>
                       <span className="text-[9px] text-slate-400 block font-mono">{m.data}</span>
-                      <span className="text-[11px] font-black text-slate-750 block">{m.descricao}</span>
+                      <span className="text-[11px] font-black text-slate-700 block">{m.descricao}</span>
                       <span className="text-[9px] text-slate-500 block">Sugerido para: {m.categoria}</span>
                     </div>
                     <div className="text-right">
@@ -521,7 +521,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
               </h4>
               <div className="space-y-2">
                 {comprovativosPendentes.map(doc => (
-                  <div key={doc.id_comprovativo} className="p-3 bg-slate-50 rounded-xl border border-slate-150 flex items-center justify-between">
+                  <div key={doc.id_comprovativo} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
                     <div>
                       <span className="text-[10px] font-bold text-slate-700 flex items-center">
                         <i className="fa-solid fa-file-pdf text-rose-600 mr-1.5 text-xs"></i>
@@ -588,7 +588,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                   <div className="font-mono text-xs font-extrabold text-indigo-700 bg-white border border-indigo-100 px-3 py-1.5 rounded-lg inline-block mt-2">
                     Conta {sugestaoConta.codigo} — {sugestaoConta.nome} ({sugestaoConta.tipo})
                   </div>
-                  <p className="text-[9px] text-slate-450 mt-1 leading-normal">
+                  <p className="text-[9px] text-slate-400 mt-1 leading-normal">
                     * Baseado em regras semânticas de relevância linguística (Regra SNB para faturas de serviços recorrentes).
                   </p>
                 </div>

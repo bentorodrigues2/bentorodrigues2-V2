@@ -773,7 +773,7 @@ export function PortalOrcamentos({
                   className={`p-3.5 rounded-lg border text-xs transition-all cursor-pointer ${
                     selectedRfpForAnalysis === r.id_rfp
                       ? "border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20"
-                      : "border-slate-150 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-900/40"
+                      : "border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-900/40"
                   }`}
                 >
                   <div className="flex justify-between items-start gap-2">
@@ -1102,8 +1102,8 @@ export function PortalOrcamentos({
                         className={`border rounded-xl p-4 space-y-3 ${
                           estadoProp === "Aprovada" ? "border-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/10" :
                           estadoProp === "Rejeitada" ? "border-red-200 bg-red-50/30 dark:bg-red-950/10 opacity-75" :
-                          estadoProp === "Não Selecionada" ? "border-slate-150 dark:border-slate-800 opacity-60" :
-                          "border-slate-150 dark:border-slate-800 hover:border-emerald-400/50 bg-slate-50/40 dark:bg-slate-900/10"
+                          estadoProp === "Não Selecionada" ? "border-slate-100 dark:border-slate-800 opacity-60" :
+                          "border-slate-100 dark:border-slate-800 hover:border-emerald-400/50 bg-slate-50/40 dark:bg-slate-900/10"
                         }`}
                       >
                         <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-2.5">
@@ -1138,7 +1138,7 @@ export function PortalOrcamentos({
 
                         <div className="grid grid-cols-2 gap-4 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
                           <p>{prop.descricao_tecnica}</p>
-                          <div className="space-y-1.5 bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-150 dark:border-slate-800/80 font-mono-custom text-[10px]">
+                          <div className="space-y-1.5 bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800/80 font-mono-custom text-[10px]">
                             <p>Prazo de Execução: <strong className="text-slate-800 dark:text-slate-300">{prop.prazo_dias} dias</strong></p>
                             <p>Garantia da Obra: <strong className="text-slate-800 dark:text-slate-300">{prop.garantia_anos} anos</strong></p>
                             <div className="pt-1">
@@ -1333,7 +1333,7 @@ export function PortalOrcamentos({
                                     const custoPorFracao = (prop.valor * (f.permilagem || 0)) / 1000;
                                     const valorPrestacao = custoPorFracao / mesesFracionamentoEscolhido;
                                     return (
-                                      <div key={f.id_fracao} className="p-1.5 bg-slate-50 dark:bg-slate-950 rounded border border-slate-150 dark:border-slate-800 text-[9px]">
+                                      <div key={f.id_fracao} className="p-1.5 bg-slate-50 dark:bg-slate-950 rounded border border-slate-100 dark:border-slate-800 text-[9px]">
                                         <span className="font-bold text-slate-600 dark:text-slate-400 block">{f.fracao_nome}</span>
                                         <span className="font-mono-custom block text-slate-500">Total: {custoPorFracao.toFixed(2)}€</span>
                                         <span className="font-mono-custom font-bold text-emerald-600">
@@ -1395,10 +1395,10 @@ export function PortalOrcamentos({
                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center">
                       <Table size={13} className="mr-1 text-slate-400" /> Matriz Comparativa de Critérios
                     </h4>
-                    <div className="border border-slate-150 dark:border-slate-800 rounded-lg overflow-hidden text-xs">
+                    <div className="border border-slate-100 dark:border-slate-800 rounded-lg overflow-hidden text-xs">
                       <table className="w-full text-left border-collapse bg-white dark:bg-[#0f172a]">
                         <thead>
-                          <tr className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-150 dark:border-slate-800 text-slate-500">
+                          <tr className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-100 dark:border-slate-800 text-slate-500">
                             <th className="p-2.5">Critério Comparativo</th>
                             <th className="p-2.5">
                               {activeRfpProposals[0]?.nome_empresa || "Fornecedor A"}
@@ -1434,7 +1434,7 @@ export function PortalOrcamentos({
                       return (
                         <div
                           key={idx}
-                          className="bg-white dark:bg-[#0f172a] border border-slate-150 dark:border-slate-800 rounded-xl p-4 space-y-3"
+                          className="bg-white dark:bg-[#0f172a] border border-slate-100 dark:border-slate-800 rounded-xl p-4 space-y-3"
                         >
                           <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
                             <span className="font-bold text-xs text-slate-800 dark:text-white truncate max-w-[140px]">{supplierName}</span>

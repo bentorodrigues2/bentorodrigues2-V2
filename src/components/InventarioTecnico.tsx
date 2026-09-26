@@ -322,10 +322,10 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
             
             <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
               {equipamentos.map(e => (
-                <div key={e.id} className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-150 dark:border-slate-850 flex flex-col sm:flex-row justify-between sm:items-center gap-3 hover:border-slate-350 transition-colors">
+                <div key={e.id} className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between sm:items-center gap-3 hover:border-slate-300 transition-colors">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[9px] bg-slate-200 dark:bg-slate-850 px-2 rounded font-mono font-bold">ID: {e.id}</span>
+                      <span className="text-[9px] bg-slate-200 dark:bg-slate-800 px-2 rounded font-mono font-bold">ID: {e.id}</span>
                       <span className="text-[10px] bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 px-2 rounded font-bold font-mono">{e.categoria}</span>
                       <span className={`text-[9px] px-2 rounded font-bold uppercase ${
                         e.estado === "Excelente" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-400" :

@@ -168,14 +168,14 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
           <div className="space-y-3">
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Tipo de Prestação de Contas</label>
-              <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-150">
+              <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-100">
                 {(["mensal", "trimestral", "anual"] as const).map(t => (
                   <button
                     key={t}
                     type="button"
                     onClick={() => setTipoRelatorio(t)}
                     className={`py-1.5 text-[10px] font-bold rounded-lg border-none capitalize transition-all cursor-pointer ${
-                      tipoRelatorio === t ? "bg-blue-600 text-white shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-850"
+                      tipoRelatorio === t ? "bg-blue-600 text-white shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-800"
                     }`}
                   >
                     {t}
@@ -228,7 +228,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
               </select>
             </div>
 
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-150 text-[10px] text-slate-500 leading-relaxed space-y-1">
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-[10px] text-slate-500 leading-relaxed space-y-1">
               <div className="flex items-center text-slate-700 font-bold uppercase tracking-wide text-[9px] mb-1">
                 <i className="fa-solid fa-gears mr-1.5 text-blue-500"></i>Configurações de Automatização
               </div>
@@ -260,8 +260,8 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
             <div className="bg-slate-50 p-12 rounded-2xl border border-dashed border-slate-200 text-center flex flex-col items-center justify-center space-y-3">
               <div className="text-slate-300 text-3xl"><i className="fa-solid fa-file-contract"></i></div>
               <div className="max-w-md">
-                <h4 className="text-xs font-bold text-slate-750">Nenhum relatório compilado no momento</h4>
-                <p className="text-[11px] text-slate-450 mt-1 leading-relaxed">
+                <h4 className="text-xs font-bold text-slate-700">Nenhum relatório compilado no momento</h4>
+                <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
                   Defina o tipo, o mês ou trimestre pretendido no painel esquerdo e clique em "Compilar" para gerar um balanço contábil completo com anotações estatísticas e anexos reconciliados automaticamente.
                 </p>
               </div>
@@ -297,7 +297,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                     </span>
                   </div>
                   <h3 className="text-base font-extrabold text-slate-800 mt-2">{compiledReport.titulo}</h3>
-                  <p className="text-[11px] text-slate-450 mt-1 flex items-center">
+                  <p className="text-[11px] text-slate-400 mt-1 flex items-center">
                     <i className="fa-solid fa-building mr-1.5"></i>Condomínio: {predio?.nome || predio?.morada_linha1 || "Geral"} | Emitido em: {compiledReport.dataEmissao}
                   </p>
                 </div>
@@ -356,7 +356,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                 </span>
                 
                 {Object.keys(compiledReport.despesasPorCategoria).length === 0 ? (
-                  <p className="text-xs text-slate-450 py-4 text-center">Nenhuma despesa registada neste período para segmentar.</p>
+                  <p className="text-xs text-slate-400 py-4 text-center">Nenhuma despesa registada neste período para segmentar.</p>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                     {/* Visual Progress bar bars */}
@@ -388,7 +388,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                           </span>
                         </div>
                       </div>
-                      <p className="text-[9px] text-slate-450 mt-3 text-center">
+                      <p className="text-[9px] text-slate-400 mt-3 text-center">
                         Taxa de retenção de capital das receitas de quotas arrecadadas no período de referência.
                       </p>
                     </div>
@@ -399,7 +399,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
               {/* Transactions list in report */}
               <div className="space-y-2">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Detalhe dos Movimentos Consolidados</span>
-                <div className="overflow-x-auto border border-slate-150 rounded-xl">
+                <div className="overflow-x-auto border border-slate-100 rounded-xl">
                   <table className="w-full text-xs text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
@@ -413,7 +413,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                       {compiledReport.movimentos.map((m: Movimento) => (
                         <tr key={m.id_mov} className="border-b border-slate-100 hover:bg-slate-50/50">
                           <td className="p-3 font-mono text-slate-500">{m.data}</td>
-                          <td className="p-3 font-bold text-slate-750">{m.descricao}</td>
+                          <td className="p-3 font-bold text-slate-700">{m.descricao}</td>
                           <td className="p-3 text-slate-500">
                             <span className="px-2 py-0.5 rounded bg-slate-100 text-[10px]">{m.categoria}</span>
                           </td>

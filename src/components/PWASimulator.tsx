@@ -1279,7 +1279,7 @@ export function PWASimulator({
                   <div className="bg-slate-100/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white rounded-2xl p-4 space-y-1 shadow-xs text-center relative overflow-hidden">
                     <div className="absolute -right-10 -bottom-10 h-28 w-28 bg-emerald-500/10 rounded-full blur-2xl"></div>
                     <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-extrabold uppercase tracking-widest block">Dashboard PWA Inteligente</span>
-                    <h3 className="text-sm font-black text-slate-850 dark:text-white flex items-center justify-center gap-1">
+                    <h3 className="text-sm font-black text-slate-800 dark:text-white flex items-center justify-center gap-1">
                       <Brain className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                       {loggedUser.nome}
                     </h3>
@@ -1730,7 +1730,7 @@ export function PWASimulator({
                           <div key={o.id_ocorr} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-900 p-3 rounded-lg text-[11px] shadow-sm">
                             <span className="font-bold text-indigo-600 block">{o.id_ocorr}</span>
                             <p className="text-slate-400 text-[10px]">{o.descricao}</p>
-                            <span className="text-[9px] bg-slate-50 dark:bg-slate-850 px-1.5 py-0.5 rounded font-bold text-slate-500">{o.estado}</span>
+                            <span className="text-[9px] bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 rounded font-bold text-slate-500">{o.estado}</span>
                           </div>
                         ))}
                       </div>
@@ -1827,7 +1827,7 @@ export function PWASimulator({
                         </div>
 
                         {/* Photo Capture Block */}
-                        <div className="bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-150 dark:border-slate-800 space-y-2">
+                        <div className="bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 space-y-2">
                           <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Foto de Conformidade de Higiene</span>
                           <div className="border border-dashed border-slate-300 dark:border-slate-800 rounded-lg p-2.5 text-center bg-white dark:bg-slate-900/40 relative">
                             <span className="text-xl block">📷</span>
@@ -2119,7 +2119,7 @@ export function PWASimulator({
                                   setPwaNotifications(prev => prev.map(item => item.id === n.id ? { ...item, isArchived: !item.isArchived } : item));
                                   alert(n.isArchived ? "Notificação restaurada para Ativa!" : "Notificação arquivada com sucesso!");
                                 }}
-                                className="flex items-center space-x-1 px-2 py-1 bg-slate-250 hover:bg-slate-350 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded font-bold cursor-pointer transition-colors"
+                                className="flex items-center space-x-1 px-2 py-1 bg-slate-250 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded font-bold cursor-pointer transition-colors"
                               >
                                 <Archive className="h-3 w-3" />
                                 <span>{showArchived ? "Desarquivar" : "Arquivar"}</span>

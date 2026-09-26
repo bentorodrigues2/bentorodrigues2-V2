@@ -1371,7 +1371,7 @@ export function GestaoQuotasOrcamento({
             </form>
 
             {revisoesOrcamento.length > 0 && (
-              <div className="overflow-x-auto border border-slate-150 rounded-xl">
+              <div className="overflow-x-auto border border-slate-100 rounded-xl">
                 <table className="w-full text-xs text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
@@ -1445,7 +1445,7 @@ export function GestaoQuotasOrcamento({
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-end gap-2 bg-slate-50 border border-slate-150 rounded-xl p-3">
+                <div className="flex flex-wrap items-end gap-2 bg-slate-50 border border-slate-100 rounded-xl p-3">
                   <div className="flex flex-col">
                     <label className="text-[10px] font-semibold text-slate-500 mb-1">Aplicar regra em lote a</label>
                     <select value={regraLoteTipoAlvo} onChange={e => setRegraLoteTipoAlvo(e.target.value)} className="border border-slate-200 px-2.5 py-1.5 text-xs rounded-lg bg-white">
@@ -1483,7 +1483,7 @@ export function GestaoQuotasOrcamento({
                   </button>
                 </div>
 
-                <div className="overflow-x-auto border border-slate-150 rounded-xl max-h-72 overflow-y-auto">
+                <div className="overflow-x-auto border border-slate-100 rounded-xl max-h-72 overflow-y-auto">
                   <table className="w-full text-xs text-left border-collapse">
                     <thead className="sticky top-0 bg-slate-50">
                       <tr className="border-b border-slate-200 text-slate-500 font-bold">

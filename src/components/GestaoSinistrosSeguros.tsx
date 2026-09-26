@@ -858,7 +858,7 @@ export function GestaoSinistrosSeguros({
                   <div
                     key={fracao.id_fracao}
                     className={`p-4 sm:p-5 transition-colors ${
-                      isExpiredOrMissing ? "bg-red-50/20 dark:bg-red-950/15" : "hover:bg-slate-50/50 dark:hover:bg-slate-850/50"
+                      isExpiredOrMissing ? "bg-red-50/20 dark:bg-red-950/15" : "hover:bg-slate-50/50 dark:hover:bg-slate-800/50"
                     }`}
                   >
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">

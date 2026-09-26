@@ -75,7 +75,7 @@ export const UserSecurityModal: React.FC<UserSecurityModalProps> = ({
             </div>
           )}
 
-          <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-2xl border border-slate-200 dark:border-slate-850 flex items-center justify-between">
+          <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <User className="h-4 w-4 text-emerald-500" />
               <div>

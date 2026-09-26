@@ -1059,7 +1059,7 @@ export function GestaoManutencaoIntervencoes({
           </div>
           <div>
             <h3 className="text-sm font-bold font-sans">Acreditações & Consola de Fluxos</h3>
-            <p className="text-[11px] text-slate-450">Simule perfis técnicos ou condóminos para testar os fluxos integrados de manutenção.</p>
+            <p className="text-[11px] text-slate-400">Simule perfis técnicos ou condóminos para testar os fluxos integrados de manutenção.</p>
           </div>
         </div>
         <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 gap-1">
@@ -1135,7 +1135,7 @@ export function GestaoManutencaoIntervencoes({
                         onClick={() => setOcPrioridade(p)}
                         className={`py-1 rounded-md text-xs font-bold border cursor-pointer ${
                           ocPrioridade === p
-                            ? p === "Alta" ? "bg-red-550 text-white border-red-500 bg-red-600" : p === "Média" ? "bg-amber-500 text-white border-amber-500" : "bg-blue-500 text-white border-blue-500"
+                            ? p === "Alta" ? "bg-red-500 text-white border-red-500 bg-red-600" : p === "Média" ? "bg-amber-500 text-white border-amber-500" : "bg-blue-500 text-white border-blue-500"
                             : "bg-slate-50 dark:bg-slate-950 text-slate-500 hover:bg-slate-100 border-slate-200 dark:border-slate-700"
                         }`}
                       >
@@ -1216,7 +1216,7 @@ export function GestaoManutencaoIntervencoes({
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-[9px] bg-slate-100 dark:bg-slate-950 font-mono font-bold px-1.5 py-0.5 rounded">ID: {o.id_ocorr}</span>
                             <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded">{o.categoria || "Geral"}</span>
-                            <span className="text-[10px] bg-slate-150 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded font-bold">
+                            <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded font-bold">
                               {o.id_fracao === "common" ? "Área Comum" : "Fração " + fracoes.find(f => f.id_fracao === o.id_fracao)?.fracao_nome}
                             </span>
                           </div>
@@ -1439,7 +1439,7 @@ export function GestaoManutencaoIntervencoes({
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-[9px] bg-slate-100 dark:bg-slate-850 px-2 py-0.5 rounded font-mono font-bold">ID: {item.id}</span>
+                        <span className="text-[9px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-mono font-bold">ID: {item.id}</span>
                         <span className={`text-[9px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full ${
                           item.tipo === "inspeção_obrigatoria" 
                             ? "bg-red-50 text-red-700 dark:bg-red-950/20" 
@@ -1462,7 +1462,7 @@ export function GestaoManutencaoIntervencoes({
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-850 text-xs font-semibold text-slate-600 dark:text-slate-400">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-400">
                     <div>
                       <span className="text-[9px] block text-slate-400 uppercase font-bold">Data Planeada</span>
                       <span>{formatDatePT(item.dataPlaneada)}</span>
@@ -1700,7 +1700,7 @@ export function GestaoManutencaoIntervencoes({
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[9px] bg-slate-100 dark:bg-slate-850 px-2 py-0.5 rounded font-mono font-bold">ID: {i.id}</span>
+                      <span className="text-[9px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-mono font-bold">ID: {i.id}</span>
                       <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded">Reparação</span>
                     </div>
                     <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">{i.descricao}</h4>
@@ -1711,7 +1711,7 @@ export function GestaoManutencaoIntervencoes({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-850 text-xs font-semibold text-slate-600 dark:text-slate-400">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-400">
                   <div>
                     <span className="text-[9px] block text-slate-400 uppercase font-bold">Local</span>
                     <span>{i.id_fracao === "common" ? "Área Comum" : "Fração " + fracoes.find(f => f.id_fracao === i.id_fracao)?.fracao_nome}</span>
@@ -1940,7 +1940,7 @@ export function GestaoManutencaoIntervencoes({
                 </div>
               </div>
 
-              <div className="bg-emerald-50 dark:bg-emerald-950/20 p-4 rounded-xl border border-emerald-150 dark:border-emerald-900/40 text-xs space-y-2">
+              <div className="bg-emerald-50 dark:bg-emerald-950/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/40 text-xs space-y-2">
                 <label className="flex items-center gap-2 font-bold cursor-pointer select-none">
                   <input
                     type="checkbox"
@@ -2051,7 +2051,7 @@ export function GestaoManutencaoIntervencoes({
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[9px] bg-slate-100 dark:bg-slate-850 px-2 py-0.5 rounded font-mono font-bold">ID: {o.id}</span>
+                      <span className="text-[9px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-mono font-bold">ID: {o.id}</span>
                       <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded">Obra Grande Extraordinária</span>
                     </div>
                     <h4 className="text-base font-bold text-slate-800 dark:text-slate-100">{o.descricao}</h4>
@@ -2068,7 +2068,7 @@ export function GestaoManutencaoIntervencoes({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-100 dark:border-slate-850 text-xs font-semibold text-slate-600 dark:text-slate-400">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-400">
                   <div>
                     <span className="text-[9px] block text-slate-400 uppercase font-bold">Fornecedor / Empreiteiro</span>
                     <span className="text-slate-800 dark:text-slate-200 font-bold">{o.fornecedorNome}</span>
@@ -2280,7 +2280,7 @@ export function GestaoManutencaoIntervencoes({
                     <div className="flex justify-between items-start">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[9px] bg-slate-100 dark:bg-slate-850 px-2 py-0.5 rounded font-mono font-bold">ID: {task.id}</span>
+                          <span className="text-[9px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-mono font-bold">ID: {task.id}</span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
                             task.origem === "reparacao" ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" :
                             task.origem === "ocorrencia" ? "text-amber-600 bg-amber-50 dark:bg-amber-950/30" :
@@ -2316,7 +2316,7 @@ export function GestaoManutencaoIntervencoes({
                     </div>
 
                     {/* Meta Fields Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-150 dark:border-slate-850 text-xs font-semibold text-slate-600 dark:text-slate-400">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-400">
                       <div>
                         <span className="text-[9px] block text-slate-400 uppercase font-bold">Fornecedor / Técnico</span>
                         <span className="text-slate-800 dark:text-slate-200 font-bold">{task.fornecedor}</span>
@@ -2341,12 +2341,12 @@ export function GestaoManutencaoIntervencoes({
 
                     {/* Reports and Technical Feedback */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-medium">
-                      <div className="bg-slate-50 dark:bg-slate-950/55 p-3 rounded-xl border border-slate-100 dark:border-slate-850 space-y-1">
+                      <div className="bg-slate-50 dark:bg-slate-950/55 p-3 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1">
                         <strong className="text-[10px] uppercase text-slate-400 block font-bold">Relatório Técnico de Execução</strong>
                         <p className="text-slate-600 dark:text-slate-300 text-xs whitespace-pre-wrap">{task.relatorioTecnico}</p>
                       </div>
 
-                      <div className="bg-slate-50 dark:bg-slate-950/55 p-3 rounded-xl border border-slate-100 dark:border-slate-850 space-y-1">
+                      <div className="bg-slate-50 dark:bg-slate-950/55 p-3 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1">
                         <strong className="text-[10px] uppercase text-slate-400 block font-bold">Relatório & Homologação da Administração</strong>
                         <p className="text-slate-600 dark:text-slate-300 text-xs whitespace-pre-wrap">{task.relatorioAdmin}</p>
                       </div>
@@ -2368,7 +2368,7 @@ export function GestaoManutencaoIntervencoes({
 
                     {/* Verification Panel Trigger for Admins */}
                     {!task.validada && (activeProfile === "ADMIN" || activeProfile === "EMPRESA_GESTORA" || activeProfile === "PRESIDENTE") && (
-                      <div className="pt-2 border-t border-slate-100 dark:border-slate-850">
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                         {selectedTaskToVerify === task.id ? (
                           <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
                             <h5 className="text-xs font-extrabold uppercase text-slate-500">Painel de Homologação da Tarefa #{task.id}</h5>
@@ -2542,7 +2542,7 @@ export function GestaoManutencaoIntervencoes({
                     return (
                       <div 
                         key={d.id_doc} 
-                        className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:border-slate-350 dark:hover:border-slate-750 transition-all space-y-3"
+                        className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-all space-y-3"
                       >
                         <div className="space-y-2 overflow-hidden">
                           <div className="flex justify-between items-start">
@@ -2556,7 +2556,7 @@ export function GestaoManutencaoIntervencoes({
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium line-clamp-2">{d.descricao || "Sem descrição registada..."}</p>
 
                           {/* Metadata fields requested */}
-                          <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[10px] text-slate-400 dark:text-slate-500 font-semibold pt-1 border-t border-dashed border-slate-100 dark:border-slate-850">
+                          <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[10px] text-slate-400 dark:text-slate-500 font-semibold pt-1 border-t border-dashed border-slate-100 dark:border-slate-800">
                             <div>Data: <span className="text-slate-600 dark:text-slate-300">{formatDatePT(d.data_upload)}</span></div>
                             <div>Categoria: <span className="text-slate-600 dark:text-slate-300">{d.categoria || "Outros"}</span></div>
                             <div>Origem: <span className="text-slate-600 dark:text-slate-300">{origem}</span></div>
@@ -2578,7 +2578,7 @@ export function GestaoManutencaoIntervencoes({
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-850">
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
                           <div className="flex items-center gap-2 text-[10px] text-slate-400">
                             <span>{d.tamanho}</span>
                             <span>•</span>

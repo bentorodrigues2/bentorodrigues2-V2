@@ -1253,7 +1253,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-150">
+                <div className="grid grid-cols-2 gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                   <div className="flex flex-col">
                     <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Impacto Orçamental</label>
                     <select
@@ -1276,7 +1276,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                       />
                       <span>Notificar Alerta</span>
                     </label>
-                    <span className="text-[8px] text-slate-450 block mt-1">Alerta email/PWA a cada ciclo</span>
+                    <span className="text-[8px] text-slate-400 block mt-1">Alerta email/PWA a cada ciclo</span>
                   </div>
                 </div>
 
@@ -1308,7 +1308,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
 
                   {/* Thumbnail gallery preview */}
                   {vFotos.length > 0 && (
-                    <div className="grid grid-cols-4 gap-2 mt-3 p-2 bg-slate-50 rounded-xl border border-slate-150">
+                    <div className="grid grid-cols-4 gap-2 mt-3 p-2 bg-slate-50 rounded-xl border border-slate-100">
                       {vFotos.map((img, i) => (
                         <div key={i} className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square bg-white">
                           <img src={img} alt="Preview" className="w-full h-full object-cover" />
@@ -1410,7 +1410,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                     <p className="text-xs text-slate-600 leading-relaxed font-medium">{v.anomalia}</p>
 
                     {/* Parâmetros Backoffice da Inspeção */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-150 text-[11px] font-medium text-slate-600">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100 text-[11px] font-medium text-slate-600">
                       <div>
                         <span className="text-[9px] text-slate-400 block uppercase font-bold tracking-wider">Custo Previsto</span>
                         <span className="font-mono text-slate-800 font-bold">{v.custo_previsto !== undefined ? `${v.custo_previsto.toFixed(2)}€` : "—"}</span>
@@ -1978,7 +1978,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
 
                 <div className="flex flex-col">
                   <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Áreas Intervencionadas *</label>
-                  <div className="grid grid-cols-2 gap-2 mt-1 max-h-36 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-150">
+                  <div className="grid grid-cols-2 gap-2 mt-1 max-h-36 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-100">
                     {areasDisponiveis.map(area => {
                       const isSelected = lAreas.includes(area);
                       return (
@@ -2053,7 +2053,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
 
                   {/* Limpeza photos preview */}
                   {lFotos.length > 0 && (
-                    <div className="grid grid-cols-4 gap-1.5 p-1.5 bg-slate-50 rounded-xl border border-slate-150">
+                    <div className="grid grid-cols-4 gap-1.5 p-1.5 bg-slate-50 rounded-xl border border-slate-100">
                       {lFotos.map((img, i) => (
                         <div key={i} className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square bg-white">
                           <img src={img} alt="Preview" className="w-full h-full object-cover" />
@@ -2523,7 +2523,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
             {/* Calculations & Impact Cards */}
             <div className="grid grid-cols-1 gap-4 md:col-span-2">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white p-4 rounded-xl border border-slate-150 flex items-center justify-between">
+                <div className="bg-white p-4 rounded-xl border border-slate-100 flex items-center justify-between">
                   <div>
                     <span className="text-slate-400 text-[9px] font-bold uppercase block">Custo Mensal Padrão</span>
                     <h3 className="text-lg font-black text-slate-800 font-mono mt-0.5">{(parseValorMonetario(limpezaCustoMensal) || 0).toFixed(2)}€</h3>
@@ -2531,7 +2531,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                   <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs"><i className="fa-solid fa-calendar-day"></i></div>
                 </div>
 
-                <div className="bg-white p-4 rounded-xl border border-slate-150 flex items-center justify-between">
+                <div className="bg-white p-4 rounded-xl border border-slate-100 flex items-center justify-between">
                   <div>
                     <span className="text-slate-400 text-[9px] font-bold uppercase block">Custo Anual Total</span>
                     <h3 className="text-lg font-black text-slate-800 font-mono mt-0.5">{((parseValorMonetario(limpezaCustoMensal) || 0) * 12).toFixed(2)}€</h3>
@@ -2539,7 +2539,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                   <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg text-xs"><i className="fa-solid fa-coins"></i></div>
                 </div>
 
-                <div className="bg-white p-4 rounded-xl border border-slate-150 flex items-center justify-between">
+                <div className="bg-white p-4 rounded-xl border border-slate-100 flex items-center justify-between">
                   <div>
                     <span className="text-slate-400 text-[9px] font-bold uppercase block">Impacto no Orçamento</span>
                     <h3 className="text-lg font-black text-slate-800 font-mono mt-0.5">
@@ -2569,7 +2569,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-400 mt-2 font-mono">
                   <span>Mínimo (0%)</span>
-                  <span className="font-bold text-slate-650">Consumo Geral: {(((parseValorMonetario(limpezaCustoMensal) || 0) * 12 / (parseValorMonetario(orcamentoGeralLimpeza) || 5000)) * 100).toFixed(1)}%</span>
+                  <span className="font-bold text-slate-600">Consumo Geral: {(((parseValorMonetario(limpezaCustoMensal) || 0) * 12 / (parseValorMonetario(orcamentoGeralLimpeza) || 5000)) * 100).toFixed(1)}%</span>
                   <span>Máximo Recomendado (25%)</span>
                 </div>
               </div>

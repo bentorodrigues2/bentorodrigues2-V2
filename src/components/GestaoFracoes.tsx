@@ -3739,7 +3739,7 @@ export function GestaoFracoes({
                     <div className="font-bold text-slate-800">Fração {f.fracao_nome}</div>
                     <div className="text-[10px] text-slate-400 font-semibold">{f.piso} • {f.tipologia}</div>
                   </td>
-                  <td className="p-3 font-mono font-bold text-slate-750">
+                  <td className="p-3 font-mono font-bold text-slate-700">
                     {isEditingPermilages ? (
                       <div className="flex items-center space-x-1">
                         <input
@@ -3890,7 +3890,7 @@ export function GestaoFracoes({
                         ) : (
                           <ul className="space-y-1 max-h-28 overflow-y-auto">
                             {avisosDoProprietario.map(a => (
-                              <li key={a.id_aviso} className="text-[10px] text-slate-600 flex justify-between gap-2 bg-white rounded px-2 py-1 border border-slate-150">
+                              <li key={a.id_aviso} className="text-[10px] text-slate-600 flex justify-between gap-2 bg-white rounded px-2 py-1 border border-slate-100">
                                 <span className="truncate">{a.tipo} — {a.descricao}</span>
                                 <span className="font-mono font-bold shrink-0">{a.valor.toFixed(2)}€ · {a.estado}</span>
                               </li>
@@ -3926,7 +3926,7 @@ export function GestaoFracoes({
                           ) : (
                             <ul className="space-y-1 max-h-28 overflow-y-auto">
                               {registosDoProprietario.map(d => (
-                                <li key={d.id_doc} className="text-[10px] text-slate-600 flex justify-between gap-2 bg-white rounded px-2 py-1 border border-slate-150">
+                                <li key={d.id_doc} className="text-[10px] text-slate-600 flex justify-between gap-2 bg-white rounded px-2 py-1 border border-slate-100">
                                   <span className="truncate">{d.tipo === "Registo" ? <i className="fa-solid fa-file-lines mr-1 text-slate-400"></i> : <i className="fa-solid fa-paperclip mr-1 text-slate-400"></i>}{d.nome}</span>
                                   {d.caminho ? (
                                     <a href={d.caminho} target="_blank" rel="noreferrer" className="font-bold text-emerald-600 hover:underline shrink-0">Abrir</a>

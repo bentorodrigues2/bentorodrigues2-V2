@@ -864,7 +864,7 @@ A Administração do Condomínio`
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* HEADER BANNER */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border border-slate-800 p-5 sm:p-7 rounded-2xl shadow-xl text-white">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-800 p-5 sm:p-7 rounded-2xl shadow-xl text-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2.5">
@@ -1689,7 +1689,7 @@ A Administração do Condomínio`
               {activeEmailTemplate.id === "aniversario_condomino" ? (
                 <div className="bg-slate-50 dark:bg-slate-950 p-4 sm:p-6 rounded-2xl flex flex-col items-center">
                   {/* Postal com Moldura Dupla Oficial do Anexo */}
-                  <div className="w-full max-w-xl bg-white border-2 border-slate-850 shadow-xl p-2.5 relative">
+                  <div className="w-full max-w-xl bg-white border-2 border-slate-800 shadow-xl p-2.5 relative">
                     <div className="border border-sky-600 p-6 sm:p-8 relative text-center space-y-4">
                       {/* 4 Pontos de Canto Decorativos Oficiais */}
                       <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-sky-600 rounded-full"></div>

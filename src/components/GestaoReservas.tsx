@@ -437,7 +437,7 @@ export function GestaoReservas({
                 {COMMON_AREAS.map(area => {
                   const currentLimit = getCapacidadeLimit(area.key);
                   return (
-                    <div key={area.key} className="p-3.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-150 dark:border-slate-800/40 space-y-2">
+                    <div key={area.key} className="p-3.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-800/40 space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2.5">
                           <div className="h-7 w-7 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300">
@@ -849,7 +849,7 @@ export function GestaoReservas({
                 const matchingFrac = fracoes.find(f => f.id_fracao === r.id_fracao);
                 const rule = getRegraForArea(r.area_comum);
                 return (
-                  <div key={r.id_reserva} className="border border-slate-150 dark:border-slate-800 rounded-xl p-5 bg-slate-50/50 dark:bg-slate-900/30 flex flex-col justify-between space-y-4 shadow-sm">
+                  <div key={r.id_reserva} className="border border-slate-100 dark:border-slate-800 rounded-xl p-5 bg-slate-50/50 dark:bg-slate-900/30 flex flex-col justify-between space-y-4 shadow-sm">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
                         <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center space-x-2">

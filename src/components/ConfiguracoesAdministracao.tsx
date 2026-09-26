@@ -1450,7 +1450,7 @@ export function ConfiguracoesAdministracao({
   };
 
   return (
-    <div className="space-y-6 text-slate-850 dark:text-slate-100 animate-fadeIn">
+    <div className="space-y-6 text-slate-800 dark:text-slate-100 animate-fadeIn">
 
       {/* ---------------- 1. CONFIGURAÇÕES GERAIS ---------------- */}
       {activeSubSection === "gerais" && (
@@ -1569,7 +1569,7 @@ export function ConfiguracoesAdministracao({
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-850 flex items-center justify-end gap-3">
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
               {loggedUser?.role === "ADMIN" && (
                 <button
                   type="button"
@@ -1647,7 +1647,7 @@ export function ConfiguracoesAdministracao({
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors ${
                     selectedCategoryFilter === cat
                       ? "bg-emerald-600 text-white shadow-xs"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-750"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
                   }`}
                 >
                   {cat === "All" ? "Todos os Modelos" : cat.replace(" (apenas os essenciais)", "")}
@@ -1671,7 +1671,7 @@ export function ConfiguracoesAdministracao({
                           className={`p-3 rounded-xl border cursor-pointer transition-all ${
                             isSelected
                               ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-500 dark:border-emerald-500 ring-1 ring-emerald-500"
-                              : "bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 hover:border-slate-300 dark:hover:border-slate-850"
+                              : "bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-800"
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2">
@@ -1702,7 +1702,7 @@ export function ConfiguracoesAdministracao({
                 <div className="lg:col-span-8 space-y-6">
                   
                   {/* Editor section */}
-                  <div className="bg-slate-50 dark:bg-slate-950 p-5 rounded-xl border border-slate-200 dark:border-slate-850 space-y-4">
+                  <div className="bg-slate-50 dark:bg-slate-950 p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div>
                         <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
@@ -1721,7 +1721,7 @@ export function ConfiguracoesAdministracao({
                         <button
                           type="button"
                           onClick={handleResetTemplate}
-                          className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-250 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-bold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-750 transition-colors cursor-pointer"
+                          className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-250 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-bold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
                         >
                           Restaurar Original PDF
                         </button>
@@ -1783,8 +1783,8 @@ export function ConfiguracoesAdministracao({
                   </div>
 
                   {/* Real-time Email Preview */}
-                  <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-850 overflow-hidden shadow-md">
-                    <div className="bg-slate-50 dark:bg-slate-900 p-3 border-b border-slate-200 dark:border-slate-850 flex items-center justify-between flex-wrap gap-2">
+                  <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-md">
+                    <div className="bg-slate-50 dark:bg-slate-900 p-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
                         <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
@@ -1811,7 +1811,7 @@ export function ConfiguracoesAdministracao({
 
                     <div className="p-5 space-y-4">
                       {/* Email headers */}
-                      <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1 pb-3 border-b border-slate-100 dark:border-slate-850">
+                      <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
                         <p><strong className="text-slate-700 dark:text-slate-300">De:</strong> portal@condomanager.pt</p>
                         <p>
                           <strong className="text-slate-700 dark:text-slate-300">Para:</strong>{" "}
@@ -1831,7 +1831,7 @@ export function ConfiguracoesAdministracao({
                       </div>
 
                       {/* Simulate send footer button */}
-                      <div className="pt-4 border-t border-slate-100 dark:border-slate-850 flex justify-end no-print">
+                      <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end no-print">
                         <button
                           type="button"
                           onClick={handleSimulateSend}
@@ -1900,7 +1900,7 @@ export function ConfiguracoesAdministracao({
                       type="button"
                       onClick={handleSyncNow}
                       disabled={isSyncingNow || !syncEmailActive}
-                      className="bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                      className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
                     >
                       <RefreshCw className={`h-3.5 w-3.5 text-emerald-400 ${isSyncingNow ? "animate-spin" : ""}`} />
                       <span>{isSyncingNow ? "A sincronizar..." : "Sincronizar Agora"}</span>
@@ -2114,7 +2114,7 @@ export function ConfiguracoesAdministracao({
 
               {/* 2. CONFIGURAÇÃO DO EMAIL OFICIAL (DOCUMENTO D) */}
               <form onSubmit={handleSaveEmailIA} className="space-y-4">
-                <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-150 dark:border-slate-850 space-y-2.5">
+                <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2.5">
                   <h4 className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-tight flex items-center gap-1.5">
                     <Shield className="h-4 w-4 text-emerald-500" />
                     Regras de Validação Estrutural Obrigatórias (DOCUMENTO D):
@@ -2166,7 +2166,7 @@ export function ConfiguracoesAdministracao({
                   )}
                 </div>
 
-                <div className="pt-4 border-t border-slate-100 dark:border-slate-850">
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
                   <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-3">Âmbito de Leitura Inteligente do Email:</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                     {[
@@ -2203,7 +2203,7 @@ export function ConfiguracoesAdministracao({
 
           {/* 3. MOTOR OFICIAL DE RESPOSTA AUTOMÁTICA (AUTORESPONDER DO CONDOMÍNIO) */}
           <div className="bg-white dark:bg-slate-900 border border-emerald-500/30 rounded-2xl p-6 shadow-sm space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-150 dark:border-slate-800 pb-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -2259,7 +2259,7 @@ export function ConfiguracoesAdministracao({
             </div>
 
             {/* Testador Interativo */}
-            <div className="bg-slate-50 dark:bg-slate-950 p-5 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-4">
+            <div className="bg-slate-50 dark:bg-slate-950 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                   <Sparkles className="h-4 w-4 text-emerald-500" />
@@ -3116,7 +3116,7 @@ export function ConfiguracoesAdministracao({
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-150 dark:border-slate-850 space-y-3">
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
               <h4 className="text-xs font-black uppercase text-slate-400">Canais de Difusão Ativos</h4>
 
               <div className="flex justify-between items-center p-3 rounded-xl border bg-slate-50 dark:bg-slate-950 text-xs">
@@ -3232,7 +3232,7 @@ export function ConfiguracoesAdministracao({
                   <th className="p-3 w-44">Utilizador / Autor</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-150 dark:divide-slate-850 font-medium">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
                 {logs
                   .filter(l => {
                     const matchesSearch = 

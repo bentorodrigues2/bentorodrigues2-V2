@@ -601,7 +601,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
           </form>
 
           {revisoesOrcamento.length > 0 && (
-            <div className="overflow-x-auto border border-slate-150 rounded-xl">
+            <div className="overflow-x-auto border border-slate-100 rounded-xl">
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">

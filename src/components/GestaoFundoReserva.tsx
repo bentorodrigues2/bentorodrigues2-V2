@@ -207,7 +207,7 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
                 <span className="text-[9px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded font-bold uppercase tracking-wide mt-1 inline-block">Mínimo 10% (DL 268/94)</span>
                 <h3 className="text-xl font-black text-slate-800 font-mono mt-2">{fundoMinimoLegal.toFixed(2)}€</h3>
               </div>
-              <p className="text-[10px] text-slate-450 mt-2 leading-tight border-t border-slate-100 pt-2">Montante abaixo do qual o condomínio fica sujeito a infração legal.</p>
+              <p className="text-[10px] text-slate-400 mt-2 leading-tight border-t border-slate-100 pt-2">Montante abaixo do qual o condomínio fica sujeito a infração legal.</p>
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
@@ -216,7 +216,7 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
                 <span className="text-[9px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded font-bold uppercase tracking-wide mt-1 inline-block">Adequado a {(getAgeModifier() * 100 + 10).toFixed(0)}%</span>
                 <h3 className="text-xl font-black text-slate-800 font-mono mt-2">{fundoRecomendado.toFixed(2)}€</h3>
               </div>
-              <p className="text-[10px] text-slate-450 mt-2 leading-tight border-t border-slate-100 pt-2">Meta prudencial para garantir reparações estruturais, pintura e elevadores.</p>
+              <p className="text-[10px] text-slate-400 mt-2 leading-tight border-t border-slate-100 pt-2">Meta prudencial para garantir reparações estruturais, pintura e elevadores.</p>
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
@@ -227,7 +227,7 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
                 </span>
                 <h3 className="text-xl font-black text-slate-800 font-mono mt-2">{percentagemAtualLegal.toFixed(1)}%</h3>
               </div>
-              <p className="text-[10px] text-slate-450 mt-2 leading-tight border-t border-slate-100 pt-2">Percentagem do saldo disponível atual sobre o limite legal obrigatório.</p>
+              <p className="text-[10px] text-slate-400 mt-2 leading-tight border-t border-slate-100 pt-2">Percentagem do saldo disponível atual sobre o limite legal obrigatório.</p>
             </div>
           </div>
 
@@ -266,7 +266,7 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Table */}
-          <div className="overflow-x-auto border border-slate-150 rounded-xl">
+          <div className="overflow-x-auto border border-slate-100 rounded-xl">
             <table className="w-full text-xs text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
@@ -285,10 +285,10 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
                     <td className="p-3 text-center">
                       <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
                         p.isAbaixo 
-                          ? "bg-red-50 text-red-600 border border-red-150" 
+                          ? "bg-red-50 text-red-600 border border-red-100" 
                           : p.saldo >= fundoRecomendado
-                          ? "bg-emerald-50 text-emerald-600 border border-emerald-150"
-                          : "bg-amber-50 text-amber-600 border border-amber-150"
+                          ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                          : "bg-amber-50 text-amber-600 border border-amber-100"
                       }`}>
                         {p.isAbaixo ? "Abaixo do Mínimo" : p.saldo >= fundoRecomendado ? "Excelente" : "Cumpre Mínimo"}
                       </span>

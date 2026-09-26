@@ -776,7 +776,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
             <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden mt-4">
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-150 dark:border-slate-800">
+                  <tr className="bg-slate-50 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
                     <th className="p-3">Fração</th>
                     <th className="p-3">Proprietário / NIF</th>
                     <th className="p-3 text-center">Avisos em Falta</th>
@@ -1780,7 +1780,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                 </select>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-900/40 p-3 rounded-lg text-[10px] text-slate-500 leading-relaxed border border-slate-100 dark:border-slate-850/80">
+              <div className="bg-slate-50 dark:bg-slate-900/40 p-3 rounded-lg text-[10px] text-slate-500 leading-relaxed border border-slate-100 dark:border-slate-800/80">
                 <span className="font-extrabold text-slate-700 dark:text-slate-300 block mb-1">Enquadramento Legal:</span>
                 {docObrigatorioType === "Declaração de Dívida" && "Utilizada em ações executivas ou assembleias. Discrimina todas as parcelas e juros vencidos devidos pelo condómino em incumprimento."}
                 {docObrigatorioType === "Declaração de Não Dívida" && "Obrigatória para outorga de Escritura nos termos do DL 268/2022, libertando o condómino vendedor e atestando contas em dia."}
@@ -1790,7 +1790,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                 {docObrigatorioType === "Declaração de Obras em Curso" && "Informa se o edifício se encontra sob intervenção física ou obras estruturais autorizadas em ata com contribuições extraordinárias pendentes."}
               </div>
 
-              <div className="border-t border-slate-100 dark:border-slate-850 pt-3 space-y-2">
+              <div className="border-t border-slate-100 dark:border-slate-800 pt-3 space-y-2">
                 <button
                   type="button"
                   disabled={isEmitting}
@@ -1843,7 +1843,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                 <p className="text-xs">Selecione uma fração para pré-visualizar a certidão jurídica.</p>
               </div>
             ) : (
-              <div id="declaracao-certidao-view" className="bg-[#fdfcfb] dark:bg-slate-950 text-slate-900 dark:text-slate-200 p-8 md:p-12 rounded-xl border border-slate-300 dark:border-slate-850 shadow-lg font-sans text-justify text-[11px] leading-relaxed space-y-6 relative overflow-hidden" style={{ color: "#1A1A1A" }}>
+              <div id="declaracao-certidao-view" className="bg-[#fdfcfb] dark:bg-slate-950 text-slate-900 dark:text-slate-200 p-8 md:p-12 rounded-xl border border-slate-300 dark:border-slate-800 shadow-lg font-sans text-justify text-[11px] leading-relaxed space-y-6 relative overflow-hidden" style={{ color: "#1A1A1A" }}>
 
                 {/* 1. Official Watermark (Diagonal ~30º, 11% opacity, centered behind content) */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.06] pointer-events-none text-center select-none z-0" style={{ transform: "translate(-50%, -50%) rotate(-30deg)" }}>
@@ -1958,7 +1958,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                     )}
 
                     {docObrigatorioType === "Declaração de Condomínio para Escritura" && (
-                      <div className="space-y-3 bg-amber-50/20 p-4 rounded-lg border border-amber-150">
+                      <div className="space-y-3 bg-amber-50/20 p-4 rounded-lg border border-amber-100">
                         <p className="text-justify text-[#1A1A1A]">
                           Em conformidade com o artigo 5.º do Decreto-Lei n.º 268/2022, de 10 de janeiro, declara-se para efeitos de transmissão do imóvel por venda e respetiva lavratura de escritura notarial que:
                         </p>

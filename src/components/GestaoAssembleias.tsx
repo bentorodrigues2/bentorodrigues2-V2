@@ -2137,7 +2137,7 @@ Com os meus cumprimentos,
                   {activeTab === "quorum" && (
                     <div className="space-y-4">
                       {/* Legal Quorum helper */}
-                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-150 flex items-start space-x-3 text-xs leading-relaxed">
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-start space-x-3 text-xs leading-relaxed">
                         <div className="text-amber-500 text-sm pt-0.5"><i className="fa-solid fa-scale-balanced"></i></div>
                         <div>
                           <p className="font-bold text-slate-700">Artigo 1432º do Código Civil (Regulamento de Quórum):</p>
@@ -2214,7 +2214,7 @@ Com os meus cumprimentos,
                               const presence = activeMeeting.folha_presencas?.[f.id_fracao] || "Ausente";
                               const representative = activeMeeting.representantes?.[f.id_fracao] || "";
                               return (
-                                <tr key={f.id_fracao} className="border-b border-slate-150 hover:bg-slate-50/50">
+                                <tr key={f.id_fracao} className="border-b border-slate-100 hover:bg-slate-50/50">
                                   <td className="p-3 font-bold text-slate-800">Fração {f.fracao_nome} <span className="text-[10px] text-slate-400 font-normal">({f.piso})</span></td>
                                   <td className="p-3 text-slate-700 font-medium">{f.proprietario.nome}</td>
                                   <td className="p-3 font-mono-custom text-slate-600 font-bold">{f.permilagem}‰</td>

@@ -334,7 +334,7 @@ export function EnviosProgramados({
               className={`p-4 sm:p-5 transition-colors ${
                 isPausado ? "bg-slate-50/70 dark:bg-slate-950/30 opacity-75" :
                 isEnviado ? "bg-emerald-50/20 dark:bg-emerald-950/10" :
-                "hover:bg-slate-50/50 dark:hover:bg-slate-850/50"
+                "hover:bg-slate-50/50 dark:hover:bg-slate-800/50"
               }`}
             >
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">

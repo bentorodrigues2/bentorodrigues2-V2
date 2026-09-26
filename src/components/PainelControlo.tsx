@@ -559,7 +559,7 @@ export function PainelControlo({
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-slate-150 text-slate-400 font-bold">
+              <tr className="border-b border-slate-100 text-slate-400 font-bold">
                 <th className="py-2">Data</th>
                 <th className="py-2">Tipo</th>
                 <th className="py-2">Descrição</th>

@@ -359,7 +359,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio }: AIAssi
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-2 sm:p-4 animate-fade-in">
       <div 
-        className={`bg-slate-900 border border-slate-750 w-full rounded-2xl shadow-2xl flex flex-col overflow-hidden text-slate-100 transition-all duration-300 ${
+        className={`bg-slate-900 border border-slate-700 w-full rounded-2xl shadow-2xl flex flex-col overflow-hidden text-slate-100 transition-all duration-300 ${
           isFullScreen 
             ? "h-full max-h-full max-w-full rounded-none" 
             : "max-w-5xl h-[92vh] max-h-[850px]"
@@ -723,7 +723,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio }: AIAssi
           )}
 
           {/* Traditional Gemini Style Input Box */}
-          <div className="relative flex items-end gap-2 bg-slate-900 border border-slate-750 focus-within:border-emerald-500/80 rounded-2xl p-2 sm:p-2.5 shadow-inner transition-colors">
+          <div className="relative flex items-end gap-2 bg-slate-900 border border-slate-700 focus-within:border-emerald-500/80 rounded-2xl p-2 sm:p-2.5 shadow-inner transition-colors">
             
             {/* Hidden Unified File Input */}
             <input

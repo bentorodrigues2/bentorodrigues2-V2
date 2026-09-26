@@ -2069,7 +2069,7 @@ export function PortalCondomino({
 
                 {/* Previews of attached Photo, Document or Audio Note */}
                 {(newMsgAnexo || msgDocAttachment || recordedAudioUrl) && (
-                  <div className="bg-white dark:bg-slate-850 px-4 py-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
+                  <div className="bg-white dark:bg-slate-800 px-4 py-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
                     {newMsgAnexo && (
                       <div className="flex items-center gap-2">
                         <img src={newMsgAnexo} alt="Preview" className="w-10 h-10 object-cover rounded-lg border border-slate-200" />
@@ -2225,7 +2225,7 @@ export function PortalCondomino({
                 />
 
                 {/* WhatsApp Chat Footer / Input Bar */}
-                <div className="bg-[#F0F2F5] dark:bg-slate-850 p-2.5 sm:p-3 border-t border-slate-300 dark:border-slate-800 shrink-0">
+                <div className="bg-[#F0F2F5] dark:bg-slate-800 p-2.5 sm:p-3 border-t border-slate-300 dark:border-slate-800 shrink-0">
                   {isRecordingAudio ? (
                     <div className="flex items-center justify-between bg-white dark:bg-slate-800 px-4 py-2.5 rounded-full border border-red-200 shadow-xs">
                       <div className="flex items-center gap-2 text-red-600 font-bold text-xs">
@@ -2261,7 +2261,7 @@ export function PortalCondomino({
                         className={`p-2.5 rounded-full transition-colors cursor-pointer shrink-0 ${
                           isAttachmentMenuOpen || newMsgAnexo || msgDocAttachment
                             ? "bg-emerald-600 text-white"
-                            : "text-slate-500 hover:text-emerald-700 hover:bg-slate-200 dark:hover:bg-slate-750"
+                            : "text-slate-500 hover:text-emerald-700 hover:bg-slate-200 dark:hover:bg-slate-700"
                         }`}
                         title="Anexar documento, fotografia ou aceder à câmara (Clip)"
                       >
@@ -2278,7 +2278,7 @@ export function PortalCondomino({
                         className={`p-2.5 rounded-full transition-colors cursor-pointer shrink-0 ${
                           isEmojiPickerOpen
                             ? "bg-amber-500 text-white"
-                            : "text-amber-500 hover:text-amber-600 hover:bg-slate-200 dark:hover:bg-slate-750"
+                            : "text-amber-500 hover:text-amber-600 hover:bg-slate-200 dark:hover:bg-slate-700"
                         }`}
                         title="Inserir Emoji"
                       >
@@ -2298,7 +2298,7 @@ export function PortalCondomino({
                       <button
                         type="button"
                         onClick={handleToggleVoiceRecording}
-                        className="p-2.5 text-slate-500 hover:text-emerald-700 hover:bg-slate-200 dark:hover:bg-slate-750 rounded-full transition-colors cursor-pointer shrink-0"
+                        className="p-2.5 text-slate-500 hover:text-emerald-700 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer shrink-0"
                         title="Gravar Mensagem de Áudio (Nota de Voz)"
                       >
                         <Mic className="h-4 w-4" />
