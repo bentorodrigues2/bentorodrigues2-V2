@@ -109,6 +109,21 @@ export function GestaoQuotasOrcamento({
     }
   };
 
+  // Guarda o valor ANTES de qualquer revisão (só na primeira vez, nunca
+  // reescreve um já guardado) — sem isto, ao aplicar uma revisão o valor
+  // original ficava perdido (sobrescrito no mesmo campo orcamento_anual), e
+  // ao eliminar a última revisão que restava não havia para onde voltar.
+  const persistirOrcamentoBaseSeNecessario = async () => {
+    if ((predio.patrimonio as any)?.orcamento_anual_base !== undefined) return;
+    const valorAtual = Number((predio.patrimonio as any)?.orcamento_anual) || 0;
+    if (!valorAtual || !isSupabaseConfigured) return;
+    try {
+      await dbUpdate("predios", { patrimonio: { ...(predio.patrimonio || {}), orcamento_anual_base: valorAtual } }, [["id_predio", "eq", predio.id_predio]]);
+    } catch (err) {
+      console.warn("[Supabase] Erro ao guardar orçamento base:", err);
+    }
+  };
+
   const [revisoesOrcamento, setRevisoesOrcamento] = useState<RevisaoOrcamento[]>([]);
   const [novaRevisaoValor, setNovaRevisaoValor] = useState("");
   const [novaRevisaoData, setNovaRevisaoData] = useState(() => new Date().toISOString().split("T")[0]);
@@ -190,6 +205,7 @@ export function GestaoQuotasOrcamento({
 
     const maisRecenteVigente = orcamentoVigente(novaLista);
     if (maisRecenteVigente && maisRecenteVigente.id_revisao === nova.id_revisao) {
+      await persistirOrcamentoBaseSeNecessario();
       setOrcamentoAnual(String(nova.valor));
       await persistirOrcamentoNoSupabase(nova.valor);
     }
@@ -234,7 +250,17 @@ export function GestaoQuotasOrcamento({
       await persistirOrcamentoNoSupabase(novaVigente.valor);
       alert(`✅ Revisão eliminada. O orçamento anual voltou a ${novaVigente.valor.toFixed(2)} € (revisão anterior).`);
     } else {
-      alert("✅ Revisão eliminada. Não há mais nenhuma revisão registada — confirme/corrija manualmente o Orçamento Anual, que ficou com o último valor aplicado.");
+      // Já não sobra nenhuma revisão — volta ao valor guardado ANTES de
+      // qualquer revisão ter sido aplicada (orcamento_anual_base), em vez
+      // de deixar o campo parado no último valor de uma revisão já apagada.
+      const base = Number((predio.patrimonio as any)?.orcamento_anual_base);
+      if (base > 0) {
+        setOrcamentoAnual(String(base));
+        await persistirOrcamentoNoSupabase(base);
+        alert(`✅ Revisão eliminada. O orçamento anual voltou ao valor original de ${base.toFixed(2)} €.`);
+      } else {
+        alert("✅ Revisão eliminada. Não há mais nenhuma revisão registada nem valor original guardado — confirme/corrija manualmente o Orçamento Anual.");
+      }
     }
   };
 
