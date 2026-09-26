@@ -212,6 +212,35 @@ export function FinanceiroAvancado({
     setValorQuotaEditado("");
   };
 
+  // Cria um lançamento novo (Pago) numa célula do Mapa que ainda não tem
+  // nenhum aviso — antes só se podia corrigir um valor já existente; uma
+  // célula em branco (sem nenhum registo) não tinha forma de ser
+  // preenchida diretamente a partir do Mapa, obrigando a ir a outro ecrã.
+  const handleCriarValorAviso = async (idFracao: string, mIdx: number, novoValor: number) => {
+    const vencimento = `${mapaAno}-${String(mIdx + 1).padStart(2, "0")}-08`;
+    const fracao = predioFracoes.find(f => f.id_fracao === idFracao);
+    const novoAviso: Aviso = {
+      id_aviso: "av-" + Date.now() + "-" + Math.floor(1000 + Math.random() * 9000),
+      id_predio: predio.id_predio,
+      id_fracao: idFracao,
+      tipo: mapaTipo === "extraordinaria" ? "Quota Extraordinária" : "Quota Ordinária",
+      data: new Date().toISOString().split("T")[0],
+      vencimento,
+      descricao: `Quota de Condomínio (Ordinária + Fundo de Reserva) - ${MESES_ABREV[mIdx]}/${mapaAno} (lançamento manual)`,
+      valor: novoValor,
+      valor_fundo_reserva: Math.round(novoValor * 0.1 * 100) / 100,
+      estado: "Pago",
+      proprietario_nome: fracao?.proprietario?.nome,
+      proprietario_nif: fracao?.proprietario?.nif
+    } as Aviso;
+    const ok = await saveAvisosToSupabase([novoAviso]);
+    if (!ok) return alert("❌ Não foi possível gravar o lançamento no Supabase.");
+    setAvisos?.(prev => [...prev, novoAviso]);
+    registarLogAuditoria("Financeira", "Criou manualmente um lançamento no Mapa de Pagamentos", predio.id_predio, loggedUser, `${fracao?.fracao_nome} — ${MESES_ABREV[mIdx]}/${mapaAno}: ${novoValor.toFixed(2)} €`);
+    setEditandoCelulaChave(null);
+    setValorQuotaEditado("");
+  };
+
   const handleGuardarQuotaEditada = async (idFracao: string) => {
     const info = quotaMensalAtualPorFracao[idFracao];
     if (!info) return;
@@ -1990,14 +2019,20 @@ export function FinanceiroAvancado({
                                 value={valorQuotaEditado}
                                 onChange={e => setValorQuotaEditado(e.target.value)}
                                 onKeyDown={e => {
-                                  if (e.key === "Enter" && c) handleGuardarValorAviso(c.idAviso, parseValorMonetario(valorQuotaEditado), `${l.fracao.fracao_nome} — ${MESES_ABREV[mIdx]}/${mapaAno}`);
+                                  if (e.key === "Enter") {
+                                    if (c) handleGuardarValorAviso(c.idAviso, parseValorMonetario(valorQuotaEditado), `${l.fracao.fracao_nome} — ${MESES_ABREV[mIdx]}/${mapaAno}`);
+                                    else handleCriarValorAviso(l.fracao.id_fracao, mIdx, parseValorMonetario(valorQuotaEditado));
+                                  }
                                   if (e.key === "Escape") setEditandoCelulaChave(null);
                                 }}
                                 className="w-14 border border-indigo-300 rounded px-1 py-0.5 text-right text-[10px] font-mono text-slate-800 focus:outline-indigo-500"
                               />
                               <button
                                 type="button"
-                                onClick={() => c && handleGuardarValorAviso(c.idAviso, parseValorMonetario(valorQuotaEditado), `${l.fracao.fracao_nome} — ${MESES_ABREV[mIdx]}/${mapaAno}`)}
+                                onClick={() => {
+                                  if (c) handleGuardarValorAviso(c.idAviso, parseValorMonetario(valorQuotaEditado), `${l.fracao.fracao_nome} — ${MESES_ABREV[mIdx]}/${mapaAno}`);
+                                  else handleCriarValorAviso(l.fracao.id_fracao, mIdx, parseValorMonetario(valorQuotaEditado));
+                                }}
                                 className="text-emerald-700 hover:text-emerald-900 cursor-pointer"
                                 title="Guardar"
                               >
@@ -2010,14 +2045,14 @@ export function FinanceiroAvancado({
                           ) : (
                             <span className="inline-flex items-center gap-1 justify-end">
                               {c ? `${c.valor.toFixed(2)}€` : "—"}
-                              {ehAdminOuGestor && c && (
+                              {ehAdminOuGestor && (
                                 <button
                                   type="button"
-                                  onClick={() => { setEditandoCelulaChave(chaveCelula); setValorQuotaEditado(String(c.valor)); }}
-                                  className="opacity-0 group-hover:opacity-100 text-current hover:scale-110 cursor-pointer transition-opacity"
-                                  title="Corrigir este valor"
+                                  onClick={() => { setEditandoCelulaChave(chaveCelula); setValorQuotaEditado(c ? String(c.valor) : ""); }}
+                                  className={`text-current hover:scale-110 cursor-pointer transition-opacity ${c ? "opacity-0 group-hover:opacity-100" : "opacity-40 group-hover:opacity-100"}`}
+                                  title={c ? "Corrigir este valor" : "Lançar um valor nesta célula"}
                                 >
-                                  <i className="fa-solid fa-pen text-[8px]"></i>
+                                  <i className={`fa-solid ${c ? "fa-pen" : "fa-plus"} text-[8px]`}></i>
                                 </button>
                               )}
                             </span>
