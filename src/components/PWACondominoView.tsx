@@ -7,7 +7,6 @@ import {
   LoggedUser,
   Predio,
   Fracao,
-  Conta,
   Documento,
   Ocorrencia,
   Reserva,
@@ -106,7 +105,6 @@ interface PWACondominoViewProps {
   predio: Predio;
   fracoes?: Fracao[];
   setFracoes?: React.Dispatch<React.SetStateAction<Fracao[]>>;
-  contas?: Conta[];
   condominoFracao: any;
   documentos: Documento[];
   setDocumentos?: React.Dispatch<React.SetStateAction<Documento[]>>;
@@ -131,7 +129,6 @@ export default function PWACondominoView({
   predio,
   fracoes = [],
   setFracoes,
-  contas = [],
   condominoFracao,
   documentos,
   setDocumentos,
@@ -266,15 +263,11 @@ export default function PWACondominoView({
     }
   });
 
-  // Antes era uma lista fixa de 3 notificações inventadas (elevador,
-  // sondagem, higiene) que apareciam sempre, para qualquer condómino, em
-  // qualquer prédio — nunca tiveram ligação a dados reais. `pwaNotifications`
-  // já existia como prop (alimentada por eventos reais: pagamento
-  // confirmado, seguro registado, resposta da administração, etc. — ver
-  // PWASimulator.tsx) mas nunca tinha chegado a ser usada aqui.
-  const allNotifs = (pwaNotifications || [])
-    .filter((n: any) => !n.isArchived)
-    .map((n: any) => ({ id: n.id, type: "indigo" as string, text: n.title || n.desc }));
+  const allNotifs = [
+    { id: "notif-elevador", type: "amber", text: "Intervenção técnica aberta: Elevador nº 2" },
+    { id: "notif-sondagem", type: "indigo", text: "Nova sondagem disponível sobre o Prédio" },
+    { id: "notif-higiene", type: "emerald", text: "Higiene Semanal Concluída com sucesso" },
+  ];
 
   const activeNotifs = allNotifs.filter(n => !closedNotifs.includes(n.id));
 
@@ -937,9 +930,9 @@ export default function PWACondominoView({
             setHasScrolled(true);
           }
         }}
-        className={`flex-1 overflow-y-auto px-4 pt-3 pb-20 space-y-3 relative pwa-container ${
+        className={`flex-1 overflow-y-auto px-4 py-3 space-y-3 relative pwa-container ${
           theme === "dark" ? "bg-slate-950 text-white" : "bg-[#ece7e7] text-slate-800"
-        }`}
+        }`} 
         style={{ backgroundColor: theme === "dark" ? "#020617" : "#ece7e7" }}
       >
 
@@ -2729,13 +2722,7 @@ export default function PWACondominoView({
                 do prédio (não simulados), sempre visível no Perfil para
                 qualquer condómino consultar rapidamente. */}
             {(() => {
-              // O IBAN real vive na conta bancária principal (contas.iban),
-              // não em predio.iban — esse campo nunca chegou a ser
-              // preenchido, por isso mostrava sempre "—" nos emails e neste
-              // cartão. A conta principal é a mesma usada em todo o resto da
-              // app para gerar recibos/IBAN de cobrança.
-              const contaPrincipal = contas.find(c => c.is_principal) || contas[0];
-              const ibanPredio = contaPrincipal?.iban || predio.iban || "IBAN não configurado — contacte a administração";
+              const ibanPredio = predio.iban || "IBAN não configurado — contacte a administração";
               const nifPredio = predio.nif || "—";
               const emailComprovativos = predio.email_condominio || predio.email || "bentorodrigues2@gmail.com";
               const referenciaFracao = condominoFracao?.referencia_br23e || "—";
@@ -3211,10 +3198,24 @@ export default function PWACondominoView({
           </div>
         )}
 
-        {/* Removido: era um alerta de demonstração com texto fixo (fala de
-            uma manutenção de elevador inventada, "dia 19/07") que aparecia
-            sempre que o condómino fazia scroll — nunca teve ligação a dados
-            reais, só existia para mostrar o padrão visual do alerta. */}
+        {/* Floating Alertas do Prédio after first scroll */}
+        {hasScrolled && activeTab === "home" && (
+          <div className="fixed bottom-16 left-4 right-4 mx-auto max-w-sm bg-amber-50 dark:bg-amber-950 border-2 border-amber-300 dark:border-amber-800 p-2.5 rounded-xl shadow-xl flex items-start space-x-2 text-[10px] z-40">
+            <span className="text-sm">⚠️</span>
+            <div className="flex-1 space-y-0.5 text-left">
+              <span className="font-extrabold text-amber-800 dark:text-amber-300 block">Alerta Importante (Detetado Scroll)</span>
+              <p className="text-slate-700 dark:text-slate-300 leading-normal">
+                Nota: A manutenção técnica do Elevador n.º 2 decorrerá dia 19/07 entre as 14h-16h. O elevador estará indisponível nesse período.
+              </p>
+            </div>
+            <button 
+              onClick={() => setHasScrolled(false)}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer font-black text-xs shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
       </div>
 
@@ -4500,14 +4501,8 @@ export default function PWACondominoView({
         </motion.div>
       )}
 
-      {/* PWA NATIVE BOTTOM NAVIGATION BAR (Specially customized for 5 key views with CondoManager AI colors) —
-          fixa ao fundo do ecrã real do telemóvel (não apenas ao fundo do
-          conteúdo), com padding extra para a barra de gestos do iOS/Android;
-          antes dependia da altura do contentor pai (h-screen nunca definido
-          neste componente), por isso em produção real (fora da moldura de
-          telemóvel do simulador) a barra só aparecia depois de fazer scroll
-          até ao fim da página, em vez de ficar sempre visível. */}
-      <div className="fixed bottom-0 inset-x-0 z-50 h-14 pb-[env(safe-area-inset-bottom)] bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800/80 px-2 flex items-center justify-around text-[9px] font-bold text-slate-500 dark:text-white">
+      {/* PWA NATIVE BOTTOM NAVIGATION BAR (Specially customized for 5 key views with CondoManager AI colors) */}
+      <div className="h-14 shrink-0 bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800/80 px-2 flex items-center justify-around text-[9px] font-bold text-slate-500 dark:text-white z-10">
         
         {/* 1. Início (Verde condomanagerai) */}
         <button 
