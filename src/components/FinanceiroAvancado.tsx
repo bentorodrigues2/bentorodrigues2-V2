@@ -2090,7 +2090,7 @@ export function FinanceiroAvancado({
                             </div>
                           ) : (
                             <span className="inline-flex items-center gap-1 justify-end">
-                              {c ? `${c.valor.toFixed(2)}€` : "—"}
+                              {c && c.pago ? `${c.valor.toFixed(2)}€` : "—"}
                               {ehAdminOuGestor && (
                                 <button
                                   type="button"

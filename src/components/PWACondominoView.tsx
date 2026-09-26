@@ -121,6 +121,7 @@ interface PWACondominoViewProps {
   pwaNotifications: any[];
   setPwaNotifications: React.Dispatch<React.SetStateAction<any[]>>;
   onLogout?: () => void;
+  dividasPendentesValor?: number;
   biometricsEnabled?: boolean;
   setBiometricsEnabled?: (b: boolean) => void;
   theme?: "light" | "dark";
@@ -148,7 +149,8 @@ export default function PWACondominoView({
   onLogout,
   biometricsEnabled = false,
   setBiometricsEnabled,
-  theme = "light"
+  theme = "light",
+  dividasPendentesValor = 0
 }: PWACondominoViewProps) {
   // Mobile app navigation: handles both bottom quick tabs and the 10 modules
   const [activeTab, setActiveTab] = useState<string>("home");
@@ -960,7 +962,7 @@ export default function PWACondominoView({
       <button
         type="button"
         onClick={() => setShowMenuLateral(true)}
-        className="fixed top-3 left-3 z-40 h-9 w-9 rounded-xl bg-slate-900/80 dark:bg-slate-800/90 text-white border border-slate-700 flex items-center justify-center shadow-lg cursor-pointer backdrop-blur-sm"
+        className="fixed top-20 left-3 z-40 h-9 w-9 rounded-xl bg-slate-900/80 dark:bg-slate-800/90 text-white border border-slate-700 flex items-center justify-center shadow-lg cursor-pointer backdrop-blur-sm"
         title="Menu"
       >
         <i className="fa-solid fa-bars text-sm"></i>
@@ -1150,11 +1152,12 @@ export default function PWACondominoView({
               const totalContaOrdem = contas
                 .filter(c => !ehContaFundoReserva(c.tipo))
                 .reduce((acc, c) => acc + (Number(c.saldo) || 0), 0);
-              const CartaoFinanca = ({ label, valor }: { label: string; valor: number }) => (
+              const totalLiquido = totalContaOrdem + totalFundoReserva - dividasPendentesValor;
+              const CartaoFinanca = ({ label, valor, full }: { label: string; valor: number; full?: boolean }) => (
                 <button
                   type="button"
                   onClick={() => setActiveTab("financas")}
-                  className={`flex-1 rounded-xl p-3 border text-left cursor-pointer hover:brightness-95 transition-all ${
+                  className={`${full ? "w-full" : "flex-1"} rounded-xl p-3 border text-left cursor-pointer hover:brightness-95 transition-all ${
                     valor >= 0 ? "bg-[#A7F3D0] border-[#34D399]" : "bg-red-100 border-red-400"
                   }`}
                 >
@@ -1163,9 +1166,12 @@ export default function PWACondominoView({
                 </button>
               );
               return (
-                <div className="flex gap-2.5">
-                  <CartaoFinanca label="Conta(s) à Ordem" valor={totalContaOrdem} />
-                  <CartaoFinanca label="Fundo de Reserva" valor={totalFundoReserva} />
+                <div className="space-y-2.5">
+                  <div className="flex gap-2.5">
+                    <CartaoFinanca label="Conta(s) à Ordem" valor={totalContaOrdem} />
+                    <CartaoFinanca label="Fundo de Reserva" valor={totalFundoReserva} />
+                  </div>
+                  <CartaoFinanca label="Total Líquido" valor={totalLiquido} full />
                 </div>
               );
             })()}
@@ -1299,9 +1305,9 @@ export default function PWACondominoView({
                     <span className="font-black uppercase tracking-wider text-emerald-600 text-[10px] flex items-center">
                       ✨ Opções: {selectedSubmenu.replace("_", " ").toUpperCase()}
                     </span>
-                    <button 
+                    <button
                       onClick={() => setSelectedSubmenu(null)}
-                      className="text-slate-400 hover:text-white font-bold text-xs p-1 cursor-pointer"
+                      className="text-red-500 hover:text-red-600 font-bold text-xs p-1 cursor-pointer"
                     >
                       Fechar ✕
                     </button>
@@ -1745,7 +1751,7 @@ export default function PWACondominoView({
                     </div>
                     <button 
                       onClick={() => setSelectedDocPreview(null)}
-                      className="font-black text-xs text-white hover:text-indigo-100 cursor-pointer"
+                      className="font-black text-xs text-red-300 hover:text-red-100 cursor-pointer"
                     >
                       Fechar ✕
                     </button>
@@ -2718,7 +2724,7 @@ export default function PWACondominoView({
                     <button 
                       type="button" 
                       onClick={() => setIsEmojiPickerOpen(false)}
-                      className="text-slate-400 hover:text-slate-600 dark:hover:text-white text-xs cursor-pointer"
+                      className="text-red-500 hover:text-red-600 text-xs cursor-pointer"
                     >
                       ✕
                     </button>
@@ -2749,7 +2755,7 @@ export default function PWACondominoView({
                     <button 
                       type="button" 
                       onClick={() => setIsAttachmentMenuOpen(false)}
-                      className="text-slate-400 hover:text-slate-600 dark:hover:text-white text-xs cursor-pointer"
+                      className="text-red-500 hover:text-red-600 text-xs cursor-pointer"
                     >
                       ✕
                     </button>
@@ -3951,7 +3957,7 @@ export default function PWACondominoView({
                           <button 
                             type="button" 
                             onClick={() => setIsEmojiPickerOpen(false)}
-                            className="text-slate-400 hover:text-white text-xs cursor-pointer"
+                            className="text-red-500 hover:text-red-600 text-xs cursor-pointer"
                           >
                             ✕
                           </button>
@@ -3982,7 +3988,7 @@ export default function PWACondominoView({
                           <button 
                             type="button" 
                             onClick={() => setIsAttachmentMenuOpen(false)}
-                            className="text-slate-400 hover:text-white text-xs cursor-pointer"
+                            className="text-red-500 hover:text-red-600 text-xs cursor-pointer"
                           >
                             ✕
                           </button>

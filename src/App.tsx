@@ -2763,6 +2763,7 @@ export default function App() {
               capacidades={capacidades}
               setCapacidades={setCapacidades}
               onLogout={() => handleSecureLogout()}
+              dividasPendentesValor={dividasFornecedoresPendentesValor}
             />
           ) : (
             <Fragment key={grupoMenuPrincipal}>
