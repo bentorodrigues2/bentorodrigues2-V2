@@ -941,6 +941,7 @@ export default function PWACondominoView({
   };
 
   const [showDadosBancariosModal, setShowDadosBancariosModal] = useState(false);
+  const [showMenuLateral, setShowMenuLateral] = useState(false);
 
   return (
     <div 
@@ -950,7 +951,68 @@ export default function PWACondominoView({
       data-pwa="true"
       style={{ backgroundColor: theme === "dark" ? "#020617" : "#ece7e7" }}
     >
-      
+
+      {/* BOTÃO DE MENU LATERAL — sempre visível em qualquer separador,
+          abre a mesma lista de módulos do separador "Módulos" mas como
+          gaveta deslizante, para não depender de estar na tela inicial
+          para navegar (pedido explícito: "coluna central" do browser,
+          adaptada à PWA). */}
+      <button
+        type="button"
+        onClick={() => setShowMenuLateral(true)}
+        className="fixed top-3 left-3 z-40 h-9 w-9 rounded-xl bg-slate-900/80 dark:bg-slate-800/90 text-white border border-slate-700 flex items-center justify-center shadow-lg cursor-pointer backdrop-blur-sm"
+        title="Menu"
+      >
+        <i className="fa-solid fa-bars text-sm"></i>
+      </button>
+
+      {showMenuLateral && (
+        <div className="fixed inset-0 z-[70] flex bg-black/40" onClick={() => setShowMenuLateral(false)}>
+          <motion.div
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{ type: "tween", duration: 0.2 }}
+            className="w-[78%] max-w-[280px] h-full bg-white dark:bg-slate-900 shadow-2xl overflow-y-auto p-4 space-y-1"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-150 dark:border-slate-800">
+              <span className="text-xs font-black text-slate-800 dark:text-white">Menu</span>
+              <button onClick={() => setShowMenuLateral(false)} className="text-red-500 hover:text-red-600 cursor-pointer p-1" title="Fechar">
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            {[
+              { id: "home", label: "Dashboard", icon: Smartphone },
+              ...(loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" ? [{ id: "documentos", label: "Arquivo", icon: FileText }] : []),
+              { id: "intervencoes", label: "Intervenções", icon: Wrench },
+              { id: "obras", label: "Obras", icon: Building },
+              { id: "limpezas", label: "Limpezas", icon: Brush },
+              ...(loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" ? [{ id: "financeiro", label: "Financeiro", icon: CreditCard }] : []),
+              { id: "regras", label: "Regras do Prédio", icon: Scale },
+              { id: "sondagens", label: "Sondagens", icon: Vote },
+              { id: "perfil", label: "Perfil", icon: User }
+            ].map(item => {
+              const ItemIcon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => { setActiveTab(item.id); setShowMenuLateral(false); }}
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-left cursor-pointer transition-colors text-xs font-bold ${
+                    activeTab === item.id
+                      ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  <ItemIcon className="h-4 w-4 shrink-0" />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </motion.div>
+        </div>
+      )}
+
       {/* BODY PANEL (SCROLLABLE CONTENT AREA) */}
       <div 
         onScroll={(e) => {
