@@ -17,7 +17,7 @@ import {
   Questionario,
   Conta
 } from "../types";
-import { generateAndDownloadPdf, downloadEmailDocument, exportToXLS, downloadBlob } from "../utils";
+import { generateAndDownloadPdf, downloadEmailDocument, exportToXLS, downloadBlob, ehContaFundoReserva } from "../utils";
 import { usePwaBackButton } from "../utils/usePwaBackButton";
 import { GestaoDocumentos } from "./GestaoDocumentos";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
@@ -1076,6 +1076,38 @@ export default function PWACondominoView({
               );
             })()}
 
+            {/* Cartões de finanças do prédio (saldo em conta + fundo de
+                reserva) — mesma linguagem visual do Painel de Controlo do
+                administrador (verde quando positivo, vermelho quando
+                negativo), pedido explícito para também aparecer aqui.
+                Inquilino/coproprietário não têm acesso a dados financeiros. */}
+            {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && (() => {
+              const totalFundoReserva = contas
+                .filter(c => ehContaFundoReserva(c.tipo))
+                .reduce((acc, c) => acc + (Number(c.saldo) || 0), 0);
+              const totalContaOrdem = contas
+                .filter(c => !ehContaFundoReserva(c.tipo))
+                .reduce((acc, c) => acc + (Number(c.saldo) || 0), 0);
+              const CartaoFinanca = ({ label, valor }: { label: string; valor: number }) => (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("financas")}
+                  className={`flex-1 rounded-xl p-3 border text-left cursor-pointer hover:brightness-95 transition-all ${
+                    valor >= 0 ? "bg-[#A7F3D0] border-[#34D399]" : "bg-red-100 border-red-400"
+                  }`}
+                >
+                  <span className={`text-[8px] font-black uppercase tracking-wider block ${valor >= 0 ? "text-[#022c22]" : "text-red-900"}`}>{label}</span>
+                  <span className={`text-sm font-black block mt-0.5 ${valor >= 0 ? "text-[#022c22]" : "text-red-900"}`}>{valor.toLocaleString("pt-PT")} €</span>
+                </button>
+              );
+              return (
+                <div className="flex gap-2.5">
+                  <CartaoFinanca label="Conta(s) à Ordem" valor={totalContaOrdem} />
+                  <CartaoFinanca label="Fundo de Reserva" valor={totalFundoReserva} />
+                </div>
+              );
+            })()}
+
             {showDadosBancariosModal && (() => {
               const contaPrincipal = contas.find(c => c.is_principal) || contas[0];
               const contaExtra = contas.find(c => !c.is_principal && c.id_conta !== contaPrincipal?.id_conta);
@@ -1139,24 +1171,28 @@ export default function PWACondominoView({
               <div className="grid grid-cols-2 gap-2.5">
                 {[
                   { id: "ocorrencias", label: "Ocorrências", desc: "Avarias & Apoio", image: "/modulos/29-avaria.png" },
-                  { id: "financas", label: "Finanças", desc: "4.8k€ / 15.2k€", image: "/modulos/59-recibo.png" },
+                  { id: "financas", label: "Finanças", desc: "Quotas & Comprovativos", image: "/modulos/59-recibo.png" },
                   { id: "comunicacoes", label: "Comunicados", desc: "Canal Interno & Avisos", image: "/modulos/21-notificacoes-inquilino.png" },
                   { id: "documentos", label: "Arquivo Digital", desc: "Ficheiros & Fotos", image: "/modulos/27-arquivo-automatico.png" },
                   { id: "reservas_limpezas", label: "Reservas", desc: "Áreas Comuns", image: "/modulos/82-automacao.png" },
-                  { id: "limpezas", label: "Limpezas", desc: "Relatórios de Higiene", image: "/modulos/50-limpeza.png" },
-                  { id: "fornecedores", label: "Fornecedores", desc: "Prestadores Ativos", image: "/modulos/67-fornecedor.png" },
-                  { id: "sondagens", label: "Sondagens", desc: "Decisões e Votos", image: "/modulos/70-pessoa-de-contacto.png" },
-                  { id: "obras", label: "Obras", desc: "Melhorias Prédio", image: "/modulos/41-obra.png" }
+                  { id: "sondagens", label: "Sondagens", desc: "Decisões e Votos", image: "/modulos/70-pessoa-de-contacto.png" }
+                  // "Limpezas", "Fornecedores" e "Obras" ficaram de fora — não
+                  // há nenhum dado real de fração ligado a estes cartões
+                  // aqui (ao contrário de Ocorrências/Finanças/Documentos/
+                  // Reservas/Sondagens), por isso mostravam sempre o mesmo
+                  // texto fixo independentemente de haver ou não algo real.
                 ].filter(card => {
                   // Coproprietário e inquilino têm acesso básico: mensagens,
                   // alertas, incidências (podem reportar e seguir a
-                  // resolução), sondagens e obras (só para saberem que vão
-                  // acontecer e se preparem — nunca orçamentos/pagamentos).
-                  // Sem acesso a finanças, documentos financeiros, reservas
-                  // ou fornecedores.
+                  // resolução), sondagens (só para saberem que vão acontecer
+                  // e se preparem — nunca orçamentos/pagamentos). Sem acesso
+                  // a finanças, documentos financeiros ou reservas.
                   const acessoRestrito = loggedUser.role === "INQUILINO" || loggedUser.role === "COPROPRIETARIO";
-                  if (!acessoRestrito) return true;
-                  return !["financas", "documentos", "reservas_limpezas", "fornecedores"].includes(card.id);
+                  if (acessoRestrito && ["financas", "documentos", "reservas_limpezas"].includes(card.id)) return false;
+                  // Reservas só aparece se a funcionalidade for mesmo usada
+                  // neste prédio (existir pelo menos 1 reserva alguma vez).
+                  if (card.id === "reservas_limpezas" && (reservas || []).length === 0) return false;
+                  return true;
                 }).map(card => {
                   const notifCount = getNotificationCount(card.id);
                   return (
