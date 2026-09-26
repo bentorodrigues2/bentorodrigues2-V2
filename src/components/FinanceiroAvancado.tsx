@@ -543,9 +543,55 @@ export function FinanceiroAvancado({
   };
 
   // Helper: calculate balance for a fraction (Negative if they have unpaid notices, Positive/Zero if in good standing)
+  //
+  // Quando um condómino paga um mês adiantado (um comprovativo único
+  // dividido por vários meses, tipo "aviso-dividido-...") esse mês fica
+  // "Pago" nesse aviso — mas a emissão mensal regular ("Quota de
+  // Condomínio... - <mês>/<ano>") cria SEMPRE um segundo aviso para o
+  // mesmo mês, que ficava "Pendente" e nunca era removido/conciliado. O
+  // relatório de dívidas somava os dois, contando o mesmo mês como dívida
+  // mesmo já estando pago — foi assim que a fração P apareceu com 8 avisos
+  // pendentes e quase 280€ de "dívida" tendo pago o ano inteiro. Por mês,
+  // se já existir um "Pago" a cobrir esse mês, só a eventual "Diferença de
+  // Quota" (o acerto real de um aumento entretanto aprovado) conta como
+  // dívida — nunca a emissão regular completa do mesmo mês outra vez.
+  const getPendentesReaisDaFracao = (id_fracao: string): Aviso[] => {
+    const avisosFracao = predioAvisos.filter(a => a.id_fracao === id_fracao);
+    const porMes: Record<string, Aviso[]> = {};
+    const avulsos: Aviso[] = [];
+    avisosFracao.forEach(a => {
+      if (a.estado !== "Pendente" && a.estado !== "Paga Parcialmente" && a.estado !== "Pago") return;
+      const d = mesReferenciaAviso(a);
+      if (ehDividaAvulsaAnterior(a) || isNaN(d.getTime())) { avulsos.push(a); return; }
+      const key = `${d.getFullYear()}-${d.getMonth()}-${String(a.tipo || "").includes("Extraordinária") ? "extra" : "ord"}`;
+      (porMes[key] = porMes[key] || []).push(a);
+    });
+
+    const reais: Aviso[] = avulsos.filter(a => a.estado === "Pendente" || a.estado === "Paga Parcialmente");
+    Object.values(porMes).forEach(lista => {
+      const temPago = lista.some(a => a.estado === "Pago");
+      const pendentesDoMes = lista.filter(a => a.estado === "Pendente" || a.estado === "Paga Parcialmente");
+      if (temPago) {
+        // Só a "Diferença de Quota" (se existir) representa dívida real —
+        // a emissão regular completa do mesmo mês está duplicada.
+        reais.push(...pendentesDoMes.filter(a => String(a.descricao || "").startsWith("Diferença de Quota")));
+      } else {
+        reais.push(...pendentesDoMes);
+      }
+    });
+    return reais;
+  };
+
+  // Quando um condómino paga um mês adiantado (um comprovativo único
+  // dividido por vários meses, tipo "aviso-dividido-...") esse mês fica
+  // "Pago" nesse aviso — mas a emissão mensal regular ("Quota de
+  // Condomínio... - <mês>/<ano>") cria SEMPRE um segundo aviso para o
+  // mesmo mês, que ficava "Pendente" e nunca era removido/conciliado. O
+  // relatório de dívidas somava os dois, contando o mesmo mês como dívida
+  // mesmo já estando pago — foi assim que a fração P apareceu com 8 avisos
+  // pendentes e quase 280€ de "dívida" tendo pago o ano inteiro.
   const getFracaoBalance = (id_fracao: string) => {
-    const pendentes = predioAvisos.filter(a => a.id_fracao === id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"));
-    const totalPend = pendentes.reduce((acc, curr) => acc + (curr.valor - (curr.valor_pago || 0)), 0);
+    const totalPend = getPendentesReaisDaFracao(id_fracao).reduce((acc, a) => acc + (a.valor - (a.valor_pago || 0)), 0);
     // In condominium terminology, unpaid quotas represent debt (negative balance from condómino perspective)
     return totalPend === 0 ? 0 : -totalPend;
   };
@@ -1569,7 +1615,7 @@ export function FinanceiroAvancado({
                       {predioFracoes.map(frac => {
                         const bal = getFracaoBalance(frac.id_fracao);
                         const isGoodStanding = bal >= 0;
-                        const pendCount = predioAvisos.filter(a => a.id_fracao === frac.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")).length;
+                        const pendCount = getPendentesReaisDaFracao(frac.id_fracao).length;
                         return (
                           <tr key={frac.id_fracao} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-colors">
                             <td className="py-3 px-4 font-bold text-slate-800 dark:text-white">
