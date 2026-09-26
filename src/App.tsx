@@ -2896,6 +2896,7 @@ export default function App() {
               avisos={avisos}
               setAvisos={setAvisos}
               contas={contas}
+              setContas={setContas}
               movimentos={movements}
               setDocumentos={setDocumentos}
               loggedUser={loggedUser}

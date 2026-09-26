@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef } from "react";
 import { Predio, Fracao, Aviso, Movimento, LoggedUser, Documento, Conta } from "../types";
 import { formatDatePT, formatQuotaReceiptNumber, downloadReceiptPDF, exportarBalanceteMapaAnualXLS, parseValorMonetario, exportToXLS, exportarTabelaParaPDF } from "../utils";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
-import { fetchCaucoesFromSupabase, saveCaucaoToSupabase, registarLogAuditoria, saveAvisosToSupabase } from "../lib/supabaseService";
+import { fetchCaucoesFromSupabase, saveCaucaoToSupabase, registarLogAuditoria, saveAvisosToSupabase, saveContaToSupabase, saveMovimentoToSupabase } from "../lib/supabaseService";
 
 export interface Caucao {
   id_caucao: string;
@@ -33,6 +33,7 @@ interface FinanceiroAvancadoProps {
   setMovements?: React.Dispatch<React.SetStateAction<Movimento[]>>;
   setDocumentos?: React.Dispatch<React.SetStateAction<Documento[]>>;
   contas?: Conta[];
+  setContas?: React.Dispatch<React.SetStateAction<Conta[]>>;
   loggedUser: LoggedUser;
   activeSubSection?: string;
   initialTab?: string;
@@ -48,6 +49,7 @@ export function FinanceiroAvancado({
   setMovements,
   setDocumentos,
   contas = [],
+  setContas,
   loggedUser,
   activeSubSection,
   initialTab
@@ -479,6 +481,7 @@ export function FinanceiroAvancado({
   const [reciboFundoReserva, setReciboFundoReserva] = useState<string>("0.00");
   const [reciboQuotaExtra, setReciboQuotaExtra] = useState<string>("0.00");
   const [reciboMetodo, setReciboMetodo] = useState<string>("Transferência Bancária");
+  const [reciboContaId, setReciboContaId] = useState<string>("");
   const [reciboReferencia, setReciboReferencia] = useState<string>("");
   const [reciboObs, setReciboObs] = useState<string>("");
   const [reciboAssinatura, setReciboAssinatura] = useState<string>(`${loggedUser.nome} - Administrador do Condomínio`);
@@ -603,9 +606,20 @@ export function FinanceiroAvancado({
     ? fracaoPropria
     : (predioFracoes.find(f => f.id_fracao === selectedFracaoId) || predioFracoes[0]);
 
-  // Helper: record manual receipt into movements
-  const handleRegistarReciboManual = () => {
+  // Helper: record manual receipt into movements — persiste mesmo na base
+  // de dados (antes só atualizava o estado local: os movimentos
+  // desapareciam ao recarregar a página, nunca tinham chegado ao
+  // Supabase), fica ligado a uma conta bancária real escolhida pelo
+  // administrador (antes usava sempre "conta-1", um id que não existe em
+  // nenhum prédio — por isso nunca aparecia no balancete/registo por
+  // conta nem creditava saldo nenhum) e credita mesmo o saldo dessa conta.
+  const [aRegistarReciboManual, setARegistarReciboManual] = useState(false);
+  const handleRegistarReciboManual = async () => {
     if (!selectedFracao) return;
+    if (!reciboContaId) {
+      alert("Escolha a conta bancária que vai receber este recibo.");
+      return;
+    }
     const valNum = parseFloat(reciboValorTotal) || 0;
     if (valNum <= 0) {
       alert("Por favor indique valores válidos superiores a 0 €.");
@@ -620,7 +634,7 @@ export function FinanceiroAvancado({
       novosMovimentos.push({
         id_mov: `mov-manual-qm-${Date.now()}`,
         id_predio: predio.id_predio,
-        id_conta: "conta-1",
+        id_conta: reciboContaId,
         tipo: "Receita",
         categoria: "Quotas Condomínio",
         descricao: `Recibo Manual ${reciboNum} - Quota Mensal - Fração ${selectedFracao.fracao_nome}`,
@@ -634,7 +648,7 @@ export function FinanceiroAvancado({
       novosMovimentos.push({
         id_mov: `mov-manual-fr-${Date.now()}`,
         id_predio: predio.id_predio,
-        id_conta: "conta-1",
+        id_conta: reciboContaId,
         tipo: "Receita",
         categoria: "Fundo de Reserva",
         descricao: `Recibo Manual ${reciboNum} - Fundo Comum Reserva - Fração ${selectedFracao.fracao_nome}`,
@@ -648,7 +662,7 @@ export function FinanceiroAvancado({
       novosMovimentos.push({
         id_mov: `mov-manual-qe-${Date.now()}`,
         id_predio: predio.id_predio,
-        id_conta: "conta-1",
+        id_conta: reciboContaId,
         tipo: "Receita",
         categoria: "Quotas Extraordinárias",
         descricao: `Recibo Manual ${reciboNum} - Quota Extra - Fração ${selectedFracao.fracao_nome}`,
@@ -659,10 +673,36 @@ export function FinanceiroAvancado({
       });
     }
 
-    if (setMovements && novosMovimentos.length > 0) {
-      setMovements(prev => [...novosMovimentos, ...prev]);
+    if (novosMovimentos.length === 0) return;
+
+    setARegistarReciboManual(true);
+    try {
+      for (const mov of novosMovimentos) {
+        const ok = await saveMovimentoToSupabase({ ...mov, estado: "Justificado" });
+        if (!ok) {
+          alert("❌ Não foi possível registar o movimento no Supabase. Tente novamente.");
+          return;
+        }
+      }
+      if (setMovements) {
+        setMovements(prev => [...novosMovimentos, ...prev]);
+      }
+
+      // Credita o saldo real da conta escolhida — sem isto, o recibo ficava
+      // registado no livro de movimentos mas o saldo da conta nunca subia,
+      // desalinhando o Painel de Controlo e o balancete por conta.
+      const contaAlvo = predioContas.find(c => c.id_conta === reciboContaId);
+      if (contaAlvo) {
+        const contaAtualizada: Conta = { ...contaAlvo, saldo: Math.round(((Number(contaAlvo.saldo) || 0) + valNum) * 100) / 100 };
+        await saveContaToSupabase(contaAtualizada);
+        setContas?.(prev => prev.map(c => c.id_conta === contaAlvo.id_conta ? contaAtualizada : c));
+      }
+
+      registarLogAuditoria("Financeira", "Registou um recibo manual", predio.id_predio, loggedUser, `Recibo ${reciboNum} — Fração ${selectedFracao.fracao_nome} (${valNum.toFixed(2)} €, conta ${contaAlvo?.banco || reciboContaId})`);
+      showToast(`🎉 Recibo Manual ${reciboNum} registado com ${novosMovimentos.length} movimentos discriminados (€${valNum.toFixed(2)})!`);
+    } finally {
+      setARegistarReciboManual(false);
     }
-    showToast(`🎉 Recibo Manual ${reciboNum} registado com ${novosMovimentos.length} movimentos discriminados (€${valNum.toFixed(2)})!`);
   };
 
   // Print helper for clean document output
@@ -923,6 +963,19 @@ export function FinanceiroAvancado({
                       <option value="Numerário / Dinheiro">Numerário / Dinheiro</option>
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Conta Bancária a Creditar *</label>
+                    <select
+                      value={reciboContaId}
+                      onChange={e => setReciboContaId(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 dark:text-white"
+                    >
+                      <option value="">— Escolha a conta —</option>
+                      {predioContas.map(c => (
+                        <option key={c.id_conta} value={c.id_conta}>{c.banco}{c.is_principal ? " (Principal)" : ""} — {c.iban}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div>
@@ -958,10 +1011,11 @@ export function FinanceiroAvancado({
                 <div className="pt-2">
                   <button
                     onClick={handleRegistarReciboManual}
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                    disabled={aRegistarReciboManual}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
                   >
-                    <i className="fa-solid fa-check-circle"></i>
-                    <span>Registar e Guardar no Histórico Financeiro</span>
+                    <i className={`fa-solid ${aRegistarReciboManual ? "fa-spinner fa-spin" : "fa-check-circle"}`}></i>
+                    <span>{aRegistarReciboManual ? "A registar..." : "Registar e Guardar no Histórico Financeiro"}</span>
                   </button>
                 </div>
               </div>
