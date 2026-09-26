@@ -14,7 +14,8 @@ import {
   Aviso,
   Comunicado,
   Sondagem,
-  Questionario
+  Questionario,
+  Conta
 } from "../types";
 import { generateAndDownloadPdf, downloadEmailDocument, exportToXLS, downloadBlob } from "../utils";
 import { usePwaBackButton } from "../utils/usePwaBackButton";
@@ -105,6 +106,7 @@ interface PWACondominoViewProps {
   predio: Predio;
   fracoes?: Fracao[];
   setFracoes?: React.Dispatch<React.SetStateAction<Fracao[]>>;
+  contas?: Conta[];
   condominoFracao: any;
   documentos: Documento[];
   setDocumentos?: React.Dispatch<React.SetStateAction<Documento[]>>;
@@ -129,6 +131,7 @@ export default function PWACondominoView({
   predio,
   fracoes = [],
   setFracoes,
+  contas = [],
   condominoFracao,
   documentos,
   setDocumentos,
@@ -914,6 +917,8 @@ export default function PWACondominoView({
     alert(`${label} copiado para a área de transferência!`);
   };
 
+  const [showDadosBancariosModal, setShowDadosBancariosModal] = useState(false);
+
   return (
     <div 
       className={`flex flex-col h-full font-sans relative z-10 pwa-screen ${
@@ -1021,6 +1026,85 @@ export default function PWACondominoView({
                 </div>
               </div>
             )}
+
+            {/* CARTÃO FIXO "DADOS BANCÁRIOS" — sempre visível no topo do
+                Início, antes dos restantes cartões, para o condómino
+                encontrar rapidamente o IBAN e a referência sem ter de ir ao
+                Perfil. Abre uma janela com os campos copiáveis um a um. */}
+            {(() => {
+              return (
+                <button
+                  type="button"
+                  onClick={() => setShowDadosBancariosModal(true)}
+                  className="w-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900 rounded-xl p-3 shadow-sm flex items-center justify-between text-left cursor-pointer hover:border-orange-400 transition-colors"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="h-8 w-8 rounded-lg bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-300 flex items-center justify-center shrink-0">
+                      <i className="fa-solid fa-building-columns text-sm"></i>
+                    </span>
+                    <div>
+                      <span className="text-[10px] font-black text-orange-800 dark:text-orange-200 block">Dados Bancários</span>
+                      <span className="text-[8px] text-orange-600/80 dark:text-orange-400/80">IBAN, referências e email para comprovativos</span>
+                    </div>
+                  </div>
+                  <i className="fa-solid fa-chevron-right text-orange-400 text-xs"></i>
+                </button>
+              );
+            })()}
+
+            {showDadosBancariosModal && (() => {
+              const contaPrincipal = contas.find(c => c.is_principal) || contas[0];
+              const contaExtra = contas.find(c => !c.is_principal && c.id_conta !== contaPrincipal?.id_conta);
+              const ibanPredio = contaPrincipal?.iban || predio.iban || "IBAN não configurado — contacte a administração";
+              const emailComprovativos = (predio as any).email_condominio || predio.email || "bentorodrigues2@gmail.com";
+              const referenciaFracao = condominoFracao?.referencia_br23e || "—";
+              const temQuotaExtra = avisos.some(
+                (a: any) => a.id_fracao === condominoFracao?.id_fracao && String(a.tipo || "").includes("Extraordinária") && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")
+              );
+              const LinhaCopiavelModal = ({ label, valor }: { label: string; valor: string }) => (
+                <div className="space-y-0.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] text-amber-700/80 dark:text-amber-400/80 font-extrabold uppercase tracking-wider">{label}</span>
+                    <button
+                      onClick={() => handleCopyToClipboard(valor, label)}
+                      className="flex items-center space-x-1 text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-200 font-bold text-[9px] cursor-pointer"
+                    >
+                      <Copy className="h-3 w-3" />
+                      <span>Copiar</span>
+                    </button>
+                  </div>
+                  <strong className="text-amber-950 dark:text-amber-100 block font-mono text-[12px] tracking-tight break-all">{valor}</strong>
+                </div>
+              );
+              return (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" onClick={() => setShowDadosBancariosModal(false)}>
+                  <div
+                    className="bg-orange-50 dark:bg-orange-950/95 border border-orange-200 dark:border-orange-900 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm max-h-[85vh] overflow-y-auto p-4 space-y-3"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-extrabold text-orange-700 dark:text-orange-300 uppercase tracking-widest flex items-center gap-1.5">
+                        <i className="fa-solid fa-building-columns"></i> Dados Bancários
+                      </span>
+                      <button onClick={() => setShowDadosBancariosModal(false)} className="text-orange-400 hover:text-orange-700 cursor-pointer p-1" title="Fechar">
+                        <i className="fa-solid fa-xmark"></i>
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      <LinhaCopiavelModal label="IBAN do Condomínio" valor={ibanPredio} />
+                      {contaExtra?.iban && (
+                        <LinhaCopiavelModal label="IBAN da Conta de Quotas Extra" valor={contaExtra.iban} />
+                      )}
+                      <LinhaCopiavelModal label="Email para Comprovativos" valor={emailComprovativos} />
+                      <LinhaCopiavelModal label="Referência da Fração" valor={referenciaFracao} />
+                      {temQuotaExtra && (
+                        <LinhaCopiavelModal label="Referência da Fração — Quotas Extra" valor={referenciaFracao} />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* SQUARE CARDS BENTO GRID - UNIFORM DIMENSIONS AND DARKER GREEN DISPLAY */}
             <div className="space-y-2">
