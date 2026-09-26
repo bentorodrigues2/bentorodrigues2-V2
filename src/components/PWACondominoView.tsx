@@ -551,10 +551,11 @@ export default function PWACondominoView({
     await carregarMensagensReais();
   };
 
-  const [quotaState, setQuotaState] = useState<"pago" | "atraso" | "processamento" | "multiplo" | "cobranca">("pago");
+  // Filtro real do Mapa de Pagamentos — antes só mudava uma frase fixa
+  // ("A sua quota... está LIQUIDADA"), sem nenhuma ligação aos avisos reais.
+  const [quotaState, setQuotaState] = useState<"todos" | "pago" | "atraso">("todos");
   const [hasScrolled, setHasScrolled] = useState(false);
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
-  const [simulateExtraQuota, setSimulateExtraQuota] = useState<boolean>(true);
   const [documentSearch, setDocumentSearch] = useState("");
   const [documentCategory, setDocumentCategory] = useState("Todos");
   const [selectedDocPreview, setSelectedDocPreview] = useState<Documento | null>(null);
@@ -569,6 +570,19 @@ export default function PWACondominoView({
   const avisosPendentesFracaoReais = (avisos || []).filter(
     (a: any) => a.id_fracao === condominoFracao?.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")
   );
+  // Mapa de Pagamentos real da fração (o separador Financeiro da PWA
+  // mostrava só um simulador de estados fixos — nenhum dado real do
+  // condómino). Ordenado do aviso mais recente para o mais antigo.
+  const avisosFracaoOrdenados = (avisos || [])
+    .filter((a: any) => a.id_fracao === condominoFracao?.id_fracao && a.id_predio === predio.id_predio)
+    .slice()
+    .sort((a: any, b: any) => {
+      const paraData = (s: string) => {
+        const [d, m, y] = String(s || "").split("/");
+        return new Date(Number(y) || 0, (Number(m) || 1) - 1, Number(d) || 1).getTime();
+      };
+      return paraData(b.data) - paraData(a.data);
+    });
   const documentosFracaoReais = (documentos || []).filter(
     (d: any) => !d.id_fracao || d.id_fracao === condominoFracao?.id_fracao
   );
@@ -626,19 +640,6 @@ export default function PWACondominoView({
   const [comprovativoFileName, setComprovativoFileName] = useState("");
   const [comprovativoExtracting, setComprovativoExtracting] = useState(false);
   const [comprovativoExtractedData, setComprovativoExtractedData] = useState<any | null>(null);
-  const [financeiroMovimentos, setFinanceiroMovimentos] = useState<Array<{
-    id: string;
-    tipo: "Quota Ordinária" | "Quota Extraordinária" | "Comprovativo Enviado";
-    data: string;
-    descricao: string;
-    valor: number;
-    estado: "Pago" | "Pendente" | "Processado" | "Em atraso";
-    referencia?: string;
-  }>>([
-    { id: "MOV-302", tipo: "Quota Ordinária", data: "01/07/2026", descricao: "Quota Mensal - Fração 3ºE (Julho 2026)", valor: 45.00, estado: "Pago", referencia: "RB23E" },
-    { id: "MOV-301", tipo: "Quota Extraordinária", data: "15/06/2026", descricao: "Pintura das fachadas e escadas - Prestação 1/1", valor: 35.00, estado: "Pago", referencia: "RB23E_PINTURA" },
-    { id: "MOV-300", tipo: "Quota Ordinária", data: "01/06/2026", descricao: "Quota Mensal - Fração 3ºE (Junho 2026)", valor: 45.00, estado: "Pago", referencia: "RB23E" }
-  ]);
 
   // Módulo 10 - Perfil States — inicializados a partir dos dados reais do
   // proprietário (fracoes.proprietario), não de valores fixos. Antes estes
@@ -717,20 +718,19 @@ export default function PWACondominoView({
   const [perfilShowPassModal, setPerfilShowPassModal] = useState(false);
   const [perfilNewPass, setPerfilNewPass] = useState("");
 
-  // Helper Rule B1: 1ª letra de cada nome da rua + número + piso + letra(s) -> Exemplo: RB23E
-  const generateFractionRef = () => {
-    const street = "Rua Bento Rodrigues";
-    const num = "23";
-    const floor = "3";
-    const letter = "E";
-    
-    // Split street and filter short words
-    const words = street.split(/\s+/).filter(w => w.length > 2 && !["dos", "das", "para"].includes(w.toLowerCase()));
-    const streetLetters = words.slice(0, 2).map(w => w.charAt(0).toUpperCase()).join(""); // RB
-    return `${streetLetters}${num}${floor}${letter}`; // RB23E
-  };
-
-  const fractionRef = generateFractionRef();
+  // Dados bancários e referência reais da fração — isto usava um gerador
+  // que devolvia sempre "RB23E" fixo (baseado numa morada codificada no
+  // código), independentemente de qual condómino estivesse autenticado.
+  // Passa a usar exatamente os mesmos dados reais (referencia_br23e da
+  // fração, IBAN da conta principal/extra do prédio) já usados no cartão
+  // "Dados Bancários".
+  const contaPrincipal = contas.find(c => c.is_principal) || contas[0];
+  const contaExtra = contas.find(c => !c.is_principal && c.id_conta !== contaPrincipal?.id_conta);
+  const ibanPredio = contaPrincipal?.iban || predio.iban || "IBAN não configurado — contacte a administração";
+  const temQuotaExtra = avisos.some(
+    (a: any) => a.id_fracao === condominoFracao?.id_fracao && String(a.tipo || "").includes("Extraordinária") && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")
+  );
+  const fractionRef = condominoFracao?.referencia_br23e || "—";
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -903,34 +903,26 @@ export default function PWACondominoView({
     }
   };
 
-  // Submit Comprovativo and update movements
+  // Submit Comprovativo — a leitura por IA acima é só uma pré-visualização
+  // local (ainda não há nenhuma gravação real no Supabase nem confirmação
+  // automática de pagamento aqui). Antes esta função fingia uma
+  // "liquidação instantânea" e criava um movimento só em memória que
+  // desaparecia ao sair do ecrã — passa a deixar claro ao condómino que
+  // fica pendente de confirmação manual pela administração, sem prometer
+  // um estado que nunca foi realmente gravado.
   const handleConfirmComprovativo = () => {
     if (!comprovativoExtractedData) return;
 
-    const newMov = {
-      id: `MOV-${Math.floor(Math.random() * 900) + 310}`,
-      tipo: "Comprovativo Enviado" as const,
-      data: comprovativoExtractedData.data,
-      descricao: `Comprovativo Submetido: ${comprovativoExtractedData.classificacao}`,
-      valor: comprovativoExtractedData.valor,
-      estado: "Processado" as const,
-      referencia: comprovativoExtractedData.referencia
-    };
-
-    setFinanceiroMovimentos(prev => [newMov, ...prev]);
-    setQuotaState("pago");
-    
-    // Add notification
     const newNotif = {
       id: `NOT-${Date.now()}`,
-      title: "Comprovativo Validado",
-      desc: "Comprovativo de pagamento lido pela IA e validado pela administração.",
+      title: "Comprovativo Submetido",
+      desc: "O seu comprovativo foi enviado e aguarda confirmação manual pela administração.",
       date: "Hoje",
       isArchived: false
     };
     setPwaNotifications(prev => [newNotif, ...prev]);
 
-    alert("Pagamento processado e quota liquidada com sucesso em tempo real!");
+    alert("Comprovativo enviado! A sua quota só fica marcada como paga depois de a administração confirmar o pagamento.");
     setComprovativoUpload(null);
     setComprovativoFileName("");
     setComprovativoExtractedData(null);
@@ -1315,7 +1307,7 @@ export default function PWACondominoView({
 
                   {selectedSubmenu === "ocorrencias" && (
                     <div className="space-y-3">
-                      <p className="text-slate-300 text-[10px] leading-relaxed">Tem uma avaria a reportar no seu prédio? Utilize os botões abaixo:</p>
+                      <p className="text-slate-700 text-[10px] leading-relaxed">Tem uma avaria a reportar no seu prédio? Utilize os botões abaixo:</p>
                       <div className="flex flex-col gap-2">
                         <button 
                           onClick={() => { setActivePwaModal("reportar_avaria"); setSelectedSubmenu(null); }} 
@@ -1335,7 +1327,7 @@ export default function PWACondominoView({
 
                   {selectedSubmenu === "financas" && (
                     <div className="space-y-3">
-                      <p className="text-slate-300 text-[10px] leading-relaxed">Consulte o extrato ou faça o envio de comprovativos de pagamento:</p>
+                      <p className="text-slate-700 text-[10px] leading-relaxed">Consulte o extrato ou faça o envio de comprovativos de pagamento:</p>
                       <div className="flex flex-col gap-2">
                         <button 
                           onClick={() => { setActivePwaModal("enviar_comprovativo"); setSelectedSubmenu(null); }} 
@@ -1355,7 +1347,7 @@ export default function PWACondominoView({
 
                   {selectedSubmenu === "comunicacoes" && (
                     <div className="space-y-3">
-                      <p className="text-slate-300 text-[10px] leading-relaxed">Central de Comunicação Integrada com a Empresa Gestora:</p>
+                      <p className="text-slate-700 text-[10px] leading-relaxed">Central de Comunicação Integrada com a Empresa Gestora:</p>
                       <div className="flex flex-col gap-2">
                         <button
                           onClick={() => { setActiveTab("comunicacoes"); setSelectedSubmenu(null); }}
@@ -1391,7 +1383,7 @@ export default function PWACondominoView({
 
                   {selectedSubmenu === "documentos" && (
                     <div className="space-y-3">
-                      <p className="text-slate-300 text-[10px] leading-relaxed">Aceda à sua Biblioteca Documental IA inteligente:</p>
+                      <p className="text-slate-700 text-[10px] leading-relaxed">Aceda à sua Biblioteca Documental IA inteligente:</p>
                       <div className="flex flex-col gap-2">
                         <button 
                           onClick={() => { setDocumentCategory("Todos"); setActivePwaModal("arquivo_completo"); setSelectedSubmenu(null); }} 
@@ -1411,7 +1403,7 @@ export default function PWACondominoView({
 
                   {selectedSubmenu === "reservas_limpezas" && (
                     <div className="space-y-3">
-                      <p className="text-slate-300 text-[10px] leading-relaxed">Faça reservas de espaços comuns ou consulte as tarefas de limpeza:</p>
+                      <p className="text-slate-700 text-[10px] leading-relaxed">Faça reservas de espaços comuns ou consulte as tarefas de limpeza:</p>
                       <div className="flex flex-col gap-2">
                         {(predio as any).tem_espacos_comuns !== false ? (
                           <button 
@@ -1440,7 +1432,7 @@ export default function PWACondominoView({
 
                   {selectedSubmenu === "sondagens" && (
                     <div className="space-y-3">
-                      <p className="text-slate-300 text-[10px] leading-relaxed">Participe nas decisões coletivas respondendo às sondagens:</p>
+                      <p className="text-slate-700 text-[10px] leading-relaxed">Participe nas decisões coletivas respondendo às sondagens:</p>
                       <div className="flex flex-col gap-2">
                         <button 
                           onClick={() => { setActivePwaModal("responder_sondagem"); setSelectedSubmenu(null); }} 
@@ -1460,7 +1452,7 @@ export default function PWACondominoView({
 
                   {selectedSubmenu === "obras" && (
                     <div className="space-y-3">
-                      <p className="text-slate-300 text-[10px] leading-relaxed">Acompanhe as obras extraordinárias aprovadas e planeadas:</p>
+                      <p className="text-slate-700 text-[10px] leading-relaxed">Acompanhe as obras extraordinárias aprovadas e planeadas:</p>
                       <div className="flex flex-col gap-2">
                         <button 
                           onClick={() => { setActivePwaModal("obras_curso"); setSelectedSubmenu(null); }} 
@@ -1480,7 +1472,7 @@ export default function PWACondominoView({
 
                   {selectedSubmenu === "limpezas" && (
                     <div className="space-y-3">
-                      <p className="text-slate-300 text-[10px] leading-relaxed">Consulte os relatórios e escalas ou avalie o serviço de higienização:</p>
+                      <p className="text-slate-700 text-[10px] leading-relaxed">Consulte os relatórios e escalas ou avalie o serviço de higienização:</p>
                       <div className="flex flex-col gap-2">
                         <button 
                           onClick={() => { setActivePwaModal("ver_limpezas"); setSelectedSubmenu(null); }} 
@@ -1500,7 +1492,7 @@ export default function PWACondominoView({
 
                   {selectedSubmenu === "fornecedores" && (
                     <div className="space-y-3">
-                      <p className="text-slate-300 text-[10px] leading-relaxed">Contatos e fichas técnicas dos parceiros ativos no prédio:</p>
+                      <p className="text-slate-700 text-[10px] leading-relaxed">Contatos e fichas técnicas dos parceiros ativos no prédio:</p>
                       <div className="flex flex-col gap-2">
                         <button 
                           onClick={() => { setActivePwaModal("contactos_emergencia"); setSelectedSubmenu(null); }} 
@@ -2067,31 +2059,31 @@ export default function PWACondominoView({
               <h3 className="text-sm font-black tracking-tight text-slate-800 dark:text-white">💳 Painel Financeiro Integrado</h3>
             </div>
 
-            {/* SECTION 1: PAINEL FINANCEIRO DINÂMICO (8.1) */}
+            {/* SECTION 1: DADOS PARA PAGAMENTO (IBAN E REFERÊNCIA REAIS) */}
             <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3.5 rounded-xl shadow-md space-y-3 text-[10px]">
-              <span className="text-[9px] font-extrabold text-teal-600 uppercase tracking-widest block">8.1 Painel Financeiro Dinâmico</span>
-              
-              {/* 8.1.1 IBAN do Prédio */}
+              <span className="text-[9px] font-extrabold text-teal-600 uppercase tracking-widest block">Dados para Pagamento</span>
+
+              {/* IBAN do Prédio */}
               <div className="space-y-1 bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-100 dark:border-slate-850/60">
                 <div className="flex justify-between items-center">
-                  <span className="text-[8px] text-slate-400 font-extrabold uppercase tracking-wider block">8.1.1 IBAN do Prédio</span>
-                  <button 
-                    onClick={() => handleCopyToClipboard("PT50 0007 0000 1234 5678 9012 3", "IBAN")}
+                  <span className="text-[8px] text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-wider block">IBAN do Prédio</span>
+                  <button
+                    onClick={() => handleCopyToClipboard(ibanPredio, "IBAN")}
                     className="flex items-center space-x-1 text-teal-600 hover:text-teal-700 font-bold text-[8px] cursor-pointer"
                   >
                     <Copy className="h-2.5 w-2.5" />
                     <span>Copiar IBAN</span>
                   </button>
                 </div>
-                <strong className="text-slate-800 dark:text-slate-200 block font-mono text-[9px] tracking-tight">PT50 0007 0000 1234 5678 9012 3</strong>
-                <p className="text-[8px] text-slate-400">Utilize este IBAN para pagamento das quotas ordinárias mensais por transferência.</p>
+                <strong className="text-slate-800 dark:text-slate-200 block font-mono text-[9px] tracking-tight break-all">{ibanPredio}</strong>
+                <p className="text-[8px] text-slate-500 dark:text-slate-400">Utilize este IBAN para pagamento das quotas ordinárias mensais por transferência.</p>
               </div>
 
-              {/* 8.1.2 Referência Individual */}
+              {/* Referência Individual */}
               <div className="space-y-1 bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-100 dark:border-slate-850/60">
                 <div className="flex justify-between items-center">
-                  <span className="text-[8px] text-slate-400 font-extrabold uppercase tracking-wider block">8.1.2 Referência Individual da Fração</span>
-                  <button 
+                  <span className="text-[8px] text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-wider block">Referência da Fração {condominoFracao?.fracao_nome ? `(${condominoFracao.fracao_nome})` : ""}</span>
+                  <button
                     onClick={() => handleCopyToClipboard(fractionRef, "Referência")}
                     className="flex items-center space-x-1 text-teal-600 hover:text-teal-700 font-bold text-[8px] cursor-pointer"
                   >
@@ -2100,127 +2092,68 @@ export default function PWACondominoView({
                   </button>
                 </div>
                 <strong className="text-indigo-600 font-mono text-[11px] block tracking-widest">{fractionRef}</strong>
-                <p className="text-[8px] text-slate-400">Regra de extração automática: 1ª letra de cada nome da rua + nº + piso + letra (Ex: RB23E).</p>
               </div>
 
-              {/* 8.1.3 Estado da Quota do Mês & Selector interativo */}
-              <div className="space-y-2">
-                <label className="font-bold text-slate-500 uppercase text-[8px] block">8.1.3 Estado da Quota do Mês (Simulação Interativa)</label>
-                
-                <div className="grid grid-cols-2 gap-1.5 text-[8px] font-bold">
-                  {[
-                    { key: "pago", label: "✔ Pago (Julho)", color: "bg-emerald-50 text-emerald-700 border-emerald-100" },
-                    { key: "atraso", label: "❗ Em Atraso", color: "bg-red-50 text-red-700 border-red-100" },
-                    { key: "processamento", label: "⏳ Em Processamento", color: "bg-amber-50 text-amber-700 border-amber-100" },
-                    { key: "multiplo", label: "⚠️ Múltiplo Detetado", color: "bg-purple-50 text-purple-700 border-purple-100" },
-                    { key: "cobranca", label: "📅 Cobrança (Dia 25)", color: "bg-blue-50 text-blue-700 border-blue-100" }
-                  ].map(item => (
-                    <button
-                      key={item.key}
-                      onClick={() => setQuotaState(item.key as any)}
-                      className={`p-1.5 rounded-lg border text-left transition-all cursor-pointer ${
-                        quotaState === item.key 
-                          ? `${item.color} border-2 ring-1 ring-offset-1 ring-slate-400` 
-                          : "bg-white dark:bg-slate-900 text-slate-500 border-slate-150 dark:border-slate-800"
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Dinamic message according to selected state */}
-                <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 text-[9px] text-slate-500 font-medium">
-                  {quotaState === "pago" && "A sua quota ordinária referente ao mês de Julho de 2026 encontra-se integralmente LIQUIDADA. Obrigado!"}
-                  {quotaState === "atraso" && "Atenção: Existe 1 quota em atraso (45.00€). Por favor efetue a transferência e envie o comprovativo no painel abaixo."}
-                  {quotaState === "processamento" && "O seu comprovativo de transferência encontra-se pendente de validação pela administração técnica."}
-                  {quotaState === "multiplo" && "Alerta: Pagamento múltiplo detetado pela IA. Foram identificados múltiplos depósitos sob a mesma referência de forma acumulada."}
-                  {quotaState === "cobranca" && "Próxima cobrança programada por débito direto para o dia 25 de Julho de 2026. Garanta fundos suficientes."}
-                </div>
-              </div>
-
-              {/* 8.1.4 Quota Extraordinária Simulação */}
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-[8px] font-extrabold text-indigo-500 uppercase tracking-wider block">8.1.4 Quota Extraordinária Ativa</span>
-                  <div className="flex items-center space-x-1.5 text-[8px] font-bold text-slate-400">
-                    <input 
-                      type="checkbox" 
-                      id="sim-extra-check" 
-                      checked={simulateExtraQuota} 
-                      onChange={e => setSimulateExtraQuota(e.target.checked)}
-                      className="rounded accent-emerald-500 shrink-0 cursor-pointer"
-                    />
-                    <label htmlFor="sim-extra-check" className="cursor-pointer">Exibir Quota Extra</label>
-                  </div>
-                </div>
-
-                {simulateExtraQuota && (
-                  <div className="bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 p-2.5 rounded-lg space-y-2">
-                    <div className="flex justify-between font-bold text-[9px]">
-                      <span className="text-indigo-800 dark:text-indigo-300">🛡️ Pintura das Fachadas e Escadas</span>
-                      <span className="text-indigo-600 font-mono">35.00 € / prestação</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-[8px] leading-relaxed">
+              {/* Quota Extraordinária — só aparece se existir mesmo um aviso extraordinário pendente para esta fração */}
+              {temQuotaExtra && (
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 p-2.5 rounded-lg">
+                  <span className="text-[8px] font-extrabold text-indigo-500 uppercase tracking-wider block">Quota Extraordinária em Aberto</span>
+                  <div className="grid grid-cols-2 gap-2 text-[8px] leading-relaxed">
+                    {contaExtra?.iban && (
                       <div>
-                        <span className="text-slate-400 block font-bold">IBAN da Obra</span>
+                        <span className="text-slate-500 dark:text-slate-400 block font-bold">IBAN da Conta Extra</span>
                         <div className="flex items-center space-x-1 font-mono font-bold text-slate-700 dark:text-slate-300">
-                          <span className="truncate max-w-[80px]">PT50 1111 2222...</span>
-                          <button 
-                            onClick={() => handleCopyToClipboard("PT50 1111 2222 3333 4444 5555 6", "IBAN da Obra")}
-                            className="text-indigo-600 hover:underline cursor-pointer"
+                          <span className="truncate max-w-[100px]">{contaExtra.iban}</span>
+                          <button
+                            onClick={() => handleCopyToClipboard(contaExtra.iban!, "IBAN da Conta Extra")}
+                            className="text-indigo-600 hover:underline cursor-pointer shrink-0"
                           >
                             Copiar
                           </button>
                         </div>
                       </div>
-                      <div>
-                        <span className="text-slate-400 block font-bold">Referência da Obra</span>
-                        <div className="flex items-center space-x-1 font-mono font-bold text-slate-700 dark:text-slate-300">
-                          <span>{fractionRef}_PINTURA</span>
-                          <button 
-                            onClick={() => handleCopyToClipboard(`${fractionRef}_PINTURA`, "Referência da Obra")}
-                            className="text-indigo-600 hover:underline cursor-pointer"
-                          >
-                            Copiar
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-[8px] text-indigo-500 font-bold flex justify-between items-center">
-                      <span>Prazo Limite: 15/08/2026</span>
-                      <span className="bg-indigo-100 dark:bg-indigo-900/60 px-1.5 py-0.5 rounded uppercase tracking-wider text-[7px]">Aviso Automático da IA 🤖</span>
+                    )}
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 block font-bold">Referência</span>
+                      <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{fractionRef}</span>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
-            {/* SECTION 2: MOVIMENTOS FINANCEIROS (8.2) */}
+            {/* SECTION 2: MAPA DE PAGAMENTOS DA FRAÇÃO (DADOS REAIS) */}
             <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3.5 rounded-xl shadow-sm space-y-3 text-[10px]">
-              <span className="text-[9px] font-extrabold text-teal-600 uppercase tracking-widest block">8.2 Movimentos Financeiros Recentes</span>
-              
-              <div className="space-y-2">
-                {financeiroMovimentos.map(mov => (
-                  <div key={mov.id} className="p-2.5 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-100 dark:border-slate-850/60 flex justify-between items-center">
-                    <div>
-                      <div className="flex items-center space-x-1 text-[8px] font-extrabold text-slate-400 uppercase tracking-wider font-mono">
-                        <span>{mov.id}</span>
-                        <span>•</span>
-                        <span>{mov.data}</span>
+              <span className="text-[9px] font-extrabold text-teal-600 uppercase tracking-widest block">Mapa de Pagamentos da Fração</span>
+
+              {(() => {
+                const avisosFiltrados = avisosFracaoOrdenados.filter((av: any) =>
+                  quotaState === "todos" ? true : quotaState === "pago" ? av.estado === "Pago" : av.estado !== "Pago"
+                );
+                if (avisosFiltrados.length === 0) {
+                  return (
+                    <div className="text-center py-4 text-slate-500 dark:text-slate-400 text-[9px]">
+                      {avisosFracaoOrdenados.length === 0 ? "Ainda não há avisos de quota registados para esta fração." : "Sem avisos neste filtro."}
+                    </div>
+                  );
+                }
+                return (
+                  <div className="space-y-2">
+                    {avisosFiltrados.map((av: any) => (
+                      <div key={av.id_aviso} className="p-2.5 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-100 dark:border-slate-850/60 flex justify-between items-center">
+                        <div>
+                          <span className="font-bold text-slate-700 dark:text-slate-200 block">{av.descricao}</span>
+                          <span className="text-[8px] text-slate-500 dark:text-slate-400 font-mono">Emissão: {av.data}{av.vencimento ? ` • Venc.: ${av.vencimento}` : ""}</span>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="font-mono font-black text-slate-800 dark:text-white block">{av.valor.toFixed(2)} €</span>
+                          <span className={`text-[8px] font-extrabold uppercase ${av.estado === "Pago" ? "text-emerald-600" : "text-amber-500"}`}>{av.estado}</span>
+                        </div>
                       </div>
-                      <span className="font-bold text-slate-700 dark:text-slate-200 block mt-0.5">{mov.descricao}</span>
-                      {mov.referencia && <span className="text-[7px] text-slate-400 font-mono uppercase font-bold">Ref: {mov.referencia}</span>}
-                    </div>
-                    <div className="text-right shrink-0">
-                      <span className="font-mono font-black text-slate-800 dark:text-white block">{mov.valor.toFixed(2)} €</span>
-                      <span className={`text-[8px] font-extrabold uppercase ${
-                        mov.estado === "Pago" || mov.estado === "Processado" ? "text-emerald-600" : "text-amber-500"
-                      }`}>{mov.estado}</span>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                );
+              })()}
             </div>
 
             {/* SECTION 3: ENVIO DE COMPROVATIVOS (8.3) */}
@@ -3499,11 +3432,11 @@ export default function PWACondominoView({
         {/* If we are on financeiro tab */}
         {activeTab === "financeiro" && (
           <div className="flex justify-around text-[9px] font-bold text-[#555] dark:text-white py-0.5">
-            <button onClick={() => setQuotaState("pago")} className="flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white">
+            <button onClick={() => setQuotaState(quotaState === "pago" ? "todos" : "pago")} className={`flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white ${quotaState === "pago" ? "text-[#1A1A1A] dark:text-white font-black" : ""}`}>
               <CheckCircle className="h-3.5 w-3.5 text-[#1A1A1A]" /> <span className="text-[#1A1A1A] dark:text-slate-200">Quotas Liquidadas</span>
             </button>
             <span className="text-slate-300">|</span>
-            <button onClick={() => setQuotaState("atraso")} className="flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white">
+            <button onClick={() => setQuotaState(quotaState === "atraso" ? "todos" : "atraso")} className={`flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white ${quotaState === "atraso" ? "text-[#1A1A1A] dark:text-white font-black" : ""}`}>
               <AlertTriangle className="h-3.5 w-3.5" /> <span>Em Atraso</span>
             </button>
           </div>
@@ -3638,7 +3571,7 @@ export default function PWACondominoView({
                           </div>
                           <p className="text-slate-300 leading-normal text-[10px]">"{interv.descricao}"</p>
                           <div className="text-[8px] text-slate-400 border-t border-slate-800/60 pt-1 flex justify-between">
-                            <span>Técnico: <strong className="text-slate-300">{interv.fornecedor}</strong></span>
+                            <span>Técnico: <strong className="text-slate-700">{interv.fornecedor}</strong></span>
                             <button
                               onClick={() => alert(`Detalhes:\nID: ${interv.id}\nEquipamento: ${interv.equipamento}\nEstado: ${interv.estado}\nFornecedor Adjudicado: ${interv.fornecedor}`)}
                               className="text-emerald-400 hover:underline"
@@ -3654,7 +3587,7 @@ export default function PWACondominoView({
 
                 {activePwaModal === "enviar_comprovativo" && (
                   <div className="space-y-3 text-[10px]">
-                    <p className="text-slate-300">Envie o ficheiro de pagamento das quotas ordinárias para validação automática com a nossa IA inteligente.</p>
+                    <p className="text-slate-700">Envie o ficheiro de pagamento das quotas ordinárias para validação automática com a nossa IA inteligente.</p>
                     
                     <div className="border-2 border-dashed border-slate-700 bg-slate-950/20 rounded-xl p-5 text-center relative space-y-2">
                       {comprovativoExtracting ? (
@@ -3729,28 +3662,28 @@ export default function PWACondominoView({
 
                 {activePwaModal === "consultar_referencias" && (
                   <div className="space-y-3.5 text-[10px]">
-                    <p className="text-slate-300">Registo de contas e referências bancárias para pagamento de quotas:</p>
-                    
+                    <p className="text-slate-700">Registo de contas e referências bancárias para pagamento de quotas:</p>
+
                     {/* IBAN do Prédio */}
                     <div className="bg-slate-850 p-3 rounded-xl border border-slate-800 space-y-1">
                       <div className="flex justify-between items-center">
                         <span className="text-[8px] uppercase tracking-wider text-slate-400 font-extrabold">IBAN para Transferência</span>
-                        <button 
-                          onClick={() => handleCopyToClipboard("PT50 0007 0000 1234 5678 9012 3", "IBAN")}
+                        <button
+                          onClick={() => handleCopyToClipboard(ibanPredio, "IBAN")}
                           className="text-emerald-400 hover:underline font-bold text-[8px]"
                         >
                           Copiar IBAN
                         </button>
                       </div>
-                      <strong className="text-white block font-mono text-[10px]">PT50 0007 0000 1234 5678 9012 3</strong>
-                      <span className="text-[8px] text-slate-400 block">Banco de Destino: Banco Montepio (Condomínio do Edifício)</span>
+                      <strong className="text-white block font-mono text-[10px] break-all">{ibanPredio}</strong>
+                      <span className="text-[8px] text-slate-400 block">Banco de Destino: {contaPrincipal?.banco || "Conta do Condomínio"}</span>
                     </div>
 
                     {/* Referência Individual */}
                     <div className="bg-slate-850 p-3 rounded-xl border border-slate-800 space-y-1">
                       <div className="flex justify-between items-center">
                         <span className="text-[8px] uppercase tracking-wider text-slate-400 font-extrabold">Referência da Fração</span>
-                        <button 
+                        <button
                           onClick={() => handleCopyToClipboard(fractionRef, "Referência")}
                           className="text-emerald-400 hover:underline font-bold text-[8px]"
                         >
@@ -3758,30 +3691,26 @@ export default function PWACondominoView({
                         </button>
                       </div>
                       <strong className="text-emerald-400 font-mono text-xs block tracking-widest">{fractionRef}</strong>
-                      <span className="text-[8px] text-slate-400 block">Identificador individual gerado automaticamente pela IA para a Fração 3ºE.</span>
+                      <span className="text-[8px] text-slate-400 block">Identificador individual da Fração {condominoFracao?.fracao_nome || "—"}.</span>
                     </div>
 
-                    {/* Quota Extraordinária */}
-                    {simulateExtraQuota && (
+                    {/* Quota Extraordinária — só aparece se existir mesmo um aviso extraordinário pendente para esta fração */}
+                    {temQuotaExtra && (
                       <div className="bg-indigo-950/20 border border-indigo-900/40 p-3 rounded-xl space-y-2">
-                        <div className="flex justify-between font-bold">
-                          <span className="text-indigo-300">🔨 Pintura de Fachadas (Quota Extra)</span>
-                          <span className="text-white font-mono">35.00 €</span>
-                        </div>
+                        <span className="text-indigo-300 font-bold block">🔨 Quota Extraordinária em Aberto</span>
                         <div className="grid grid-cols-2 gap-2 text-[8px] leading-relaxed">
-                          <div>
-                            <span className="text-slate-400 block">IBAN Obra</span>
-                            <div className="flex items-center gap-1 font-mono text-slate-300">
-                              <span className="truncate max-w-[70px]">PT50 1111...</span>
-                              <button onClick={() => handleCopyToClipboard("PT50 1111 2222 3333 4444 5555 6", "IBAN da Obra")} className="text-emerald-400">Copiar</button>
+                          {contaExtra?.iban && (
+                            <div>
+                              <span className="text-slate-400 block">IBAN da Conta Extra</span>
+                              <div className="flex items-center gap-1 font-mono text-slate-300">
+                                <span className="truncate max-w-[80px]">{contaExtra.iban}</span>
+                                <button onClick={() => handleCopyToClipboard(contaExtra.iban!, "IBAN da Conta Extra")} className="text-emerald-400 shrink-0">Copiar</button>
+                              </div>
                             </div>
-                          </div>
+                          )}
                           <div>
-                            <span className="text-slate-400 block">Referência Obra</span>
-                            <div className="flex items-center gap-1 font-mono text-slate-300">
-                              <span>{fractionRef}_PINTURA</span>
-                              <button onClick={() => handleCopyToClipboard(`${fractionRef}_PINTURA`, "Referência da Obra")} className="text-emerald-400">Copiar</button>
-                            </div>
+                            <span className="text-slate-400 block">Referência</span>
+                            <span className="font-mono text-slate-300">{fractionRef}</span>
                           </div>
                         </div>
                       </div>
@@ -3792,7 +3721,7 @@ export default function PWACondominoView({
                 {activePwaModal === "chat_admin" && (
                   <div className="space-y-3 text-[10px] flex flex-col h-[52vh] relative">
                     <div className="flex justify-between items-center shrink-0">
-                      <p className="text-slate-300">Comunique diretamente com a administração em tempo real.</p>
+                      <p className="text-slate-700">Comunique diretamente com a administração em tempo real.</p>
                       <span className="text-[8px] bg-emerald-500/20 text-emerald-300 font-extrabold px-2 py-0.5 rounded-full border border-emerald-500/30">
                         Admin Online
                       </span>
@@ -4208,7 +4137,7 @@ export default function PWACondominoView({
 
                 {activePwaModal === "contactos_emergencia" && (
                   <div className="space-y-3.5 text-[10px]">
-                    <p className="text-slate-300">Lista de piquetes e contactos urgentes de assistência ao condomínio:</p>
+                    <p className="text-slate-700">Lista de piquetes e contactos urgentes de assistência ao condomínio:</p>
                     
                     <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
                       {[
@@ -4312,7 +4241,7 @@ export default function PWACondominoView({
 
                 {activePwaModal === "atas_pendentes" && (
                   <div className="space-y-3.5 text-[10px]">
-                    <p className="text-slate-300">As seguintes atas de assembleia aguardam a sua leitura e assinatura digital para validação jurídica do condomínio:</p>
+                    <p className="text-slate-700">As seguintes atas de assembleia aguardam a sua leitura e assinatura digital para validação jurídica do condomínio:</p>
 
                     <div className="space-y-2.5">
                       {(atasPendentesReais as { id: string; nome: string; data: string; estado: string }[]).length === 0 && (
@@ -4355,7 +4284,7 @@ export default function PWACondominoView({
 
                 {activePwaModal === "reservar_espaco" && (
                   <div className="space-y-3.5 text-[10px]">
-                    <p className="text-slate-300">Efetue a reserva de espaços comuns do prédio diretamente na PWA:</p>
+                    <p className="text-slate-700">Efetue a reserva de espaços comuns do prédio diretamente na PWA:</p>
                     
                     <div className="space-y-2">
                       <div className="space-y-1">
@@ -4428,7 +4357,7 @@ export default function PWACondominoView({
 
                 {activePwaModal === "ver_limpezas" && (
                   <div className="space-y-3.5 text-[10px]">
-                    <p className="text-slate-300">Consulte a escala e o histórico de higiene e limpezas efetuadas no seu prédio:</p>
+                    <p className="text-slate-700">Consulte a escala e o histórico de higiene e limpezas efetuadas no seu prédio:</p>
                     
                     <div className="space-y-2.5 max-h-[50vh] overflow-y-auto pr-1">
                       {limpezasHistorico.map(limp => (
@@ -4449,14 +4378,14 @@ export default function PWACondominoView({
 
                 {activePwaModal === "avaliar_servico" && (
                   <div className="space-y-3.5 text-[10px]">
-                    <p className="text-slate-300">Avalie a qualidade dos serviços de higienização das áreas comuns ou manutenções realizadas recentemente:</p>
+                    <p className="text-slate-700">Avalie a qualidade dos serviços de higienização das áreas comuns ou manutenções realizadas recentemente:</p>
                     
                     <div className="space-y-2.5">
                       {limpezasHistorico.slice(0, 2).map(limp => (
                         <div key={limp.id} className="bg-slate-850 border border-slate-800 p-3 rounded-xl space-y-2">
                           <div className="flex justify-between text-slate-400 font-bold text-[8px]">
                             <span>{limp.id} • {limp.data}</span>
-                            <span className="text-slate-300">Responsável: {limp.tecnico}</span>
+                            <span className="text-slate-700">Responsável: {limp.tecnico}</span>
                           </div>
                           <h4 className="font-extrabold text-white text-[10.5px]">Limpeza Geral de Escadas e Elevadores</h4>
                           
@@ -4489,7 +4418,7 @@ export default function PWACondominoView({
 
                 {activePwaModal === "responder_sondagem" && (
                   <div className="space-y-3.5 text-[10px]">
-                    <p className="text-slate-300">Responda à sondagem ativa do seu edifício.</p>
+                    <p className="text-slate-700">Responda à sondagem ativa do seu edifício.</p>
 
                     {(() => {
                       const sondagemAtiva = sondagensFeed.find(s => s.estado === "ativa" && !jaVotouSondagem(s));
@@ -4532,7 +4461,7 @@ export default function PWACondominoView({
 
                 {activePwaModal === "estatisticas_sondagem" && (
                   <div className="space-y-3.5 text-[10px]">
-                    <p className="text-slate-300">Consulte os resultados reais das sondagens do condomínio:</p>
+                    <p className="text-slate-700">Consulte os resultados reais das sondagens do condomínio:</p>
 
                     {sondagensFeed.length === 0 ? (
                       <p className="text-slate-400 text-center py-4">Sem sondagens registadas ainda.</p>
@@ -4580,7 +4509,7 @@ export default function PWACondominoView({
 
                 {activePwaModal === "obras_curso" && (
                   <div className="space-y-3.5 text-[10px]">
-                    <p className="text-slate-300">Acompanhe as intervenções extraordinárias em andamento ou recentemente concluídas:</p>
+                    <p className="text-slate-700">Acompanhe as intervenções extraordinárias em andamento ou recentemente concluídas:</p>
                     
                     <div className="space-y-3">
                       {/* Obra de Pintura */}
@@ -4640,7 +4569,7 @@ export default function PWACondominoView({
 
                 {activePwaModal === "plano_plurianual" && (
                   <div className="space-y-3.5 text-[10px]">
-                    <p className="text-slate-300">Calendário de Investimentos & Plano Plurianual (2026-2030) aprovado em assembleia geral:</p>
+                    <p className="text-slate-700">Calendário de Investimentos & Plano Plurianual (2026-2030) aprovado em assembleia geral:</p>
                     
                     <div className="space-y-2.5 max-h-[50vh] overflow-y-auto pr-1">
                       {[
