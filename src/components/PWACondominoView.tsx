@@ -935,7 +935,7 @@ export default function PWACondominoView({
             setHasScrolled(true);
           }
         }}
-        className={`flex-1 overflow-y-auto px-4 py-3 space-y-3 relative pwa-container ${
+        className={`flex-1 overflow-y-auto px-4 pt-3 pb-20 space-y-3 relative pwa-container ${
           theme === "dark" ? "bg-slate-950 text-white" : "bg-[#ece7e7] text-slate-800"
         }`} 
         style={{ backgroundColor: theme === "dark" ? "#020617" : "#ece7e7" }}
@@ -2806,7 +2806,8 @@ export default function PWACondominoView({
                 do prédio (não simulados), sempre visível no Perfil para
                 qualquer condómino consultar rapidamente. */}
             {(() => {
-              const ibanPredio = predio.iban || "IBAN não configurado — contacte a administração";
+              const contaPrincipalPerfil = contas.find(c => c.is_principal) || contas[0];
+              const ibanPredio = contaPrincipalPerfil?.iban || predio.iban || "IBAN não configurado — contacte a administração";
               const nifPredio = predio.nif || "—";
               const emailComprovativos = predio.email_condominio || predio.email || "bentorodrigues2@gmail.com";
               const referenciaFracao = condominoFracao?.referencia_br23e || "—";
@@ -4585,8 +4586,13 @@ export default function PWACondominoView({
         </motion.div>
       )}
 
-      {/* PWA NATIVE BOTTOM NAVIGATION BAR (Specially customized for 5 key views with CondoManager AI colors) */}
-      <div className="h-14 shrink-0 bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800/80 px-2 flex items-center justify-around text-[9px] font-bold text-slate-500 dark:text-white z-10">
+      {/* PWA NATIVE BOTTOM NAVIGATION BAR (Specially customized for 5 key views with CondoManager AI colors) —
+          fixa ao fundo do ecrã real (fixed, não shrink-0 dentro do flow),
+          com padding extra para a seat area do telemóvel (notch inferior) —
+          sem isto, ficava dependente da altura exata do ecrã ter sobrado
+          espaço, e em ecrãs mais pequenos ou com teclado aberto (ex: a
+          caixa de mensagem) ficava empurrada para fora da vista. */}
+      <div className="fixed bottom-0 inset-x-0 z-50 h-14 pb-[env(safe-area-inset-bottom)] bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800/80 px-2 flex items-center justify-around text-[9px] font-bold text-slate-500 dark:text-white">
         
         {/* 1. Início (Verde condomanagerai) */}
         <button 
