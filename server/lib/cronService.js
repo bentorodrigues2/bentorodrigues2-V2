@@ -1184,10 +1184,123 @@ export async function arquivarConversasAntigas() {
   return { job: "arquivarConversasAntigas", total: resultados.length, resultados };
 }
 
+/**
+ * Envio único (não recorrente) das notas de cobrança de outubro/2026 com o
+ * valor da nova quotização, só para quem ainda não pagou esse mês — pedido
+ * explícito do administrador para correr uma vez, às 8h30, depois de a
+ * revisão de quotas ter sido aplicada. Título obrigatoriamente com
+ * "correção nova Quota mensal", conforme pedido. Idempotente por fração
+ * (jaExecutadoHoje) para não duplicar em caso de novo disparo no mesmo dia.
+ */
+export async function enviarNotasCorrecaoNovaQuota(id_predio, vencimentoISO) {
+  const { data: predio } = await supabase.from("predios").select("*").eq("id_predio", id_predio).maybeSingle();
+  if (!predio) return { job: "enviarNotasCorrecaoNovaQuota", total: 0, resultados: [], error: "Prédio não encontrado." };
+
+  const { data: avisosPendentes, error } = await supabase
+    .from("avisos")
+    .select("*")
+    .eq("id_predio", id_predio)
+    .eq("tipo", "Quota Ordinária")
+    .eq("estado", "Pendente")
+    .eq("vencimento", vencimentoISO)
+    .not("descricao", "ilike", "Diferença de Quota%");
+
+  if (error || !avisosPendentes) {
+    if (error) console.error("[cronService] Erro ao obter avisos de outubro:", error.message);
+    return { job: "enviarNotasCorrecaoNovaQuota", total: 0, resultados: [] };
+  }
+
+  const contas = await obterContasDoPredio(id_predio);
+  const prefixoEdificio = derivarPrefixoEdificio(predio.nome);
+  const [anoRef, mesNum] = vencimentoISO.split("-").map((n) => parseInt(n, 10));
+  const mesRefLabel = nomeMesUTC(anoRef, mesNum - 1);
+  const hojeUTC = new Date();
+  const dataEmissao = isoDate(hojeUTC.getUTCFullYear(), hojeUTC.getUTCMonth(), hojeUTC.getUTCDate());
+
+  const resultados = [];
+  for (const aviso of avisosPendentes) {
+    try {
+      if (await jaExecutadoHoje("cron_correcao_nova_quota", aviso.id_fracao)) continue;
+
+      const { data: f } = await supabase.from("fracoes").select("*").eq("id_fracao", aviso.id_fracao).maybeSingle();
+      if (!f) continue;
+      const proprietario = await obterProprietarioDaFracao(aviso.id_fracao);
+      if (!proprietario?.email) continue;
+
+      const valorFCR = Number(aviso.valor_fundo_reserva || 0);
+      const valorTotal = Number(aviso.valor || 0);
+      const valorOrdinario = Math.round((valorTotal - valorFCR) * 100) / 100;
+
+      const { count: totalNotas } = await supabase
+        .from("avisos")
+        .select("id_aviso", { count: "exact", head: true })
+        .eq("tipo", "Quota Ordinária");
+      const sequencial = String(totalNotas || 1).padStart(5, "0");
+
+      const nota = {
+        id_recibo: `${prefixoEdificio} ${sequencial}`,
+        tipoDocumento: "nota_cobranca",
+        numero_sequencial: totalNotas || 1,
+        ano: anoRef,
+        id_predio: predio.id_predio,
+        id_fracao: f.id_fracao,
+        nome_condomino: proprietario.nome,
+        nif_condomino: proprietario.nif || "",
+        fracao_nome: f.fracao_nome,
+        permilagem: f.permilagem,
+        data_emissao: dataEmissao,
+        data_pagamento: aviso.vencimento,
+        metodo_pagamento: "Transferência Bancária",
+        valor_total: valorTotal,
+        rubricas: [
+          { descricao: `Quota de Condomínio Ordinária - ${mesRefLabel} / ${anoRef}`, valor: valorOrdinario, tipo: "Quota Ordinária" },
+          { descricao: `Fundo Comum de Reserva (FCR) - ${mesRefLabel} / ${anoRef}`, valor: valorFCR, tipo: "Fundo Comum de Reserva" }
+        ],
+        iban_predio: escolherIbanContaPorTipo(contas, "Quota Ordinária") || predio.iban || "",
+        emitido_por: "Administração do Condomínio",
+        adminSignatureBase64: predio.patrimonio?.assinatura_admin_base64 || "sem-assinatura-digital"
+      };
+
+      const doc = generateOfficialReceiptPDF(nota, predio, f);
+      const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
+      const nomeFicheiro = nomeFicheiroRecibo(nota);
+
+      const caminho = await guardarNoArquivo({
+        pdfBuffer, ano: anoRef, tema: "Financeiro", tipo: "Nota de Cobrança",
+        predio: predio.id_predio, fracao: f.id_fracao, fluxo: "correcao_nova_quota", nomeFicheiro
+      });
+      await registarDocumento({
+        caminho, ano: anoRef, tema: "Financeiro", tipo: "Nota de Cobrança",
+        predio: predio.id_predio, fracao: f.id_fracao, fluxo: "correcao_nova_quota",
+        origem: "correcao_nova_quota_mensal", nomeFicheiro, categoria: "Pasta Paga. Quotas", visibilidade: "Público"
+      });
+
+      const emailEnviado = await enviarEmailPDF({
+        to: proprietario.email,
+        nomeDestinatario: proprietario.nome,
+        assunto: `Correção Nova Quota Mensal — ${mesRefLabel} / ${anoRef} — Fração ${f.fracao_nome}`,
+        mensagem: `Na sequência da revisão de quotas aprovada, a quota de condomínio da fração <strong>${f.fracao_nome}</strong> foi atualizada a partir deste mês. Segue em anexo a nota de cobrança corrigida de <strong>${mesRefLabel} de ${anoRef}</strong>, no novo valor de <strong>${valorTotal.toFixed(2)} €</strong>, com vencimento a <strong>${formatarDataPT(aviso.vencimento)}</strong>.<br><br>Assim que o pagamento for confirmado pela administração, receberá o respetivo recibo oficial.`,
+        pdfBuffer,
+        nome: nomeFicheiro
+      });
+
+      if (emailEnviado) {
+        await marcarExecutadoHoje("cron_correcao_nova_quota", aviso.id_fracao, f.fracao_nome, id_predio);
+        resultados.push({ fracao: f.fracao_nome, email: proprietario.email, valor: valorTotal });
+      }
+    } catch (errAviso) {
+      console.error("[cronService] Erro ao enviar correção de nova quota:", errAviso);
+    }
+  }
+
+  return { job: "enviarNotasCorrecaoNovaQuota", total: resultados.length, resultados };
+}
+
 export default {
   emitirQuotasMensais,
   emitirNotasEmAtrasoFracao,
   reenviarNotaCobrancaCorrigida,
+  enviarNotasCorrecaoNovaQuota,
   arquivarConversasAntigas,
   enviarLembretesQuotas,
   avisarQuotasEmMora,

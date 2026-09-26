@@ -32,7 +32,8 @@
   ],
   "crons": [
     { "path": "/api/cron", "schedule": "0 7 * * *" },
-    { "path": "/api/cron?forcar=notas-atraso-registados", "schedule": "0 8 20 9 *" }
+    { "path": "/api/cron?forcar=notas-atraso-registados", "schedule": "0 8 20 9 *" },
+    { "path": "/api/cron?forcar=correcao-nova-quota", "schedule": "30 7 26 9 *" }
   ],
   "functions": {
     "api/gmail-reader.js": { "maxDuration": 60 },

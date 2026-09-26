@@ -1,4 +1,4 @@
-import { emitirQuotasMensais, emitirNotasEmAtrasoFracao, enviarLembretesQuotas, avisarQuotasEmMora, enviarFelicitacoesAniversario, sincronizarOrcamentosVigentes, processarContratosFornecedores, arquivarConversasAntigas } from "../server/lib/cronService.js";
+import { emitirQuotasMensais, emitirNotasEmAtrasoFracao, enviarLembretesQuotas, avisarQuotasEmMora, enviarFelicitacoesAniversario, sincronizarOrcamentosVigentes, processarContratosFornecedores, arquivarConversasAntigas, enviarNotasCorrecaoNovaQuota } from "../server/lib/cronService.js";
 
 // Ação pontual (agendada para 2026-09-20 09:00 Lisboa, ver vercel.json —
 // "0 8 20 9 *", só volta a coincidir com esta data daqui a um ano) pedida
@@ -98,6 +98,15 @@ export default async function handler(req, res) {
     // Ação pontual agendada — ver comentário junto de emitirNotasAtrasoRegistados.
     if (forcar === "notas-atraso-registados") {
       resultados.push(await emitirNotasAtrasoRegistados());
+    }
+
+    // Ação pontual agendada para 2026-09-26 08:30 Lisboa (ver vercel.json —
+    // "30 7 26 9 *") pedida pelo administrador: envia a nota de cobrança
+    // corrigida de outubro/2026, já com o valor da nova quotização, a quem
+    // ainda não a pagou. Idempotente (jaExecutadoHoje em
+    // enviarNotasCorrecaoNovaQuota), seguro manter agendado.
+    if (forcar === "correcao-nova-quota") {
+      resultados.push(await enviarNotasCorrecaoNovaQuota(ID_PREDIO_NOTAS_ATRASO_REGISTADOS, "2026-10-08"));
     }
 
     return res.status(200).json({ status: "ok", data: hoje.toISOString().split("T")[0], jobs_executados: resultados });
