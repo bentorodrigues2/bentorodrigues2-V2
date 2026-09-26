@@ -2593,11 +2593,14 @@ export default function App() {
 
       {/* ÁREA DE TRABALHO PRINCIPAL (ADAPTÁVEL A MOBILE E DESKTOP) */}
       <main className={`flex-1 min-w-0 flex flex-col h-full overflow-hidden relative transition-all duration-300 ${theme === "dark" ? "bg-[#0b0f19]" : "bg-slate-50"}`}>
-        {/* Header superior — mantido sempre visível mesmo na vista PWA:
-            é aqui que fica o botão real de terminar sessão
-            (handleSecureLogout). O "Sair" dentro do PWASimulator é só um
-            estado local do simulador, não termina a sessão real — sem esta
-            barra, um condómino ficava sem forma nenhuma de sair da conta. */}
+        {/* Header superior (menu de administração, "Painel de Controlo",
+            etc.) — escondido em modo PWA. Antes ficava sempre visível
+            porque o "Sair" do PWASimulator/PWACondominoView só terminava
+            uma sessão simulada local, não a sessão real; agora esse botão
+            já chama onLogout -> handleSecureLogout, por isso este cabeçalho
+            de administração deixou de ser necessário como rede de
+            segurança e só duplicava a navegação para um condómino real. */}
+        {viewMode === "BROWSER" && (
         <header className={`h-16 px-3 sm:px-6 md:px-8 flex items-center justify-between shrink-0 z-10 no-print transition-all duration-300 ${theme === "dark" ? "bg-[#111827] border-b border-slate-800 text-slate-100" : "bg-white border-b border-slate-200 text-slate-800"}`}>
           <div className="flex items-center space-x-2 sm:space-x-3 overflow-hidden pr-2">
             {/* Botão de Menu Mobile */}
@@ -2730,11 +2733,14 @@ export default function App() {
             </button>
           </div>
         </header>
+        )}
 
-        {/* Conteúdo Dinâmico (Responsivo para Telemóveis e Desktops) */}
-        <div className="flex-grow p-3 sm:p-5 md:p-8 overflow-y-auto">
+        {/* Conteúdo Dinâmico (Responsivo para Telemóveis e Desktops) — sem
+            padding em modo PWA, para a app ficar edge-to-edge no
+            telemóvel real, tal como qualquer outra PWA/app nativa. */}
+        <div className={viewMode === "PWA" ? "flex-grow overflow-y-auto" : "flex-grow p-3 sm:p-5 md:p-8 overflow-y-auto"}>
           {viewMode === "PWA" ? (
-            <PWASimulator 
+            <PWASimulator
               predio={predioAtivo}
               fracoes={fracoes}
               setFracoes={setFracoes}
@@ -2759,6 +2765,7 @@ export default function App() {
               setReunioes={setReunioes}
               capacidades={capacidades}
               setCapacidades={setCapacidades}
+              onLogout={() => handleSecureLogout()}
             />
           ) : (
             <Fragment key={grupoMenuPrincipal}>
