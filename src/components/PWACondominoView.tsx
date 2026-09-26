@@ -4561,7 +4561,10 @@ export default function PWACondominoView({
           antes só existia lá, faltava aqui na PWA. Navega para o separador
           "Mensagens" em vez de abrir um modal próprio, reaproveitando o chat
           já existente no Módulo 8 desta mesma vista. */}
-      {(loggedUser.role === "USER" || loggedUser.role === "INQUILINO" || loggedUser.role === "COPROPRIETARIO") && activeTab !== "mensagens" && (
+      {/* Antes só aparecia para USER/INQUILINO/COPROPRIETARIO — um
+          administrador que é também condómino (como o proprietário desta
+          conta) nunca via o botão ao testar/usar a PWA como ele próprio. */}
+      {loggedUser.role !== undefined && activeTab !== "mensagens" && (
         <motion.div
           drag
           dragMomentum={false}
