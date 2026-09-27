@@ -34,6 +34,26 @@ async function marcarExecutadoHoje(origem, referencia, entidade, idPredio) {
   }
 }
 
+/**
+ * Marca (via ai_auditoria, sem filtro de data — ao contrário de
+ * jaExecutadoHoje) que a nota de cobrança de UM aviso específico de "Quota
+ * Extraordinária" já foi emitida/enviada — permanente, não "só hoje", porque
+ * uma prestação só tem a sua nota emitida UMA vez em toda a vida, seja pelo
+ * fluxo mensal normal (avisoExtraDoMes, quando o vencimento é "o mês
+ * seguinte") ou pela apanha retroativa (emitirNotasExtraordinariasEmAtraso,
+ * para vencimentos já passados). Sem isto não há como o job retroativo saber
+ * se uma prestação processada normalmente no seu mês certo já foi tratada.
+ */
+async function jaFoiEnviadaNotaExtraordinaria(idAviso) {
+  const { data } = await supabase
+    .from("ai_auditoria")
+    .select("id_log")
+    .eq("origem", "nota_extraordinaria_enviada")
+    .eq("referencia", idAviso)
+    .limit(1);
+  return Boolean(data && data.length);
+}
+
 // Todas as datas deste ficheiro são calculadas em UTC (getUTCFullYear/
 // getUTCMonth/getUTCDate, Date.UTC) em vez do calendário local do processo
 // Node — evita que a construção de datas via new Date(ano, mes, dia) e o
@@ -605,6 +625,68 @@ export async function emitirNotasEmAtrasoFracao(id_predio, id_fracao, mesInicioI
 }
 
 /**
+ * Todos os dias: apanha prestações de "Quota Extraordinária" já criadas (de
+ * uma vez só, em GestaoQuotasOrcamento.tsx) cujo vencimento já chegou ou
+ * passou, continuam "Pendente" e NUNCA tiveram a sua nota de cobrança
+ * emitida. Ao contrário da Quota Ordinária — emitida todo santo dia 25 do
+ * mês anterior, sempre "para a frente" a partir de hoje, e com
+ * emitirNotasEmAtrasoFracao a cobrir o passado assim que uma fração é
+ * registada — a Quota Extraordinária só tinha o disparo normal de
+ * emitirQuotasMensais, que só olha para o "mês seguinte" a cada dia que
+ * corre. Uma Quota Extraordinária criada com data de início já no passado
+ * (ex: prestações de meses anteriores ao dia em que foi configurada) nunca
+ * tinha nenhum job a voltar atrás — ficava "Pendente" na BD para sempre, sem
+ * nota de cobrança nem email, e portanto sem recibo depois de paga (o
+ * recibo só é emitido a partir de aprovarPagamentoCondomino/
+ * confirmar-pagamento.js, que exigem o pagamento ter sido reconhecido —
+ * nunca acontecia porque nem sequer havia notificação).
+ *
+ * Idempotente por aviso, não por dia (jaFoiEnviadaNotaExtraordinaria) — cada
+ * prestação só recebe a nota uma única vez em toda a vida, seja por este job
+ * retroativo ou pelo fluxo mensal normal (que também marca a mesma flag).
+ */
+export async function emitirNotasExtraordinariasEmAtraso() {
+  const hojeISO = new Date().toISOString().split("T")[0];
+  const { data: avisosEmAtraso, error } = await supabase
+    .from("avisos")
+    .select("*")
+    .eq("tipo", "Quota Extraordinária")
+    .eq("estado", "Pendente")
+    .lte("vencimento", hojeISO);
+
+  if (error) {
+    console.error("[cronService] Erro ao procurar prestações de Quota Extraordinária em atraso:", error.message);
+    return { job: "emitirNotasExtraordinariasEmAtraso", total: 0, resultados: [], error: error.message };
+  }
+
+  const resultados = [];
+  for (const avisoExtra of avisosEmAtraso || []) {
+    try {
+      if (await jaFoiEnviadaNotaExtraordinaria(avisoExtra.id_aviso)) continue;
+
+      const { data: f } = await supabase.from("fracoes").select("*").eq("id_fracao", avisoExtra.id_fracao).maybeSingle();
+      const { data: predio } = await supabase.from("predios").select("*").eq("id_predio", avisoExtra.id_predio).maybeSingle();
+      if (!f || !predio) continue;
+
+      const proprietario = await obterProprietarioDaFracao(avisoExtra.id_fracao);
+      const contas = await obterContasDoPredio(predio.id_predio);
+      const prefixoEdificio = derivarPrefixoEdificio(predio.nome);
+
+      const resultado = await emitirNotaExtraordinariaSeparada({ predio, f, proprietario, avisoExtra, prefixoEdificio, contas });
+      await marcarExecutadoHoje("nota_extraordinaria_enviada", avisoExtra.id_aviso, f.fracao_nome, predio.id_predio);
+
+      if (proprietario?.email) {
+        resultados.push({ predio: predio.nome, fracao: f.fracao_nome, vencimento: avisoExtra.vencimento, email: proprietario.email, emailEnviado: resultado.emailEnviado });
+      }
+    } catch (errAviso) {
+      console.error(`[cronService] Erro ao emitir nota extraordinária em atraso do aviso ${avisoExtra.id_aviso}:`, errAviso);
+    }
+  }
+
+  return { job: "emitirNotasExtraordinariasEmAtraso", total: resultados.length, resultados };
+}
+
+/**
  * Todos os dias: se algum prédio tiver uma adenda/revisão ao orçamento anual
  * (tabela revisoes_orcamento) cuja data de vigência já chegou e que ainda não
  * foi aplicada, atualiza predios.patrimonio.orcamento_anual para esse valor.
@@ -871,6 +953,16 @@ export async function emitirQuotasMensais() {
         });
 
         if (!resultado.ok) continue;
+
+        // Marca já aqui (independentemente de combinada ou separada) para o
+        // job de apanha retroativa (emitirNotasExtraordinariasEmAtraso) nunca
+        // voltar a enviar esta mesma prestação quando o vencimento passar a
+        // "hoje ou antes" — sem isto, toda prestação tratada normalmente
+        // pelo fluxo mensal seria reenviada em duplicado assim que ficasse
+        // em atraso.
+        if (avisoExtraDoMes) {
+          await marcarExecutadoHoje("nota_extraordinaria_enviada", avisoExtraDoMes.id_aviso, f.fracao_nome, predio.id_predio);
+        }
 
         if (avisoExtraDoMes && !contasIguais) {
           try {

@@ -170,6 +170,33 @@ export function parseCSVContent(csvText: string): Array<{
 }
 
 /**
+ * Escolhe, do conjunto de avisos pendentes de UMA fração (já ordenados do
+ * mais antigo para o mais recente), quais é que o valor efetivamente
+ * transferido cobre — mês a mês, a começar sempre pelo mais antigo em
+ * dívida. Antes disto, qualquer pagamento reconhecido marcava TODOS os
+ * avisos pendentes da fração como "Pago" de uma só vez, mesmo quando o
+ * condómino só tinha pago 1 mês e havia 3 em aberto — bug confirmado em
+ * produção (o Mapa de Pagamentos mostrava meses futuros como pagos sem
+ * nunca terem sido). Se o valor pago não corresponder exatamente à soma de
+ * um ou mais meses consecutivos mais antigos (tolerância de 5 cêntimos),
+ * devolve uma lista vazia — mais vale pedir confirmação manual ao
+ * administrador (que meses este pagamento cobre) do que arriscar fechar o
+ * mês errado.
+ */
+export function selecionarAvisosCobertosPeloValor(fracaoAvisosOrdenados: Aviso[], valorPago: number): Aviso[] {
+  let acumulado = 0;
+  const selecionados: Aviso[] = [];
+  for (const aviso of fracaoAvisosOrdenados) {
+    const proximoAcumulado = Math.round((acumulado + aviso.valor) * 100) / 100;
+    if (proximoAcumulado - valorPago > 0.05) break;
+    selecionados.push(aviso);
+    acumulado = proximoAcumulado;
+    if (Math.abs(acumulado - valorPago) < 0.05) break;
+  }
+  return Math.abs(acumulado - valorPago) < 0.05 ? selecionados : [];
+}
+
+/**
  * Intelligent Matching Engine:
  * Cross-references raw bank transactions against pending condo notices (Avisos) and Fractions.
  */
@@ -207,10 +234,18 @@ export function matchBankTransactions(
         const hasOwnerName = ownerFirstLast.length >= 2 && ownerFirstLast.every(namePart => normDesc.includes(namePart));
         const hasOwnerPartial = ownerFirstLast.some(namePart => normDesc.includes(namePart));
 
-        // Find pending avisos for this fraction
-        const fracaoAvisos = avisosPendentes.filter(a => a.id_fracao === f.id_fracao);
-        const totalAvisosValor = fracaoAvisos.reduce((sum, a) => sum + a.valor, 0);
-        const exactAmountMatch = fracaoAvisos.some(a => Math.abs(a.valor - tx.valor) < 0.05) || Math.abs(totalAvisosValor - tx.valor) < 0.05;
+        // Find pending avisos for this fraction — do mais antigo (vencimento)
+        // para o mais recente, para o pagamento fechar sempre os meses em
+        // atraso há mais tempo primeiro.
+        const fracaoAvisos = avisosPendentes
+          .filter(a => a.id_fracao === f.id_fracao)
+          .sort((a, b) => (a.vencimento || a.data).localeCompare(b.vencimento || b.data));
+        const avisosCobertosPeloValor = selecionarAvisosCobertosPeloValor(fracaoAvisos, tx.valor);
+        // exactAmountMatch só é true quando o valor pago corresponde MESMO à
+        // soma de 1 ou mais meses consecutivos mais antigos — nunca por
+        // coincidência com o total de todos os avisos pendentes somados
+        // (esse caso só é resolvido manualmente, ver curConfidence = 80 abaixo).
+        const exactAmountMatch = avisosCobertosPeloValor.length > 0;
 
         let curConfidence = 0;
         let curReason = "";
@@ -221,9 +256,9 @@ export function matchBankTransactions(
         } else if (hasOwnerName && exactAmountMatch) {
           curConfidence = 95;
           curReason = `Nome do Proprietário (${f.proprietario?.nome}) e Valor da quota (${tx.valor.toFixed(2)}€) correspondentes.`;
-        } else if ((hasFracName || hasPiso) && !exactAmountMatch) {
+        } else if ((hasFracName || hasPiso) && !exactAmountMatch && fracaoAvisos.length > 0) {
           curConfidence = 80;
-          curReason = `Fração (${f.fracao_nome}) identificada no descritivo. Valor com ligeira variação ou pagamento múltiplo.`;
+          curReason = `Fração (${f.fracao_nome}) identificada no descritivo, mas o valor não bate certo com nenhuma combinação de meses em aberto — escolhe à mão que mês(es) este pagamento cobre.`;
         } else if (hasOwnerPartial && exactAmountMatch) {
           curConfidence = 85;
           curReason = `Apelido do condómino e valor da quota (${tx.valor.toFixed(2)}€) coincidentes.`;
@@ -236,7 +271,12 @@ export function matchBankTransactions(
           confidence = curConfidence;
           matchedFracao = f;
           matchReason = curReason;
-          associatedAvisos = fracaoAvisos.map(a => a.id_aviso);
+          // Só entram aqui os avisos que o valor pago realmente cobre (ver
+          // selecionarAvisosCobertosPeloValor) — no caso de confiança 80 (fração
+          // identificada mas valor ambíguo) fica vazio de propósito, para o
+          // administrador escolher à mão na UI em vez de se arriscar a marcar
+          // o mês errado como pago.
+          associatedAvisos = avisosCobertosPeloValor.map(a => a.id_aviso);
         }
       }
     } else {

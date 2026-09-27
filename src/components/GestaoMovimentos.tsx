@@ -3,7 +3,7 @@ import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso, Fornecedor, Divida
 import { formatDatePT, parseValorMonetario, exportToXLS, exportarTabelaParaPDF } from "../utils";
 import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria, fetchMovimentosFromSupabase, fetchPagamentosPendentesInfoFromSupabase, dbInsert, dbUpdate, fetchDividasFornecedoresFromSupabase, saveDividaFornecedorToSupabase, savePagamentoDividaToSupabase } from "../lib/supabaseService";
 import { cruzarMovimentoComFornecedor } from "../lib/fornecedorMatching";
-import { matchBankTransactions } from "../utils/bankStatementParser";
+import { matchBankTransactions, selecionarAvisosCobertosPeloValor } from "../utils/bankStatementParser";
 import { Save, CheckCircle2 } from "lucide-react";
 import { MoneyInput } from "./MoneyInput";
 
@@ -1126,9 +1126,14 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   // confiança — equivalente ao "Conciliar Todas as Quotas (1-Clique)" que
   // existia só no ecrã "Conciliação Bancária".
   const aprovarTodosPagamentosCondominos = async () => {
+    // Só entram no "Aprovar Todos" os itens em que o cruzamento automático já
+    // decidiu com segurança quais os meses cobertos (avisosPendentesIds
+    // preenchido) — os casos ambíguos (confiança 80, valor não bate certo com
+    // nenhuma combinação de meses) ficam de fora e têm de ser confirmados um a
+    // um, para nunca se marcar um mês errado como pago em lote.
     const pendentes = extractedItems
       .map((item, index) => ({ item, index }))
-      .filter(({ item }) => item.ehPagamentoCondomino && !item.jaLancado && item.fracaoSugeridaId);
+      .filter(({ item }) => item.ehPagamentoCondomino && !item.jaLancado && item.fracaoSugeridaId && (item.avisosPendentesIds || []).length > 0);
     if (pendentes.length === 0) {
       alert("Não há pagamentos de condóminos prontos a aprovar.");
       return;
@@ -2071,12 +2076,16 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                               onChange={(e) => {
                                 const novaFracao = fracoes.find(f => f.id_fracao === e.target.value);
                                 // Ao corrigir a fração à mão, os avisos pendentes ligados
-                                // também têm de ser recalculados para a fração nova — senão
-                                // "Aprovar" continuava a liquidar os avisos da fração errada
-                                // original, mesmo já a mostrar o nome certo no ecrã.
-                                const avisosPendentesNovos = novaFracao
-                                  ? avisos.filter(a => a.id_fracao === novaFracao.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")).map(a => a.id_aviso)
+                                // também têm de ser recalculados para a fração nova — só os
+                                // meses que o valor desta transação realmente cobre (ver
+                                // selecionarAvisosCobertosPeloValor), nunca todos os
+                                // pendentes de uma vez (era isto que marcava meses futuros
+                                // como pagos sem nunca terem sido — bug confirmado com o
+                                // Mapa de Pagamentos a mostrar tudo pago sem cruzamento real).
+                                const avisosDaFracaoNova = novaFracao
+                                  ? avisos.filter(a => a.id_fracao === novaFracao.id_fracao && a.estado === "Pendente").sort((a, b) => (a.vencimento || a.data).localeCompare(b.vencimento || b.data))
                                   : [];
+                                const avisosPendentesNovos = selecionarAvisosCobertosPeloValor(avisosDaFracaoNova, item.valor).map(a => a.id_aviso);
                                 setExtractedItems(prev => prev.map((x, i) => i === index ? {
                                   ...x,
                                   fracaoSugeridaId: novaFracao?.id_fracao || "",
@@ -2094,12 +2103,58 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                               ))}
                             </select>
                           </div>
+                          {(() => {
+                            // Lista real de meses em aberto desta fração, para o
+                            // administrador escolher/confirmar quais é que este
+                            // pagamento fecha — nunca assumido às cegas. Cobre
+                            // exatamente o pedido "quando pagam várias mensalidades
+                            // juntas, tem de perguntar a divisão": o próprio
+                            // cruzamento automático já vem pré-marcado quando o
+                            // valor bate certo com 1 ou mais meses consecutivos, mas
+                            // fica sempre editável aqui antes de aprovar.
+                            const avisosFracaoPendentes = avisos
+                              .filter(a => a.id_fracao === item.fracaoSugeridaId && a.estado === "Pendente")
+                              .sort((a, b) => (a.vencimento || a.data).localeCompare(b.vencimento || b.data));
+                            const somaSelecionada = avisosFracaoPendentes
+                              .filter(a => (item.avisosPendentesIds || []).includes(a.id_aviso))
+                              .reduce((s, a) => s + a.valor, 0);
+                            const bateCerto = Math.abs(somaSelecionada - item.valor) < 0.05;
+                            return (
+                              <div className="border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50">
+                                <p className="text-[10px] font-bold text-slate-600">Este pagamento fecha os meses:</p>
+                                {avisosFracaoPendentes.length === 0 ? (
+                                  <p className="text-[10px] text-slate-400">Esta fração não tem avisos pendentes.</p>
+                                ) : avisosFracaoPendentes.map(a => (
+                                  <label key={a.id_aviso} className="flex items-center gap-1.5 text-[10px] text-slate-700 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={(item.avisosPendentesIds || []).includes(a.id_aviso)}
+                                      onChange={(e) => {
+                                        setExtractedItems(prev => prev.map((x, i) => {
+                                          if (i !== index) return x;
+                                          const atuais: string[] = x.avisosPendentesIds || [];
+                                          const novos = e.target.checked ? [...atuais, a.id_aviso] : atuais.filter((id: string) => id !== a.id_aviso);
+                                          return { ...x, avisosPendentesIds: novos };
+                                        }));
+                                      }}
+                                    />
+                                    <span>{a.descricao} — vence {formatDatePT(a.vencimento || a.data)} — {a.valor.toFixed(2)}€</span>
+                                  </label>
+                                ))}
+                                {avisosFracaoPendentes.length > 0 && (
+                                  <p className={`text-[10px] font-bold ${bateCerto ? "text-emerald-600" : "text-amber-600"}`}>
+                                    Selecionado: {somaSelecionada.toFixed(2)}€ {bateCerto ? "✓ igual ao valor pago" : `(valor pago: ${item.valor.toFixed(2)}€ — confirma antes de aprovar)`}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })()}
                           <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                             <span className="font-bold text-emerald-700 font-mono-custom text-sm">+{item.valor.toFixed(2)}€</span>
                             <button
                               onClick={() => aprovarPagamentoCondomino(item, index)}
-                              disabled={aprovandoCondominoIndex === index || aprovandoTodosCondominos || !item.fracaoSugeridaId}
-                              title={!item.fracaoSugeridaId ? "Escolhe primeiro a fração correta" : undefined}
+                              disabled={aprovandoCondominoIndex === index || aprovandoTodosCondominos || !item.fracaoSugeridaId || !(item.avisosPendentesIds || []).length}
+                              title={!item.fracaoSugeridaId ? "Escolhe primeiro a fração correta" : !(item.avisosPendentesIds || []).length ? "Escolhe pelo menos um mês para este pagamento fechar" : undefined}
                               className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                             >
                               <i className={`fa-solid ${aprovandoCondominoIndex === index ? "fa-spinner animate-spin" : "fa-check"}`}></i>

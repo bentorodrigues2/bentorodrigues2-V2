@@ -481,6 +481,32 @@ export function GestaoQuotasOrcamento({
     setQuotaExtraCalculada(false);
   }, [orcamentoExtra, numPrestacoesExtra, dataInicioExtra, obraSelecionadaId, contaExtraId]);
 
+  // Ao emitir-se uma Quota Extraordinária com data de início já no passado,
+  // as prestações desses meses ficavam "Pendente" para sempre sem nunca
+  // gerar nota de cobrança nem email — o job diário (emitirQuotasMensais)
+  // só olha para o mês seguinte a partir de hoje, nunca para trás. Este
+  // botão dispara manualmente a apanha retroativa (mesma lógica que corre
+  // sozinha todos os dias via /api/cron), para não obrigar a esperar pelo
+  // cron seguinte depois de corrigir isto.
+  const [aEmitirNotasExtraAtraso, setAEmitirNotasExtraAtraso] = useState(false);
+  const handleEmitirNotasExtraordinariasEmAtraso = async () => {
+    setAEmitirNotasExtraAtraso(true);
+    try {
+      const resp = await fetch("/api/pagamento?acao=emitir-notas-extraordinarias-atraso", { method: "POST" });
+      const resultado = await resp.json();
+      if (!resp.ok || resultado?.error) throw new Error(resultado?.error || "Erro desconhecido");
+      if (!resultado.total) {
+        alert("Não há prestações de Quota Extraordinária em atraso por notificar — está tudo em dia.");
+      } else {
+        alert(`Emitidas e enviadas ${resultado.total} nota(s) de cobrança em atraso:\n\n${resultado.resultados.map((r: any) => `${r.fracao} — ${r.vencimento} — ${r.emailEnviado ? "email enviado" : "sem email (proprietário sem email)"}`).join("\n")}`);
+      }
+    } catch (err: any) {
+      alert(`Erro ao emitir notas em atraso: ${err?.message || "erro desconhecido"}`);
+    } finally {
+      setAEmitirNotasExtraAtraso(false);
+    }
+  };
+
   const { rateNormalOrdinaria, rateLojaOrdinaria } = useMemo(() => {
     let permilagemLoja = 0;
     predioFracoes.forEach((f) => { if (isLojaExterior(f)) permilagemLoja += f.permilagem; });
@@ -1891,6 +1917,16 @@ export function GestaoQuotasOrcamento({
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>Emitir Quota Extraordinária</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEmitirNotasExtraordinariasEmAtraso}
+                  disabled={aEmitirNotasExtraAtraso}
+                  title="Emite agora (sem esperar pelo dia seguinte) a nota de cobrança + email de qualquer prestação de Quota Extraordinária já vencida e ainda sem notificação — cobre datas de início já no passado."
+                  className="w-full px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                >
+                  <i className={`fa-solid ${aEmitirNotasExtraAtraso ? "fa-spinner animate-spin" : "fa-clock-rotate-left"}`}></i>
+                  <span>{aEmitirNotasExtraAtraso ? "A emitir notas em atraso..." : "Emitir Notas em Atraso (meses já vencidos)"}</span>
                 </button>
               </div>
             )}

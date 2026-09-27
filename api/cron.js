@@ -1,4 +1,4 @@
-import { emitirQuotasMensais, emitirNotasEmAtrasoFracao, enviarLembretesQuotas, avisarQuotasEmMora, enviarFelicitacoesAniversario, sincronizarOrcamentosVigentes, processarContratosFornecedores, arquivarConversasAntigas, enviarNotasCorrecaoNovaQuota } from "../server/lib/cronService.js";
+import { emitirQuotasMensais, emitirNotasEmAtrasoFracao, emitirNotasExtraordinariasEmAtraso, enviarLembretesQuotas, avisarQuotasEmMora, enviarFelicitacoesAniversario, sincronizarOrcamentosVigentes, processarContratosFornecedores, arquivarConversasAntigas, enviarNotasCorrecaoNovaQuota } from "../server/lib/cronService.js";
 
 // Ação pontual (agendada para 2026-09-20 09:00 Lisboa, ver vercel.json —
 // "0 8 20 9 *", só volta a coincidir com esta data daqui a um ano) pedida
@@ -75,6 +75,15 @@ export default async function handler(req, res) {
 
     if (forcar === "emissao" || (!forcar && dia === 25)) {
       resultados.push(await emitirQuotasMensais());
+    }
+
+    // Todos os dias: apanha prestações de Quota Extraordinária já vencidas
+    // (ou a vencer hoje) que ainda não tiveram a sua nota de cobrança
+    // emitida — cobre o caso de a Quota Extraordinária ter sido configurada
+    // com uma data de início já no passado, que o job de dia 25
+    // (emitirQuotasMensais) nunca revisita sozinho.
+    if (forcar === "extraordinarias-atraso" || (!forcar && true)) {
+      resultados.push(await emitirNotasExtraordinariasEmAtraso());
     }
 
     if (forcar === "lembrete" || (!forcar && dia === 5)) {
