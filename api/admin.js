@@ -18,16 +18,31 @@ import webpush from "web-push";
 // Vercel (cada ficheiro em /api conta como uma função). ---
 const RP_NAME = "CondoManager AI";
 const ORIGENS_PERMITIDAS_WEBAUTHN = [
-  "https://bentorodrigues2.condomanagerai.com",
   "https://bentorodrigues2.vercel.app",
   "http://localhost:5173",
   "http://localhost:3000"
 ];
+// Domínio próprio: aceita qualquer subdomínio (www.condomanagerai.com,
+// bentorodrigues2.condomanagerai.com, e futuros prédios/tenants) sem
+// precisar de acrescentar cada um a uma lista fixa — o RP ID do WebAuthn
+// usa sempre o domínio-mãe "condomanagerai.com", que a spec aceita como
+// sufixo válido para qualquer subdomínio dele. Antes disto, aceder pelo
+// domínio "www.condomanagerai.com" caía sempre no fallback rígido
+// "bentorodrigues2.condomanagerai.com" — um RP ID que o browser rejeita
+// por não ser sufixo do domínio real da página ("RP ID ... is invalid
+// for this domain"), impedindo a ativação da biometria.
+const DOMINIO_PROPRIO_WEBAUTHN = "condomanagerai.com";
 
 function obterRpIdEOriginWebAuthn(req) {
   const origin = req.headers.origin || "";
+  let hostname = "";
+  try { hostname = new URL(origin).hostname; } catch {}
+
+  if (hostname === DOMINIO_PROPRIO_WEBAUTHN || hostname.endsWith(`.${DOMINIO_PROPRIO_WEBAUTHN}`)) {
+    return { rpID: DOMINIO_PROPRIO_WEBAUTHN, origin };
+  }
   if (ORIGENS_PERMITIDAS_WEBAUTHN.includes(origin)) {
-    return { rpID: new URL(origin).hostname, origin };
+    return { rpID: hostname, origin };
   }
   const site = process.env.SITE_URL || "https://bentorodrigues2.condomanagerai.com";
   return { rpID: new URL(site).hostname, origin: site };
