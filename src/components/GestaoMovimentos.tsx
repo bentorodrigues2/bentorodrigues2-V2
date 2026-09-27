@@ -2150,8 +2150,21 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                             </div>
                           </div>
                           <div>
+                            {/* Texto exato do extrato (titular/ordenante,
+                                normalmente incluído) em destaque e rotulado
+                                — para o administrador poder confrontar à
+                                vista, sem adivinhar, com a fração sugerida
+                                logo a seguir. Pedido explícito: "tenho de ter
+                                os dados do movimento conta titular... para
+                                confrontar com a fração". */}
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Titular / Descritivo do Extrato</span>
                             <p className="font-semibold text-slate-800">{item.descricao}</p>
-                            <p className="text-[10px] text-emerald-700 font-bold flex items-center mt-1">
+                            {(item.entidade_credora || item.iban_credor) && (
+                              <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                                {item.entidade_credora ? `${item.entidade_credora} ` : ""}{item.iban_credor ? `— IBAN ${item.iban_credor}` : ""}
+                              </p>
+                            )}
+                            <p className="text-[10px] text-emerald-700 font-bold flex items-center mt-1.5">
                               <i className="fa-solid fa-circle-check mr-1"></i>
                               <span>Fração {item.fracaoSugeridaNome} — confiança {item.confiancaFracao}% ({item.motivoCorrespondenciaFracao})</span>
                             </p>
@@ -2303,7 +2316,13 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                         <i className="fa-solid fa-rotate"></i> Isto é um pagamento de condómino (corrigir para Receita)
                       </button>
                       <div>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Titular / Descritivo do Extrato</span>
                         <p className="font-semibold text-slate-800">{item.descricao}</p>
+                        {(item.entidade_credora || item.iban_credor) && (
+                          <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                            {item.entidade_credora ? `${item.entidade_credora} ` : ""}{item.iban_credor ? `— IBAN ${item.iban_credor}` : ""}
+                          </p>
+                        )}
                         {item.id_fornecedor ? (
                           <p className="text-[10px] text-emerald-700 font-bold flex items-center mt-1">
                             <i className="fa-solid fa-circle-check mr-1"></i>
@@ -2455,6 +2474,17 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                   >
                     <i className={`fa-solid fa-chevron-right text-[9px] text-slate-400 transition-transform ${expandida ? "rotate-90" : ""}`}></i>
                     <span className="font-mono-custom text-slate-500 whitespace-nowrap w-[72px] shrink-0">{formatDatePT(m.data)}</span>
+                    {/* Conta/banco de origem sempre visível na linha, sem
+                        precisar de expandir — pedido explícito: sem isto não
+                        dava para perceber a que conta/entidade bancária
+                        pertence cada movimento só de relance. */}
+                    <span
+                      title={cta ? `${cta.banco} — ${cta.tipo}${cta.iban ? ` — ${cta.iban}` : ""}` : "Conta não identificada"}
+                      className="px-1.5 py-0.5 rounded font-bold text-[9.5px] shrink-0 bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1 max-w-[110px]"
+                    >
+                      <i className="fa-solid fa-building-columns"></i>
+                      <span className="truncate">{cta?.banco || "Conta ?"}</span>
+                    </span>
                     <span className={`px-2 py-0.5 rounded font-bold text-[10px] shrink-0 ${m.tipo === 'Receita' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
                       {m.tipo}
                     </span>
