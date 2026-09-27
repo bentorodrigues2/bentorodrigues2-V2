@@ -304,8 +304,29 @@ export function GestaoQuotasOrcamento({
     const rateNormal = denominador > 0 ? orcamentoMensal / denominador : 0;
     const rateLoja = rateNormal * COEF_LOJA_EXTERIOR;
 
+    // Mês/ano desta emissão, para o guarda de duplicados abaixo (comparação
+    // por mês de vencimento, não pela data exata — os planos "pagos
+    // adiantadamente" costumam ter o vencimento no dia 1, e a emissão
+    // manual normal no dia 8).
+    const mesAnoEmissao = vencimento.slice(0, 7); // "YYYY-MM"
+
     const novosAvisos: Aviso[] = [];
+    let fracoesJaPagasIgnoradas = 0;
     predioFracoes.forEach(f => {
+      // Guarda contra duplicados: se esta fração já tem uma Quota Ordinária
+      // PAGA com vencimento no mesmo mês (ex: coberta por um plano de
+      // pagamento adiantado/"dividido" criado à parte), não gera aqui mais
+      // um aviso Pendente para o mesmo mês — era exatamente isto que estava
+      // a criar dívida fantasma (frações como a P, B e F apareciam como
+      // "Pendente" já depois de terem pago o ano inteiro adiantado).
+      const jaPagaEsteMes = avisos.some(
+        (a) => a.id_fracao === f.id_fracao && a.tipo === "Quota Ordinária" && a.estado === "Pago" && (a.vencimento || "").slice(0, 7) === mesAnoEmissao
+      );
+      if (jaPagaEsteMes) {
+        fracoesJaPagasIgnoradas++;
+        return;
+      }
+
       const orcamentoMensalProporcional = f.permilagem * (isLojaExterior(f) ? rateLoja : rateNormal);
 
       const valorOrdinario = Math.round((orcamentoMensalProporcional * 0.9) * 100) / 100;
@@ -363,7 +384,14 @@ export function GestaoQuotasOrcamento({
       setDocumentos(prev => [...prev, ...novosDocs]);
     }
 
-    alert("Foram gerados e emitidos com sucesso os avisos de cobrança para todas as frações! Arquivados na Pasta Paga. Quotas.");
+    if (novosAvisos.length === 0) {
+      alert(`Todas as frações já têm a Quota Ordinária de ${mes}/${anoNum} como Paga — não foi criado nenhum aviso novo, para não gerar dívida duplicada.`);
+    } else {
+      alert(
+        `Foram gerados e emitidos com sucesso ${novosAvisos.length} avisos de cobrança para ${mes}/${anoNum}! Arquivados na Pasta Paga. Quotas.` +
+        (fracoesJaPagasIgnoradas > 0 ? `\n\n${fracoesJaPagasIgnoradas} fração(ões) já tinham este mês Pago e foram ignoradas, para não duplicar.` : "")
+      );
+    }
   };
 
   // ===========================================================================

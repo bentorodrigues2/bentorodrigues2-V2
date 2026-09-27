@@ -193,6 +193,30 @@ async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, ano
   const valorFCR = Math.round(orcamentoMensalProporcional * 0.1 * 100) / 100;
   const valorTotal = Math.round((valorOrdinario + valorFCR) * 100) / 100;
 
+  // Guarda contra dívida fantasma: se esta fração já tem a Quota Ordinária
+  // deste mês marcada Paga (ex: coberta por um plano de pagamento
+  // adiantado/"dividido" criado à parte), não gerar aqui mais um aviso
+  // Pendente para o mesmo mês — era isto que fazia frações que já tinham
+  // pago o ano inteiro adiantado (ex: B, F, P) voltarem a aparecer como
+  // "Pendente" assim que este cron corria para esse mês.
+  const inicioMes = isoDate(anoRef, mesIndex0, 1);
+  // isoDate() só formata strings, não faz aritmética de datas — o "dia 0"
+  // do mês seguinte só dá mesmo o último dia do mês atual através do
+  // construtor real Date.UTC(), nunca por padStart.
+  const fimMes = new Date(Date.UTC(anoRef, mesIndex0 + 1, 0)).toISOString().split("T")[0];
+  const { data: avisosExistentesMes } = await supabase
+    .from("avisos")
+    .select("estado")
+    .eq("id_fracao", f.id_fracao)
+    .eq("tipo", "Quota Ordinária")
+    .eq("estado", "Pago")
+    .gte("vencimento", inicioMes)
+    .lte("vencimento", fimMes);
+  if (avisosExistentesMes && avisosExistentesMes.length > 0) {
+    console.log(`[cronService] Fração ${f.fracao_nome} já tem a Quota Ordinária de ${mesRefLabel}/${anoRef} Paga — a saltar para não duplicar.`);
+    return { ok: false, jaPaga: true };
+  }
+
   const idAviso = `av-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
   const { error: errAv } = await supabase.from("avisos").insert([

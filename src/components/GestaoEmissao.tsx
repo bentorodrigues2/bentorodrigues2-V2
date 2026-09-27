@@ -219,8 +219,24 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
     const rateNormal = denominador > 0 ? orcamentoMensal / denominador : 0;
     const rateLoja = rateNormal * COEF_LOJA_EXTERIOR;
 
+    // Mesmo mês/ano desta emissão, para o guarda de duplicados abaixo.
+    const mesAnoEmissao = vencimento.slice(0, 7); // "YYYY-MM"
+
     const novosAvisos: Aviso[] = [];
+    let fracoesJaPagasIgnoradas = 0;
     predioFracoes.forEach(f => {
+      // Guarda contra dívida fantasma: se esta fração já tem a Quota
+      // Ordinária deste mês Paga (ex: coberta por um plano de pagamento
+      // adiantado/"dividido" criado à parte), não gerar aqui mais um aviso
+      // Pendente para o mesmo mês.
+      const jaPagaEsteMes = avisos.some(
+        (a) => a.id_fracao === f.id_fracao && a.tipo === "Quota Ordinária" && a.estado === "Pago" && (a.vencimento || "").slice(0, 7) === mesAnoEmissao
+      );
+      if (jaPagaEsteMes) {
+        fracoesJaPagasIgnoradas++;
+        return;
+      }
+
       const orcamentoMensalProporcional = f.permilagem * (isLojaExterior(f) ? rateLoja : rateNormal);
 
       const valorOrdinario = Math.round((orcamentoMensalProporcional * 0.9) * 100) / 100;
@@ -233,7 +249,11 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
         id_aviso: idAviso,
         id_predio: predio.id_predio,
         id_fracao: f.id_fracao,
-        tipo: "Cota Ordinária",
+        // Era "Cota Ordinária" (erro ortográfico) — nunca batia certo com
+        // os filtros "Quota Ordinária" usados em todo o resto da app
+        // (Mapa de Pagamentos, Discriminação por Fração, etc.), fazendo
+        // estes avisos ficarem invisíveis nesses ecrãs.
+        tipo: "Quota Ordinária",
         data: dataDoc,
         vencimento,
         descricao: `Quota de Condomínio (Ordinária + Fundo de Reserva) - ${mes} / ${anoNum}`,
@@ -281,7 +301,14 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
       setDocumentos(prev => [...prev, ...novosDocs]);
     }
 
-    alert("Foram gerados e emitidos com sucesso os avisos de cobrança para todas as frações! Arquivados na Pasta Paga. Quotas.");
+    if (novosAvisos.length === 0) {
+      alert(`Todas as frações já têm a Quota Ordinária de ${mes}/${anoNum} como Paga — não foi criado nenhum aviso novo, para não gerar dívida duplicada.`);
+    } else {
+      alert(
+        `Foram gerados e emitidos com sucesso ${novosAvisos.length} avisos de cobrança para ${mes}/${anoNum}! Arquivados na Pasta Paga. Quotas.` +
+        (fracoesJaPagasIgnoradas > 0 ? `\n\n${fracoesJaPagasIgnoradas} fração(ões) já tinham este mês Pago e foram ignoradas, para não duplicar.` : "")
+      );
+    }
   };
 
   const abrirDocumento = (aviso: Aviso, tipoInicial: "RECIBO" | "NOTA_COBRANCA") => {
