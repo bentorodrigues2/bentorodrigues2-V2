@@ -178,11 +178,24 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   const [filtroExtratoCategoria, setFiltroExtratoCategoria] = useState("TODAS");
   const [filtroExtratoFracao, setFiltroExtratoFracao] = useState("TODAS");
   const [filtroExtratoFornecedor, setFiltroExtratoFornecedor] = useState("TODOS");
-  const [filtroExtratoConta, setFiltroExtratoConta] = useState("TODAS");
+  // Extratos são independentes por conta — pedido explícito, repetido várias
+  // vezes: nunca começar com tudo misturado ("TODAS"). Arranca sempre na
+  // conta principal (ou na primeira conta real do prédio), nunca na vista
+  // combinada — quem quiser mesmo ver tudo junto escolhe isso à parte.
+  const [filtroExtratoConta, setFiltroExtratoConta] = useState<string>("");
   const [filtroExtratoEstado, setFiltroExtratoEstado] = useState<"TODOS" | "Justificado" | "Por Justificar">("TODOS");
   const [filtroExtratoDataDe, setFiltroExtratoDataDe] = useState("");
   const [filtroExtratoDataAte, setFiltroExtratoDataAte] = useState("");
   const [linhaExtratoExpandida, setLinhaExtratoExpandida] = useState<string | null>(null);
+
+  // Assim que as contas do prédio ficam disponíveis, escolhe logo a
+  // principal como separador ativo — nunca arranca na vista combinada.
+  useEffect(() => {
+    if (!filtroExtratoConta && predioContas.length > 0) {
+      const principal = predioContas.find(c => c.is_principal) || predioContas[0];
+      setFiltroExtratoConta(principal.id_conta);
+    }
+  }, [predio.id_predio, predioContas.length]);
 
   const categoriasExtratoDisponiveis = Array.from(new Set(predioMovements.map(m => formatarCategoriaMovimento(m.categoria)))).sort();
   const fracoesExtratoDisponiveis = fracoes.filter(f => f.id_predio === predio.id_predio && predioMovements.some(m => m.id_fracao === f.id_fracao));
@@ -205,9 +218,12 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     return true;
   }).sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0));
 
+  // Não mexe em filtroExtratoConta — o separador de conta ativo mantém-se,
+  // "limpar filtros" só limpa os filtros secundários (nunca volta a
+  // misturar contas sozinho).
   const limparFiltrosExtrato = () => {
     setFiltroExtratoBusca(""); setFiltroExtratoTipo("TODOS"); setFiltroExtratoCategoria("TODAS");
-    setFiltroExtratoFracao("TODAS"); setFiltroExtratoFornecedor("TODOS"); setFiltroExtratoConta("TODAS");
+    setFiltroExtratoFracao("TODAS"); setFiltroExtratoFornecedor("TODOS");
     setFiltroExtratoEstado("TODOS"); setFiltroExtratoDataDe(""); setFiltroExtratoDataAte("");
   };
 
@@ -2381,11 +2397,43 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
         </div>
       </div>
 
-      {/* Extrato Consolidado — filtros tipo Excel, linhas em acordeão e
-          exportação PDF/Excel do que estiver filtrado */}
+      {/* Extratos por conta — cada conta bancária é independente (saldo
+          próprio, movimentos próprios), nunca uma vista genérica "tudo
+          misturado" por omissão. Pedido explícito, repetido várias vezes:
+          "quero um extrato por cada conta, são independentes". Antes só
+          havia 1 filtro "Conta" perdido no meio de 7 outros filtros — fácil
+          de nunca mexer e ficar sempre a ver tudo junto sem dar por isso. */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-6 pt-4 flex flex-wrap gap-1.5 border-b border-slate-100">
+          {predioContas.map(c => {
+            const ativo = filtroExtratoConta === c.id_conta;
+            return (
+              <button
+                key={c.id_conta}
+                type="button"
+                onClick={() => setFiltroExtratoConta(c.id_conta)}
+                className={`px-3 py-2 rounded-t-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-2 border-b-2 ${ativo ? "bg-emerald-50 text-emerald-800 border-emerald-600" : "text-slate-500 border-transparent hover:bg-slate-50"}`}
+              >
+                <i className="fa-solid fa-building-columns"></i>
+                <span>{c.banco} — {c.tipo}</span>
+                <span className={`font-mono-custom ${Number(c.saldo || 0) >= 0 ? "text-emerald-700" : "text-red-600"}`}>{Number(c.saldo || 0).toFixed(2)}€</span>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setFiltroExtratoConta("TODAS")}
+            className={`px-3 py-2 rounded-t-lg text-xs font-bold transition-colors cursor-pointer border-b-2 ${filtroExtratoConta === "TODAS" ? "bg-slate-100 text-slate-800 border-slate-500" : "text-slate-400 border-transparent hover:bg-slate-50"}`}
+            title="Ver todas as contas juntas (não recomendado para conciliação — contas têm saldos independentes)"
+          >
+            Todas as Contas
+          </button>
+        </div>
+
         <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-bold text-slate-800">Extrato Consolidado do Condomínio</h3>
+          <h3 className="text-sm font-bold text-slate-800">
+            {filtroExtratoConta === "TODAS" ? "Extrato Consolidado do Condomínio" : `Extrato — ${predioContas.find(c => c.id_conta === filtroExtratoConta)?.banco || ""}`}
+          </h3>
           <div className="flex items-center gap-2">
             <span className="text-xs bg-slate-100 text-slate-600 font-semibold px-2.5 py-1 rounded">
               {extratoConsolidadoFiltrado.length} de {predioMovements.length} transaç{predioMovements.length === 1 ? "ão" : "ões"}
@@ -2447,16 +2495,12 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
             <option value="Justificado">Justificado</option>
             <option value="Por Justificar">Por Justificar</option>
           </select>
-          <select value={filtroExtratoConta} onChange={e => setFiltroExtratoConta(e.target.value)} className="border border-slate-200 rounded-lg px-1.5 py-1.5 text-[11px] focus:outline-emerald-500">
-            <option value="TODAS">Conta: Todas</option>
-            {predioContas.map(c => <option key={c.id_conta} value={c.id_conta}>{c.banco}</option>)}
-          </select>
           <div className="flex items-center gap-1 shrink-0">
             <input type="date" value={filtroExtratoDataDe} onChange={e => setFiltroExtratoDataDe(e.target.value)} className="border border-slate-200 rounded-lg px-1 py-1.5 text-[10px] focus:outline-emerald-500 w-[118px]" title="Data de" />
             <span className="text-slate-400 text-[10px]">–</span>
             <input type="date" value={filtroExtratoDataAte} onChange={e => setFiltroExtratoDataAte(e.target.value)} className="border border-slate-200 rounded-lg px-1 py-1.5 text-[10px] focus:outline-emerald-500 w-[118px]" title="Data até" />
           </div>
-          {(filtroExtratoBusca || filtroExtratoTipo !== "TODOS" || filtroExtratoCategoria !== "TODAS" || filtroExtratoFracao !== "TODAS" || filtroExtratoFornecedor !== "TODOS" || filtroExtratoConta !== "TODAS" || filtroExtratoEstado !== "TODOS" || filtroExtratoDataDe || filtroExtratoDataAte) && (
+          {(filtroExtratoBusca || filtroExtratoTipo !== "TODOS" || filtroExtratoCategoria !== "TODAS" || filtroExtratoFracao !== "TODAS" || filtroExtratoFornecedor !== "TODOS" || filtroExtratoEstado !== "TODOS" || filtroExtratoDataDe || filtroExtratoDataAte) && (
             <button type="button" onClick={limparFiltrosExtrato} className="text-[10px] text-slate-500 hover:text-red-600 underline cursor-pointer self-center shrink-0">
               Limpar filtros
             </button>
