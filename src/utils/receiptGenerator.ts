@@ -204,15 +204,30 @@ export function generateOfficialReceiptPDF(
     const cat = categoriaRubrica(rubrica.tipo);
     const numeroMovimento = `MOV-${recibo.ano}-${cat.sigla}-${recibo.id_recibo}`;
     const isEven = index % 2 === 0;
+
+    // A descrição de uma quota extraordinária costuma incluir a
+    // discriminação completa (prestação, obra, fornecedor, IBAN) — texto
+    // demasiado comprido para 1 linha só, que antes saía do limite da
+    // coluna e ficava sobreposto ao texto da coluna "Categoria" ao lado
+    // (confirmado em produção, nota de cobrança/recibo ilegíveis). Quebra-se
+    // agora em várias linhas dentro da largura real da coluna (de x=62 até
+    // perto de x=140, onde começa "Categoria"), e a linha da tabela cresce
+    // em altura consoante o número de linhas necessárias — nunca corta nem
+    // sobrepõe texto.
+    const larguraColDescricao = 74;
+    const alturaLinhaTexto = 3.1;
+    const linhasDescricao: string[] = doc.splitTextToSize(rubrica.descricao, larguraColDescricao);
+    const alturaLinha = Math.max(7, linhasDescricao.length * alturaLinhaTexto + 3.5);
+
     doc.setFillColor(isEven ? 255 : 248, isEven ? 255 : 250, isEven ? 255 : 252);
-    doc.rect(12, y, tableW, 7, "F");
+    doc.rect(12, y, tableW, alturaLinha, "F");
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.3);
     doc.setTextColor(15, 23, 42);
     doc.text(numeroMovimento, 15, y + 4.5);
 
-    doc.text(rubrica.descricao, 62, y + 4.5);
+    linhasDescricao.forEach((linha, i) => doc.text(linha, 62, y + 4.5 + i * alturaLinhaTexto));
 
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...cat.cor);
@@ -223,7 +238,7 @@ export function generateOfficialReceiptPDF(
     doc.setTextColor(15, 23, 42);
     doc.text(`${rubrica.valor.toFixed(2)} €`, pageWidth - 15, y + 4.5, { align: "right" });
 
-    y += 7;
+    y += alturaLinha;
   });
 
   // Isenção de IVA + Total
