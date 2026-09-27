@@ -34,8 +34,10 @@ export default function AuthForm({
 
   // Se este dispositivo já tem biometria registada, dispara logo o pedido de
   // Face ID/Touch ID ao abrir o ecrã, sem obrigar a escrever o email primeiro.
-  // Falha silenciosa (sem mostrar erro) se for cancelado ou não resultar —
-  // fica sempre o formulário normal disponível.
+  // Só fica silencioso quando o próprio utilizador cancela o pedido (ex:
+  // fechou a caixa do Face ID) — qualquer outra falha mostra o erro real,
+  // tal como já acontece no botão manual, para não ficar "preso" no ecrã
+  // sem nenhuma pista do que correu mal.
   useEffect(() => {
     if (!suportaBiometria) return;
     let emailGuardado = "";
@@ -46,7 +48,12 @@ export default function AuthForm({
       setAutenticandoComBiometria(true);
       try {
         const resultado = await loginComBiometria(emailGuardado);
-        if (resultado.cancelado || !resultado.ok) return;
+        if (resultado.cancelado) return;
+        if (!resultado.ok) {
+          setErrorMessage(`ℹ️ ${resultado.error || "Não foi possível autenticar com biometria."}`);
+          createSecurityLog(emailGuardado, "LOGIN_FAILED", resultado.error || "Falha na autenticação biométrica automática.");
+          return;
+        }
         createSecurityLog(emailGuardado, "LOGIN_SUCCESS", "Login efetuado com sucesso via Biometria (WebAuthn).");
         onLoginSuccess(emailGuardado);
       } finally {
