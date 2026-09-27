@@ -1185,6 +1185,32 @@ export default function PWACondominoView({
                     <CartaoFinanca label="Fundo de Reserva" valor={totalFundoReserva} />
                   </div>
                   <CartaoFinanca label="Total Líquido" valor={totalLiquido} full />
+                  {/* Saldo por conta bancária — sempre gerado a partir das
+                      contas reais do prédio (nunca uma lista fixa), para
+                      qualquer conta nova criada pelo administrador (ex:
+                      ActivoBank) aparecer aqui automaticamente. */}
+                  {contas.length > 0 && (
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">Saldo por Conta Bancária</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {contas.map(c => {
+                          const saldoConta = Number(c.saldo) || 0;
+                          return (
+                            <button
+                              type="button"
+                              key={c.id_conta}
+                              onClick={() => setActiveTab("financas")}
+                              className={`text-left rounded-xl p-2.5 border cursor-pointer hover:brightness-95 transition-all ${saldoConta >= 0 ? "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800" : "bg-red-50 border-red-300"}`}
+                            >
+                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wide block truncate">{c.banco || "Conta"}</span>
+                              <span className="text-[8px] text-slate-400 block truncate">{c.tipo}{c.is_principal ? " • Principal" : ""}</span>
+                              <span className={`text-xs font-black block mt-0.5 ${saldoConta >= 0 ? "text-slate-800 dark:text-white" : "text-red-700"}`}>{saldoConta.toLocaleString("pt-PT")} €</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })()}
