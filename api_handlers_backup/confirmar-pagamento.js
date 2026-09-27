@@ -25,7 +25,15 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: "Método não permitido" });
     }
 
-    const { id_pagamento } = req.body || {};
+    // avisos_ids (opcional): quando o chamador (ex: aprovarPagamentoCondomino
+    // em GestaoMovimentos.tsx) já sabe exatamente quais avisos este pagamento
+    // fecha — 1 ou vários meses/prestações de uma vez — e já os marcou "Pago"
+    // antes de chamar este endpoint. Nesse caso o recibo é montado com 1
+    // linha por aviso real (mês/tipo/valor certos) em vez de adivinhar sempre
+    // "Quota Ordinária + 10% Fundo de Reserva", e o passo 2.1 abaixo (que
+    // tentava adivinhar o aviso a marcar) fica desligado, para não criar um
+    // aviso-fantasma duplicado a repetir o que o chamador já fez.
+    const { id_pagamento, avisos_ids: avisosIdsFechados } = req.body || {};
     if (!id_pagamento) {
       return res.status(400).json({ error: "id_pagamento em falta" });
     }
@@ -129,7 +137,7 @@ export default async function handler(req, res) {
     // como se tivesse desaparecido. Cria-se agora, nesse caso, um aviso já
     // "Pago" com o mês do próprio pagamento, para nunca ficar por registar.
     try {
-      if (pagamento.id_fracao) {
+      if (pagamento.id_fracao && !(avisosIdsFechados && avisosIdsFechados.length)) {
         const valorPago = Number(pagamento.valor || 0);
         const { data: pendentesAvisos } = await supabase
           .from("avisos")
@@ -179,14 +187,45 @@ export default async function handler(req, res) {
     // pagamento nunca refletia a entrada de dinheiro nos KPIs "Conta(s) à
     // Ordem"/"Total Líquido" do Painel de Controlo (ficavam sempre parados
     // no valor de arranque, apesar de haver pagamentos confirmados a mais).
-    try {
-      const contaAlvo = escolherContaPorTipo(contasPredio, "Quota Ordinária");
-      if (contaAlvo?.id_conta) {
-        await ajustarSaldoConta(contaAlvo.id_conta, Number(pagamento.valor || 0));
+    //
+    // Salta este passo quando o chamador já indicou avisos_ids
+    // (aprovarPagamentoCondomino, no Assistente de Extração de Extratos) —
+    // esse fluxo já credita o saldo da CONTA CERTA diretamente (a conta do
+    // separador/extrato ativo) antes de chamar este endpoint; creditar aqui
+    // outra vez duplicava o valor E usava sempre a conta "Quota Ordinária"
+    // fixa, mesmo quando o pagamento era de Quota Extraordinária numa conta
+    // diferente (bug confirmado: inflacionava o saldo a dobrar na conta
+    // errada). Continua ativo para o outro fluxo (confirmarPagamentoEEnviarRecibo,
+    // comprovativos "Pagamentos por Confirmar"), que nunca credita o saldo
+    // antecipadamente.
+    if (!(avisosIdsFechados && avisosIdsFechados.length)) {
+      try {
+        const contaAlvo = escolherContaPorTipo(contasPredio, "Quota Ordinária");
+        if (contaAlvo?.id_conta) {
+          await ajustarSaldoConta(contaAlvo.id_conta, Number(pagamento.valor || 0));
+        }
+      } catch (errSaldo) {
+        console.warn("[confirmar-pagamento] Aviso ao creditar saldo da conta:", errSaldo?.message || errSaldo);
       }
-    } catch (errSaldo) {
-      console.warn("[confirmar-pagamento] Aviso ao creditar saldo da conta:", errSaldo?.message || errSaldo);
     }
+
+    // 2.3) Se o chamador indicou exatamente quais avisos este pagamento
+    // fecha, busca-os reais — servem para montar o recibo com 1 linha por
+    // mês/prestação (ver ponto 3) em vez de adivinhar a rubrica.
+    let avisosFechadosReais = [];
+    if (avisosIdsFechados && avisosIdsFechados.length) {
+      const { data: avisosReais } = await supabase
+        .from("avisos")
+        .select("*")
+        .in("id_aviso", avisosIdsFechados)
+        .order("vencimento", { ascending: true });
+      avisosFechadosReais = avisosReais || [];
+    }
+    // Tipo de quota deste pagamento (Ordinária vs Extraordinária) — decide a
+    // conta/IBAN certos no recibo. Sem avisos reais associados, mantém-se
+    // sempre "Quota Ordinária" (comportamento anterior, para o fluxo de
+    // comprovativos por email que não passa avisos_ids).
+    const tipoQuotaPagamento = avisosFechadosReais[0]?.tipo || "Quota Ordinária";
 
     // 3) Montar e gerar o recibo oficial (mesmo template legal usado no
     // frontend em src/utils/receiptGenerator.ts — compilado para
@@ -220,18 +259,24 @@ export default async function handler(req, res) {
       // junto do método, nunca em nome_condomino.
       metodo_pagamento: pagamento.entidade ? `Transferência Bancária — ${pagamento.entidade}` : "Transferência Bancária",
       valor_total: Number(pagamento.valor || 0),
-      // Divisão legal mínima (DL 268/94, Art. 4.º): 10% do valor da quota
-      // reverte obrigatoriamente para o Fundo Comum de Reserva.
-      rubricas: (() => {
-        const total = Number(pagamento.valor || 0);
-        const valorReserva = Math.round(total * 0.10 * 100) / 100;
-        const valorQuota = Math.round((total - valorReserva) * 100) / 100;
-        return [
-          { descricao: pagamento.descricao || "Quota de Condomínio", valor: valorQuota, tipo: "Quota Ordinária" },
-          { descricao: "Fundo Comum de Reserva (10% legal)", valor: valorReserva, tipo: "Fundo Comum de Reserva" }
-        ];
-      })(),
-      iban_predio: escolherIbanContaPorTipo(contasPredio, "Quota Ordinária") || predio?.iban || "",
+      // Se há avisos reais associados (ver 2.3), 1 linha por mês/prestação
+      // realmente fechado por este pagamento — cobre o pedido explícito de
+      // "1 só recibo pelo total pago, discriminado por mês", em vez de
+      // vários recibos ou de uma divisão inventada. Sem avisos associados
+      // (fluxo antigo de comprovativo por email), mantém a divisão legal
+      // mínima de 10% para o Fundo Comum de Reserva (DL 268/94, Art. 4.º).
+      rubricas: avisosFechadosReais.length
+        ? avisosFechadosReais.map((a) => ({ descricao: a.descricao || `${a.tipo} — vencimento ${a.vencimento || a.data}`, valor: Number(a.valor || 0), tipo: a.tipo }))
+        : (() => {
+            const total = Number(pagamento.valor || 0);
+            const valorReserva = Math.round(total * 0.10 * 100) / 100;
+            const valorQuota = Math.round((total - valorReserva) * 100) / 100;
+            return [
+              { descricao: pagamento.descricao || "Quota de Condomínio", valor: valorQuota, tipo: "Quota Ordinária" },
+              { descricao: "Fundo Comum de Reserva (10% legal)", valor: valorReserva, tipo: "Fundo Comum de Reserva" }
+            ];
+          })(),
+      iban_predio: escolherIbanContaPorTipo(contasPredio, tipoQuotaPagamento) || predio?.iban || "",
       codigo_verificacao_hash: hash,
       emitido_por: "José Carlos Guerra (Administrador do Condomínio)",
       // A assinatura é guardada em predios.patrimonio.assinatura_admin_base64

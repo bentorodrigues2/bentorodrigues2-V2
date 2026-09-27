@@ -1103,10 +1103,17 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
       let emailEnviado = false;
       if (okPagamento) {
+        // Passa os avisos reais que este pagamento fecha (1 ou vários meses,
+        // ver selecionarAvisosCobertosPeloValor) para o recibo sair com a
+        // discriminação certa — 1 único recibo pelo TOTAL pago, com 1 linha
+        // por mês/prestação incluída, em vez de assumir sempre "Quota
+        // Ordinária + 10% Fundo de Reserva" mesmo quando é Quota
+        // Extraordinária (pedido explícito: "não encher a caixa de correio
+        // com 1 recibo por mês — 1 só, com o total pago").
         const resp = await fetch("/api/pagamento?acao=confirmar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id_pagamento: idPagamento })
+          body: JSON.stringify({ id_pagamento: idPagamento, avisos_ids: item.avisosPendentesIds || [] })
         });
         const resultado = await resp.json();
         if (resp.ok && resultado?.status === "ok") {
