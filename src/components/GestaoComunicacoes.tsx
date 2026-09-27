@@ -138,6 +138,8 @@ export function GestaoComunicacoes({
   const [mensagensSelecionadas, setMensagensSelecionadas] = useState<MensagemConversa[]>([]);
   const [respostaTexto, setRespostaTexto] = useState("");
   const [enviandoResposta, setEnviandoResposta] = useState(false);
+  const [showNovaConversa, setShowNovaConversa] = useState(false);
+  const [novaConversaFracaoId, setNovaConversaFracaoId] = useState("");
 
   const carregarConversas = useCallback(async () => {
     if (!predio?.id_predio) return;
@@ -252,6 +254,40 @@ export function GestaoComunicacoes({
   };
 
   const selectedConversa = conversas.find(c => c.id_conversa === selectedConversaId);
+
+  // Permite à administração ser quem inicia a conversa, em vez de só
+  // conseguir responder a mensagens já enviadas pelo condómino — reaproveita
+  // a mesma convenção "conv-<id_fracao>" já usada do lado do condómino
+  // (PortalCondomino.tsx), para que ambos os lados acabem sempre na mesma
+  // conversa da fração em vez de criarem duplicados.
+  const handleIniciarNovaConversa = async () => {
+    if (!novaConversaFracaoId || !predio?.id_predio) return;
+    const fracaoEscolhida = fracoes.find(f => f.id_fracao === novaConversaFracaoId);
+    if (!fracaoEscolhida) return;
+
+    const existente = conversas.find(c => c.id_fracao === novaConversaFracaoId);
+    if (existente) {
+      setSelectedConversaId(existente.id_conversa);
+      setShowNovaConversa(false);
+      setNovaConversaFracaoId("");
+      return;
+    }
+
+    const idConversa = "conv-" + novaConversaFracaoId;
+    const novaConversa: ConversaCondomino = {
+      id_conversa: idConversa,
+      id_predio: predio.id_predio,
+      id_fracao: novaConversaFracaoId,
+      proprietario_nome: fracaoEscolhida.proprietario?.nome || fracaoEscolhida.fracao_nome,
+      assunto: "Mensagem da Administração",
+      estado: "pendente"
+    };
+    await saveConversaToSupabase(novaConversa);
+    setConversas(prev => [novaConversa, ...prev]);
+    setSelectedConversaId(idConversa);
+    setShowNovaConversa(false);
+    setNovaConversaFracaoId("");
+  };
 
   // ==========================================================================
   // 3. SONDAGENS
@@ -585,7 +621,40 @@ export function GestaoComunicacoes({
         {/* SUB-MENU 2: MENSAGENS & INBOX (CHAT) */}
         {commSubTab === "chat" && (
           <div className="space-y-3">
-            <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 mb-2">Mensagens Recebidas</h4>
+            <div className="flex items-center justify-between mb-2 max-w-2xl">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">Mensagens Recebidas</h4>
+              <button
+                onClick={() => setShowNovaConversa(v => !v)}
+                className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 rounded-lg px-3 py-1.5 cursor-pointer"
+              >
+                <i className="fa-solid fa-plus mr-1"></i> Nova Conversa
+              </button>
+            </div>
+
+            {showNovaConversa && (
+              <div className="max-w-2xl p-3 rounded-xl border border-emerald-200 bg-emerald-50 flex items-center gap-2 flex-wrap">
+                <select
+                  value={novaConversaFracaoId}
+                  onChange={e => setNovaConversaFracaoId(e.target.value)}
+                  className="flex-1 min-w-[180px] text-xs p-2 rounded-lg border border-slate-300 bg-white"
+                >
+                  <option value="">Escolher fração / condómino...</option>
+                  {fracoes.filter(f => f.id_predio === predio.id_predio).map(f => (
+                    <option key={f.id_fracao} value={f.id_fracao}>
+                      Fração {f.fracao_nome} — {f.proprietario?.nome || "Sem proprietário"}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleIniciarNovaConversa}
+                  disabled={!novaConversaFracaoId}
+                  className="text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg px-3 py-2 cursor-pointer"
+                >
+                  Iniciar
+                </button>
+              </div>
+            )}
+
             <div className="space-y-2 max-w-2xl">
               {loadingConversas ? (
                 <div className="text-center text-slate-400 py-8 text-xs"><i className="fa-solid fa-spinner fa-spin mr-2"></i>A carregar...</div>
