@@ -130,17 +130,21 @@ export function DashboardKPIs({
   const predioOcorrencias = ocorrencias.filter(o => o.id_predio === predio.id_predio);
 
   // 2. FINANCIAL INDICATORS CALCULATIONS
-  // Paid advisos count as revenue
-  const totalPaidRevenues = predioAvisos
-    .filter(a => a.estado === "Liquidado")
-    .reduce((acc, curr) => acc + curr.valor, 0);
-
-  // Movements (Receitas vs Despesas)
+  // Receitas Coletadas — antes somava também os avisos com estado
+  // "Liquidado", um valor que a app nunca usa de facto (o estado real,
+  // usado em todo o resto do código quando um aviso é dado como pago, é
+  // "Pago") — essa soma nunca disparava, por isso este valor já só refletia
+  // os movimentos reais. Mantém-se assim de propósito: nem todos os avisos
+  // "Pago" têm um movimento real associado (alguns são de um fluxo mais
+  // antigo/manual sem lançamento bancário), e somar os dois contaria
+  // dinheiro a dobrar sempre que um aviso pago já tiver o seu movimento.
+  // A fonte de verdade para dinheiro efetivamente recebido é sempre o
+  // extrato de movimentos reais, nunca o simples estado do aviso.
   const movementRevenues = predioMovimentos
     .filter(m => m.tipo === "Receita")
     .reduce((acc, curr) => acc + curr.valor, 0);
 
-  const totalRevenues = totalPaidRevenues + movementRevenues;
+  const totalRevenues = movementRevenues;
 
   const totalExpenses = predioMovimentos
     .filter(m => m.tipo === "Despesa")
@@ -165,8 +169,15 @@ export function DashboardKPIs({
     .filter(c => ehContaFundoReserva(c.tipo))
     .reduce((acc, c) => acc + (Number(c.saldo) || 0), 0);
 
-  // Total Cash balance
-  const cashBalance = totalRevenues - totalExpenses;
+  // Saldo de Caixa — antes era "totalRevenues - totalExpenses", uma soma
+  // derivada do histórico de movimentos que diverge do saldo bancário real
+  // (nem todo o histórico financeiro do prédio nasceu de um movimento
+  // lançado nesta app). Usa agora o saldo real das contas à ordem (não-FCR),
+  // mesma lógica já usada acima para o Fundo de Reserva e em
+  // PWACondominoView.tsx — o saldo que realmente está disponível nas contas.
+  const cashBalance = predioContas
+    .filter(c => !ehContaFundoReserva(c.tipo))
+    .reduce((acc, c) => acc + (Number(c.saldo) || 0), 0);
 
   // 3. LEGAL INDICATORS CALCULATIONS
   // A fraction is in litigation if it has debts overdue by more than 60 days
@@ -274,7 +285,7 @@ export function DashboardKPIs({
       const d = new Date(a.vencimento);
       if (!isNaN(d.getTime()) && d.getMonth() <= mesIdx) {
         emitida += (Number(a.valor) || 0);
-        if (a.estado === "Liquidado") {
+        if (a.estado === "Pago") {
           recuperada += (Number(a.valor) || 0);
         }
       }
