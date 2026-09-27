@@ -92,28 +92,54 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   // Extrator de Extratos States — lê ficheiros reais (PDF/foto/Excel/CSV/TXT)
   // com o mesmo motor de IA já usado no Assistente de Arranque, em vez do
   // simulador anterior (setTimeout com dados inventados por palavra-chave).
-  const [extratoFicheiros, setExtratoFicheiros] = useState<File[]>([]);
+  //
+  // Cada conta bancária tem agora o seu próprio separador, com o seu
+  // próprio ficheiro, pré-visualização e erro — nunca partilhados entre
+  // contas. Causa raiz confirmada de um extrato ter "misturado" com o de
+  // outra conta: antes havia um ÚNICO conjunto de estado partilhado por
+  // todas as contas do prédio (pré-selecionado na conta principal e nunca
+  // limpo sozinho ao trocar); se o admin importasse um extrato do
+  // ActivoBank sem voltar a mexer manualmente no dropdown, os movimentos
+  // podiam acabar lançados na conta errada. Agora são contas, extratos e
+  // contabilidades fisicamente separados por separador (aba) — trocar de
+  // aba nunca apaga nem mistura o que já estava a meio noutra conta, e o
+  // lançamento de cada linha usa sempre a conta da aba ativa, nunca uma
+  // escolhida à parte.
+  const [extratosPorConta, setExtratosPorConta] = useState<Record<string, { ficheiros: File[]; items: any[]; erro: string | null }>>({});
   const [isExtracting, setIsExtracting] = useState(false);
-  const [extractedItems, setExtractedItems] = useState<any[]>([]);
-  const [erroExtrato, setErroExtrato] = useState<string | null>(null);
   const extratoFileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Conta bancária a que pertence o extrato importado — antes não existia
-  // nenhuma forma de o indicar de uma vez só (era preciso escolher a conta
-  // linha a linha, repetidamente); passa a ser escolhida uma única vez,
-  // pré-selecionada com a conta principal, e usada como valor por omissão
-  // em cada linha (continua a poder ser corrigida por linha se necessário).
-  // Causa raiz confirmada de um extrato ter "misturado" com o de outra
-  // conta: isto pré-selecionava sempre a conta principal (Santander)
-  // automaticamente, e nunca se limpava sozinho ao trocar de extrato — se
-  // o admin importasse um extrato do ActivoBank sem voltar a mexer
-  // manualmente no dropdown, os movimentos eram lançados na conta errada
-  // (a que tinha ficado selecionada da vez anterior). Deixa de haver
-  // pré-seleção nenhuma — a conta tem de ser escolhida de propósito antes
-  // de cada extrato, sempre, e a escolha limpa a pré-visualização anterior
-  // (ver onChange abaixo), para nunca sobrar um item lido para uma conta a
-  // ser lançado depois de se trocar para outra.
+  // Conta bancária cujo separador está ativo — arranca vazia, o admin tem
+  // de escolher sempre o separador certo antes de anexar ficheiros.
   const [contaExtratoId, setContaExtratoId] = useState<string>("");
+
+  const extratoAtivo = extratosPorConta[contaExtratoId] || { ficheiros: [] as File[], items: [] as any[], erro: null as string | null };
+  const extratoFicheiros = extratoAtivo.ficheiros;
+  const extractedItems = extratoAtivo.items;
+  const erroExtrato = extratoAtivo.erro;
+  const setExtratoFicheiros = (val: File[] | ((prev: File[]) => File[])) => {
+    if (!contaExtratoId) return;
+    setExtratosPorConta(prev => {
+      const atual = prev[contaExtratoId] || { ficheiros: [], items: [], erro: null };
+      const novosFicheiros = typeof val === "function" ? (val as (p: File[]) => File[])(atual.ficheiros) : val;
+      return { ...prev, [contaExtratoId]: { ...atual, ficheiros: novosFicheiros } };
+    });
+  };
+  const setExtractedItems = (val: any[] | ((prev: any[]) => any[])) => {
+    if (!contaExtratoId) return;
+    setExtratosPorConta(prev => {
+      const atual = prev[contaExtratoId] || { ficheiros: [], items: [], erro: null };
+      const novosItems = typeof val === "function" ? (val as (p: any[]) => any[])(atual.items) : val;
+      return { ...prev, [contaExtratoId]: { ...atual, items: novosItems } };
+    });
+  };
+  const setErroExtrato = (val: string | null) => {
+    if (!contaExtratoId) return;
+    setExtratosPorConta(prev => {
+      const atual = prev[contaExtratoId] || { ficheiros: [], items: [], erro: null };
+      return { ...prev, [contaExtratoId]: { ...atual, erro: val } };
+    });
+  };
 
   const [aprovandoCondominoIndex, setAprovandoCondominoIndex] = useState<number | null>(null);
   const [aprovandoTodosCondominos, setAprovandoTodosCondominos] = useState(false);
@@ -1878,33 +1904,38 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
           </div>
         </div>
 
+        <div className="space-y-1">
+          <label className="text-xs font-bold text-slate-600 block">
+            Separador da Conta Bancária <span className="text-red-600 font-black">* cada conta tem o seu extrato próprio, nunca partilhado</span>
+          </label>
+          <div className="flex flex-wrap gap-1.5 border-b border-slate-200 pb-2">
+            {predioContas.map(c => {
+              const slot = extratosPorConta[c.id_conta];
+              const temPendente = (slot?.items?.length || 0) > 0;
+              const ativo = contaExtratoId === c.id_conta;
+              return (
+                <button
+                  key={c.id_conta}
+                  type="button"
+                  onClick={() => setContaExtratoId(c.id_conta)}
+                  className={`px-3 py-1.5 rounded-t-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${ativo ? "bg-violet-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                >
+                  <i className="fa-solid fa-building-columns"></i>
+                  <span>{c.banco} ({c.tipo.split(" ")[0]})</span>
+                  {temPendente && (
+                    <span className={`text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center ${ativo ? "bg-white text-violet-700" : "bg-violet-600 text-white"}`}>{slot?.items.length}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {!contaExtratoId && (
+            <p className="text-[11px] text-red-600 font-bold flex items-center gap-1 pt-1"><i className="fa-solid fa-triangle-exclamation"></i> Escolha o separador da conta bancária antes de anexar qualquer ficheiro.</p>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-3">
-            <div>
-              <label className="text-xs font-bold text-slate-600 block mb-1">
-                Conta Bancária deste Extrato
-                <span className="text-red-600 font-black"> * escolha sempre, para cada extrato — nunca fica guardada da vez anterior</span>
-              </label>
-              <select
-                value={contaExtratoId}
-                onChange={e => {
-                  // Trocar de conta limpa sempre a pré-visualização anterior —
-                  // nunca deve ser possível ficar com itens lidos para uma
-                  // conta e lançá-los, sem dar por isso, contra outra conta.
-                  setContaExtratoId(e.target.value);
-                  setExtractedItems([]);
-                  setExtratoFicheiros([]);
-                  setErroExtrato(null);
-                }}
-                className={`w-full border rounded-lg px-2.5 py-1.5 text-xs focus:outline-violet-500 ${contaExtratoId ? "border-slate-200" : "border-red-400 bg-red-50"}`}
-              >
-                <option value="">— Escolha a conta —</option>
-                {predioContas.map(c => (
-                  <option key={c.id_conta} value={c.id_conta}>{c.banco} ({c.tipo.split(" ")[0]})</option>
-                ))}
-              </select>
-            </div>
-
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-600 block">Ficheiro(s) do Extrato / Aviso a Analisar</label>
               <span className="text-[10px] text-slate-400 font-mono">PDF, foto, Excel, CSV ou TXT</span>
@@ -2142,22 +2173,12 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                       </div>
                       <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                         <span className="font-bold text-slate-800 font-mono-custom text-sm">{item.tipo === "Receita" ? "+" : "-"}{item.valor.toFixed(2)}€</span>
-                        <div className="flex items-center space-x-1">
-                          <select
-                            id={`extract-cta-select-${index}`}
-                            className="bg-slate-50 border text-[10px] rounded px-1.5 py-0.5 focus:outline-none focus:border-violet-500"
-                            defaultValue={contaExtratoId}
-                          >
-                            <option value="">Lançar em...</option>
-                            {predioContas.map(c => (
-                              <option key={c.id_conta} value={c.id_conta}>{c.banco} ({c.tipo.split(" ")[0]})</option>
-                            ))}
-                          </select>
+                        <div className="flex items-center space-x-1.5">
+                          <span className="text-[10px] text-slate-500 font-semibold">Lança em: <strong className="text-slate-700">{contas.find(c => c.id_conta === contaExtratoId)?.banco}</strong></span>
                           <button
                             onClick={() => {
-                              const sel = document.getElementById(`extract-cta-select-${index}`) as HTMLSelectElement;
                               const fornSel = document.getElementById(`extract-forn-select-${index}`) as HTMLSelectElement | null;
-                              lancarItemExtraido(item, sel?.value, fornSel?.value || undefined);
+                              lancarItemExtraido(item, contaExtratoId, fornSel?.value || undefined);
                             }}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white p-1 rounded transition-colors cursor-pointer"
                             title="Lançar Movimento Validado"
@@ -2207,14 +2228,18 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
         </div>
 
         {/* Barra de filtros dinâmicos, tipo Excel — só mostram valores que
-            existem mesmo nos dados deste prédio */}
-        <div className="px-6 py-3 bg-slate-50/70 border-b border-slate-100 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-2">
+            existem mesmo nos dados deste prédio. Era uma grid rígida de 9
+            colunas iguais — a célula da data (2 campos + separador) nunca
+            cabia numa coluna só tão estreita e ficava cortada/fora do ecrã.
+            Passa a ser flex-wrap: cada filtro ocupa só a largura que
+            precisa e quebra para a linha seguinte sozinho, nunca corta nada. */}
+        <div className="px-6 py-3 bg-slate-50/70 border-b border-slate-100 flex flex-wrap gap-2">
           <input
             type="text"
             value={filtroExtratoBusca}
             onChange={e => setFiltroExtratoBusca(e.target.value)}
             placeholder="Pesquisar descrição..."
-            className="col-span-2 lg:col-span-2 border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] focus:outline-emerald-500"
+            className="flex-1 min-w-[160px] border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] focus:outline-emerald-500"
           />
           <select value={filtroExtratoTipo} onChange={e => setFiltroExtratoTipo(e.target.value as any)} className="border border-slate-200 rounded-lg px-1.5 py-1.5 text-[11px] focus:outline-emerald-500">
             <option value="TODOS">Tipo: Todos</option>
@@ -2242,13 +2267,13 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
             <option value="TODAS">Conta: Todas</option>
             {predioContas.map(c => <option key={c.id_conta} value={c.id_conta}>{c.banco}</option>)}
           </select>
-          <div className="flex items-center gap-1">
-            <input type="date" value={filtroExtratoDataDe} onChange={e => setFiltroExtratoDataDe(e.target.value)} className="w-full border border-slate-200 rounded-lg px-1 py-1.5 text-[10px] focus:outline-emerald-500" title="Data de" />
+          <div className="flex items-center gap-1 shrink-0">
+            <input type="date" value={filtroExtratoDataDe} onChange={e => setFiltroExtratoDataDe(e.target.value)} className="border border-slate-200 rounded-lg px-1 py-1.5 text-[10px] focus:outline-emerald-500 w-[118px]" title="Data de" />
             <span className="text-slate-400 text-[10px]">–</span>
-            <input type="date" value={filtroExtratoDataAte} onChange={e => setFiltroExtratoDataAte(e.target.value)} className="w-full border border-slate-200 rounded-lg px-1 py-1.5 text-[10px] focus:outline-emerald-500" title="Data até" />
+            <input type="date" value={filtroExtratoDataAte} onChange={e => setFiltroExtratoDataAte(e.target.value)} className="border border-slate-200 rounded-lg px-1 py-1.5 text-[10px] focus:outline-emerald-500 w-[118px]" title="Data até" />
           </div>
           {(filtroExtratoBusca || filtroExtratoTipo !== "TODOS" || filtroExtratoCategoria !== "TODAS" || filtroExtratoFracao !== "TODAS" || filtroExtratoFornecedor !== "TODOS" || filtroExtratoConta !== "TODAS" || filtroExtratoEstado !== "TODOS" || filtroExtratoDataDe || filtroExtratoDataAte) && (
-            <button type="button" onClick={limparFiltrosExtrato} className="col-span-2 sm:col-span-1 text-[10px] text-slate-500 hover:text-red-600 underline cursor-pointer self-center">
+            <button type="button" onClick={limparFiltrosExtrato} className="text-[10px] text-slate-500 hover:text-red-600 underline cursor-pointer self-center shrink-0">
               Limpar filtros
             </button>
           )}
