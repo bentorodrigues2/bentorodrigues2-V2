@@ -108,6 +108,9 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   const [extratosPorConta, setExtratosPorConta] = useState<Record<string, { ficheiros: File[]; items: any[]; erro: string | null }>>({});
   const [isExtracting, setIsExtracting] = useState(false);
   const extratoFileInputRef = React.useRef<HTMLInputElement>(null);
+  // "Movimentos Detetados pela IA" abre como popup dinâmica (maior, letra
+  // maior) em vez de ficar sempre espremida numa caixa fixa pequena.
+  const [showMovimentosDetetadosModal, setShowMovimentosDetetadosModal] = useState(false);
 
   // Conta bancária cujo separador está ativo — arranca vazia, o admin tem
   // de escolher sempre o separador certo antes de anexar ficheiros.
@@ -150,6 +153,22 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
   const predioContas = contas.filter(c => c.id_predio === predio.id_predio);
   const predioMovements = movements.filter(m => m.id_predio === predio.id_predio);
+
+  // Um aviso "pertence" à conta ativa do Assistente de Extração quando o seu
+  // tipo bate certo com o papel real dessa conta — mesma regra usada em toda
+  // a app (escolherIbanContaPorTipo/escolherContaPorTipo, src/utils.ts e
+  // server/lib/cronService.js): a conta principal (is_principal) só lida com
+  // Quota Ordinária/Fundo de Reserva; qualquer outra conta (ex: ActivoBank
+  // "Poupança Intervenções & Obras") só lida com Quota Extraordinária. Sem
+  // isto, processar o extrato do ActivoBank podia oferecer para fechar
+  // Quotas Ordinárias — que essa conta nunca recebe — misturando as 2
+  // realidades na mesma checklist/cruzamento automático.
+  const avisoPertenceAContaExtrato = (a: Aviso): boolean => {
+    const contaAtiva = contas.find(c => c.id_conta === contaExtratoId);
+    if (!contaAtiva) return true; // sem conta escolhida ainda, não filtra (evita esconder tudo por engano)
+    const ehExtraordinaria = String(a.tipo || "").toLowerCase().includes("extra");
+    return contaAtiva.is_principal ? !ehExtraordinaria : ehExtraordinaria;
+  };
 
   // Extrato Consolidado — filtros tipo Excel (só mostram valores realmente
   // presentes nos dados), tabela em acordeão (linha resumida, expande para
@@ -814,7 +833,14 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       const predioFracoesAtual = fracoes.filter(f => f.id_predio === predio.id_predio);
       // Só os avisos ainda por pagar entram na correspondência — um aviso já
       // liquidado não deve voltar a "encontrar" um crédito do extrato.
-      const predioAvisosPendentesAtual = avisos.filter(a => a.id_predio === predio.id_predio && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"));
+      //
+      // E só os avisos do MESMO TIPO da conta deste extrato (ver
+      // avisoPertenceAContaExtrato) — sem isto, um pagamento reconhecido no
+      // extrato do ActivoBank podia "encontrar" e fechar uma Quota Ordinária
+      // pendente, que essa conta nunca recebe.
+      const predioAvisosPendentesAtual = avisos.filter(a =>
+        a.id_predio === predio.id_predio && (a.estado === "Pendente" || a.estado === "Paga Parcialmente") && avisoPertenceAContaExtrato(a)
+      );
 
       // Cruzamento com condóminos/avisos — mesma lógica já usada e testada
       // em "Conciliação Bancária" (bankStatementParser.ts), aplicada agora
@@ -891,6 +917,10 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
       if (comCruzamento.length === 0) {
         setErroExtrato("Não foram identificados movimentos neste ficheiro.");
+      } else {
+        // Abre logo em popup dinâmica para rever/validar — nunca fica
+        // escondido numa caixa pequena depois de uma extração.
+        setShowMovimentosDetetadosModal(true);
       }
       setExtractedItems(comCruzamento);
     } catch (err: any) {
@@ -2030,15 +2060,36 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
             )}
           </div>
 
-          <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col justify-between">
-            <div>
-              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center space-x-1.5">
-                <i className="fa-solid fa-list-check text-slate-500"></i>
-                <span>Movimentos Detetados pela IA</span>
-              </h4>
-              <p className="text-[11px] text-slate-500 mb-3">Receitas tentam cruzar-se com um condómino/fração; despesas com um fornecedor já registado (IBAN, referência de contrato/ADC ou nome). Movimentos já lançados por outra via não pedem aprovação. Valide antes de lançar:</p>
+          {/* "Movimentos Detetados pela IA" — antes era sempre uma caixa
+              fixa e pequena (max-h-280px) dentro desta coluna, com letra
+              minúscula difícil de ler numa lista longa. Passa a abrir como
+              popup dinâmica (muito maior, com letra maior) sempre que há
+              itens para validar — usa position:fixed + "contents" no
+              invólucro exterior para nunca duplicar este bloco de JSX (que
+              tem lógica complexa de aprovação por linha): o mesmo conteúdo
+              só muda de moldura consoante showMovimentosDetetadosModal,
+              nunca é copiado para dois sítios diferentes. */}
+          <div className={showMovimentosDetetadosModal ? "fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4" : "contents"}>
+          <div className={showMovimentosDetetadosModal ? "bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col" : "bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col justify-between"}>
+            <div className={showMovimentosDetetadosModal ? "p-6 flex flex-col min-h-0 flex-1" : ""}>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className={`font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1.5 ${showMovimentosDetetadosModal ? "text-sm" : "text-xs"}`}>
+                  <i className="fa-solid fa-list-check text-slate-500"></i>
+                  <span>Movimentos Detetados pela IA{extractedItems.length > 0 ? ` (${extractedItems.length})` : ""}</span>
+                </h4>
+                {showMovimentosDetetadosModal ? (
+                  <button type="button" onClick={() => setShowMovimentosDetetadosModal(false)} className="text-slate-400 hover:text-red-500 cursor-pointer p-1" title="Fechar">
+                    <i className="fa-solid fa-xmark text-lg"></i>
+                  </button>
+                ) : extractedItems.length > 0 && (
+                  <button type="button" onClick={() => setShowMovimentosDetetadosModal(true)} className="text-[10px] font-bold text-violet-700 hover:text-violet-900 underline cursor-pointer shrink-0">
+                    <i className="fa-solid fa-expand mr-1"></i>Ampliar
+                  </button>
+                )}
+              </div>
+              <p className={showMovimentosDetetadosModal ? "text-xs text-slate-500 mb-3" : "text-[11px] text-slate-500 mb-3"}>Receitas tentam cruzar-se com um condómino/fração; despesas com um fornecedor já registado (IBAN, referência de contrato/ADC ou nome). Movimentos já lançados por outra via não pedem aprovação. Valide antes de lançar:</p>
 
-              <div className="space-y-2 overflow-y-auto max-h-[280px] pr-1">
+              <div className={showMovimentosDetetadosModal ? "space-y-2.5 overflow-y-auto flex-1 pr-1 text-sm" : "space-y-2 overflow-y-auto max-h-[280px] pr-1"}>
                 {extractedItems.length === 0 ? (
                   <div className="text-center py-8 text-slate-400 text-xs font-medium">
                     Nenhuma parcela ou transação extraída pendente. Anexe um ficheiro à esquerda.
@@ -2098,7 +2149,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                                 // como pagos sem nunca terem sido — bug confirmado com o
                                 // Mapa de Pagamentos a mostrar tudo pago sem cruzamento real).
                                 const avisosDaFracaoNova = novaFracao
-                                  ? avisos.filter(a => a.id_fracao === novaFracao.id_fracao && a.estado === "Pendente").sort((a, b) => (a.vencimento || a.data).localeCompare(b.vencimento || b.data))
+                                  ? avisos.filter(a => a.id_fracao === novaFracao.id_fracao && a.estado === "Pendente" && avisoPertenceAContaExtrato(a)).sort((a, b) => (a.vencimento || a.data).localeCompare(b.vencimento || b.data))
                                   : [];
                                 const avisosPendentesNovos = selecionarAvisosCobertosPeloValor(avisosDaFracaoNova, item.valor).map(a => a.id_aviso);
                                 setExtractedItems(prev => prev.map((x, i) => i === index ? {
@@ -2128,7 +2179,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                             // valor bate certo com 1 ou mais meses consecutivos, mas
                             // fica sempre editável aqui antes de aprovar.
                             const avisosFracaoPendentes = avisos
-                              .filter(a => a.id_fracao === item.fracaoSugeridaId && a.estado === "Pendente")
+                              .filter(a => a.id_fracao === item.fracaoSugeridaId && a.estado === "Pendente" && avisoPertenceAContaExtrato(a))
                               .sort((a, b) => (a.vencimento || a.data).localeCompare(b.vencimento || b.data));
                             const somaSelecionada = avisosFracaoPendentes
                               .filter(a => (item.avisosPendentesIds || []).includes(a.id_aviso))
@@ -2206,7 +2257,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                         type="button"
                         onClick={() => {
                           const predioFracoesAtuais = fracoes.filter(f => f.id_predio === predio.id_predio);
-                          const predioAvisosPendentesAtuais = avisos.filter(a => a.id_predio === predio.id_predio && a.estado === "Pendente");
+                          const predioAvisosPendentesAtuais = avisos.filter(a => a.id_predio === predio.id_predio && a.estado === "Pendente" && avisoPertenceAContaExtrato(a));
                           const [matchUnico] = matchBankTransactions(
                             [{ data: item.data, tipo: "CREDITO", valor: item.valor, descricao: item.descricao }],
                             predioFracoesAtuais,
@@ -2275,6 +2326,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                 )}
               </div>
             </div>
+          </div>
           </div>
         </div>
       </div>
