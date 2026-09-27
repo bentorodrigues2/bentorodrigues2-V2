@@ -8,15 +8,34 @@ function normalizarIban(iban?: string | null): string {
 /** Remove acentos, pontuação e sufixos societários comuns (Lda, S.A., Unipessoal)
  *  para comparar nomes de entidades com mais tolerância a pequenas variações
  *  entre o nome registado na ficha do fornecedor e o nome exato que aparece
- *  no extrato/aviso bancário. */
+ *  no extrato/aviso bancário. Substitui pontuação por espaço (em vez de a
+ *  remover) para preservar a separação entre palavras — necessário para o
+ *  cruzamento por palavra/frase inteira em contemFraseInteira, que de outra
+ *  forma nunca teria fronteiras nenhumas para comparar num texto todo colado.
+ */
 function normalizarNomeEntidade(nome?: string | null): string {
   return (nome || "")
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .replace(/\b(lda|unipessoal|s\.?a\.?|comercial|clientes?|portugal)\b/g, "")
-    .replace(/[^a-z0-9]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
+}
+
+/**
+ * Verifica se "frase" aparece em "texto" como sequência de palavras inteira,
+ * delimitada por espaços/início/fim — nunca como substring solta dentro de
+ * outra palavra. Mesma proteção já aplicada ao cruzamento bancário de
+ * frações (bankStatementParser.ts, contemPalavraInteira) — sem isto, um
+ * nome curto de fornecedor podia "aparecer" dentro de texto sem relação
+ * nenhuma, tal como aconteceu com códigos de fração de 1 letra.
+ */
+function contemFraseInteira(texto: string, frase: string): boolean {
+  if (!frase) return false;
+  const escapada = frase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|\\s)${escapada}(\\s|$)`).test(texto);
 }
 
 export interface DadosParaCruzamentoFornecedor {
@@ -59,14 +78,20 @@ export function cruzarMovimentoComFornecedor(
     if (porIban) return { fornecedor: porIban, metodo: "iban" };
   }
 
+  // Mínimo de 4 caracteres antes de aceitar como substring de uma referência
+  // mais longa — uma referência curta de mais (ex: "12") apareceria dentro
+  // de quase qualquer número de conta/contrato mais longo por coincidência.
   const referenciasAlvo = [dados.numero_adc, dados.referencia_credor]
     .filter(Boolean)
-    .map(r => String(r).trim());
+    .map(r => String(r).trim())
+    .filter(r => r.length >= 4);
   if (referenciasAlvo.length > 0) {
     for (const f of fornecedores) {
-      const encontrada = (f.referencias_contrato || []).some(rc =>
-        referenciasAlvo.some(alvo => alvo.includes(rc.referencia.trim()) || rc.referencia.trim().includes(alvo))
-      );
+      const encontrada = (f.referencias_contrato || []).some(rc => {
+        const refFornecedor = rc.referencia.trim();
+        if (refFornecedor.length < 4) return false;
+        return referenciasAlvo.some(alvo => alvo.includes(refFornecedor) || refFornecedor.includes(alvo));
+      });
       if (encontrada) return { fornecedor: f, metodo: "referencia_contrato" };
     }
   }
@@ -75,7 +100,8 @@ export function cruzarMovimentoComFornecedor(
   if (nomeAlvo.length >= 4) {
     const porNome = fornecedores.find(f => {
       const nomeFornecedor = normalizarNomeEntidade(f.nome);
-      return nomeFornecedor.length >= 4 && (nomeAlvo.includes(nomeFornecedor) || nomeFornecedor.includes(nomeAlvo));
+      if (nomeFornecedor.length < 4) return false;
+      return contemFraseInteira(nomeAlvo, nomeFornecedor) || contemFraseInteira(nomeFornecedor, nomeAlvo);
     });
     if (porNome) return { fornecedor: porNome, metodo: "nome" };
   }
@@ -85,7 +111,7 @@ export function cruzarMovimentoComFornecedor(
     const porPalavraChave = fornecedores.find(f =>
       (f.palavras_chave || []).some(pc => {
         const pcNorm = normalizarNomeEntidade(pc);
-        return pcNorm.length >= 3 && descricaoAlvo.includes(pcNorm);
+        return pcNorm.length >= 3 && contemFraseInteira(descricaoAlvo, pcNorm);
       })
     );
     if (porPalavraChave) return { fornecedor: porPalavraChave, metodo: "palavra_chave" };
