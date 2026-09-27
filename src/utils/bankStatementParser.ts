@@ -197,6 +197,21 @@ export function selecionarAvisosCobertosPeloValor(fracaoAvisosOrdenados: Aviso[]
 }
 
 /**
+ * Verifica se "agulha" aparece em "palheiro" como PALAVRA inteira, delimitada
+ * por espaços/início/fim — nunca como substring solta. Sem isto, uma fração
+ * de código curto (ex: "E") "aparecia" dentro de qualquer texto que tivesse
+ * essa letra lá por dentro (ex: "JOSE CARLOS ALVES GUERRA" contém "e" em
+ * "jose" e em "alves") — bug confirmado em produção: uma transferência do
+ * próprio José Carlos Alves Guerra (fração K) foi cruzada com confiança 99%
+ * contra a Fração E, só porque "E" é uma substring de "jose"/"alves".
+ */
+function contemPalavraInteira(texto: string, palavra: string): boolean {
+  if (!palavra) return false;
+  const escapada = palavra.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|\\s)${escapada}(\\s|$)`).test(texto);
+}
+
+/**
  * Intelligent Matching Engine:
  * Cross-references raw bank transactions against pending condo notices (Avisos) and Fractions.
  */
@@ -227,8 +242,9 @@ export function matchBankTransactions(
         const ownerFirstLast = normOwner.split(" ").filter(w => w.length > 2);
 
         // Check exact fraction code match (e.g., "3º Dto" -> "3 dto", "RC Esq" -> "rc esq")
-        const hasFracName = normFrac.length > 0 && normDesc.includes(normFrac);
-        const hasPiso = normPiso.length > 0 && normDesc.includes(normPiso);
+        // — como palavra inteira, nunca substring solta (ver contemPalavraInteira).
+        const hasFracName = normFrac.length > 0 && contemPalavraInteira(normDesc, normFrac);
+        const hasPiso = normPiso.length > 0 && contemPalavraInteira(normDesc, normPiso);
         
         // Check owner name matches
         const hasOwnerName = ownerFirstLast.length >= 2 && ownerFirstLast.every(namePart => normDesc.includes(namePart));

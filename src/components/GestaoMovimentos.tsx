@@ -1119,7 +1119,21 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
       // 4. Pagamento real + recibo oficial (PDF, arquivo, email) — mesmo
       // pipeline usado em toda a app para confirmar pagamentos.
-      const idPagamento = `pag-extrato-${Date.now().toString(36)}-${Math.floor(Math.random() * 1000)}`;
+      //
+      // Bug crítico confirmado em produção: o "id" gerado aqui
+      // ("pag-extrato-...") NUNCA foi um UUID válido, e a coluna
+      // "pagamentos.id" é do tipo uuid — o INSERT falhava sempre, para
+      // TODAS as frações, sem exceção. Como o código a seguir não verificava
+      // "okPagamento" antes de mostrar o alerta final, a aprovação parecia
+      // sempre ter tido sucesso ("Pagamento confirmado e recibo gerado")
+      // quando na realidade nunca chegou a existir nenhum registo em
+      // "pagamentos", nenhum recibo foi gerado e nenhum email foi sequer
+      // tentado — daí "sem email enviado" aparecer em frações que têm mesmo
+      // email registado (o motivo real nunca chegou a ser esse). Usa-se
+      // agora crypto.randomUUID() (mesmo gerador já usado em
+      // confirmarPagamentoEEnviarRecibo, linha ~363), e o alerta final passa
+      // a refletir SEMPRE o resultado real.
+      const idPagamento = crypto.randomUUID();
       const okPagamento = await dbInsert("pagamentos", {
         id: idPagamento,
         referencia: `EXTRATO-${novoMov.id_mov}`,
@@ -1132,6 +1146,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       });
 
       let emailEnviado = false;
+      let erroRecibo: string | null = null;
       if (okPagamento) {
         // Passa os avisos reais que este pagamento fecha (1 ou vários meses,
         // ver selecionarAvisosCobertosPeloValor) para o recibo sair com a
@@ -1149,8 +1164,10 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
         if (resp.ok && resultado?.status === "ok") {
           emailEnviado = Boolean(resultado.email_enviado);
         } else {
-          alert(`⚠️ O pagamento foi lançado mas houve um erro ao emitir o recibo oficial: ${resultado?.error || "erro desconhecido"}`);
+          erroRecibo = resultado?.error || "erro desconhecido";
         }
+      } else {
+        erroRecibo = "não foi possível gravar o registo do pagamento";
       }
 
       registarLogAuditoria("Financeira", "Aprovou um pagamento de condómino reconhecido no extrato bancário", predio.id_predio, loggedUser, novoMov.descricao);
@@ -1159,9 +1176,13 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       // vez — em lote (aprovarTodosPagamentosCondominos) fica só 1 resumo no
       // fim, em vez de 1 alerta bloqueante por cada pagamento aprovado.
       if (mostrarAlerta) {
-        alert(emailEnviado
-          ? `✅ Pagamento de ${item.valor.toFixed(2)}€ confirmado (Fração ${item.fracaoSugeridaNome || fracao?.fracao_nome || "?"}) e recibo oficial enviado por email.`
-          : `✅ Pagamento de ${item.valor.toFixed(2)}€ confirmado e recibo gerado. (Sem email enviado — condómino sem email registado ou associado.)`);
+        if (erroRecibo) {
+          alert(`⚠️ O aviso foi marcado como pago e o movimento lançado, mas houve um erro ao emitir o recibo oficial: ${erroRecibo}. Verifica em Documentos/Recibos se é preciso reemitir manualmente.`);
+        } else {
+          alert(emailEnviado
+            ? `✅ Pagamento de ${item.valor.toFixed(2)}€ confirmado (Fração ${item.fracaoSugeridaNome || fracao?.fracao_nome || "?"}) e recibo oficial enviado por email.`
+            : `✅ Pagamento de ${item.valor.toFixed(2)}€ confirmado e recibo gerado. (Sem email enviado — condómino sem email registado ou associado.)`);
+        }
       }
     } catch (err: any) {
       alert(`Erro ao aprovar este pagamento: ${err?.message || "erro desconhecido"}`);
