@@ -1,4 +1,4 @@
-import { Shield, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight } from "lucide-react";
+import { Shield, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight, Calculator } from "lucide-react";
 import { useState, useEffect, useCallback, Fragment } from "react";
 import { ActionIcon } from "./components/ActionIcon";
 import { LoggedUser, Predio, Conta, Fornecedor, Fracao, Aviso, Movimento, Reuniao, Documento, Ocorrencia, Reserva, CapacidadeLimite } from "./types";
@@ -1916,14 +1916,14 @@ export default function App() {
               id="sidebar-item-obras-contratacao"
               onClick={() => {
                 setOpenMenuObras(!openMenuObras);
-                if (!["portal_orcamentos", "manutencao_extraordinarias"].includes(activeSection)) {
+                if (activeSection !== "portal_orcamentos") {
                   setActiveSection("portal_orcamentos");
                 }
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                ["portal_orcamentos", "manutencao_extraordinarias"].includes(activeSection)
+                activeSection === "portal_orcamentos"
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                   : "text-slate-400 hover:text-white hover:bg-slate-800/30"
               }`}
@@ -1954,18 +1954,18 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => {
-                    setActiveSection("manutencao_extraordinarias");
+                    setActiveSection("quotas_orcamento");
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "manutencao_extraordinarias"
+                    activeSection === "quotas_orcamento"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
-                  <img src="/modulos/41-obra.png" alt="Obras" className="w-4 h-4 object-contain shrink-0" />
-                  <span>2. Planeamento de Quotas</span>
+                  <Calculator className="w-4 h-4 shrink-0" />
+                  <span>2. Calcular Quotas Extra</span>
                 </button>
               </div>
             )}
@@ -3199,6 +3199,7 @@ export default function App() {
               fornecedores={fornecedores}
               onAddFornecedor={handleAddFornecedor}
               loggedUser={loggedUser}
+              contas={contas}
             />
           )}
 

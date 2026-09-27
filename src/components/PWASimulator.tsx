@@ -3008,6 +3008,7 @@ export function PWASimulator({
                           fornecedores={fornecedores}
                           onAddFornecedor={(f) => setFornecedores(prev => [...prev, f])}
                           loggedUser={loggedUser}
+                          contas={contas}
                         />
                       )}
                       {activePwaSubMenuDetails === "configuracoes_gestora" && (

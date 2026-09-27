@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Predio, Fracao, Fornecedor, LoggedUser } from "../types";
+import { Predio, Fracao, Fornecedor, LoggedUser, Conta, DividaFornecedor } from "../types";
 import { Loader2, ShieldCheck, BadgeAlert, Sparkles, Building, Coins, Calendar, Plus, ExternalLink, ThumbsUp, Table, FileText, CheckCircle2, XCircle, Paperclip, HardHat, Wrench, PiggyBank, Pencil, Trash2, X } from "lucide-react";
 import {
   fetchRfpsFromSupabase,
@@ -12,6 +12,7 @@ import {
   saveFornecedorToSupabase,
   saveObraExtraToSupabase,
   saveIntervencaoToSupabase,
+  saveDividaFornecedorToSupabase,
   registarLogAuditoria
 } from "../lib/supabaseService";
 import type { ObraExtraordinaria, Intervencao } from "./GestaoManutencaoIntervencoes";
@@ -82,6 +83,7 @@ interface PortalOrcamentosProps {
   fornecedores: Fornecedor[];
   onAddFornecedor: (novo: Fornecedor) => void;
   loggedUser: LoggedUser;
+  contas: Conta[];
 }
 
 export function PortalOrcamentos({
@@ -90,6 +92,7 @@ export function PortalOrcamentos({
   fornecedores,
   onAddFornecedor,
   loggedUser,
+  contas,
 }: PortalOrcamentosProps) {
   // RFPs (concursos) do prédio — carregados do Supabase, nunca fictícios.
   const [rfps, setRfps] = useState<RequestForProposal[]>([]);
@@ -592,6 +595,23 @@ export function PortalOrcamentos({
       (fracoes || []).forEach(f => {
         valoresPorFracao[f.id_fracao] = (proposal.valor * (f.permilagem || 0)) / 1000;
       });
+
+      // A dívida ao fornecedor é criada já aqui, na própria adjudicação —
+      // antes havia um passo à parte ("Confirmar Obra" em Obras
+      // Extraordinárias) que era a ÚNICA coisa a criar esta dívida e a
+      // ligar id_divida à obra (sem isso, a obra nunca aparecia em
+      // Financeiro → Quotas & Orçamento Anual, cujo filtro exige mesmo uma
+      // dívida ligada). Juntar os dois passos evita ficar uma obra "só
+      // adjudicada no papel" à espera de uma confirmação manual que era
+      // fácil esquecer — e que, a espaço, deixa de existir sequer (ver
+      // eliminação do ecrã "Obras Extraordinárias (Grandes)").
+      const predioContas = contas.filter(c => c.id_predio === predio.id_predio);
+      const contaObrasDefault =
+        predioContas.find(c => /obras|interven/i.test(c.tipo || "")) ||
+        predioContas.find(c => c.is_principal) ||
+        predioContas[0];
+      const idDivida = "div-obr-" + Date.now();
+
       const novaObra: ObraExtraordinaria = {
         id: "obr-" + Date.now(),
         descricao: `${rfpAlvo.titulo} (via Portal de Orçamentos)`,
@@ -608,18 +628,38 @@ export function PortalOrcamentos({
         valoresPorFracao,
         impactoFundoReserva: Math.round(proposal.valor * 0.10 * 100) / 100,
         impactoSaldoAnual: -proposal.valor,
-        estado: "Planeada",
+        estado: "Em Curso",
         orcamentos: (proposal.anexos || []).map(a => a.nome),
-        documentosArquivados: false,
+        documentosArquivados: true,
         usaFundoReserva: usaFundoReservaEscolhido,
         id_rfp: rfpAlvo.id_rfp,
-        id_proposta: proposal.id_proposal
+        id_proposta: proposal.id_proposal,
+        id_divida: idDivida
       };
       idObraCriada = novaObra.id;
-      const okObra = await saveObraExtraToSupabase(predio.id_predio, novaObra);
-      if (!okObra) {
+
+      const novaDivida: DividaFornecedor = {
+        id_divida: idDivida,
+        id_predio: predio.id_predio,
+        id_fornecedor: idFornecedor !== "forn-custom" ? idFornecedor : undefined,
+        fornecedor_nome: proposal.nome_empresa,
+        descricao: `Obra Extraordinária: ${rfpAlvo.titulo}`,
+        categoria: "Obras",
+        valor: proposal.valor,
+        data_emissao: hoje,
+        data_vencimento: dataFimEstimada,
+        estado: "Pendente",
+        valor_pago: 0,
+        id_conta_pagamento: contaObrasDefault?.id_conta
+      };
+
+      const [okObra, okDivida] = await Promise.all([
+        saveObraExtraToSupabase(predio.id_predio, novaObra),
+        saveDividaFornecedorToSupabase(novaDivida)
+      ]);
+      if (!okObra || !okDivida) {
         setAdjudicando(false);
-        alert("⚠️ Fornecedor registado e concurso adjudicado, mas houve um erro a criar a Obra Extraordinária. Crie-a manualmente em Manutenção → Obras Extraordinárias.");
+        alert("⚠️ Fornecedor registado e concurso adjudicado, mas houve um erro a criar a Obra Extraordinária e/ou a dívida ao fornecedor. Tente novamente — se persistir, avisa a administração.");
         return;
       }
     } else {
@@ -683,7 +723,7 @@ export function PortalOrcamentos({
       `Serviço: ${rfpAlvo.titulo}\n` +
       `Valor: ${proposal.valor.toLocaleString("pt-PT")} €\n` +
       `Prazo: ${proposal.prazo_dias} dias\n` +
-      `Criado em: ${destinoObraEscolhido === "obra_extraordinaria" ? "Manutenção → Obras Extraordinárias" : "Manutenção → Intervenções (Reparações)"}\n\n` +
+      `${destinoObraEscolhido === "obra_extraordinaria" ? "Dívida ao fornecedor lançada em Financeiro → Dívidas a Fornecedores. Se pedir quota extra, já aparece pronta em Financeiro → Quotas & Orçamento Anual." : "Criado em: Manutenção → Intervenções (Reparações)"}\n\n` +
       `O concurso foi fechado e o fornecedor integrado no registo oficial do condomínio.`
     );
   };
