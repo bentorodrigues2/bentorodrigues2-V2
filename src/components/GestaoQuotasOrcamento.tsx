@@ -24,6 +24,7 @@ import { isSupabaseConfigured } from "@/lib/supabaseClient";
 import {
   dbUpdate,
   dbDelete,
+  dbInsert,
   saveAvisosToSupabase,
   saveContaToSupabase,
   saveMovimentoToSupabase,
@@ -420,6 +421,16 @@ export function GestaoQuotasOrcamento({
   const [dataInicioExtra, setDataInicioExtra] = useState<string>(() => new Date().toISOString().split("T")[0]);
   const [descricaoExtra, setDescricaoExtra] = useState<string>("");
 
+  // Envio da nota de cobrança desta emissão: imediato (como sempre foi) ou
+  // agendado para uma data/hora à escolha do administrador — pedido
+  // explícito: "podes definir envio imediato e programado?". Os avisos são
+  // sempre criados de imediato (para o Mapa de Pagamentos/cálculos ficarem
+  // logo corretos); só o envio da nota de cobrança + email é que fica para
+  // a hora escolhida, via a tabela agendamentos_avisos.
+  const [envioExtraModo, setEnvioExtraModo] = useState<"imediato" | "agendado">("imediato");
+  const [dataHoraAgendadaExtra, setDataHoraAgendadaExtra] = useState<string>("");
+  const [aEmitirExtra, setAEmitirExtra] = useState(false);
+
   const [obrasExtra, setObrasExtra] = useState<ObraExtraordinaria[]>([]);
   const [obraSelecionadaId, setObraSelecionadaId] = useState<string>("");
   useEffect(() => {
@@ -751,7 +762,7 @@ export function GestaoQuotasOrcamento({
     }
   };
 
-  const handleEmitirQuotasEmLote = () => {
+  const handleEmitirQuotasEmLote = async () => {
     if (totalPermilagem !== 1000) {
       alert(
         "Atenção: A soma das permilagens é de " +
@@ -769,6 +780,13 @@ export function GestaoQuotasOrcamento({
       alert("Por favor defina um orçamento extraordinário superior a 0€!");
       return;
     }
+
+    if (envioExtraModo === "agendado" && !dataHoraAgendadaExtra) {
+      alert("Escolha a data/hora de envio, ou muda para \"Enviar Imediatamente\".");
+      return;
+    }
+
+    setAEmitirExtra(true);
 
     const d = new Date();
     const dataEmissao = d.toISOString().split("T")[0];
@@ -829,27 +847,50 @@ export function GestaoQuotasOrcamento({
       `Extra: ${extVal}€`
     );
 
-    if (extVal > 0) {
-      const destinatarios = predioFracoes
-        .filter(f => f.proprietario?.email)
-        .map(f => ({ email: f.proprietario.email, nome: f.proprietario.nome }));
-      if (destinatarios.length > 0) {
-        fetch("/api/email?acao=broadcast", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            destinatarios,
-            assunto: `Aviso de Quota Extraordinária — ${descricaoExtra || predio.nome}`,
-            mensagem: `Foi emitida uma quota extraordinária: <strong>${descricaoExtra}</strong>.<br><br>A liquidar em ${numPrestacoesExtra} prestação(ões) mensal(is), de ${new Date(dataInicioExtra).toLocaleDateString("pt-PT")} a ${new Date(dataLimiteExtraCalculada).toLocaleDateString("pt-PT")}.<br><br>Consulte o valor correspondente à sua fração na plataforma.`
-          })
-        }).catch(console.error);
+    // O envio da nota de cobrança real (PDF por fração + email) fica a
+    // cargo de um agendamento — "Enviar Imediatamente" cria um agendamento
+    // com a hora de agora e dispara-o já a seguir (feedback instantâneo,
+    // sem esperar pelo cron diário); "Agendar para depois" só cria o
+    // agendamento, disparado mais tarde pelo /api/cron. Substitui o antigo
+    // email genérico em massa (sem PDF, sem valor por fração) por notas de
+    // cobrança reais e individuais, tal como as da Quota Ordinária.
+    let mensagemEnvio = "";
+    if (extVal > 0 && novosAvisos.length > 0) {
+      const idAgendamento = "ag-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+      const agendamentoOk = await dbInsert("agendamentos_avisos", {
+        id_agendamento: idAgendamento,
+        id_predio: predio.id_predio,
+        tipo: "Quota Extraordinária",
+        ids_avisos: novosAvisos.map(a => a.id_aviso),
+        data_hora_agendada: envioExtraModo === "agendado" ? new Date(dataHoraAgendadaExtra).toISOString() : new Date().toISOString(),
+        estado: "Pendente"
+      });
+
+      if (!agendamentoOk) {
+        mensagemEnvio = " Atenção: não foi possível agendar o envio das notas de cobrança — tenta novamente ou usa o botão \"Emitir Notas em Atraso\".";
+      } else if (envioExtraModo === "agendado") {
+        mensagemEnvio = ` Envio das notas de cobrança agendado para ${new Date(dataHoraAgendadaExtra).toLocaleString("pt-PT")}.`;
+      } else {
+        try {
+          const resp = await fetch("/api/pagamento?acao=processar-agendamento-avisos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id_agendamento: idAgendamento })
+          });
+          const resultado = await resp.json();
+          const enviados = resultado?.resultados?.[0]?.enviados ?? 0;
+          mensagemEnvio = ` ${enviados} nota(s) de cobrança enviada(s) por email de imediato.`;
+        } catch {
+          mensagemEnvio = " As notas de cobrança ficaram agendadas e serão enviadas em breve (não foi possível confirmar o envio imediato).";
+        }
       }
     }
 
     setSucessoEmissao(
-      `Emitidos com sucesso ${novosAvisos.length} avisos e guardada configuração no Supabase interligada às contas (${contaOrdinariaSel?.banco || "Conta Principal"} / ${contaExtraSel?.banco || "Conta FCR"}).`
+      `Emitidos com sucesso ${novosAvisos.length} avisos e guardada configuração no Supabase interligada às contas (${contaOrdinariaSel?.banco || "Conta Principal"} / ${contaExtraSel?.banco || "Conta FCR"}).${mensagemEnvio}`
     );
-    setTimeout(() => setSucessoEmissao(null), 7000);
+    setAEmitirExtra(false);
+    setTimeout(() => setSucessoEmissao(null), 9000);
   };
 
   // Elimina as prestações de quota extra já emitidas para a obra
@@ -1901,11 +1942,44 @@ export function GestaoQuotasOrcamento({
                   <Calculator className="w-3.5 h-3.5" />
                   <span>Calcular Quotas Extra</span>
                 </button>
+
+                {/* Envio da nota de cobrança: imediato (como sempre foi) ou
+                    agendado para uma data/hora à escolha — pedido explícito
+                    do administrador. Os avisos são sempre criados na hora;
+                    só o envio da nota + email é que respeita esta escolha. */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-2">
+                  <div className="flex gap-1.5 text-[10px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setEnvioExtraModo("imediato")}
+                      className={`flex-1 px-2 py-1.5 rounded-lg transition-colors cursor-pointer ${envioExtraModo === "imediato" ? "bg-emerald-600 text-white" : "bg-white text-slate-500 border border-slate-200"}`}
+                    >
+                      <i className="fa-solid fa-bolt mr-1"></i>Enviar Imediatamente
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEnvioExtraModo("agendado")}
+                      className={`flex-1 px-2 py-1.5 rounded-lg transition-colors cursor-pointer ${envioExtraModo === "agendado" ? "bg-indigo-600 text-white" : "bg-white text-slate-500 border border-slate-200"}`}
+                    >
+                      <i className="fa-solid fa-clock mr-1"></i>Agendar para Depois
+                    </button>
+                  </div>
+                  {envioExtraModo === "agendado" && (
+                    <input
+                      type="datetime-local"
+                      value={dataHoraAgendadaExtra}
+                      onChange={(e) => setDataHoraAgendadaExtra(e.target.value)}
+                      min={new Date().toISOString().slice(0, 16)}
+                      className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-[11px] focus:outline-indigo-500"
+                    />
+                  )}
+                </div>
+
                 <button
                   type="button"
                   id="btn-guardar-quotas-supabase"
                   onClick={handleEmitirQuotasEmLote}
-                  disabled={(parseValorMonetario(orcamentoExtra) || 0) <= 0 || !quotaExtraCalculada}
+                  disabled={(parseValorMonetario(orcamentoExtra) || 0) <= 0 || !quotaExtraCalculada || aEmitirExtra}
                   title={
                     (parseValorMonetario(orcamentoExtra) || 0) <= 0
                       ? "Define um Orçamento Extraordinário para emitir — a quota ordinária é sempre automática (dia 25)."
@@ -1915,8 +1989,8 @@ export function GestaoQuotasOrcamento({
                   }
                   className="w-full px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
                 >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>Emitir Quota Extraordinária</span>
+                  {aEmitirExtra ? <i className="fa-solid fa-spinner animate-spin w-3.5 h-3.5"></i> : <Save className="w-3.5 h-3.5" />}
+                  <span>{aEmitirExtra ? "A emitir..." : "Emitir Quota Extraordinária"}</span>
                 </button>
                 <button
                   type="button"

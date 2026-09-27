@@ -1,4 +1,4 @@
-import { emitirQuotasMensais, emitirNotasEmAtrasoFracao, emitirNotasExtraordinariasEmAtraso, enviarLembretesQuotas, avisarQuotasEmMora, enviarFelicitacoesAniversario, sincronizarOrcamentosVigentes, processarContratosFornecedores, arquivarConversasAntigas, enviarNotasCorrecaoNovaQuota } from "../server/lib/cronService.js";
+import { emitirQuotasMensais, emitirNotasEmAtrasoFracao, emitirNotasExtraordinariasEmAtraso, processarAgendamentosAvisos, enviarLembretesQuotas, avisarQuotasEmMora, enviarFelicitacoesAniversario, sincronizarOrcamentosVigentes, processarContratosFornecedores, arquivarConversasAntigas, enviarNotasCorrecaoNovaQuota } from "../server/lib/cronService.js";
 
 // Ação pontual (agendada para 2026-09-20 09:00 Lisboa, ver vercel.json —
 // "0 8 20 9 *", só volta a coincidir com esta data daqui a um ano) pedida
@@ -84,6 +84,12 @@ export default async function handler(req, res) {
     // (emitirQuotasMensais) nunca revisita sozinho.
     if (forcar === "extraordinarias-atraso" || (!forcar && true)) {
       resultados.push(await emitirNotasExtraordinariasEmAtraso());
+    }
+
+    // Todos os dias: dispara os agendamentos de envio de nota de cobrança
+    // (Quota Extraordinária "Agendar para depois") cuja data/hora já chegou.
+    if (forcar === "agendamentos-avisos" || (!forcar && true)) {
+      resultados.push(await processarAgendamentosAvisos());
     }
 
     if (forcar === "lembrete" || (!forcar && dia === 5)) {

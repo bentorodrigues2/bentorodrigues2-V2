@@ -659,9 +659,17 @@ export async function emitirNotasExtraordinariasEmAtraso() {
     return { job: "emitirNotasExtraordinariasEmAtraso", total: 0, resultados: [], error: error.message };
   }
 
+  // Um aviso que já pertença a um agendamento ainda pendente cuja hora ainda
+  // não chegou (ver processarAgendamentosAvisos) não deve ser apanhado por
+  // este job de atraso antes de tempo — respeita a data/hora que o
+  // administrador escolheu ao emitir, em vez de disparar logo que o
+  // vencimento passa a "hoje ou antes".
+  const idsAgendadosFuturo = await idsAvisosComAgendamentoFuturo();
+
   const resultados = [];
   for (const avisoExtra of avisosEmAtraso || []) {
     try {
+      if (idsAgendadosFuturo.has(avisoExtra.id_aviso)) continue;
       if (await jaFoiEnviadaNotaExtraordinaria(avisoExtra.id_aviso)) continue;
 
       const { data: f } = await supabase.from("fracoes").select("*").eq("id_fracao", avisoExtra.id_fracao).maybeSingle();
@@ -684,6 +692,92 @@ export async function emitirNotasExtraordinariasEmAtraso() {
   }
 
   return { job: "emitirNotasExtraordinariasEmAtraso", total: resultados.length, resultados };
+}
+
+/** ids de avisos que pertencem a um agendamento ("agendamentos_avisos") ainda pendente e cuja hora ainda não chegou. */
+async function idsAvisosComAgendamentoFuturo() {
+  const agoraISO = new Date().toISOString();
+  const { data } = await supabase
+    .from("agendamentos_avisos")
+    .select("ids_avisos")
+    .eq("estado", "Pendente")
+    .gt("data_hora_agendada", agoraISO);
+  const ids = new Set();
+  (data || []).forEach((row) => (row.ids_avisos || []).forEach((id) => ids.add(id)));
+  return ids;
+}
+
+/**
+ * Processa agendamentos de envio de notas de cobrança (tabela
+ * "agendamentos_avisos", criada em GestaoQuotasOrcamento.tsx ao emitir Quota
+ * Extraordinária com a opção "Agendar para depois") — pedido explícito do
+ * administrador: poder escolher entre enviar imediatamente ou agendar
+ * data/hora de envio, individualmente por lote de emissão.
+ *
+ * Sem argumento (chamado pelo /api/cron diário): processa TODOS os
+ * agendamentos "Pendente" cuja data_hora_agendada já chegou. Com
+ * idAgendamentoEspecifico (chamado logo a seguir a criar-se um agendamento
+ * com "Enviar Imediatamente"): processa só esse, de imediato, sem esperar
+ * pelo próximo cron — dá feedback instantâneo ao administrador em vez de o
+ * deixar à espera de um cron que só corre 1x/dia.
+ *
+ * Cada aviso do lote só recebe a nota uma única vez (jaFoiEnviadaNotaExtraordinaria,
+ * partilhada com emitirNotasExtraordinariasEmAtraso) — nunca duplica, mesmo
+ * que o mesmo agendamento seja processado por engano mais do que uma vez.
+ */
+export async function processarAgendamentosAvisos(idAgendamentoEspecifico) {
+  let query = supabase.from("agendamentos_avisos").select("*").eq("estado", "Pendente");
+  query = idAgendamentoEspecifico
+    ? query.eq("id_agendamento", idAgendamentoEspecifico)
+    : query.lte("data_hora_agendada", new Date().toISOString());
+  const { data: agendamentosDevidos, error } = await query;
+
+  if (error) {
+    console.error("[cronService] Erro ao procurar agendamentos de avisos:", error.message);
+    return { job: "processarAgendamentosAvisos", total: 0, resultados: [], error: error.message };
+  }
+
+  const resultados = [];
+  for (const agendamento of agendamentosDevidos || []) {
+    try {
+      const ids = agendamento.ids_avisos || [];
+      const { data: avisosDoLote } = await supabase.from("avisos").select("*").in("id_aviso", ids);
+      const { data: predio } = await supabase.from("predios").select("*").eq("id_predio", agendamento.id_predio).maybeSingle();
+      if (!predio) {
+        resultados.push({ id_agendamento: agendamento.id_agendamento, ok: false, error: "Prédio não encontrado" });
+        continue;
+      }
+      const contas = await obterContasDoPredio(predio.id_predio);
+      const prefixoEdificio = derivarPrefixoEdificio(predio.nome);
+
+      let enviados = 0;
+      for (const aviso of avisosDoLote || []) {
+        // Já pago ou cancelado entretanto — não faz sentido notificar.
+        if (aviso.estado !== "Pendente") continue;
+        if (await jaFoiEnviadaNotaExtraordinaria(aviso.id_aviso)) continue;
+
+        const { data: f } = await supabase.from("fracoes").select("*").eq("id_fracao", aviso.id_fracao).maybeSingle();
+        if (!f) continue;
+        const proprietario = await obterProprietarioDaFracao(aviso.id_fracao);
+
+        await emitirNotaExtraordinariaSeparada({ predio, f, proprietario, avisoExtra: aviso, prefixoEdificio, contas });
+        await marcarExecutadoHoje("nota_extraordinaria_enviada", aviso.id_aviso, f.fracao_nome, predio.id_predio);
+        enviados += 1;
+      }
+
+      await supabase
+        .from("agendamentos_avisos")
+        .update({ estado: "Executado", executado_em: new Date().toISOString() })
+        .eq("id_agendamento", agendamento.id_agendamento);
+
+      resultados.push({ id_agendamento: agendamento.id_agendamento, ok: true, enviados, total_lote: ids.length });
+    } catch (errAg) {
+      console.error(`[cronService] Erro ao processar agendamento ${agendamento.id_agendamento}:`, errAg);
+      resultados.push({ id_agendamento: agendamento.id_agendamento, ok: false, error: errAg?.message || String(errAg) });
+    }
+  }
+
+  return { job: "processarAgendamentosAvisos", total: resultados.length, resultados };
 }
 
 /**
@@ -1415,6 +1509,8 @@ export async function enviarNotasCorrecaoNovaQuota(id_predio, vencimentoISO) {
 export default {
   emitirQuotasMensais,
   emitirNotasEmAtrasoFracao,
+  emitirNotasExtraordinariasEmAtraso,
+  processarAgendamentosAvisos,
   reenviarNotaCobrancaCorrigida,
   enviarNotasCorrecaoNovaQuota,
   arquivarConversasAntigas,
