@@ -2199,26 +2199,38 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                         </div>
                       </div>
                       {/* A IA por vezes lê mal a direção de uma transferência
-                          (ex: pagamento de quota extra classificado como
-                          Despesa numa conta dedicada a receber quotas) —
-                          este botão corrige isso, convertendo o cartão para
-                          "Pagamento de Condómino" (fração + aviso pendente +
-                          "Aprovar & Emitir Recibo"), sem ter de lançar às
-                          cegas nem perder o movimento. */}
+                          (ex: "TRF. P/O <nome>" = Por Ordem de, dinheiro
+                          recebido, lido às vezes como Despesa) — este botão
+                          corrige isso E já tenta o mesmo cruzamento
+                          automático com fração/avisos pendentes usado na
+                          extração (matchBankTransactions), em vez de
+                          deixar sempre a fração em branco por escolher à
+                          mão — só fica vazio se mesmo assim não houver
+                          nenhuma correspondência clara. */}
                       <button
                         type="button"
-                        onClick={() => setExtractedItems(prev => prev.map((x, i) => i === index ? {
-                          ...x,
-                          tipo: "Receita",
-                          ehPagamentoCondomino: true,
-                          id_fornecedor: undefined,
-                          fornecedor_nome_sugerido: undefined,
-                          fracaoSugeridaId: "",
-                          fracaoSugeridaNome: "?",
-                          confiancaFracao: 0,
-                          motivoCorrespondenciaFracao: "corrigido manualmente",
-                          avisosPendentesIds: []
-                        } : x))}
+                        onClick={() => {
+                          const predioFracoesAtuais = fracoes.filter(f => f.id_predio === predio.id_predio);
+                          const predioAvisosPendentesAtuais = avisos.filter(a => a.id_predio === predio.id_predio && a.estado === "Pendente");
+                          const [matchUnico] = matchBankTransactions(
+                            [{ data: item.data, tipo: "CREDITO", valor: item.valor, descricao: item.descricao }],
+                            predioFracoesAtuais,
+                            predioAvisosPendentesAtuais
+                          );
+                          const temFracao = !!matchUnico?.fracao_sugerida_id;
+                          setExtractedItems(prev => prev.map((x, i) => i === index ? {
+                            ...x,
+                            tipo: "Receita",
+                            ehPagamentoCondomino: true,
+                            id_fornecedor: undefined,
+                            fornecedor_nome_sugerido: undefined,
+                            fracaoSugeridaId: matchUnico?.fracao_sugerida_id || "",
+                            fracaoSugeridaNome: temFracao ? matchUnico!.fracao_sugerida_nome : "?",
+                            confiancaFracao: temFracao ? matchUnico!.confianca_percent : 0,
+                            motivoCorrespondenciaFracao: temFracao ? matchUnico!.motivo_correspondencia : "corrigido manualmente — sem correspondência automática, escolhe a fração",
+                            avisosPendentesIds: matchUnico?.avisos_pendentes_ids || []
+                          } : x));
+                        }}
                         className="w-full text-[10px] font-bold text-violet-700 hover:text-violet-900 hover:bg-violet-50 border border-violet-200 rounded-lg px-2 py-1 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                       >
                         <i className="fa-solid fa-rotate"></i> Isto é um pagamento de condómino (corrigir para Receita)

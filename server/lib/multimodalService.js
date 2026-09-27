@@ -81,7 +81,7 @@ movimento devolve:
 - data (formato YYYY-MM-DD; se só houver dia/mês, assume o ano mais plausível pelo contexto do documento)
 - descricao (o texto da transação tal como aparece, o mais fiel possível — nome do beneficiário/ordenante, referência, etc.)
 - valor (número positivo, sem símbolo de moeda, sem sinal negativo)
-- tipo ("Receita" se for uma entrada/crédito na conta, "Despesa" se for uma saída/débito)
+- tipo ("Receita" se for uma entrada/crédito na conta, "Despesa" se for uma saída/débito) — ATENÇÃO à notação portuguesa de transferências, fonte comum de erro: "TRF. P/O <nome>", "TRANSF P/ORDEM DE <nome>" ou "TRF DE <nome>" significam "Transferência Por Ordem de <nome>" — dinheiro RECEBIDO desse nome, portanto "Receita", mesmo aparecendo como "P/" no texto. Só é "Despesa" quando a transferência é claramente PARA alguém: "TRF PARA <nome>", "TRF A FAVOR DE <nome>" ou um simples "TRF P/ <nome>" sem "ORDEM"/"O" a seguir ao "P/". Nunca decidas só pela presença da partícula "P/" — lê sempre o sentido completo da frase, e usa o sinal do valor no extrato (crédito "+"/coluna de créditos vs. débito "-"/coluna de débitos) como confirmação sempre que o documento o mostrar.
 - categoria (a categoria de despesa/receita mais provável a partir da descrição, ex: "Manutenção", "Limpeza", "Quotas", "Seguros", "Eletricidade", "Água", "Honorários", "Outro")
 - entidade_credora (nome da entidade credora/beneficiária de uma despesa/débito direto, se identificável separadamente da descrição; null se não aplicável)
 - iban_credor (IBAN da entidade credora, remove espaços, só se o documento o mostrar explicitamente — ex: avisos de débito direto; null se não aplicável)
