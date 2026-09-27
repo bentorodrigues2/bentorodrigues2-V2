@@ -115,6 +115,10 @@ export interface MovimentoHistoricoTransitor {
   valor: number;
   id_conta: string;
   nome_conta?: string;
+  // true quando este movimento veio do reconhecimento por IA do extrato
+  // anexado — permite anular só a leitura da IA (botão dedicado), sem
+  // apagar movimentos adicionados manualmente pelo formulário ao lado.
+  origemIA?: boolean;
 }
 
 export function ConfiguracaoArranqueSaldos({
@@ -645,6 +649,63 @@ export function ConfiguracaoArranqueSaldos({
     setMovimentosHistoricos(prev => prev.filter(m => m.id !== id));
   };
 
+  // Corrige um movimento já lançado (veio da IA ou foi adicionado à mão) —
+  // antes só era possível remover e voltar a escrever tudo de novo; agora
+  // clicar numa linha abre uma janela de correção (ver modal mais abaixo).
+  const handleUpdateMovimentoHistorico = (id: string, fields: Partial<MovimentoHistoricoTransitor>) => {
+    setMovimentosHistoricos(prev => prev.map(m => (m.id === id ? { ...m, ...fields } : m)));
+  };
+
+  // Anula de uma vez só TODOS os movimentos que vieram do reconhecimento
+  // por IA (origemIA), sem tocar nos que foram adicionados manualmente —
+  // equivalente ao "Descartar Esta Leitura" já existente no Assistente de
+  // Extração de Extratos (GestaoMovimentos.tsx), para recomeçar uma leitura
+  // que saiu errada sem ter de remover linha a linha.
+  const handleAnularLeituraIA = () => {
+    const totalIA = movimentosHistoricos.filter(m => m.origemIA).length;
+    if (totalIA === 0) {
+      alert("Não há nenhuma leitura da IA para anular — todos os movimentos foram adicionados manualmente.");
+      return;
+    }
+    if (!confirm(`Anular os ${totalIA} movimento(s) reconhecidos pela IA? Os movimentos adicionados manualmente mantêm-se.`)) return;
+    setMovimentosHistoricos(prev => prev.filter(m => !m.origemIA));
+  };
+
+  // Janela de correção de um movimento — id do movimento aberto (null =
+  // fechada) e os campos do formulário, pré-preenchidos ao abrir.
+  const [editandoMovId, setEditandoMovId] = useState<string | null>(null);
+  const [editMovData, setEditMovData] = useState("");
+  const [editMovDescricao, setEditMovDescricao] = useState("");
+  const [editMovCategoria, setEditMovCategoria] = useState("");
+  const [editMovTipo, setEditMovTipo] = useState<"RECEITA" | "DESPESA">("DESPESA");
+  const [editMovValor, setEditMovValor] = useState("");
+  const [editMovContaId, setEditMovContaId] = useState("");
+
+  const abrirEdicaoMovimento = (m: MovimentoHistoricoTransitor) => {
+    setEditandoMovId(m.id);
+    setEditMovData(m.data);
+    setEditMovDescricao(m.descricao);
+    setEditMovCategoria(m.categoria);
+    setEditMovTipo(m.tipo);
+    setEditMovValor(String(m.valor).replace(".", ","));
+    setEditMovContaId(m.id_conta);
+  };
+
+  const guardarEdicaoMovimento = () => {
+    if (!editandoMovId) return;
+    const contaEscolhida = contasArranque.find(c => c.id_conta === editMovContaId);
+    handleUpdateMovimentoHistorico(editandoMovId, {
+      data: editMovData,
+      descricao: editMovDescricao,
+      categoria: editMovCategoria,
+      tipo: editMovTipo,
+      valor: parseValorMonetario(editMovValor),
+      id_conta: editMovContaId,
+      nome_conta: contaEscolhida?.nome
+    });
+    setEditandoMovId(null);
+  };
+
   // --- ANEXO DE EXTRATO BANCÁRIO & RECONHECIMENTO POR IA ---
   // Em vez de transcrever manualmente cada movimento do período de
   // transição, o administrador pode anexar o extrato bancário real
@@ -737,7 +798,8 @@ export function ConfiguracaoArranqueSaldos({
         tipo: String(m.tipo || "").toLowerCase().startsWith("rec") ? "RECEITA" : "DESPESA",
         valor: Math.abs(Number(m.valor) || 0),
         id_conta: extratoContaId,
-        nome_conta: contaSelecionada?.nome
+        nome_conta: contaSelecionada?.nome,
+        origemIA: true
       }));
 
       if (novosMovimentos.length === 0) {
@@ -1740,15 +1802,27 @@ export function ConfiguracaoArranqueSaldos({
               <p className="text-[10px] text-red-600 dark:text-red-400 font-bold flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> {erroExtrato}</p>
             )}
 
-            <button
-              type="button"
-              onClick={handleAnalisarExtratoIA}
-              disabled={analisandoExtrato}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center gap-2"
-            >
-              <UploadCloud className="h-4 w-4" />
-              <span>{analisandoExtrato ? "A analisar com IA..." : "Analisar Extrato com IA"}</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleAnalisarExtratoIA}
+                disabled={analisandoExtrato}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center gap-2"
+              >
+                <UploadCloud className="h-4 w-4" />
+                <span>{analisandoExtrato ? "A analisar com IA..." : "Analisar Extrato com IA"}</span>
+              </button>
+              {movimentosHistoricos.some(m => m.origemIA) && (
+                <button
+                  type="button"
+                  onClick={handleAnularLeituraIA}
+                  className="px-4 py-2 bg-white hover:bg-red-50 text-red-600 border border-red-200 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Anular Leitura da IA</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* FORMULÁRIO DE ADIÇÃO RÁPIDA (MANUAL) */}
@@ -1832,9 +1906,17 @@ export function ConfiguracaoArranqueSaldos({
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {movimentosHistoricos.map((m) => (
-                  <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                  <tr
+                    key={m.id}
+                    onClick={() => abrirEdicaoMovimento(m)}
+                    title="Clique para corrigir este movimento"
+                    className="hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer"
+                  >
                     <td className="p-2.5 font-mono text-[11px] text-slate-500">{m.data}</td>
-                    <td className="p-2.5 font-bold text-slate-800 dark:text-white">{m.descricao}</td>
+                    <td className="p-2.5 font-bold text-slate-800 dark:text-white">
+                      {m.descricao}
+                      {m.origemIA && <span className="ml-1.5 text-[8.5px] font-black px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 align-middle">IA</span>}
+                    </td>
                     <td className="p-2.5 text-slate-600 dark:text-slate-300 font-medium">{m.nome_conta || "Conta Geral"}</td>
                     <td className="p-2.5 text-slate-500">{m.categoria}</td>
                     <td className="p-2.5">
@@ -1851,7 +1933,7 @@ export function ConfiguracaoArranqueSaldos({
                     </td>
                     <td className="p-2.5 text-center">
                       <button
-                        onClick={() => handleRemoveMovimentoHistorico(m.id)}
+                        onClick={(e) => { e.stopPropagation(); handleRemoveMovimentoHistorico(m.id); }}
                         className="p-1 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
                         title="Remover"
                       >
@@ -1990,6 +2072,116 @@ export function ConfiguracaoArranqueSaldos({
               <Save className="h-4 w-4" />
               <span>Gravar Balanço de Abertura & Ativar Condomínio</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* JANELA DE CORREÇÃO DE UM MOVIMENTO HISTÓRICO — clicar numa linha da
+          tabela do Passo 3 abre esta janela em vez de só permitir remover;
+          serve tanto para movimentos reconhecidos pela IA como para os
+          adicionados manualmente. */}
+      {editandoMovId && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800">
+            <div className="bg-slate-900 dark:bg-slate-950 px-6 py-4 text-white flex justify-between items-center rounded-t-2xl">
+              <h3 className="font-bold text-sm flex items-center gap-2">
+                <Settings2 className="h-4 w-4 text-emerald-400" />
+                Corrigir Movimento
+              </h3>
+              <button onClick={() => setEditandoMovId(null)} className="text-slate-300 hover:text-white cursor-pointer p-1">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Data</label>
+                  <input
+                    type="date"
+                    value={editMovData}
+                    onChange={(e) => setEditMovData(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tipo</label>
+                  <select
+                    value={editMovTipo}
+                    onChange={(e) => setEditMovTipo(e.target.value as any)}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold"
+                  >
+                    <option value="DESPESA">Despesa (-)</option>
+                    <option value="RECEITA">Receita (+)</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Descrição</label>
+                <input
+                  type="text"
+                  value={editMovDescricao}
+                  onChange={(e) => setEditMovDescricao(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Conta Afetada</label>
+                  <select
+                    value={editMovContaId}
+                    onChange={(e) => setEditMovContaId(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold"
+                  >
+                    {contasArranque.map(c => (
+                      <option key={c.id_conta} value={c.id_conta}>{c.nome}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Categoria</label>
+                  <input
+                    type="text"
+                    value={editMovCategoria}
+                    onChange={(e) => setEditMovCategoria(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Valor (€)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={editMovValor}
+                  onChange={(e) => setEditMovValor(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold font-mono"
+                />
+              </div>
+            </div>
+            <div className="p-5 pt-0 flex items-center justify-between gap-2">
+              <button
+                onClick={() => { handleRemoveMovimentoHistorico(editandoMovId); setEditandoMovId(null); }}
+                className="px-3 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Eliminar</span>
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setEditandoMovId(null)}
+                  className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={guardarEdicaoMovimento}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  <span>Guardar</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
