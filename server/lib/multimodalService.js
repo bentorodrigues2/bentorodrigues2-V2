@@ -95,6 +95,35 @@ Responde em JSON estrito, sem texto à volta, no formato:
 `.trim();
 
 /**
+ * A notação portuguesa de transferências bancárias é ambígua até para o
+ * Gemini: "TRF. P/O <nome>" significa "Por Ordem de" (dinheiro RECEBIDO
+ * desse nome), mas confunde-se facilmente com "TRF P/ <nome>" ("Para",
+ * dinheiro ENVIADO) — só muda 1 letra ("O"). Uma regra no prompt (ver
+ * PROMPT_EXTRATO) melhora a taxa de acerto mas não garante nada — um LLM
+ * continua a poder errar a mesma transação em execuções diferentes.
+ * Confirmado em produção: mesmo depois de reforçar o prompt, a IA
+ * continuou a classificar "TRF. P/O <nome>" como Despesa.
+ *
+ * Por isso este classificador determinístico por regex corrige sempre o
+ * "tipo" devolvido pela IA quando a descrição bate com um destes padrões
+ * inequívocos — não é mais uma sugestão ao modelo, é uma correção aplicada
+ * a seguir à resposta, que nunca depende do modelo ter percebido bem.
+ */
+function corrigirDirecaoTransferenciaPT(descricao, tipoIA) {
+  const d = String(descricao || "").toUpperCase();
+  // "Por Ordem de" / "De <nome>" = entrada de dinheiro, sempre Receita.
+  if (/\bP\s*\/\s*O\b/.test(d) || /\bP\s*\/?\s*ORDEM\s+DE\b/.test(d) || /\bTR(?:ANS)?F\.?\s+DE\b/.test(d)) {
+    return "Receita";
+  }
+  // "Para" / "A Favor de" / "P/" isolado (sem "O" a seguir) = saída de
+  // dinheiro, sempre Despesa.
+  if (/\bTR(?:ANS)?F\.?\s+PARA\b/.test(d) || /\bA\s+FAVOR\s+DE\b/.test(d) || /\bTR(?:ANS)?F\.?\s*P\s*\/\s*(?!O\b)/.test(d)) {
+    return "Despesa";
+  }
+  return tipoIA;
+}
+
+/**
  * Lê um extrato bancário (PDF/imagem anexados e/ou texto de CSV/Excel/TXT já
  * convertido para texto no cliente) e devolve uma lista de movimentos
  * estruturados, para pré-preencher o Passo 3 (Movimentos Históricos) do
@@ -123,7 +152,7 @@ export async function extrairMovimentosExtrato({ anexos, textoExtrato }) {
   try {
     const parsed = typeof content === "string" ? JSON.parse(content) : content;
     if (!parsed || !Array.isArray(parsed.movimentos)) return null;
-    return parsed.movimentos;
+    return parsed.movimentos.map((m) => ({ ...m, tipo: corrigirDirecaoTransferenciaPT(m.descricao, m.tipo) }));
   } catch (e) {
     console.warn("[multimodalService] Resposta do Gemini (extrato) não é JSON válido:", content);
     return null;
