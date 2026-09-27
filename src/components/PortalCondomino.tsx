@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondagem, Questionario } from "../types";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
-import { generateCondominoPwaManualPDF } from "../utils";
+import { generateCondominoPwaManualPDF, gerarReferenciaBR23EExtra } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { playVoiceNoteSimulation, playNotificationTone } from "../lib/soundService";
 import { supabase } from "../lib/supabaseClient";
@@ -1177,6 +1177,7 @@ export function PortalCondomino({
                   const temQuotaExtraPortal = avisos.some(
                     (a: any) => a.id_fracao === activeUserFracao?.id_fracao && String(a.tipo || "").includes("Extraordinária") && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")
                   );
+                  const referenciaExtraFracaoPortal = gerarReferenciaBR23EExtra(activeUserFracao?.fracao_nome, activeUserFracao?.id_fracao);
                   const copiar = (valor: string) => { try { navigator.clipboard.writeText(valor); } catch {} };
                   const LinhaCopiavelPortal = ({ label, valor }: { label: string; valor: string }) => (
                     <div className="space-y-0.5">
@@ -1199,7 +1200,7 @@ export function PortalCondomino({
                       <LinhaCopiavelPortal label="Email para Comprovativos" valor={emailComprovativosPortal} />
                       <LinhaCopiavelPortal label="Referência da Fração" valor={referenciaFracaoPortal} />
                       {temQuotaExtraPortal && (
-                        <LinhaCopiavelPortal label="Referência da Fração — Quotas Extra" valor={referenciaFracaoPortal} />
+                        <LinhaCopiavelPortal label="Referência da Fração — Quotas Extra" valor={referenciaExtraFracaoPortal} />
                       )}
                     </div>
                   );

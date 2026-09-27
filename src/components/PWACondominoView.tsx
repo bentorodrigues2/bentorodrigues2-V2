@@ -17,7 +17,7 @@ import {
   Questionario,
   Conta
 } from "../types";
-import { generateAndDownloadPdf, downloadEmailDocument, exportToXLS, downloadBlob, ehContaFundoReserva } from "../utils";
+import { generateAndDownloadPdf, downloadEmailDocument, exportToXLS, downloadBlob, ehContaFundoReserva, gerarReferenciaBR23EExtra } from "../utils";
 import { usePwaBackButton } from "../utils/usePwaBackButton";
 import { GestaoDocumentos } from "./GestaoDocumentos";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
@@ -749,6 +749,9 @@ export default function PWACondominoView({
     (a: any) => a.id_fracao === condominoFracao?.id_fracao && String(a.tipo || "").includes("Extraordinária") && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")
   );
   const fractionRef = condominoFracao?.referencia_br23e || "—";
+  // Referência própria da Quota Extraordinária — distinta da referência da
+  // Quota Ordinária acima (fractionRef não é reconhecida para a quota extra).
+  const fractionRefExtra = gerarReferenciaBR23EExtra(condominoFracao?.fracao_nome, condominoFracao?.id_fracao);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1195,6 +1198,7 @@ export default function PWACondominoView({
               const temQuotaExtra = avisos.some(
                 (a: any) => a.id_fracao === condominoFracao?.id_fracao && String(a.tipo || "").includes("Extraordinária") && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")
               );
+              const referenciaExtraFracaoModal = gerarReferenciaBR23EExtra(condominoFracao?.fracao_nome, condominoFracao?.id_fracao);
               const LinhaCopiavelModal = ({ label, valor }: { label: string; valor: string }) => (
                 <div className="space-y-0.5">
                   <div className="flex justify-between items-center">
@@ -1233,7 +1237,7 @@ export default function PWACondominoView({
                       <LinhaCopiavelModal label="Email para Comprovativos" valor={emailComprovativos} />
                       <LinhaCopiavelModal label="Referência da Fração" valor={referenciaFracao} />
                       {temQuotaExtra && (
-                        <LinhaCopiavelModal label="Referência da Fração — Quotas Extra" valor={referenciaFracao} />
+                        <LinhaCopiavelModal label="Referência da Fração — Quotas Extra" valor={referenciaExtraFracaoModal} />
                       )}
                     </div>
                   </div>
@@ -2139,7 +2143,7 @@ export default function PWACondominoView({
                     )}
                     <div>
                       <span className="text-slate-500 dark:text-slate-400 block font-bold">Referência</span>
-                      <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{fractionRef}</span>
+                      <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{fractionRefExtra}</span>
                     </div>
                   </div>
                 </div>
@@ -2922,6 +2926,7 @@ export default function PWACondominoView({
               const temQuotaExtraPendente = avisos.some(
                 (a: any) => a.id_fracao === condominoFracao?.id_fracao && String(a.tipo || "").includes("Extraordinária") && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")
               );
+              const referenciaExtraFracao = gerarReferenciaBR23EExtra(condominoFracao?.fracao_nome, condominoFracao?.id_fracao);
               const LinhaCopiavel = ({ label, valor, nota }: { label: string; valor: string; nota?: string }) => (
                 <div className="space-y-0.5">
                   <div className="flex justify-between items-center">
@@ -2946,7 +2951,10 @@ export default function PWACondominoView({
                   <LinhaCopiavel label="IBAN do Prédio" valor={ibanPredio} />
                   <LinhaCopiavel label="NIF do Condomínio" valor={nifPredio} />
                   <LinhaCopiavel label="Email para Comprovativos" valor={emailComprovativos} nota="Envie o comprovativo de transferência para este email — é lido e confirmado automaticamente." />
-                  <LinhaCopiavel label="Referência Individual da Fração" valor={referenciaFracao} nota={temQuotaExtraPendente ? "Usa-se também para a quota extraordinária em vigor." : "Indique esta referência no descritivo da transferência."} />
+                  <LinhaCopiavel label="Referência Individual da Fração" valor={referenciaFracao} nota="Indique esta referência no descritivo da transferência da Quota Ordinária." />
+                  {temQuotaExtraPendente && (
+                    <LinhaCopiavel label="Referência da Quota Extraordinária" valor={referenciaExtraFracao} nota="Referência própria da quota extra em vigor — fica inativa assim que a última mensalidade for confirmada." />
+                  )}
                 </div>
               );
             })()}
@@ -3757,7 +3765,7 @@ export default function PWACondominoView({
                           )}
                           <div>
                             <span className="text-slate-400 block">Referência</span>
-                            <span className="font-mono text-slate-300">{fractionRef}</span>
+                            <span className="font-mono text-slate-300">{fractionRefExtra}</span>
                           </div>
                         </div>
                       </div>

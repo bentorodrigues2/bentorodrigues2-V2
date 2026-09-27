@@ -1,4 +1,5 @@
 import { Fracao, Aviso, ExtratoTransacao } from "../types";
+import { gerarReferenciaBR23EExtra } from "../utils";
 
 /**
  * Normalizes text for robust matching (removes accents, lowercase, extra spaces).
@@ -277,6 +278,14 @@ export function matchBankTransactions(
         const normReferencia = normalizeBankText(f.referencia_br23e || "");
         const hasReferencia = normReferencia.length > 4 && normDesc.replace(/\s+/g, "").includes(normReferencia.replace(/\s+/g, ""));
 
+        // Referência própria da Quota Extraordinária (ex: "BR23E-EXT-K") —
+        // distinta da referência da Quota Ordinária acima; não fica
+        // guardada na fração porque é gerada sempre da mesma forma
+        // determinística, tal como o próprio fallback já usado para
+        // referencia_br23e quando a fração ainda não a tem persistida.
+        const normReferenciaExtra = normalizeBankText(gerarReferenciaBR23EExtra(f.fracao_nome, f.id_fracao));
+        const hasReferenciaExtra = normDesc.replace(/\s+/g, "").includes(normReferenciaExtra.replace(/\s+/g, ""));
+
         // Find pending avisos for this fraction — do mais antigo (vencimento)
         // para o mais recente, para o pagamento fechar sempre os meses em
         // atraso há mais tempo primeiro.
@@ -293,13 +302,15 @@ export function matchBankTransactions(
         let curConfidence = 0;
         let curReason = "";
 
-        if (hasReferencia) {
+        if (hasReferencia || hasReferenciaExtra) {
           // Referência individual encontrada — identifica a fração sem
           // ambiguidade nenhuma, independentemente de o valor bater certo
           // ou não com algum mês em aberto (pode ser um pagamento
           // adiantado, ou de um valor que ainda não foi emitido em aviso).
           curConfidence = 100;
-          curReason = `Referência individual da fração (${f.referencia_br23e}) encontrada no descritivo — correspondência inequívoca.`;
+          curReason = hasReferenciaExtra
+            ? `Referência da Quota Extraordinária (${gerarReferenciaBR23EExtra(f.fracao_nome, f.id_fracao)}) encontrada no descritivo — correspondência inequívoca.`
+            : `Referência individual da fração (${f.referencia_br23e}) encontrada no descritivo — correspondência inequívoca.`;
         } else if ((hasFracName || hasPiso) && exactAmountMatch) {
           curConfidence = 99;
           curReason = `Correspondência total de Fração (${f.fracao_nome}) e Valor exato da quota (${tx.valor.toFixed(2)}€).`;

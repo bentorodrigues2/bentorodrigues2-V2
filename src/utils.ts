@@ -4419,6 +4419,27 @@ export function gerarReferenciaBR23E(fracaoNome?: string, idFracao?: string): st
 }
 
 /**
+ * Referência individual da fração para a Quota Extraordinária — distinta da
+ * referência da Quota Ordinária (gerarReferenciaBR23E), porque não é a
+ * mesma referência que serve para ambas: o condómino usa esta noutro
+ * descritivo de transferência especificamente para a quota extra em vigor.
+ * Só faz sentido mostrar/usar enquanto houver mensalidades extraordinárias
+ * pendentes dessa fração — fica inativa assim que a última for confirmada.
+ */
+export function gerarReferenciaBR23EExtra(fracaoNome?: string, idFracao?: string): string {
+  if (!fracaoNome && !idFracao) return "BR23E-EXT-01";
+  const base = (fracaoNome || idFracao || "FR")
+    .toString()
+    .trim()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // Remove acentos
+    .replace(/[^A-Z0-9]/g, ""); // Apenas letras e números
+
+  return `BR23E-EXT-${base || "01"}`;
+}
+
+/**
  * Ordena uma lista de frações por ordem alfabética/natural do nome da
  * fração (A, B, C... ou 1, 2, 10... conforme o edifício) — usado sempre
  * que se carrega/atualiza a lista de frações no estado principal da app,

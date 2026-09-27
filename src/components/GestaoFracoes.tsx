@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Pencil, Trash2, Plus, ArrowLeftRight, History } from "lucide-react";
 import { Predio, Fracao, LoggedUser, Aviso, Proprietario, Documento } from "../types";
-import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCondominoVaziaPDF, downloadFichaCondominoPreenchidaPDF, downloadListaCondominosPDF, downloadProprietariosFiltradosPDF, gerarReferenciaBR23E, parseValorMonetario, procurarLocalidadePorCodigoPostal, separarMoradaAlternativa, combinarMoradaAlternativa } from "../utils";
+import { computeTransferCode, copyTextToClipboard, exportToXLS, downloadFichaCondominoVaziaPDF, downloadFichaCondominoPreenchidaPDF, downloadListaCondominosPDF, downloadProprietariosFiltradosPDF, gerarReferenciaBR23E, gerarReferenciaBR23EExtra, parseValorMonetario, procurarLocalidadePorCodigoPostal, separarMoradaAlternativa, combinarMoradaAlternativa } from "../utils";
 import { ModalFichaCondominoEditavel } from "./ModalFichaCondominoEditavel";
 import { MoneyInput } from "./MoneyInput";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
@@ -3444,6 +3444,20 @@ export function GestaoFracoes({
                           <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">Exclusivo Perfil Bancário</span>
                         </div>
                       </div>
+
+                      {(avisos || []).some(a => a.id_fracao === selectedFracao.id_fracao && String(a.tipo || "").includes("Extraordinária") && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")) && (
+                        <div className="col-span-2 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] uppercase font-bold text-indigo-800 dark:text-indigo-300 block">Referência BR23E — Quota Extraordinária</span>
+                            <span className="text-[9px] bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 px-1.5 py-0.5 rounded font-bold">Fica inativa após a última mensalidade</span>
+                          </div>
+                          <div className="bg-indigo-50/70 dark:bg-indigo-950/40 p-2 rounded-lg border border-indigo-200/80 dark:border-indigo-800/80 flex items-center justify-between">
+                            <span className="font-mono font-black text-indigo-800 dark:text-indigo-300 text-xs tracking-wider select-all">
+                              {gerarReferenciaBR23EExtra(selectedFracao.fracao_nome, selectedFracao.id_fracao)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="col-span-2 border-t border-slate-100 pt-2">
                         <span className="text-[10px] uppercase font-semibold text-slate-400 block">IBAN de Cobrança / Reembolsos</span>
