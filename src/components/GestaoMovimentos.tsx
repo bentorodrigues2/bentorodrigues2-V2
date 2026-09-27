@@ -103,12 +103,17 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   // linha a linha, repetidamente); passa a ser escolhida uma única vez,
   // pré-selecionada com a conta principal, e usada como valor por omissão
   // em cada linha (continua a poder ser corrigida por linha se necessário).
+  // Causa raiz confirmada de um extrato ter "misturado" com o de outra
+  // conta: isto pré-selecionava sempre a conta principal (Santander)
+  // automaticamente, e nunca se limpava sozinho ao trocar de extrato — se
+  // o admin importasse um extrato do ActivoBank sem voltar a mexer
+  // manualmente no dropdown, os movimentos eram lançados na conta errada
+  // (a que tinha ficado selecionada da vez anterior). Deixa de haver
+  // pré-seleção nenhuma — a conta tem de ser escolhida de propósito antes
+  // de cada extrato, sempre, e a escolha limpa a pré-visualização anterior
+  // (ver onChange abaixo), para nunca sobrar um item lido para uma conta a
+  // ser lançado depois de se trocar para outra.
   const [contaExtratoId, setContaExtratoId] = useState<string>("");
-  React.useEffect(() => {
-    const contasDoPredio = contas.filter(c => c.id_predio === predio.id_predio);
-    const principal = contasDoPredio.find(c => c.is_principal) || contasDoPredio[0];
-    setContaExtratoId(principal?.id_conta || "");
-  }, [predio.id_predio, contas]);
 
   const [aprovandoCondominoIndex, setAprovandoCondominoIndex] = useState<number | null>(null);
   const [aprovandoTodosCondominos, setAprovandoTodosCondominos] = useState(false);
@@ -948,15 +953,23 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     if (contaAlvo) {
       if (item.tipo === "Receita") contaAlvo.saldo += item.valor;
       else contaAlvo.saldo -= item.valor;
-      saveContaToSupabase(contaAlvo).catch(console.error);
+      await saveContaToSupabase(contaAlvo).catch(console.error);
     }
 
     setMovements([novo, ...movements]);
-    saveMovimentoToSupabase(novo).catch(console.error);
+    await saveMovimentoToSupabase(novo).catch(console.error);
     registarLogAuditoria("Financeira", "Lançou um item extraído do extrato bancário", predio.id_predio, loggedUser, novo.descricao);
 
+    // Era fire-and-forget (sem await) — ao lançar em lote vários pagamentos
+    // ao MESMO fornecedor (ex: 2 transferências ao Luís Ventura no mesmo
+    // extrato), o item seguinte do ciclo começava antes de esta função
+    // terminar de ler+gravar a dívida, e ambas liam o mesmo valor_pago
+    // desatualizado — a segunda gravação apagava a primeira em vez de somar
+    // (condição de corrida clássica). Confirmado em produção: só ficava
+    // registada uma das duas prestações no valor_pago da dívida, apesar de
+    // ambas as tranches existirem corretamente em pagamentos_dividas_fornecedores.
     if (item.tipo === "Despesa" && idFornecedorFinal) {
-      reconciliarDividasFornecedor(idFornecedorFinal, item.valor, item.data, novo.id_mov, selectedContaId).catch(console.error);
+      await reconciliarDividasFornecedor(idFornecedorFinal, item.valor, item.data, novo.id_mov, selectedContaId).catch(console.error);
     }
 
     // Aprendizagem: se o admin associou manualmente um fornecedor a um
@@ -1868,11 +1881,22 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-bold text-slate-600 block mb-1">Conta Bancária deste Extrato</label>
+              <label className="text-xs font-bold text-slate-600 block mb-1">
+                Conta Bancária deste Extrato
+                <span className="text-red-600 font-black"> * escolha sempre, para cada extrato — nunca fica guardada da vez anterior</span>
+              </label>
               <select
                 value={contaExtratoId}
-                onChange={e => setContaExtratoId(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-violet-500"
+                onChange={e => {
+                  // Trocar de conta limpa sempre a pré-visualização anterior —
+                  // nunca deve ser possível ficar com itens lidos para uma
+                  // conta e lançá-los, sem dar por isso, contra outra conta.
+                  setContaExtratoId(e.target.value);
+                  setExtractedItems([]);
+                  setExtratoFicheiros([]);
+                  setErroExtrato(null);
+                }}
+                className={`w-full border rounded-lg px-2.5 py-1.5 text-xs focus:outline-violet-500 ${contaExtratoId ? "border-slate-200" : "border-red-400 bg-red-50"}`}
               >
                 <option value="">— Escolha a conta —</option>
                 {predioContas.map(c => (
@@ -1890,9 +1914,11 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
               ref={extratoFileInputRef}
               type="file"
               multiple
+              disabled={!contaExtratoId}
               accept=".pdf,.jpg,.jpeg,.png,.webp,.csv,.txt,.xlsx,.xls"
               onChange={e => setExtratoFicheiros(Array.from(e.target.files || []))}
-              className="w-full text-xs file:mr-2 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-violet-600 file:text-white file:font-bold file:cursor-pointer file:text-xs cursor-pointer text-slate-700 border border-slate-200 rounded-lg p-2"
+              title={!contaExtratoId ? "Escolha primeiro a conta bancária deste extrato" : undefined}
+              className="w-full text-xs file:mr-2 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-violet-600 file:text-white file:font-bold file:cursor-pointer file:text-xs cursor-pointer text-slate-700 border border-slate-200 rounded-lg p-2 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             {extratoFicheiros.length > 0 && (
               <span className="text-[10px] text-violet-600 block">{extratoFicheiros.length} ficheiro(s) selecionado(s)</span>
@@ -1903,7 +1929,8 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
             <button
               onClick={extrairExtratoIA}
-              disabled={isExtracting}
+              disabled={isExtracting || !contaExtratoId}
+              title={!contaExtratoId ? "Escolha primeiro a conta bancária deste extrato" : undefined}
               className="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
             >
               {isExtracting ? (
