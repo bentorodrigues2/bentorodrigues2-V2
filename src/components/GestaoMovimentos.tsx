@@ -1931,31 +1931,26 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
         <div className="space-y-1">
           <label className="text-xs font-bold text-slate-600 block">
-            Separador da Conta Bancária <span className="text-red-600 font-black">* cada conta tem o seu extrato próprio, nunca partilhado</span>
+            Conta Bancária deste Extrato <span className="text-red-600 font-black">* cada conta tem o seu extrato próprio, nunca partilhado</span>
           </label>
-          <div className="flex flex-wrap gap-1.5 border-b border-slate-200 pb-2">
+          <select
+            value={contaExtratoId}
+            onChange={e => setContaExtratoId(e.target.value)}
+            className={`w-full border rounded-lg px-2.5 py-1.5 text-xs font-bold focus:outline-violet-500 ${contaExtratoId ? "border-slate-200 text-slate-700" : "border-red-400 bg-red-50 text-slate-600"}`}
+          >
+            <option value="">— Escolha a conta —</option>
             {predioContas.map(c => {
               const slot = extratosPorConta[c.id_conta];
               const temPendente = (slot?.items?.length || 0) > 0;
-              const ativo = contaExtratoId === c.id_conta;
               return (
-                <button
-                  key={c.id_conta}
-                  type="button"
-                  onClick={() => setContaExtratoId(c.id_conta)}
-                  className={`px-3 py-1.5 rounded-t-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${ativo ? "bg-violet-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
-                >
-                  <i className="fa-solid fa-building-columns"></i>
-                  <span>{c.banco} ({c.tipo.split(" ")[0]})</span>
-                  {temPendente && (
-                    <span className={`text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center ${ativo ? "bg-white text-violet-700" : "bg-violet-600 text-white"}`}>{slot?.items.length}</span>
-                  )}
-                </button>
+                <option key={c.id_conta} value={c.id_conta}>
+                  {c.banco} ({c.tipo.split(" ")[0]}){temPendente ? ` — ${slot?.items.length} pendente(s)` : ""}
+                </option>
               );
             })}
-          </div>
+          </select>
           {!contaExtratoId && (
-            <p className="text-[11px] text-red-600 font-bold flex items-center gap-1 pt-1"><i className="fa-solid fa-triangle-exclamation"></i> Escolha o separador da conta bancária antes de anexar qualquer ficheiro.</p>
+            <p className="text-[11px] text-red-600 font-bold flex items-center gap-1 pt-1"><i className="fa-solid fa-triangle-exclamation"></i> Escolha a conta bancária antes de anexar qualquer ficheiro.</p>
           )}
         </div>
 
