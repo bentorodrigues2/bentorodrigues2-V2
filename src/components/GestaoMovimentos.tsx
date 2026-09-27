@@ -2203,15 +2203,23 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                               ))}
                             </select>
                           </div>
+                          {/* Lista real de meses em aberto desta fração, para o
+                              administrador escolher/confirmar quais é que este
+                              pagamento fecha — nunca assumido às cegas. Cobre
+                              exatamente o pedido "quando pagam várias mensalidades
+                              juntas, tem de perguntar a divisão": o próprio
+                              cruzamento automático já vem pré-marcado quando o
+                              valor bate certo com 1 ou mais meses consecutivos, mas
+                              fica sempre editável aqui antes de aprovar.
+                              O botão "Aprovar" só desbloqueia quando a soma
+                              selecionada bate EXATAMENTE certo com o valor pago
+                              (bateCerto) — antes só avisava a amarelo mas deixava
+                              aprovar na mesma; confirmado em produção que isto
+                              levava a marcar TODOS os meses como pagos por engano
+                              (o administrador via a janela abrir já com o
+                              cruzamento pré-selecionado e assumia, sem reparar,
+                              que já estava certo). */}
                           {(() => {
-                            // Lista real de meses em aberto desta fração, para o
-                            // administrador escolher/confirmar quais é que este
-                            // pagamento fecha — nunca assumido às cegas. Cobre
-                            // exatamente o pedido "quando pagam várias mensalidades
-                            // juntas, tem de perguntar a divisão": o próprio
-                            // cruzamento automático já vem pré-marcado quando o
-                            // valor bate certo com 1 ou mais meses consecutivos, mas
-                            // fica sempre editável aqui antes de aprovar.
                             const avisosFracaoPendentes = avisos
                               .filter(a => a.id_fracao === item.fracaoSugeridaId && a.estado === "Pendente" && avisoPertenceAContaExtrato(a))
                               .sort((a, b) => (a.vencimento || a.data).localeCompare(b.vencimento || b.data));
@@ -2220,47 +2228,49 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                               .reduce((s, a) => s + a.valor, 0);
                             const bateCerto = Math.abs(somaSelecionada - item.valor) < 0.05;
                             return (
-                              <div className="border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50">
-                                <p className="text-[10px] font-bold text-slate-600">Este pagamento fecha os meses:</p>
-                                {avisosFracaoPendentes.length === 0 ? (
-                                  <p className="text-[10px] text-slate-400">Esta fração não tem avisos pendentes.</p>
-                                ) : avisosFracaoPendentes.map(a => (
-                                  <label key={a.id_aviso} className="flex items-center gap-1.5 text-[10px] text-slate-700 cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      checked={(item.avisosPendentesIds || []).includes(a.id_aviso)}
-                                      onChange={(e) => {
-                                        setExtractedItems(prev => prev.map((x, i) => {
-                                          if (i !== index) return x;
-                                          const atuais: string[] = x.avisosPendentesIds || [];
-                                          const novos = e.target.checked ? [...atuais, a.id_aviso] : atuais.filter((id: string) => id !== a.id_aviso);
-                                          return { ...x, avisosPendentesIds: novos };
-                                        }));
-                                      }}
-                                    />
-                                    <span>{a.descricao} — vence {formatDatePT(a.vencimento || a.data)} — {a.valor.toFixed(2)}€</span>
-                                  </label>
-                                ))}
-                                {avisosFracaoPendentes.length > 0 && (
-                                  <p className={`text-[10px] font-bold ${bateCerto ? "text-emerald-600" : "text-amber-600"}`}>
-                                    Selecionado: {somaSelecionada.toFixed(2)}€ {bateCerto ? "✓ igual ao valor pago" : `(valor pago: ${item.valor.toFixed(2)}€ — confirma antes de aprovar)`}
-                                  </p>
-                                )}
-                              </div>
+                              <>
+                                <div className="border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50">
+                                  <p className="text-[10px] font-bold text-slate-600">Este pagamento fecha os meses:</p>
+                                  {avisosFracaoPendentes.length === 0 ? (
+                                    <p className="text-[10px] text-slate-400">Esta fração não tem avisos pendentes.</p>
+                                  ) : avisosFracaoPendentes.map(a => (
+                                    <label key={a.id_aviso} className="flex items-center gap-1.5 text-[10px] text-slate-700 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={(item.avisosPendentesIds || []).includes(a.id_aviso)}
+                                        onChange={(e) => {
+                                          setExtractedItems(prev => prev.map((x, i) => {
+                                            if (i !== index) return x;
+                                            const atuais: string[] = x.avisosPendentesIds || [];
+                                            const novos = e.target.checked ? [...atuais, a.id_aviso] : atuais.filter((id: string) => id !== a.id_aviso);
+                                            return { ...x, avisosPendentesIds: novos };
+                                          }));
+                                        }}
+                                      />
+                                      <span>{a.descricao} — vence {formatDatePT(a.vencimento || a.data)} — {a.valor.toFixed(2)}€</span>
+                                    </label>
+                                  ))}
+                                  {avisosFracaoPendentes.length > 0 && (
+                                    <p className={`text-[10px] font-bold ${bateCerto ? "text-emerald-600" : "text-red-600"}`}>
+                                      Selecionado: {somaSelecionada.toFixed(2)}€ {bateCerto ? "✓ igual ao valor pago" : `— tem de ser exatamente igual ao valor pago (${item.valor.toFixed(2)}€) para poderes aprovar`}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                                  <span className="font-bold text-emerald-700 font-mono-custom text-sm">+{item.valor.toFixed(2)}€</span>
+                                  <button
+                                    onClick={() => aprovarPagamentoCondomino(item, index)}
+                                    disabled={aprovandoCondominoIndex === index || aprovandoTodosCondominos || !item.fracaoSugeridaId || !(item.avisosPendentesIds || []).length || !bateCerto}
+                                    title={!item.fracaoSugeridaId ? "Escolhe primeiro a fração correta" : !(item.avisosPendentesIds || []).length ? "Escolhe pelo menos um mês para este pagamento fechar" : !bateCerto ? "A soma dos meses selecionados tem de ser exatamente igual ao valor pago" : undefined}
+                                    className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                                  >
+                                    <i className={`fa-solid ${aprovandoCondominoIndex === index ? "fa-spinner animate-spin" : "fa-check"}`}></i>
+                                    <span>{aprovandoCondominoIndex === index ? "A aprovar..." : "Aprovar & Emitir Recibo"}</span>
+                                  </button>
+                                </div>
+                              </>
                             );
                           })()}
-                          <div className="flex justify-between items-center pt-2 border-t border-slate-100">
-                            <span className="font-bold text-emerald-700 font-mono-custom text-sm">+{item.valor.toFixed(2)}€</span>
-                            <button
-                              onClick={() => aprovarPagamentoCondomino(item, index)}
-                              disabled={aprovandoCondominoIndex === index || aprovandoTodosCondominos || !item.fracaoSugeridaId || !(item.avisosPendentesIds || []).length}
-                              title={!item.fracaoSugeridaId ? "Escolhe primeiro a fração correta" : !(item.avisosPendentesIds || []).length ? "Escolhe pelo menos um mês para este pagamento fechar" : undefined}
-                              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                            >
-                              <i className={`fa-solid ${aprovandoCondominoIndex === index ? "fa-spinner animate-spin" : "fa-check"}`}></i>
-                              <span>{aprovandoCondominoIndex === index ? "A aprovar..." : "Aprovar & Emitir Recibo"}</span>
-                            </button>
-                          </div>
                         </div>
                       );
                     }
