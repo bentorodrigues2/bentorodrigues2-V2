@@ -299,23 +299,28 @@ export function PainelControlo({
             fixo: false,
             contagem: sondagensCount
           },
-          {
-            name: "Conta(s) à Ordem",
-            val: `${totalContaOrdem.toLocaleString("pt-PT")} €`,
-            icon: "/modulos/57-quota.png",
-            // Antes ia para "financeiro_extratos" (Extrato de Movimentos e
-            // Saldo do CONDÓMINO — por fração, nada a ver com o saldo desta
-            // conta bancária). Vai agora para a gestão real das contas.
-            section: "contas",
-            fixo: true,
-            destaque: true,
-            // Uma conta à ordem pode ficar negativa (ex: despesa lançada
-            // antes de o reforço de fundos entrar) — antes "destaque: true"
-            // pintava sempre de verde, mesmo com saldo negativo.
-            corSinal: true,
-            positivo: totalContaOrdem >= 0,
-            contagem: 1
-          },
+          // Um cartão por CADA conta que não seja Fundo de Reserva (Ordem,
+          // Poupança dedicada a obras, etc.) — antes era um único "Conta(s)
+          // à Ordem" a somar todas elas juntas, misturando o saldo do
+          // Santander com o do ActivoBank (contas completamente diferentes,
+          // uma delas nem sequer "à ordem") num só número, impossível de
+          // perceber isoladamente ou de bater certo com o extrato de cada
+          // banco.
+          ...predioContas
+            .filter(c => !ehContaFundoReserva(c.tipo))
+            .map(c => ({
+              name: `${c.banco}${c.tipo ? ` — ${c.tipo}` : ""}`,
+              val: `${(Number(c.saldo) || 0).toLocaleString("pt-PT")} €`,
+              icon: "/modulos/57-quota.png",
+              section: "contas",
+              fixo: true,
+              destaque: true,
+              corSinal: true,
+              positivo: (Number(c.saldo) || 0) >= 0,
+              contagem: 1,
+              emblemaContagem: undefined as number | undefined,
+              apenasAdmin: false
+            })),
           {
             name: "Fundo de Reserva",
             val: `${totalFundoReserva.toLocaleString("pt-PT")} €`,
