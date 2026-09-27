@@ -169,8 +169,14 @@ export function generateOfficialReceiptPDF(
   doc.text(`Morada: ${moradaCondomino}`, col2X + 3, y + 15.5);
   doc.text(`Fração: ${recibo.fracao_nome}${fracao?.piso ? ` (${fracao.piso})` : ""}`, col2X + 3, y + 19.5);
   doc.text(`NIF: ${recibo.nif_condomino || "—"}`, col2X + 3, y + 23.5);
-  // Referência individual da fração, usada pelo motor de IA para conciliação automática via extrato
-  doc.text(`Referência: ${prefixo}-FRA-${recibo.fracao_nome}`, col2X + 3, y + 27.5);
+  // Referência individual da fração, usada pelo motor de IA para conciliação
+  // automática via extrato — "-FRA-" para Quota Ordinária/Fundo de Reserva,
+  // "-EXT-" para Quota Extraordinária, como definido com o administrador:
+  // é o dado de despiste que permite identificar de imediato, só pela
+  // referência, se um documento é de quota ordinária ou extraordinária,
+  // sem ter de abrir/ler as rubricas.
+  const ehQuotaExtra = recibo.rubricas.some((r) => r.tipo === "Quota Extraordinária");
+  doc.text(`Referência: ${prefixo}-${ehQuotaExtra ? "EXT" : "FRA"}-${recibo.fracao_nome}`, col2X + 3, y + 27.5);
   // Na Nota de Cobrança o valor ainda não foi pago, por isso não faz
   // sentido afirmar um "Método de Pagamento" (dá a entender que já foi
   // pago dessa forma) — mostra antes o valor que falta pagar. Só o Recibo,
