@@ -32,6 +32,30 @@ export default function AuthForm({
     }
   }, [initialErrorMessage]);
 
+  // Se este dispositivo já tem biometria registada, dispara logo o pedido de
+  // Face ID/Touch ID ao abrir o ecrã, sem obrigar a escrever o email primeiro.
+  // Falha silenciosa (sem mostrar erro) se for cancelado ou não resultar —
+  // fica sempre o formulário normal disponível.
+  useEffect(() => {
+    if (!suportaBiometria) return;
+    let emailGuardado = "";
+    try { emailGuardado = localStorage.getItem("webauthn_email") || ""; } catch {}
+    if (!emailGuardado) return;
+    setEmail(emailGuardado);
+    (async () => {
+      setAutenticandoComBiometria(true);
+      try {
+        const resultado = await loginComBiometria(emailGuardado);
+        if (resultado.cancelado || !resultado.ok) return;
+        createSecurityLog(emailGuardado, "LOGIN_SUCCESS", "Login efetuado com sucesso via Biometria (WebAuthn).");
+        onLoginSuccess(emailGuardado);
+      } finally {
+        setAutenticandoComBiometria(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleStandardLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMessage("");

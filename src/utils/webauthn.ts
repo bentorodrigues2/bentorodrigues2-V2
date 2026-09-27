@@ -41,6 +41,9 @@ export async function registarBiometriaNesteDispositivo(): Promise<{ ok: boolean
   if (dadosVerificar.credentialId) {
     try {
       localStorage.setItem("webauthn_credential_id", dadosVerificar.credentialId);
+      // Guardado para o ecrã de login poder disparar o Face ID/Touch ID
+      // automaticamente ao abrir, sem obrigar a escrever o email primeiro.
+      if (session.user?.email) localStorage.setItem("webauthn_email", session.user.email);
     } catch {}
   }
   return { ok: true };
@@ -67,7 +70,10 @@ export async function removerBiometriaNesteDispositivo(): Promise<{ ok: boolean;
   });
   const dados = await resp.json();
   if (resp.ok && dados.ok) {
-    try { localStorage.removeItem("webauthn_credential_id"); } catch {}
+    try {
+      localStorage.removeItem("webauthn_credential_id");
+      localStorage.removeItem("webauthn_email");
+    } catch {}
   }
   return { ok: resp.ok && dados.ok, error: dados.error };
 }
