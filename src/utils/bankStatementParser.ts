@@ -243,8 +243,23 @@ export function matchBankTransactions(
 
         // Check exact fraction code match (e.g., "3º Dto" -> "3 dto", "RC Esq" -> "rc esq")
         // — como palavra inteira, nunca substring solta (ver contemPalavraInteira).
-        const hasFracName = normFrac.length > 0 && contemPalavraInteira(normDesc, normFrac);
-        const hasPiso = normPiso.length > 0 && contemPalavraInteira(normDesc, normPiso);
+        //
+        // Exige pelo menos 2 caracteres: um código de fração de 1 letra só
+        // (ex: "A", "E", "O" — há prédios com frações A a P) continua a
+        // aparecer sozinho como token dentro da própria notação bancária
+        // portuguesa de transferências — "TRF. P/O <nome>" normaliza para
+        // "trf p o <nome>", em que "o" surge sempre como palavra isolada
+        // (o próprio "Por Ordem"), mesmo com a verificação por palavra
+        // inteira. Bug confirmado em produção: 3 condóminos diferentes
+        // (Tânia Cristina Mateus, Sofia Alexandra Santos Moura, André
+        // Filipe) foram todos cruzados com 99% de confiança contra a mesma
+        // Fração O, só por causa do "P/O" do início de cada descrição — não
+        // tinha nada a ver com a fração real de nenhum deles. Um código de
+        // 1 letra nunca é suficientemente específico para servir de sinal
+        // fiável sozinho; a correspondência por nome do proprietário
+        // (hasOwnerName/hasOwnerPartial, abaixo) é que decide nesses casos.
+        const hasFracName = normFrac.length > 1 && contemPalavraInteira(normDesc, normFrac);
+        const hasPiso = normPiso.length > 1 && contemPalavraInteira(normDesc, normPiso);
         
         // Check owner name matches
         const hasOwnerName = ownerFirstLast.length >= 2 && ownerFirstLast.every(namePart => normDesc.includes(namePart));
