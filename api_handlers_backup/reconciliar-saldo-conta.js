@@ -47,7 +47,29 @@ export default async function handler(req, res) {
       .eq("origem", "reconciliacao_saldo_manual");
     const idsJaReconciliados = new Set((jaReconciliados || []).map((r) => r.id_pagamento));
 
-    const pendentes = pagamentosConfirmados.filter((p) => !idsJaReconciliados.has(p.id));
+    // Também não creditar um pagamento que já tenha um movimento real
+    // ligado a uma conta (id_conta preenchido) — descoberto ao investigar
+    // um pedido do administrador: vários pagamentos confirmados já tinham
+    // sido corretamente creditados via o movimento bancário criado na
+    // confirmação (com [pagamento:<id>] na descrição e id_conta já
+    // definido), mas nunca tinham passado por "ai_auditoria" com esta
+    // origem — este botão voltava a creditar o mesmo dinheiro uma segunda
+    // vez. Só é seguro reconciliar aqui pagamentos cujo movimento (se
+    // existir) ainda não está ligado a nenhuma conta real.
+    const { data: movimentosComPagamento } = await supabase
+      .from("movimentos")
+      .select("id_conta, descricao")
+      .eq("id_predio", id_predio)
+      .not("id_conta", "is", null);
+    const idsPagamentoJaCreditados = new Set(
+      (movimentosComPagamento || [])
+        .map((m) => (m.descricao || "").match(/\[pagamento:([a-f0-9-]+)\]/i)?.[1])
+        .filter(Boolean)
+    );
+
+    const pendentes = pagamentosConfirmados.filter(
+      (p) => !idsJaReconciliados.has(p.id) && !idsPagamentoJaCreditados.has(p.id)
+    );
     if (pendentes.length === 0) {
       return res.status(200).json({ ok: true, creditado: 0, quantidade: 0, mensagem: "Todos os pagamentos confirmados já estão refletidos no saldo — nada a corrigir." });
     }
