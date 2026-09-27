@@ -785,6 +785,49 @@ export function GestaoQuotasOrcamento({
     setTimeout(() => setSucessoEmissao(null), 7000);
   };
 
+  // Elimina as prestações de quota extra já emitidas para a obra
+  // selecionada — pedido explícito ("edição e eliminar"). Só apaga as
+  // ainda Pendentes: uma prestação já Paga tem um recibo/movimento real
+  // por trás, e desfazer isso aqui em massa seria perigoso — essas só se
+  // corrigem uma a uma no Mapa de Pagamentos, como qualquer outro aviso.
+  const [aEliminarQuotaExtra, setAEliminarQuotaExtra] = useState(false);
+  const handleEliminarQuotaExtraDaObra = async () => {
+    if (!obraSelecionadaId) return;
+    const pendentesDestaObra = predioAvisos.filter(
+      (a) => a.id_obra === obraSelecionadaId && a.tipo === "Quota Extraordinária" && a.estado === "Pendente"
+    );
+    if (pendentesDestaObra.length === 0) {
+      alert("Não há prestações Pendentes desta obra para eliminar (as já Pagas só se corrigem uma a uma no Mapa de Pagamentos).");
+      return;
+    }
+    if (!window.confirm(`Eliminar ${pendentesDestaObra.length} prestação(ões) Pendente(s) desta quota extra? Esta ação não pode ser desfeita.`)) return;
+
+    setAEliminarQuotaExtra(true);
+    try {
+      const ok = await dbDelete("avisos", [
+        ["id_obra", "eq", obraSelecionadaId],
+        ["tipo", "eq", "Quota Extraordinária"],
+        ["estado", "eq", "Pendente"]
+      ]);
+      if (!ok) {
+        alert("❌ Não foi possível eliminar as prestações no Supabase. Tente novamente.");
+        return;
+      }
+      const idsRemovidos = new Set(pendentesDestaObra.map((a) => a.id_aviso));
+      setAvisos?.((prev) => prev.filter((a) => !idsRemovidos.has(a.id_aviso)));
+      registarLogAuditoria(
+        "Financeira",
+        `Eliminou ${pendentesDestaObra.length} prestação(ões) Pendente(s) de quota extraordinária`,
+        predio.id_predio,
+        loggedUser,
+        obraSelecionada?.descricao || obraSelecionadaId
+      );
+      alert(`✅ ${pendentesDestaObra.length} prestação(ões) eliminada(s). Pode reemitir com novos valores/datas quando quiser.`);
+    } finally {
+      setAEliminarQuotaExtra(false);
+    }
+  };
+
   const handleExportarPDF = () => {
     try {
       const doc = new jsPDF();
@@ -1712,16 +1755,26 @@ export function GestaoQuotasOrcamento({
                 ))}
               </select>
               {obrasAdjudicadasParaQuota.length === 0 && (
-                <p className="text-[10px] text-slate-400 mt-1">Nenhuma obra adjudicada a pedir quota extra de momento (Obras & Contratação → Planeamento de Quotas → "Confirmar Obra").</p>
+                <p className="text-[10px] text-slate-400 mt-1">Nenhuma obra adjudicada a pedir quota extra de momento (Obras & Contratação → Concursos & Orçamentos → adjudicar uma proposta).</p>
               )}
               {/* Aviso de segurança: reemitir uma obra que já tenha prestações
                   lançadas cria avisos duplicados (soma-se, não substitui) — não
                   bloqueia (pode ser mesmo intencional, ex: corrigir um valor),
-                  só avisa antes de carregar em "Calcular & Emitir". */}
+                  só avisa antes de carregar em "Calcular & Emitir". Dá também
+                  a opção de eliminar as prestações Pendentes já emitidas, para
+                  corrigir valores/datas e reemitir de raiz em vez de acumular. */}
               {obraSelecionadaId && predioAvisos.some((a) => a.id_obra === obraSelecionadaId) && (
-                <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 mt-1.5">
-                  ⚠️ Esta obra já tem prestações emitidas anteriormente. Emitir de novo cria avisos adicionais (não substitui os já emitidos) — confirme que é mesmo isso que quer antes de "Calcular & Emitir".
-                </p>
+                <div className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 mt-1.5 space-y-1.5">
+                  <p>⚠️ Esta obra já tem prestações emitidas anteriormente. Emitir de novo cria avisos adicionais (não substitui os já emitidos).</p>
+                  <button
+                    type="button"
+                    onClick={handleEliminarQuotaExtraDaObra}
+                    disabled={aEliminarQuotaExtra}
+                    className="text-red-700 hover:text-red-800 font-bold underline disabled:opacity-50 cursor-pointer"
+                  >
+                    {aEliminarQuotaExtra ? "A eliminar..." : "Eliminar prestações Pendentes desta obra e recomeçar"}
+                  </button>
+                </div>
               )}
             </div>
 
