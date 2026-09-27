@@ -1326,6 +1326,7 @@ export function PortalCondomino({
                     userRole={loggedUser.role}
                     biometricsEnabled={biometricsEnabled}
                     setBiometricsEnabled={setBiometricsEnabled}
+                    idPredio={predio.id_predio}
                   />
                 </div>
               </div>

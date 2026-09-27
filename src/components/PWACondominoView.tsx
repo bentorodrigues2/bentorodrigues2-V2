@@ -3093,6 +3093,7 @@ export default function PWACondominoView({
                     setBiometricsEnabled={setBiometricsEnabled}
                     setSimulatingScan={setSimulatingScan}
                     setSimulatingScanProgress={setSimulatingScanProgress}
+                    idPredio={predio.id_predio}
                   />
                 </div>
 
