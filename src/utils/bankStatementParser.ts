@@ -260,10 +260,22 @@ export function matchBankTransactions(
         // (hasOwnerName/hasOwnerPartial, abaixo) é que decide nesses casos.
         const hasFracName = normFrac.length > 1 && contemPalavraInteira(normDesc, normFrac);
         const hasPiso = normPiso.length > 1 && contemPalavraInteira(normDesc, normPiso);
-        
+
         // Check owner name matches
         const hasOwnerName = ownerFirstLast.length >= 2 && ownerFirstLast.every(namePart => normDesc.includes(namePart));
         const hasOwnerPartial = ownerFirstLast.some(namePart => normDesc.includes(namePart));
+
+        // Referência individual da fração (ex: "BR23E-FR-K") — quando o
+        // condómino a inclui no descritivo da transferência, é o sinal mais
+        // fiável de todos: única por fração, sem ambiguidade nenhuma com
+        // nomes ou notação bancária (ao contrário do código de fração de 1
+        // letra ou de nomes parciais). Comparada como substring solta (não
+        // "palavra inteira") porque o normalizeBankText remove os hífens —
+        // "BR23E-FR-K" e "BR23EFRK" tornam-se ambos "br23e fr k"/"br23efrk"
+        // consoante o condómino escrever com ou sem espaços, e a referência
+        // já é suficientemente longa/específica para não dar falsos positivos.
+        const normReferencia = normalizeBankText(f.referencia_br23e || "");
+        const hasReferencia = normReferencia.length > 4 && normDesc.replace(/\s+/g, "").includes(normReferencia.replace(/\s+/g, ""));
 
         // Find pending avisos for this fraction — do mais antigo (vencimento)
         // para o mais recente, para o pagamento fechar sempre os meses em
@@ -281,7 +293,14 @@ export function matchBankTransactions(
         let curConfidence = 0;
         let curReason = "";
 
-        if ((hasFracName || hasPiso) && exactAmountMatch) {
+        if (hasReferencia) {
+          // Referência individual encontrada — identifica a fração sem
+          // ambiguidade nenhuma, independentemente de o valor bater certo
+          // ou não com algum mês em aberto (pode ser um pagamento
+          // adiantado, ou de um valor que ainda não foi emitido em aviso).
+          curConfidence = 100;
+          curReason = `Referência individual da fração (${f.referencia_br23e}) encontrada no descritivo — correspondência inequívoca.`;
+        } else if ((hasFracName || hasPiso) && exactAmountMatch) {
           curConfidence = 99;
           curReason = `Correspondência total de Fração (${f.fracao_nome}) e Valor exato da quota (${tx.valor.toFixed(2)}€).`;
         } else if (hasOwnerName && exactAmountMatch) {
