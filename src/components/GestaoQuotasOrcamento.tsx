@@ -9,7 +9,8 @@ import {
   CreditCard,
   Layers,
   Save,
-  FileSignature
+  FileSignature,
+  HardHat
 } from "lucide-react";
 import { Predio, Fracao, Aviso, LoggedUser, Documento, RevisaoOrcamento, Conta, Movimento, Reuniao } from "../types";
 import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
@@ -439,6 +440,18 @@ export function GestaoQuotasOrcamento({
     const fim = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth() + Math.max(0, (numPrestacoesExtra || 1) - 1), inicio.getUTCDate()));
     return fim.toISOString().split("T")[0];
   }, [dataInicioExtra, numPrestacoesExtra]);
+
+  // Pedido explícito: um botão "Calcular" próprio, em vez da tabela só
+  // aparecer sozinha em silêncio à medida que se digita. Os valores em si
+  // já eram sempre calculados ao vivo (não há nada "por trás" a recalcular),
+  // mas a tabela de repartição por fração só fica visível depois de se
+  // carregar em "Calcular Quotas Extra" — e volta a esconder-se assim que
+  // qualquer um dos dados de entrada muda, para nunca mostrar um cálculo
+  // desatualizado sem se dar conta.
+  const [quotaExtraCalculada, setQuotaExtraCalculada] = useState(false);
+  useEffect(() => {
+    setQuotaExtraCalculada(false);
+  }, [orcamentoExtra, numPrestacoesExtra, dataInicioExtra, obraSelecionadaId, contaExtraId]);
 
   const { rateNormalOrdinaria, rateLojaOrdinaria } = useMemo(() => {
     let permilagemLoja = 0;
@@ -1823,61 +1836,54 @@ export function GestaoQuotasOrcamento({
             </div>
 
             {loggedUser.role === "ADMIN" && (
-              <button
-                type="button"
-                id="btn-guardar-quotas-supabase"
-                onClick={handleEmitirQuotasEmLote}
-                disabled={(parseValorMonetario(orcamentoExtra) || 0) <= 0}
-                title={(parseValorMonetario(orcamentoExtra) || 0) <= 0 ? "Define um Orçamento Extraordinário para emitir — a quota ordinária é sempre automática (dia 25)." : undefined}
-                className="w-full px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>Emitir Quota Extraordinária</span>
-              </button>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setQuotaExtraCalculada(true)}
+                  disabled={(parseValorMonetario(orcamentoExtra) || 0) <= 0}
+                  title={(parseValorMonetario(orcamentoExtra) || 0) <= 0 ? "Define um Orçamento Extraordinário para calcular." : undefined}
+                  className="w-full px-4 py-2.5 bg-sky-700 hover:bg-sky-800 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                >
+                  <Calculator className="w-3.5 h-3.5" />
+                  <span>Calcular Quotas Extra</span>
+                </button>
+                <button
+                  type="button"
+                  id="btn-guardar-quotas-supabase"
+                  onClick={handleEmitirQuotasEmLote}
+                  disabled={(parseValorMonetario(orcamentoExtra) || 0) <= 0 || !quotaExtraCalculada}
+                  title={
+                    (parseValorMonetario(orcamentoExtra) || 0) <= 0
+                      ? "Define um Orçamento Extraordinário para emitir — a quota ordinária é sempre automática (dia 25)."
+                      : !quotaExtraCalculada
+                      ? "Calcula primeiro para reveres a tabela por fração antes de emitir."
+                      : undefined
+                  }
+                  className="w-full px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Emitir Quota Extraordinária</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Discriminação por Fração — sub-secção também em acordeão, dado ser
-            a tabela mais longa do módulo (uma linha por fração) */}
+        {/* Duas tabelas separadas (pedido explícito) — antes era uma só
+            tabela combinada com colunas de Quota Ordinária/FCR misturadas
+            com colunas de Quota Extra, mesmo para quem só queria ver uma
+            das duas. Cada uma só mostra o que lhe diz respeito. */}
         <AccordionSection
-          title={`Discriminação das Quotas por Fração (${predioFracoes.length} Frações)`}
+          title={`2.1 Quotas Ordinárias & Fundo de Reserva (${predioFracoes.length} Frações)`}
           subtitle="Cálculo proporcional exato pela permilagem, associado ao IBAN de crédito e referência de pagamento"
           icon={<FileText className="w-4 h-4" />}
           badge={
             <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">
-              {predioFracoes.length === 0 ? "0.00" : ((Number(orcamentoRegular) || 0) + extraPorMesTotal).toFixed(2)} €/mês
+              {predioFracoes.length === 0 ? "0.00" : (Number(orcamentoRegular) || 0).toFixed(2)} €/mês
             </span>
           }
         >
-          <div className="flex justify-end gap-2">
-            {extVal > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  const headers = ["Fração", "Descrição", "Nome", "Valor Total (€)", "Valor Mensal (€)", "Mês Início", "Mês Final"];
-                  const rows = predioFracoesFiltradas.map((f) => {
-                    const partesNome = (f.proprietario?.nome || "").trim().split(/\s+/).filter(Boolean);
-                    const nomeCurto = partesNome.length > 1 ? `${partesNome[0]} ${partesNome[partesNome.length - 1]}` : (partesNome[0] || "Sem Proprietário");
-                    return [
-                      f.fracao_nome,
-                      descricaoExtra || "—",
-                      nomeCurto,
-                      (extVal * (f.permilagem / 1000)).toFixed(2),
-                      (extraPorMesTotal * (f.permilagem / 1000)).toFixed(2),
-                      new Date(dataInicioExtra).toLocaleDateString("pt-PT", { month: "long", year: "numeric" }),
-                      new Date(dataLimiteExtraCalculada).toLocaleDateString("pt-PT", { month: "long", year: "numeric" })
-                    ];
-                  });
-                  exportToXLS(`Quota_Extra_${predio.nome.replace(/\s+/g, "_")}`, headers, rows);
-                }}
-                className="bg-sky-700 hover:bg-sky-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
-                title="Descarregar a tabela de cálculo da quota extraordinária (Fração, Nome, Valores, Mês Início/Final) em Excel/CSV"
-              >
-                <Download className="h-3.5 w-3.5" />
-                <span>Exportar Quota Extra (XLS)</span>
-              </button>
-            )}
+          <div className="flex justify-end">
             <button
               type="button"
               onClick={() => exportarBalanceteMapaAnualXLS(predio, predioFracoesFiltradas, new Date().getFullYear(), avisos)}
@@ -1902,10 +1908,6 @@ export function GestaoQuotasOrcamento({
                   <th className="p-3 text-center">Permilagem</th>
                   <th className="p-3 text-right">Quota Ordinária</th>
                   <th className="p-3 text-right">Fundo de Reserva</th>
-                  <th className="p-3 text-right">Quota Extra Total</th>
-                  <th className="p-3 text-right">Quota Extra (1/{numPrestacoesExtra})</th>
-                  <th className="p-3 text-center">Mês Início</th>
-                  <th className="p-3 text-center">Mês Final</th>
                   <th className="p-3 text-right font-black">Total a Pagar</th>
                   <th className="p-3">Conta / IBAN Crédito</th>
                   <th className="p-3 text-center">Referência Pagamento</th>
@@ -1914,7 +1916,7 @@ export function GestaoQuotasOrcamento({
               <tbody className="divide-y divide-slate-100">
                 {predioFracoesFiltradas.length === 0 ? (
                   <tr>
-                    <td colSpan={12} className="p-8 text-center text-slate-400">
+                    <td colSpan={8} className="p-8 text-center text-slate-400">
                       {predioFracoes.length === 0 ? "Nenhuma fração registada neste condomínio." : "Nenhuma fração corresponde ao filtro selecionado."}
                     </td>
                   </tr>
@@ -1923,13 +1925,8 @@ export function GestaoQuotasOrcamento({
                     const quotaTotal = calcularQuotaOrdinaria(f);
                     const quotaOrdinariaPart = Math.round(quotaTotal * 0.9 * 100) / 100;
                     const quotaFCRPart = Math.round(quotaTotal * 0.1 * 100) / 100;
-                    const extShare = extraPorMesTotal * (f.permilagem / 1000);
-                    const extShareTotal = extVal * (f.permilagem / 1000);
-                    const totalShare = quotaOrdinariaPart + quotaFCRPart + extShare;
+                    const totalShare = quotaOrdinariaPart + quotaFCRPart;
                     const referenciaReal = f.referencia_br23e || f.proprietario?.referencia_br23e || gerarReferenciaBR23E(f.fracao_nome, f.id_fracao);
-                    const referenciaExtra = `EXT23E-FR-${(f.fracao_nome || f.id_fracao || "").toString().trim().toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Z0-9]/g, "") || "01"}`;
-                    // Nome curto (1º e último nome) — pedido explícito para a
-                    // tabela/exportação, em vez do nome completo com nomes do meio.
                     const partesNome = (f.proprietario?.nome || "").trim().split(/\s+/).filter(Boolean);
                     const nomeCurto = partesNome.length > 1 ? `${partesNome[0]} ${partesNome[partesNome.length - 1]}` : (partesNome[0] || "Sem Proprietário");
 
@@ -1948,30 +1945,13 @@ export function GestaoQuotasOrcamento({
                         <td className="p-3 text-center font-mono font-bold text-slate-700">{f.permilagem}‰</td>
                         <td className="p-3 text-right font-mono font-bold text-emerald-700">{quotaOrdinariaPart.toFixed(2)} €</td>
                         <td className="p-3 text-right font-mono font-bold text-amber-700">{quotaFCRPart.toFixed(2)} €</td>
-                        <td className="p-3 text-right font-mono font-bold text-sky-700">{extShareTotal.toFixed(2)} €</td>
-                        <td className="p-3 text-right font-mono font-bold text-sky-700">{extShare.toFixed(2)} €</td>
-                        <td className="p-3 text-center font-mono text-[10px] text-slate-600">{extVal > 0 ? new Date(dataInicioExtra).toLocaleDateString("pt-PT", { month: "short", year: "numeric" }) : "—"}</td>
-                        <td className="p-3 text-center font-mono text-[10px] text-slate-600">{extVal > 0 ? new Date(dataLimiteExtraCalculada).toLocaleDateString("pt-PT", { month: "short", year: "numeric" }) : "—"}</td>
                         <td className="p-3 text-right font-mono font-black text-slate-900 bg-slate-50/70 text-sm">{totalShare.toFixed(2)} €</td>
                         <td className="p-3">
-                          <div className="space-y-0.5">
-                            <span className="text-[10px] text-slate-700 font-bold block truncate max-w-[180px]">{contaOrdinariaSel?.banco || "Conta Geral"}</span>
-                            <span className="text-[9px] font-mono text-slate-500 block truncate max-w-[180px]">{contaOrdinariaSel?.iban || "PT50..."}</span>
-                            {extVal > 0 && contaExtraSel?.id_conta !== contaOrdinariaSel?.id_conta && (
-                              <>
-                                <span className="text-[9px] text-sky-700 font-bold block truncate max-w-[180px] pt-1">Extra: {contaExtraSel?.banco || "Conta Geral"}</span>
-                                <span className="text-[9px] font-mono text-sky-500 block truncate max-w-[180px]">{contaExtraSel?.iban || "PT50..."}</span>
-                              </>
-                            )}
-                          </div>
+                          <span className="text-[10px] text-slate-700 font-bold block truncate max-w-[180px]">{contaOrdinariaSel?.banco || "Conta Geral"}</span>
+                          <span className="text-[9px] font-mono text-slate-500 block truncate max-w-[180px]">{contaOrdinariaSel?.iban || "PT50..."}</span>
                         </td>
                         <td className="p-3 text-center">
-                          <div className="space-y-1">
-                            <span className="font-mono text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200 block">{referenciaReal}</span>
-                            {extVal > 0 && (
-                              <span className="font-mono text-[9px] font-bold bg-sky-50 text-sky-700 px-2 py-1 rounded border border-sky-200 block" title="Referência própria da quota extraordinária">{referenciaExtra}</span>
-                            )}
-                          </div>
+                          <span className="font-mono text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200 block">{referenciaReal}</span>
                         </td>
                       </tr>
                     );
@@ -1989,21 +1969,135 @@ export function GestaoQuotasOrcamento({
                     <td className="p-3 text-right font-mono font-black text-amber-800">
                       {predioFracoesFiltradas.reduce((acc, f) => acc + Math.round(calcularQuotaOrdinaria(f) * 0.1 * 100) / 100, 0).toFixed(2)} €
                     </td>
-                    <td className="p-3 text-right font-mono font-black text-sky-800">
-                      {predioFracoesFiltradas.reduce((acc, f) => acc + extraPorMesTotal * (f.permilagem / 1000), 0).toFixed(2)} €
-                    </td>
                     <td className="p-3 text-right font-mono font-black text-slate-950 text-sm">
                       {predioFracoesFiltradas.reduce((acc, f) => {
                         const qt = calcularQuotaOrdinaria(f);
-                        return acc + Math.round(qt * 0.9 * 100) / 100 + Math.round(qt * 0.1 * 100) / 100 + extraPorMesTotal * (f.permilagem / 1000);
+                        return acc + Math.round(qt * 0.9 * 100) / 100 + Math.round(qt * 0.1 * 100) / 100;
                       }, 0).toFixed(2)} €
                     </td>
-                    <td colSpan={2} className="p-3 text-right text-[10px] text-slate-500">Calculado e interligado com as contas bancárias</td>
+                    <td colSpan={2} className="p-3 text-right text-[10px] text-slate-500">Calculado e interligado com a conta bancária</td>
                   </tr>
                 </tfoot>
               )}
             </table>
           </div>
+        </AccordionSection>
+
+        <AccordionSection
+          title={`2.2 Quota Extraordinária (${predioFracoes.length} Frações)`}
+          subtitle="Só a repartição da obra/FCR extra selecionada — sem misturar com a quota ordinária mensal"
+          icon={<HardHat className="w-4 h-4" />}
+          badge={
+            <span className="text-[10px] font-mono font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-lg">
+              {extraPorMesTotal.toFixed(2)} €/mês
+            </span>
+          }
+        >
+          {extVal <= 0 ? (
+            <div className="p-8 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl">
+              Nenhuma quota extraordinária configurada de momento — define um Orçamento Extraordinário acima para ver aqui a repartição por fração.
+            </div>
+          ) : !quotaExtraCalculada ? (
+            <div className="p-8 text-center text-slate-400 text-xs border border-dashed border-sky-200 bg-sky-50/40 rounded-xl">
+              Carrega em "Calcular Quotas Extra" acima para gerar a repartição por fração antes de emitir.
+            </div>
+          ) : (
+            <>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const headers = ["Fração", "Descrição", "Nome", "Permilagem", "Valor Total (€)", "Valor Mensal (€)", "Mês Início", "Mês Final"];
+                    const rows = predioFracoesFiltradas.map((f) => {
+                      const partesNome = (f.proprietario?.nome || "").trim().split(/\s+/).filter(Boolean);
+                      const nomeCurto = partesNome.length > 1 ? `${partesNome[0]} ${partesNome[partesNome.length - 1]}` : (partesNome[0] || "Sem Proprietário");
+                      return [
+                        f.fracao_nome,
+                        descricaoExtra || "—",
+                        nomeCurto,
+                        `${f.permilagem}‰`,
+                        (extVal * (f.permilagem / 1000)).toFixed(2),
+                        (extraPorMesTotal * (f.permilagem / 1000)).toFixed(2),
+                        new Date(dataInicioExtra).toLocaleDateString("pt-PT", { month: "long", year: "numeric" }),
+                        new Date(dataLimiteExtraCalculada).toLocaleDateString("pt-PT", { month: "long", year: "numeric" })
+                      ];
+                    });
+                    exportToXLS(`Quota_Extra_${predio.nome.replace(/\s+/g, "_")}`, headers, rows);
+                  }}
+                  className="bg-sky-700 hover:bg-sky-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                  title="Descarregar a tabela de cálculo da quota extraordinária (Fração, Nome, Valores, Mês Início/Final) em Excel/CSV"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Exportar Quota Extra (XLS)</span>
+                </button>
+              </div>
+
+              <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-sky-50 text-slate-600 font-bold border-b border-slate-200">
+                      <th className="p-3">Fração / Piso</th>
+                      <th className="p-3">Descrição</th>
+                      <th className="p-3">Condómino</th>
+                      <th className="p-3 text-center">Permilagem</th>
+                      <th className="p-3 text-right">Valor Total</th>
+                      <th className="p-3 text-right">Quota Extra (1/{numPrestacoesExtra})</th>
+                      <th className="p-3 text-center">Mês Início</th>
+                      <th className="p-3 text-center">Mês Final</th>
+                      <th className="p-3">Conta / IBAN Extra</th>
+                      <th className="p-3 text-center">Referência Extra</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {predioFracoesFiltradas.map((f) => {
+                      const extShare = extraPorMesTotal * (f.permilagem / 1000);
+                      const extShareTotal = extVal * (f.permilagem / 1000);
+                      const partesNome = (f.proprietario?.nome || "").trim().split(/\s+/).filter(Boolean);
+                      const nomeCurto = partesNome.length > 1 ? `${partesNome[0]} ${partesNome[partesNome.length - 1]}` : (partesNome[0] || "Sem Proprietário");
+                      const referenciaExtra = `EXT23E-FR-${(f.fracao_nome || f.id_fracao || "").toString().trim().toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Z0-9]/g, "") || "01"}`;
+
+                      return (
+                        <tr key={f.id_fracao} className="hover:bg-sky-50/50 transition-colors">
+                          <td className="p-3">
+                            <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded font-mono">Fração {f.fracao_nome}</span>
+                            <span className="text-[10px] text-slate-500 block mt-0.5">{f.piso}</span>
+                          </td>
+                          <td className="p-3 text-slate-600 max-w-[180px] truncate">{descricaoExtra || "—"}</td>
+                          <td className="p-3">
+                            <span className="font-semibold text-slate-800">{nomeCurto}</span>
+                          </td>
+                          <td className="p-3 text-center font-mono font-bold text-slate-700">{f.permilagem}‰</td>
+                          <td className="p-3 text-right font-mono font-bold text-slate-800">{extShareTotal.toFixed(2)} €</td>
+                          <td className="p-3 text-right font-mono font-black text-sky-800">{extShare.toFixed(2)} €</td>
+                          <td className="p-3 text-center font-mono text-[10px] text-slate-600">{new Date(dataInicioExtra).toLocaleDateString("pt-PT", { month: "short", year: "numeric" })}</td>
+                          <td className="p-3 text-center font-mono text-[10px] text-slate-600">{new Date(dataLimiteExtraCalculada).toLocaleDateString("pt-PT", { month: "short", year: "numeric" })}</td>
+                          <td className="p-3">
+                            <span className="text-[10px] text-sky-700 font-bold block truncate max-w-[180px]">{contaExtraSel?.banco || "Conta Geral"}</span>
+                            <span className="text-[9px] font-mono text-sky-500 block truncate max-w-[180px]">{contaExtraSel?.iban || "PT50..."}</span>
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className="font-mono text-[9px] font-bold bg-sky-50 text-sky-700 px-2 py-1 rounded border border-sky-200 block">{referenciaExtra}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-sky-100/60 font-bold border-t-2 border-sky-300 text-slate-800">
+                      <td colSpan={4} className="p-3 uppercase text-[10px] tracking-wider">Total ({predioFracoesFiltradas.length === predioFracoes.length ? "Global" : "Filtrado"})</td>
+                      <td className="p-3 text-right font-mono font-black">
+                        {predioFracoesFiltradas.reduce((acc, f) => acc + extVal * (f.permilagem / 1000), 0).toFixed(2)} €
+                      </td>
+                      <td className="p-3 text-right font-mono font-black text-sky-900">
+                        {predioFracoesFiltradas.reduce((acc, f) => acc + extraPorMesTotal * (f.permilagem / 1000), 0).toFixed(2)} €
+                      </td>
+                      <td colSpan={4} className="p-3 text-right text-[10px] text-slate-500">Calculado e interligado com a conta extra</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </>
+          )}
         </AccordionSection>
       </AccordionSection>
 
