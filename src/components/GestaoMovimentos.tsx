@@ -953,7 +953,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     }
   };
 
-  const lancarItemExtraido = async (item: any, selectedContaId: string, fornecedorIdOverride?: string) => {
+  const lancarItemExtraido = async (item: any, selectedContaId: string, fornecedorIdOverride?: string, mostrarAlerta: boolean = true) => {
     if (!selectedContaId) {
       alert("Escolha a conta bancária para receber ou pagar este movimento!");
       return;
@@ -1023,7 +1023,13 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     }
 
     setExtractedItems(prev => prev.filter(x => x.descricao !== item.descricao));
-    alert(`Movimento financeiro de ${item.valor.toFixed(2)}€ lançado com sucesso!${fornecedorIdOverride && !item.id_fornecedor ? "\n\n🧠 A associação a este fornecedor foi memorizada — da próxima vez o mesmo débito é reconhecido automaticamente." : ""}`);
+    // Só mostra o alerta individual quando lançado uma linha de cada vez —
+    // em lote (lancarTodosOsMovimentos) fica só 1 resumo no fim, em vez de 1
+    // alerta bloqueante por cada movimento (era preciso clicar "OK" dezenas
+    // de vezes para lançar um extrato inteiro).
+    if (mostrarAlerta) {
+      alert(`Movimento financeiro de ${item.valor.toFixed(2)}€ lançado com sucesso!${fornecedorIdOverride && !item.id_fornecedor ? "\n\n🧠 A associação a este fornecedor foi memorizada — da próxima vez o mesmo débito é reconhecido automaticamente." : ""}`);
+    }
   };
 
   // Fecha um pagamento de condómino reconhecido no extrato: liquida o(s)
@@ -1031,7 +1037,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   // (PDF + email ao condómino) através do mesmo pipeline real já usado em
   // toda a app (/api/pagamento?acao=confirmar) — antes só existia esta
   // capacidade no ecrã "Conciliação Bancária", à parte deste assistente.
-  const aprovarPagamentoCondomino = async (item: any, index: number) => {
+  const aprovarPagamentoCondomino = async (item: any, index: number, mostrarAlerta: boolean = true) => {
     if (!setAvisos) {
       alert("Sistema de avisos não disponível de momento.");
       return;
@@ -1112,9 +1118,14 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
       registarLogAuditoria("Financeira", "Aprovou um pagamento de condómino reconhecido no extrato bancário", predio.id_predio, loggedUser, novoMov.descricao);
       setExtractedItems(prev => prev.filter((_, i) => i !== index));
-      alert(emailEnviado
-        ? `✅ Pagamento de ${item.valor.toFixed(2)}€ confirmado (Fração ${item.fracaoSugeridaNome || fracao?.fracao_nome || "?"}) e recibo oficial enviado por email.`
-        : `✅ Pagamento de ${item.valor.toFixed(2)}€ confirmado e recibo gerado. (Sem email enviado — condómino sem email registado ou associado.)`);
+      // Só mostra o alerta individual quando aprovado um pagamento de cada
+      // vez — em lote (aprovarTodosPagamentosCondominos) fica só 1 resumo no
+      // fim, em vez de 1 alerta bloqueante por cada pagamento aprovado.
+      if (mostrarAlerta) {
+        alert(emailEnviado
+          ? `✅ Pagamento de ${item.valor.toFixed(2)}€ confirmado (Fração ${item.fracaoSugeridaNome || fracao?.fracao_nome || "?"}) e recibo oficial enviado por email.`
+          : `✅ Pagamento de ${item.valor.toFixed(2)}€ confirmado e recibo gerado. (Sem email enviado — condómino sem email registado ou associado.)`);
+      }
     } catch (err: any) {
       alert(`Erro ao aprovar este pagamento: ${err?.message || "erro desconhecido"}`);
     } finally {
@@ -1142,9 +1153,10 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     // Do fim para o início, para os índices não desalinharem à medida que
     // cada aprovação remove o item de extractedItems.
     for (const { item, index } of [...pendentes].reverse()) {
-      await aprovarPagamentoCondomino(item, index);
+      await aprovarPagamentoCondomino(item, index, false);
     }
     setAprovandoTodosCondominos(false);
+    alert(`${pendentes.length} pagamento(s) de condómino aprovado(s) e recibo(s) emitido(s) com sucesso.`);
   };
 
   // Descartar a leitura inteira (limpa a pré-visualização, sem tocar em
@@ -1183,9 +1195,10 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     // houver) — a associação manual por linha continua disponível para
     // corrigir um item antes de usar este botão de lote.
     for (const { item } of [...alvos].reverse()) {
-      await lancarItemExtraido(item, contaExtratoId, undefined);
+      await lancarItemExtraido(item, contaExtratoId, undefined, false);
     }
     setALancarTodosDespesas(false);
+    alert(`${alvos.length} movimento(s) lançado(s) com sucesso.`);
   };
 
   // Contabilizar movimentos cegos não justificados

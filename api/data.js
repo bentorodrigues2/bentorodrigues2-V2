@@ -117,7 +117,8 @@ const TABELAS_ESCRITA_SO_GESTAO = new Set([
   "email_templates",
   "equipas_prestadores",
   "rfps",
-  "propostas"
+  "propostas",
+  "agendamentos_avisos"
 ]);
 
 // Leitura dos registos de auditoria: só gestão + AUDITOR (é o único papel
@@ -142,7 +143,8 @@ const TABELAS_COM_ID_PREDIO = new Set([
   "obras_extraordinarias", "plano_manutencao_obrigatoria",
   "inventario_tecnico", "mural_avisos", "reservas_espacos_mural",
   "equipas_prestadores", "rfps", "dividas_fornecedores",
-  "revisoes_orcamento", "pagamentos_dividas_fornecedores", "questionarios"
+  "revisoes_orcamento", "pagamentos_dividas_fornecedores", "questionarios",
+  "agendamentos_avisos"
 ]);
 
 // Tabelas sem id_predio próprio, mas com id_fracao — isoladas pela fração

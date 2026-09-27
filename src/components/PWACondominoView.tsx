@@ -2146,6 +2146,28 @@ export default function PWACondominoView({
               )}
             </div>
 
+            {/* SECTION 1.5: SALDO DAS CONTAS DO CONDOMÍNIO — transparência
+                pedida explicitamente pela administração: o condómino via só
+                o IBAN para onde pagar, nunca quanto dinheiro o condomínio
+                tem de facto em cada conta real. */}
+            {contas.length > 0 && (
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3.5 rounded-xl shadow-sm space-y-2 text-[10px]">
+                <span className="text-[9px] font-extrabold text-teal-600 uppercase tracking-widest block">Saldo das Contas do Condomínio</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {contas.map((c: any) => (
+                    <div key={c.id_conta} className="bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800/60 flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className="text-[8px] text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-wider block truncate">{c.banco}{c.tipo ? ` — ${c.tipo}` : ""}</span>
+                      </div>
+                      <strong className={`font-mono text-[11px] whitespace-nowrap ${Number(c.saldo || 0) >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                        {Number(c.saldo || 0).toFixed(2)} €
+                      </strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* SECTION 2: MAPA DE PAGAMENTOS DA FRAÇÃO (DADOS REAIS) */}
             <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3.5 rounded-xl shadow-sm space-y-3 text-[10px]">
               <span className="text-[9px] font-extrabold text-teal-600 uppercase tracking-widest block">Mapa de Pagamentos da Fração</span>
