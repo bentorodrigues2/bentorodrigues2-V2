@@ -115,9 +115,14 @@ export async function loginComBiometria(email: string): Promise<{ ok: boolean; e
     return { ok: false, error: dadosVerificar.error || "Não foi possível confirmar a biometria." };
   }
 
+  // O servidor gera o link com supabase.auth.admin.generateLink() e devolve
+  // o "hashed_token" dessa operação — que se verifica com o parâmetro
+  // token_hash, não com "token" (esse é só para códigos OTP em texto, tipo
+  // os de 6 dígitos). Usar "token" aqui fazia o Supabase tentar validar o
+  // hash como se fosse um código OTP normal, falhando sempre com "Token has
+  // expired or is invalid" mesmo com a biometria corretamente confirmada.
   const { error: otpError } = await supabase.auth.verifyOtp({
-    email: emailLimpo,
-    token: dadosVerificar.hashedToken,
+    token_hash: dadosVerificar.hashedToken,
     type: "magiclink"
   });
   if (otpError) return { ok: false, error: "Biometria confirmada, mas não foi possível iniciar sessão: " + otpError.message };
