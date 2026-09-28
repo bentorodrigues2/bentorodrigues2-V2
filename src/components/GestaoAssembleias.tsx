@@ -8,8 +8,7 @@ import {
   copyTextToClipboard, 
   exportToXLS, 
   downloadBlob, 
-  generateAndDownloadPdf, 
-  addPdfWatermark, 
+  generateAndDownloadPdf,
   addPdfHeaderWithLogo,
   gerarConvocatoriaOficialPDF,
   gerarDeclaracaoRepresentacaoPDF,
@@ -17,7 +16,7 @@ import {
 } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { VotacaoAssembleiaVirtual } from "./VotacaoAssembleiaVirtual";
-import { saveReuniaoToSupabase, deleteReuniaoFromSupabase, saveDocumentoToSupabase, registarLogAuditoria, fetchObrasExtraFromSupabase, extrairNumeroAtaDoTexto } from "../lib/supabaseService";
+import { saveReuniaoToSupabase, deleteReuniaoFromSupabase, saveDocumentoToSupabase, registarLogAuditoria, fetchObrasExtraFromSupabase, extrairNumeroAtaDoTexto, uploadDocumentoToStorage } from "../lib/supabaseService";
 
 interface GestaoAssembleiasProps {
   predio: Predio;
@@ -470,25 +469,49 @@ Com os meus cumprimentos,
     alert(`📁 Convocatória arquivada com sucesso no Arquivo Digital!\nPasta: 'Atas & Convocatórias' > 'Assembleias ${anoStr}'`);
   };
 
+  // Carrega para o Arquivo Digital o PDF REAL de uma ata (gerada fora da
+  // plataforma, ou uma ata antiga digitalizada) — antes este botão criava
+  // sempre uma entrada fantasma no Arquivo Digital, com um tamanho de
+  // ficheiro inventado ("480 KB") e nenhum ficheiro real por trás, mesmo
+  // quando a ata tinha sido redigida fora da app.
+  const [arquivandoAtaReuniaoId, setArquivandoAtaReuniaoId] = useState<string | null>(null);
+  const ataUploadInputRef = useRef<HTMLInputElement>(null);
+
   const handleArquivarAta = (r: Reuniao) => {
+    setArquivandoAtaReuniaoId(r.id_reuniao);
+    ataUploadInputRef.current?.click();
+  };
+
+  const handleFicheiroAtaEscolhido = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    const r = reunioes.find(rr => rr.id_reuniao === arquivandoAtaReuniaoId);
+    setArquivandoAtaReuniaoId(null);
+    if (!file || !r) return;
     if (!onAddDocumento) {
       alert("Aviso: Módulo de Arquivo Digital não configurado para ligação direta.");
       return;
     }
+
     const anoStr = r.data ? (r.data.includes("/") ? r.data.split("/")[2] : r.data.split("-")[0]) : new Date().getFullYear().toString();
     const docId = `doc-ata-${r.id_reuniao}`;
     const jaExiste = documentos?.some(d => d.id_doc === docId || (d.id_predio === predio.id_predio && d.nome.includes(r.tema) && d.tipo.includes("Ata")));
-    if (jaExiste) {
-      alert(`Esta Ata já se encontra arquivada no Arquivo Digital (Pasta 'Atas & Convocatórias' > 'Assembleias ${anoStr}')!`);
+    if (jaExiste && !confirm(`Esta Ata já se encontra arquivada. Substituir pelo ficheiro escolhido?`)) return;
+
+    const caminho = await uploadDocumentoToStorage(file, `atas/${predio.id_predio}/${r.id_reuniao}_${file.name}`);
+    if (!caminho) {
+      alert("❌ Não foi possível carregar o ficheiro para o Arquivo Digital. Tente novamente.");
       return;
     }
+    const tamanhoKB = file.size > 1024 * 1024 ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : `${Math.round(file.size / 1024)} KB`;
+
     const docAta: Documento = {
       id_doc: docId,
       id_predio: predio.id_predio,
       nome: `Ata_${r.tema.replace(/[^a-zA-Z0-9À-ÿ]/g, "_")}_${r.data.replace(/\//g, "-")}.pdf`,
       tipo: "Ata Oficial Certificada (PDF)",
       data_upload: new Date().toLocaleDateString("pt-PT"),
-      tamanho: "480 KB",
+      tamanho: tamanhoKB,
       categoria: "Oficial",
       tema: "Atas & Convocatórias",
       ano: anoStr,
@@ -496,10 +519,83 @@ Com os meus cumprimentos,
       descricao: `Ata da Assembleia Geral de Condóminos referente a '${r.tema}' realizada em ${r.data}. Registada e arquivada nos termos legais.`,
       visibilidade: "Público",
       autor: loggedUser.nome || "Administrador do Condomínio",
-      arquivado: true
+      arquivado: true,
+      caminho
     };
+    await saveDocumentoToSupabase(docAta);
     onAddDocumento(docAta);
     alert(`📁 Ata arquivada com sucesso no Arquivo Digital!\nPasta: 'Atas & Convocatórias' > 'Assembleias ${anoStr}'`);
+  };
+
+  // Ata antiga/externa — realizada fora da plataforma (antes desta
+  // aplicação, ou redigida à parte) e sem nenhum registo de reunião aqui.
+  // Cria a reunião (estado "Realizada", já arquivada) e carrega o PDF real
+  // para o Arquivo Digital numa só ação, para o histórico ficar completo.
+  const [showUploadAtaAntiga, setShowUploadAtaAntiga] = useState(false);
+  const [uploadAtaTema, setUploadAtaTema] = useState("");
+  const [uploadAtaData, setUploadAtaData] = useState("");
+  const [uploadAtaFile, setUploadAtaFile] = useState<File | null>(null);
+  const [aCarregarAtaAntiga, setACarregarAtaAntiga] = useState(false);
+
+  const handleCarregarAtaAntiga = async () => {
+    if (!uploadAtaTema.trim() || !uploadAtaData || !uploadAtaFile) {
+      alert("Preencha o assunto, a data e escolha o ficheiro PDF da ata.");
+      return;
+    }
+    setACarregarAtaAntiga(true);
+    try {
+      const idReuniao = `reuniao-ata-antiga-${Date.now()}`;
+      const dataPT = formatDatePT(uploadAtaData);
+      const anoStr = uploadAtaData.split("-")[0];
+
+      const caminho = await uploadDocumentoToStorage(uploadAtaFile, `atas/${predio.id_predio}/${idReuniao}_${uploadAtaFile.name}`);
+      if (!caminho) {
+        alert("❌ Não foi possível carregar o ficheiro. Tente novamente.");
+        return;
+      }
+
+      const novaReuniao: Reuniao = {
+        id_reuniao: idReuniao,
+        id_predio: predio.id_predio,
+        tema: uploadAtaTema,
+        data: dataPT,
+        hora: "—",
+        ordens_trabalho: "Ata realizada fora da plataforma — conteúdo integral no PDF carregado.",
+        estado: "Realizada",
+        ata: `Ata realizada fora da plataforma. Documento original arquivado em PDF — ver Arquivo Digital.`
+      };
+      await onAddReuniao(novaReuniao);
+      registarLogAuditoria("Assembleias", `Carregou uma ata antiga/externa ("${uploadAtaTema}")`, predio.id_predio, loggedUser);
+
+      const tamanhoKB = uploadAtaFile.size > 1024 * 1024 ? `${(uploadAtaFile.size / (1024 * 1024)).toFixed(1)} MB` : `${Math.round(uploadAtaFile.size / 1024)} KB`;
+      const docAta: Documento = {
+        id_doc: `doc-ata-${idReuniao}`,
+        id_predio: predio.id_predio,
+        nome: `Ata_${uploadAtaTema.replace(/[^a-zA-Z0-9À-ÿ]/g, "_")}_${dataPT.replace(/\//g, "-")}.pdf`,
+        tipo: "Ata Oficial Certificada (PDF)",
+        data_upload: new Date().toLocaleDateString("pt-PT"),
+        tamanho: tamanhoKB,
+        categoria: "Oficial",
+        tema: "Atas & Convocatórias",
+        ano: anoStr,
+        sub_pasta: `Assembleias ${anoStr}`,
+        descricao: `Ata da Assembleia Geral de Condóminos referente a '${uploadAtaTema}', realizada fora da plataforma em ${dataPT}.`,
+        visibilidade: "Público",
+        autor: loggedUser.nome || "Administrador do Condomínio",
+        arquivado: true,
+        caminho
+      };
+      await saveDocumentoToSupabase(docAta);
+      onAddDocumento?.(docAta);
+
+      alert("📁 Ata antiga carregada e arquivada com sucesso.");
+      setUploadAtaTema("");
+      setUploadAtaData("");
+      setUploadAtaFile(null);
+      setShowUploadAtaAntiga(false);
+    } finally {
+      setACarregarAtaAntiga(false);
+    }
   };
 
   const iniciarEdicao = (r: Reuniao) => {
@@ -1228,7 +1324,6 @@ Com os meus cumprimentos,
   const exportarPDFCertificado = () => {
     if (!activeMeeting) return;
     const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
-    addPdfWatermark(doc);
     const timestamp = new Date().toISOString();
     const certHash = `SHA256-${Math.random().toString(36).substring(2, 10).toUpperCase()}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
@@ -1392,21 +1487,23 @@ Com os meus cumprimentos,
       `;
     }
 
+    // Só a assinatura de quem presidiu — a "Subscrição dos Condóminos
+    // Presentes e Representados" (um cartão de assinatura extra por cada
+    // fração) foi removida a pedido explícito: é redundante com a coluna de
+    // assinatura que a própria Folha de Presenças já tem por fração,
+    // bastando a assinatura da Mesa a fechar a ata/folha.
     const assinaturasHtml = `
       <div style="margin-top: 40px; page-break-inside: avoid;">
         <div style="border-left: 4px solid #0f172a; padding-left: 10px; margin-bottom: 20px;">
           <h3 style="font-size: 13px; text-transform: uppercase; margin: 0; color: #0f172a; letter-spacing: 0.5px; font-weight: bold;">
-            ASSINATURA DA MESA E SUBSCRIÇÃO DOS CONDÓMINOS PRESENTES
+            ASSINATURA DA MESA
           </h3>
           <p style="font-size: 9px; color: #64748b; margin: 3px 0 0 0;">
             Conforme exigido pelo Artigo 1.º, n.º 2 e n.º 3 do Decreto-Lei n.º 268/94 (redação da Lei n.º 8/2022)
           </p>
         </div>
 
-        <h4 style="font-size: 11px; text-transform: uppercase; color: #334155; margin: 15px 0 10px 0; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px;">
-          1. Mesa da Assembleia (Quem Presidiu aos Trabalhos):
-        </h4>
-        <div style="display: flex; justify-content: center; margin-bottom: 25px;">
+        <div style="display: flex; justify-content: center; margin-bottom: 10px;">
           <!-- Presidente -->
           <div style="padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; min-height: 100px; width: 340px; background-color: #f8fafc; page-break-inside: avoid;">
             <p style="font-size: 10px; margin: 0 0 5px 0; font-weight: bold; color: #1e293b; text-transform: uppercase;">Presidente da Mesa (Administrador do Condomínio)</p>
@@ -1429,41 +1526,6 @@ Com os meus cumprimentos,
           </div>
         </div>
 
-        <h4 style="font-size: 11px; text-transform: uppercase; color: #334155; margin: 15px 0 10px 0; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px;">
-          2. Subscrição dos Condóminos Presentes e Representados (${activeQuorum}‰):
-        </h4>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-          ${predioFracoes.filter(f => {
-            const state = activeMeeting.folha_presencas?.[f.id_fracao] || "Ausente";
-            return state !== "Ausente";
-          }).map(f => {
-            const state = activeMeeting.folha_presencas?.[f.id_fracao];
-            const rep = activeMeeting.representantes?.[f.id_fracao];
-            const sig = activeMeeting.assinaturas?.find(a => a.fracao === f.fracao_nome);
-            return `
-              <div style="padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; min-height: 95px; background-color: #f8fafc; page-break-inside: avoid;">
-                <div>
-                  <p style="font-size: 10px; margin: 0 0 2px 0; font-weight: bold; color: #1e293b; text-transform: uppercase;">
-                    Fração "${f.fracao_nome}" (${f.permilagem}‰)
-                  </p>
-                  <p style="font-size: 8px; color: #64748b; margin: 0;">
-                    ${f.proprietario.nome} ${state === "Representado" ? `(Rep: ${rep || "Procurador"})` : ""}
-                  </p>
-                </div>
-                ${sig ? `
-                  <div style="display: flex; justify-content: center; align-items: center; height: 45px;">
-                    <img src="${sig.img}" style="max-height: 40px; max-width: 130px; mix-blend-mode: multiply;" />
-                  </div>
-                  <p style="font-size: 8px; color: #059669; margin: 3px 0 0 0; font-weight: bold;">✓ SUBSCRITO DIGITALMENTE</p>
-                ` : `
-                  <div style="border-bottom: 1px solid #475569; height: 30px; width: 140px; margin: 8px auto 0 auto;"></div>
-                  <p style="font-size: 8px; color: #64748b; margin: 4px 0 0 0;">Assinatura / Rubrica de Subscrição</p>
-                `}
-              </div>
-            `;
-          }).join("")}
-        </div>
-
         <div style="margin-top: 25px; padding: 8px 12px; background-color: #f1f5f9; border-radius: 6px; border-left: 3px solid #0f172a; font-size: 8px; color: #475569; line-height: 1.4;">
           <strong>Nota de Eficácia Jurídica:</strong> A presente ata constitui documento autêntico aprovado e subscrito nos termos legais. As deliberações sobre despesas e prestações pecuniárias constituem Título Executivo contra os condóminos devedores nos termos do Artigo 6.º do Decreto-Lei n.º 268/94.
         </div>
@@ -1483,17 +1545,6 @@ Com os meus cumprimentos,
               font-size: 12px;
               background-color: #ffffff;
               position: relative;
-            }
-            .watermark {
-              position: fixed;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%) rotate(-30deg);
-              opacity: 0.11;
-              pointer-events: none;
-              text-align: center;
-              user-select: none;
-              z-index: -1;
             }
             h1, h2, h3 {
               color: #1a1a1a;
@@ -1542,11 +1593,6 @@ Com os meus cumprimentos,
           </style>
         </head>
         <body>
-          <div class="watermark">
-            <p style="font-size: 72px; font-weight: 900; letter-spacing: 12px; text-transform: uppercase; margin: 0; color: #1a1a1a;">CONDOMANAGER</p>
-            <p style="font-size: 20px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin: 0; color: #333333;">Documento Oficial Certificado</p>
-          </div>
-
           <div class="header">
             <h2 style="margin: 0; font-size: 16px; text-transform: uppercase; color: #1a1a1a;">CONDOMÍNIO DO EDIFÍCIO: ${predio?.nome || "Edifício Morada"}</h2>
             <p style="margin: 5px 0; font-size: 11px; font-weight: 500; color: #333333;">Sito em: ${predio?.morada_linha1 || ""}, Nº ${predio?.num_porta || ""}, ${predio?.localidade || ""}</p>
@@ -1804,6 +1850,49 @@ Com os meus cumprimentos,
           </div>
         </form>
       )}
+
+      {/* Ata antiga/externa — realizada antes desta plataforma ou redigida
+          fora dela, sem nenhum registo de reunião aqui ainda. */}
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm no-print">
+        <button
+          type="button"
+          onClick={() => setShowUploadAtaAntiga(v => !v)}
+          className="flex items-center justify-between w-full text-left cursor-pointer"
+        >
+          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+            <i className="fa-solid fa-file-arrow-up text-purple-600"></i>
+            Carregar Ata Antiga / Realizada Fora da Plataforma
+          </span>
+          <i className={`fa-solid fa-chevron-${showUploadAtaAntiga ? "up" : "down"} text-slate-400 text-xs`}></i>
+        </button>
+        {showUploadAtaAntiga && (
+          <div className="mt-3 space-y-3">
+            <p className="text-[11px] text-slate-500">Para atas de assembleias já realizadas antes de usar esta plataforma, ou redigidas fora dela — carrega o PDF real e fica arquivada no Arquivo Digital, com o histórico da assembleia registado.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 mb-1">Assunto / Tema da Assembleia</label>
+                <input type="text" value={uploadAtaTema} onChange={e => setUploadAtaTema(e.target.value)} placeholder="Ex: Assembleia Geral Ordinária 2024" className="w-full text-xs p-2 rounded-lg border border-slate-300" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 mb-1">Data da Assembleia</label>
+                <input type="date" value={uploadAtaData} onChange={e => setUploadAtaData(e.target.value)} className="w-full text-xs p-2 rounded-lg border border-slate-300" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-600 mb-1">Ficheiro PDF da Ata</label>
+              <input type="file" accept="application/pdf" onChange={e => setUploadAtaFile(e.target.files?.[0] || null)} className="w-full text-xs" />
+            </div>
+            <button
+              type="button"
+              onClick={handleCarregarAtaAntiga}
+              disabled={aCarregarAtaAntiga}
+              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-xs px-4 py-2 rounded-lg cursor-pointer transition-colors"
+            >
+              {aCarregarAtaAntiga ? "A carregar..." : "Carregar e Arquivar Ata"}
+            </button>
+          </div>
+        )}
+      </div>
 
       {emailConvocatoria && (
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-3 no-print animate-fadeIn">
@@ -2083,18 +2172,21 @@ Com os meus cumprimentos,
                     <span>Arquivar Convocatória</span>
                   </button>
 
-                  {/* Botão Arquivar Ata no Arquivo Digital (se a reunião foi realizada ou tem ata) */}
+                  {/* Botão Arquivar Ata no Arquivo Digital (se a reunião foi realizada ou tem ata) —
+                      pede sempre o PDF real (gerado pela app, redigido à parte, ou uma ata antiga
+                      digitalizada) para carregar a sério, nunca uma entrada fantasma. */}
                   {(r.estado === "Realizada" || !!r.ata) && (
                     <button
                       type="button"
                       onClick={() => handleArquivarAta(r)}
                       className="bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
-                      title="Guardar / Arquivar Ata no Arquivo Digital (Pasta 'Atas & Convocatórias')"
+                      title="Carregar o PDF real da Ata (gerado pela app ou redigido fora da plataforma) para o Arquivo Digital"
                     >
                       <img src="/modulos/27-arquivo-automatico.png" alt="Arquivo" className="w-3.5 h-3.5 object-contain shrink-0" onError={(e) => { e.currentTarget.src = "/marca/18-pdf.png"; }} />
-                      <span>Arquivar Ata</span>
+                      <span>Arquivar Ata (PDF)</span>
                     </button>
                   )}
+                  <input ref={ataUploadInputRef} type="file" accept="application/pdf" className="hidden" onChange={handleFicheiroAtaEscolhido} />
 
                   <button
                     type="button"
