@@ -38,6 +38,11 @@ import { SecurityAuditModal } from "./SecurityAuditModal";
 import { ConfiguracoesAdministracao } from "./ConfiguracoesAdministracao";
 import { FichaEmpresaGestora } from "./FichaEmpresaGestora";
 import { PWASupplierCardsView } from "./PWASupplierCardsView";
+import { DashboardKPIs } from "./DashboardKPIs";
+import { ContabilidadeInterna } from "./ContabilidadeInterna";
+import { InventarioTecnico } from "./InventarioTecnico";
+import { GestaoSinistrosSeguros } from "./GestaoSinistrosSeguros";
+import { CentralDocumentosMinutas } from "./CentralDocumentosMinutas";
 import { saveAvisosToSupabase, saveMovimentoToSupabase, saveContaToSupabase, saveDocumentoToSupabase, saveReuniaoToSupabase, saveOcorrenciaToSupabase, saveReservaToSupabase, registarLogAuditoria, saveConversaToSupabase, saveMensagemConversaToSupabase, saveProprietarioToSupabase, saveFracaoToSupabase, saveLimpezaToSupabase } from "../lib/supabaseService";
 import { encontrarFracaoDoCondomino } from "../lib/condominoUtils";
 import { 
@@ -157,42 +162,51 @@ export function PWASimulator({
 
   // SMS-style notification counter helper for Admin cards
   const getNotificationCount = (cardId: string) => {
-    if (cardId === "ocorrencias") {
-      const pending = ocorrencias.filter(o => o.estado === "Pendente" || o.estado === "Em Reclamacao").length;
-      return pending > 0 ? pending : 3;
+    const ocorrenciasPendentes = ocorrencias.filter(o => o.estado === "Pendente" || o.estado === "Em Reclamacao" || o.estado === "Em curso").length;
+    if (cardId === "ocorrencias" || cardId === "obras" || cardId === "vistoria" || cardId === "limpeza_checklist" || cardId === "avaria" || cardId === "avaria_limpeza") {
+      return ocorrenciasPendentes;
     }
     if (cardId === "financas") {
-      return 4;
+      return avisos.filter(a => a.estado === "Pendente").length;
     }
     if (cardId === "aprovacoes") {
-      const pendingRes = reservas.filter(r => r.estado === "Pendente" || !r.estado).length;
-      return pendingRes > 0 ? pendingRes : 2;
+      return reservas.filter(r => r.estado === "Pendente" || !r.estado).length;
     }
-    if (cardId === "comunicar" || cardId === "avaria" || cardId === "avaria_limpeza") {
-      return 1;
+    if (cardId === "assembleias") {
+      return reunioes.filter(r => r.estado === "Agendada").length;
     }
-    if (cardId === "documentos" || cardId === "auditoria" || cardId === "legal_consult" || cardId === "relatorio_auditor") {
-      return 1;
-    }
-    if (cardId === "obras" || cardId === "vistoria" || cardId === "limpeza_checklist") {
-      return 1;
-    }
-    if (cardId === "assembleias" || cardId === "contencioso") {
-      return 1;
-    }
+    // Sem contagem real disponível neste ecrã para as restantes — 0 em vez
+    // de um número fictício fixo.
     return 0;
   };
 
   const getPillTextForCard = (cardId: string) => {
     switch (cardId) {
-      case "ocorrencias": return "1 Ativa";
-      case "financas": return "Regularizado";
+      case "ocorrencias": {
+        const n = ocorrencias.filter(o => o.estado === "Pendente" || o.estado === "Em Reclamacao" || o.estado === "Em curso").length;
+        return n > 0 ? `${n} Ativas` : "Sem Ativas";
+      }
+      case "financas": {
+        const n = avisos.filter(a => a.estado === "Pendente").length;
+        return n > 0 ? `${n} Pendentes` : "Regularizadas";
+      }
       case "comunicar": return "Avisos";
-      case "documentos": return "4 Ficheiros";
-      case "obras": return "Ativo";
-      case "fracoes": return "Frações";
-      case "assembleias": return "Reuniões";
-      case "aprovacoes": return "Pendente";
+      case "documentos": return `${documentos.length} Ficheiros`;
+      case "correspondencia": return "Cartas CTT";
+      case "obras": return "Manutenção";
+      case "contabilidade": return "Contas";
+      case "inventario": return "Equipamentos";
+      case "seguros": return "Apólices";
+      case "painel_kpis": return "KPIs";
+      case "fracoes": return `${fracoes.length} Frações`;
+      case "assembleias": {
+        const n = reunioes.filter(r => r.estado === "Agendada").length;
+        return n > 0 ? `${n} Agendadas` : "Sem Agendadas";
+      }
+      case "aprovacoes": {
+        const n = reservas.filter(r => r.estado === "Pendente" || !r.estado).length;
+        return n > 0 ? "Pendente" : "Em Dia";
+      }
       case "vistoria": return "Vistorias";
       case "avaria": return "Fotos";
       case "historico_tec": return "Últimas";
@@ -1288,13 +1302,18 @@ export function PWASimulator({
 
                   {/* Cards Grid based on current role */}
                   <div className="grid grid-cols-2 gap-2.5 relative z-10">
-                     {/* ADMIN / EMPRESA_GESTORA CARDS */}
-                     {(loggedUser.role === "ADMIN" || loggedUser.role === "EMPRESA_GESTORA") && [
+                     {/* ADMIN / EMPRESA_GESTORA / GESTOR CARDS */}
+                     {(loggedUser.role === "ADMIN" || loggedUser.role === "EMPRESA_GESTORA" || loggedUser.role === "GESTOR") && [
+                        { id: "painel_kpis", label: "Painel & KPIs", desc: "Dashboard Geral do Condomínio", image: "/modulos/82-automacao.png" },
                         { id: "predios", label: "Prédios", desc: "Regras, Edifícios & Blocos", image: "/modulos/01-predio.png" },
                         { id: "fracoes", label: "Frações", desc: "Donos, Unidades & Frações", image: "/modulos/07-fracao.png" },
                         { id: "financas", label: "Finanças & Contas", desc: "Saldos, Recibos & Extratos", image: "/modulos/59-recibo.png" },
+                        { id: "contabilidade", label: "Contabilidade", desc: "Plano de Contas & Lançamentos", image: "/modulos/59-recibo.png" },
                         { id: "obras", label: "Manutenção & Obras", desc: "Avarias, Intervenções & Limpeza", image: "/modulos/41-obra.png" },
+                        { id: "inventario", label: "Inventário Técnico", desc: "Equipamentos & Garantias", image: "/modulos/02-equipamentos-tecnicos.png" },
+                        { id: "seguros", label: "Seguros & Sinistros", desc: "Apólices & Participações", image: "/modulos/70-pessoa-de-contacto.png" },
                         { id: "documentos", label: "Arquivo", desc: "Pastas, Atas & Auditoria", image: "/modulos/27-arquivo-automatico.png" },
+                        { id: "correspondencia", label: "Correspondência", desc: "Cartas CTT & Registos", image: "/modulos/75-mensagem.png" },
                         { id: "assembleias", label: "Assembleias & Legal", desc: "Atas, Convocatórias & Litígios", image: "/modulos/70-pessoa-de-contacto.png" },
                         { id: "comunicar", label: "Mensagens", desc: "Avisos Push & Cérebro IA", image: "/modulos/21-notificacoes-inquilino.png" },
                         { id: "fornecedores", label: "Fornecedores", desc: "Fichas & Orçamentos", image: "/modulos/67-fornecedor.png" },
@@ -1509,7 +1528,7 @@ export function PWASimulator({
               )}
 
               {/* Keep other secondary non-user views for completeness just in case activeTab changes */}
-              {(loggedUser.role === "ADMIN" || loggedUser.role === "EMPRESA_GESTORA") && (
+              {(loggedUser.role === "ADMIN" || loggedUser.role === "EMPRESA_GESTORA" || loggedUser.role === "GESTOR") && (
                 <>
                   {activeTab === "documents" && (
                     <div className="space-y-3">
@@ -2161,7 +2180,7 @@ export function PWASimulator({
                   </button>
                   
                   {/* 2. Arquivos (Admin) or Módulos */}
-                  {loggedUser.role === "ADMIN" || loggedUser.role === "EMPRESA_GESTORA" ? (
+                  {loggedUser.role === "ADMIN" || loggedUser.role === "EMPRESA_GESTORA" || loggedUser.role === "GESTOR" ? (
                     <button 
                       onClick={() => setActiveTab("documents")} 
                       className={`flex flex-col items-center space-y-0.5 cursor-pointer flex-1 transition-all ${activeTab === "documents" ? "text-emerald-500 font-extrabold scale-105" : "text-slate-500 dark:text-slate-400 hover:text-slate-200"}`}
@@ -2223,7 +2242,12 @@ export function PWASimulator({
                           <span className={`text-xs font-black uppercase tracking-wider ${
                             theme === "dark" ? "text-white" : "text-slate-800"
                           }`}>
-                            {selectedPwaSubmenu === "aprovacoes" ? "📝 Menu: Aprovações & Agenda" :
+                            {selectedPwaSubmenu === "painel_kpis" ? "📊 Menu: Painel & KPIs" :
+                             selectedPwaSubmenu === "correspondencia" ? "✉️ Menu: Gestão de Correspondência" :
+                             selectedPwaSubmenu === "contabilidade" ? "🧮 Menu: Contabilidade Interna" :
+                             selectedPwaSubmenu === "inventario" ? "🛠️ Menu: Inventário Técnico" :
+                             selectedPwaSubmenu === "seguros" ? "🛡️ Menu: Seguros & Sinistros" :
+                             selectedPwaSubmenu === "aprovacoes" ? "📝 Menu: Aprovações & Agenda" :
                              selectedPwaSubmenu === "ocorrencias" ? "🔧 Menu: Ocorrências" :
                              selectedPwaSubmenu === "comunicar" ? "📢 Menu: Comunicação & IA" :
                              selectedPwaSubmenu === "documentos" ? "📁 Menu: Arquivo Digital" :
@@ -2579,6 +2603,71 @@ export function PWASimulator({
                             </button>
                           ))}
 
+                          {selectedPwaSubmenu === "painel_kpis" && [
+                            { id: "painel_kpis_ver", label: "Dashboard Geral & Indicadores", image: "/modulos/82-automacao.png" }
+                          ].map(opt => (
+                            <button
+                              key={opt.id}
+                              onClick={() => setActivePwaSubMenuDetails(opt.id)}
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
+                            >
+                              <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
+                              <span className="text-[10.5px]">{opt.label}</span>
+                            </button>
+                          ))}
+
+                          {selectedPwaSubmenu === "correspondencia" && [
+                            { id: "correspondencia_ver", label: "Gestão de Correspondência CTT", image: "/modulos/75-mensagem.png" }
+                          ].map(opt => (
+                            <button
+                              key={opt.id}
+                              onClick={() => setActivePwaSubMenuDetails(opt.id)}
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
+                            >
+                              <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
+                              <span className="text-[10.5px]">{opt.label}</span>
+                            </button>
+                          ))}
+
+                          {selectedPwaSubmenu === "contabilidade" && [
+                            { id: "contabilidade_ver", label: "Plano de Contas & Lançamentos", image: "/modulos/59-recibo.png" }
+                          ].map(opt => (
+                            <button
+                              key={opt.id}
+                              onClick={() => setActivePwaSubMenuDetails(opt.id)}
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
+                            >
+                              <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
+                              <span className="text-[10.5px]">{opt.label}</span>
+                            </button>
+                          ))}
+
+                          {selectedPwaSubmenu === "inventario" && [
+                            { id: "inventario_ver", label: "Equipamentos, Garantias & Manutenções", image: "/modulos/02-equipamentos-tecnicos.png" }
+                          ].map(opt => (
+                            <button
+                              key={opt.id}
+                              onClick={() => setActivePwaSubMenuDetails(opt.id)}
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
+                            >
+                              <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
+                              <span className="text-[10.5px]">{opt.label}</span>
+                            </button>
+                          ))}
+
+                          {selectedPwaSubmenu === "seguros" && [
+                            { id: "seguros_ver", label: "Apólices, Sinistros & Participações", image: "/modulos/70-pessoa-de-contacto.png" }
+                          ].map(opt => (
+                            <button
+                              key={opt.id}
+                              onClick={() => setActivePwaSubMenuDetails(opt.id)}
+                              className="w-full text-left bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/40 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-slate-800 dark:text-white font-bold cursor-pointer"
+                            >
+                              <img src={opt.image} alt={opt.label} className="w-5 h-5 object-contain shrink-0 rounded" />
+                              <span className="text-[10.5px]">{opt.label}</span>
+                            </button>
+                          ))}
+
                           {selectedPwaSubmenu === "limpeza" && [
                             { id: "limpeza_folha", label: "Preencher Folha Digital de Higiene", image: "/modulos/50-limpeza.png" },
                             { id: "limpeza_inspecao", label: "Checklist de Posição de Áreas Comuns", image: "/modulos/50-limpeza.png" },
@@ -2614,7 +2703,7 @@ export function PWASimulator({
                             />
                           )}
 
-                          {!["aprovacoes", "ocorrencias", "comunicar", "documentos", "obras", "financas", "fracoes", "predios", "limpeza", "assembleias", "vistoria", "avaria", "historico_tec", "limpeza_checklist", "historico_limpeza", "avaria_limpeza", "contencioso", "legal_consult", "auditoria", "relatorio_auditor", "contas_bancarias", "lancamentos", "fornecedores", "configuracoes", "fornecedor_perfil", "fornecedor_seguranca", "fornecedor_financeiro"].includes(selectedPwaSubmenu || "") && [
+                          {!["aprovacoes", "ocorrencias", "comunicar", "documentos", "obras", "financas", "fracoes", "predios", "limpeza", "assembleias", "vistoria", "avaria", "historico_tec", "limpeza_checklist", "historico_limpeza", "avaria_limpeza", "contencioso", "legal_consult", "auditoria", "relatorio_auditor", "contas_bancarias", "lancamentos", "fornecedores", "configuracoes", "fornecedor_perfil", "fornecedor_seguranca", "fornecedor_financeiro", "painel_kpis", "correspondencia", "contabilidade", "inventario", "seguros"].includes(selectedPwaSubmenu || "") && [
                             { id: "documentos_arquivo", label: "Aceder ao Módulo Digital", image: "/modulos/82-automacao.png" }
                           ].map(opt => (
                             <button
@@ -2857,8 +2946,52 @@ export function PWASimulator({
                           contas={contas}
                         />
                       )}
+                      {activePwaSubMenuDetails === "painel_kpis_ver" && (
+                        <DashboardKPIs
+                          predio={predio}
+                          fracoes={fracoes}
+                          avisos={avisos}
+                          movimentos={movements}
+                          reservas={reservas}
+                          ocorrencias={ocorrencias}
+                        />
+                      )}
+                      {activePwaSubMenuDetails === "correspondencia_ver" && (
+                        <CentralDocumentosMinutas
+                          predio={predio}
+                          fracoes={fracoes}
+                          loggedUser={loggedUser}
+                          contas={contas}
+                          setContas={setContas}
+                          setMovements={setMovements}
+                          documentos={documentos}
+                          setDocumentos={setDocumentos}
+                          activeTab="gestao_correspondencia"
+                        />
+                      )}
+                      {activePwaSubMenuDetails === "contabilidade_ver" && (
+                        <ContabilidadeInterna
+                          predio={predio}
+                          loggedUser={loggedUser}
+                          movimentos={movements}
+                        />
+                      )}
+                      {activePwaSubMenuDetails === "inventario_ver" && (
+                        <InventarioTecnico
+                          predio={predio}
+                          loggedUser={loggedUser}
+                        />
+                      )}
+                      {activePwaSubMenuDetails === "seguros_ver" && (
+                        <GestaoSinistrosSeguros
+                          predio={predio}
+                          fracoes={fracoes}
+                          onUpdateFracoes={setFracoes}
+                          loggedUser={loggedUser}
+                        />
+                      )}
                       {activePwaSubMenuDetails === "fracoes_predios" && (
-                        <GestaoPredios 
+                        <GestaoPredios
                           predios={[predio]}
                           onAddPredio={() => {}}
                           onUpdatePredio={() => {}}

@@ -97,7 +97,7 @@ export function CentralDocumentosMinutas({
   documentos = [],
   setDocumentos
 }: CentralDocumentosMinutasProps) {
-  const podeGerirCorrespondencia = loggedUser.role === "ADMIN" || loggedUser.role === "EMPRESA_GESTORA";
+  const podeGerirCorrespondencia = loggedUser.role === "ADMIN" || loggedUser.role === "EMPRESA_GESTORA" || loggedUser.role === "GESTOR";
   const [internalTab, setInternalTab] = useState<TabMode>("minutas_oficiais");
   const activeTab = activeTabProp || internalTab;
   const setActiveTab = (tab: TabMode) => {
