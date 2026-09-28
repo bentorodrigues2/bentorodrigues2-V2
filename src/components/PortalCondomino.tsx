@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondagem, Questionario, MensagemConversa } from "../types";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
-import { generateCondominoPwaManualPDF, gerarReferenciaBR23EExtra } from "../utils";
+import { generateCondominoPwaManualPDF, gerarReferenciaBR23EExtra, formatDatePT } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { playVoiceNoteSimulation, playNotificationTone } from "../lib/soundService";
 import { supabase } from "../lib/supabaseClient";
@@ -722,32 +722,50 @@ export function PortalCondomino({
     });
   };
 
-  // AI Extraction Simulator
-  const runAIExtraction = (webpBase64: string) => {
+  // Leitura real do comprovativo por IA (Gemini multimodal, mesmo motor já
+  // usado para anexos recebidos por email em server/lib/inboundProcessor.js)
+  // — antes "simulava" a extração com um setTimeout de 2s que só copiava de
+  // volta o valor do próprio aviso que supostamente estava a confirmar
+  // (nunca lia o ficheiro real), o que fazia parecer sempre "correto" mesmo
+  // quando o comprovativo enviado não tinha nada a ver com a quota.
+  const runAIExtraction = async (webpBase64: string) => {
     setExtractionLoading(true);
+    try {
+      const match = webpBase64.match(/^data:([^;]+);base64,(.*)$/);
+      if (!match) throw new Error("Ficheiro inválido.");
+      const [, mimeType, base64] = match;
 
-    setTimeout(() => {
-      // Find current user's fraction to test IBAN matching rule
       const userFracao = encontrarFracaoDoCondomino(fracoes, loggedUser) || fracoes[0];
       const targetAviso = avisos.find((a) => a.id_aviso === payAvisoId);
 
-      // Simulate extraction
-      const mockValue = targetAviso?.valor || 120.0;
-      const mockDate = new Date().toLocaleDateString("pt-PT").replace(/\//g, "-");
-      // Use user's real IBAN to trigger "regra: se não houver referência -> identificar pelo IBAN"
-      const mockIban = userFracao.proprietario.iban || "PT50 0035 0999 8888 7777 6666 5";
-      const mockRef = ""; // intentionally blank to test the rule!
+      const resp = await fetch("/api/ai?acao=reconhecer-anexo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base64, mimeType })
+      });
+      const resultado = await resp.json();
+      if (!resp.ok || !resultado?.ok || !Array.isArray(resultado.dados) || resultado.dados.length === 0) {
+        throw new Error(resultado?.error || "A IA não conseguiu ler este comprovativo.");
+      }
+      const dados = resultado.dados[0];
 
-      setExtractedValue(mockValue);
-      setExtractedDate(mockDate);
-      setExtractedIban(mockIban);
-      setExtractedRef(mockRef);
+      const valorExtraido = Number(dados.valor_total) || targetAviso?.valor || 0;
+      const dataExtraida = dados.data_documento
+        ? formatDatePT(dados.data_documento)
+        : new Date().toLocaleDateString("pt-PT").replace(/\//g, "-");
+      const ibanExtraido = (dados.ordenante_iban || "").trim();
+      const refExtraida = (dados.descritivo_transferencia || dados.referencia || "").trim();
 
-      // Rule Check: No reference -> identify by IBAN
-      if (!mockRef) {
+      setExtractedValue(valorExtraido);
+      setExtractedDate(dataExtraida);
+      setExtractedIban(ibanExtraido);
+      setExtractedRef(refExtraida);
+
+      // Regra: sem referência textual -> identificar pelo IBAN do ordenante
+      if (!refExtraida && ibanExtraido) {
         const matchingFracao = fracoes.find(
           (f) =>
-            f.proprietario.iban?.replace(/\s/g, "") === mockIban.replace(/\s/g, "") ||
+            f.proprietario.iban?.replace(/\s/g, "") === ibanExtraido.replace(/\s/g, "") ||
             f.inquilino?.nif === userFracao.inquilino?.nif
         );
         if (matchingFracao) {
@@ -758,12 +776,16 @@ export function PortalCondomino({
           setExtractedIdType("Manual");
         }
       } else {
-        setExtractedIdType("Referência");
+        setExtractedIdType(refExtraida ? "Referência" : "Manual");
       }
 
-      setUserDescCorrection(`Pagamento da Quota Ref ${targetAviso?.descricao || "Julho"}`);
+      setUserDescCorrection(dados.entidade ? `Pagamento — ${dados.entidade}` : `Pagamento da Quota Ref ${targetAviso?.descricao || ""}`);
+    } catch (err: any) {
+      alert(`❌ Não foi possível ler o comprovativo automaticamente: ${err?.message || "erro desconhecido"}. Preencha os dados manualmente.`);
+      setExtractedIdType("Manual");
+    } finally {
       setExtractionLoading(false);
-    }, 2000);
+    }
   };
 
   // Submit payment proof

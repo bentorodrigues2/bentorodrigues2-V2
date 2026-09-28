@@ -42,7 +42,9 @@ import {
   saveFracaoToSupabase,
   saveProprietarioToSupabase,
   saveOcorrenciaToSupabase,
-  fetchObrasExtraFromSupabase
+  fetchObrasExtraFromSupabase,
+  fetchLimpezasFromSupabase,
+  LimpezaRow
 } from "../lib/supabaseService";
 import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { subscribeUserToPush } from "../utils/subscribeUser";
@@ -850,11 +852,22 @@ export default function PWACondominoView({
   // Módulo 5 - Limpezas Rating State
   const [cleaningRatings, setCleaningRatings] = useState<Record<string, number>>({});
   const [cleaningComments, setCleaningComments] = useState<Record<string, string>>({});
-  const [limpezasHistorico, setLimpezasHistorico] = useState([
-    { id: "LIMP-03", data: "12/07/2026", hora: "10:32", tecnico: "Maria Santos", avariaDetetada: "Porta do ginásio não fecha", estado: "Concluído" },
-    { id: "LIMP-02", data: "08/07/2026", hora: "09:15", tecnico: "Carla Pires", avariaDetetada: "Nenhuma", estado: "Concluído" },
-    { id: "LIMP-01", data: "01/07/2026", hora: "14:00", tecnico: "Maria Santos", avariaDetetada: "Lâmpada fundida no átrio", estado: "Concluído" }
-  ]);
+  // Histórico real de limpezas (Supabase) — antes eram sempre as mesmas 3
+  // limpezas fictícias ("Maria Santos", "Carla Pires"), independentemente
+  // do que existisse de facto registado para este prédio.
+  const [limpezasReaisPwa, setLimpezasReaisPwa] = useState<LimpezaRow[]>([]);
+  useEffect(() => {
+    if (!predio?.id_predio) return;
+    fetchLimpezasFromSupabase(predio.id_predio).then(dados => setLimpezasReaisPwa(dados || []));
+  }, [predio?.id_predio]);
+  const limpezasHistorico = limpezasReaisPwa.map(l => ({
+    id: l.id_limpeza,
+    data: formatDatePT(l.data),
+    hora: l.hora,
+    tecnico: l.executor,
+    avariaDetetada: l.observacoes || "Nenhuma",
+    estado: "Concluído" as const
+  }));
 
   // Módulo 6 - Financeiro States
   const [comprovativoUpload, setComprovativoUpload] = useState<string | null>(null);
@@ -2287,6 +2300,9 @@ export default function PWACondominoView({
               <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">Histórico de Higienização</span>
               
               <div className="space-y-2.5">
+                {limpezasHistorico.length === 0 && (
+                  <p className="text-slate-600 text-[10px] text-center py-6 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">Nenhuma limpeza registada até ao momento.</p>
+                )}
                 {limpezasHistorico.map(limp => (
                   <div key={limp.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3 rounded-xl shadow-xs space-y-2 text-[10px]">
                     <div className="flex justify-between font-bold">
@@ -4657,6 +4673,9 @@ export default function PWACondominoView({
                     <p className="text-slate-700">Consulte a escala e o histórico de higiene e limpezas efetuadas no seu prédio:</p>
                     
                     <div className="space-y-2.5 max-h-[50vh] overflow-y-auto pr-1">
+                      {limpezasHistorico.length === 0 && (
+                        <p className="text-slate-600 text-[10px] text-center py-6">Nenhuma limpeza registada até ao momento.</p>
+                      )}
                       {limpezasHistorico.map(limp => (
                         <div key={limp.id} className="bg-slate-800 border border-slate-800 p-3 rounded-xl space-y-2">
                           <div className="flex justify-between font-bold">
@@ -4678,6 +4697,9 @@ export default function PWACondominoView({
                     <p className="text-slate-700">Avalie a qualidade dos serviços de higienização das áreas comuns ou manutenções realizadas recentemente:</p>
                     
                     <div className="space-y-2.5">
+                      {limpezasHistorico.length === 0 && (
+                        <p className="text-slate-600 text-[10px] text-center py-6">Nenhuma limpeza registada para avaliar.</p>
+                      )}
                       {limpezasHistorico.slice(0, 2).map(limp => (
                         <div key={limp.id} className="bg-slate-800 border border-slate-800 p-3 rounded-xl space-y-2">
                           <div className="flex justify-between text-slate-600 font-bold text-[8px]">
