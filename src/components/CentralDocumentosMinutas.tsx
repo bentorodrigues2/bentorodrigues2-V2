@@ -72,7 +72,6 @@ interface CentralDocumentosMinutasProps {
   contas?: Conta[];
   setContas?: React.Dispatch<React.SetStateAction<Conta[]>>;
   setMovements?: React.Dispatch<React.SetStateAction<Movimento[]>>;
-  onOpenArranque?: () => void;
   activeTab?: TabMode;
   onSelectTab?: (tab: TabMode) => void;
   documentos?: Documento[];
@@ -93,7 +92,6 @@ export function CentralDocumentosMinutas({
   contas = [],
   setContas,
   setMovements,
-  onOpenArranque,
   activeTab: activeTabProp,
   onSelectTab,
   documentos = [],
@@ -122,6 +120,7 @@ export function CentralDocumentosMinutas({
   const [modalCorrespAberto, setModalCorrespAberto] = useState<"nova_carta" | "registar_recebida" | null>(null);
   const [corresRespondendoA, setCorresRespondendoA] = useState<Correspondencia | null>(null);
   const [corresDetalheId, setCorresDetalheId] = useState<string | null>(null);
+  const [envelopeTamanho, setEnvelopeTamanho] = useState("DL (110×220mm)");
 
   // Nova Carta (redação livre, sem modelo pré-definido)
   const [cartaAssunto, setCartaAssunto] = useState("");
@@ -521,6 +520,57 @@ export function CentralDocumentosMinutas({
       }
     } catch (e: any) {
       alert("Erro ao gerar o PDF da carta: " + e.message);
+    }
+  };
+
+  // Tamanhos normalizados de envelope (ISO 269), largura × altura em mm.
+  const TAMANHOS_ENVELOPE: Record<string, [number, number]> = {
+    "DL (110×220mm)": [220, 110],
+    "C6 (114×162mm)": [162, 114],
+    "C6/C5 (114×229mm)": [229, 114],
+    "C5 (162×229mm)": [229, 162],
+    "C4 (229×324mm)": [324, 229]
+  };
+
+  // Imprime/exporta só os dados de remetente e destinatário no tamanho de
+  // envelope escolhido, prontos para inserir na impressora — não é a carta
+  // completa, é o próprio envelope.
+  const gerarEnvelopePDF = (corresp: Correspondencia, tamanho: string, modo: "download" | "print") => {
+    try {
+      const [larguraMm, alturaMm] = TAMANHOS_ENVELOPE[tamanho] || TAMANHOS_ENVELOPE["DL (110×220mm)"];
+      const doc = new jsPDF({ unit: "mm", format: [larguraMm, alturaMm] });
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(30, 41, 59);
+      doc.text(predio.nome || "Condomínio", 8, 9);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(71, 85, 105);
+      doc.text(`${predio.morada_linha1 || ""}${predio.num_porta ? ", N.º " + predio.num_porta : ""}`, 8, 13);
+      doc.text(`${predio.codigo_postal || ""} ${predio.localidade || ""}`.trim(), 8, 17);
+
+      const destX = larguraMm * 0.48;
+      let destY = alturaMm * 0.55;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(Math.min(13, alturaMm * 0.11));
+      doc.text(corresp.destinatario_nome || "", destX, destY);
+      destY += 6;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(Math.min(11, alturaMm * 0.095));
+      (corresp.destinatario_morada || "").split("\n").filter(Boolean).forEach(linha => {
+        doc.text(linha, destX, destY);
+        destY += 5.5;
+      });
+
+      if (modo === "print") {
+        (doc as any).autoPrint();
+        window.open(doc.output("bloburl"), "_blank");
+      } else {
+        doc.save(`Envelope_${tamanho.split(" ")[0]}_${corresp.assunto.replace(/[^a-zA-Z0-9]+/g, "_")}.pdf`);
+      }
+    } catch (e: any) {
+      alert("Erro ao gerar o envelope: " + e.message);
     }
   };
 
@@ -1335,15 +1385,6 @@ A Administração do Condomínio`
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {onOpenArranque && (
-              <button
-                onClick={onOpenArranque}
-                className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white font-black text-xs transition-all flex items-center space-x-1.5 shadow-md hover:scale-105 cursor-pointer"
-              >
-                <Sliders className="h-4 w-4 text-emerald-300" />
-                <span>Configurar Saldos Iniciais & Dívidas</span>
-              </button>
-            )}
             <button
               onClick={() => setActiveTab(activeTab === "minutas_oficiais" ? "simulador_emails" : "minutas_oficiais")}
               className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs transition-all flex items-center space-x-1.5 shadow-md cursor-pointer"
@@ -2436,6 +2477,30 @@ A Administração do Condomínio`
                                  anx.tipo === "documento_recebido" ? "Documento Recebido" : "Resposta"}
                               </a>
                             ))}
+                          </div>
+                        )}
+                        {corresp.direcao === "Enviada" && (
+                          <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-600 flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> Envelope:</span>
+                            <select
+                              value={envelopeTamanho}
+                              onChange={e => setEnvelopeTamanho(e.target.value)}
+                              className="px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg"
+                            >
+                              {Object.keys(TAMANHOS_ENVELOPE).map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                            <button
+                              onClick={() => gerarEnvelopePDF(corresp, envelopeTamanho, "download")}
+                              className="px-2.5 py-1.5 text-[11px] font-bold rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1 cursor-pointer"
+                            >
+                              <Download className="h-3.5 w-3.5" /> Exportar Envelope
+                            </button>
+                            <button
+                              onClick={() => gerarEnvelopePDF(corresp, envelopeTamanho, "print")}
+                              className="px-2.5 py-1.5 text-[11px] font-bold rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1 cursor-pointer"
+                            >
+                              <Printer className="h-3.5 w-3.5" /> Imprimir Envelope
+                            </button>
                           </div>
                         )}
                       </div>

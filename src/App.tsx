@@ -3223,7 +3223,6 @@ export default function App() {
               setDocumentos={setDocumentos}
               activeTab={activeSection === "simulador_emails" ? "simulador_emails" : activeSection === "gestao_correspondencia" ? "gestao_correspondencia" : "minutas_oficiais"}
               onSelectTab={(tab) => setActiveSection(tab)}
-              onOpenArranque={() => setActiveSection("configuracao_arranque")}
             />
           )}
 
