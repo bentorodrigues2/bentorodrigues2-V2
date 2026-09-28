@@ -877,6 +877,9 @@ export interface MensagemConversa {
   autor: "condomino" | "administracao";
   texto: string;
   created_at?: string;
+  anexo_url?: string;
+  anexo_tipo?: "foto" | "documento" | "audio";
+  anexo_nome?: string;
 }
 
 export interface ConversaCondomino {

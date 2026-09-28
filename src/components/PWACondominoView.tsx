@@ -15,7 +15,8 @@ import {
   Comunicado,
   Sondagem,
   Questionario,
-  Conta
+  Conta,
+  MensagemConversa
 } from "../types";
 import { generateAndDownloadPdf, downloadEmailDocument, exportToXLS, downloadBlob, ehContaFundoReserva, gerarReferenciaBR23EExtra } from "../utils";
 import { usePwaBackButton } from "../utils/usePwaBackButton";
@@ -30,6 +31,7 @@ import {
   saveConversaToSupabase,
   fetchMensagensConversaFromSupabase,
   saveMensagemConversaToSupabase,
+  uploadAnexoConversaToStorage,
   fetchComunicadosFromSupabase,
   fetchSondagensFromSupabase,
   saveVotoSondagemToSupabase,
@@ -52,6 +54,12 @@ interface TicketMensagem {
   estado: "Pendente" | "Respondida";
   respostaAdmin?: string;
   dataResposta?: string;
+  anexoUrl?: string;
+  anexoTipo?: "foto" | "documento" | "audio";
+  anexoNome?: string;
+  anexoRespostaUrl?: string;
+  anexoRespostaTipo?: "foto" | "documento" | "audio";
+  anexoRespostaNome?: string;
 }
 import { 
   Smartphone, 
@@ -239,12 +247,83 @@ export default function PWACondominoView({
   const [isRecordingChatAudio, setIsRecordingChatAudio] = useState(false);
   const [chatAudioTimer, setChatAudioTimer] = useState(0);
   const [chatAudioData, setChatAudioData] = useState<string | null>(null);
+  const [chatAudioBlob, setChatAudioBlob] = useState<Blob | null>(null);
   const [chatPhotoWebp, setChatPhotoWebp] = useState<string | null>(null);
   const [chatPhotoName, setChatPhotoName] = useState<string | null>(null);
+  const [chatPhotoFile, setChatPhotoFile] = useState<File | null>(null);
   const [chatDocAttachment, setChatDocAttachment] = useState<{ name: string; size: string } | null>(null);
+  const [chatDocFile, setChatDocFile] = useState<File | null>(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const chatMediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chatAudioChunksRef = useRef<Blob[]>([]);
+
+  const limparAnexosChat = () => {
+    setChatPhotoWebp(null);
+    setChatPhotoName(null);
+    setChatPhotoFile(null);
+    setChatDocAttachment(null);
+    setChatDocFile(null);
+    setChatAudioData(null);
+    setChatAudioBlob(null);
+    setChatAudioTimer(0);
+  };
+
+  // Converte uma imagem real escolhida (câmara ou galeria) para .webp
+  // comprimido — mesmo padrão já usado em handleAvatarChange, substitui a
+  // simulação anterior que gravava sempre o mesmo texto fixo
+  // "mockwebpchatbytes..." em vez de uma imagem real.
+  const processarFotoChatReal = (file: File, label: string) => {
+    limparAnexosChat();
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX = 900;
+        let w = img.width, h = img.height;
+        if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d")?.drawImage(img, 0, 0, w, h);
+        canvas.toBlob((blob) => {
+          if (!blob) return;
+          setChatPhotoFile(new File([blob], "foto.webp", { type: "image/webp" }));
+          setChatPhotoWebp(canvas.toDataURL("image/webp", 0.8));
+          setChatPhotoName(label);
+        }, "image/webp", 0.8);
+      };
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const iniciarGravacaoAudioChatReal = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      limparAnexosChat();
+      chatAudioChunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chatAudioChunksRef.current.push(e.data); };
+      recorder.onstop = () => {
+        const blob = new Blob(chatAudioChunksRef.current, { type: "audio/webm" });
+        setChatAudioBlob(blob);
+        setChatAudioData(URL.createObjectURL(blob));
+        stream.getTracks().forEach(t => t.stop());
+      };
+      chatMediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecordingChatAudio(true);
+      setChatAudioTimer(0);
+    } catch {
+      alert("Não foi possível aceder ao microfone. Verifique as permissões do navegador.");
+    }
+  };
+
+  const pararGravacaoAudioChatReal = () => {
+    chatMediaRecorderRef.current?.stop();
+    setIsRecordingChatAudio(false);
+  };
 
   // Caixa de escrever mensagem cresce em altura conforme o texto (até um
   // limite, depois passa a ter scroll interno) — antes era um <input> de uma
@@ -345,7 +424,13 @@ export default function PWACondominoView({
         autor: "condomino",
         estado: resposta ? "Respondida" : "Pendente",
         respostaAdmin: resposta?.texto,
-        dataResposta: resposta?.created_at ? new Date(resposta.created_at).toLocaleString("pt-PT").replace(",", "") : undefined
+        dataResposta: resposta?.created_at ? new Date(resposta.created_at).toLocaleString("pt-PT").replace(",", "") : undefined,
+        anexoUrl: primeira.anexo_url,
+        anexoTipo: primeira.anexo_tipo,
+        anexoNome: primeira.anexo_nome,
+        anexoRespostaUrl: resposta?.anexo_url,
+        anexoRespostaTipo: resposta?.anexo_tipo,
+        anexoRespostaNome: resposta?.anexo_nome
       });
     }
     setMensagens(tickets.reverse());
@@ -518,10 +603,14 @@ export default function PWACondominoView({
     }
   };
 
+  const [aEnviarAnexoChat, setAEnviarAnexoChat] = useState(false);
+
   const handleEnviarMensagemReal = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMsgText.trim() || !condominoFracao?.id_fracao || !predio?.id_predio) return;
-    const texto = newMsgText.trim();
+    const temAnexoChat = chatPhotoFile || chatDocFile || chatAudioBlob;
+    if ((!newMsgText.trim() && !temAnexoChat) || !condominoFracao?.id_fracao || !predio?.id_predio || aEnviarAnexoChat) return;
+    const idMensagem = "msg_" + Date.now();
+    const texto = newMsgText.trim() || (chatPhotoFile ? "📷 Fotografia" : chatDocFile ? `📎 ${chatDocFile.name}` : "🎙️ Nota de voz");
     setNewMsgText("");
 
     // Um único fio de conversa por fração (mesmo ID sempre, tal como já
@@ -540,12 +629,27 @@ export default function PWACondominoView({
       assunto: "Mensagem Direta",
       estado: "pendente"
     });
-    await saveMensagemConversaToSupabase({
-      id_mensagem: "msg_" + Date.now(),
+
+    const novaMensagemChat: MensagemConversa = {
+      id_mensagem: idMensagem,
       id_conversa: idConversa,
       autor: "condomino",
       texto
-    });
+    };
+
+    if (temAnexoChat) {
+      setAEnviarAnexoChat(true);
+      const arquivo = chatPhotoFile || chatDocFile || new File([chatAudioBlob as Blob], "nota-de-voz.webm", { type: "audio/webm" });
+      const url = await uploadAnexoConversaToStorage(arquivo, idConversa, idMensagem);
+      setAEnviarAnexoChat(false);
+      if (!url) { alert("Não foi possível enviar o anexo. Tente novamente."); return; }
+      novaMensagemChat.anexo_url = url;
+      novaMensagemChat.anexo_tipo = chatPhotoFile ? "foto" : chatDocFile ? "documento" : "audio";
+      novaMensagemChat.anexo_nome = chatDocFile?.name;
+    }
+    limparAnexosChat();
+
+    await saveMensagemConversaToSupabase(novaMensagemChat);
 
     // Notifica a Administração por notificação push real (não email) —
     // mesma lógica que PortalCondomino.tsx (versão browser). Só chega a
@@ -2582,19 +2686,37 @@ export default function PWACondominoView({
                 {/* Conversas reais (Supabase) */}
                 {mensagens.map(ticket => (
                   <React.Fragment key={ticket.id_conversa}>
-                    <div className="p-2.5 bg-emerald-600 text-white rounded-2xl space-y-1 ml-auto max-w-[85%] shadow-xs">
+                    <div className="p-2.5 bg-emerald-600 text-white rounded-2xl space-y-1.5 ml-auto max-w-[85%] shadow-xs">
                       <div className="flex justify-between font-bold text-emerald-100 text-[8px] flex-row-reverse">
                         <span>Você</span>
                         <span>{ticket.data}</span>
                       </div>
+                      {ticket.anexoTipo === "foto" && ticket.anexoUrl && (
+                        <a href={ticket.anexoUrl} target="_blank" rel="noopener noreferrer"><img src={ticket.anexoUrl} alt="" className="max-h-40 rounded-lg" /></a>
+                      )}
+                      {ticket.anexoTipo === "documento" && ticket.anexoUrl && (
+                        <a href={ticket.anexoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-emerald-700/60 p-1.5 rounded-lg text-[10px]"><File className="h-3.5 w-3.5" /><span className="truncate">{ticket.anexoNome}</span></a>
+                      )}
+                      {ticket.anexoTipo === "audio" && ticket.anexoUrl && (
+                        <audio controls src={ticket.anexoUrl} className="max-w-[200px] h-8" />
+                      )}
                       <p className="text-white leading-normal text-[10px]">{ticket.mensagem}</p>
                     </div>
                     {ticket.respostaAdmin && (
-                      <div className="p-2.5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-1 max-w-[85%] shadow-xs">
+                      <div className="p-2.5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-1.5 max-w-[85%] shadow-xs">
                         <div className="flex justify-between font-bold text-slate-400 text-[8px]">
                           <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">🏢 Administração do Condomínio</span>
                           <span>{ticket.dataResposta}</span>
                         </div>
+                        {ticket.anexoRespostaTipo === "foto" && ticket.anexoRespostaUrl && (
+                          <a href={ticket.anexoRespostaUrl} target="_blank" rel="noopener noreferrer"><img src={ticket.anexoRespostaUrl} alt="" className="max-h-40 rounded-lg" /></a>
+                        )}
+                        {ticket.anexoRespostaTipo === "documento" && ticket.anexoRespostaUrl && (
+                          <a href={ticket.anexoRespostaUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 p-1.5 rounded-lg text-[10px]"><File className="h-3.5 w-3.5" /><span className="truncate">{ticket.anexoRespostaNome}</span></a>
+                        )}
+                        {ticket.anexoRespostaTipo === "audio" && ticket.anexoRespostaUrl && (
+                          <audio controls src={ticket.anexoRespostaUrl} className="max-w-[200px] h-8" />
+                        )}
                         <p className="text-slate-700 dark:text-slate-200 leading-normal text-[10px]">{ticket.respostaAdmin}</p>
                       </div>
                     )}
@@ -2826,15 +2948,7 @@ export default function PWACondominoView({
               {/* Chat Input Form */}
               <form
                 onSubmit={(e) => {
-                  e.preventDefault();
-                  if (chatAudioData && !newMsgText) {
-                    setNewMsgText(`🎙️ [Nota de voz de ${chatAudioTimer || 4}s]`);
-                  }
                   handleEnviarMensagemReal(e);
-                  setChatAudioData(null);
-                  setChatPhotoWebp(null);
-                  setChatPhotoName(null);
-                  setChatDocAttachment(null);
                   setIsEmojiPickerOpen(false);
                   setIsAttachmentMenuOpen(false);
                 }}
@@ -2878,14 +2992,8 @@ export default function PWACondominoView({
                 <button
                   type="button"
                   onClick={() => {
-                    if (isRecordingChatAudio) {
-                      setIsRecordingChatAudio(false);
-                      setChatAudioData("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=");
-                      if (!newMsgText) setNewMsgText(`🎙️ [Nota de voz de ${chatAudioTimer || 4}s]`);
-                    } else {
-                      setIsRecordingChatAudio(true);
-                      setChatAudioTimer(0);
-                    }
+                    if (isRecordingChatAudio) pararGravacaoAudioChatReal();
+                    else iniciarGravacaoAudioChatReal();
                   }}
                   className={`p-1.5 ${
                     isRecordingChatAudio
@@ -4069,10 +4177,12 @@ export default function PWACondominoView({
                       accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
+                        e.target.value = "";
                         if (file) {
+                          limparAnexosChat();
                           const sizeStr = file.size > 1024 * 1024 ? `${(file.size / (1024 * 1024)).toFixed(1)}MB` : `${Math.round(file.size / 1024)}KB`;
                           setChatDocAttachment({ name: file.name, size: sizeStr });
-                          if (!newMsgText) setNewMsgText(`📎 [Documento Anexo: ${file.name}]`);
+                          setChatDocFile(file);
                         }
                       }}
                       className="hidden"
@@ -4086,11 +4196,8 @@ export default function PWACondominoView({
                       capture="environment"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) {
-                          setChatPhotoWebp("data:image/webp;base64,mockwebpchatbytes...");
-                          setChatPhotoName(`Camera_${file.name || "foto.webp"}`);
-                          if (!newMsgText) setNewMsgText("📷 [Fotografia da Câmara em Anexo]");
-                        }
+                        e.target.value = "";
+                        if (file) processarFotoChatReal(file, `Camera_${file.name || "foto.webp"}`);
                       }}
                       className="hidden"
                     />
@@ -4102,29 +4209,19 @@ export default function PWACondominoView({
                       accept="image/*"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) {
-                          setChatPhotoWebp("data:image/webp;base64,mockwebpchatbytes...");
-                          setChatPhotoName(file.name || "imagem.webp");
-                          if (!newMsgText) setNewMsgText("🖼️ [Imagem da Galeria em Anexo]");
-                        }
+                        e.target.value = "";
+                        if (file) processarFotoChatReal(file, file.name || "imagem.webp");
                       }}
                       className="hidden"
                     />
 
                     {/* CHAT INPUT BAR WITH CLIP, EMOJIS, MIC AND SEND BUTTON */}
-                    <form 
-                      onSubmit={(e) => { 
-                        if (chatAudioData && !newMsgText) {
-                          setNewMsgText(`🎙️ [Nota de voz de ${chatAudioTimer || 4}s]`);
-                        }
-                        handleEnviarMensagem(e);
-                        setChatAudioData(null);
-                        setChatPhotoWebp(null);
-                        setChatPhotoName(null);
-                        setChatDocAttachment(null);
+                    <form
+                      onSubmit={(e) => {
+                        handleEnviarMensagemReal(e);
                         setIsEmojiPickerOpen(false);
                         setIsAttachmentMenuOpen(false);
-                      }} 
+                      }}
                       className="flex items-end gap-1 shrink-0 pt-2 border-t border-slate-800"
                     >
                       {/* CLIP BUTTON (Anexos / Documentos / Foto com câmara) */}
@@ -4165,14 +4262,8 @@ export default function PWACondominoView({
                       <button
                         type="button"
                         onClick={() => {
-                          if (isRecordingChatAudio) {
-                            setIsRecordingChatAudio(false);
-                            setChatAudioData("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=");
-                            if (!newMsgText) setNewMsgText(`🎙️ [Nota de voz de ${chatAudioTimer || 4}s]`);
-                          } else {
-                            setIsRecordingChatAudio(true);
-                            setChatAudioTimer(0);
-                          }
+                          if (isRecordingChatAudio) pararGravacaoAudioChatReal();
+                          else iniciarGravacaoAudioChatReal();
                         }}
                         className={`p-1.5 ${
                           isRecordingChatAudio
@@ -4753,19 +4844,37 @@ export default function PWACondominoView({
               )}
               {mensagens.map((ticket) => (
                 <React.Fragment key={ticket.id_conversa}>
-                  <div className="p-2.5 bg-emerald-600 text-white rounded-2xl space-y-1 ml-auto max-w-[85%] shadow-xs">
+                  <div className="p-2.5 bg-emerald-600 text-white rounded-2xl space-y-1.5 ml-auto max-w-[85%] shadow-xs">
                     <div className="flex justify-between font-bold text-emerald-100 text-[8px] flex-row-reverse">
                       <span>Você</span>
                       <span>{ticket.data}</span>
                     </div>
+                    {ticket.anexoTipo === "foto" && ticket.anexoUrl && (
+                      <a href={ticket.anexoUrl} target="_blank" rel="noopener noreferrer"><img src={ticket.anexoUrl} alt="" className="max-h-40 rounded-lg" /></a>
+                    )}
+                    {ticket.anexoTipo === "documento" && ticket.anexoUrl && (
+                      <a href={ticket.anexoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-emerald-700/60 p-1.5 rounded-lg text-[10px]"><File className="h-3.5 w-3.5" /><span className="truncate">{ticket.anexoNome}</span></a>
+                    )}
+                    {ticket.anexoTipo === "audio" && ticket.anexoUrl && (
+                      <audio controls src={ticket.anexoUrl} className="max-w-[200px] h-8" />
+                    )}
                     <p className="text-white leading-normal text-[10px]">{ticket.mensagem}</p>
                   </div>
                   {ticket.respostaAdmin && (
-                    <div className="p-2.5 bg-white dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-750 space-y-1 max-w-[85%] shadow-xs">
+                    <div className="p-2.5 bg-white dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-750 space-y-1.5 max-w-[85%] shadow-xs">
                       <div className="flex justify-between font-bold text-slate-400 text-[8px]">
                         <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">🏢 Administração do Condomínio</span>
                         <span>{ticket.dataResposta}</span>
                       </div>
+                      {ticket.anexoRespostaTipo === "foto" && ticket.anexoRespostaUrl && (
+                        <a href={ticket.anexoRespostaUrl} target="_blank" rel="noopener noreferrer"><img src={ticket.anexoRespostaUrl} alt="" className="max-h-40 rounded-lg" /></a>
+                      )}
+                      {ticket.anexoRespostaTipo === "documento" && ticket.anexoRespostaUrl && (
+                        <a href={ticket.anexoRespostaUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 p-1.5 rounded-lg text-[10px]"><File className="h-3.5 w-3.5" /><span className="truncate">{ticket.anexoRespostaNome}</span></a>
+                      )}
+                      {ticket.anexoRespostaTipo === "audio" && ticket.anexoRespostaUrl && (
+                        <audio controls src={ticket.anexoRespostaUrl} className="max-w-[200px] h-8" />
+                      )}
                       <p className="text-slate-700 dark:text-slate-200 leading-normal text-[10px]">{ticket.respostaAdmin}</p>
                     </div>
                   )}

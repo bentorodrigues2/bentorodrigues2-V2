@@ -33,6 +33,7 @@ import {
   saveConversaToSupabase,
   fetchMensagensConversaFromSupabase,
   saveMensagemConversaToSupabase,
+  uploadAnexoConversaToStorage,
   fetchComunicadosFromSupabase,
   fetchSondagensFromSupabase,
   saveVotoSondagemToSupabase,
@@ -58,6 +59,11 @@ export interface MensagemAdministracao {
   estado: "Pendente" | "Respondida";
   respostaAdmin?: string;
   dataResposta?: string;
+  anexoTipo?: "foto" | "documento" | "audio";
+  anexoNome?: string;
+  anexoRespostaUrl?: string;
+  anexoRespostaTipo?: "foto" | "documento" | "audio";
+  anexoRespostaNome?: string;
 }
 
 export interface ComprovativoSubmetido {
@@ -202,6 +208,10 @@ export function PortalCondomino({
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const [recordingTimer, setRecordingTimer] = useState(0);
   const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(null);
+  const [msgAudioBlob, setMsgAudioBlob] = useState<Blob | null>(null);
+  const [msgDocFile, setMsgDocFile] = useState<File | null>(null);
+  const portalMediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const portalAudioChunksRef = useRef<Blob[]>([]);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
@@ -487,16 +497,31 @@ export function PortalCondomino({
     return () => clearInterval(interval);
   }, [isRecordingAudio]);
 
-  const handleToggleVoiceRecording = () => {
+  const handleToggleVoiceRecording = async () => {
     if (isRecordingAudio) {
-      // Stop recording and save audio note
+      portalMediaRecorderRef.current?.stop();
       setIsRecordingAudio(false);
-      const fakeAudio = "data:audio/mp3;base64,voice_note_" + Date.now();
-      setRecordedAudioUrl(fakeAudio);
     } else {
-      setRecordedAudioUrl(null);
-      setIsRecordingAudio(true);
-      setRecordingTimer(0);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        setRecordedAudioUrl(null);
+        setMsgAudioBlob(null);
+        portalAudioChunksRef.current = [];
+        const recorder = new MediaRecorder(stream);
+        recorder.ondataavailable = (e) => { if (e.data.size > 0) portalAudioChunksRef.current.push(e.data); };
+        recorder.onstop = () => {
+          const blob = new Blob(portalAudioChunksRef.current, { type: "audio/webm" });
+          setMsgAudioBlob(blob);
+          setRecordedAudioUrl(URL.createObjectURL(blob));
+          stream.getTracks().forEach((t) => t.stop());
+        };
+        portalMediaRecorderRef.current = recorder;
+        recorder.start();
+        setIsRecordingAudio(true);
+        setRecordingTimer(0);
+      } catch {
+        alert("Não foi possível aceder ao microfone. Verifique as permissões do navegador.");
+      }
     }
   };
 
@@ -520,9 +545,7 @@ export function PortalCondomino({
     if (!file) return;
     const sizeStr = (file.size / 1024).toFixed(1) + " KB";
     setMsgDocAttachment({ name: file.name, size: sizeStr });
-    if (!newMsgTexto) {
-      setNewMsgTexto(`📎 [Documento: ${file.name}]`);
-    }
+    setMsgDocFile(file);
   };
 
   const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -532,36 +555,17 @@ export function PortalCondomino({
       setNewMsgAnexo(webpUrl);
       setAnexoSizeOriginal(origSize);
       setAnexoSizeWebP(webpSize);
-      if (!newMsgTexto) {
-        setNewMsgTexto(`📸 [Fotografia da Câmara: ${file.name}]`);
-      }
     });
   };
 
-  // Contact Drawer / WhatsApp Chat submit
-  const uploadAnexoMensagem = async (dataUrl: string, nomeFicheiro: string): Promise<string | null> => {
+  // Converte uma data URL (base64) numa File real, para reutilizar o mesmo
+  // caminho de upload real (uploadAnexoConversaToStorage) já usado para o
+  // documento anexado diretamente como File.
+  const dataUrlParaFile = async (dataUrl: string, nomeFicheiro: string): Promise<File | null> => {
     try {
-      const match = dataUrl.match(/^data:([^;]+);base64,(.*)$/);
-      if (!match) return null;
-      const [, mimeType, base64] = match;
-      const resp = await fetch("/api/documento?acao=anexar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileBase64: base64,
-          fileName: nomeFicheiro,
-          mimeType,
-          predio: predio.id_predio,
-          ano: new Date().getFullYear(),
-          tema: "Comunicações",
-          tipo: "Anexo de Mensagem",
-          fluxo: "mensagem_condomino_anexo",
-          categoria: "Mensagens",
-          descricao: `Anexo enviado por ${loggedUser.nome} via chat com a administração`
-        })
-      });
-      const data = await resp.json();
-      return resp.ok && data.ok ? data.caminho : null;
+      const resp = await fetch(dataUrl);
+      const blob = await resp.blob();
+      return new File([blob], nomeFicheiro, { type: blob.type });
     } catch {
       return null;
     }
@@ -578,25 +582,36 @@ export function PortalCondomino({
       const userFracao = encontrarFracaoDoCondomino(fracoes, loggedUser);
       const isVoice = !!recordedAudioUrl;
       const docLabel = msgDocAttachment ? ` 📄 (${msgDocAttachment.name})` : "";
+      const idConversa = "conv-" + (userFracao?.id_fracao || "sem-fracao");
+      const idMensagem = "msg_" + Date.now();
 
-      let textoFinal = newMsgTexto || (isVoice ? `🎙️ Nota de voz (${recordingTimer || 4}s)` : msgDocAttachment ? `📎 Documento anexo: ${msgDocAttachment.name}` : "Fotografia anexada");
+      let textoFinal = newMsgTexto || (isVoice ? `🎙️ Nota de voz (${recordingTimer || 4}s)` : msgDocAttachment ? `📎 ${msgDocAttachment.name}` : "📷 Fotografia");
 
-      // Anexos (foto/áudio/documento) são carregados a sério para o Arquivo Digital,
-      // para não se perderem ao sair da sessão — a mensagem passa a referir o caminho.
+      // Anexos (foto/áudio/documento) são carregados a sério para o Storage
+      // do Supabase, com o URL guardado em campos próprios da mensagem —
+      // antes ficava só um caminho colado ao texto, sem imagem/áudio real a
+      // aparecer no histórico nem do lado do condómino nem do admin.
+      let anexoUrlFinal: string | null = null;
+      let anexoTipoFinal: "foto" | "documento" | "audio" | undefined;
+      let anexoNomeFinal: string | undefined;
       if (newMsgAnexo) {
-        const caminho = await uploadAnexoMensagem(newMsgAnexo, `foto_${Date.now()}.webp`);
-        if (caminho) textoFinal += `\n📎 Anexo arquivado: ${caminho}`;
-      }
-      if (recordedAudioUrl) {
-        const caminho = await uploadAnexoMensagem(recordedAudioUrl, `audio_${Date.now()}.webm`);
-        if (caminho) textoFinal += `\n📎 Anexo arquivado: ${caminho}`;
+        const file = await dataUrlParaFile(newMsgAnexo, `foto_${Date.now()}.webp`);
+        if (file) anexoUrlFinal = await uploadAnexoConversaToStorage(file, idConversa, idMensagem);
+        anexoTipoFinal = "foto";
+      } else if (msgDocFile) {
+        anexoUrlFinal = await uploadAnexoConversaToStorage(msgDocFile, idConversa, idMensagem);
+        anexoTipoFinal = "documento";
+        anexoNomeFinal = msgDocFile.name;
+      } else if (msgAudioBlob) {
+        const file = new File([msgAudioBlob], "nota-de-voz.webm", { type: "audio/webm" });
+        anexoUrlFinal = await uploadAnexoConversaToStorage(file, idConversa, idMensagem);
+        anexoTipoFinal = "audio";
       }
 
       // Um único fio de conversa por fração (mesmo ID sempre) — antes cada
       // mensagem criava uma conversa nova, fragmentando a caixa de entrada
       // do admin em dezenas de conversas separadas em vez de um só fio, e
       // fazia com que "pendente" nunca refletisse bem o estado real.
-      const idConversa = "conv-" + (userFracao?.id_fracao || "sem-fracao");
       const conversa = {
         id_conversa: idConversa,
         id_predio: predio.id_predio,
@@ -607,10 +622,13 @@ export function PortalCondomino({
       };
       await saveConversaToSupabase(conversa);
       await saveMensagemConversaToSupabase({
-        id_mensagem: "msg_" + Date.now(),
+        id_mensagem: idMensagem,
         id_conversa: idConversa,
         autor: "condomino",
-        texto: textoFinal
+        texto: textoFinal,
+        anexo_url: anexoUrlFinal || undefined,
+        anexo_tipo: anexoTipoFinal,
+        anexo_nome: anexoNomeFinal
       });
 
       // Notifica a Administração por notificação push real (não email) —
@@ -637,9 +655,11 @@ export function PortalCondomino({
         assunto: conversa.assunto,
         mensagem: textoFinal,
         data: new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }),
-        anexoWebP: newMsgAnexo,
-        audioUrl: recordedAudioUrl,
+        anexoWebP: anexoTipoFinal !== "audio" ? anexoUrlFinal : null,
+        audioUrl: anexoTipoFinal === "audio" ? anexoUrlFinal : null,
         audioDuration: recordingTimer || 4,
+        anexoTipo: anexoTipoFinal,
+        anexoNome: anexoNomeFinal,
         estado: "Pendente",
       };
 
@@ -652,6 +672,8 @@ export function PortalCondomino({
       setNewMsgTexto("");
       setNewMsgAnexo(null);
       setMsgDocAttachment(null);
+      setMsgDocFile(null);
+      setMsgAudioBlob(null);
       setRecordedAudioUrl(null);
       setIsRecordingAudio(false);
       setRecordingTimer(0);
@@ -931,10 +953,16 @@ export function PortalCondomino({
         assunto: c.assunto || "Mensagem Direta",
         mensagem: primeira.texto,
         data: primeira.created_at ? new Date(primeira.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : "",
-        anexoWebP: null,
+        anexoWebP: primeira.anexo_tipo !== "audio" ? primeira.anexo_url || null : null,
+        audioUrl: primeira.anexo_tipo === "audio" ? primeira.anexo_url : null,
+        anexoTipo: primeira.anexo_tipo,
+        anexoNome: primeira.anexo_nome,
         estado: resposta ? "Respondida" : "Pendente",
         respostaAdmin: resposta?.texto,
         dataResposta: resposta?.created_at ? new Date(resposta.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : undefined,
+        anexoRespostaUrl: resposta?.anexo_url,
+        anexoRespostaTipo: resposta?.anexo_tipo,
+        anexoRespostaNome: resposta?.anexo_nome
       });
     }
     setMensagens(tickets.reverse());
@@ -1997,46 +2025,23 @@ export function PortalCondomino({
                             )}
 
                             {/* Voice Audio Note Player */}
-                            {msg.audioUrl ? (
-                              <div className="flex items-center gap-2.5 bg-white/60 dark:bg-black/20 p-2 rounded-xl border border-emerald-300/50">
-                                <button
-                                  type="button"
-                                  onClick={() => handlePlayVoiceAudio(msg.id)}
-                                  className="w-8 h-8 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs cursor-pointer transition-transform active:scale-90"
-                                >
-                                  {playingAudioId === msg.id ? (
-                                    <Pause className="h-3.5 w-3.5 fill-current" />
-                                  ) : (
-                                    <Play className="h-3.5 w-3.5 fill-current ml-0.5" />
-                                  )}
-                                </button>
-                                <div className="flex-grow space-y-1">
-                                  <div className="flex items-center gap-1">
-                                    {[30, 60, 40, 80, 50, 90, 70, 40, 60, 85, 45, 75, 35].map((h, i) => (
-                                      <span
-                                        key={i}
-                                        className={`w-1 rounded-full transition-all ${
-                                          playingAudioId === msg.id
-                                            ? "bg-emerald-600 animate-pulse"
-                                            : "bg-slate-400 dark:bg-slate-500"
-                                        }`}
-                                        style={{ height: `${(h * 16) / 100}px` }}
-                                      ></span>
-                                    ))}
-                                  </div>
-                                  <div className="flex justify-between text-[9px] text-slate-500 font-mono-custom">
-                                    <span>{playingAudioId === msg.id ? "A reproduzir..." : "0:0" + (msg.audioDuration || 5)}</span>
-                                    <span>🎙️ Áudio de Voz</span>
-                                  </div>
-                                </div>
-                              </div>
-                            ) : null}
+                            {msg.audioUrl && (
+                              <audio controls src={msg.audioUrl} className="w-full h-9" />
+                            )}
 
                             {/* Attached Photo */}
-                            {msg.anexoWebP && (
-                              <div className="rounded-xl overflow-hidden border border-emerald-300/40 bg-white">
+                            {msg.anexoTipo !== "documento" && msg.anexoWebP && (
+                              <a href={msg.anexoWebP} target="_blank" rel="noopener noreferrer" className="rounded-xl overflow-hidden border border-emerald-300/40 bg-white block">
                                 <img src={msg.anexoWebP} alt="Anexo" className="max-h-48 w-full object-cover" />
-                              </div>
+                              </a>
+                            )}
+
+                            {/* Attached Document */}
+                            {msg.anexoTipo === "documento" && msg.anexoWebP && (
+                              <a href={msg.anexoWebP} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-white/70 p-2 rounded-lg border border-emerald-300/40">
+                                <i className="fa-solid fa-file text-emerald-700"></i>
+                                <span className="text-xs font-bold truncate">{msg.anexoNome || "Documento"}</span>
+                              </a>
                             )}
 
                             {/* Text Message */}
@@ -2058,6 +2063,20 @@ export function PortalCondomino({
                               <div className="text-[10px] font-bold text-[#075E54] dark:text-emerald-400 flex items-center gap-1">
                                 <Shield className="h-3 w-3 text-emerald-600 inline mr-1" /> Administração do Condomínio
                               </div>
+                              {msg.anexoRespostaTipo === "audio" && msg.anexoRespostaUrl && (
+                                <audio controls src={msg.anexoRespostaUrl} className="w-full h-9" />
+                              )}
+                              {msg.anexoRespostaTipo === "foto" && msg.anexoRespostaUrl && (
+                                <a href={msg.anexoRespostaUrl} target="_blank" rel="noopener noreferrer" className="rounded-xl overflow-hidden border border-slate-200 bg-white block">
+                                  <img src={msg.anexoRespostaUrl} alt="Anexo" className="max-h-48 w-full object-cover" />
+                                </a>
+                              )}
+                              {msg.anexoRespostaTipo === "documento" && msg.anexoRespostaUrl && (
+                                <a href={msg.anexoRespostaUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                                  <i className="fa-solid fa-file text-emerald-700"></i>
+                                  <span className="text-xs font-bold truncate">{msg.anexoRespostaNome || "Documento"}</span>
+                                </a>
+                              )}
                               <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.respostaAdmin}</p>
                               <div className="text-right text-[9.5px] text-slate-400 font-mono-custom">
                                 {msg.dataResposta || msg.data}
@@ -2096,6 +2115,8 @@ export function PortalCondomino({
                       onClick={() => {
                         setNewMsgAnexo(null);
                         setMsgDocAttachment(null);
+                        setMsgDocFile(null);
+                        setMsgAudioBlob(null);
                         setRecordedAudioUrl(null);
                       }}
                       className="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 cursor-pointer"

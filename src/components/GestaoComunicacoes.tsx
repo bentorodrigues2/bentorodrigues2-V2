@@ -9,6 +9,7 @@ import {
   saveConversaToSupabase,
   fetchMensagensConversaFromSupabase,
   saveMensagemConversaToSupabase,
+  uploadAnexoConversaToStorage,
   fetchSondagensFromSupabase,
   saveSondagemToSupabase,
   fetchQuestionariosFromSupabase,
@@ -141,6 +142,92 @@ export function GestaoComunicacoes({
   const [showNovaConversa, setShowNovaConversa] = useState(false);
   const [novaConversaFracaoId, setNovaConversaFracaoId] = useState("");
 
+  // Anexos reais da resposta (foto/documento/áudio) — envio real via
+  // Supabase Storage, ao contrário da simulação existente do lado do
+  // condómino (PWACondominoView.tsx), que nunca chegou a guardar dados reais.
+  const [chatFotoFile, setChatFotoFile] = useState<File | null>(null);
+  const [chatFotoPreview, setChatFotoPreview] = useState<string | null>(null);
+  const [chatDocFile, setChatDocFile] = useState<File | null>(null);
+  const [chatAudioBlob, setChatAudioBlob] = useState<Blob | null>(null);
+  const [chatAudioSegundos, setChatAudioSegundos] = useState(0);
+  const [aGravarAudio, setAGravarAudio] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showAnexoMenu, setShowAnexoMenu] = useState(false);
+  const [aEnviarAnexo, setAEnviarAnexo] = useState(false);
+  const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
+  const audioChunksRef = React.useRef<Blob[]>([]);
+  const audioTimerRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const limparAnexosResposta = () => {
+    setChatFotoFile(null);
+    setChatFotoPreview(null);
+    setChatDocFile(null);
+    setChatAudioBlob(null);
+    setChatAudioSegundos(0);
+  };
+
+  const handleEscolherFotoResposta = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    limparAnexosResposta();
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX = 900;
+        let w = img.width, h = img.height;
+        if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d")?.drawImage(img, 0, 0, w, h);
+        canvas.toBlob((blob) => {
+          if (!blob) return;
+          setChatFotoFile(new File([blob], "foto.webp", { type: "image/webp" }));
+          setChatFotoPreview(canvas.toDataURL("image/webp", 0.8));
+        }, "image/webp", 0.8);
+      };
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleEscolherDocResposta = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    limparAnexosResposta();
+    setChatDocFile(file);
+  };
+
+  const handleIniciarGravacaoAudio = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      limparAnexosResposta();
+      audioChunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        setChatAudioBlob(blob);
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setAGravarAudio(true);
+      setChatAudioSegundos(0);
+      audioTimerRef.current = setInterval(() => setChatAudioSegundos(s => s + 1), 1000);
+    } catch {
+      alert("Não foi possível aceder ao microfone. Verifique as permissões do navegador.");
+    }
+  };
+
+  const handlePararGravacaoAudio = () => {
+    mediaRecorderRef.current?.stop();
+    setAGravarAudio(false);
+    if (audioTimerRef.current) { clearInterval(audioTimerRef.current); audioTimerRef.current = null; }
+  };
+
   const carregarConversas = useCallback(async () => {
     if (!predio?.id_predio) return;
     setLoadingConversas(true);
@@ -190,7 +277,10 @@ export function GestaoComunicacoes({
             id_conversa: nova.id_conversa,
             autor: nova.autor,
             texto: nova.texto,
-            created_at: nova.created_at
+            created_at: nova.created_at,
+            anexo_url: nova.anexo_url || undefined,
+            anexo_tipo: nova.anexo_tipo || undefined,
+            anexo_nome: nova.anexo_nome || undefined
           }]);
         }
       )
@@ -200,20 +290,35 @@ export function GestaoComunicacoes({
 
   const handleSendResposta = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!respostaTexto.trim() || !selectedConversaId || enviandoResposta) return;
+    const temAnexo = chatFotoFile || chatDocFile || chatAudioBlob;
+    if ((!respostaTexto.trim() && !temAnexo) || !selectedConversaId || enviandoResposta || aEnviarAnexo) return;
 
     const selectedC = conversas.find(c => c.id_conversa === selectedConversaId);
     if (!selectedC) return;
 
     setEnviandoResposta(true);
     try {
+      const idMensagem = "msg_" + Date.now();
       const novaMensagem: MensagemConversa = {
-        id_mensagem: "msg_" + Date.now(),
+        id_mensagem: idMensagem,
         id_conversa: selectedConversaId,
         autor: "administracao",
-        texto: respostaTexto
+        texto: respostaTexto.trim() || (chatFotoFile ? "📷 Fotografia" : chatDocFile ? `📎 ${chatDocFile.name}` : "🎙️ Nota de voz")
       };
+
+      if (temAnexo) {
+        setAEnviarAnexo(true);
+        const arquivo = chatFotoFile || chatDocFile || new File([chatAudioBlob as Blob], "nota-de-voz.webm", { type: "audio/webm" });
+        const url = await uploadAnexoConversaToStorage(arquivo, selectedConversaId, idMensagem);
+        setAEnviarAnexo(false);
+        if (!url) { alert("Não foi possível enviar o anexo. Tente novamente."); setEnviandoResposta(false); return; }
+        novaMensagem.anexo_url = url;
+        novaMensagem.anexo_tipo = chatFotoFile ? "foto" : chatDocFile ? "documento" : "audio";
+        novaMensagem.anexo_nome = chatDocFile?.name;
+      }
+
       await saveMensagemConversaToSupabase(novaMensagem);
+      limparAnexosResposta();
       // Não junta a mensagem localmente aqui — a subscrição em tempo real
       // (useEffect acima, já com verificação de duplicados por id_mensagem)
       // é a única responsável por isso. Como este await dá tempo à mensagem
@@ -236,7 +341,7 @@ export function GestaoComunicacoes({
           id_predio: selectedC.id_predio,
           id_fracao: selectedC.id_fracao,
           title: "Nova mensagem da Administração",
-          body: respostaTexto.length > 120 ? respostaTexto.slice(0, 117) + "..." : respostaTexto,
+          body: novaMensagem.texto.length > 120 ? novaMensagem.texto.slice(0, 117) + "..." : novaMensagem.texto,
           url: "/"
         })
       }).catch(() => {});
@@ -735,7 +840,22 @@ export function GestaoComunicacoes({
                     <div className="text-center text-[10px] text-slate-500 bg-white/70 rounded-lg px-2 py-1 inline-block mx-auto block w-fit">{selectedConversa.assunto}</div>
                     {mensagensSelecionadas.map((m) => (
                       <div key={m.id_mensagem} className={`flex ${m.autor === "administracao" ? "justify-end" : "justify-start"}`}>
-                        <div className={`max-w-[80%] p-2.5 rounded-xl text-xs space-y-1 shadow-xs ${m.autor === "administracao" ? "bg-emerald-100 text-slate-800" : "bg-white text-slate-800"}`}>
+                        <div className={`max-w-[80%] p-2.5 rounded-xl text-xs space-y-1.5 shadow-xs ${m.autor === "administracao" ? "bg-emerald-100 text-slate-800" : "bg-white text-slate-800"}`}>
+                          {m.anexo_tipo === "foto" && m.anexo_url && (
+                            <a href={m.anexo_url} target="_blank" rel="noopener noreferrer">
+                              <img src={m.anexo_url} alt="Fotografia anexada" className="max-h-48 rounded-lg border border-black/10 object-contain" />
+                            </a>
+                          )}
+                          {m.anexo_tipo === "documento" && m.anexo_url && (
+                            <a href={m.anexo_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-white/70 p-2 rounded-lg border border-black/10 hover:bg-white">
+                              <i className="fa-solid fa-file text-emerald-700"></i>
+                              <span className="font-bold truncate max-w-[160px]">{m.anexo_nome || "Documento"}</span>
+                              <i className="fa-solid fa-download text-[10px] text-slate-400 ml-auto"></i>
+                            </a>
+                          )}
+                          {m.anexo_tipo === "audio" && m.anexo_url && (
+                            <audio controls src={m.anexo_url} className="max-w-[220px] h-8" />
+                          )}
                           <div>{m.texto}</div>
                           <div className="text-[9px] text-slate-400 text-right">{m.created_at ? new Date(m.created_at).toLocaleString("pt-PT") : ""}</div>
                         </div>
@@ -743,22 +863,95 @@ export function GestaoComunicacoes({
                     ))}
                   </div>
 
+                  {/* Pré-visualização do anexo escolhido */}
+                  {(chatFotoPreview || chatDocFile || chatAudioBlob) && (
+                    <div className="px-3 pt-2 bg-white border-t border-slate-100 flex items-center gap-2 shrink-0">
+                      {chatFotoPreview && (
+                        <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg text-[10px] text-emerald-700">
+                          <img src={chatFotoPreview} alt="" className="h-6 w-6 rounded object-cover" />
+                          <span className="font-bold">Fotografia</span>
+                          <button type="button" onClick={limparAnexosResposta} className="text-red-500 font-bold ml-1 cursor-pointer">✕</button>
+                        </div>
+                      )}
+                      {chatDocFile && (
+                        <div className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 px-2 py-1 rounded-lg text-[10px] text-indigo-700">
+                          <i className="fa-solid fa-file"></i>
+                          <span className="font-bold truncate max-w-[140px]">{chatDocFile.name}</span>
+                          <button type="button" onClick={limparAnexosResposta} className="text-red-500 font-bold ml-1 cursor-pointer">✕</button>
+                        </div>
+                      )}
+                      {chatAudioBlob && (
+                        <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg text-[10px] text-amber-700">
+                          <i className="fa-solid fa-microphone"></i>
+                          <span className="font-bold">Nota de voz ({chatAudioSegundos}s)</span>
+                          <button type="button" onClick={limparAnexosResposta} className="text-red-500 font-bold ml-1 cursor-pointer">✕</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {showEmojiPicker && (
+                    <div className="px-3 pb-2 bg-white border-t border-slate-100 shrink-0 flex gap-1.5">
+                      {["👍", "❤️", "😂", "😮", "🙏", "✅"].map(emoji => (
+                        <button key={emoji} type="button" onClick={() => { setRespostaTexto(t => t + emoji); setShowEmojiPicker(false); }} className="text-lg hover:scale-125 transition-transform cursor-pointer">
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {showAnexoMenu && (
+                    <div className="px-3 pb-2 bg-white border-t border-slate-100 shrink-0 flex gap-2">
+                      <button type="button" onClick={() => { setShowAnexoMenu(false); document.getElementById("admin-chat-foto-input")?.click(); }} className="flex-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg py-1.5 cursor-pointer">
+                        <i className="fa-solid fa-image mr-1"></i> Fotografia
+                      </button>
+                      <button type="button" onClick={() => { setShowAnexoMenu(false); document.getElementById("admin-chat-doc-input")?.click(); }} className="flex-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg py-1.5 cursor-pointer">
+                        <i className="fa-solid fa-file mr-1"></i> Documento
+                      </button>
+                    </div>
+                  )}
+                  <input id="admin-chat-foto-input" type="file" accept="image/*" className="hidden" onChange={handleEscolherFotoResposta} />
+                  <input id="admin-chat-doc-input" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt" className="hidden" onChange={handleEscolherDocResposta} />
+
                   {/* Campo de resposta */}
-                  <form onSubmit={handleSendResposta} className="p-3 border-t border-slate-200 bg-white flex items-center gap-2 shrink-0">
+                  <form onSubmit={handleSendResposta} className="p-3 border-t border-slate-200 bg-white flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => { setShowAnexoMenu(v => !v); setShowEmojiPicker(false); }}
+                      className="text-slate-400 hover:text-emerald-600 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer shrink-0"
+                      title="Anexar ficheiro"
+                    >
+                      <i className="fa-solid fa-paperclip"></i>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowEmojiPicker(v => !v); setShowAnexoMenu(false); }}
+                      className="text-slate-400 hover:text-emerald-600 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer shrink-0"
+                      title="Emoji"
+                    >
+                      <i className="fa-regular fa-face-smile"></i>
+                    </button>
                     <textarea
                       rows={1}
-                      required
                       placeholder="Escreva a resposta oficial da administração..."
                       value={respostaTexto}
                       onChange={e => setRespostaTexto(e.target.value)}
                       className="flex-1 text-xs p-2.5 rounded-full border border-slate-300 focus:ring-2 focus:ring-emerald-500 resize-none"
                     />
                     <button
+                      type="button"
+                      onClick={aGravarAudio ? handlePararGravacaoAudio : handleIniciarGravacaoAudio}
+                      className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer shrink-0 transition-colors ${aGravarAudio ? "bg-red-600 text-white animate-pulse" : "text-slate-400 hover:text-emerald-600"}`}
+                      title={aGravarAudio ? "Parar gravação" : "Gravar nota de voz"}
+                    >
+                      <i className="fa-solid fa-microphone"></i>
+                    </button>
+                    <button
                       type="submit"
-                      disabled={enviandoResposta}
+                      disabled={enviandoResposta || aEnviarAnexo}
                       className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white w-10 h-10 rounded-full transition-all cursor-pointer flex items-center justify-center shrink-0"
                     >
-                      {enviandoResposta ? <i className="fa-solid fa-spinner fa-spin text-xs"></i> : <i className="fa-solid fa-paper-plane text-xs"></i>}
+                      {enviandoResposta || aEnviarAnexo ? <i className="fa-solid fa-spinner fa-spin text-xs"></i> : <i className="fa-solid fa-paper-plane text-xs"></i>}
                     </button>
                   </form>
                 </div>

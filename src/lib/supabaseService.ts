@@ -487,6 +487,13 @@ export async function uploadDocumentoToStorage(file: File, path: string): Promis
   }
 }
 
+// Anexo de uma mensagem de conversa (foto/documento/áudio) — reutiliza o
+// mesmo bucket privado "documentos" já usado para o resto do arquivo,
+// organizado por conversa para nunca colidir entre frações/conversas.
+export async function uploadAnexoConversaToStorage(file: File, idConversa: string, idMensagem: string): Promise<string | null> {
+  return uploadDocumentoToStorage(file, `conversas/${idConversa}/${idMensagem}_${file.name}`);
+}
+
 // ============================================================================
 // PERFIS DE UTILIZADOR & AUTENTICAÇÃO SUPABASE (ÁREA PESSOAL)
 // ============================================================================
@@ -1919,7 +1926,10 @@ export async function fetchMensagensConversaFromSupabase(idConversa: string): Pr
       id_conversa: row.id_conversa,
       autor: row.autor,
       texto: row.texto,
-      created_at: row.created_at
+      created_at: row.created_at,
+      anexo_url: row.anexo_url || undefined,
+      anexo_tipo: row.anexo_tipo || undefined,
+      anexo_nome: row.anexo_nome || undefined
     }));
   } catch (err) {
     return null;
@@ -1932,7 +1942,10 @@ export async function saveMensagemConversaToSupabase(mensagem: MensagemConversa)
     id_mensagem: mensagem.id_mensagem,
     id_conversa: mensagem.id_conversa,
     autor: mensagem.autor,
-    texto: mensagem.texto
+    texto: mensagem.texto,
+    anexo_url: mensagem.anexo_url || null,
+    anexo_tipo: mensagem.anexo_tipo || null,
+    anexo_nome: mensagem.anexo_nome || null
   });
 }
 
