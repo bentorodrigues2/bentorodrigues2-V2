@@ -568,6 +568,19 @@ Com os meus cumprimentos,
         });
         const resultado = await resp.json();
         if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar convocatórias");
+
+        // Notificação push real a todo o prédio, além do email — mesma
+        // lógica já usada em sondagens/comunicados/mensagens em massa.
+        fetch("/api/admin?acao=enviar-push", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id_predio: predio.id_predio,
+            title: "📢 Convocatória de Assembleia Geral",
+            body: `${reuniaoParaEnvio.tema} — ${reuniaoParaEnvio.data} às ${reuniaoParaEnvio.hora}`,
+            url: "/"
+          })
+        }).catch(() => {});
       } catch (err: any) {
         alert(`❌ Erro ao enviar as convocatórias por email: ${err?.message || "erro desconhecido"}`);
         throw err;
@@ -851,6 +864,17 @@ Com os meus cumprimentos,
         });
         const resultado = await resp.json();
         if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao finalizar a ata");
+
+        fetch("/api/admin?acao=enviar-push", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id_predio: predio.id_predio,
+            title: "📄 Ata da Assembleia Disponível",
+            body: `Ata n.º ${ataNumero} — ${activeMeeting.tema}`,
+            url: "/"
+          })
+        }).catch(() => {});
 
         // Reflete no Arquivo Digital local o documento real que acabou de
         // ser gravado no Supabase (caminho real, não fabricado).
