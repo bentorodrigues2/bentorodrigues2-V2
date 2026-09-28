@@ -666,43 +666,36 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
         </div>
       </div>
 
-      {/* Modern CondoManager AI Horizontal Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-slate-200 dark:border-slate-800 scrollbar-thin">
-        {[
-          { id: "geral", label: "Resumo Contencioso", icon: "fa-chart-pie" },
-          { id: "constituicao_processos", label: "Processos & Provas Judiciais", icon: "fa-gavel", badge: `${processosState.length}` },
-          { id: "carta_nao_divida", label: "Carta Não Dívida", icon: "fa-certificate" },
-          { id: "cartasar", label: "Cartas Cobrança AR", icon: "fa-envelope-open-text" },
-          { id: "injuncões", label: "Injunção BNI", icon: "fa-scale-unbalanced" },
-          { id: "documentos_obrigatorios", label: "Doc. Obrigatórios", icon: "fa-folder-closed" },
-          { id: "regulamento", label: "Regulamento", icon: "fa-book-bookmark" },
-          { id: "estatutos", label: "Estatutos", icon: "fa-landmark" },
-          { id: "assistente_ia", label: "Assistente Jurídico IA", icon: "fa-wand-magic-sparkles" }
-        ].map(tab => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 ${
-                isActive
-                  ? "bg-emerald-600 text-white shadow-sm border border-emerald-500"
-                  : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-900/60 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800"
-              }`}
+      {/* Seletor único de vista — antes era uma barra de separadores
+          horizontal que duplicava a navegação já existente na barra
+          lateral (Jurídico-AI), ocupando espaço e repetindo as mesmas
+          opções. Um único menu dropdown mostra sempre só 1 janela de cada
+          vez, sem repetir o que já está na coluna central. */}
+      {(() => {
+        const OPCOES_VISTA = [
+          { id: "geral", label: "Resumo Contencioso" },
+          { id: "constituicao_processos", label: `Processos & Provas Judiciais (${processosState.length})` },
+          { id: "carta_nao_divida", label: "Carta Não Dívida" },
+          { id: "cartasar", label: "Cartas Cobrança AR" },
+          { id: "injuncões", label: "Injunção BNI" },
+          { id: "documentos_obrigatorios", label: "Doc. Obrigatórios" },
+          { id: "regulamento", label: "Regulamento" },
+          { id: "estatutos", label: "Estatutos" },
+          { id: "assistente_ia", label: "Assistente Jurídico IA" }
+        ];
+        return (
+          <div className="flex items-center gap-2 pb-1">
+            <i className="fa-solid fa-scale-balanced text-emerald-500 text-sm"></i>
+            <select
+              value={activeTab}
+              onChange={e => setActiveTab(e.target.value as any)}
+              className="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white cursor-pointer"
             >
-              <i className={`fa-solid ${tab.icon} ${isActive ? "text-white" : "text-emerald-500"}`}></i>
-              <span>{tab.label}</span>
-              {tab.badge && (
-                <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
-                  isActive ? "bg-white/20 text-white" : "bg-emerald-500/20 text-emerald-400"
-                }`}>
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+              {OPCOES_VISTA.map(opt => <option key={opt.id} value={opt.id}>{opt.label}</option>)}
+            </select>
+          </div>
+        );
+      })()}
 
       {/* --- Tab: Constituição de Processos Judiciais & Acervo Probatório --- */}
       {activeTab === "constituicao_processos" && (
