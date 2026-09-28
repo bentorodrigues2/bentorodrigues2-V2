@@ -906,6 +906,65 @@ Analisa o pedido face ao regulamento e à lei aplicável e devolve APENAS um JSO
     }
   }
 
+  // REDIGIR CARTA DE CORRESPONDÊNCIA CTT (/api/ai?acao=redigir-carta)
+  // Redação livre e assistida por IA de correspondência do condomínio —
+  // sem modelos pré-definidos: o administrador indica o assunto e os
+  // pontos-chave e a IA escreve a carta formal completa de raiz.
+  if (acao === "redigir-carta") {
+    if (req.method === "GET") {
+      return res.status(200).json({ status: "online", endpoint: "/api/ai?acao=redigir-carta" });
+    }
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
+
+    try {
+      const {
+        assunto,
+        destinatarioNome,
+        pontosChave,
+        tom,
+        predio
+      } = req.body || {};
+
+      if (!assunto || !pontosChave) {
+        return res.status(400).json({ error: "Indique o assunto e os pontos-chave da carta." });
+      }
+
+      const prompt = `És a Administração do condomínio "${predio?.nome || "Condomínio"}" (NIF ${predio?.nif || ""}, ${predio?.morada_linha1 || ""}) e vais redigir uma carta formal em português de Portugal, de raiz, sem usar nenhum modelo pré-definido — o conteúdo depende inteiramente do que é pedido abaixo.
+
+ASSUNTO DA CARTA: ${assunto}
+DESTINATÁRIO: ${destinatarioNome || "(a preencher)"}
+PONTOS-CHAVE A INCLUIR (indicados livremente pelo administrador, pode ser sobre qualquer assunto do condomínio — dívidas, obras, regulamento, avisos, reclamações, respostas, convocatórias avulsas, etc.):
+${pontosChave}
+
+TOM PRETENDIDO: ${tom || "formal e institucional, mas claro e respeitoso"}
+
+REGRAS:
+1. Escreve a carta completa, pronta a imprimir e enviar por correio (CTT), incluindo saudação inicial e despedida.
+2. Não inventes factos, valores ou prazos que não constem dos pontos-chave — usa exatamente o que foi indicado.
+3. Cita a legislação aplicável (Código Civil, DL 268/94) apenas se for genuinamente relevante ao assunto indicado.
+4. Termina com:
+Com os melhores cumprimentos,
+
+A Administração do Condomínio
+
+Devolve apenas o texto final da carta, sem comentários nem explicações adicionais.`.trim();
+
+      const responseText = await generateWithFallback({
+        contents: [{ role: "user", parts: [{ text: prompt }] }]
+      });
+
+      return res.status(200).json({ text: responseText, success: true });
+    } catch (err) {
+      console.error("[api/ai?acao=redigir-carta] Erro:", err);
+      return res.status(500).json({
+        error: err?.message || "Erro ao redigir carta com IA.",
+        success: false
+      });
+    }
+  }
+
   // Se nenhuma ação válida foi especificada
   if (req.method === "GET") {
     return res.status(200).json({
@@ -927,12 +986,13 @@ Analisa o pedido face ao regulamento e à lei aplicável e devolve APENAS um JSO
         "reconhecer-apolice",
         "reconhecer-proposta",
         "humanize-convocatoria",
-        "validar-regulamento"
+        "validar-regulamento",
+        "redigir-carta"
       ]
     });
   }
 
   return res.status(400).json({
-    error: "Ação não especificada ou inválida. Use ?acao=chat|generate-legal-notice|ai-query|predict-budget|predict-reserve-fund|compare-proposals|generate-minutes|parse-import|reconhecer-recibo|classificar-documento|reconhecer-anexo|extrair-movimentos-historicos|reconhecer-apolice|reconhecer-proposta|humanize-convocatoria|validar-regulamento"
+    error: "Ação não especificada ou inválida. Use ?acao=chat|generate-legal-notice|ai-query|predict-budget|predict-reserve-fund|compare-proposals|generate-minutes|parse-import|reconhecer-recibo|classificar-documento|reconhecer-anexo|extrair-movimentos-historicos|reconhecer-apolice|reconhecer-proposta|humanize-convocatoria|validar-regulamento|redigir-carta"
   });
 }

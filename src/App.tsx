@@ -2280,18 +2280,15 @@ export default function App() {
               setIaInitialTab(undefined);
             }}
             className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-              activeSection === "minutas_oficiais" || activeSection === "simulador_emails"
+              activeSection === "minutas_oficiais" || activeSection === "simulador_emails" || activeSection === "gestao_correspondencia"
                 ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                 : "text-slate-600 hover:text-white hover:bg-slate-800/30"
             }`}
           >
             <div className="flex items-center gap-2.5">
               <i className="fa-solid fa-file-signature w-5 text-center text-emerald-400 text-sm"></i>
-              <span>Minutas & E-mails</span>
+              <span>Minutas e Correspondência</span>
             </div>
-            <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-black rounded-full px-1.5 py-0.5 border border-emerald-400/30 shadow-xs flex items-center justify-center min-w-[20px] h-5">
-              5 Docs
-            </span>
           </button>
 
           {/* Arquivo */}
@@ -3214,15 +3211,17 @@ export default function App() {
             />
           )}
 
-          {["minutas_oficiais", "simulador_emails", "pasta_provisoria"].includes(activeSection) && (
+          {["minutas_oficiais", "simulador_emails", "gestao_correspondencia", "pasta_provisoria"].includes(activeSection) && (
             <CentralDocumentosMinutas
               predio={predioAtivo}
               fracoes={fracoes}
               loggedUser={loggedUser}
               contas={contas}
+              setContas={setContas}
+              setMovements={setMovements}
               documentos={documentos}
               setDocumentos={setDocumentos}
-              activeTab={activeSection === "simulador_emails" ? "simulador_emails" : "minutas_oficiais"}
+              activeTab={activeSection === "simulador_emails" ? "simulador_emails" : activeSection === "gestao_correspondencia" ? "gestao_correspondencia" : "minutas_oficiais"}
               onSelectTab={(tab) => setActiveSection(tab)}
               onOpenArranque={() => setActiveSection("configuracao_arranque")}
             />

@@ -684,6 +684,42 @@ export interface ProcessoJuridico {
 }
 
 // ----------------------------------------------------------------------------
+// 5-B. GESTÃO DE CORRESPONDÊNCIA CTT (Minutas e Correspondência)
+// ----------------------------------------------------------------------------
+export interface CorrespondenciaAnexo {
+  id_anexo: string;
+  tipo: "comprovativo_envio" | "registo_ctt" | "aviso_rececao" | "fatura" | "documento_recebido" | "resposta";
+  nome: string;
+  url: string;
+  data_upload: string;
+}
+
+export interface Correspondencia {
+  id_corresp: string;
+  id_predio: string;
+  direcao: "Enviada" | "Recebida";
+  assunto: string;
+  conteudo: string;
+  destinatario_nome?: string;
+  destinatario_morada?: string;
+  remetente_nome?: string;
+  id_fracao?: string;
+  tipo_envio?: "Correio Simples" | "Correio Registado" | "Registado com AR" | "Email" | "Em Mão";
+  numero_registo_ctt?: string;
+  estado: "Rascunho" | "Enviada" | "Entregue" | "Devolvida" | "Recebida" | "Respondida";
+  data_criacao: string;
+  data_envio?: string;
+  data_entrega?: string;
+  data_resposta?: string;
+  resposta_texto?: string;
+  anexos: CorrespondenciaAnexo[];
+  id_processo_juridico?: string;
+  custo?: number;
+  id_movimento?: string;
+  autor?: string;
+}
+
+// ----------------------------------------------------------------------------
 // 6. GESTÃO DE SINISTROS & APÓLICES DE SEGURO (ART. 1429.º C. CIVIL)
 // ----------------------------------------------------------------------------
 export interface SinistroSeguro {

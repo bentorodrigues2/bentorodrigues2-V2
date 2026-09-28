@@ -1,7 +1,16 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { jsPDF } from "jspdf";
-import { Predio, Fracao, LoggedUser, Conta, Documento } from "../types";
-import { uploadDocumentoToStorage, saveDocumentoToSupabase } from "../lib/supabaseService";
+import { Predio, Fracao, LoggedUser, Conta, Documento, Correspondencia, CorrespondenciaAnexo, Movimento, ProcessoJuridico } from "../types";
+import {
+  uploadDocumentoToStorage,
+  saveDocumentoToSupabase,
+  fetchCorrespondenciaFromSupabase,
+  saveCorrespondenciaToSupabase,
+  fetchProcessosJuridicosFromSupabase,
+  saveContaToSupabase,
+  saveMovimentoToSupabase,
+  registarLogAuditoria
+} from "../lib/supabaseService";
 import { 
   formatDatePT, 
   addPdfHeaderWithLogo, 
@@ -41,7 +50,16 @@ import {
   ShieldCheck,
   Check,
   MessageSquare,
-  Smartphone
+  Smartphone,
+  Inbox,
+  Reply,
+  Euro,
+  Link2,
+  Loader2,
+  Plus,
+  X,
+  Trash2,
+  Scale
 } from "lucide-react";
 import { triggerSendReaction } from "./SendingReactionModal";
 
@@ -50,6 +68,8 @@ interface CentralDocumentosMinutasProps {
   fracoes: Fracao[];
   loggedUser: LoggedUser;
   contas?: Conta[];
+  setContas?: React.Dispatch<React.SetStateAction<Conta[]>>;
+  setMovements?: React.Dispatch<React.SetStateAction<Movimento[]>>;
   onOpenArranque?: () => void;
   activeTab?: TabMode;
   onSelectTab?: (tab: TabMode) => void;
@@ -62,19 +82,22 @@ interface CentralDocumentosMinutasProps {
 // emitida nesta plataforma fica com este valor.
 const NUMERO_ATA_INICIAL = 29;
 
-type TabMode = "minutas_oficiais" | "simulador_emails";
+type TabMode = "minutas_oficiais" | "simulador_emails" | "gestao_correspondencia";
 
 export function CentralDocumentosMinutas({
   predio,
   fracoes,
   loggedUser,
   contas = [],
+  setContas,
+  setMovements,
   onOpenArranque,
   activeTab: activeTabProp,
   onSelectTab,
   documentos = [],
   setDocumentos
 }: CentralDocumentosMinutasProps) {
+  const podeGerirCorrespondencia = loggedUser.role === "ADMIN" || loggedUser.role === "EMPRESA_GESTORA";
   const [internalTab, setInternalTab] = useState<TabMode>("minutas_oficiais");
   const activeTab = activeTabProp || internalTab;
   const setActiveTab = (tab: TabMode) => {
@@ -88,6 +111,282 @@ export function CentralDocumentosMinutas({
   const [testEmailRecipient, setTestEmailRecipient] = useState<string>("jcafguerra@hotmail.com");
   const [emailSentStatus, setEmailSentStatus] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
+
+  // --- GESTÃO DE CORRESPONDÊNCIA CTT ---
+  const [correspondencias, setCorrespondencias] = useState<Correspondencia[]>([]);
+  const [processosJuridicos, setProcessosJuridicos] = useState<ProcessoJuridico[]>([]);
+  const [aCarregarCorrespondencia, setACarregarCorrespondencia] = useState(false);
+  const [filtroCorresp, setFiltroCorresp] = useState<"Todas" | "Enviada" | "Recebida">("Todas");
+  const [modalCorrespAberto, setModalCorrespAberto] = useState<"nova_carta" | "registar_recebida" | null>(null);
+  const [corresRespondendoA, setCorresRespondendoA] = useState<Correspondencia | null>(null);
+  const [corresDetalheId, setCorresDetalheId] = useState<string | null>(null);
+
+  // Nova Carta (redação livre, sem modelo pré-definido)
+  const [cartaAssunto, setCartaAssunto] = useState("");
+  const [cartaDestinatarioNome, setCartaDestinatarioNome] = useState("");
+  const [cartaDestinatarioMorada, setCartaDestinatarioMorada] = useState("");
+  const [cartaIdFracao, setCartaIdFracao] = useState("");
+  const [cartaPontosChave, setCartaPontosChave] = useState("");
+  const [cartaConteudo, setCartaConteudo] = useState("");
+  const [cartaTipoEnvio, setCartaTipoEnvio] = useState<Correspondencia["tipo_envio"]>("Correio Registado");
+  const [cartaIdProcesso, setCartaIdProcesso] = useState("");
+  const [aGerarCartaIA, setAGerarCartaIA] = useState(false);
+  const [aGuardarCarta, setAGuardarCarta] = useState(false);
+  const [cartaFicheiroComprovativo, setCartaFicheiroComprovativo] = useState<File | null>(null);
+  const [cartaLancarCusto, setCartaLancarCusto] = useState(false);
+  const [cartaCustoValor, setCartaCustoValor] = useState("");
+  const [cartaCustoContaId, setCartaCustoContaId] = useState(contas[0]?.id_conta || "");
+  const [cartaCustoFatura, setCartaCustoFatura] = useState<File | null>(null);
+
+  // Registar Correspondência Recebida
+  const [recebidaAssunto, setRecebidaAssunto] = useState("");
+  const [recebidaRemetente, setRecebidaRemetente] = useState("");
+  const [recebidaIdFracao, setRecebidaIdFracao] = useState("");
+  const [recebidaData, setRecebidaData] = useState(new Date().toISOString().split("T")[0]);
+  const [recebidaFicheiro, setRecebidaFicheiro] = useState<File | null>(null);
+  const [recebidaIdProcesso, setRecebidaIdProcesso] = useState("");
+  const [aGuardarRecebida, setAGuardarRecebida] = useState(false);
+
+  useEffect(() => {
+    if (!podeGerirCorrespondencia || !predio?.id_predio) return;
+    setACarregarCorrespondencia(true);
+    Promise.all([
+      fetchCorrespondenciaFromSupabase(predio.id_predio),
+      fetchProcessosJuridicosFromSupabase(predio.id_predio)
+    ]).then(([corresp, processos]) => {
+      setCorrespondencias(corresp || []);
+      setProcessosJuridicos(processos || []);
+    }).finally(() => setACarregarCorrespondencia(false));
+  }, [predio?.id_predio, podeGerirCorrespondencia]);
+
+  const resetFormNovaCarta = () => {
+    setCartaAssunto("");
+    setCartaDestinatarioNome("");
+    setCartaDestinatarioMorada("");
+    setCartaIdFracao("");
+    setCartaPontosChave("");
+    setCartaConteudo("");
+    setCartaTipoEnvio("Correio Registado");
+    setCartaIdProcesso("");
+    setCartaFicheiroComprovativo(null);
+    setCartaLancarCusto(false);
+    setCartaCustoValor("");
+    setCartaCustoFatura(null);
+    setCorresRespondendoA(null);
+  };
+
+  const handleAbrirNovaCarta = (respondendoA?: Correspondencia) => {
+    resetFormNovaCarta();
+    if (respondendoA) {
+      setCorresRespondendoA(respondendoA);
+      setCartaAssunto(`Resposta: ${respondendoA.assunto}`);
+      setCartaDestinatarioNome(respondendoA.remetente_nome || "");
+      setCartaIdFracao(respondendoA.id_fracao || "");
+      setCartaIdProcesso(respondendoA.id_processo_juridico || "");
+    }
+    setModalCorrespAberto("nova_carta");
+  };
+
+  const handleGerarCartaIA = async () => {
+    if (!cartaAssunto.trim() || !cartaPontosChave.trim()) {
+      alert("Indique o assunto e os pontos-chave da carta para a IA a poder redigir.");
+      return;
+    }
+    setAGerarCartaIA(true);
+    try {
+      const resp = await fetch("/api/ai?acao=redigir-carta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assunto: cartaAssunto,
+          destinatarioNome: cartaDestinatarioNome,
+          pontosChave: cartaPontosChave,
+          predio: { nome: predio.nome, nif: predio.nif, morada_linha1: predio.morada_linha1 }
+        })
+      });
+      const resultado = await resp.json();
+      if (!resp.ok || !resultado.success) throw new Error(resultado?.error || "Falha ao redigir a carta com IA");
+      setCartaConteudo(resultado.text);
+    } catch (e: any) {
+      alert("Erro ao redigir carta com IA: " + e.message);
+    } finally {
+      setAGerarCartaIA(false);
+    }
+  };
+
+  const handleGuardarCarta = async (estadoFinal: "Rascunho" | "Enviada") => {
+    if (!cartaAssunto.trim() || !cartaConteudo.trim()) {
+      alert("Preencha o assunto e o conteúdo da carta (redija manualmente ou use a IA).");
+      return;
+    }
+    if (cartaLancarCusto && (!cartaCustoValor || parseValorMonetario(cartaCustoValor) <= 0 || !cartaCustoContaId)) {
+      alert("Indique o valor do custo e a conta bancária a debitar.");
+      return;
+    }
+    setAGuardarCarta(true);
+    try {
+      const idCorresp = "corresp-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+      const anexos: CorrespondenciaAnexo[] = [];
+
+      if (cartaFicheiroComprovativo) {
+        const url = await uploadDocumentoToStorage(cartaFicheiroComprovativo, `correspondencia/${predio.id_predio}/${idCorresp}_comprovativo_${cartaFicheiroComprovativo.name}`);
+        if (url) {
+          anexos.push({ id_anexo: "anx-" + Date.now(), tipo: "comprovativo_envio", nome: cartaFicheiroComprovativo.name, url, data_upload: new Date().toISOString() });
+        }
+      }
+
+      let idMovimentoGerado: string | undefined;
+      let valorCusto: number | undefined;
+
+      if (cartaLancarCusto) {
+        valorCusto = parseValorMonetario(cartaCustoValor);
+        if (cartaCustoFatura) {
+          const urlFatura = await uploadDocumentoToStorage(cartaCustoFatura, `correspondencia/${predio.id_predio}/${idCorresp}_fatura_${cartaCustoFatura.name}`);
+          if (urlFatura) {
+            anexos.push({ id_anexo: "anx-" + Date.now() + 1, tipo: "fatura", nome: cartaCustoFatura.name, url: urlFatura, data_upload: new Date().toISOString() });
+          }
+        }
+        const novoMov: Movimento = {
+          id_mov: "mov-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+          id_predio: predio.id_predio,
+          id_conta: cartaCustoContaId,
+          data: new Date().toISOString().split("T")[0],
+          tipo: "Despesa",
+          valor: valorCusto,
+          descricao: `Correspondência CTT: ${cartaAssunto} (${cartaDestinatarioNome || "Destinatário"})`,
+          categoria: "Correspondência / Correio",
+          fotos: [],
+          estado: "Justificado",
+          is_movimento_cego: false
+        };
+        idMovimentoGerado = novoMov.id_mov;
+
+        const contaAlvo = contas.find(c => c.id_conta === cartaCustoContaId);
+        if (contaAlvo) {
+          const contaAtualizada = { ...contaAlvo, saldo: (contaAlvo.saldo || 0) - valorCusto };
+          if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
+          saveContaToSupabase(contaAtualizada).catch(console.error);
+        }
+        if (setMovements) setMovements(prev => [novoMov, ...prev]);
+        saveMovimentoToSupabase(novoMov).catch(console.error);
+      }
+
+      const novaCorresp: Correspondencia = {
+        id_corresp: idCorresp,
+        id_predio: predio.id_predio,
+        direcao: "Enviada",
+        assunto: cartaAssunto,
+        conteudo: cartaConteudo,
+        destinatario_nome: cartaDestinatarioNome || undefined,
+        destinatario_morada: cartaDestinatarioMorada || undefined,
+        id_fracao: cartaIdFracao || undefined,
+        tipo_envio: cartaTipoEnvio,
+        estado: estadoFinal,
+        data_criacao: new Date().toISOString(),
+        data_envio: estadoFinal === "Enviada" ? new Date().toISOString().split("T")[0] : undefined,
+        anexos,
+        id_processo_juridico: cartaIdProcesso || undefined,
+        custo: valorCusto,
+        id_movimento: idMovimentoGerado,
+        autor: loggedUser.nome
+      };
+
+      const ok = await saveCorrespondenciaToSupabase(novaCorresp);
+      if (!ok) throw new Error("Falha ao guardar a correspondência na base de dados.");
+
+      setCorrespondencias(prev => [novaCorresp, ...prev]);
+
+      // Se esta carta é resposta a uma correspondência recebida, marcá-la como Respondida
+      if (corresRespondendoA) {
+        const original = { ...corresRespondendoA, estado: "Respondida" as const, resposta_texto: cartaConteudo, data_resposta: new Date().toISOString().split("T")[0] };
+        saveCorrespondenciaToSupabase(original).catch(console.error);
+        setCorrespondencias(prev => prev.map(c => c.id_corresp === original.id_corresp ? original : c));
+      }
+
+      registarLogAuditoria("Correspondência", `${estadoFinal === "Enviada" ? "Enviou" : "Criou rascunho de"} carta: ${cartaAssunto}`, predio.id_predio, loggedUser, cartaDestinatarioNome);
+      triggerSendReaction("email", estadoFinal === "Enviada" ? "Carta registada como enviada com sucesso!" : "Rascunho da carta guardado com sucesso!");
+      setModalCorrespAberto(null);
+      resetFormNovaCarta();
+    } catch (e: any) {
+      alert("Erro ao guardar a correspondência: " + e.message);
+    } finally {
+      setAGuardarCarta(false);
+    }
+  };
+
+  const handleRegistarRecebida = async () => {
+    if (!recebidaAssunto.trim() || !recebidaRemetente.trim() || !recebidaFicheiro) {
+      alert("Preencha o assunto, o remetente e anexe o documento recebido.");
+      return;
+    }
+    setAGuardarRecebida(true);
+    try {
+      const idCorresp = "corresp-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+      const url = await uploadDocumentoToStorage(recebidaFicheiro, `correspondencia/${predio.id_predio}/${idCorresp}_recebido_${recebidaFicheiro.name}`);
+      if (!url) throw new Error("Falha ao carregar o documento anexado.");
+
+      const anexos: CorrespondenciaAnexo[] = [{ id_anexo: "anx-" + Date.now(), tipo: "documento_recebido", nome: recebidaFicheiro.name, url, data_upload: new Date().toISOString() }];
+
+      const novaCorresp: Correspondencia = {
+        id_corresp: idCorresp,
+        id_predio: predio.id_predio,
+        direcao: "Recebida",
+        assunto: recebidaAssunto,
+        conteudo: "",
+        remetente_nome: recebidaRemetente,
+        id_fracao: recebidaIdFracao || undefined,
+        estado: "Recebida",
+        data_criacao: new Date().toISOString(),
+        data_entrega: recebidaData,
+        anexos,
+        id_processo_juridico: recebidaIdProcesso || undefined,
+        autor: loggedUser.nome
+      };
+
+      const ok = await saveCorrespondenciaToSupabase(novaCorresp);
+      if (!ok) throw new Error("Falha ao guardar a correspondência na base de dados.");
+
+      setCorrespondencias(prev => [novaCorresp, ...prev]);
+      registarLogAuditoria("Correspondência", `Registou correspondência recebida: ${recebidaAssunto}`, predio.id_predio, loggedUser, recebidaRemetente);
+      triggerSendReaction("email", "Correspondência recebida registada com sucesso!");
+      setModalCorrespAberto(null);
+      setRecebidaAssunto("");
+      setRecebidaRemetente("");
+      setRecebidaIdFracao("");
+      setRecebidaFicheiro(null);
+      setRecebidaIdProcesso("");
+    } catch (e: any) {
+      alert("Erro ao registar correspondência recebida: " + e.message);
+    } finally {
+      setAGuardarRecebida(false);
+    }
+  };
+
+  const handleMarcarComoEntregue = async (corresp: Correspondencia) => {
+    const atualizada = { ...corresp, estado: "Entregue" as const, data_entrega: new Date().toISOString().split("T")[0] };
+    setCorrespondencias(prev => prev.map(c => c.id_corresp === corresp.id_corresp ? atualizada : c));
+    await saveCorrespondenciaToSupabase(atualizada);
+  };
+
+  const handleMarcarComoDevolvida = async (corresp: Correspondencia) => {
+    const atualizada = { ...corresp, estado: "Devolvida" as const };
+    setCorrespondencias(prev => prev.map(c => c.id_corresp === corresp.id_corresp ? atualizada : c));
+    await saveCorrespondenciaToSupabase(atualizada);
+  };
+
+  const correspondenciasFiltradas = useMemo(() => {
+    if (filtroCorresp === "Todas") return correspondencias;
+    return correspondencias.filter(c => c.direcao === filtroCorresp);
+  }, [correspondencias, filtroCorresp]);
+
+  const ESTADO_CORES: Record<string, string> = {
+    "Rascunho": "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700",
+    "Enviada": "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700",
+    "Entregue": "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700",
+    "Devolvida": "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700",
+    "Recebida": "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700",
+    "Respondida": "bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700"
+  };
 
   // --- MINUTAS STATE (EDITÁVEIS) ---
   // 1. ATA
@@ -939,6 +1238,20 @@ A Administração do Condomínio`
             <Mail className="h-4 w-4 text-emerald-400" />
             <span>2. Centro de E-mails & Notificações Oficiais ({emailTemplates.length} Modelos)</span>
           </button>
+
+          {podeGerirCorrespondencia && (
+            <button
+              onClick={() => setActiveTab("gestao_correspondencia")}
+              className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center space-x-2 cursor-pointer ${
+                activeTab === "gestao_correspondencia"
+                  ? "bg-emerald-600 text-white shadow-md"
+                  : "text-slate-600 hover:text-white hover:bg-slate-800/60"
+              }`}
+            >
+              <Inbox className="h-4 w-4 text-emerald-400" />
+              <span>3. Gestão de Correspondência ({correspondencias.length})</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -1804,6 +2117,328 @@ A Administração do Condomínio`
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ABA 3: GESTÃO DE CORRESPONDÊNCIA CTT (ADMIN / GESTOR) */}
+      {/* ========================================================================= */}
+      {activeTab === "gestao_correspondencia" && podeGerirCorrespondencia && (
+        <div className="space-y-5">
+          {/* TOOLBAR */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              {(["Todas", "Enviada", "Recebida"] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setFiltroCorresp(f)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    filtroCorresp === f
+                      ? "bg-emerald-600 text-white shadow-sm"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setModalCorrespAberto("registar_recebida")}
+                className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                <Inbox className="h-4 w-4" />
+                <span>Registar Recebida</span>
+              </button>
+              <button
+                onClick={() => handleAbrirNovaCarta()}
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Nova Carta com IA</span>
+              </button>
+            </div>
+          </div>
+
+          {/* LISTA */}
+          {aCarregarCorrespondencia ? (
+            <div className="flex items-center justify-center py-16 text-slate-500">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" /> A carregar correspondência...
+            </div>
+          ) : correspondenciasFiltradas.length === 0 ? (
+            <div className="bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-10 text-center text-slate-500">
+              <Mail className="h-8 w-8 mx-auto mb-2 text-slate-400" />
+              Ainda não há correspondência registada{filtroCorresp !== "Todas" ? ` (${filtroCorresp.toLowerCase()})` : ""}.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {correspondenciasFiltradas.map(corresp => {
+                const aberta = corresDetalheId === corresp.id_corresp;
+                const processoLigado = processosJuridicos.find(p => p.id_processo === corresp.id_processo_juridico);
+                return (
+                  <div key={corresp.id_corresp} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+                    <div
+                      className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer"
+                      onClick={() => setCorresDetalheId(aberta ? null : corresp.id_corresp)}
+                    >
+                      <div className="flex items-start gap-3 min-w-0">
+                        <span className={`p-2 rounded-xl border ${corresp.direcao === "Enviada" ? "bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400" : "bg-amber-50 border-amber-200 text-amber-600 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-400"}`}>
+                          {corresp.direcao === "Enviada" ? <Send className="h-4 w-4" /> : <Inbox className="h-4 w-4" />}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate">{corresp.assunto}</h4>
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${ESTADO_CORES[corresp.estado] || ""}`}>{corresp.estado}</span>
+                            {processoLigado && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-red-50 border-red-200 text-red-600 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400 flex items-center gap-1">
+                                <Scale className="h-3 w-3" /> {processoLigado.id_processo}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-600 mt-0.5">
+                            {corresp.direcao === "Enviada" ? `Para: ${corresp.destinatario_nome || "—"}` : `De: ${corresp.remetente_nome || "—"}`}
+                            {" · "}{formatDatePT(corresp.data_criacao.split("T")[0])}
+                            {corresp.custo != null && <> · <Euro className="h-3 w-3 inline" /> {corresp.custo.toFixed(2)}€</>}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
+                        {corresp.direcao === "Recebida" && corresp.estado !== "Respondida" && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleAbrirNovaCarta(corresp); }}
+                            className="px-2.5 py-1.5 text-[11px] font-bold rounded-lg border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 flex items-center gap-1 cursor-pointer"
+                          >
+                            <Reply className="h-3.5 w-3.5" /> Responder
+                          </button>
+                        )}
+                        {corresp.direcao === "Enviada" && corresp.estado === "Enviada" && (
+                          <>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleMarcarComoEntregue(corresp); }}
+                              className="px-2.5 py-1.5 text-[11px] font-bold rounded-lg border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 flex items-center gap-1 cursor-pointer"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Marcar Entregue
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleMarcarComoDevolvida(corresp); }}
+                              className="px-2.5 py-1.5 text-[11px] font-bold rounded-lg border border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-1 cursor-pointer"
+                            >
+                              <AlertTriangle className="h-3.5 w-3.5" /> Devolvida
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {aberta && (
+                      <div className="px-4 pb-4 border-t border-slate-100 dark:border-slate-800 pt-3 space-y-3">
+                        {corresp.conteudo && (
+                          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap max-h-64 overflow-y-auto">
+                            {corresp.conteudo}
+                          </div>
+                        )}
+                        {corresp.resposta_texto && (
+                          <div>
+                            <p className="text-[10px] font-black uppercase text-slate-500 mb-1">Resposta ({corresp.data_resposta && formatDatePT(corresp.data_resposta)}):</p>
+                            <div className="bg-purple-50 dark:bg-purple-900/10 rounded-xl p-3 text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                              {corresp.resposta_texto}
+                            </div>
+                          </div>
+                        )}
+                        {corresp.anexos.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {corresp.anexos.map(anx => (
+                              <a
+                                key={anx.id_anexo}
+                                href={anx.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1.5"
+                              >
+                                <Paperclip className="h-3.5 w-3.5" />
+                                {anx.tipo === "comprovativo_envio" ? "Comprovativo de Envio" :
+                                 anx.tipo === "registo_ctt" ? "Registo CTT" :
+                                 anx.tipo === "aviso_rececao" ? "Aviso de Receção" :
+                                 anx.tipo === "fatura" ? "Fatura" :
+                                 anx.tipo === "documento_recebido" ? "Documento Recebido" : "Resposta"}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* MODAL: NOVA CARTA (REDAÇÃO LIVRE ASSISTIDA POR IA) */}
+          {modalCorrespAberto === "nova_carta" && (
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setModalCorrespAberto(null)}>
+              <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-emerald-500" />
+                    {corresRespondendoA ? `Responder a: ${corresRespondendoA.assunto}` : "Nova Carta de Correspondência"}
+                  </h3>
+                  <button onClick={() => setModalCorrespAberto(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer"><X className="h-5 w-5" /></button>
+                </div>
+                <div className="p-5 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-600">Assunto *</label>
+                      <input value={cartaAssunto} onChange={e => setCartaAssunto(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="Ex: Notificação de dívida, resposta a reclamação..." />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-600">Destinatário</label>
+                      <input value={cartaDestinatarioNome} onChange={e => setCartaDestinatarioNome(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="Nome do destinatário" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-600">Morada</label>
+                      <input value={cartaDestinatarioMorada} onChange={e => setCartaDestinatarioMorada(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="Morada de envio" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-600">Fração (opcional)</label>
+                      <select value={cartaIdFracao} onChange={e => setCartaIdFracao(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg">
+                        <option value="">—</option>
+                        {fracoes.map(f => <option key={f.id_fracao} value={f.id_fracao}>{f.fracao_nome}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-600">Tipo de Envio</label>
+                      <select value={cartaTipoEnvio} onChange={e => setCartaTipoEnvio(e.target.value as any)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg">
+                        <option>Correio Simples</option>
+                        <option>Correio Registado</option>
+                        <option>Registado com AR</option>
+                        <option>Email</option>
+                        <option>Em Mão</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-600 flex items-center gap-1"><Scale className="h-3.5 w-3.5" /> Ligar a Processo Jurídico</label>
+                      <select value={cartaIdProcesso} onChange={e => setCartaIdProcesso(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg">
+                        <option value="">— Nenhum —</option>
+                        {processosJuridicos.map(p => <option key={p.id_processo} value={p.id_processo}>{p.id_processo} — {p.titulo_processo}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 dark:text-slate-600">Pontos-Chave (a IA redige a carta completa a partir daqui — colocação manual, sem modelo pré-definido)</label>
+                    <textarea value={cartaPontosChave} onChange={e => setCartaPontosChave(e.target.value)} rows={3} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="Descreva livremente o que a carta deve dizer..." />
+                    <button
+                      onClick={handleGerarCartaIA}
+                      disabled={aGerarCartaIA}
+                      className="mt-2 px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    >
+                      {aGerarCartaIA ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                      <span>{aGerarCartaIA ? "A redigir com IA..." : "Redigir Carta com IA"}</span>
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 dark:text-slate-600">Conteúdo Final da Carta (editável)</label>
+                    <textarea value={cartaConteudo} onChange={e => setCartaConteudo(e.target.value)} rows={10} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg font-mono" placeholder="O texto da carta aparece aqui depois de gerado pela IA, ou escreva diretamente..." />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 dark:text-slate-600 flex items-center gap-1"><Paperclip className="h-3.5 w-3.5" /> Comprovativo de Envio / Registo CTT (opcional)</label>
+                    <input type="file" onChange={e => setCartaFicheiroComprovativo(e.target.files?.[0] || null)} className="w-full mt-1 text-xs" />
+                  </div>
+
+                  <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-3">
+                    <label className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                      <input type="checkbox" checked={cartaLancarCusto} onChange={e => setCartaLancarCusto(e.target.checked)} />
+                      <Euro className="h-3.5 w-3.5" /> Lançar custo desta carta nos movimentos financeiros
+                    </label>
+                    {cartaLancarCusto && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-500">Valor (€)</label>
+                          <input value={cartaCustoValor} onChange={e => setCartaCustoValor(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="0.00" />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-500">Conta a Debitar</label>
+                          <select value={cartaCustoContaId} onChange={e => setCartaCustoContaId(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg">
+                            {contas.map(c => <option key={c.id_conta} value={c.id_conta}>{c.banco}</option>)}
+                          </select>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="text-[11px] font-bold text-slate-500">Anexar Fatura (opcional — ou reconcilie depois via extrato bancário em Movimentos)</label>
+                          <input type="file" onChange={e => setCartaCustoFatura(e.target.files?.[0] || null)} className="w-full mt-1 text-xs" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="p-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+                  <button onClick={() => handleGuardarCarta("Rascunho")} disabled={aGuardarCarta} className="px-4 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-60 cursor-pointer">
+                    Guardar Rascunho
+                  </button>
+                  <button onClick={() => handleGuardarCarta("Enviada")} disabled={aGuardarCarta} className="px-4 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60 flex items-center gap-1.5 cursor-pointer">
+                    {aGuardarCarta ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    Registar como Enviada
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL: REGISTAR CORRESPONDÊNCIA RECEBIDA */}
+          {modalCorrespAberto === "registar_recebida" && (
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setModalCorrespAberto(null)}>
+              <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <Inbox className="h-5 w-5 text-amber-500" /> Registar Correspondência Recebida
+                  </h3>
+                  <button onClick={() => setModalCorrespAberto(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer"><X className="h-5 w-5" /></button>
+                </div>
+                <div className="p-5 space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 dark:text-slate-600">Assunto *</label>
+                    <input value={recebidaAssunto} onChange={e => setRecebidaAssunto(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 dark:text-slate-600">Remetente *</label>
+                    <input value={recebidaRemetente} onChange={e => setRecebidaRemetente(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-600">Data de Receção</label>
+                      <input type="date" value={recebidaData} onChange={e => setRecebidaData(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-600">Fração (opcional)</label>
+                      <select value={recebidaIdFracao} onChange={e => setRecebidaIdFracao(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg">
+                        <option value="">—</option>
+                        {fracoes.map(f => <option key={f.id_fracao} value={f.id_fracao}>{f.fracao_nome}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 dark:text-slate-600 flex items-center gap-1"><Scale className="h-3.5 w-3.5" /> Ligar a Processo Jurídico</label>
+                    <select value={recebidaIdProcesso} onChange={e => setRecebidaIdProcesso(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg">
+                      <option value="">— Nenhum —</option>
+                      {processosJuridicos.map(p => <option key={p.id_processo} value={p.id_processo}>{p.id_processo} — {p.titulo_processo}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-600 dark:text-slate-600 flex items-center gap-1"><Paperclip className="h-3.5 w-3.5" /> Anexar Documento Recebido *</label>
+                    <input type="file" onChange={e => setRecebidaFicheiro(e.target.files?.[0] || null)} className="w-full mt-1 text-xs" />
+                  </div>
+                </div>
+                <div className="p-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+                  <button onClick={handleRegistarRecebida} disabled={aGuardarRecebida} className="px-4 py-2 text-xs font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-60 flex items-center gap-1.5 cursor-pointer">
+                    {aGuardarRecebida ? <Loader2 className="h-4 w-4 animate-spin" /> : <Inbox className="h-4 w-4" />}
+                    Registar Correspondência
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

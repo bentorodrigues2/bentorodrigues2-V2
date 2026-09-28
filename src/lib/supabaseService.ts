@@ -36,7 +36,8 @@ import {
   RespostaIAPendente,
   ItemPlanoManutencao,
   MuralAviso,
-  ReservaEspacoComum
+  ReservaEspacoComum,
+  Correspondencia
 } from "../types";
 
 /**
@@ -1437,6 +1438,77 @@ export async function updateDocumentoMetadataToSupabase(doc: Documento): Promise
 export async function deleteDocumentoFromSupabase(idDoc: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
   return dbDelete("documentos", [["id_doc", "eq", idDoc]]);
+}
+
+// ============================================================================
+// GESTÃO DE CORRESPONDÊNCIA CTT (Minutas e Correspondência)
+// ============================================================================
+export async function fetchCorrespondenciaFromSupabase(idPredio?: string): Promise<Correspondencia[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const data = await dbSelect("correspondencia", { filtros: idPredio ? [["id_predio", "eq", idPredio]] : undefined });
+    if (!data) return null;
+
+    return data.map((row: any) => ({
+      id_corresp: row.id_corresp,
+      id_predio: row.id_predio,
+      direcao: row.direcao,
+      assunto: row.assunto,
+      conteudo: row.conteudo || "",
+      destinatario_nome: row.destinatario_nome || undefined,
+      destinatario_morada: row.destinatario_morada || undefined,
+      remetente_nome: row.remetente_nome || undefined,
+      id_fracao: row.id_fracao || undefined,
+      tipo_envio: row.tipo_envio || undefined,
+      numero_registo_ctt: row.numero_registo_ctt || undefined,
+      estado: row.estado || "Rascunho",
+      data_criacao: row.data_criacao || row.created_at,
+      data_envio: row.data_envio || undefined,
+      data_entrega: row.data_entrega || undefined,
+      data_resposta: row.data_resposta || undefined,
+      resposta_texto: row.resposta_texto || undefined,
+      anexos: row.anexos || [],
+      id_processo_juridico: row.id_processo_juridico || undefined,
+      custo: row.custo != null ? Number(row.custo) : undefined,
+      id_movimento: row.id_movimento || undefined,
+      autor: row.autor || undefined
+    }));
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function saveCorrespondenciaToSupabase(item: Correspondencia): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("correspondencia", {
+    id_corresp: item.id_corresp,
+    id_predio: item.id_predio,
+    direcao: item.direcao,
+    assunto: item.assunto,
+    conteudo: item.conteudo || null,
+    destinatario_nome: item.destinatario_nome || null,
+    destinatario_morada: item.destinatario_morada || null,
+    remetente_nome: item.remetente_nome || null,
+    id_fracao: item.id_fracao || null,
+    tipo_envio: item.tipo_envio || null,
+    numero_registo_ctt: item.numero_registo_ctt || null,
+    estado: item.estado || "Rascunho",
+    data_criacao: item.data_criacao,
+    data_envio: item.data_envio || null,
+    data_entrega: item.data_entrega || null,
+    data_resposta: item.data_resposta || null,
+    resposta_texto: item.resposta_texto || null,
+    anexos: item.anexos || [],
+    id_processo_juridico: item.id_processo_juridico || null,
+    custo: item.custo ?? null,
+    id_movimento: item.id_movimento || null,
+    autor: item.autor || null
+  }, { onConflict: "id_corresp" });
+}
+
+export async function deleteCorrespondenciaFromSupabase(idCorresp: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbDelete("correspondencia", [["id_corresp", "eq", idCorresp]]);
 }
 
 // ============================================================================
