@@ -214,7 +214,11 @@ export function GestaoComunicacoes({
         texto: respostaTexto
       };
       await saveMensagemConversaToSupabase(novaMensagem);
-      setMensagensSelecionadas(prev => [...prev, { ...novaMensagem, created_at: new Date().toISOString() }]);
+      // Não junta a mensagem localmente aqui — a subscrição em tempo real
+      // (useEffect acima, já com verificação de duplicados por id_mensagem)
+      // é a única responsável por isso. Como este await dá tempo à mensagem
+      // de chegar primeiro pela subscrição, um acrescento local sem essa
+      // verificação estava a fazer a mesma mensagem aparecer duas vezes.
 
       // Responder já é a própria ação de resolver o pendente — antes a
       // conversa ficava "pendente" para sempre, mesmo depois de respondida,

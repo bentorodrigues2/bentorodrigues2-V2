@@ -3128,6 +3128,7 @@ export default function PWACondominoView({
                     setSimulatingScan={setSimulatingScan}
                     setSimulatingScanProgress={setSimulatingScanProgress}
                     idPredio={predio.id_predio}
+                    idFracao={condominoFracao?.id_fracao}
                   />
                 </div>
 

@@ -97,6 +97,7 @@ export const UserSecurityModal: React.FC<UserSecurityModalProps> = ({
               userEmail={loggedUser.email}
               userRole={loggedUser.role}
               idPredio={idPredio}
+              idFracao={loggedUser.id_fracao}
               biometricsEnabled={biometricsEnabled}
               setBiometricsEnabled={setBiometricsEnabled}
               defaultOpen={true}

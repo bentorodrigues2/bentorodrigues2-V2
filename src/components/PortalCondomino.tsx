@@ -1328,6 +1328,7 @@ export function PortalCondomino({
                     biometricsEnabled={biometricsEnabled}
                     setBiometricsEnabled={setBiometricsEnabled}
                     idPredio={predio.id_predio}
+                    idFracao={activeUserFracao?.id_fracao}
                   />
                 </div>
               </div>

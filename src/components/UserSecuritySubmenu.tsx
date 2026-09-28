@@ -12,6 +12,7 @@ interface UserSecuritySubmenuProps {
   userEmail: string;
   userRole: string;
   idPredio?: string;
+  idFracao?: string;
   biometricsEnabled?: boolean;
   setBiometricsEnabled?: (val: boolean) => void;
   setSimulatingScan?: (val: boolean) => void;
@@ -28,6 +29,7 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
   userEmail,
   userRole,
   idPredio,
+  idFracao,
   biometricsEnabled = false,
   setBiometricsEnabled,
   setSimulatingScan,
@@ -105,6 +107,7 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
       const isAdmin = ["ADMIN", "GESTOR", "EMPRESA_GESTORA"].includes(userRole);
       const ok = await savePushSubscriptionToSupabase({
         idPredio,
+        idFracao,
         userId: userEmail,
         subscription,
         isAdmin
