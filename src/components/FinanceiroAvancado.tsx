@@ -116,7 +116,11 @@ export function FinanceiroAvancado({
   const anosComAvisos = useMemo(() => {
     const anos = new Set<number>();
     predioAvisos.forEach(a => {
-      const d = new Date(a.data);
+      // "data" é a data de EMISSÃO do aviso, não o mês da quota (ver
+      // mesReferenciaAviso abaixo) — um aviso emitido em 2026 mas referente
+      // a uma quota de 2027 (ex: pagamento adiantado) nunca aparecia aqui,
+      // porque só o ano de emissão era contado.
+      const d = new Date(a.vencimento || a.data);
       if (!isNaN(d.getTime())) anos.add(d.getFullYear());
     });
     anos.add(new Date().getFullYear());
