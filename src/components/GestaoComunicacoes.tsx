@@ -406,6 +406,76 @@ export function GestaoComunicacoes({
     setNovaConversaFracaoId("");
   };
 
+  // Enviar a mesma mensagem direta a TODAS as frações do prédio de uma vez
+  // — diferente de um Comunicado (que é um feed de avisos, não uma
+  // conversa de duas vias): isto cria/reabre a conversa real de cada
+  // fração e entra logo lá a mesma mensagem, como se o admin a tivesse
+  // escrito a cada uma individualmente.
+  const [novaConversaParaTodos, setNovaConversaParaTodos] = useState(false);
+  const [textoParaTodasFracoes, setTextoParaTodasFracoes] = useState("");
+  const [aEnviarParaTodos, setAEnviarParaTodos] = useState(false);
+
+  const handleEnviarMensagemParaTodasFracoes = async () => {
+    if (!textoParaTodasFracoes.trim() || !predio?.id_predio || aEnviarParaTodos) return;
+    const fracoesPredio = fracoes.filter(f => f.id_predio === predio.id_predio);
+    if (fracoesPredio.length === 0) return;
+    if (!confirm(`Enviar esta mensagem a todas as ${fracoesPredio.length} frações do prédio?`)) return;
+
+    setAEnviarParaTodos(true);
+    try {
+      const novasConversas: ConversaCondomino[] = [];
+      for (const f of fracoesPredio) {
+        const idConversa = "conv-" + f.id_fracao;
+        const existente = conversas.find(c => c.id_fracao === f.id_fracao);
+        const conversaAtual: ConversaCondomino = existente
+          ? { ...existente, estado: "pendente" }
+          : {
+              id_conversa: idConversa,
+              id_predio: predio.id_predio,
+              id_fracao: f.id_fracao,
+              proprietario_nome: f.proprietario?.nome || f.fracao_nome,
+              assunto: "Mensagem da Administração",
+              estado: "pendente"
+            };
+        await saveConversaToSupabase(conversaAtual);
+        await saveMensagemConversaToSupabase({
+          id_mensagem: "msg_" + Date.now() + "_" + f.id_fracao,
+          id_conversa: idConversa,
+          autor: "administracao",
+          texto: textoParaTodasFracoes
+        });
+        novasConversas.push(conversaAtual);
+      }
+      setConversas(prev => {
+        const porId = new Map(prev.map(c => [c.id_conversa, c]));
+        novasConversas.forEach(c => porId.set(c.id_conversa, c));
+        return Array.from(porId.values());
+      });
+
+      // Push real para todo o prédio de uma vez (sem id_fracao, chega a
+      // todos os subscritos), tal como as sondagens/comunicados.
+      fetch("/api/admin?acao=enviar-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_predio: predio.id_predio,
+          title: "Nova mensagem da Administração",
+          body: textoParaTodasFracoes.length > 120 ? textoParaTodasFracoes.slice(0, 117) + "..." : textoParaTodasFracoes,
+          url: "/"
+        })
+      }).catch(() => {});
+
+      alert(`✅ Mensagem enviada a ${fracoesPredio.length} frações.`);
+      setTextoParaTodasFracoes("");
+      setNovaConversaParaTodos(false);
+      setShowNovaConversa(false);
+    } catch (err) {
+      alert("Erro ao enviar a mensagem a todas as frações.");
+    } finally {
+      setAEnviarParaTodos(false);
+    }
+  };
+
   // ==========================================================================
   // 3. SONDAGENS
   // ==========================================================================
@@ -749,26 +819,58 @@ export function GestaoComunicacoes({
             </div>
 
             {showNovaConversa && (
-              <div className="max-w-2xl p-3 rounded-xl border border-emerald-200 bg-emerald-50 flex items-center gap-2 flex-wrap">
-                <select
-                  value={novaConversaFracaoId}
-                  onChange={e => setNovaConversaFracaoId(e.target.value)}
-                  className="flex-1 min-w-[180px] text-xs p-2 rounded-lg border border-slate-300 bg-white"
-                >
-                  <option value="">Escolher fração / condómino...</option>
-                  {fracoes.filter(f => f.id_predio === predio.id_predio).map(f => (
-                    <option key={f.id_fracao} value={f.id_fracao}>
-                      Fração {f.fracao_nome} — {f.proprietario?.nome || "Sem proprietário"}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={handleIniciarNovaConversa}
-                  disabled={!novaConversaFracaoId}
-                  className="text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg px-3 py-2 cursor-pointer"
-                >
-                  Iniciar
-                </button>
+              <div className="max-w-2xl p-3 rounded-xl border border-emerald-200 bg-emerald-50 space-y-2">
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 cursor-pointer">
+                    <input type="radio" checked={!novaConversaParaTodos} onChange={() => setNovaConversaParaTodos(false)} />
+                    Uma fração
+                  </label>
+                  <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 cursor-pointer">
+                    <input type="radio" checked={novaConversaParaTodos} onChange={() => setNovaConversaParaTodos(true)} />
+                    Todas as frações
+                  </label>
+                </div>
+
+                {!novaConversaParaTodos ? (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <select
+                      value={novaConversaFracaoId}
+                      onChange={e => setNovaConversaFracaoId(e.target.value)}
+                      className="flex-1 min-w-[180px] text-xs p-2 rounded-lg border border-slate-300 bg-white"
+                    >
+                      <option value="">Escolher fração / condómino...</option>
+                      {fracoes.filter(f => f.id_predio === predio.id_predio).map(f => (
+                        <option key={f.id_fracao} value={f.id_fracao}>
+                          Fração {f.fracao_nome} — {f.proprietario?.nome || "Sem proprietário"}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={handleIniciarNovaConversa}
+                      disabled={!novaConversaFracaoId}
+                      className="text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg px-3 py-2 cursor-pointer"
+                    >
+                      Iniciar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <textarea
+                      rows={2}
+                      value={textoParaTodasFracoes}
+                      onChange={e => setTextoParaTodasFracoes(e.target.value)}
+                      placeholder={`Escreva a mensagem a enviar a todas as ${fracoes.filter(f => f.id_predio === predio.id_predio).length} frações...`}
+                      className="flex-1 min-w-[220px] text-xs p-2 rounded-lg border border-slate-300 bg-white resize-none"
+                    />
+                    <button
+                      onClick={handleEnviarMensagemParaTodasFracoes}
+                      disabled={!textoParaTodasFracoes.trim() || aEnviarParaTodos}
+                      className="text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg px-3 py-2 cursor-pointer shrink-0"
+                    >
+                      {aEnviarParaTodos ? "A enviar..." : "Enviar a Todos"}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
