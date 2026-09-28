@@ -18,7 +18,7 @@ import {
   Conta,
   MensagemConversa
 } from "../types";
-import { generateAndDownloadPdf, downloadEmailDocument, exportToXLS, downloadBlob, ehContaFundoReserva, gerarReferenciaBR23EExtra } from "../utils";
+import { generateAndDownloadPdf, downloadEmailDocument, exportToXLS, downloadBlob, ehContaFundoReserva, gerarReferenciaBR23EExtra, formatDatePT } from "../utils";
 import { usePwaBackButton } from "../utils/usePwaBackButton";
 import { GestaoDocumentos } from "./GestaoDocumentos";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
@@ -40,8 +40,11 @@ import {
   saveRespostaQuestionarioToSupabase,
   savePushSubscriptionToSupabase,
   saveFracaoToSupabase,
-  saveProprietarioToSupabase
+  saveProprietarioToSupabase,
+  saveOcorrenciaToSupabase,
+  fetchObrasExtraFromSupabase
 } from "../lib/supabaseService";
+import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { subscribeUserToPush } from "../utils/subscribeUser";
 import { loadUserPreferences, NotificationPreferences } from "../utils/loadUserPreferences";
 import { saveUserPreferences } from "../utils/saveUserPreferences";
@@ -222,6 +225,18 @@ export default function PWACondominoView({
   const [respostasVistasPwa, setRespostasVistasPwa] = useState<Set<string>>(() => {
     try {
       const raw = localStorage.getItem(`respostas_vistas_${loggedUser.email}`);
+      return new Set(raw ? JSON.parse(raw) : []);
+    } catch {
+      return new Set();
+    }
+  });
+
+  // Mesmo padrão de "vistos" já usado nas mensagens, agora para o cartão
+  // "Finanças" — antes o crachá mostrava sempre o total de avisos pendentes
+  // sem indicar o que era nem desaparecer depois de consultado.
+  const [avisosVistosPwa, setAvisosVistosPwa] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(`avisos_vistos_${loggedUser.email}`);
       return new Set(raw ? JSON.parse(raw) : []);
     } catch {
       return new Set();
@@ -749,6 +764,20 @@ export default function PWACondominoView({
   const avisosPendentesFracaoReais = (avisos || []).filter(
     (a: any) => a.id_fracao === condominoFracao?.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")
   );
+  const avisosNaoVistosPwa = avisosPendentesFracaoReais.filter((a: any) => !avisosVistosPwa.has(a.id_aviso));
+  // Marca todos os avisos pendentes atuais como vistos assim que o
+  // condómino abre o cartão/submenu "Finanças" — o crachá só volta a
+  // aparecer para avisos NOVOS a partir daqui, nunca para os já lidos.
+  useEffect(() => {
+    if (selectedSubmenu !== "financas" || avisosPendentesFracaoReais.length === 0) return;
+    setAvisosVistosPwa(prev => {
+      const novo = new Set(prev);
+      avisosPendentesFracaoReais.forEach((a: any) => novo.add(a.id_aviso));
+      try { localStorage.setItem(`avisos_vistos_${loggedUser.email}`, JSON.stringify(Array.from(novo))); } catch {}
+      return novo;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSubmenu]);
   // Mapa de Pagamentos real da fração (o separador Financeiro da PWA
   // mostrava só um simulador de estados fixos — nenhum dado real do
   // condómino). Ordenado do aviso mais recente para o mais antigo.
@@ -769,7 +798,7 @@ export default function PWACondominoView({
 
   const getNotificationCount = (cardId: string) => {
     if (cardId === "ocorrencias") return ocorrenciasAbertasReais.length;
-    if (cardId === "financas") return avisosPendentesFracaoReais.length;
+    if (cardId === "financas") return avisosNaoVistosPwa.length;
     // O cartão "Mensagens" é que mostra mesmo a contagem de respostas por
     // ler (antes estava, por engano, emprestada ao cartão "Comunicados",
     // que é para avisos em massa da administração, não para a conversa
@@ -792,22 +821,31 @@ export default function PWACondominoView({
   };
 
   // Módulo 3 - Intervenções States
-  const [intervencoesList, setIntervencoesList] = useState<Array<{
-    id: string;
-    equipamento: string;
-    descricao: string;
-    estado: "Pendente" | "Em curso" | "Concluido";
-    data: string;
-    fornecedor: string;
-    foto?: string;
-  }>>([
-    { id: "INT-001", equipamento: "Elevador nº 2", descricao: "Avaria técnica - ruído excessivo nas subidas", estado: "Em curso", data: "12/07/2026", fornecedor: "Otis Portugal Lda" },
-    { id: "INT-002", equipamento: "Portão Garagem", descricao: "Substituição de molas e afinação mecânica", estado: "Concluido", data: "05/06/2026", fornecedor: "Portas & Motores Lda" },
-  ]);
+  // Avarias/Intervenções reais (Supabase, tabela ocorrencias) — antes era
+  // uma lista local fixa com 2 avarias de teste que nunca desaparecia e
+  // nunca refletia avarias reais, e reportar uma nova nunca chegava de
+  // facto à administração (só ficava em memória local).
+  const [ocorrenciasReceemCriadas, setOcorrenciasReceemCriadas] = useState<Ocorrencia[]>([]);
+  const ocorrenciasFracaoTodas = React.useMemo(() => {
+    const daProp = (ocorrencias || []).filter((o: any) => o.id_fracao === condominoFracao?.id_fracao);
+    const idsProp = new Set(daProp.map((o: any) => o.id_ocorr));
+    const extras = ocorrenciasReceemCriadas.filter(o => !idsProp.has(o.id_ocorr));
+    return [...extras, ...daProp].sort((a: any, b: any) => (b.data || "").localeCompare(a.data || ""));
+  }, [ocorrencias, condominoFracao?.id_fracao, ocorrenciasReceemCriadas]);
   const [newIntervEquipamento, setNewIntervEquipamento] = useState("Elevador");
   const [newIntervDesc, setNewIntervDesc] = useState("");
   const [newIntervPhoto, setNewIntervPhoto] = useState<string | null>(null);
   const [newIntervPhotoName, setNewIntervPhotoName] = useState("");
+
+  // Obras extraordinárias reais (Supabase) — antes eram 2 obras fictícias
+  // ("Pintura de Escadas", "Impermeabilização do Telhado") escritas
+  // diretamente no JSX, sem nenhuma ligação a dados reais nem forma de as
+  // fazer desaparecer.
+  const [obrasReais, setObrasReais] = useState<ObraExtraordinaria[]>([]);
+  useEffect(() => {
+    if (!predio?.id_predio) return;
+    fetchObrasExtraFromSupabase(predio.id_predio).then(dados => { if (dados) setObrasReais(dados); });
+  }, [predio?.id_predio]);
 
   // Módulo 5 - Limpezas Rating State
   const [cleaningRatings, setCleaningRatings] = useState<Record<string, number>>({});
@@ -948,41 +986,82 @@ export default function PWACondominoView({
   const [bookingTime, setBookingTime] = useState("14:00 - 18:00");
   const [bookingGuests, setBookingGuests] = useState(15);
 
-  // Handle reporting avaria (Módulo 3)
-  const handleReportAvaria = (e: React.FormEvent) => {
+  // Conversão real para .webp (mesmo padrão do avatar) — antes o botão
+  // "Capturar Foto" nem tinha seletor de ficheiro nenhum, só fingia com um
+  // alerta e gravava sempre o texto fixo "mockphoto".
+  const handleEscolherFotoAvaria = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX = 900;
+        let w = img.width, h = img.height;
+        if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d")?.drawImage(img, 0, 0, w, h);
+        setNewIntervPhoto(canvas.toDataURL("image/webp", 0.8));
+        setNewIntervPhotoName(file.name || "avaria_foto.webp");
+      };
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle reporting avaria (Módulo 3) — gravação real no Supabase (tabela
+  // ocorrencias); antes só existia em memória local e nunca chegava
+  // realmente à administração, apesar do alerta dizer que sim.
+  const [aReportarAvaria, setAReportarAvaria] = useState(false);
+  const handleReportAvaria = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newIntervDesc) {
       alert("Por favor escreva uma descrição.");
       return;
     }
-    const newId = `INT-${Math.floor(Math.random() * 900) + 100}`;
-    const newRecord = {
-      id: newId,
-      equipamento: newIntervEquipamento,
-      descricao: newIntervDesc,
-      estado: "Pendente" as const,
-      data: new Date().toLocaleDateString("pt-PT"),
-      fornecedor: "Aguardando triagem da administração",
-      foto: newIntervPhoto || undefined
-    };
+    if (!predio?.id_predio || !condominoFracao?.id_fracao) return;
+    setAReportarAvaria(true);
+    try {
+      const novaOcorrencia: Ocorrencia = {
+        id_ocorr: `ocorr-${Date.now()}`,
+        id_predio: predio.id_predio,
+        id_fracao: condominoFracao.id_fracao,
+        descricao: newIntervDesc,
+        data: new Date().toISOString().split("T")[0],
+        estado: "Pendente",
+        medidas_tomadas: "",
+        fotos: newIntervPhoto ? [{ name: newIntervPhotoName || "foto.webp", preview: newIntervPhoto, size: "" }] : [],
+        categoria: newIntervEquipamento
+      };
+      const ok = await saveOcorrenciaToSupabase(novaOcorrencia);
+      if (!ok) {
+        alert("❌ Não foi possível registar a avaria. Tente novamente.");
+        return;
+      }
+      setOcorrenciasReceemCriadas(prev => [novaOcorrencia, ...prev]);
 
-    setIntervencoesList(prev => [newRecord, ...prev]);
-    
-    // Automatically add to global notifications
-    const newNotif = {
-      id: `NOT-${Date.now()}`,
-      title: "Intervenção Aberta",
-      desc: `Registou uma nova avaria em "${newIntervEquipamento}".`,
-      date: "Hoje",
-      isArchived: false
-    };
-    setPwaNotifications(prev => [newNotif, ...prev]);
+      // Notificação push real à administração — mesma lógica já usada nas
+      // mensagens diretas (enviar-push-admin), para a avaria chegar mesmo.
+      fetch("/api/admin?acao=enviar-push-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_predio: predio.id_predio,
+          title: `🚨 Nova Avaria — Fração ${condominoFracao.fracao_nome || "?"}`,
+          body: `${newIntervEquipamento}: ${newIntervDesc}`
+        })
+      }).catch(() => {});
 
-    alert("Avaria reportada com sucesso! A administração foi notificada.");
-    setNewIntervDesc("");
-    setNewIntervPhoto(null);
-    setNewIntervPhotoName("");
-    setActiveTab("intervencoes");
+      alert("Avaria reportada com sucesso! A administração foi notificada.");
+      setNewIntervDesc("");
+      setNewIntervPhoto(null);
+      setNewIntervPhotoName("");
+      setActiveTab("intervencoes");
+    } finally {
+      setAReportarAvaria(false);
+    }
   };
 
   // Touch Signature Pad States & Handlers for PWA Assembleia Atas
@@ -1541,6 +1620,26 @@ export default function PWACondominoView({
 
                   {selectedSubmenu === "financas" && (
                     <div className="space-y-3">
+                      {avisosPendentesFracaoReais.length > 0 && (
+                        <div className="space-y-1.5">
+                          <span className="text-[9px] font-extrabold text-amber-600 uppercase tracking-wider block">
+                            {avisosPendentesFracaoReais.length} quota(s) pendente(s)
+                          </span>
+                          <div className="space-y-1.5">
+                            {avisosPendentesFracaoReais.map((a: any) => (
+                              <div key={a.id_aviso} className="flex justify-between items-center bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-lg px-2.5 py-1.5 text-[10px]">
+                                <div className="truncate pr-2">
+                                  <span className="font-bold text-slate-700 dark:text-slate-200 block truncate">{a.descricao}</span>
+                                  <span className="text-[8px] text-slate-400">Vencimento: {formatDatePT(a.vencimento || a.data)}</span>
+                                </div>
+                                <span className="font-black text-amber-700 dark:text-amber-400 shrink-0">
+                                  {(Number(a.valor) - Number(a.valor_pago || 0)).toFixed(2)} €
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <p className="text-slate-700 text-[10px] leading-relaxed">Consulte o mapa de pagamentos, o extrato ou envie comprovativos:</p>
                       <div className="flex flex-col gap-2">
                         <button
@@ -2030,16 +2129,19 @@ export default function PWACondominoView({
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Registo de Ocorrências</span>
               
               <div className="space-y-2.5">
-                {intervencoesList.map(interv => (
-                  <div key={interv.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3 rounded-xl shadow-xs space-y-2 text-[10px]">
+                {ocorrenciasFracaoTodas.length === 0 && (
+                  <p className="text-slate-400 text-[10px] text-center py-6 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">Nenhuma avaria reportada até ao momento.</p>
+                )}
+                {ocorrenciasFracaoTodas.map((interv: any) => (
+                  <div key={interv.id_ocorr} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3 rounded-xl shadow-xs space-y-2 text-[10px]">
                     <div className="flex justify-between items-start">
                       <div>
-                        <span className="text-[8px] text-slate-400 font-extrabold block uppercase tracking-wider font-mono">{interv.id} • {interv.data}</span>
-                        <h4 className="font-extrabold text-slate-800 dark:text-slate-200">{interv.equipamento}</h4>
+                        <span className="text-[8px] text-slate-400 font-extrabold block uppercase tracking-wider font-mono">{formatDatePT(interv.data)}</span>
+                        <h4 className="font-extrabold text-slate-800 dark:text-slate-200">{interv.categoria || "Outros"}</h4>
                       </div>
                       <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase ${
                         interv.estado === "Pendente" ? "bg-amber-50 text-amber-600 dark:bg-amber-950/20" :
-                        interv.estado === "Em curso" ? "bg-blue-50 text-blue-600 dark:bg-blue-950/20" :
+                        interv.estado === "Em Curso" ? "bg-blue-50 text-blue-600 dark:bg-blue-950/20" :
                         "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20"
                       }`}>
                         {interv.estado}
@@ -2047,15 +2149,17 @@ export default function PWACondominoView({
                     </div>
 
                     <p className="text-slate-500 leading-tight">"{interv.descricao}"</p>
-                    
+
                     <div className="flex justify-between items-center pt-1.5 border-t border-slate-100 dark:border-slate-800/60 text-[9px]">
-                      <span className="text-slate-400">Técnico/Fornecedor: <strong className="text-slate-600 dark:text-slate-300">{interv.fornecedor}</strong></span>
-                      <button 
-                        onClick={() => alert(`Historial da intervenção ${interv.id}:\n- Abertura: ${interv.data}\n- Estado atual: ${interv.estado}\n- Responsável: ${interv.fornecedor}`)}
-                        className="text-emerald-600 hover:underline cursor-pointer font-bold"
-                      >
-                        Acompanhar Estado
-                      </button>
+                      <span className="text-slate-400">{interv.tecnico_atribuido ? <>Técnico: <strong className="text-slate-600 dark:text-slate-300">{interv.tecnico_atribuido}</strong></> : "Aguarda triagem da administração"}</span>
+                      {interv.medidas_tomadas && (
+                        <button
+                          onClick={() => alert(`Medidas tomadas:\n${interv.medidas_tomadas}`)}
+                          className="text-emerald-600 hover:underline cursor-pointer font-bold"
+                        >
+                          Ver Medidas Tomadas
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -2100,13 +2204,10 @@ export default function PWACondominoView({
               <div className="space-y-2">
                 <label className="font-bold text-slate-500 uppercase text-[8px] block">Anexar Fotografia (Opcional)</label>
                 <div className="flex items-center space-x-2">
+                  <input id="pwa-avaria-foto-input" type="file" accept="image/*" className="hidden" onChange={handleEscolherFotoAvaria} />
                   <button
                     type="button"
-                    onClick={() => {
-                      setNewIntervPhoto("data:image/webp;base64,mockphoto");
-                      setNewIntervPhotoName("avaria_foto_campo.webp");
-                      alert("Câmara ativada. Foto comprimida para WebP (Redução de 85% no tráfego de dados móveis)!");
-                    }}
+                    onClick={() => document.getElementById("pwa-avaria-foto-input")?.click()}
                     className="flex items-center space-x-1 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-slate-700 dark:text-slate-300 cursor-pointer"
                   >
                     <Camera className="h-3.5 w-3.5" />
@@ -2139,68 +2240,36 @@ export default function PWACondominoView({
 
             <div className="space-y-3">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Estado de Obras Ativas</span>
-              
-              {/* Painting escadas */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3 rounded-xl shadow-xs space-y-2 text-[10px]">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-[8px] bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400 px-2 py-0.5 rounded font-bold uppercase">Adjudicada</span>
-                    <h4 className="font-extrabold text-slate-800 dark:text-slate-200 mt-1">Pintura e Tratamento de Escadas</h4>
-                  </div>
-                  {/* Coproprietário/inquilino sabem que a obra vai acontecer,
-                      mas não têm acesso a orçamentos/valores adjudicados. */}
-                  {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && (
-                    <span className="font-bold text-indigo-600 font-mono">18,500.00 €</span>
-                  )}
-                </div>
-                <p className="text-slate-500 leading-tight">Previsão de arranque em Agosto 2026. Orçamentos aprovados na Assembleia Geral de Maio de 2026.</p>
 
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex justify-between text-[9px] text-slate-400 font-bold">
-                  <span>Fiscalização: IA Técnico</span>
-                  {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && (
-                    <button
-                      onClick={() => generateAndDownloadPdf(
-                        "Caderno de Encargos e Orçamentos - Pintura de Escadas",
-                        [{ heading: "Memória Descritiva & Propostas Adjudicadas", content: "Documentação oficial de concursos de empreitada, cadernos de encargos de lavagem e tinta impermeável, e orçamentos apresentados pelas empresas qualificadas." }],
-                        "Orcamentos_Memoria_Descritiva_Pintura.pdf",
-                        [{ label: "Edifício", value: predio.nome }, { label: "Valor Adjudicado", value: "18,500.00 €" }]
-                      )}
-                      className="text-indigo-600 hover:underline cursor-pointer"
-                    >
-                      Ver Orçamentos (3 docs)
-                    </button>
-                  )}
-                </div>
-              </div>
+              {obrasReais.length === 0 && (
+                <p className="text-slate-400 text-[10px] text-center py-6 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">Nenhuma obra registada até ao momento.</p>
+              )}
 
-              {/* Roof restoration */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3 rounded-xl shadow-xs space-y-2 text-[10px]">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-[8px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 px-2 py-0.5 rounded font-bold uppercase">Concluída</span>
-                    <h4 className="font-extrabold text-slate-800 dark:text-slate-200 mt-1">Impermeabilização do Telhado / Cobertura</h4>
-                  </div>
-                  {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && (
-                    <span className="font-bold text-slate-400 font-mono">9,820.00 €</span>
-                  )}
-                </div>
-                <p className="text-slate-500 leading-tight">Concluída em Fevereiro de 2026. Garantia total da obra ativa até Fevereiro de 2031.</p>
-                
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex justify-between text-[9px] text-slate-400 font-bold">
-                  <span>Garantia: 5 Anos</span>
-                  <button 
-                    onClick={() => generateAndDownloadPdf(
-                      "Auto de Receção Final e Vistoria de Estanquicidade",
-                      [{ heading: "Relatório de Receção de Obra", content: "Atestado técnico de conformidade dos trabalhos de impermeabilização da cobertura, testes de estanquicidade e apólice de garantia de 5 anos fornecida pela empreiteira." }],
-                      "Auto_Rececao_Final_Telhado.pdf",
-                      [{ label: "Edifício", value: predio.nome }, { label: "Garantia", value: "Até Fev/2031" }]
+              {obrasReais.map(obra => (
+                <div key={obra.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3 rounded-xl shadow-xs space-y-2 text-[10px]">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className={`text-[8px] px-2 py-0.5 rounded font-bold uppercase ${
+                        obra.estado === "Concluída" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400" :
+                        obra.estado === "Em Curso" ? "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400" :
+                        "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400"
+                      }`}>{obra.estado}</span>
+                      <h4 className="font-extrabold text-slate-800 dark:text-slate-200 mt-1">{obra.descricao}</h4>
+                    </div>
+                    {/* Coproprietário/inquilino sabem que a obra vai acontecer,
+                        mas não têm acesso a orçamentos/valores adjudicados. */}
+                    {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && (
+                      <span className="font-bold text-indigo-600 font-mono">{obra.custoTotal.toLocaleString("pt-PT")} €</span>
                     )}
-                    className="text-emerald-600 hover:underline cursor-pointer"
-                  >
-                    Ver Relatório Final
-                  </button>
+                  </div>
+                  <p className="text-slate-500 leading-tight">
+                    {obra.dataInicio ? `Início: ${formatDatePT(obra.dataInicio)}` : ""}{obra.dataFim ? ` • Fim: ${formatDatePT(obra.dataFim)}` : ""}
+                  </p>
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex justify-between text-[9px] text-slate-400 font-bold">
+                    <span>{obra.fornecedorNome ? `Empreiteiro: ${obra.fornecedorNome}` : "Fornecedor por adjudicar"}</span>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
           </div>
         )}
@@ -3778,11 +3847,7 @@ export default function PWACondominoView({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => {
-                            setNewIntervPhoto("data:image/webp;base64,mockphoto");
-                            setNewIntervPhotoName("avaria_foto_condominio.webp");
-                            alert("Câmara ativada! Fotografia comprimida automaticamente para formato .WEBP.");
-                          }}
+                          onClick={() => document.getElementById("pwa-avaria-foto-input")?.click()}
                           className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 rounded-lg font-bold"
                         >
                           <Camera className="h-3 w-3 text-emerald-400" />
@@ -3806,16 +3871,19 @@ export default function PWACondominoView({
                   <div className="space-y-3">
                     <p className="text-[10px] text-slate-300">Lista de intervenções e vistorias registadas no seu prédio:</p>
                     <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
-                      {intervencoesList.map(interv => (
-                        <div key={interv.id} className="bg-slate-800 border border-slate-800 p-3 rounded-xl space-y-1.5">
+                      {ocorrenciasFracaoTodas.length === 0 && (
+                        <p className="text-slate-400 text-[10px] text-center py-6">Nenhuma avaria reportada até ao momento.</p>
+                      )}
+                      {ocorrenciasFracaoTodas.map((interv: any) => (
+                        <div key={interv.id_ocorr} className="bg-slate-800 border border-slate-800 p-3 rounded-xl space-y-1.5">
                           <div className="flex justify-between items-start">
                             <div>
-                              <span className="text-[8px] font-mono text-slate-400 font-extrabold">{interv.id} • {interv.data}</span>
-                              <h4 className="font-extrabold text-white text-[11px]">{interv.equipamento}</h4>
+                              <span className="text-[8px] font-mono text-slate-400 font-extrabold">{formatDatePT(interv.data)}</span>
+                              <h4 className="font-extrabold text-white text-[11px]">{interv.categoria || "Outros"}</h4>
                             </div>
                             <span className={`px-1.5 py-0.5 rounded text-[7px] font-extrabold uppercase ${
                               interv.estado === "Pendente" ? "bg-amber-950/40 text-amber-400 border border-amber-900/30" :
-                              interv.estado === "Em curso" ? "bg-blue-950/40 text-blue-400 border border-blue-900/30" :
+                              interv.estado === "Em Curso" ? "bg-blue-950/40 text-blue-400 border border-blue-900/30" :
                               "bg-emerald-950/40 text-emerald-400 border border-emerald-900/30"
                             }`}>
                               {interv.estado}
@@ -3823,13 +3891,7 @@ export default function PWACondominoView({
                           </div>
                           <p className="text-slate-300 leading-normal text-[10px]">"{interv.descricao}"</p>
                           <div className="text-[8px] text-slate-400 border-t border-slate-800/60 pt-1 flex justify-between">
-                            <span>Técnico: <strong className="text-slate-700">{interv.fornecedor}</strong></span>
-                            <button
-                              onClick={() => alert(`Detalhes:\nID: ${interv.id}\nEquipamento: ${interv.equipamento}\nEstado: ${interv.estado}\nFornecedor Adjudicado: ${interv.fornecedor}`)}
-                              className="text-emerald-400 hover:underline"
-                            >
-                              Ver Histórico
-                            </button>
+                            <span>{interv.tecnico_atribuido ? <>Técnico: <strong className="text-slate-300">{interv.tecnico_atribuido}</strong></> : "Aguarda triagem"}</span>
                           </div>
                         </div>
                       ))}
@@ -4747,57 +4809,30 @@ export default function PWACondominoView({
                     <p className="text-slate-700">Acompanhe as intervenções extraordinárias em andamento ou recentemente concluídas:</p>
                     
                     <div className="space-y-3">
-                      {/* Obra de Pintura */}
-                      <div className="bg-slate-800 border border-slate-800 p-3.5 rounded-xl space-y-2">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="text-[8px] bg-indigo-950 text-indigo-400 border border-indigo-900/30 px-2 py-0.5 rounded font-extrabold uppercase">Adjudicada</span>
-                            <h4 className="font-extrabold text-white mt-1 text-[11px]">Pintura e Tratamento de Escadas</h4>
+                      {obrasReais.length === 0 && (
+                        <p className="text-slate-400 text-[10px] text-center py-6">Nenhuma obra registada até ao momento.</p>
+                      )}
+                      {obrasReais.map(obra => (
+                        <div key={obra.id} className="bg-slate-800 border border-slate-800 p-3.5 rounded-xl space-y-2">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <span className={`text-[8px] px-2 py-0.5 rounded font-extrabold uppercase border ${
+                                obra.estado === "Concluída" ? "bg-emerald-950 text-emerald-400 border-emerald-900/30" :
+                                obra.estado === "Em Curso" ? "bg-blue-950 text-blue-400 border-blue-900/30" :
+                                "bg-indigo-950 text-indigo-400 border-indigo-900/30"
+                              }`}>{obra.estado}</span>
+                              <h4 className="font-extrabold text-white mt-1 text-[11px]">{obra.descricao}</h4>
+                            </div>
+                            <span className="font-bold text-indigo-400 font-mono">{obra.custoTotal.toLocaleString("pt-PT")} €</span>
                           </div>
-                          <span className="font-bold text-indigo-400 font-mono">18,500.00 €</span>
-                        </div>
-                        <p className="text-slate-400 leading-relaxed text-[9.5px]">Previsão de arranque em Agosto 2026. Orçamentos aprovados na Assembleia Geral de Maio de 2026.</p>
-                        <div className="pt-2 border-t border-slate-800 flex justify-between text-[8px] text-slate-400 font-bold">
-                          <span>Fiscalização: IA Técnico</span>
-                          <button 
-                            onClick={() => generateAndDownloadPdf(
-                              "Caderno de Encargos e Orçamentos - Pintura de Escadas",
-                              [{ heading: "Memória Descritiva & Propostas Adjudicadas", content: "Documentação oficial de concursos de empreitada, cadernos de encargos de lavagem e tinta impermeável, e orçamentos apresentados pelas empresas qualificadas." }],
-                              "Orcamentos_Memoria_Descritiva_Pintura.pdf",
-                              [{ label: "Edifício", value: predio.nome }, { label: "Valor Adjudicado", value: "18,500.00 €" }]
-                            )}
-                            className="text-emerald-400 hover:underline cursor-pointer"
-                          >
-                            Ver Documentos (3)
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Obra de Cobertura */}
-                      <div className="bg-slate-800 border border-slate-800 p-3.5 rounded-xl space-y-2">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="text-[8px] bg-emerald-950 text-emerald-400 border border-emerald-900/30 px-2 py-0.5 rounded font-extrabold uppercase font-mono">Concluída</span>
-                            <h4 className="font-extrabold text-white mt-1 text-[11px]">Impermeabilização do Telhado / Cobertura</h4>
+                          <p className="text-slate-400 leading-relaxed text-[9.5px]">
+                            {obra.dataInicio ? `Início: ${formatDatePT(obra.dataInicio)}` : ""}{obra.dataFim ? ` • Fim: ${formatDatePT(obra.dataFim)}` : ""}
+                          </p>
+                          <div className="pt-2 border-t border-slate-800 flex justify-between text-[8px] text-slate-400 font-bold">
+                            <span>{obra.fornecedorNome ? `Empreiteiro: ${obra.fornecedorNome}` : "Fornecedor por adjudicar"}</span>
                           </div>
-                          <span className="font-bold text-slate-500 font-mono">9,820.00 €</span>
                         </div>
-                        <p className="text-slate-400 leading-relaxed text-[9.5px]">Concluída em Fevereiro de 2026. Garantia total da obra ativa até Fevereiro de 2031.</p>
-                        <div className="pt-2 border-t border-slate-800 flex justify-between text-[8px] text-slate-400 font-bold">
-                          <span>Garantia: 5 Anos</span>
-                          <button 
-                            onClick={() => generateAndDownloadPdf(
-                              "Auto de Receção Final e Vistoria de Estanquicidade",
-                              [{ heading: "Relatório de Receção de Obra", content: "Atestado técnico de conformidade dos trabalhos de impermeabilização da cobertura, testes de estanquicidade e apólice de garantia de 5 anos fornecida pela empreiteira." }],
-                              "Auto_Rececao_Final_Telhado.pdf",
-                              [{ label: "Edifício", value: predio.nome }, { label: "Garantia", value: "Até Fev/2031" }]
-                            )}
-                            className="text-emerald-400 hover:underline cursor-pointer"
-                          >
-                            Ver Relatório Final
-                          </button>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
                 )}
