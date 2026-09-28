@@ -742,7 +742,7 @@ export function PortalOrcamentos({
             Portal Transparente de Orçamentação Inteligente
           </span>
           <h2 className="text-xl md:text-2xl font-black tracking-tight text-white">Portal Público de Contratos & Propostas de Obras</h2>
-          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
+          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-2xl">
             Abra concursos para obras, receba propostas externas de empreiteiros de forma transparente, cruze garantias de orçamentação e utilize a Inteligência Artificial Gemini para comparar propostas e obter recomendações automáticas de adjudicação.
           </p>
         </div>
@@ -757,7 +757,7 @@ export function PortalOrcamentos({
           {/* LANÇAR NOVO CONCURSO (ADMIN) */}
           <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-5 space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Concursos de Obras (RFP)</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">Concursos de Obras (RFP)</h3>
               {loggedUser.role === "ADMIN" && (
                 <button
                   onClick={() => (showRfpForm ? handleCancelarEdicaoRfp() : setShowRfpForm(true))}
@@ -772,7 +772,7 @@ export function PortalOrcamentos({
               <form onSubmit={handleLancarRfp} className="space-y-3 pt-2 text-xs border-t border-slate-100 dark:border-slate-800">
                 <p className="font-semibold text-slate-700 dark:text-slate-300">{editingRfpId ? "Editar Caderno de Encargos" : "Publicar Caderno de Encargos"}</p>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Título do Concurso *</label>
+                  <label className="text-[10px] font-bold text-slate-600 block mb-1">Título do Concurso *</label>
                   <input
                     type="text"
                     required
@@ -784,7 +784,7 @@ export function PortalOrcamentos({
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 block mb-1">Categoria *</label>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-1">Categoria *</label>
                     <input
                       type="text"
                       required
@@ -795,7 +795,7 @@ export function PortalOrcamentos({
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 block mb-1">Estimativa Máx (€) *</label>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-1">Estimativa Máx (€) *</label>
                     <input
                       type="text"
                       inputMode="decimal"
@@ -808,7 +808,7 @@ export function PortalOrcamentos({
                   </div>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Prazo de Candidatura *</label>
+                  <label className="text-[10px] font-bold text-slate-600 block mb-1">Prazo de Candidatura *</label>
                   <input
                     type="date"
                     required
@@ -818,7 +818,7 @@ export function PortalOrcamentos({
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Descrição Detalhada / Memorial Descritivo *</label>
+                  <label className="text-[10px] font-bold text-slate-600 block mb-1">Descrição Detalhada / Memorial Descritivo *</label>
                   <textarea
                     required
                     rows={3}
@@ -852,11 +852,11 @@ export function PortalOrcamentos({
             {/* List RFPs */}
             <div className="space-y-3">
               {carregandoRfps ? (
-                <p className="text-xs text-slate-400 text-center py-6 flex items-center justify-center gap-2">
+                <p className="text-xs text-slate-600 text-center py-6 flex items-center justify-center gap-2">
                   <Loader2 className="animate-spin" size={13} /> A carregar concursos...
                 </p>
               ) : predioRfps.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-6">
+                <p className="text-xs text-slate-600 text-center py-6">
                   Ainda não existem concursos publicados para este prédio.
                 </p>
               ) : predioRfps.map(r => (
@@ -875,7 +875,7 @@ export function PortalOrcamentos({
                   <div className="flex justify-between items-start gap-2">
                     <div>
                       <h4 className="font-bold text-slate-800 dark:text-white leading-normal">{r.titulo}</h4>
-                      <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{r.categoria}</p>
+                      <p className="text-[10px] text-slate-600 font-semibold mt-0.5">{r.categoria}</p>
                     </div>
                     <span
                       className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase shrink-0 ${
@@ -890,11 +890,11 @@ export function PortalOrcamentos({
 
                   <div className="grid grid-cols-2 gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 font-mono-custom text-[10px] text-slate-500">
                     <div className="flex items-center space-x-1">
-                      <Coins size={11} className="text-slate-400 shrink-0" />
+                      <Coins size={11} className="text-slate-600 shrink-0" />
                       <span>Estimativa: <strong>{r.estimativa.toLocaleString("pt-PT")} €</strong></span>
                     </div>
                     <div className="flex items-center space-x-1">
-                      <Calendar size={11} className="text-slate-400 shrink-0" />
+                      <Calendar size={11} className="text-slate-600 shrink-0" />
                       <span>Até: <strong>{r.data_limite}</strong></span>
                     </div>
                   </div>
@@ -926,11 +926,11 @@ export function PortalOrcamentos({
           {/* FORMULÁRIO DE SUBMISSÃO DE PROPOSTA — grava mesmo no Supabase
               (savePropostaToSupabase), não é uma simulação. */}
           <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-5 space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center">
               <ExternalLink size={13} className="text-emerald-500 mr-1.5" />
               {editingPropostaId ? "Editar Proposta" : "Submeter Proposta (Canal do Empreiteiro)"}
             </h3>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
+            <p className="text-[11px] text-slate-600 leading-relaxed">
               {editingPropostaId
                 ? "A corrigir os dados de uma proposta já registada."
                 : "Área pública destinada a construtores ou fornecedores externos para o envio de propostas técnicas e orçamentos comerciais."}
@@ -938,7 +938,7 @@ export function PortalOrcamentos({
 
             <form onSubmit={handleSubmeterProposta} className="space-y-3 text-xs pt-2">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 block mb-1">Selecionar Concurso Aberto *</label>
+                <label className="text-[10px] font-bold text-slate-600 block mb-1">Selecionar Concurso Aberto *</label>
                 <select
                   required
                   value={selectedRfpId}
@@ -957,7 +957,7 @@ export function PortalOrcamentos({
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-400 block mb-1">Nome Legal da Empresa *</label>
+                <label className="text-[10px] font-bold text-slate-600 block mb-1">Nome Legal da Empresa *</label>
                 <input
                   type="text"
                   required
@@ -970,7 +970,7 @@ export function PortalOrcamentos({
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">NIF Contribuinte *</label>
+                  <label className="text-[10px] font-bold text-slate-600 block mb-1">NIF Contribuinte *</label>
                   <input
                     type="text"
                     required
@@ -981,7 +981,7 @@ export function PortalOrcamentos({
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Contacto Telefónico *</label>
+                  <label className="text-[10px] font-bold text-slate-600 block mb-1">Contacto Telefónico *</label>
                   <input
                     type="text"
                     required
@@ -994,7 +994,7 @@ export function PortalOrcamentos({
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-400 block mb-1">E-mail de Contacto Oficial *</label>
+                <label className="text-[10px] font-bold text-slate-600 block mb-1">E-mail de Contacto Oficial *</label>
                 <input
                   type="email"
                   required
@@ -1007,7 +1007,7 @@ export function PortalOrcamentos({
 
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-1">
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Valor Total *</label>
+                  <label className="text-[10px] font-bold text-slate-600 block mb-1">Valor Total *</label>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -1019,7 +1019,7 @@ export function PortalOrcamentos({
                   />
                 </div>
                 <div className="col-span-1">
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Prazo (Dias) *</label>
+                  <label className="text-[10px] font-bold text-slate-600 block mb-1">Prazo (Dias) *</label>
                   <input
                     type="number"
                     required
@@ -1030,7 +1030,7 @@ export function PortalOrcamentos({
                   />
                 </div>
                 <div className="col-span-1">
-                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Garantia (Anos) *</label>
+                  <label className="text-[10px] font-bold text-slate-600 block mb-1">Garantia (Anos) *</label>
                   <input
                     type="number"
                     required
@@ -1043,7 +1043,7 @@ export function PortalOrcamentos({
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-400 block mb-1">Memória Descritiva / Especificações Técnicas *</label>
+                <label className="text-[10px] font-bold text-slate-600 block mb-1">Memória Descritiva / Especificações Técnicas *</label>
                 <textarea
                   required
                   rows={3}
@@ -1055,7 +1055,7 @@ export function PortalOrcamentos({
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-400 block mb-1">Anexos (Proposta, Fichas Técnicas, Seguros, Certificados...)</label>
+                <label className="text-[10px] font-bold text-slate-600 block mb-1">Anexos (Proposta, Fichas Técnicas, Seguros, Certificados...)</label>
                 <div className="border border-dashed border-slate-250 dark:border-slate-800 rounded p-4 text-center hover:bg-slate-50 dark:hover:bg-slate-900/40 relative cursor-pointer">
                   <input
                     type="file"
@@ -1067,7 +1067,7 @@ export function PortalOrcamentos({
                   <p className="font-semibold text-[11px] text-slate-600 dark:text-slate-300">
                     {propFicheiros.length > 0 ? `${propFicheiros.length} ficheiro(s) selecionado(s)` : "Clique para anexar um ou vários ficheiros"}
                   </p>
-                  <p className="text-[9px] text-slate-400 mt-0.5">Máx. 10MB por ficheiro</p>
+                  <p className="text-[9px] text-slate-600 mt-0.5">Máx. 10MB por ficheiro</p>
                 </div>
                 {propFicheiros.length > 0 && (
                   <ul className="mt-1.5 space-y-0.5">
@@ -1129,10 +1129,10 @@ export function PortalOrcamentos({
                 <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
                   <div>
                     <h3 className="text-base font-bold text-slate-800 dark:text-white">{activeRfp.titulo}</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">Categoria: <strong>{activeRfp.categoria}</strong></p>
+                    <p className="text-xs text-slate-600 mt-0.5">Categoria: <strong>{activeRfp.categoria}</strong></p>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Estimativa Limite</span>
+                    <span className="text-[10px] text-slate-600 uppercase font-bold tracking-wider block">Estimativa Limite</span>
                     <span className="text-base font-bold font-mono-custom text-emerald-600 dark:text-emerald-400">
                       {activeRfp.estimativa.toLocaleString("pt-PT")} €
                     </span>
@@ -1152,7 +1152,7 @@ export function PortalOrcamentos({
               {/* Propostas Recebidas */}
               <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-6 space-y-4">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Propostas Recebidas ({activeRfpProposals.length})</h3>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">Propostas Recebidas ({activeRfpProposals.length})</h3>
                   {activeRfpProposals.length >= 2 && activeRfp.estado === "Aberto" && (
                     <button
                       onClick={triggerIaComparison}
@@ -1172,7 +1172,7 @@ export function PortalOrcamentos({
                 {isComparing && (
                   <div className="bg-slate-950 text-emerald-400 p-4 rounded-xl border border-slate-800 font-mono-custom text-xs space-y-2">
                     <div className="flex justify-between items-center border-b border-emerald-900 pb-2 mb-2">
-                      <span className="font-sans font-bold text-slate-400 uppercase tracking-widest text-[9px] flex items-center">
+                      <span className="font-sans font-bold text-slate-600 uppercase tracking-widest text-[9px] flex items-center">
                         <Sparkles size={11} className="mr-1.5 text-amber-400" /> Motor Gemini Pro 1.5 Comparador
                       </span>
                       <Loader2 className="animate-spin text-emerald-400" size={13} />
@@ -1188,11 +1188,11 @@ export function PortalOrcamentos({
                 )}
 
                 {carregandoPropostas ? (
-                  <p className="text-xs text-slate-400 text-center py-8 flex items-center justify-center gap-2">
+                  <p className="text-xs text-slate-600 text-center py-8 flex items-center justify-center gap-2">
                     <Loader2 className="animate-spin" size={13} /> A carregar propostas...
                   </p>
                 ) : activeRfpProposals.length === 0 ? (
-                  <p className="text-xs text-slate-400 text-center py-8">
+                  <p className="text-xs text-slate-600 text-center py-8">
                     Não existem propostas submetidas para este concurso. Preencha o formulário "Submeter Proposta" ao lado para adicionar.
                   </p>
                 ) : (
@@ -1226,7 +1226,7 @@ export function PortalOrcamentos({
                                 {estadoProp}
                               </span>
                             </div>
-                            <div className="flex items-center space-x-3 text-[10px] text-slate-400 mt-0.5">
+                            <div className="flex items-center space-x-3 text-[10px] text-slate-600 mt-0.5">
                               <span>NIF: <strong className="font-mono-custom">{prop.nif}</strong></span>
                               <span>•</span>
                               <span>Data: <strong className="font-mono-custom">{prop.data_submissao}</strong></span>
@@ -1239,7 +1239,7 @@ export function PortalOrcamentos({
                             <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono-custom block">
                               {prop.valor.toLocaleString("pt-PT")} €
                             </span>
-                            <span className="text-[9px] text-slate-400">Proposta Comercial</span>
+                            <span className="text-[9px] text-slate-600">Proposta Comercial</span>
                           </div>
                         </div>
 
@@ -1251,7 +1251,7 @@ export function PortalOrcamentos({
                             <div className="pt-1">
                               <span className="block mb-0.5">Anexos ({anexosProposta.length}):</span>
                               {anexosProposta.length === 0 ? (
-                                <span className="text-slate-400">Sem ficheiros anexados</span>
+                                <span className="text-slate-600">Sem ficheiros anexados</span>
                               ) : (
                                 <div className="space-y-0.5">
                                   {anexosProposta.map((a, ai) => (
@@ -1467,14 +1467,14 @@ export function PortalOrcamentos({
                       <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-300">
                         Análise Comparativa Inteligente (Gemini 3.5 Flash)
                       </h3>
-                      <p className="text-[10px] text-slate-400">Relatório automatizado com base no Caderno de Encargos do Edifício</p>
+                      <p className="text-[10px] text-slate-600">Relatório automatizado com base no Caderno de Encargos do Edifício</p>
                     </div>
                   </div>
 
                   {/* Matriz Comparativa */}
                   <div className="space-y-2">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center">
-                      <Table size={13} className="mr-1 text-slate-400" /> Matriz Comparativa de Critérios
+                      <Table size={13} className="mr-1 text-slate-600" /> Matriz Comparativa de Critérios
                     </h4>
                     <div className="border border-slate-100 dark:border-slate-800 rounded-lg overflow-hidden text-xs">
                       <table className="w-full text-left border-collapse bg-white dark:bg-[#0f172a]">
@@ -1568,7 +1568,7 @@ export function PortalOrcamentos({
               )}
             </div>
           ) : (
-            <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-8 text-center text-slate-400 text-xs">
+            <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-8 text-center text-slate-600 text-xs">
               Selecione um concurso de obras ativo na coluna à esquerda para ver os detalhes e propostas.
             </div>
           )}

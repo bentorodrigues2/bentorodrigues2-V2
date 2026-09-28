@@ -1553,10 +1553,10 @@ export function GestaoQuotasOrcamento({
                         <td className="p-2.5 text-right">
                           {loggedUser.role === "ADMIN" && (
                             <div className="flex items-center justify-end gap-2.5">
-                              <button onClick={() => handleIniciarEdicaoRevisao(r)} className="text-slate-400 hover:text-indigo-600 cursor-pointer" title="Editar">
+                              <button onClick={() => handleIniciarEdicaoRevisao(r)} className="text-slate-600 hover:text-indigo-600 cursor-pointer" title="Editar">
                                 <i className="fa-solid fa-pen"></i>
                               </button>
-                              <button onClick={() => handleRemoverRevisaoOrcamento(r)} className="text-slate-400 hover:text-red-500 cursor-pointer" title="Eliminar">
+                              <button onClick={() => handleRemoverRevisaoOrcamento(r)} className="text-slate-600 hover:text-red-500 cursor-pointer" title="Eliminar">
                                 <i className="fa-solid fa-trash-can"></i>
                               </button>
                             </div>
@@ -1581,7 +1581,7 @@ export function GestaoQuotasOrcamento({
                     type="button"
                     onClick={() => { setNovaRevisaoValor(""); setOverridesQuotaFracao({}); }}
                     title="Fecha esta pré-visualização sem aplicar nada"
-                    className="text-[11px] font-semibold text-slate-400 hover:text-red-600 shrink-0 cursor-pointer flex items-center gap-1"
+                    className="text-[11px] font-semibold text-slate-600 hover:text-red-600 shrink-0 cursor-pointer flex items-center gap-1"
                   >
                     <i className="fa-solid fa-xmark"></i> Fechar
                   </button>
@@ -1655,7 +1655,7 @@ export function GestaoQuotasOrcamento({
                         <tr key={f.id_fracao} className="border-b border-slate-100">
                           <td className="p-2.5 font-bold text-slate-700">{f.fracao_nome}</td>
                           <td className="p-2.5 text-slate-500">{f.proprietario?.nome || "Vago"}</td>
-                          <td className="p-2.5 text-right font-mono text-slate-400">{quotaCalculadaRevisao(f).toFixed(2)} €</td>
+                          <td className="p-2.5 text-right font-mono text-slate-600">{quotaCalculadaRevisao(f).toFixed(2)} €</td>
                           <td className="p-2.5 text-right">
                             <input
                               type="text"
@@ -1728,7 +1728,7 @@ export function GestaoQuotasOrcamento({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-800">Quotas Ordinárias Mensais</h3>
-                  <p className="text-[10px] text-slate-400">Despesas correntes (limpeza, eletricidade, elevadores, seguro)</p>
+                  <p className="text-[10px] text-slate-600">Despesas correntes (limpeza, eletricidade, elevadores, seguro)</p>
                 </div>
               </div>
               <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded">Corrente</span>
@@ -1745,7 +1745,7 @@ export function GestaoQuotasOrcamento({
                   title="Valor real em vigor, vindo do Orçamento Anual definido acima — não editável aqui para nunca duplicar a emissão automática mensal (dia 25)."
                   className="w-full border border-slate-200 px-3 py-2 text-xs rounded-xl bg-slate-100 font-mono font-bold text-slate-500 cursor-not-allowed"
                 />
-                <p className="text-[9.5px] text-slate-400 mt-1">Vem do Orçamento Anual (secção 1 acima). A quota ordinária é sempre emitida automaticamente no dia 25 — aqui só se emite a extraordinária.</p>
+                <p className="text-[9.5px] text-slate-600 mt-1">Vem do Orçamento Anual (secção 1 acima). A quota ordinária é sempre emitida automaticamente no dia 25 — aqui só se emite a extraordinária.</p>
               </div>
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Dia Limite de Pagamento Mensal</label>
@@ -1798,7 +1798,7 @@ export function GestaoQuotasOrcamento({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-800">Quotas Extraordinárias (Obras / FCR)</h3>
-                  <p className="text-[10px] text-slate-400">Encargos com conservação excecional e obras deliberadas em assembleia</p>
+                  <p className="text-[10px] text-slate-600">Encargos com conservação excecional e obras deliberadas em assembleia</p>
                 </div>
               </div>
               <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-sky-100 text-sky-800 rounded">Extraordinária</span>
@@ -1840,7 +1840,7 @@ export function GestaoQuotasOrcamento({
                   onChange={(e) => setDataInicioExtra(e.target.value)}
                   className="w-full border border-slate-200 px-3 py-2 text-xs rounded-xl focus:outline-sky-500 bg-white font-medium"
                 />
-                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                <span className="text-[10px] text-slate-600 mt-0.5 block">
                   {numPrestacoesExtra > 1
                     ? `Última prestação em ${new Date(dataLimiteExtraCalculada).toLocaleDateString("pt-PT")} (${numPrestacoesExtra} meses a partir daqui).`
                     : "Pagamento único, sem prestações seguintes."}
@@ -1863,7 +1863,7 @@ export function GestaoQuotasOrcamento({
                 ))}
               </select>
               {obrasAdjudicadasParaQuota.length === 0 && (
-                <p className="text-[10px] text-slate-400 mt-1">Nenhuma obra adjudicada a pedir quota extra de momento (Obras & Contratação → Concursos & Orçamentos → adjudicar uma proposta).</p>
+                <p className="text-[10px] text-slate-600 mt-1">Nenhuma obra adjudicada a pedir quota extra de momento (Obras & Contratação → Concursos & Orçamentos → adjudicar uma proposta).</p>
               )}
               {/* Aviso de segurança: reemitir uma obra que já tenha prestações
                   lançadas cria avisos duplicados (soma-se, não substitui) — não
@@ -2054,7 +2054,7 @@ export function GestaoQuotasOrcamento({
               <tbody className="divide-y divide-slate-100">
                 {predioFracoesFiltradas.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-400">
+                    <td colSpan={8} className="p-8 text-center text-slate-600">
                       {predioFracoes.length === 0 ? "Nenhuma fração registada neste condomínio." : "Nenhuma fração corresponde ao filtro selecionado."}
                     </td>
                   </tr>
@@ -2077,7 +2077,7 @@ export function GestaoQuotasOrcamento({
                         <td className="p-3">
                           <span className="font-semibold text-slate-800">{nomeCurto}</span>
                           {f.proprietario?.email && (
-                            <span className="text-[10px] text-slate-400 block truncate max-w-[150px]">{f.proprietario.email}</span>
+                            <span className="text-[10px] text-slate-600 block truncate max-w-[150px]">{f.proprietario.email}</span>
                           )}
                         </td>
                         <td className="p-3 text-center font-mono font-bold text-slate-700">{f.permilagem}‰</td>
@@ -2132,11 +2132,11 @@ export function GestaoQuotasOrcamento({
           }
         >
           {extVal <= 0 ? (
-            <div className="p-8 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl">
+            <div className="p-8 text-center text-slate-600 text-xs border border-dashed border-slate-200 rounded-xl">
               Nenhuma quota extraordinária configurada de momento — define um Orçamento Extraordinário acima para ver aqui a repartição por fração.
             </div>
           ) : !quotaExtraCalculada ? (
-            <div className="p-8 text-center text-slate-400 text-xs border border-dashed border-sky-200 bg-sky-50/40 rounded-xl">
+            <div className="p-8 text-center text-slate-600 text-xs border border-dashed border-sky-200 bg-sky-50/40 rounded-xl">
               Carrega em "Calcular Quotas Extra" acima para gerar a repartição por fração antes de emitir.
             </div>
           ) : (
@@ -2248,7 +2248,7 @@ export function GestaoQuotasOrcamento({
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="relative w-full sm:max-w-xs">
-            <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]"></i>
+            <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-[10px]"></i>
             <input
               type="text"
               value={pesquisaAvisos}
@@ -2286,7 +2286,7 @@ export function GestaoQuotasOrcamento({
             <tbody>
               {predioAvisosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-6 text-center text-slate-400 italic">
+                  <td colSpan={9} className="p-6 text-center text-slate-600 italic">
                     {predioAvisos.length === 0 ? "Nenhum aviso emitido para este condomínio." : "Nenhum aviso corresponde ao filtro selecionado."}
                   </td>
                 </tr>
@@ -2355,14 +2355,14 @@ export function GestaoQuotasOrcamento({
             <div className="w-full md:w-80 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 p-5 flex flex-col justify-between overflow-y-auto shrink-0">
               <div className="space-y-4">
                 <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
-                  <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400">Editor do Documento</h3>
-                  <button onClick={fecharModal} className="text-slate-400 hover:text-slate-600 text-sm cursor-pointer">
+                  <h3 className="font-bold text-xs uppercase tracking-wider text-slate-600">Editor do Documento</h3>
+                  <button onClick={fecharModal} className="text-slate-600 hover:text-slate-600 text-sm cursor-pointer">
                     <i className="fa-solid fa-xmark"></i>
                   </button>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Tipo de Documento</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Tipo de Documento</label>
                   <div className="grid grid-cols-2 gap-1.5 p-0.5 bg-slate-100 dark:bg-slate-900 rounded-lg">
                     <button type="button" onClick={() => setDocType("NOTA_COBRANCA")} className={`py-1 text-[10px] font-bold rounded-md transition-all ${docType === "NOTA_COBRANCA" ? "bg-indigo-600 text-white shadow" : "text-slate-500 hover:text-slate-700"}`}>
                       Nota Cobrança
@@ -2374,28 +2374,28 @@ export function GestaoQuotasOrcamento({
                 </div>
 
                 <div className="space-y-1.5 pt-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Condómino / Proprietário</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Condómino / Proprietário</label>
                   <input type="text" value={customCondomino} onChange={e => setCustomCondomino(e.target.value)} className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-900 text-xs px-2.5 py-1.5 rounded-lg focus:outline-indigo-500 dark:text-white font-medium" />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Descritivo Oficial</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Descritivo Oficial</label>
                   <textarea rows={2} value={customDescritivo} onChange={e => setCustomDescritivo(e.target.value)} className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-900 text-xs p-2.5 rounded-lg focus:outline-indigo-500 dark:text-white font-medium" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Quota Mensal (€)</label>
+                    <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Quota Mensal (€)</label>
                     <MoneyInput value={customQuotaMensal} onChange={setCustomQuotaMensal} className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-900 text-xs px-2 py-1.5 rounded-lg focus:outline-indigo-500 dark:text-white font-mono" />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Quota Extra (€)</label>
+                    <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Quota Extra (€)</label>
                     <MoneyInput value={customQuotaExtra} onChange={setCustomQuotaExtra} className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-900 text-xs px-2 py-1.5 rounded-lg focus:outline-indigo-500 dark:text-white font-mono" />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">IBAN do Prédio</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">IBAN do Prédio</label>
                   <input
                     type="text"
                     value={customIban}
@@ -2408,23 +2408,23 @@ export function GestaoQuotasOrcamento({
                 {docType === "RECIBO" ? (
                   <div className="grid grid-cols-1 gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Data de Liquidação</label>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Data de Liquidação</label>
                       <input type="date" value={customDataPagamento} onChange={e => setCustomDataPagamento(e.target.value)} className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-900 text-xs px-2 py-1.5 rounded-lg focus:outline-indigo-500 dark:text-white" />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Nº Recibo</label>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Nº Recibo</label>
                       <input type="text" value={customNrecibo} onChange={e => setCustomNrecibo(e.target.value)} className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-900 text-xs px-2.5 py-1.5 rounded-lg focus:outline-indigo-500 dark:text-white font-mono" />
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-1 border-t border-slate-100 dark:border-slate-800 pt-3">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Data Limite de Pagamento</label>
+                    <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Data Limite de Pagamento</label>
                     <input type="date" value={customDataLimite} onChange={e => setCustomDataLimite(e.target.value)} className="w-full border border-slate-200 dark:border-slate-800 dark:bg-slate-900 text-xs px-2 py-1.5 rounded-lg focus:outline-indigo-500 dark:text-white" />
                   </div>
                 )}
 
                 <div className="space-y-1 pt-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Estado do Aviso Global</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Estado do Aviso Global</label>
                   <div className="flex space-x-1.5">
                     <button
                       type="button"
@@ -2435,7 +2435,7 @@ export function GestaoQuotasOrcamento({
                         setARegistarPagamento(false);
                         alterarEstadoAviso(selectedAviso.id_aviso, "Pendente");
                       }}
-                      className={`flex-1 py-1 text-[9px] font-extrabold rounded-md border ${selectedAviso.estado === "Pendente" ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-slate-50 border-slate-200 text-slate-400"}`}
+                      className={`flex-1 py-1 text-[9px] font-extrabold rounded-md border ${selectedAviso.estado === "Pendente" ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-slate-50 border-slate-200 text-slate-600"}`}
                     >
                       Marcar Pendente
                     </button>
@@ -2447,7 +2447,7 @@ export function GestaoQuotasOrcamento({
                         setPagamentoValorInput(saldoDevedor.toFixed(2).replace(".", ","));
                         setARegistarPagamento(true);
                       }}
-                      className={`flex-1 py-1 text-[9px] font-extrabold rounded-md border disabled:cursor-not-allowed ${selectedAviso.estado === "Pago" ? "bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-slate-50 border-slate-200 text-slate-400"}`}
+                      className={`flex-1 py-1 text-[9px] font-extrabold rounded-md border disabled:cursor-not-allowed ${selectedAviso.estado === "Pago" ? "bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-slate-50 border-slate-200 text-slate-600"}`}
                     >
                       Marcar Pago
                     </button>
@@ -2504,11 +2504,11 @@ export function GestaoQuotasOrcamento({
             <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 p-6 md:p-10 overflow-y-auto flex flex-col items-center">
               <div className="w-full max-w-md bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 space-y-5">
                 <div className="text-center space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pré-visualização de Dados</p>
+                  <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Pré-visualização de Dados</p>
                   <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase">
                     {docType === "RECIBO" ? `Recibo Nº ${customNrecibo}` : "Nota de Cobrança"}
                   </h3>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[10px] text-slate-600">
                     Fração {fracoes.find(f => f.id_fracao === selectedAviso.id_fracao)?.fracao_nome || "?"} — {customCondomino}
                   </p>
                 </div>
@@ -2543,7 +2543,7 @@ export function GestaoQuotasOrcamento({
                   <p><strong className="text-slate-700 dark:text-slate-300">IBAN:</strong> {customIban || escolherIbanContaPorTipo(contas, selectedAviso.tipo) || predio.iban || "—"}</p>
                 </div>
 
-                <p className="text-[9px] text-slate-400 text-center leading-relaxed">
+                <p className="text-[9px] text-slate-600 text-center leading-relaxed">
                   Isto é apenas um resumo dos dados. O documento oficial (PDF em A5, com marca de água, numeração e assinatura da administração) é gerado no botão "Descarregar PDF Oficial" ao lado.
                 </p>
               </div>
@@ -2558,27 +2558,27 @@ export function GestaoQuotasOrcamento({
           <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
             <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
               <h3 className="text-sm font-bold">Editar Aviso {editingAviso.id_aviso.toUpperCase()}</h3>
-              <button onClick={() => setEditingAviso(null)} className="text-slate-400 hover:text-white cursor-pointer">
+              <button onClick={() => setEditingAviso(null)} className="text-slate-600 hover:text-white cursor-pointer">
                 <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
             <div className="p-5 space-y-3 text-xs">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Descrição</label>
+                <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Descrição</label>
                 <input type="text" value={editDescricao} onChange={e => setEditDescricao(e.target.value)} className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg text-xs" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Valor Total (€) *</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Valor Total (€) *</label>
                   <input type="text" inputMode="decimal" value={editValorTotal} onChange={e => setEditValorTotal(e.target.value)} className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg text-xs font-mono" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Fundo de Reserva (€)</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Fundo de Reserva (€)</label>
                   <input type="text" inputMode="decimal" placeholder="Sem FCR" value={editValorFCR} onChange={e => setEditValorFCR(e.target.value)} className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg text-xs font-mono" />
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Vencimento</label>
+                <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Vencimento</label>
                 <input type="date" value={editVencimento} onChange={e => setEditVencimento(e.target.value)} className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg text-xs" />
               </div>
               <div className="flex space-x-2 pt-2">

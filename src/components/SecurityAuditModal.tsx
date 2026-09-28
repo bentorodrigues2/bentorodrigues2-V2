@@ -47,14 +47,14 @@ export function SecurityAuditModal({
                   RLS Ativo
                 </span>
               </h3>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-slate-600">
                 Row Level Security, Proteção de Documentos, ACL por Role e Auditoria RGPD
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+            className="text-slate-600 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <i className="fa-solid fa-xmark text-base"></i>
           </button>
@@ -64,25 +64,25 @@ export function SecurityAuditModal({
         <div className="flex space-x-1 border-b border-slate-800 pb-2 text-xs font-bold">
           <button
             onClick={() => setActiveTab("auth")}
-            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${activeTab === "auth" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "text-slate-400 hover:text-white"}`}
+            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${activeTab === "auth" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "text-slate-600 hover:text-white"}`}
           >
             🔒 Autenticação & Brute Force
           </button>
           <button
             onClick={() => setActiveTab("rls")}
-            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${activeTab === "rls" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "text-slate-400 hover:text-white"}`}
+            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${activeTab === "rls" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "text-slate-600 hover:text-white"}`}
           >
             🛡️ Policies RLS por Tabela
           </button>
           <button
             onClick={() => setActiveTab("acl")}
-            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${activeTab === "acl" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "text-slate-400 hover:text-white"}`}
+            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${activeTab === "acl" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "text-slate-600 hover:text-white"}`}
           >
             📋 Matriz ACL por Role
           </button>
           <button
             onClick={() => setActiveTab("doclogs")}
-            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${activeTab === "doclogs" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "text-slate-400 hover:text-white"}`}
+            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${activeTab === "doclogs" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "text-slate-600 hover:text-white"}`}
           >
             📄 Logs Acesso a Documentos
           </button>
@@ -91,17 +91,17 @@ export function SecurityAuditModal({
         {/* Current Security Snapshot */}
         <div className="grid grid-cols-3 gap-2.5 bg-slate-950 border border-slate-800/80 p-3 rounded-xl text-xs">
           <div>
-            <span className="text-[10px] text-slate-400 uppercase font-bold block">Sessão / Perfil Ativo</span>
+            <span className="text-[10px] text-slate-600 uppercase font-bold block">Sessão / Perfil Ativo</span>
             <span className="font-mono text-emerald-400 font-bold truncate block">{currentEmail}</span>
           </div>
           <div>
-            <span className="text-[10px] text-slate-400 uppercase font-bold block">Segurança Brute Force</span>
-            <span className={`font-bold ${failedCount > 0 ? "text-amber-400" : "text-slate-300"}`}>
+            <span className="text-[10px] text-slate-600 uppercase font-bold block">Segurança Brute Force</span>
+            <span className={`font-bold ${failedCount > 0 ? "text-amber-400" : "text-slate-600"}`}>
               {failedCount} tentativa(s) falhada(s)
             </span>
           </div>
           <div>
-            <span className="text-[10px] text-slate-400 uppercase font-bold block">Proteção de Dados RGPD</span>
+            <span className="text-[10px] text-slate-600 uppercase font-bold block">Proteção de Dados RGPD</span>
             <span className={`font-black uppercase text-[10px] px-2 py-0.5 rounded-md inline-block mt-0.5 ${isLocked ? "bg-red-500/20 text-red-400 border border-red-500/30" : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"}`}>
               {isLocked ? "🔒 Bloqueado (Reset Obrigatório)" : "✅ Conforme RGPD (Artº 25 / 32)"}
             </span>
@@ -111,7 +111,7 @@ export function SecurityAuditModal({
         {/* TAB CONTENT 1: AUTH LOGS */}
         {activeTab === "auth" && (
           <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
-            <div className="flex justify-between items-center text-[10px] uppercase font-extrabold text-slate-400 px-1 pt-1">
+            <div className="flex justify-between items-center text-[10px] uppercase font-extrabold text-slate-600 px-1 pt-1">
               <span>Registo de Eventos Recentes (auditoria_plataforma)</span>
               <span>Total: {logs.length} logs</span>
             </div>
@@ -135,9 +135,9 @@ export function SecurityAuditModal({
                     }`}>
                       {log.eventType}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono">{log.timestamp}</span>
+                    <span className="text-[10px] text-slate-600 font-mono">{log.timestamp}</span>
                   </div>
-                  <div className="text-[11px] text-slate-300 font-medium pt-0.5">
+                  <div className="text-[11px] text-slate-600 font-medium pt-0.5">
                     {log.details}
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-800/40">
@@ -158,7 +158,7 @@ export function SecurityAuditModal({
                 <i className="fa-solid fa-lock"></i>
                 <span>Status de Row Level Security (RLS) no Supabase Engine</span>
               </div>
-              <p className="text-slate-300 leading-relaxed text-[10px]">
+              <p className="text-slate-600 leading-relaxed text-[10px]">
                 Todas as tabelas abaixo têm <strong>ALTER TABLE ... ENABLE ROW LEVEL SECURITY</strong> aplicado e as suas policies removidas — o único acesso possível é através deste servidor, autenticado com a <code>service_role key</code>, nunca exposta ao browser. O acesso direto com a chave pública (anon) é estruturalmente bloqueado para todas estas tabelas.
               </p>
             </div>
@@ -189,7 +189,7 @@ export function SecurityAuditModal({
                       RLS Ativo
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-400 leading-snug">{t.policy}</span>
+                  <span className="text-[10px] text-slate-600 leading-snug">{t.policy}</span>
                 </div>
               ))}
             </div>
@@ -199,7 +199,7 @@ export function SecurityAuditModal({
         {/* TAB CONTENT 3: ACL ROLE MATRIX */}
         {activeTab === "acl" && (
           <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
-            <div className="text-[10px] uppercase font-extrabold text-slate-400 px-1 pt-1">
+            <div className="text-[10px] uppercase font-extrabold text-slate-600 px-1 pt-1">
               Matriz de Controlo de Acesso por Perfil (Access Control List - ACL)
             </div>
 
@@ -220,13 +220,13 @@ export function SecurityAuditModal({
                     </div>
                   </div>
 
-                  <div className="text-[10px] text-slate-300 space-y-1 pt-1">
+                  <div className="text-[10px] text-slate-600 space-y-1 pt-1">
                     <div>
-                      <strong className="text-slate-400">Documentos Permitidos:</strong>{" "}
+                      <strong className="text-slate-600">Documentos Permitidos:</strong>{" "}
                       <span className="text-slate-200">{rule.allowedDocTypes.join(", ")}</span>
                     </div>
                     <div>
-                      <strong className="text-slate-400">Ações Permitidas:</strong>{" "}
+                      <strong className="text-slate-600">Ações Permitidas:</strong>{" "}
                       <span className="text-emerald-300">{rule.actions.join(", ")}</span>
                     </div>
                   </div>
@@ -239,7 +239,7 @@ export function SecurityAuditModal({
         {/* TAB CONTENT 4: DOCUMENT ACCESS LOGS */}
         {activeTab === "doclogs" && (
           <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
-            <div className="flex justify-between items-center text-[10px] uppercase font-extrabold text-slate-400 px-1 pt-1">
+            <div className="flex justify-between items-center text-[10px] uppercase font-extrabold text-slate-600 px-1 pt-1">
               <span>Logs de Acesso a Documentos, OCR e Assinaturas (Conformidade RGPD)</span>
               <span>Total: {docLogs.length} registo(s)</span>
             </div>
@@ -261,13 +261,13 @@ export function SecurityAuditModal({
                       }`}>
                         {log.action}
                       </span>
-                      <span className="text-[10px] font-bold text-slate-300 uppercase">
+                      <span className="text-[10px] font-bold text-slate-600 uppercase">
                         [{log.docType}]
                       </span>
                     </div>
-                    <span className="text-[10px] text-slate-400 font-mono">{log.timestamp}</span>
+                    <span className="text-[10px] text-slate-600 font-mono">{log.timestamp}</span>
                   </div>
-                  <div className="text-[11px] text-slate-300 font-medium pt-0.5">
+                  <div className="text-[11px] text-slate-600 font-medium pt-0.5">
                     {log.reason}
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-800/40">

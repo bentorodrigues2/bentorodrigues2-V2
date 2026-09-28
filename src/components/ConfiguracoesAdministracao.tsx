@@ -1469,7 +1469,7 @@ export function ConfiguracoesAdministracao({
                     <span>Homologado</span>
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">Definições cadastrais, morada oficial, NIF e especificações de património comum do condomínio.</p>
+                <p className="text-xs text-slate-600 mt-0.5">Definições cadastrais, morada oficial, NIF e especificações de património comum do condomínio.</p>
               </div>
             </div>
           </div>
@@ -1508,14 +1508,14 @@ export function ConfiguracoesAdministracao({
           </div>
 
           <div>
-            <h3 className="text-sm font-black uppercase tracking-wider text-slate-400">Ficha Técnica e Definições do Edifício</h3>
+            <h3 className="text-sm font-black uppercase tracking-wider text-slate-600">Ficha Técnica e Definições do Edifício</h3>
             <p className="text-xs text-slate-500">Parâmetros operacionais e morada oficial do condomínio isolado no servidor.</p>
           </div>
 
           <form onSubmit={handleSaveGerais} className="space-y-4 max-w-2xl">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Nome do Condomínio</label>
+                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nome do Condomínio</label>
                 <input
                   type="text"
                   value={nomePredio}
@@ -1526,7 +1526,7 @@ export function ConfiguracoesAdministracao({
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Número de Contribuinte (NIF)</label>
+                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Número de Contribuinte (NIF)</label>
                 <input
                   type="text"
                   value={nif}
@@ -1537,7 +1537,7 @@ export function ConfiguracoesAdministracao({
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Morada Principal</label>
+                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Morada Principal</label>
                 <input
                   type="text"
                   value={morada}
@@ -1548,7 +1548,7 @@ export function ConfiguracoesAdministracao({
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Número / Bloco</label>
+                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Número / Bloco</label>
                 <input
                   type="text"
                   value={numPorta}
@@ -1558,7 +1558,7 @@ export function ConfiguracoesAdministracao({
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Localidade / Cidade</label>
+                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Localidade / Cidade</label>
                 <input
                   type="text"
                   value={localidade}
@@ -1627,7 +1627,7 @@ export function ConfiguracoesAdministracao({
                     <span>22 Templates Homologados</span>
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">Biblioteca oficial de modelos com variáveis dinâmicas, editor de texto com validação e simulador de envio com pré-visualização em tempo real.</p>
+                <p className="text-xs text-slate-600 mt-0.5">Biblioteca oficial de modelos com variáveis dinâmicas, editor de texto com validação e simulador de envio com pré-visualização em tempo real.</p>
               </div>
             </div>
           </div>
@@ -1687,7 +1687,7 @@ export function ConfiguracoesAdministracao({
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">{t.category.replace(" (apenas os essenciais)", "")}</p>
+                              <p className="text-[10px] text-slate-600 font-semibold uppercase tracking-wider">{t.category.replace(" (apenas os essenciais)", "")}</p>
                             </div>
                           </div>
                           <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 truncate font-mono">
@@ -1738,7 +1738,7 @@ export function ConfiguracoesAdministracao({
 
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Assunto do E-mail</label>
+                        <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Assunto do E-mail</label>
                         <input
                           type="text"
                           value={editedSubject}
@@ -1748,7 +1748,7 @@ export function ConfiguracoesAdministracao({
                       </div>
 
                       <div>
-                        <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Corpo do E-mail (Texto)</label>
+                        <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Corpo do E-mail (Texto)</label>
                         <textarea
                           rows={11}
                           value={editedBody}
@@ -1760,7 +1760,7 @@ export function ConfiguracoesAdministracao({
 
                     {/* Placeholders Guide */}
                     <div className="bg-white dark:bg-slate-900/60 p-3 rounded-lg border border-slate-200/60 dark:border-slate-800/60">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-1.5">Variáveis Disponíveis neste Template:</p>
+                      <p className="text-[10px] font-bold text-slate-600 uppercase tracking-tight mb-1.5">Variáveis Disponíveis neste Template:</p>
                       <div className="flex flex-wrap gap-1.5">
                         {["[Nome]", "[Fração]", "[Valor]", "[Data]", "[Método]", "[X]", "[Espaço]", "[Horário]", "[Extras selecionados]", "[Lista]", "[Motivo]", "[Local]", "[Assinatura Digital]", "AQUI"].map(variable => {
                           const isIncluded = editedBody.includes(variable) || editedSubject.includes(variable);
@@ -1770,7 +1770,7 @@ export function ConfiguracoesAdministracao({
                               className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded transition-all ${
                                 isIncluded
                                   ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40"
-                                  : "bg-slate-100 text-slate-400 border border-transparent dark:bg-slate-800 dark:text-slate-500"
+                                  : "bg-slate-100 text-slate-600 border border-transparent dark:bg-slate-800 dark:text-slate-500"
                               }`}
                               title={isIncluded ? "Usado no template" : "Não usado"}
                             >
@@ -1789,7 +1789,7 @@ export function ConfiguracoesAdministracao({
                         <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
                         <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
                         <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-                        <span className="text-[10px] font-extrabold text-slate-400 ml-1.5 uppercase tracking-wider">Visualização do Cliente de E-mail (Inbox)</span>
+                        <span className="text-[10px] font-extrabold text-slate-600 ml-1.5 uppercase tracking-wider">Visualização do Cliente de E-mail (Inbox)</span>
                       </div>
                       
                       {/* Interactive Fraction selector */}
@@ -1867,7 +1867,7 @@ export function ConfiguracoesAdministracao({
                     <span>Motor Ativo</span>
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">Configuração do assistente inteligente, sincronização de correio eletrónico e processamento autónomo de comprovativos.</p>
+                <p className="text-xs text-slate-600 mt-0.5">Configuração do assistente inteligente, sincronização de correio eletrónico e processamento autónomo de comprovativos.</p>
               </div>
             </div>
           </div>
@@ -1889,7 +1889,7 @@ export function ConfiguracoesAdministracao({
                           {syncEmailActive ? "● Ativo & Monitorizado" : "○ Pausado"}
                         </span>
                       </h3>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-600">
                         Processamento inteligente de faturas, recibos e comprovativos recebidos no e-mail do condomínio.
                       </p>
                     </div>
@@ -1912,7 +1912,7 @@ export function ConfiguracoesAdministracao({
                       className={`text-xs font-extrabold px-3 py-1.5 rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5 ${
                         syncEmailActive
                           ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md"
-                          : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                          : "bg-slate-800 text-slate-600 hover:bg-slate-700"
                       }`}
                     >
                       {syncEmailActive ? "Sincronizador Ligado" : "Ligar Sincronizador"}
@@ -1924,7 +1924,7 @@ export function ConfiguracoesAdministracao({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                   <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between" title="O canal real (webhook do Resend) é sempre em tempo real — não existe um intervalo de varredura configurável por prédio.">
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Frequência de Receção</span>
+                      <span className="text-[10px] uppercase font-bold text-slate-600 block">Frequência de Receção</span>
                       <strong className="text-slate-200 font-mono">Tempo Real (Webhook)</strong>
                     </div>
                     <CheckCircle className="h-4 w-4 text-emerald-400" />
@@ -1932,7 +1932,7 @@ export function ConfiguracoesAdministracao({
 
                   <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Última Sincronização</span>
+                      <span className="text-[10px] uppercase font-bold text-slate-600 block">Última Sincronização</span>
                       <span className="text-slate-200 font-semibold">{lastSyncTime}</span>
                     </div>
                     <CheckCircle className="h-4 w-4 text-emerald-400" />
@@ -1940,7 +1940,7 @@ export function ConfiguracoesAdministracao({
 
                   <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between" title="Cada email recebido é associado automaticamente à fração pelo endereço do remetente — não existe uma única caixa de correio monitorizada.">
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Identificação de Remetentes</span>
+                      <span className="text-[10px] uppercase font-bold text-slate-600 block">Identificação de Remetentes</span>
                       <span className="text-emerald-400 font-mono font-bold truncate max-w-[150px] inline-block">
                         Por Fração (automático)
                       </span>
@@ -1951,7 +1951,7 @@ export function ConfiguracoesAdministracao({
 
                 {/* 2. SELETOR DE MODO AUTO-RESPONDER */}
                 <div className="pt-2 space-y-2">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-600">
                     Modo de Operação do Auto-Responder:
                   </h4>
 
@@ -1982,7 +1982,7 @@ export function ConfiguracoesAdministracao({
                           RECOMENDADO
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                      <p className="text-[11px] text-slate-600 mt-2 leading-relaxed">
                         A IA reconhece o documento anexo (fatura/recibo), lança o movimento na conta-corrente como <strong>Pendente de Confirmação</strong> e guarda a cópia no Arquivo Digital. O recibo oficial é disparado ao condómino assim que o administrador clica em <strong>"Confirmar"</strong>.
                       </p>
                     </div>
@@ -2013,7 +2013,7 @@ export function ConfiguracoesAdministracao({
                           DIRETO
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                      <p className="text-[11px] text-slate-600 mt-2 leading-relaxed">
                         A IA reconcilia o pagamento bancário e emite de imediato o recibo oficial por e-mail para o condómino sem requerer intervenção humana prévia.
                       </p>
                     </div>
@@ -2024,7 +2024,7 @@ export function ConfiguracoesAdministracao({
                 {autoresponderMode === "confirmacao_previa" && (
                   <div className="pt-2 border-t border-slate-800 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] uppercase font-black text-slate-400 tracking-wider">
+                      <span className="text-[11px] uppercase font-black text-slate-600 tracking-wider">
                         Respostas de IA Pendentes de Confirmação {respostasPendentes.length > 0 && `(${respostasPendentes.length})`}
                       </span>
                       <button
@@ -2048,14 +2048,14 @@ export function ConfiguracoesAdministracao({
                             <div className="flex items-start justify-between gap-3">
                               <div>
                                 <p className="text-xs font-bold text-white">{r.assunto}</p>
-                                <p className="text-[10px] text-slate-400">Para: {r.destinatario_nome || r.destinatario_email} ({r.destinatario_email})</p>
+                                <p className="text-[10px] text-slate-600">Para: {r.destinatario_nome || r.destinatario_email} ({r.destinatario_email})</p>
                               </div>
-                              <span className="text-[9px] uppercase font-black text-slate-400 bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded shrink-0">
+                              <span className="text-[9px] uppercase font-black text-slate-600 bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded shrink-0">
                                 {r.categoria || "geral"}
                               </span>
                             </div>
                             <div
-                              className="text-[11px] text-slate-300 bg-slate-900/60 rounded-lg p-2 max-h-24 overflow-y-auto"
+                              className="text-[11px] text-slate-600 bg-slate-900/60 rounded-lg p-2 max-h-24 overflow-y-auto"
                               dangerouslySetInnerHTML={{ __html: r.mensagem_html }}
                             />
                             <div className="flex items-center gap-2 pt-1">
@@ -2071,7 +2071,7 @@ export function ConfiguracoesAdministracao({
                                 type="button"
                                 disabled={resolvendoRespostaId === r.id}
                                 onClick={() => resolverRespostaPendente(r.id, "rejeitar-resposta-ia")}
-                                className="flex-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-300 text-[11px] font-bold py-1.5 rounded-lg"
+                                className="flex-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-600 text-[11px] font-bold py-1.5 rounded-lg"
                               >
                                 Rejeitar
                               </button>
@@ -2085,28 +2085,28 @@ export function ConfiguracoesAdministracao({
 
                 {/* Fluxo Automático Ativo */}
                 <div className="pt-2 border-t border-slate-800">
-                  <span className="text-[11px] uppercase font-black text-slate-400 tracking-wider block mb-2">
+                  <span className="text-[11px] uppercase font-black text-slate-600 tracking-wider block mb-2">
                     Ações Executadas Automaticamente pela IA no Recebimento de E-mail:
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                     <label className="flex items-center gap-2 p-2 bg-slate-950 rounded-lg border border-slate-800">
                       <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                      <span className="text-slate-300 font-medium text-[11px]">Lançar movimento contabilístico</span>
+                      <span className="text-slate-600 font-medium text-[11px]">Lançar movimento contabilístico</span>
                     </label>
 
                     <label className="flex items-center gap-2 p-2 bg-slate-950 rounded-lg border border-slate-800">
                       <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                      <span className="text-slate-300 font-medium text-[11px]">Guardar anexo no Arquivo Digital</span>
+                      <span className="text-slate-600 font-medium text-[11px]">Guardar anexo no Arquivo Digital</span>
                     </label>
 
                     <label className="flex items-center gap-2 p-2 bg-slate-950 rounded-lg border border-slate-800">
                       <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                      <span className="text-slate-300 font-medium text-[11px]">Notificar painel da administração</span>
+                      <span className="text-slate-600 font-medium text-[11px]">Notificar painel da administração</span>
                     </label>
 
                     <label className="flex items-center gap-2 p-2 bg-slate-950 rounded-lg border border-slate-800">
                       <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                      <span className="text-slate-300 font-medium text-[11px]">Enviar Recibo (Template #2)</span>
+                      <span className="text-slate-600 font-medium text-[11px]">Enviar Recibo (Template #2)</span>
                     </label>
                   </div>
                 </div>
@@ -2132,7 +2132,7 @@ export function ConfiguracoesAdministracao({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Email Oficial de Integração IA</label>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Email Oficial de Integração IA</label>
                   <div className="flex gap-2 max-w-md">
                     <input
                       type="text"
@@ -2167,7 +2167,7 @@ export function ConfiguracoesAdministracao({
                 </div>
 
                 <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-                  <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-3">Âmbito de Leitura Inteligente do Email:</h4>
+                  <h4 className="text-xs font-black uppercase text-slate-600 tracking-wider mb-3">Âmbito de Leitura Inteligente do Email:</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                     {[
                       { label: "Ler e reconciliar Faturas", desc: "Varre faturas de fornecedores anexas no email." },
@@ -2265,7 +2265,7 @@ export function ConfiguracoesAdministracao({
                   <Sparkles className="h-4 w-4 text-emerald-500" />
                   Simulador e Testador em Tempo Real do Autoresponder:
                 </h4>
-                <div className="text-[11px] text-slate-400">
+                <div className="text-[11px] text-slate-600">
                   Carregue um cenário rápido ou digite um e-mail para testar a resposta JSON.
                 </div>
               </div>
@@ -2412,7 +2412,7 @@ export function ConfiguracoesAdministracao({
               {/* Formulário de Teste Manual */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
                 <div className="space-y-1">
-                  <label className="block text-[10px] uppercase font-bold text-slate-400">
+                  <label className="block text-[10px] uppercase font-bold text-slate-600">
                     Remetente do E-mail Recebido
                   </label>
                   <input
@@ -2425,7 +2425,7 @@ export function ConfiguracoesAdministracao({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-[10px] uppercase font-bold text-slate-400">
+                  <label className="block text-[10px] uppercase font-bold text-slate-600">
                     Assunto do E-mail
                   </label>
                   <input
@@ -2438,7 +2438,7 @@ export function ConfiguracoesAdministracao({
                 </div>
 
                 <div className="col-span-1 md:col-span-2 space-y-1">
-                  <label className="block text-[10px] uppercase font-bold text-slate-400">
+                  <label className="block text-[10px] uppercase font-bold text-slate-600">
                     Corpo da Mensagem (Texto Recebido)
                   </label>
                   <textarea
@@ -2452,7 +2452,7 @@ export function ConfiguracoesAdministracao({
               </div>
 
               <div className="flex items-center justify-between pt-1">
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-slate-600">
                   O motor analisa o tema, tom, urgência e aplica filtros em tempo real.
                 </span>
                 <button
@@ -2558,7 +2558,7 @@ export function ConfiguracoesAdministracao({
 
             {/* Presets para todas as 14 Categorias do System Prompt */}
             <div className="space-y-2">
-              <label className="block text-[10px] uppercase font-black tracking-wider text-slate-400">
+              <label className="block text-[10px] uppercase font-black tracking-wider text-slate-600">
                 Testar Diretamente as 14 Categorias do System Prompt:
               </label>
               <div className="flex flex-wrap gap-1.5">
@@ -2749,10 +2749,10 @@ export function ConfiguracoesAdministracao({
             {/* Presets Inteligentes de Teste das Regras */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="block text-[10px] uppercase font-black tracking-wider text-slate-400">
+                <label className="block text-[10px] uppercase font-black tracking-wider text-slate-600">
                   Cenários de Teste das Regras Inteligentes (Contexto + Categoria):
                 </label>
-                <span className="text-[10px] text-slate-400">Clique para preencher e testar instantaneamente</span>
+                <span className="text-[10px] text-slate-600">Clique para preencher e testar instantaneamente</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {[
@@ -3005,14 +3005,14 @@ export function ConfiguracoesAdministracao({
                   <div className="flex items-center gap-2">
                     <span className="text-slate-500 font-semibold">Assunto:</span>
                     <span className="font-bold text-slate-800 dark:text-slate-200">
-                      {regrasCategoriaResult.subject || <span className="text-slate-400 italic">null (ignorado)</span>}
+                      {regrasCategoriaResult.subject || <span className="text-slate-600 italic">null (ignorado)</span>}
                     </span>
                   </div>
                 </div>
 
                 {regrasCategoriaResult.message && (
                   <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                    <label className="text-[10px] uppercase font-bold text-slate-600 tracking-wider">
                       Mensagem Institucional Gerada:
                     </label>
                     <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
@@ -3061,20 +3061,20 @@ export function ConfiguracoesAdministracao({
                     <span>Multicanal Ativo</span>
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">Defina quais eventos despoletam alertas push ou e-mails aos condóminos, técnicos e órgãos de administração.</p>
+                <p className="text-xs text-slate-600 mt-0.5">Defina quais eventos despoletam alertas push ou e-mails aos condóminos, técnicos e órgãos de administração.</p>
               </div>
             </div>
           </div>
 
           <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
           <div>
-            <h3 className="text-sm font-black uppercase tracking-wider text-slate-400">Configuração de Alertas e Notificações</h3>
+            <h3 className="text-sm font-black uppercase tracking-wider text-slate-600">Configuração de Alertas e Notificações</h3>
             <p className="text-xs text-slate-500">Defina quais eventos despoletam alertas push e e-mails aos condóminos e técnicos.</p>
           </div>
 
           <div className="space-y-4 max-w-2xl">
             <div className="space-y-3">
-              <h4 className="text-xs font-black uppercase text-slate-400">Eventos do Sistema</h4>
+              <h4 className="text-xs font-black uppercase text-slate-600">Eventos do Sistema</h4>
               
               <div className="flex justify-between items-center p-3 rounded-xl border bg-slate-50 dark:bg-slate-950 text-xs">
                 <div>
@@ -3117,7 +3117,7 @@ export function ConfiguracoesAdministracao({
             </div>
 
             <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
-              <h4 className="text-xs font-black uppercase text-slate-400">Canais de Difusão Ativos</h4>
+              <h4 className="text-xs font-black uppercase text-slate-600">Canais de Difusão Ativos</h4>
 
               <div className="flex justify-between items-center p-3 rounded-xl border bg-slate-50 dark:bg-slate-950 text-xs">
                 <div>
@@ -3179,7 +3179,7 @@ export function ConfiguracoesAdministracao({
                     <span>Auditoria Inalterável</span>
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">Histórico detalhado e cronológico de alterações, acessos e operações efetuadas pelos utilizadores e automatismos.</p>
+                <p className="text-xs text-slate-600 mt-0.5">Histórico detalhado e cronológico de alterações, acessos e operações efetuadas pelos utilizadores e automatismos.</p>
               </div>
             </div>
           </div>
@@ -3187,7 +3187,7 @@ export function ConfiguracoesAdministracao({
           <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
             <div className="flex justify-between items-start flex-wrap gap-4">
               <div>
-                <h3 className="text-sm font-black uppercase tracking-wider text-slate-400">Log de Sistema (Registo Integral de Atividade)</h3>
+                <h3 className="text-sm font-black uppercase tracking-wider text-slate-600">Log de Sistema (Registo Integral de Atividade)</h3>
                 <p className="text-xs text-slate-500">Histórico detalhado e inalterável de auditoria contínua, alterações e intervenções da IA. Gravado no Supabase — sem opção de eliminar, mesmo por um administrador.</p>
               </div>
           </div>
@@ -3272,7 +3272,7 @@ export function ConfiguracoesAdministracao({
                   ))}
                 {logs.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="p-8 text-center text-slate-400 font-semibold">Nenhum registo de atividade encontrado.</td>
+                    <td colSpan={4} className="p-8 text-center text-slate-600 font-semibold">Nenhum registo de atividade encontrado.</td>
                   </tr>
                 )}
               </tbody>
@@ -3299,14 +3299,14 @@ export function ConfiguracoesAdministracao({
                     <span>Backup Total (.JSON)</span>
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">Efetue cópias de segurança instantâneas em JSON e exporte manuais em PDF e DOC.</p>
+                <p className="text-xs text-slate-600 mt-0.5">Efetue cópias de segurança instantâneas em JSON e exporte manuais em PDF e DOC.</p>
               </div>
             </div>
           </div>
 
           <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
           <div>
-            <h3 className="text-sm font-black uppercase tracking-wider text-slate-400">Exportação e Backups de Segurança</h3>
+            <h3 className="text-sm font-black uppercase tracking-wider text-slate-600">Exportação e Backups de Segurança</h3>
             <p className="text-xs text-slate-500">Efetue cópias de segurança instantâneas, parciais ou automáticas e garanta a custódia total dos seus dados.</p>
           </div>
 

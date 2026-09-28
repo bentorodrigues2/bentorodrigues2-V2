@@ -200,7 +200,7 @@ export default function AuthForm({
                 ✓
               </div>
               <h4 className="text-xs font-bold text-emerald-300">E-mail de Recuperação Enviado!</h4>
-              <p className="text-[10px] text-slate-300 leading-normal">
+              <p className="text-[10px] text-slate-600 leading-normal">
                 Enviámos um link seguro de redefinição de password para: <strong className="text-white font-mono">{email}</strong>.
                 Abra o email e siga o link para definir uma nova palavra-passe.
               </p>
@@ -208,7 +208,7 @@ export default function AuthForm({
           ) : (
             <div className="space-y-2.5">
               <div className="space-y-1">
-                <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">
+                <label className="text-[9px] font-extrabold text-slate-600 uppercase tracking-widest block">
                   E-mail da Conta
                 </label>
                 <div className="relative">
@@ -240,7 +240,7 @@ export default function AuthForm({
               setResetMode(false);
               setResetSent(false);
             }}
-            className="w-full text-center text-[11px] text-slate-400 hover:text-white pt-1 block cursor-pointer transition-colors"
+            className="w-full text-center text-[11px] text-slate-600 hover:text-white pt-1 block cursor-pointer transition-colors"
           >
             ← Voltar ao Login
           </button>
@@ -250,7 +250,7 @@ export default function AuthForm({
         <form onSubmit={handleStandardLogin} className="space-y-3 text-left pt-0.5">
           {/* Email Field */}
           <div className="space-y-1">
-            <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">
+            <label className="text-[9px] font-extrabold text-slate-600 uppercase tracking-widest block">
               E-MAIL DE UTILIZADOR
             </label>
             <div className="relative">
@@ -271,7 +271,7 @@ export default function AuthForm({
           {/* Password Field */}
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">
+              <label className="text-[9px] font-extrabold text-slate-600 uppercase tracking-widest block">
                 PALAVRA-PASSE
               </label>
               <button

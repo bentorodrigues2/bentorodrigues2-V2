@@ -593,12 +593,12 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-800 dark:text-white">Partilha Direta por Email</h3>
-                  <p className="text-[10px] text-slate-400">Documento: {emailModal.docTitle}</p>
+                  <p className="text-[10px] text-slate-600">Documento: {emailModal.docTitle}</p>
                 </div>
               </div>
               <button 
                 onClick={() => setEmailModal(prev => ({ ...prev, isOpen: false }))}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
+                className="text-slate-600 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
               >
                 <i className="fa-solid fa-xmark text-lg"></i>
               </button>
@@ -606,7 +606,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Destinatário (Email do Condómino)</label>
+                <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Destinatário (Email do Condómino)</label>
                 <input 
                   type="email" 
                   value={emailModal.recipient} 
@@ -615,7 +615,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Assunto do Email</label>
+                <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Assunto do Email</label>
                 <input 
                   type="text" 
                   value={emailModal.subject} 
@@ -624,7 +624,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Mensagem Anexa e Pré-visualização do Documento</label>
+                <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Mensagem Anexa e Pré-visualização do Documento</label>
                 <textarea 
                   rows={5}
                   value={emailModal.bodyText}
@@ -727,7 +727,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                 <i className="fa-solid fa-euro-sign text-base"></i>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 uppercase font-bold">Dívida Total Ativa</p>
+                <p className="text-[10px] text-slate-600 uppercase font-bold">Dívida Total Ativa</p>
                 <p className="text-lg font-bold text-slate-800 dark:text-white font-mono-custom">{totalBuildingDebt.toFixed(2)} €</p>
               </div>
             </div>
@@ -737,7 +737,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                 <i className="fa-solid fa-gavel text-base"></i>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 uppercase font-bold">Casos em Contencioso</p>
+                <p className="text-[10px] text-slate-600 uppercase font-bold">Casos em Contencioso</p>
                 <p className="text-lg font-bold text-slate-800 dark:text-white font-mono-custom">{totalInlitigationCount} frações</p>
               </div>
             </div>
@@ -747,7 +747,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                 <i className="fa-solid fa-hourglass-half text-base"></i>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 uppercase font-bold">Pré-Contencioso</p>
+                <p className="text-[10px] text-slate-600 uppercase font-bold">Pré-Contencioso</p>
                 <p className="text-lg font-bold text-slate-800 dark:text-white font-mono-custom">{totalInPreLitigationCount} frações</p>
               </div>
             </div>
@@ -757,7 +757,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                 <i className="fa-solid fa-ban text-base"></i>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 uppercase font-bold">Votos Inibidos</p>
+                <p className="text-[10px] text-slate-600 uppercase font-bold">Votos Inibidos</p>
                 <p className="text-lg font-bold text-slate-800 dark:text-white font-mono-custom">{totalInhibitedVotersCount} frações</p>
               </div>
             </div>
@@ -769,7 +769,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
               <i className="fa-solid fa-list-check text-red-500 mr-2"></i>
               Estados Jurídicos e Risco de Incumprimento por Fração
             </h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-600 leading-relaxed">
               O sistema monitoriza os prazos de vencimento dos avisos emitidos. Frações com atrasos superiores a 30 dias entram em pré-contencioso e superiores a 60 dias entram automaticamente em contencioso judicial com perda imediata de direitos de voto.
             </p>
 
@@ -794,11 +794,11 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                         <span className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 px-2 py-0.5 rounded text-[11px] font-mono-custom">
                           Fração {frac.fracao_nome}
                         </span>
-                        <p className="text-[10px] text-slate-400 mt-0.5">{frac.piso} - {frac.tipologia}</p>
+                        <p className="text-[10px] text-slate-600 mt-0.5">{frac.piso} - {frac.tipologia}</p>
                       </td>
                       <td className="p-3">
                         <p className="font-semibold text-slate-800 dark:text-slate-200">{frac.proprietario.nome}</p>
-                        <p className="text-[10px] text-slate-400 font-mono-custom">NIF: {frac.proprietario.nif}</p>
+                        <p className="text-[10px] text-slate-600 font-mono-custom">NIF: {frac.proprietario.nif}</p>
                       </td>
                       <td className="p-3 text-center font-mono-custom font-semibold">
                         {info.unpaidCount > 0 ? (
@@ -813,7 +813,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                         {info.maxDaysOverdue > 0 ? (
                           <span className="text-red-500 font-semibold">{info.maxDaysOverdue} dias</span>
                         ) : (
-                          <span className="text-slate-400">Nenhum</span>
+                          <span className="text-slate-600">Nenhum</span>
                         )}
                       </td>
                       <td className="p-3 text-right font-bold font-mono-custom text-slate-900 dark:text-slate-100">
@@ -822,7 +822,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                           <span className="block text-[9px] font-semibold text-amber-600 dark:text-amber-400">+ {info.totalJurosMoraEstimados.toFixed(2)}€ juros est.</span>
                         )}
                         {info.totalDebtPrescrito > 0 && (
-                          <span className="block text-[9px] font-bold text-slate-400" title="Prestações vencidas há mais de 5 anos — Art. 310º Código Civil, já não judicialmente cobráveis">
+                          <span className="block text-[9px] font-bold text-slate-600" title="Prestações vencidas há mais de 5 anos — Art. 310º Código Civil, já não judicialmente cobráveis">
                             <i className="fa-solid fa-hourglass-end mr-0.5"></i>{info.totalDebtPrescrito.toFixed(2)}€ prescrito
                           </span>
                         )}
@@ -838,7 +838,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                             <i className="fa-solid fa-ban mr-1"></i> Inibido
                           </span>
                         ) : (
-                          <span className="text-[9px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
+                          <span className="text-[9px] font-bold text-slate-600 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
                             Autorizado
                           </span>
                         )}
@@ -870,7 +870,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                             )}
                           </div>
                         ) : (
-                          <span className="text-[10px] text-slate-400 italic">Sem pendências</span>
+                          <span className="text-[10px] text-slate-600 italic">Sem pendências</span>
                         )}
                       </td>
                     </tr>
@@ -899,7 +899,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-slate-400">Selecionar Fração Autónoma:</span>
+                <span className="text-[11px] font-bold text-slate-600">Selecionar Fração Autónoma:</span>
                 <select
                   value={selectedFracaoId}
                   onChange={e => setSelectedFracaoId(e.target.value)}
@@ -917,14 +917,14 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               {/* Left Column: Editable Parameters */}
               <div className="lg:col-span-5 space-y-4 bg-slate-50 dark:bg-slate-900/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-800">
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-2">
                   <i className="fa-solid fa-pen-to-square text-emerald-500"></i>
                   <span>Parâmetros e Encargos da Fração (Editável)</span>
                 </h3>
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Quota Ordinária (€/mês)</label>
+                    <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Quota Ordinária (€/mês)</label>
                     <input
                       type="text"
                       value={ndQuotaOrdinaria}
@@ -933,7 +933,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Fundo Reserva (€/mês)</label>
+                    <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Fundo Reserva (€/mês)</label>
                     <input
                       type="text"
                       value={ndQuotaFundoReserva}
@@ -959,7 +959,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
 
                   {ndTemQuotaExtra && (
                     <div>
-                      <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Descrição e Valor da Quota Extra em Curso</label>
+                      <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Descrição e Valor da Quota Extra em Curso</label>
                       <textarea
                         rows={2}
                         value={ndDescricaoQuotaExtra}
@@ -972,7 +972,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Validade da Declaração</label>
+                    <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Validade da Declaração</label>
                     <input
                       type="text"
                       value={ndDataValidade}
@@ -981,7 +981,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Nome do Administrador (para campo de Assinatura Original)</label>
+                    <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Nome do Administrador (para campo de Assinatura Original)</label>
                     <input
                       type="text"
                       value={ndAssinatura}
@@ -1044,7 +1044,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                       </p>
                     </div>
                     <div className="text-right font-sans">
-                      <span className="block text-[10px] uppercase font-bold text-slate-400">Certidão Oficial</span>
+                      <span className="block text-[10px] uppercase font-bold text-slate-600">Certidão Oficial</span>
                       <span className="font-mono text-xs font-bold text-slate-900">Art. 54.º-A DL 268/94</span>
                     </div>
                   </div>
@@ -1122,7 +1122,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
             
             <div className="space-y-3">
               <div>
-                <label className="text-[10px] uppercase font-bold text-slate-400">Selecionar Fração Devedora</label>
+                <label className="text-[10px] uppercase font-bold text-slate-600">Selecionar Fração Devedora</label>
                 <select
                   value={selectedFracaoId}
                   onChange={e => setSelectedFracaoId(e.target.value)}
@@ -1141,7 +1141,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
               </div>
 
               <div>
-                <label className="text-[10px] uppercase font-bold text-slate-400">Prazo para Regularização (Dias)</label>
+                <label className="text-[10px] uppercase font-bold text-slate-600">Prazo para Regularização (Dias)</label>
                 <select className="mt-1 w-full border border-slate-200 dark:border-slate-800 p-2 text-xs rounded bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
                   <option value="15">15 Dias Úteis (Recomendado)</option>
                   <option value="8">8 Dias de Calendário</option>
@@ -1150,7 +1150,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
               </div>
 
               <div>
-                <label className="text-[10px] uppercase font-bold text-slate-400">Taxa de Juro de Mora Anual (%)</label>
+                <label className="text-[10px] uppercase font-bold text-slate-600">Taxa de Juro de Mora Anual (%)</label>
                 <input
                   type="number"
                   step="0.5"
@@ -1160,7 +1160,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                 />
               </div>
 
-              <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-slate-400 cursor-pointer">
+              <label className="flex items-center gap-2 text-[10px] uppercase font-bold text-slate-600 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={incluirJurosMoraNotificacao}
@@ -1182,7 +1182,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
 
               {/* Envio real de notificações jurídicas por email */}
               <div className="pt-3 mt-1 border-t border-slate-200 dark:border-slate-800 space-y-3">
-                <label className="text-[10px] uppercase font-bold text-slate-400">Tipo de Notificação a Enviar por Email</label>
+                <label className="text-[10px] uppercase font-bold text-slate-600">Tipo de Notificação a Enviar por Email</label>
                 <select
                   value={tipoCartaEnvio}
                   onChange={e => setTipoCartaEnvio(e.target.value as typeof tipoCartaEnvio)}
@@ -1206,7 +1206,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                 {tipoCartaEnvio === "acordo" && (
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] uppercase font-bold text-slate-400">N.º Prestações</label>
+                      <label className="text-[10px] uppercase font-bold text-slate-600">N.º Prestações</label>
                       <input
                         type="number"
                         min={1}
@@ -1216,7 +1216,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] uppercase font-bold text-slate-400">1.ª Prestação</label>
+                      <label className="text-[10px] uppercase font-bold text-slate-600">1.ª Prestação</label>
                       <input
                         type="date"
                         value={dataPrimeiraPrestacao}
@@ -1251,8 +1251,8 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
           {/* Letter preview */}
           <div className="lg:col-span-2">
             {!selectedFracaoId ? (
-              <div className="bg-white dark:bg-[#0f172a] p-12 text-center text-slate-400 rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm">
-                <i className="fa-regular fa-envelope-open text-4xl mb-3 text-slate-300"></i>
+              <div className="bg-white dark:bg-[#0f172a] p-12 text-center text-slate-600 rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm">
+                <i className="fa-regular fa-envelope-open text-4xl mb-3 text-slate-600"></i>
                 <p className="text-xs">Por favor, selecione uma fração devedora para gerar a notificação jurídica oficial.</p>
               </div>
             ) : (
@@ -1266,12 +1266,12 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] font-bold text-slate-600 uppercase">CARTA REGISTADA COM AR</p>
-                    <p className="text-[9px] text-slate-400">DATA: 15 de Julho de 2026</p>
+                    <p className="text-[9px] text-slate-600">DATA: 15 de Julho de 2026</p>
                   </div>
                 </div>
 
                 <div className="font-sans border border-slate-300 p-4 rounded bg-slate-50 space-y-1 w-2/3 ml-auto text-xs leading-normal">
-                  <p className="text-[10px] uppercase font-bold text-slate-400">Destinatário:</p>
+                  <p className="text-[10px] uppercase font-bold text-slate-600">Destinatário:</p>
                   <p className="font-bold text-slate-900">{selectedFracao.proprietario.nome}</p>
                   <p className="font-mono-custom">NIF: {selectedFracao.proprietario.nif}</p>
                   <p>Fração Autónoma "{selectedFracao.fracao_nome}" - {selectedFracao.piso}</p>
@@ -1348,7 +1348,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
             {selectedFracaoInfo && (
               <div className="space-y-4 text-xs">
                 <div>
-                  <label className="text-[10px] uppercase font-bold text-slate-400">Selecionar Réu (Fração)</label>
+                  <label className="text-[10px] uppercase font-bold text-slate-600">Selecionar Réu (Fração)</label>
                   <select
                     value={selectedFracaoId}
                     onChange={e => setSelectedFracaoId(e.target.value)}
@@ -1395,7 +1395,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   </div>
                 </div>
 
-                <p className="text-[10px] text-slate-400 leading-normal italic">
+                <p className="text-[10px] text-slate-600 leading-normal italic">
                   * O requerimento de injunção é um processo célere que confere força executiva de tribunal (título executivo judicial) para penhora imediata de contas bancárias ou bens móveis do devedor caso este não se oponha no prazo de 15 dias.
                 </p>
 
@@ -1413,7 +1413,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
           {/* Court form preview */}
           <div className="lg:col-span-2">
             {!selectedFracaoId ? (
-              <div className="bg-white dark:bg-[#0f172a] p-12 text-center text-slate-400 rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm">
+              <div className="bg-white dark:bg-[#0f172a] p-12 text-center text-slate-600 rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm">
                 <p className="text-xs">Por favor, selecione uma fração para formular o requerimento de injunção civil.</p>
               </div>
             ) : (
@@ -1444,19 +1444,19 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   <h5 className="font-bold uppercase tracking-wide border-b border-slate-200 pb-0.5 text-slate-700 text-[11px]">3. Pedido Líquido Discriminado</h5>
                   <div className="grid grid-cols-4 gap-2 text-center p-2 bg-slate-50 border rounded font-mono-custom text-xs font-bold">
                     <div className="border-r">
-                      <p className="text-[9px] font-sans text-slate-400 uppercase">Capital Inicial</p>
+                      <p className="text-[9px] font-sans text-slate-600 uppercase">Capital Inicial</p>
                       <p className="text-slate-800">{(selectedFracaoInfo?.totalDebtCobravel ?? 0).toFixed(2)} €</p>
                     </div>
                     <div className="border-r">
-                      <p className="text-[9px] font-sans text-slate-400 uppercase">Juros de Mora</p>
+                      <p className="text-[9px] font-sans text-slate-600 uppercase">Juros de Mora</p>
                       <p className="text-amber-600">{getCalculatedTotalInterest(selectedFracaoInfo?.unpaidAvisosCobraveis || []).toFixed(2)} €</p>
                     </div>
                     <div className="border-r">
-                      <p className="text-[9px] font-sans text-slate-400 uppercase">Taxa de Justiça</p>
+                      <p className="text-[9px] font-sans text-slate-600 uppercase">Taxa de Justiça</p>
                       <p className="text-red-600">{(selectedFracaoInfo?.totalDebtCobravel || 0) <= 2000 ? "25.50" : "51.00"} €</p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-sans text-slate-400 uppercase">Valor do Pedido</p>
+                      <p className="text-[9px] font-sans text-slate-600 uppercase">Valor do Pedido</p>
                       <p className="text-slate-950 font-extrabold">
                         {(
                           (selectedFracaoInfo?.totalDebtCobravel || 0) +
@@ -1622,7 +1622,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="md:col-span-1">
-                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Número & Título do Artigo</label>
+                  <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Número & Título do Artigo</label>
                   <input
                     type="text"
                     placeholder="Ex: Artigo 5.º - Horário de Silêncio"
@@ -1632,7 +1632,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Texto Legal / Conteúdo do Estatuto</label>
+                  <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Texto Legal / Conteúdo do Estatuto</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -1684,7 +1684,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className="block text-[10px] uppercase font-bold text-slate-400">Carta Normativa</span>
+                  <span className="block text-[10px] uppercase font-bold text-slate-600">Carta Normativa</span>
                   <span className="font-mono text-xs font-bold text-slate-900">Art. 1414.º CC</span>
                 </div>
               </div>
@@ -1721,10 +1721,10 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
               <div className="pt-8 flex justify-between items-end border-t border-slate-300 font-sans text-xs">
                 <div>
                   <p className="text-slate-500 text-[10px]">Aprovados em Assembleia de Condóminos</p>
-                  <p className="text-slate-400 text-[10px]">Estatutos gerados por CondoManager</p>
+                  <p className="text-slate-600 text-[10px]">Estatutos gerados por CondoManager</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] uppercase font-bold text-slate-400 mb-6">Administração do Edifício</p>
+                  <p className="text-[10px] uppercase font-bold text-slate-600 mb-6">Administração do Edifício</p>
                   <p className="font-bold text-slate-900 border-t border-slate-400 pt-1 px-4 inline-block">
                     {loggedUser.nome} - Administrador
                   </p>
@@ -1747,7 +1747,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
 
             <div className="space-y-3.5 text-xs text-slate-700 dark:text-slate-300">
               <div>
-                <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">1. Selecionar Fração Autónoma</label>
+                <label className="text-[10px] uppercase font-bold text-slate-600 block mb-1">1. Selecionar Fração Autónoma</label>
                 <select
                   value={selectedFracaoId}
                   onChange={e => setSelectedFracaoId(e.target.value)}
@@ -1765,7 +1765,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
               </div>
 
               <div>
-                <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">2. Tipo de Declaração Obrigatória</label>
+                <label className="text-[10px] uppercase font-bold text-slate-600 block mb-1">2. Tipo de Declaração Obrigatória</label>
                 <select
                   value={docObrigatorioType}
                   onChange={e => setDocObrigatorioType(e.target.value)}
@@ -1839,7 +1839,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
           {/* Certificate View (High Fidelity Portuguese Legal Formatting) */}
           <div className="lg:col-span-2">
             {!selectedFracaoId ? (
-              <div className="bg-white dark:bg-[#0f172a] p-12 text-center text-slate-400 rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm">
+              <div className="bg-white dark:bg-[#0f172a] p-12 text-center text-slate-600 rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm">
                 <p className="text-xs">Selecione uma fração para pré-visualizar a certidão jurídica.</p>
               </div>
             ) : (
@@ -1877,13 +1877,13 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                     <h2 className="text-xs font-black uppercase tracking-widest border-b border-dashed border-slate-300 pb-1 inline-block min-w-[280px] text-[#1A1A1A]">
                       {docObrigatorioType.toUpperCase()} — MODELO OFICIAL
                     </h2>
-                    <p className="text-[8px] text-slate-400 font-mono mt-1">CÓDIGO OFICIAL: LEG-{selectedFracao.fracao_nome}-{Date.now().toString().slice(-6)}</p>
+                    <p className="text-[8px] text-slate-600 font-mono mt-1">CÓDIGO OFICIAL: LEG-{selectedFracao.fracao_nome}-{Date.now().toString().slice(-6)}</p>
                   </div>
 
                   {/* 4. Identificação do Condómino */}
                   <div className="grid grid-cols-2 gap-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
                     <div>
-                      <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Identificação do Condómino / Proprietário</span>
+                      <span className="text-[8px] font-bold text-slate-600 uppercase tracking-wider block mb-1">Identificação do Condómino / Proprietário</span>
                       <p className="text-[10px] font-black uppercase text-[#1A1A1A]">Exmo(a) Sr(a):</p>
                       <p className="text-xs font-bold text-slate-800">{selectedFracao.proprietario.nome}</p>
                       <p className="text-[9px] text-slate-500 mt-1">
@@ -1896,7 +1896,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                     </div>
                     
                     <div className="text-right space-y-1">
-                      <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Dados Administrativos</span>
+                      <span className="text-[8px] font-bold text-slate-600 uppercase tracking-wider block mb-1">Dados Administrativos</span>
                       <p className="text-[9px] text-slate-600"><strong>Contribuinte NIF:</strong> {selectedFracao.proprietario.nif || "999999990"}</p>
                       <p className="text-[9px] text-slate-600"><strong>Data de Emissão:</strong> 18 de Julho de 2026</p>
                       <p className="text-[9px] text-slate-600"><strong>Estado da Fração:</strong> <span className={`font-bold uppercase ${selectedFracaoInfo?.status === "Contencioso" ? "text-red-600" : "text-emerald-600"}`}>{selectedFracaoInfo?.status || "Regularizada"}</span></p>
@@ -1997,7 +1997,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   {docObrigatorioType === "Declaração de Não Dívida" ? (
                     <div className="pt-6 border-t border-slate-200 flex flex-col md:flex-row items-end justify-between gap-6 font-sans">
                       <div className="text-left space-y-1">
-                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block">Documento Físico / Original</span>
+                        <span className="text-[8px] font-bold text-slate-600 uppercase tracking-wider block">Documento Físico / Original</span>
                         <p className="text-[10px] text-slate-600 font-medium">Emitida em: {new Date().toLocaleDateString("pt-PT")}</p>
                       </div>
 
@@ -2011,7 +2011,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   ) : (
                     <div className="pt-6 border-t border-slate-200 flex flex-col md:flex-row items-center justify-between gap-6 font-sans">
                       <div className="text-center md:text-left space-y-1">
-                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block">Assinatura Certificada</span>
+                        <span className="text-[8px] font-bold text-slate-600 uppercase tracking-wider block">Assinatura Certificada</span>
                         <p className="text-[10px] font-extrabold text-[#1A1A1A] uppercase">A Administração do Condomínio</p>
                         <p className="text-[8px] text-slate-500 font-medium">CondoManager AI, Lda. • Selo Tempus Eletrónico</p>
                         <p className="text-[7.5px] text-emerald-600 uppercase font-black tracking-widest mt-1">✓ Assinatura Digital Ativa • Emissão Validada por IA</p>
@@ -2035,7 +2035,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   )}
 
                   {/* 8. Rodapé Institucional (padrão oficial) */}
-                  <div className="pt-4 border-t border-slate-100 flex justify-between items-center text-[7.5px] text-slate-400 font-mono leading-none">
+                  <div className="pt-4 border-t border-slate-100 flex justify-between items-center text-[7.5px] text-slate-600 font-mono leading-none">
                     <div className="flex items-center space-x-1.5">
                       <span className="font-bold uppercase tracking-wider">CondoManager AI</span>
                       <span>— Gestão Inteligente de Condomínios</span>
@@ -2058,7 +2058,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
           {/* Debtors list and fraction selector */}
           <div className="lg:col-span-5 space-y-4">
             <div className="bg-white dark:bg-[#0f172a] p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-600">
                 Detetor de Contencioso & Mora (Faltosos em Quotas)
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
@@ -2095,7 +2095,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                               <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
                                 Proprietário: {frac.proprietario.nome}
                               </p>
-                              <p className="text-[9px] text-slate-400">NIF: {frac.proprietario.nif}</p>
+                              <p className="text-[9px] text-slate-600">NIF: {frac.proprietario.nif}</p>
                             </div>
                             <div className="text-right">
                               <span className="text-xs font-bold text-red-600 block">€{lInfo.totalDebt.toFixed(2)}</span>
@@ -2106,7 +2106,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                           </div>
 
                           <div className="mt-3 pt-2.5 border-t border-slate-200/60 dark:border-slate-800 flex justify-between items-center">
-                            <span className="text-[9px] text-slate-400">
+                            <span className="text-[9px] text-slate-600">
                               <i className="fa-solid fa-clock mr-1"></i>Atraso: {lInfo.maxDaysOverdue} dias
                             </span>
                             <button
@@ -2137,7 +2137,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
 
             {/* Interactive Legal AI Q&A */}
             <div className="bg-white dark:bg-[#0f172a] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-              <h5 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center">
+              <h5 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center">
                 <i className="fa-solid fa-gavel text-violet-500 mr-2"></i>
                 Consulta Rápida IA — Código Civil (Art. 1414.º a 1438.º)
               </h5>
@@ -2147,7 +2147,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   value={aiQuestion}
                   onChange={e => setAiQuestion(e.target.value)}
                   placeholder="Ex: Qual o quórum para obras de alteração da fachada?"
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500"
                 />
                 <button
                   type="submit"
@@ -2188,7 +2188,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                 </div>
                 <div className="space-y-1">
                   <h5 className="text-sm font-bold text-slate-800 dark:text-white">Redação de Notificação Extrajudicial em Curso</h5>
-                  <p className="text-xs text-slate-400 max-w-sm">
+                  <p className="text-xs text-slate-600 max-w-sm">
                     O Assistente Jurídico Inteligente está a cruzar a permilagem, identificação fiscal e faturas vencidas nos termos do Código Civil...
                   </p>
                 </div>
@@ -2243,18 +2243,18 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   {aiLegalNoticeText}
                 </div>
 
-                <div className="bg-slate-50 dark:bg-slate-900 p-4 border-t border-slate-200 dark:border-slate-800 text-[10px] text-slate-400 italic text-center">
+                <div className="bg-slate-50 dark:bg-slate-900 p-4 border-t border-slate-200 dark:border-slate-800 text-[10px] text-slate-600 italic text-center">
                   Documento lavrado automaticamente via IA Generativa em conformidade com o Código Civil de Portugal.
                 </div>
               </div>
             ) : (
               <div className="bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center flex flex-col items-center justify-center space-y-4 min-h-[500px]">
-                <div className="h-12 w-12 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                <div className="h-12 w-12 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-600">
                   <i className="fa-solid fa-scale-unbalanced-flip text-xl"></i>
                 </div>
                 <div className="space-y-1">
                   <h5 className="text-sm font-bold text-slate-600 dark:text-slate-300">Aguardando Seleção de Fração Devedora</h5>
-                  <p className="text-xs text-slate-400 max-w-xs">
+                  <p className="text-xs text-slate-600 max-w-xs">
                     Selecione uma fração com pagamentos em atraso na lista lateral para que o Assistente de IA redija a minuta jurídica correspondente.
                   </p>
                 </div>

@@ -1025,7 +1025,7 @@ export function GestaoManutencaoIntervencoes({
           </div>
           <div>
             <h3 className="text-sm font-bold font-sans">Acreditações & Consola de Fluxos</h3>
-            <p className="text-[11px] text-slate-400">Simule perfis técnicos ou condóminos para testar os fluxos integrados de manutenção.</p>
+            <p className="text-[11px] text-slate-600">Simule perfis técnicos ou condóminos para testar os fluxos integrados de manutenção.</p>
           </div>
         </div>
         <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 gap-1">
@@ -1036,7 +1036,7 @@ export function GestaoManutencaoIntervencoes({
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeProfile === role 
                   ? "bg-violet-600 text-white shadow-md font-extrabold" 
-                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+                  : "text-slate-600 hover:text-white hover:bg-slate-800"
               }`}
             >
               {role === "ADMIN" ? "👑 Admin" : role === "TECNICO" ? "🔍 Técnico" : "🏠 Condómino"}
@@ -1061,7 +1061,7 @@ export function GestaoManutencaoIntervencoes({
               
               <form onSubmit={handleSubmeterOcorrencia} className="space-y-3 text-xs">
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Local / Fração Relacionada</label>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 dark:text-slate-500 mb-1">Local / Fração Relacionada</label>
                   <select
                     value={ocFracao}
                     onChange={e => setOcFracao(e.target.value)}
@@ -1075,7 +1075,7 @@ export function GestaoManutencaoIntervencoes({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Categoria</label>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 dark:text-slate-500 mb-1">Categoria</label>
                   <select
                     value={ocCategoria}
                     onChange={e => setOcCategoria(e.target.value)}
@@ -1092,7 +1092,7 @@ export function GestaoManutencaoIntervencoes({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Prioridade</label>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 dark:text-slate-500 mb-1">Prioridade</label>
                   <div className="grid grid-cols-3 gap-2 mt-1">
                     {(["Baixa", "Média", "Alta"] as const).map(p => (
                       <button
@@ -1112,7 +1112,7 @@ export function GestaoManutencaoIntervencoes({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Descrição Detalhada</label>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 dark:text-slate-500 mb-1">Descrição Detalhada</label>
                   <textarea
                     rows={3}
                     value={ocDescricao}
@@ -1123,12 +1123,12 @@ export function GestaoManutencaoIntervencoes({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Evidências Fotográficas</label>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 dark:text-slate-500 mb-1">Evidências Fotográficas</label>
                   <div 
                     onClick={() => fileInputRef.current?.click()}
                     className="border border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-3 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-950"
                   >
-                    <Upload className="h-4 w-4 mx-auto text-slate-400 mb-1" />
+                    <Upload className="h-4 w-4 mx-auto text-slate-600 mb-1" />
                     <span className="text-[10px] text-slate-500 font-medium">Anexar ou tirar foto</span>
                     <input
                       ref={fileInputRef}
@@ -1164,10 +1164,10 @@ export function GestaoManutencaoIntervencoes({
 
           {/* Ocorrências List - Admin Backoffice and Technicians */}
           <div className="lg:col-span-2 space-y-4">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Linha de Entrada de Ocorrências</h4>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">Linha de Entrada de Ocorrências</h4>
             
             {ocorrencias.filter(o => o.id_predio === predio.id_predio).length === 0 ? (
-              <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border text-center text-slate-400 text-xs">
+              <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border text-center text-slate-600 text-xs">
                 Nenhuma ocorrência registada para este edifício.
               </div>
             ) : (
@@ -1186,7 +1186,7 @@ export function GestaoManutencaoIntervencoes({
                               {o.id_fracao === "common" ? "Área Comum" : "Fração " + fracoes.find(f => f.id_fracao === o.id_fracao)?.fracao_nome}
                             </span>
                           </div>
-                          <p className="text-xs text-slate-400 font-medium">Reportado em: {formatDatePT(o.data)}</p>
+                          <p className="text-xs text-slate-600 font-medium">Reportado em: {formatDatePT(o.data)}</p>
                         </div>
 
                         <span className={`px-2 py-0.5 rounded-full text-xs font-extrabold border ${
@@ -1260,7 +1260,7 @@ export function GestaoManutencaoIntervencoes({
                           <h5 className="text-xs font-bold uppercase text-slate-500">Despacho de Ocorrência</h5>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                             <div>
-                              <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Classificação Operacional</label>
+                              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Classificação Operacional</label>
                               <select
                                 value={dispClassificacao}
                                 onChange={e => setDispClassificacao(e.target.value as any)}
@@ -1273,7 +1273,7 @@ export function GestaoManutencaoIntervencoes({
                             </div>
 
                             <div>
-                              <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Atribuir Técnico / Empresa</label>
+                              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Atribuir Técnico / Empresa</label>
                               <input
                                 type="text"
                                 value={dispTecnico}
@@ -1284,7 +1284,7 @@ export function GestaoManutencaoIntervencoes({
                             </div>
 
                             <div>
-                              <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Prioridade</label>
+                              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Prioridade</label>
                               <select
                                 value={dispPrioridade}
                                 onChange={e => setDispPrioridade(e.target.value as any)}
@@ -1297,7 +1297,7 @@ export function GestaoManutencaoIntervencoes({
                             </div>
 
                             <div>
-                              <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Notas de Despacho</label>
+                              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Notas de Despacho</label>
                               <input
                                 type="text"
                                 value={dispNotas}
@@ -1332,7 +1332,7 @@ export function GestaoManutencaoIntervencoes({
                           
                           <div className="text-xs space-y-2">
                             <div>
-                              <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Relatório Técnico da Intervenção</label>
+                              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Relatório Técnico da Intervenção</label>
                               <textarea
                                 value={techReport}
                                 onChange={e => setTechReport(e.target.value)}
@@ -1343,7 +1343,7 @@ export function GestaoManutencaoIntervencoes({
                             </div>
 
                             <div>
-                              <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Assinatura Digital (Simulado)</label>
+                              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Assinatura Digital (Simulado)</label>
                               <input
                                 type="text"
                                 value={techSign}
@@ -1385,7 +1385,7 @@ export function GestaoManutencaoIntervencoes({
         <div className="space-y-4 animate-fadeIn">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Inspeções & Manutenção Preventiva</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600">Inspeções & Manutenção Preventiva</h3>
               <p className="text-xs text-slate-500">Agenda anual de vistorias técnicas regulamentares e verificações de equipamentos do edifício.</p>
             </div>
 
@@ -1430,15 +1430,15 @@ export function GestaoManutencaoIntervencoes({
 
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-400">
                     <div>
-                      <span className="text-[9px] block text-slate-400 uppercase font-bold">Data Planeada</span>
+                      <span className="text-[9px] block text-slate-600 uppercase font-bold">Data Planeada</span>
                       <span>{formatDatePT(item.dataPlaneada)}</span>
                     </div>
                     <div>
-                      <span className="text-[9px] block text-slate-400 uppercase font-bold">Periodicidade</span>
+                      <span className="text-[9px] block text-slate-600 uppercase font-bold">Periodicidade</span>
                       <span>{item.periodicidade}</span>
                     </div>
                     <div>
-                      <span className="text-[9px] block text-slate-400 uppercase font-bold">Última Verificação</span>
+                      <span className="text-[9px] block text-slate-600 uppercase font-bold">Última Verificação</span>
                       <span>{item.dataVerificacao ? formatDatePT(item.dataVerificacao) : "Pendente"}</span>
                     </div>
                   </div>
@@ -1461,7 +1461,7 @@ export function GestaoManutencaoIntervencoes({
                       <h5 className="text-xs font-bold uppercase text-slate-500">Checklist da Vistoria</h5>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                         <div>
-                          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Estado de Verificação</label>
+                          <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Estado de Verificação</label>
                           <select
                             value={checkStatus}
                             onChange={e => setCheckStatus(e.target.value as any)}
@@ -1473,7 +1473,7 @@ export function GestaoManutencaoIntervencoes({
                         </div>
 
                         <div>
-                          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Avarias / Problemas Encontrados</label>
+                          <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Avarias / Problemas Encontrados</label>
                           <input
                             type="text"
                             value={checkAvarias}
@@ -1484,7 +1484,7 @@ export function GestaoManutencaoIntervencoes({
                         </div>
 
                         <div className="md:col-span-2">
-                          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Descrição / Notas Técnicas</label>
+                          <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Descrição / Notas Técnicas</label>
                           <textarea
                             value={checkReport}
                             onChange={e => setCheckReport(e.target.value)}
@@ -1495,7 +1495,7 @@ export function GestaoManutencaoIntervencoes({
                         </div>
 
                         <div className="md:col-span-2">
-                          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Assinatura Digital Técnico Responsável</label>
+                          <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Assinatura Digital Técnico Responsável</label>
                           <input
                             type="text"
                             value={checkSign}
@@ -1530,7 +1530,7 @@ export function GestaoManutencaoIntervencoes({
                       {item.avariasEncontradas && (
                         <p className="text-red-600 dark:text-red-400 font-bold">Avaria detetada: {item.avariasEncontradas}</p>
                       )}
-                      <p className="text-[10px] text-slate-400">Dossier técnico arquivado e assinado por: {item.assinatura}</p>
+                      <p className="text-[10px] text-slate-600">Dossier técnico arquivado e assinado por: {item.assinatura}</p>
                     </div>
                   )}
                 </div>
@@ -1569,7 +1569,7 @@ export function GestaoManutencaoIntervencoes({
         <div className="space-y-4 animate-fadeIn">
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Registo de Pequenas Reparações</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600">Registo de Pequenas Reparações</h3>
               <p className="text-xs text-slate-500">Gestão e acompanhamento de intervenções de manutenção do edifício.</p>
             </div>
 
@@ -1587,7 +1587,7 @@ export function GestaoManutencaoIntervencoes({
               <h4 className="font-bold uppercase text-slate-600">Criar Ordem de Reparação</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Descrição do Trabalho</label>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Descrição do Trabalho</label>
                   <input
                     type="text"
                     required
@@ -1599,7 +1599,7 @@ export function GestaoManutencaoIntervencoes({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Fração / Local Comum</label>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Fração / Local Comum</label>
                   <select
                     value={newIntFracao}
                     onChange={e => setNewIntFracao(e.target.value)}
@@ -1613,7 +1613,7 @@ export function GestaoManutencaoIntervencoes({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Prioridade</label>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Prioridade</label>
                   <select
                     value={newIntPrioridade}
                     onChange={e => setNewIntPrioridade(e.target.value as any)}
@@ -1626,7 +1626,7 @@ export function GestaoManutencaoIntervencoes({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Fornecedor / Técnico</label>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Fornecedor / Técnico</label>
                   <input
                     type="text"
                     value={newIntForn}
@@ -1637,7 +1637,7 @@ export function GestaoManutencaoIntervencoes({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Custo Estimado / Previsto (€)</label>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Custo Estimado / Previsto (€)</label>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -1679,19 +1679,19 @@ export function GestaoManutencaoIntervencoes({
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-400">
                   <div>
-                    <span className="text-[9px] block text-slate-400 uppercase font-bold">Local</span>
+                    <span className="text-[9px] block text-slate-600 uppercase font-bold">Local</span>
                     <span>{i.id_fracao === "common" ? "Área Comum" : "Fração " + fracoes.find(f => f.id_fracao === i.id_fracao)?.fracao_nome}</span>
                   </div>
                   <div>
-                    <span className="text-[9px] block text-slate-400 uppercase font-bold">Prioridade</span>
+                    <span className="text-[9px] block text-slate-600 uppercase font-bold">Prioridade</span>
                     <span className={i.prioridade === "Alta" ? "text-red-600" : "text-slate-700 dark:text-slate-300"}>{i.prioridade}</span>
                   </div>
                   <div>
-                    <span className="text-[9px] block text-slate-400 uppercase font-bold">Fornecedor Atribuído</span>
+                    <span className="text-[9px] block text-slate-600 uppercase font-bold">Fornecedor Atribuído</span>
                     <span>{i.fornecedor}</span>
                   </div>
                   <div>
-                    <span className="text-[9px] block text-slate-400 uppercase font-bold">Orçamento Estimado</span>
+                    <span className="text-[9px] block text-slate-600 uppercase font-bold">Orçamento Estimado</span>
                     <span className="font-mono text-slate-800 dark:text-slate-200">{i.custoPrevisto.toFixed(2)}€</span>
                   </div>
                 </div>
@@ -1726,7 +1726,7 @@ export function GestaoManutencaoIntervencoes({
                     <h5 className="text-xs font-bold uppercase text-slate-500">Concluir Ordem de Serviço</h5>
                     <div className="text-xs space-y-2">
                       <div>
-                        <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Notas Técnicas e Descritivo</label>
+                        <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Notas Técnicas e Descritivo</label>
                         <textarea
                           value={execReport}
                           onChange={e => setExecReport(e.target.value)}
@@ -1759,7 +1759,7 @@ export function GestaoManutencaoIntervencoes({
                     <h5 className="text-xs font-bold uppercase text-slate-500">Validação Administrativa</h5>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                       <div>
-                        <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Custo Final do Trabalho (€)</label>
+                        <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Custo Final do Trabalho (€)</label>
                         <input
                           type="text"
                           inputMode="decimal"
@@ -1771,7 +1771,7 @@ export function GestaoManutencaoIntervencoes({
                       </div>
 
                       <div>
-                        <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Nome da Fatura a Anexar</label>
+                        <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nome da Fatura a Anexar</label>
                         <input
                           type="text"
                           value={valFatura}
@@ -1809,7 +1809,7 @@ export function GestaoManutencaoIntervencoes({
         <div className="space-y-4 animate-fadeIn">
           <div className="flex justify-between items-center flex-wrap gap-3">
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Obras Extraordinárias (Grandes)</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600">Obras Extraordinárias (Grandes)</h3>
               <p className="text-xs text-slate-500">Planeamento técnico e confirmação de obras grandes — cada obra que precise de quota extra fica disponível em "Cálculo & Emissão de Quotas".</p>
             </div>
 
@@ -1846,7 +1846,7 @@ export function GestaoManutencaoIntervencoes({
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Descrição Detalhada do Projeto</label>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Descrição Detalhada do Projeto</label>
                   <input
                     type="text"
                     required
@@ -1858,7 +1858,7 @@ export function GestaoManutencaoIntervencoes({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Empreiteiro / Fornecedor</label>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Empreiteiro / Fornecedor</label>
                   <select
                     value={newObraFornId}
                     onChange={e => {
@@ -1888,7 +1888,7 @@ export function GestaoManutencaoIntervencoes({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Custo Total Previsto (€)</label>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Custo Total Previsto (€)</label>
                   <input
                     type="text"
                     required
@@ -1901,7 +1901,7 @@ export function GestaoManutencaoIntervencoes({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Data Início</label>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Data Início</label>
                   <input
                     type="date"
                     value={newObraInicio}
@@ -1911,7 +1911,7 @@ export function GestaoManutencaoIntervencoes({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Data Conclusão</label>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Data Conclusão</label>
                   <input
                     type="date"
                     value={newObraFim}
@@ -2001,19 +2001,19 @@ export function GestaoManutencaoIntervencoes({
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-400">
                   <div>
-                    <span className="text-[9px] block text-slate-400 uppercase font-bold">Fornecedor / Empreiteiro</span>
+                    <span className="text-[9px] block text-slate-600 uppercase font-bold">Fornecedor / Empreiteiro</span>
                     <span className="text-slate-800 dark:text-slate-200 font-bold">{o.fornecedorNome}</span>
                   </div>
                   <div>
-                    <span className="text-[9px] block text-slate-400 uppercase font-bold">Custo Total Adjudicado</span>
+                    <span className="text-[9px] block text-slate-600 uppercase font-bold">Custo Total Adjudicado</span>
                     <span className="font-mono text-slate-800 dark:text-slate-200 font-black">{o.custoTotal.toLocaleString()}€</span>
                   </div>
                   <div>
-                    <span className="text-[9px] block text-slate-400 uppercase font-bold">Data Início</span>
+                    <span className="text-[9px] block text-slate-600 uppercase font-bold">Data Início</span>
                     <span>{formatDatePT(o.dataInicio)}</span>
                   </div>
                   <div>
-                    <span className="text-[9px] block text-slate-400 uppercase font-bold">Data Fim Estimada</span>
+                    <span className="text-[9px] block text-slate-600 uppercase font-bold">Data Fim Estimada</span>
                     <span>{formatDatePT(o.dataFim)}</span>
                   </div>
                 </div>
@@ -2053,7 +2053,7 @@ export function GestaoManutencaoIntervencoes({
                 )}
 
                 {o.id_divida && (
-                  <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                  <p className="text-[10px] text-slate-600 flex items-center gap-1">
                     <Landmark className="h-3 w-3" />
                     O custo desta obra está lançado como dívida ao fornecedor — o pagamento (total ou em tranches) faz-se em Financeiro → Dívidas a Fornecedores.
                   </p>
@@ -2192,12 +2192,12 @@ export function GestaoManutencaoIntervencoes({
         return (
           <div className="space-y-4 animate-fadeIn text-slate-800 dark:text-slate-100">
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Histórico de Tarefas Concluídas</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600">Histórico de Tarefas Concluídas</h3>
               <p className="text-xs text-slate-500">Histórico de vistorias, pequenas reparações e intervenções extraordinárias homologadas.</p>
             </div>
 
             {allConcluidas.length === 0 ? (
-              <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border text-center text-slate-400 text-xs">
+              <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border text-center text-slate-600 text-xs">
                 Nenhuma tarefa concluída ou registada de momento neste edifício.
               </div>
             ) : (
@@ -2249,21 +2249,21 @@ export function GestaoManutencaoIntervencoes({
                     {/* Meta Fields Grid */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-400">
                       <div>
-                        <span className="text-[9px] block text-slate-400 uppercase font-bold">Fornecedor / Técnico</span>
+                        <span className="text-[9px] block text-slate-600 uppercase font-bold">Fornecedor / Técnico</span>
                         <span className="text-slate-800 dark:text-slate-200 font-bold">{task.fornecedor}</span>
                       </div>
                       <div>
-                        <span className="text-[9px] block text-slate-400 uppercase font-bold">Custos</span>
+                        <span className="text-[9px] block text-slate-600 uppercase font-bold">Custos</span>
                         <span className="font-mono text-slate-800 dark:text-slate-200 font-bold">
                           {typeof task.custo === "number" ? `${task.custo.toFixed(2)}€` : task.custo}
                         </span>
                       </div>
                       <div>
-                        <span className="text-[9px] block text-slate-400 uppercase font-bold">Data Conclusão</span>
+                        <span className="text-[9px] block text-slate-600 uppercase font-bold">Data Conclusão</span>
                         <span>{task.dataConclusao}</span>
                       </div>
                       <div>
-                        <span className="text-[9px] block text-slate-400 uppercase font-bold">Anexos / Documentos</span>
+                        <span className="text-[9px] block text-slate-600 uppercase font-bold">Anexos / Documentos</span>
                         <span className="truncate block font-mono text-[10px] text-slate-700 dark:text-slate-300">
                           {task.anexos.join(", ") || "Dossier Geral"}
                         </span>
@@ -2273,12 +2273,12 @@ export function GestaoManutencaoIntervencoes({
                     {/* Reports and Technical Feedback */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-medium">
                       <div className="bg-slate-50 dark:bg-slate-950/55 p-3 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1">
-                        <strong className="text-[10px] uppercase text-slate-400 block font-bold">Relatório Técnico de Execução</strong>
+                        <strong className="text-[10px] uppercase text-slate-600 block font-bold">Relatório Técnico de Execução</strong>
                         <p className="text-slate-600 dark:text-slate-300 text-xs whitespace-pre-wrap">{task.relatorioTecnico}</p>
                       </div>
 
                       <div className="bg-slate-50 dark:bg-slate-950/55 p-3 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1">
-                        <strong className="text-[10px] uppercase text-slate-400 block font-bold">Relatório & Homologação da Administração</strong>
+                        <strong className="text-[10px] uppercase text-slate-600 block font-bold">Relatório & Homologação da Administração</strong>
                         <p className="text-slate-600 dark:text-slate-300 text-xs whitespace-pre-wrap">{task.relatorioAdmin}</p>
                       </div>
                     </div>
@@ -2286,7 +2286,7 @@ export function GestaoManutencaoIntervencoes({
                     {/* Photos list if any */}
                     {task.fotos && task.fotos.length > 0 && (
                       <div className="space-y-1.5">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Fotografias & Evidências</span>
+                        <span className="text-[10px] uppercase font-bold text-slate-600 block">Fotografias & Evidências</span>
                         <div className="flex gap-2">
                           {task.fotos.map((f, idx) => (
                             <div key={idx} className="relative rounded overflow-hidden h-12 w-16 border bg-slate-100">
@@ -2306,7 +2306,7 @@ export function GestaoManutencaoIntervencoes({
                             
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                               <div>
-                                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Custo Adjudicado Final (€)</label>
+                                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Custo Adjudicado Final (€)</label>
                                 <input
                                   type="text"
                                   inputMode="decimal"
@@ -2318,7 +2318,7 @@ export function GestaoManutencaoIntervencoes({
                               </div>
 
                               <div>
-                                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Nome da Fatura a Anexar</label>
+                                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nome da Fatura a Anexar</label>
                                 <input
                                   type="text"
                                   value={verifyAnexo}
@@ -2329,7 +2329,7 @@ export function GestaoManutencaoIntervencoes({
                               </div>
 
                               <div>
-                                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Relatório da Administração</label>
+                                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Relatório da Administração</label>
                                 <input
                                   type="text"
                                   value={verifyAdminReport}
@@ -2385,7 +2385,7 @@ export function GestaoManutencaoIntervencoes({
         <div className="space-y-4 animate-fadeIn text-slate-800 dark:text-slate-100">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Arquivo Documental Registado</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600">Arquivo Documental Registado</h3>
               <p className="text-xs text-slate-500">Repositório estruturado de orçamentos, faturas, relatórios de vistorias e documentos legais do condomínio.</p>
             </div>
             
@@ -2418,7 +2418,7 @@ export function GestaoManutencaoIntervencoes({
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {/* Visual Folders Panel */}
             <div className="md:col-span-1 space-y-2">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Estrutura de Pastas ({selectedYear})</span>
+              <span className="text-[10px] uppercase font-bold text-slate-600 block mb-1">Estrutura de Pastas ({selectedYear})</span>
               <div className="space-y-1">
                 {["Manutenção", "Custos Fixos", "Intervenções Extraordinárias", "Seguros", "Serviços", "Obras", "Assistências", "Orçamentos", "Relatórios", "Outros"].map(theme => (
                   <button
@@ -2444,7 +2444,7 @@ export function GestaoManutencaoIntervencoes({
 
             {/* Documents List */}
             <div className="md:col-span-3 space-y-3">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Documentos Encontrados</span>
+              <span className="text-[10px] uppercase font-bold text-slate-600 block mb-1">Documentos Encontrados</span>
               
               {documentos.filter(d => {
                 const matchesPredio = d.id_predio === predio.id_predio;
@@ -2452,7 +2452,7 @@ export function GestaoManutencaoIntervencoes({
                 const matchesYear = !d.ano || d.ano === selectedYear;
                 return matchesPredio && matchesTheme && matchesYear;
               }).length === 0 ? (
-                <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border text-center text-slate-400 text-xs">
+                <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border text-center text-slate-600 text-xs">
                   Nenhum documento arquivado nesta pasta para o Exercício {selectedYear}.
                 </div>
               ) : (
@@ -2487,7 +2487,7 @@ export function GestaoManutencaoIntervencoes({
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium line-clamp-2">{d.descricao || "Sem descrição registada..."}</p>
 
                           {/* Metadata fields requested */}
-                          <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[10px] text-slate-400 dark:text-slate-500 font-semibold pt-1 border-t border-dashed border-slate-100 dark:border-slate-800">
+                          <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[10px] text-slate-600 dark:text-slate-500 font-semibold pt-1 border-t border-dashed border-slate-100 dark:border-slate-800">
                             <div>Data: <span className="text-slate-600 dark:text-slate-300">{formatDatePT(d.data_upload)}</span></div>
                             <div>Categoria: <span className="text-slate-600 dark:text-slate-300">{d.categoria || "Outros"}</span></div>
                             <div>Origem: <span className="text-slate-600 dark:text-slate-300">{origem}</span></div>
@@ -2510,7 +2510,7 @@ export function GestaoManutencaoIntervencoes({
                         </div>
 
                         <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
-                          <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                          <div className="flex items-center gap-2 text-[10px] text-slate-600">
                             <span>{d.tamanho}</span>
                             <span>•</span>
                             <span className="font-bold text-slate-500">{d.visibilidade || "Público"}</span>

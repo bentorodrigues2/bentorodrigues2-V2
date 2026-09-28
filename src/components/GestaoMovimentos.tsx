@@ -1401,7 +1401,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                 {predio.nome}
               </span>
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-600">
               Registo de fluxos de caixa, conciliação bancária, despesas e regularização de exercícios anteriores.
             </p>
           </div>
@@ -1456,7 +1456,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                         </label>
                         <button
                           onClick={() => setJustifyingMovId(null)}
-                          className="text-slate-400 hover:text-slate-600 text-[10px] underline"
+                          className="text-slate-600 hover:text-slate-600 text-[10px] underline"
                         >
                           Cancelar
                         </button>
@@ -1511,7 +1511,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                   <i className="fa-solid fa-magnifying-glass-dollar text-amber-400"></i>
                   Detalhe do Movimento Reconhecido
                 </h3>
-                <button onClick={() => setDetalheMovId(null)} className="text-slate-400 hover:text-white cursor-pointer">
+                <button onClick={() => setDetalheMovId(null)} className="text-slate-600 hover:text-white cursor-pointer">
                   <i className="fa-solid fa-xmark"></i>
                 </button>
               </div>
@@ -1580,7 +1580,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                     onChange={e => setEditDataMov(e.target.value)}
                     className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-mono"
                   />
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[10px] text-slate-600">
                     Ao confirmar o pagamento, o mês a marcar como pago é sempre escolhido pelo valor (não por esta data) — mas esta data determina em que mês/ano este movimento aparece no Mapa de Pagamentos e no Extrato.
                   </p>
                 </div>
@@ -1828,7 +1828,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
                   <span>Anexos / Documentos Associados (Até 4 Ficheiros, WebP Silent Conversion)</span>
-                  <span className={`${uploadedFotos.length === 4 ? "text-amber-600" : "text-slate-400"}`}>{uploadedFotos.length} de 4</span>
+                  <span className={`${uploadedFotos.length === 4 ? "text-amber-600" : "text-slate-600"}`}>{uploadedFotos.length} de 4</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <label className="bg-slate-50 hover:bg-slate-100 text-slate-700 border border-dashed border-slate-300 px-4 py-2.5 rounded-lg text-xs font-bold flex items-center space-x-2 cursor-pointer transition-colors">
@@ -1886,7 +1886,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                 <i className="fa-solid fa-envelope text-emerald-600"></i>
                 <div>
                   <h3 className="text-sm font-bold text-slate-800">Caixa de Entrada (E-mails do Prédio)</h3>
-                  <span className="text-[10px] text-slate-400 font-mono">{predio.email_condominio || "administracao@condomanager.pt"}</span>
+                  <span className="text-[10px] text-slate-600 font-mono">{predio.email_condominio || "administracao@condomanager.pt"}</span>
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
@@ -1914,7 +1914,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
             <div className="space-y-3 overflow-y-auto max-h-[290px] pr-1 scrollbar-thin">
               {emails.length === 0 ? (
-                <div className="text-center py-10 text-slate-400 text-xs font-mono-custom">
+                <div className="text-center py-10 text-slate-600 text-xs font-mono-custom">
                   Caixa de correio vazia. Nenhum e-mail de fornecedor recebido nas últimas horas.
                 </div>
               ) : (
@@ -1928,7 +1928,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                     <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">{e.body}</p>
                     
                     <div className="flex items-center space-x-1.5 mt-2 bg-slate-50 p-1.5 rounded text-[10px] border border-slate-200">
-                      <i className="fa-solid fa-paperclip text-slate-400"></i>
+                      <i className="fa-solid fa-paperclip text-slate-600"></i>
                       <span className="text-slate-700 font-mono-custom truncate">{e.attachment}</span>
                     </div>
 
@@ -2025,7 +2025,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-600 block">Ficheiro(s) do Extrato / Aviso a Analisar</label>
-              <span className="text-[10px] text-slate-400 font-mono">PDF, foto, Excel, CSV ou TXT</span>
+              <span className="text-[10px] text-slate-600 font-mono">PDF, foto, Excel, CSV ou TXT</span>
             </div>
 
             <input
@@ -2115,7 +2115,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                   <span>Movimentos Detetados pela IA{extractedItems.length > 0 ? ` (${extractedItems.length})` : ""}</span>
                 </h4>
                 {showMovimentosDetetadosModal ? (
-                  <button type="button" onClick={() => setShowMovimentosDetetadosModal(false)} className="text-slate-400 hover:text-red-500 cursor-pointer p-1" title="Fechar">
+                  <button type="button" onClick={() => setShowMovimentosDetetadosModal(false)} className="text-slate-600 hover:text-red-500 cursor-pointer p-1" title="Fechar">
                     <i className="fa-solid fa-xmark text-lg"></i>
                   </button>
                 ) : extractedItems.length > 0 && (
@@ -2128,7 +2128,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
               <div className={showMovimentosDetetadosModal ? "space-y-2.5 overflow-y-auto flex-1 pr-1 text-sm" : "space-y-2 overflow-y-auto max-h-[280px] pr-1"}>
                 {extractedItems.length === 0 ? (
-                  <div className="text-center py-8 text-slate-400 text-xs font-medium">
+                  <div className="text-center py-8 text-slate-600 text-xs font-medium">
                     Nenhuma parcela ou transação extraída pendente. Anexe um ficheiro à esquerda.
                   </div>
                 ) : (
@@ -2137,18 +2137,18 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                       return (
                         <div key={index} className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs space-y-1 opacity-70">
                           <div className="flex justify-between items-center">
-                            <span className="font-mono-custom text-[10px] text-slate-400">{item.data}</span>
+                            <span className="font-mono-custom text-[10px] text-slate-600">{item.data}</span>
                             <div className="flex items-center gap-1.5">
                               <span className="text-[10px] font-bold px-1.5 rounded bg-slate-200 text-slate-600 flex items-center gap-1">
                                 <i className="fa-solid fa-check"></i> Já Lançado
                               </span>
-                              <button onClick={() => descartarItemExtraido(index)} title="Remover da lista" className="text-slate-400 hover:text-red-500 cursor-pointer">
+                              <button onClick={() => descartarItemExtraido(index)} title="Remover da lista" className="text-slate-600 hover:text-red-500 cursor-pointer">
                                 <i className="fa-solid fa-xmark"></i>
                               </button>
                             </div>
                           </div>
                           <p className="font-semibold text-slate-500 line-clamp-1">{item.descricao}</p>
-                          <p className="text-slate-400 font-mono-custom">{item.tipo === "Receita" ? "+" : "-"}{item.valor.toFixed(2)}€ — não requer aprovação (já existe um lançamento/aviso equivalente).</p>
+                          <p className="text-slate-600 font-mono-custom">{item.tipo === "Receita" ? "+" : "-"}{item.valor.toFixed(2)}€ — não requer aprovação (já existe um lançamento/aviso equivalente).</p>
                         </div>
                       );
                     }
@@ -2160,7 +2160,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                             <span className="font-mono-custom text-[10px] text-slate-500">{item.data}</span>
                             <div className="flex items-center gap-1.5">
                               <span className="text-[10px] font-bold px-1.5 rounded bg-emerald-50 text-emerald-800">Receita — Condómino</span>
-                              <button onClick={() => descartarItemExtraido(index)} title="Remover da lista, sem lançar" className="text-slate-400 hover:text-red-500 cursor-pointer">
+                              <button onClick={() => descartarItemExtraido(index)} title="Remover da lista, sem lançar" className="text-slate-600 hover:text-red-500 cursor-pointer">
                                 <i className="fa-solid fa-trash-can"></i>
                               </button>
                             </div>
@@ -2173,7 +2173,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                                 logo a seguir. Pedido explícito: "tenho de ter
                                 os dados do movimento conta titular... para
                                 confrontar com a fração". */}
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Titular / Descritivo do Extrato</span>
+                            <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider block">Titular / Descritivo do Extrato</span>
                             <p className="font-semibold text-slate-800">{item.descricao}</p>
                             {(item.entidade_credora || item.iban_credor) && (
                               <p className="text-[10px] text-slate-500 font-mono mt-0.5">
@@ -2248,7 +2248,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                                 <div className="border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50">
                                   <p className="text-[10px] font-bold text-slate-600">Este pagamento fecha os meses:</p>
                                   {avisosFracaoPendentes.length === 0 ? (
-                                    <p className="text-[10px] text-slate-400">Esta fração não tem avisos pendentes.</p>
+                                    <p className="text-[10px] text-slate-600">Esta fração não tem avisos pendentes.</p>
                                   ) : avisosFracaoPendentes.map(a => (
                                     <label key={a.id_aviso} className="flex items-center gap-1.5 text-[10px] text-slate-700 cursor-pointer">
                                       <input
@@ -2299,7 +2299,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                           <span className={`text-[10px] font-bold px-1.5 rounded ${item.tipo === "Receita" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>
                             {item.tipo === "Receita" ? "Receita" : "Despesa"}
                           </span>
-                          <button onClick={() => descartarItemExtraido(index)} title="Remover da lista, sem lançar" className="text-slate-400 hover:text-red-500 cursor-pointer">
+                          <button onClick={() => descartarItemExtraido(index)} title="Remover da lista, sem lançar" className="text-slate-600 hover:text-red-500 cursor-pointer">
                             <i className="fa-solid fa-trash-can"></i>
                           </button>
                         </div>
@@ -2342,7 +2342,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                         <i className="fa-solid fa-rotate"></i> Isto é um pagamento de condómino (corrigir para Receita)
                       </button>
                       <div>
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Titular / Descritivo do Extrato</span>
+                        <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider block">Titular / Descritivo do Extrato</span>
                         <p className="font-semibold text-slate-800">{item.descricao}</p>
                         {(item.entidade_credora || item.iban_credor) && (
                           <p className="text-[10px] text-slate-500 font-mono mt-0.5">
@@ -2423,7 +2423,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
           <button
             type="button"
             onClick={() => setFiltroExtratoConta("TODAS")}
-            className={`px-3 py-2 rounded-t-lg text-xs font-bold transition-colors cursor-pointer border-b-2 ${filtroExtratoConta === "TODAS" ? "bg-slate-100 text-slate-800 border-slate-500" : "text-slate-400 border-transparent hover:bg-slate-50"}`}
+            className={`px-3 py-2 rounded-t-lg text-xs font-bold transition-colors cursor-pointer border-b-2 ${filtroExtratoConta === "TODAS" ? "bg-slate-100 text-slate-800 border-slate-500" : "text-slate-600 border-transparent hover:bg-slate-50"}`}
             title="Ver todas as contas juntas (não recomendado para conciliação — contas têm saldos independentes)"
           >
             Todas as Contas
@@ -2497,7 +2497,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
           </select>
           <div className="flex items-center gap-1 shrink-0">
             <input type="date" value={filtroExtratoDataDe} onChange={e => setFiltroExtratoDataDe(e.target.value)} className="border border-slate-200 rounded-lg px-1 py-1.5 text-[10px] focus:outline-emerald-500 w-[118px]" title="Data de" />
-            <span className="text-slate-400 text-[10px]">–</span>
+            <span className="text-slate-600 text-[10px]">–</span>
             <input type="date" value={filtroExtratoDataAte} onChange={e => setFiltroExtratoDataAte(e.target.value)} className="border border-slate-200 rounded-lg px-1 py-1.5 text-[10px] focus:outline-emerald-500 w-[118px]" title="Data até" />
           </div>
           {(filtroExtratoBusca || filtroExtratoTipo !== "TODOS" || filtroExtratoCategoria !== "TODAS" || filtroExtratoFracao !== "TODAS" || filtroExtratoFornecedor !== "TODOS" || filtroExtratoEstado !== "TODOS" || filtroExtratoDataDe || filtroExtratoDataAte) && (
@@ -2509,7 +2509,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
         <div className="divide-y divide-slate-100">
           {extratoConsolidadoFiltrado.length === 0 ? (
-            <div className="p-6 text-center text-slate-400 font-medium text-xs">
+            <div className="p-6 text-center text-slate-600 font-medium text-xs">
               {predioMovements.length === 0 ? "Nenhum movimento lançado para este condomínio." : "Nenhum movimento corresponde aos filtros aplicados."}
             </div>
           ) : (
@@ -2526,7 +2526,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                     onClick={() => setLinhaExtratoExpandida(expandida ? null : m.id_mov)}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50/70 transition-colors cursor-pointer text-xs"
                   >
-                    <i className={`fa-solid fa-chevron-right text-[9px] text-slate-400 transition-transform ${expandida ? "rotate-90" : ""}`}></i>
+                    <i className={`fa-solid fa-chevron-right text-[9px] text-slate-600 transition-transform ${expandida ? "rotate-90" : ""}`}></i>
                     <span className="font-mono-custom text-slate-500 whitespace-nowrap w-[72px] shrink-0">{formatDatePT(m.data)}</span>
                     {/* Conta/banco de origem sempre visível na linha, sem
                         precisar de expandir — pedido explícito: sem isto não
@@ -2560,23 +2560,23 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                   {expandida && (
                     <div className="px-4 pb-3 pl-9 grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px] bg-slate-50/60">
                       <div>
-                        <span className="block text-slate-400 font-bold uppercase text-[9px]">Banco</span>
+                        <span className="block text-slate-600 font-bold uppercase text-[9px]">Banco</span>
                         <span className="text-slate-700">{cta ? `${cta.banco} (${cta.tipo.split(" ")[0]})` : "—"}</span>
                       </div>
                       <div>
-                        <span className="block text-slate-400 font-bold uppercase text-[9px]">Categoria</span>
+                        <span className="block text-slate-600 font-bold uppercase text-[9px]">Categoria</span>
                         <span className="text-slate-700">{formatarCategoriaMovimento(m.categoria)}</span>
                       </div>
                       <div>
-                        <span className="block text-slate-400 font-bold uppercase text-[9px]">Fração</span>
+                        <span className="block text-slate-600 font-bold uppercase text-[9px]">Fração</span>
                         <span className="text-slate-700">{frac?.fracao_nome || "—"}</span>
                       </div>
                       <div>
-                        <span className="block text-slate-400 font-bold uppercase text-[9px]">Fornecedor</span>
+                        <span className="block text-slate-600 font-bold uppercase text-[9px]">Fornecedor</span>
                         <span className="text-slate-700">{forn?.nome || "—"}</span>
                       </div>
                       <div>
-                        <span className="block text-slate-400 font-bold uppercase text-[9px]">Estado</span>
+                        <span className="block text-slate-600 font-bold uppercase text-[9px]">Estado</span>
                         {isCego ? (
                           <span className="text-amber-600 font-bold flex items-center gap-1"><i className="fa-solid fa-triangle-exclamation"></i> Por Justificar</span>
                         ) : (
@@ -2585,7 +2585,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                       </div>
                       {m.fotos && m.fotos.length > 0 && (
                         <div>
-                          <span className="block text-slate-400 font-bold uppercase text-[9px] mb-1">Anexos</span>
+                          <span className="block text-slate-600 font-bold uppercase text-[9px] mb-1">Anexos</span>
                           <div className="flex space-x-1">
                             {m.fotos.map((f, i) => (
                               <a key={i} href={f} target="_blank" rel="noopener noreferrer" className="h-7 w-7 rounded border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center hover:scale-110 transition-transform bg-white">
@@ -2605,7 +2605,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                         if (!infoMesesLinha) return null;
                         return (
                           <div className="col-span-2 sm:col-span-4">
-                            <span className="block text-slate-400 font-bold uppercase text-[9px] mb-1">Meses Cobertos</span>
+                            <span className="block text-slate-600 font-bold uppercase text-[9px] mb-1">Meses Cobertos</span>
                             <span className="text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 inline-block">
                               💡 Este pagamento equivale a <strong>{infoMesesLinha.mesesDetectados} meses</strong> da quota ({infoMesesLinha.quotaMensal.toFixed(2)}€/mês) — provavelmente: <strong>{nomesDosMesesCobertos(infoMesesLinha.mesInicioSugerido, infoMesesLinha.mesesDetectados)}</strong>.
                             </span>
@@ -2666,13 +2666,13 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white">Recebimento de Exercícios Anteriores</h3>
-                  <p className="text-[11px] text-slate-400">Regularização de quotas e dívidas transitadas ({predio.nome})</p>
+                  <p className="text-[11px] text-slate-600">Regularização de quotas e dívidas transitadas ({predio.nome})</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setModalDividaAnteriorOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg text-sm"
+                className="text-slate-600 hover:text-white p-1 rounded-lg text-sm"
               >
                 ✕
               </button>
@@ -2815,13 +2815,13 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white">Registar Fatura de E-mail</h3>
-                  <p className="text-[11px] text-slate-400">Entrada manual na caixa de correio do condomínio</p>
+                  <p className="text-[11px] text-slate-600">Entrada manual na caixa de correio do condomínio</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setManualEmailModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg text-sm"
+                className="text-slate-600 hover:text-white p-1 rounded-lg text-sm"
               >
                 ✕
               </button>

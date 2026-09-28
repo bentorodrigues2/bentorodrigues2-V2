@@ -912,7 +912,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       {activeTab === "fornecedores" && (
         <div className="space-y-6 animate-fadeIn">
           <div className="flex justify-between items-center no-print">
-            <h4 className="text-xs font-bold uppercase text-slate-400">Exportações de Relatórios</h4>
+            <h4 className="text-xs font-bold uppercase text-slate-600">Exportações de Relatórios</h4>
             <button onClick={exportarFornecedoresXLS} className="bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold px-3 py-1.5 rounded-lg text-xs hover:bg-emerald-100 transition-all cursor-pointer flex items-center gap-1.5">
               <img src="/modulos/66-exportacao-financeira.png" alt="Excel" className="w-4 h-4 object-contain shrink-0" /> Exportar Fornecedores XLS / CSV
             </button>
@@ -993,7 +993,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                     <i className="fa-solid fa-link text-emerald-600"></i>
                     Referências de Contrato / ADC (Débito Direto)
                   </label>
-                  <span className="text-[10px] text-slate-400 max-w-xs text-right">Ex: "Número da ADC" de eletricidade/água/gás — identifica o contrato certo mesmo quando o IBAN do credor é partilhado por todos os clientes da mesma entidade.</span>
+                  <span className="text-[10px] text-slate-600 max-w-xs text-right">Ex: "Número da ADC" de eletricidade/água/gás — identifica o contrato certo mesmo quando o IBAN do credor é partilhado por todos os clientes da mesma entidade.</span>
                 </div>
 
                 {referenciasContrato.length > 0 && (
@@ -1002,12 +1002,12 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                       <div key={idx} className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
                         <div>
                           <span className="font-mono font-bold text-slate-700">{rc.referencia}</span>
-                          {rc.descricao && <span className="text-slate-400 ml-2">— {rc.descricao}</span>}
+                          {rc.descricao && <span className="text-slate-600 ml-2">— {rc.descricao}</span>}
                         </div>
                         <button
                           type="button"
                           onClick={() => setReferenciasContrato(prev => prev.filter((_, i) => i !== idx))}
-                          className="text-slate-400 hover:text-red-500 cursor-pointer"
+                          className="text-slate-600 hover:text-red-500 cursor-pointer"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -1052,7 +1052,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                     <i className="fa-solid fa-tags text-emerald-600"></i>
                     Palavras-Chave de Reconhecimento Automático
                   </label>
-                  <span className="text-[10px] text-slate-400 max-w-xs text-right">Ex: "imposto de selo", "comissão", "custos de transferência" — associa automaticamente ao fornecedor qualquer movimento cuja descrição contenha uma destas palavras, quando não há IBAN nem referência de contrato.</span>
+                  <span className="text-[10px] text-slate-600 max-w-xs text-right">Ex: "imposto de selo", "comissão", "custos de transferência" — associa automaticamente ao fornecedor qualquer movimento cuja descrição contenha uma destas palavras, quando não há IBAN nem referência de contrato.</span>
                 </div>
 
                 {palavrasChave.length > 0 && (
@@ -1063,7 +1063,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                         <button
                           type="button"
                           onClick={() => setPalavrasChave(prev => prev.filter((_, i) => i !== idx))}
-                          className="text-slate-400 hover:text-red-500 cursor-pointer"
+                          className="text-slate-600 hover:text-red-500 cursor-pointer"
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -1098,7 +1098,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                     <i className="fa-solid fa-[#000] fa-mobile-screen-button text-emerald-600"></i>
                     Checklist de Atribuição de Perfis PWA
                   </label>
-                  <span className="text-[10px] text-slate-400">Por defeito não é enviado nenhum e-mail (bancos, seguradoras e a maioria dos fornecedores não precisam de acesso). Só selecione um perfil se este fornecedor for mesmo usar a PWA.</span>
+                  <span className="text-[10px] text-slate-600">Por defeito não é enviado nenhum e-mail (bancos, seguradoras e a maioria dos fornecedores não precisam de acesso). Só selecione um perfil se este fornecedor for mesmo usar a PWA.</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 pt-1">
                   <button
@@ -1114,7 +1114,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                       <span>🚫</span>
                       <span>Sem Acesso PWA</span>
                     </span>
-                    <i className={`fa-solid ${perfisPwa.length === 0 ? "fa-circle-check text-slate-600" : "fa-circle text-slate-300"} text-xs`}></i>
+                    <i className={`fa-solid ${perfisPwa.length === 0 ? "fa-circle-check text-slate-600" : "fa-circle text-slate-600"} text-xs`}></i>
                   </button>
                   {[
                     { id: "LIMPEZAS", label: "Limpezas", icon: "🧹", color: "border-emerald-300 bg-emerald-50/50 text-emerald-900" },
@@ -1139,7 +1139,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                           <span>{p.icon}</span>
                           <span>{p.label}</span>
                         </span>
-                        <i className={`fa-solid ${active ? "fa-circle-check text-emerald-600" : "fa-circle text-slate-300"} text-xs`}></i>
+                        <i className={`fa-solid ${active ? "fa-circle-check text-emerald-600" : "fa-circle text-slate-600"} text-xs`}></i>
                       </button>
                     );
                   })}
@@ -1165,7 +1165,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
               <span className="text-[10px] font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">{predioForn.length}</span>
             </div>
             {predioForn.length === 0 ? (
-              <div className="p-6 text-center text-slate-400 italic text-xs">Nenhum fornecedor cadastrado.</div>
+              <div className="p-6 text-center text-slate-600 italic text-xs">Nenhum fornecedor cadastrado.</div>
             ) : (
               <div className="divide-y divide-slate-100">
                 {predioForn.map(f => {
@@ -1178,10 +1178,10 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                         className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50/70 transition-colors cursor-pointer"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <i className={`fa-solid fa-chevron-right text-slate-400 text-[10px] transition-transform shrink-0 ${isExpanded ? "rotate-90" : ""}`}></i>
+                          <i className={`fa-solid fa-chevron-right text-slate-600 text-[10px] transition-transform shrink-0 ${isExpanded ? "rotate-90" : ""}`}></i>
                           <div className="min-w-0">
                             <span className="font-bold text-slate-800 text-xs block truncate">{f.nome}</span>
-                            <span className="text-[10px] text-slate-400 font-mono">NIF {f.nif || "—"}</span>
+                            <span className="text-[10px] text-slate-600 font-mono">NIF {f.nif || "—"}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -1196,12 +1196,12 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                         <div className="px-4 pb-4 pt-1 bg-slate-50/40 text-xs space-y-3">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div className="space-y-1 text-slate-600">
-                              <p className="font-mono"><span className="font-semibold text-slate-500">IBAN:</span> {f.iban || <span className="text-slate-400 italic">Não fornecido</span>}</p>
-                              {f.contacto && <p className="font-mono"><i className="fa-solid fa-phone mr-1.5 text-slate-400"></i><span className="font-semibold text-slate-500">Geral:</span> {f.contacto}</p>}
-                              {f.pessoa_contacto && <p><i className="fa-solid fa-user-tie mr-1.5 text-slate-400"></i><span className="font-semibold text-slate-500">Pessoa:</span> {f.pessoa_contacto}</p>}
-                              {f.email_contacto && <p className="font-mono"><i className="fa-solid fa-envelope mr-1.5 text-slate-400"></i><span className="font-semibold text-slate-500">E-mail:</span> {f.email_contacto}</p>}
-                              {f.telemovel_direto && <p className="font-mono"><i className="fa-solid fa-mobile-screen-button mr-1.5 text-slate-400"></i><span className="font-semibold text-slate-500">Telemóvel Direto:</span> {f.telemovel_direto}</p>}
-                              {f.morada && <p><i className="fa-solid fa-location-dot mr-1.5 text-slate-400"></i>{f.morada}</p>}
+                              <p className="font-mono"><span className="font-semibold text-slate-500">IBAN:</span> {f.iban || <span className="text-slate-600 italic">Não fornecido</span>}</p>
+                              {f.contacto && <p className="font-mono"><i className="fa-solid fa-phone mr-1.5 text-slate-600"></i><span className="font-semibold text-slate-500">Geral:</span> {f.contacto}</p>}
+                              {f.pessoa_contacto && <p><i className="fa-solid fa-user-tie mr-1.5 text-slate-600"></i><span className="font-semibold text-slate-500">Pessoa:</span> {f.pessoa_contacto}</p>}
+                              {f.email_contacto && <p className="font-mono"><i className="fa-solid fa-envelope mr-1.5 text-slate-600"></i><span className="font-semibold text-slate-500">E-mail:</span> {f.email_contacto}</p>}
+                              {f.telemovel_direto && <p className="font-mono"><i className="fa-solid fa-mobile-screen-button mr-1.5 text-slate-600"></i><span className="font-semibold text-slate-500">Telemóvel Direto:</span> {f.telemovel_direto}</p>}
+                              {f.morada && <p><i className="fa-solid fa-location-dot mr-1.5 text-slate-600"></i>{f.morada}</p>}
                               {f.data_nascimento && <p className="font-mono">🎂 Nasc: {f.data_nascimento}</p>}
                               {f.referencias_contrato && f.referencias_contrato.length > 0 && (
                                 <div className="pt-1">
@@ -1236,7 +1236,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                                   ))}
                                 </div>
                               ) : (
-                                <span className="text-slate-400 italic text-[10px]">Sem perfil PWA</span>
+                                <span className="text-slate-600 italic text-[10px]">Sem perfil PWA</span>
                               )}
                             </div>
                           </div>
@@ -1314,10 +1314,10 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                     <i className="fa-solid fa-paper-plane text-emerald-400 text-lg"></i>
                     <div>
                       <h3 className="font-bold text-sm uppercase">Registo de Fornecedor Homologado</h3>
-                      <p className="text-[10px] text-slate-300">Comunicação oficial e credencial de acesso em PDF</p>
+                      <p className="text-[10px] text-slate-600">Comunicação oficial e credencial de acesso em PDF</p>
                     </div>
                   </div>
-                  <button onClick={() => setWelcomeModalFornecedor(null)} className="text-slate-400 hover:text-white cursor-pointer">
+                  <button onClick={() => setWelcomeModalFornecedor(null)} className="text-slate-600 hover:text-white cursor-pointer">
                     <i className="fa-solid fa-xmark text-lg"></i>
                   </button>
                 </div>
@@ -1555,18 +1555,18 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
               <div>
-                <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wide block">Despesa Mensal de Contratos</span>
+                <span className="text-slate-600 text-[10px] font-bold uppercase tracking-wide block">Despesa Mensal de Contratos</span>
                 <h3 className="text-xl font-black text-slate-800 font-mono">{totalMensalContratos.toFixed(2)}€</h3>
-                <p className="text-[10px] text-slate-400 mt-1">Serviços ativos recorrentes</p>
+                <p className="text-[10px] text-slate-600 mt-1">Serviços ativos recorrentes</p>
               </div>
               <div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg"><i className="fa-solid fa-calendar-day"></i></div>
             </div>
 
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
               <div>
-                <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wide block">Encargo Anual Total</span>
+                <span className="text-slate-600 text-[10px] font-bold uppercase tracking-wide block">Encargo Anual Total</span>
                 <h3 className="text-xl font-black text-slate-800 font-mono">{totalAnualContratos.toFixed(2)}€</h3>
-                <p className="text-[10px] text-slate-400 mt-1">Soma de contratos do prédio</p>
+                <p className="text-[10px] text-slate-600 mt-1">Soma de contratos do prédio</p>
               </div>
               <div className="p-3 bg-teal-50 text-teal-600 rounded-lg"><i className="fa-solid fa-calculator"></i></div>
             </div>
@@ -1575,11 +1575,11 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
               <div className="flex justify-between items-center w-full">
                 <div>
-                  <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wide block">Impacto no Orçamento Geral</span>
+                  <span className="text-slate-600 text-[10px] font-bold uppercase tracking-wide block">Impacto no Orçamento Geral</span>
                   <h3 className="text-base font-extrabold text-slate-800 mt-0.5">{impactoOrcamentoContratos.toFixed(1)}%</h3>
                 </div>
                 <div className="text-right">
-                  <span className="text-[9px] font-bold text-slate-400 block uppercase">Ref. Orçamento Anual</span>
+                  <span className="text-[9px] font-bold text-slate-600 block uppercase">Ref. Orçamento Anual</span>
                   <div className="flex items-center justify-end space-x-1 mt-0.5 font-mono">
                     <input
                       type="text"
@@ -1737,7 +1737,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                     <option value={90}>90 dias antes</option>
                     <option value={120}>120 dias antes</option>
                   </select>
-                  <span className="text-[10px] text-slate-400 mt-1">Email automático à administração quando faltar este prazo para o fim do contrato.</span>
+                  <span className="text-[10px] text-slate-600 mt-1">Email automático à administração quando faltar este prazo para o fim do contrato.</span>
                 </div>
               </div>
 
@@ -1815,7 +1815,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
           {/* List of active Contracted Services with warning indicators */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Pasta Digital de Contratos de Serviços ({predioContratos.length})</h4>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">Pasta Digital de Contratos de Serviços ({predioContratos.length})</h4>
               <button
                 type="button"
                 onClick={exportarRelatorioContratosXLS}
@@ -1827,7 +1827,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
             </div>
             
             {predioContratos.length === 0 ? (
-              <div className="bg-white p-8 rounded-xl border border-slate-200 text-center text-slate-400 italic text-xs">
+              <div className="bg-white p-8 rounded-xl border border-slate-200 text-center text-slate-600 italic text-xs">
                 Nenhum contrato arquivado para este condomínio.
               </div>
             ) : (
@@ -1901,8 +1901,8 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                         )}
 
                         {c.historico_renovacoes && c.historico_renovacoes.length > 0 && (
-                          <div className="text-[10px] text-slate-400 font-mono">
-                            <i className="fa-solid fa-history mr-1 text-slate-400"></i>
+                          <div className="text-[10px] text-slate-600 font-mono">
+                            <i className="fa-solid fa-history mr-1 text-slate-600"></i>
                             <span>Último Registo: {c.historico_renovacoes[0]}</span>
                           </div>
                         )}
@@ -1911,8 +1911,8 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                       {/* Right financials & Contract archive buttons */}
                       <div className="flex items-center space-x-4 shrink-0 self-end md:self-auto">
                         <div className="text-right">
-                          <span className="text-[9px] text-slate-400 uppercase font-bold block">Encargo de Contrato</span>
-                          <span className="text-sm font-black text-slate-800 font-mono block">{c.custo_mensal.toFixed(2)}€ <span className="text-[10px] text-slate-400 font-medium">/mês</span></span>
+                          <span className="text-[9px] text-slate-600 uppercase font-bold block">Encargo de Contrato</span>
+                          <span className="text-sm font-black text-slate-800 font-mono block">{c.custo_mensal.toFixed(2)}€ <span className="text-[10px] text-slate-600 font-medium">/mês</span></span>
                           <span className="text-[10px] text-slate-500 font-mono block">({c.custo_anual.toFixed(2)}€ /ano)</span>
                         </div>
 
@@ -2152,7 +2152,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
               </thead>
               <tbody>
                 {dividasPredio.length === 0 && (
-                  <tr><td colSpan={6} className="p-6 text-center text-slate-400">Sem dívidas a fornecedores lançadas.</td></tr>
+                  <tr><td colSpan={6} className="p-6 text-center text-slate-600">Sem dívidas a fornecedores lançadas.</td></tr>
                 )}
                 {dividasPredio.map(d => {
                   const saldo = saldoDevedorDivida(d);
@@ -2190,7 +2190,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                         {historico.length > 0 && (
                           <button
                             onClick={() => setHistoricoAbertoDividaId(historicoAbertoDividaId === d.id_divida ? null : d.id_divida)}
-                            className="block text-[9px] text-slate-400 hover:text-slate-700 underline mt-1 cursor-pointer"
+                            className="block text-[9px] text-slate-600 hover:text-slate-700 underline mt-1 cursor-pointer"
                           >
                             {historico.length} tranche(s) {historicoAbertoDividaId === d.id_divida ? "▲" : "▼"}
                           </button>
@@ -2253,7 +2253,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                                   <button
                                     onClick={() => handleRemoverPagamento(d, p)}
                                     title="Eliminar esta tranche (reverte o movimento e o saldo da conta)"
-                                    className="text-slate-400 hover:text-red-600 cursor-pointer ml-2"
+                                    className="text-slate-600 hover:text-red-600 cursor-pointer ml-2"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>

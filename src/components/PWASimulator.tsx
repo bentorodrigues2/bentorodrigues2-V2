@@ -1212,7 +1212,7 @@ export function PWASimulator({
                   className={`p-1.5 rounded-lg border transition-colors cursor-pointer text-xs ${
                     pwaSoundEnabled 
                       ? "bg-emerald-950/40 border-emerald-800/80 text-emerald-400 hover:bg-emerald-950/60" 
-                      : "bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-400"
+                      : "bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-600"
                   }`}
                   title={pwaSoundEnabled ? "Som Ativado" : "Modo Silencioso"}
                 >
@@ -1227,7 +1227,7 @@ export function PWASimulator({
                   className={`p-1.5 rounded-lg border transition-colors cursor-pointer text-xs ${
                     pwaVibrateEnabled 
                       ? "bg-indigo-950/40 border-indigo-800/80 text-indigo-400 hover:bg-indigo-950/60" 
-                      : "bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-400"
+                      : "bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-600"
                   }`}
                   title={pwaVibrateEnabled ? "Vibração Ativada" : "Sem Vibração"}
                 >
@@ -1240,7 +1240,7 @@ export function PWASimulator({
                   className={`p-1.5 rounded-lg border transition-colors cursor-pointer relative ${
                     activeTab === "notifications"
                       ? "bg-slate-800 border-slate-700 text-white"
-                      : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white"
+                      : "bg-slate-900 border-slate-800 text-slate-600 hover:text-white"
                   }`}
                 >
                   <Bell className="h-3.5 w-3.5" />
@@ -1513,7 +1513,7 @@ export function PWASimulator({
                 <>
                   {activeTab === "documents" && (
                     <div className="space-y-3">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Documentos Arquivados</h4>
+                      <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Documentos Arquivados</h4>
                       <div className="space-y-2">
                         {documentos.map(d => (
                           <div key={d.id_doc} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-900 p-2.5 rounded-lg flex items-center justify-between text-[11px] shadow-sm">
@@ -1521,7 +1521,7 @@ export function PWASimulator({
                               <FileText className="h-4 w-4 text-red-500 shrink-0" />
                               <div className="truncate">
                                 <span className="font-bold block text-slate-800 dark:text-white truncate">{d.nome}</span>
-                                <span className="text-[9px] text-slate-400">{d.tipo} • {d.tamanho}</span>
+                                <span className="text-[9px] text-slate-600">{d.tipo} • {d.tamanho}</span>
                               </div>
                             </div>
                             <button onClick={() => alert(`Visualização do PDF: ${d.nome}`)} className="text-indigo-600 font-bold shrink-0 text-[10px]">Ver</button>
@@ -1533,24 +1533,24 @@ export function PWASimulator({
 
                   {activeTab === "obras" && (
                     <div className="space-y-3">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Obras & Contencioso</h4>
+                      <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Obras & Contencioso</h4>
                       <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-900 p-3 rounded-lg text-[11px] space-y-2 shadow-sm">
                         <span className="font-bold text-amber-600 flex items-center"><Wrench className="h-3.5 w-3.5 mr-1" /> Pintura de Fachadas 2026</span>
-                        <p className="text-slate-400 text-[10px]">Orçamento: 18,500€ • Início previsto para Setembro. Adjudicado à empresa Pinturas Lis Lda.</p>
+                        <p className="text-slate-600 text-[10px]">Orçamento: 18,500€ • Início previsto para Setembro. Adjudicado à empresa Pinturas Lis Lda.</p>
                         <div className="h-1 bg-slate-100 dark:bg-slate-800 rounded">
                           <div className="w-1/3 h-full bg-amber-500 rounded"></div>
                         </div>
                       </div>
                       <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-900 p-3 rounded-lg text-[11px] space-y-2 shadow-sm">
                         <span className="font-bold text-red-600 flex items-center"><Scale className="h-3.5 w-3.5 mr-1" /> Processo Fração D (Litígio)</span>
-                        <p className="text-slate-400 text-[10px]">Contencioso Jurídico ativo por falta de pagamento recorrente das quotas ordinárias de condomínio.</p>
+                        <p className="text-slate-600 text-[10px]">Contencioso Jurídico ativo por falta de pagamento recorrente das quotas ordinárias de condomínio.</p>
                       </div>
                     </div>
                   )}
 
                   {activeTab === "ocorrencias" && (
                     <div className="space-y-3">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Gestão de Ocorrências</h4>
+                      <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Gestão de Ocorrências</h4>
                       <div className="space-y-2">
                         {ocorrencias.slice(0, 4).map(o => (
                           <div key={o.id_ocorr} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-900 p-3 rounded-lg text-[11px] space-y-1 shadow-sm">
@@ -1558,7 +1558,7 @@ export function PWASimulator({
                               <span className="font-bold text-slate-700 dark:text-slate-300">{o.id_ocorr}</span>
                               <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${o.estado === "Resolvida" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{o.estado}</span>
                             </div>
-                            <p className="text-slate-400 text-[10px]">{o.descricao}</p>
+                            <p className="text-slate-600 text-[10px]">{o.descricao}</p>
                           </div>
                         ))}
                       </div>
@@ -1607,7 +1607,7 @@ export function PWASimulator({
                       <div className="bg-slate-900 text-white rounded-2xl p-4 space-y-2 shadow-md">
                         <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider block">Área Técnica</span>
                         <h3 className="text-sm font-bold">Agenda de Vistorias Oficiais</h3>
-                        <p className="text-[10px] text-slate-400">Inspeções agendadas, preenchimento de checklists estruturais e reporte imediato de avarias comuns.</p>
+                        <p className="text-[10px] text-slate-600">Inspeções agendadas, preenchimento de checklists estruturais e reporte imediato de avarias comuns.</p>
                       </div>
 
                       {/* Technical checklist and report form */}
@@ -1619,13 +1619,13 @@ export function PWASimulator({
                           <div className="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-400 p-2.5 rounded-lg border border-emerald-100 dark:border-emerald-900/40 text-[10px] space-y-0.5">
                             <span className="font-bold block">✓ Enviado com Sucesso</span>
                             <span>Data do Upload: {tecnicoDate}</span>
-                            <span className="block text-[9px] text-slate-400 font-mono">Timestamp: {tecnicoSubmittalTimestamp}</span>
+                            <span className="block text-[9px] text-slate-600 font-mono">Timestamp: {tecnicoSubmittalTimestamp}</span>
                           </div>
                         )}
 
                         {/* Calendar Input before Checklist */}
                         <div className="flex flex-col">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase mb-1">Data da Vistoria</label>
+                          <label className="text-[9px] font-bold text-slate-600 uppercase mb-1">Data da Vistoria</label>
                           <input 
                             type="date" 
                             required
@@ -1636,7 +1636,7 @@ export function PWASimulator({
                         </div>
 
                         <div className="flex flex-col">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase mb-1">Local / Compartimento</label>
+                          <label className="text-[9px] font-bold text-slate-600 uppercase mb-1">Local / Compartimento</label>
                           <input 
                             type="text" 
                             required
@@ -1660,7 +1660,7 @@ export function PWASimulator({
                         </div>
 
                         <div className="flex flex-col">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase mb-1">Anomalia Crítica Encontrada (Se aplicável)</label>
+                          <label className="text-[9px] font-bold text-slate-600 uppercase mb-1">Anomalia Crítica Encontrada (Se aplicável)</label>
                           <input 
                             type="text" 
                             value={inspectorAnomalia}
@@ -1672,11 +1672,11 @@ export function PWASimulator({
 
                         {/* WebP Photo Upload (Rear Camera, 3 max) */}
                         <div className="space-y-2">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase block">Fotografias de Campo (Máx 3 - WebP)</label>
+                          <label className="text-[9px] font-bold text-slate-600 uppercase block">Fotografias de Campo (Máx 3 - WebP)</label>
                           <div className="flex flex-col text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-lg p-3 bg-slate-50 dark:bg-slate-950 relative">
                             <Camera className="h-5 w-5 text-indigo-500 mx-auto mb-1" />
                             <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">Capturar com Câmara Traseira</span>
-                            <span className="text-[8px] text-slate-400">Compressão WebP automática. ({tecnicoPhotos.length}/3 fotos)</span>
+                            <span className="text-[8px] text-slate-600">Compressão WebP automática. ({tecnicoPhotos.length}/3 fotos)</span>
                             <input 
                               type="file" 
                               accept="image/*"
@@ -1694,7 +1694,7 @@ export function PWASimulator({
                                   alert("Imagem convertida para WebP e comprimida de forma ótima!");
                                 }
                               }}
-                              className="mt-1.5 mx-auto text-[9px] text-slate-400 block cursor-pointer"
+                              className="mt-1.5 mx-auto text-[9px] text-slate-600 block cursor-pointer"
                             />
                           </div>
                           {tecnicoPhotos.length > 0 && (
@@ -1724,12 +1724,12 @@ export function PWASimulator({
 
                   {activeTab === "ocorrencias" && (
                     <div className="space-y-4">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Historial de Incidências</h4>
+                      <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Historial de Incidências</h4>
                       <div className="space-y-2">
                         {ocorrencias.slice(0, 3).map(o => (
                           <div key={o.id_ocorr} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-900 p-3 rounded-lg text-[11px] shadow-sm">
                             <span className="font-bold text-indigo-600 block">{o.id_ocorr}</span>
-                            <p className="text-slate-400 text-[10px]">{o.descricao}</p>
+                            <p className="text-slate-600 text-[10px]">{o.descricao}</p>
                             <span className="text-[9px] bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 rounded font-bold text-slate-500">{o.estado}</span>
                           </div>
                         ))}
@@ -1759,13 +1759,13 @@ export function PWASimulator({
                           <div className="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-400 p-2.5 rounded-lg border border-emerald-100 dark:border-emerald-900/40 text-[10px] space-y-0.5">
                             <span className="font-bold block">✓ Limpeza Registada</span>
                             <span>Data da Higienização: {limpezasDate}</span>
-                            <span className="block text-[9px] text-slate-400 font-mono">Timestamp: {limpezasSubmittalTimestamp}</span>
+                            <span className="block text-[9px] text-slate-600 font-mono">Timestamp: {limpezasSubmittalTimestamp}</span>
                           </div>
                         )}
 
                         {/* Calendar Input before Checklist */}
                         <div className="flex flex-col">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase mb-1">Data da Higienização</label>
+                          <label className="text-[9px] font-bold text-slate-600 uppercase mb-1">Data da Higienização</label>
                           <input 
                             type="date" 
                             required
@@ -1775,7 +1775,7 @@ export function PWASimulator({
                           />
                         </div>
 
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block pt-1">Checklist de Áreas Intervencionadas</span>
+                        <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider block pt-1">Checklist de Áreas Intervencionadas</span>
                         <div className="space-y-2.5">
                           <label className="flex items-center space-x-2 text-slate-700 dark:text-slate-300 cursor-pointer">
                             <input 
@@ -1816,7 +1816,7 @@ export function PWASimulator({
                         </div>
 
                         <div className="flex flex-col">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase mb-1">Notas de Observação (Se houver)</label>
+                          <label className="text-[9px] font-bold text-slate-600 uppercase mb-1">Notas de Observação (Se houver)</label>
                           <textarea 
                             rows={2}
                             value={cleaningObs}
@@ -1828,11 +1828,11 @@ export function PWASimulator({
 
                         {/* Photo Capture Block */}
                         <div className="bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 space-y-2">
-                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Foto de Conformidade de Higiene</span>
+                          <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider block">Foto de Conformidade de Higiene</span>
                           <div className="border border-dashed border-slate-300 dark:border-slate-800 rounded-lg p-2.5 text-center bg-white dark:bg-slate-900/40 relative">
                             <span className="text-xl block">📷</span>
                             <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mt-1">Registar Foto do Local Limpo</span>
-                            <span className="text-[8px] text-slate-400">Capturar com câmara móvel traseira (Otimizada em WebP)</span>
+                            <span className="text-[8px] text-slate-600">Capturar com câmara móvel traseira (Otimizada em WebP)</span>
                             <input 
                               type="file" 
                               accept="image/*"
@@ -1849,7 +1849,7 @@ export function PWASimulator({
                                   alert("Imagem de higienização comprimida de forma ótima em formato WebP!");
                                 }
                               }}
-                              className="mt-1.5 mx-auto text-[9px] text-slate-400 block cursor-pointer"
+                              className="mt-1.5 mx-auto text-[9px] text-slate-600 block cursor-pointer"
                             />
                           </div>
                           {cleaningPhotos.length > 0 && (
@@ -1885,7 +1885,7 @@ export function PWASimulator({
 
                   {activeTab === "ocorrencias" && (
                     <div className="space-y-4">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-bold">Incidências Observadas</h4>
+                      <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider font-bold">Incidências Observadas</h4>
                       <form onSubmit={handleSubmeterOcorrenciaCondoc} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-900 p-3 rounded-xl space-y-3.5 shadow-sm text-[11px]">
                         <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider block">Reportar Novo Defeito Higiene/Estrutural</span>
                         <input 
@@ -1915,7 +1915,7 @@ export function PWASimulator({
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed px-2">
                     Os Fornecedores e Prestadores de Serviços dispõem de acesso exclusivamente através do <strong>Portal Web de Orçamentos</strong> no computador.
                   </p>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[10px] text-slate-600">
                     Aceda em modo Navegador no computador para submeter orçamentos técnicos e propostas oficiais de adjudicação.
                   </p>
                 </div>
@@ -1936,7 +1936,7 @@ export function PWASimulator({
 
                   {/* Active legal actions */}
                   <div className="bg-white dark:bg-slate-900 rounded-xl p-3 border border-slate-100 dark:border-slate-900 space-y-3 shadow-sm">
-                    <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Processos de Cobrança Ativos (2)</span>
+                    <span className="text-[10px] font-bold uppercase text-slate-600 tracking-wider">Processos de Cobrança Ativos (2)</span>
                     <div className="space-y-2 text-[10px]">
                       <div className="p-2.5 bg-red-50/50 dark:bg-red-950/10 rounded-lg border border-red-100 dark:border-red-900/30">
                         <div className="flex justify-between font-bold text-red-700 dark:text-red-400">
@@ -1944,7 +1944,7 @@ export function PWASimulator({
                           <span>Em Contencioso</span>
                         </div>
                         <p className="text-slate-500 dark:text-slate-400 mt-1">Dívida acumulada de quotas: 1,420.00€</p>
-                        <p className="text-[9px] text-slate-400 mt-0.5">Última ação: Carta de Interpelação Registada AR enviada.</p>
+                        <p className="text-[9px] text-slate-600 mt-0.5">Última ação: Carta de Interpelação Registada AR enviada.</p>
                       </div>
 
                       <div className="p-2.5 bg-amber-50/50 dark:bg-amber-950/10 rounded-lg border border-amber-100 dark:border-amber-900/30">
@@ -1953,13 +1953,13 @@ export function PWASimulator({
                           <span>Fase Extrajudicial</span>
                         </div>
                         <p className="text-slate-500 dark:text-slate-400 mt-1">Dívida de Quotas Extraordinárias: 450.00€</p>
-                        <p className="text-[9px] text-slate-400 mt-0.5">Última ação: Acordo de pagamento proposto via e-mail.</p>
+                        <p className="text-[9px] text-slate-600 mt-0.5">Última ação: Acordo de pagamento proposto via e-mail.</p>
                       </div>
                     </div>
                   </div>
 
                   <div className="bg-white dark:bg-slate-900 rounded-xl p-3 border border-slate-100 dark:border-slate-900 space-y-2 shadow-sm text-[10px]">
-                    <span className="text-[9px] font-bold uppercase text-slate-400 block">Alertas Regulamentares</span>
+                    <span className="text-[9px] font-bold uppercase text-slate-600 block">Alertas Regulamentares</span>
                     <div className="flex items-start gap-2 text-slate-600 dark:text-slate-400">
                       <div className="h-2 w-2 rounded-full bg-emerald-500 mt-1.5 shrink-0"></div>
                       <span>Regulamento do Condomínio em conformidade com as novas diretrizes do Dec-Lei 8/2022.</span>
@@ -1985,16 +1985,16 @@ export function PWASimulator({
 
                   {/* Audit Logs */}
                   <div className="bg-white dark:bg-slate-900 rounded-xl p-3 border border-slate-100 dark:border-slate-900 space-y-3 shadow-sm text-[10px]">
-                    <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Registos de Auditoria Recentes</span>
+                    <span className="text-[10px] font-bold uppercase text-slate-600 tracking-wider">Registos de Auditoria Recentes</span>
                     <div className="space-y-2 font-mono text-[9px]">
                       <div className="p-2 bg-slate-50 dark:bg-slate-950 rounded border border-slate-100 dark:border-slate-805">
-                        <span className="text-slate-400">[17/07 15:24]</span> Admin alterou saldo da Conta Geral para 4,289.44€
+                        <span className="text-slate-600">[17/07 15:24]</span> Admin alterou saldo da Conta Geral para 4,289.44€
                       </div>
                       <div className="p-2 bg-slate-50 dark:bg-slate-950 rounded border border-slate-100 dark:border-slate-805">
-                        <span className="text-slate-400">[17/07 14:10]</span> Documento "Ata_Geral_Maio_2026.pdf" carregado
+                        <span className="text-slate-600">[17/07 14:10]</span> Documento "Ata_Geral_Maio_2026.pdf" carregado
                       </div>
                       <div className="p-2 bg-slate-50 dark:bg-slate-950 rounded border border-slate-100 dark:border-slate-805">
-                        <span className="text-slate-400">[17/07 11:05]</span> Quota da Fração A validada por Conciliação Automática IA
+                        <span className="text-slate-600">[17/07 11:05]</span> Quota da Fração A validada por Conciliação Automática IA
                       </div>
                     </div>
                   </div>
@@ -2021,14 +2021,14 @@ export function PWASimulator({
                     <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-2 rounded border border-slate-100 dark:border-slate-805">
                       <div>
                         <span className="font-bold text-slate-700 dark:text-slate-300 block">Conta Geral Novo Banco</span>
-                        <span className="text-[8px] text-slate-400 font-mono">PT50 0007 0000 1234 5678 9012 3</span>
+                        <span className="text-[8px] text-slate-600 font-mono">PT50 0007 0000 1234 5678 9012 3</span>
                       </div>
                       <span className="font-mono font-black text-emerald-600">3,420.50€</span>
                     </div>
                     <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-2 rounded border border-slate-100 dark:border-slate-805">
                       <div>
                         <span className="font-bold text-slate-700 dark:text-slate-300 block">Conta Fundo de Reserva</span>
-                        <span className="text-[8px] text-slate-400 font-mono">PT50 0007 0000 9876 5432 1098 7</span>
+                        <span className="text-[8px] text-slate-600 font-mono">PT50 0007 0000 9876 5432 1098 7</span>
                       </div>
                       <span className="font-mono font-black text-indigo-600">1,850.00€</span>
                     </div>
@@ -2039,7 +2039,7 @@ export function PWASimulator({
               {/* --- TAB: NOTIFICAÇÕES (SHARED BY ALL ROLES) --- */}
               {activeTab === "notifications" && (
                 <div className="space-y-4">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Centro de Mensagens & Alertas</h4>
+                  <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Centro de Mensagens & Alertas</h4>
                   
                   {/* Messages list for chat */}
                   <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-900 p-3 rounded-xl space-y-3.5 shadow-sm text-[11px]">
@@ -2064,7 +2064,7 @@ export function PWASimulator({
                     <div className="space-y-2 max-h-40 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800">
                       {customMessages.map(m => (
                         <div key={m.id} className="pt-2 text-[10px] space-y-0.5">
-                          <div className="flex justify-between text-slate-400">
+                          <div className="flex justify-between text-slate-600">
                             <span className="font-bold text-slate-700 dark:text-slate-300">{m.sender}</span>
                             <span>{m.date}</span>
                           </div>
@@ -2077,19 +2077,19 @@ export function PWASimulator({
                   {/* Push alerts list with Delete & Archive support */}
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Centro de Alertas Push</span>
+                      <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Centro de Alertas Push</span>
                       <div className="flex bg-slate-200 dark:bg-slate-800 rounded-lg p-0.5 text-[9px] font-bold">
                         <button 
                           type="button"
                           onClick={() => setShowArchived(false)}
-                          className={`px-2 py-0.5 rounded-md transition-colors ${!showArchived ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-white shadow-xs" : "text-slate-400"}`}
+                          className={`px-2 py-0.5 rounded-md transition-colors ${!showArchived ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-white shadow-xs" : "text-slate-600"}`}
                         >
                           Ativos
                         </button>
                         <button 
                           type="button"
                           onClick={() => setShowArchived(true)}
-                          className={`px-2 py-0.5 rounded-md transition-colors ${showArchived ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-white shadow-xs" : "text-slate-400"}`}
+                          className={`px-2 py-0.5 rounded-md transition-colors ${showArchived ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-white shadow-xs" : "text-slate-600"}`}
                         >
                           Arquivados ({pwaNotifications.filter(n => n.isArchived).length})
                         </button>
@@ -2098,7 +2098,7 @@ export function PWASimulator({
 
                     <div className="space-y-2">
                       {pwaNotifications.filter(n => !!n.isArchived === showArchived).length === 0 ? (
-                        <div className="text-center py-4 text-[10px] text-slate-400">
+                        <div className="text-center py-4 text-[10px] text-slate-600">
                           Nenhuma notificação {showArchived ? "arquivada" : "ativa"}.
                         </div>
                       ) : (
@@ -2107,7 +2107,7 @@ export function PWASimulator({
                             <div>
                               <div className="flex justify-between font-bold">
                                 <span className="text-slate-800 dark:text-slate-200">{n.title}</span>
-                                <span className="text-slate-400 text-[8px]">{n.date}</span>
+                                <span className="text-slate-600 text-[8px]">{n.date}</span>
                               </div>
                               <p className="text-slate-500 dark:text-slate-400 font-medium mt-0.5">{n.desc}</p>
                             </div>
@@ -2148,7 +2148,7 @@ export function PWASimulator({
 
             {/* PWA NATIVE BOTTOM BAR (Role based tab bar) */}
             {loggedUser.role !== "USER" && (
-              <div className="h-14 shrink-0 bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800/80 px-2 flex items-center justify-around text-[9px] font-bold text-slate-400 z-10">
+              <div className="h-14 shrink-0 bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800/80 px-2 flex items-center justify-around text-[9px] font-bold text-slate-600 z-10">
               {(loggedUser.role as any) !== "FORNECEDOR" ? (
                 <>
                   {/* 1. Início (Verde) */}
@@ -2199,7 +2199,7 @@ export function PWASimulator({
                   </button>
                 </>
               ) : (
-                <div className="text-[10px] text-slate-400 font-bold py-2">
+                <div className="text-[10px] text-slate-600 font-bold py-2">
                   Não Aplicável (Apenas Browser)
                 </div>
               )}

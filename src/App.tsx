@@ -844,7 +844,7 @@ export default function App() {
           tem a sua própria navegação (barra inferior de separadores). */}
       {viewMode === "BROWSER" && (
       <aside className={`h-full flex flex-col select-none shrink-0 z-30 no-print transition-all duration-300 ${
-        theme === "dark" ? "bg-[#030712] text-slate-300 border-r border-slate-900/50" : "bg-slate-900 text-slate-300"
+        theme === "dark" ? "bg-[#030712] text-slate-600 border-r border-slate-900/50" : "bg-slate-900 text-slate-600"
       } ${
         mobileMenuOpen ? "fixed inset-y-0 left-0 w-72 translate-x-0 shadow-2xl z-50" : "fixed inset-y-0 left-0 -translate-x-full md:relative md:translate-x-0"
       } ${
@@ -871,7 +871,7 @@ export default function App() {
         {/* Barra Dedicada Inferior para Recolher/Expandir Menu com 07-avancar.png */}
         <div className="w-full bg-slate-950/80 border-b border-slate-800/80 px-2.5 py-1.5 flex items-center justify-between shrink-0">
           {!sidebarCollapsed && (
-            <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 font-mono truncate pl-1">
+            <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-600 font-mono truncate pl-1">
               Navegação
             </span>
           )}
@@ -893,7 +893,7 @@ export default function App() {
             {/* Mobile Close Drawer */}
             <button
               onClick={() => setMobileMenuOpen(false)}
-              className="lg:hidden flex items-center justify-center h-7 w-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition-all cursor-pointer shrink-0 shadow-xs"
+              className="lg:hidden flex items-center justify-center h-7 w-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-600 border border-slate-700/60 transition-all cursor-pointer shrink-0 shadow-xs"
               title="Fechar Menu"
             >
               <i className="fa-solid fa-xmark text-xs"></i>
@@ -905,7 +905,7 @@ export default function App() {
         <div className="px-3 py-2 border-b border-slate-800 shrink-0 bg-slate-950/40">
           {!sidebarCollapsed ? (
             <div>
-              <label className="block text-[9px] uppercase tracking-wider text-slate-400 font-extrabold font-mono mb-1">
+              <label className="block text-[9px] uppercase tracking-wider text-slate-600 font-extrabold font-mono mb-1">
                 Condomínio Ativo
               </label>
               <div className="relative flex items-center">
@@ -922,11 +922,11 @@ export default function App() {
                     ))
                   )}
                 </select>
-                <div className="absolute inset-y-0 right-2.5 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 right-2.5 flex items-center pointer-events-none text-slate-600">
                   <i className="fa-solid fa-chevron-down text-[10px]"></i>
                 </div>
               </div>
-              <p className="text-[10px] text-slate-400 mt-1 px-1 flex items-center">
+              <p className="text-[10px] text-slate-600 mt-1 px-1 flex items-center">
                 <i className="fa-solid fa-location-dot text-slate-500 mr-1 shrink-0"></i>
                 <span className="truncate">
                   {predioAtivo?.id_predio !== "predio-temp" && predioAtivo?.morada_linha1
@@ -952,7 +952,7 @@ export default function App() {
             className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2.5 ${
               activeSection === "painel" 
                 ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
-                : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                : "text-slate-600 hover:text-white hover:bg-slate-800/30"
             }`}
           >
             <img src="/modulos/53-estatisticas.png" alt="Dashboard" className="w-5 h-5 object-contain shrink-0" />
@@ -970,7 +970,7 @@ export default function App() {
             className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2.5 ${
               activeSection === "dashboard_kpis"
                 ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                : "text-slate-600 hover:text-white hover:bg-slate-800/30"
             }`}
           >
             <i className="fa-solid fa-chart-line text-emerald-400 text-sm w-5 text-center shrink-0"></i>
@@ -989,7 +989,7 @@ export default function App() {
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2.5 ${
                 activeSection === "multi_condominio"
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  : "text-slate-600 hover:text-white hover:bg-slate-800/30"
               }`}
             >
               <i className="fa-solid fa-city text-emerald-400 text-sm w-5 text-center shrink-0"></i>
@@ -1012,7 +1012,7 @@ export default function App() {
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 ["predios", "predios_cadastro", "predios_chaves", "predios_regras"].includes(activeSection) 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  : "text-slate-600 hover:text-white hover:bg-slate-800/30"
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -1034,7 +1034,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "predios_cadastro" || activeSection === "predios"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/01-predio.png" alt="Registos" className="w-4 h-4 object-contain shrink-0" />
@@ -1052,7 +1052,7 @@ export default function App() {
                     className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                       activeSection === "predios_chaves" 
                         ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                        : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                     }`}
                   >
                     <i className="fa-solid fa-key text-amber-400 text-xs"></i>
@@ -1070,7 +1070,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "predios_regras" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/03-regras-do-predio.png" alt="Regras" className="w-4 h-4 object-contain shrink-0" />
@@ -1095,7 +1095,7 @@ export default function App() {
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 ["fracoes", "fracoes_nova", "fracoes_proprietario", "fracoes_perfis"].includes(activeSection) 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  : "text-slate-600 hover:text-white hover:bg-slate-800/30"
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -1116,7 +1116,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "fracoes_nova" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/08-piso.png" alt="Nova Fração" className="w-4 h-4 object-contain shrink-0" />
@@ -1131,7 +1131,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "fracoes_proprietario" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/11-proprietario.png" alt="Proprietário" className="w-4 h-4 object-contain shrink-0" />
@@ -1146,7 +1146,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "fracoes_perfis" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/17-documentos-pessoais.png" alt="Perfis" className="w-4 h-4 object-contain shrink-0" />
@@ -1161,7 +1161,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "gestao_sinistros" || activeSection === "fracoes_sinistros"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-shield-halved text-amber-400 text-xs"></i>
@@ -1186,7 +1186,7 @@ export default function App() {
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 ["comunicacao_broadcast", "comunicacao_chat", "comunicacao_sondagens", "comunicacao_questionarios", "portal_condomino", "assembleias", "agendador_automatico", "agenda_notificacoes", "mural_reservas", "reservas"].includes(activeSection)
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  : "text-slate-600 hover:text-white hover:bg-slate-800/30"
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -1207,7 +1207,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "comunicacao_broadcast" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/73-mensagem-global.png" alt="Comunicados" className="w-4 h-4 object-contain shrink-0" />
@@ -1222,7 +1222,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "comunicacao_chat" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/74-mensagem-individual.png" alt="Mensagens Diretas" className="w-4 h-4 object-contain shrink-0" />
@@ -1237,7 +1237,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "agenda_notificacoes" || activeSection === "agendador_automatico"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-calendar-check text-emerald-400 text-xs"></i>
@@ -1252,7 +1252,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "agendador_automatico"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-clock-rotate-left text-emerald-400 text-xs"></i>
@@ -1267,7 +1267,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "mural_reservas"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-chalkboard-user text-emerald-400 text-xs"></i>
@@ -1293,7 +1293,7 @@ export default function App() {
                     className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                       activeSection === "reservas"
                         ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                        : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                     }`}
                   >
                     <i className="fa-solid fa-calendar-days text-emerald-400 text-xs"></i>
@@ -1309,7 +1309,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "portal_condomino" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/75-mensagem.png" alt="Portal Condómino" className="w-4 h-4 object-contain shrink-0" />
@@ -1324,7 +1324,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "comunicacao_sondagens" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/76-sondagem.png" alt="Sondagens" className="w-4 h-4 object-contain shrink-0" />
@@ -1339,7 +1339,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "comunicacao_questionarios" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/77-questionario.png" alt="Questionários" className="w-4 h-4 object-contain shrink-0" />
@@ -1368,7 +1368,7 @@ export default function App() {
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 ["quotas_orcamento", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "financeiro_mapa_pagamentos", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection) 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  : "text-slate-600 hover:text-white hover:bg-slate-800/30"
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -1393,7 +1393,7 @@ export default function App() {
                     className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                       activeSection === "configuracao_arranque" || activeSection === "predios_arranque" || activeSection === "arranque_saldos" || activeSection === "saldos_iniciais"
                         ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                        : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
@@ -1415,7 +1415,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "quotas_orcamento"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/62-calculadora.png" alt="Quotas & Orçamento Anual" className="w-4 h-4 object-contain shrink-0" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
@@ -1433,7 +1433,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contas"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-building-columns text-emerald-400 text-xs"></i>
@@ -1449,7 +1449,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                     activeSection === "ia_avancada" && iaInitialTab === "orcamento_anual_ia"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate">
@@ -1469,7 +1469,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "financeiro_recibos"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/59-recibo.png" alt="Recibos" className="w-4 h-4 object-contain shrink-0" />
@@ -1484,7 +1484,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "financeiro_relatorios"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/25-relatorio.png" alt="Relatórios" className="w-4 h-4 object-contain shrink-0" />
@@ -1499,7 +1499,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "relatorios_automaticos"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-file-invoice-dollar text-emerald-400 text-xs"></i>
@@ -1517,7 +1517,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "movimentos"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/63-lista-de-pagamentos.png" alt="Movimentos" className="w-4 h-4 object-contain shrink-0" />
@@ -1532,7 +1532,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "ocr_faturas"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-file-invoice-dollar text-emerald-400 text-xs"></i>
@@ -1548,7 +1548,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "fornecedores" && fornecedoresTab === "dividas"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-file-invoice-dollar text-emerald-400 text-xs"></i>
@@ -1563,7 +1563,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contabilidade_interna"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-calculator text-emerald-400 text-xs"></i>
@@ -1585,7 +1585,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "fundo_reserva"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-piggy-bank text-emerald-400 text-xs"></i>
@@ -1603,7 +1603,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "financeiro_extratos"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/64-saldo.png" alt="Extrato" className="w-4 h-4 object-contain shrink-0" />
@@ -1618,7 +1618,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "financeiro_mapa_pagamentos"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-table-cells text-emerald-400 text-xs"></i>
@@ -1643,7 +1643,7 @@ export default function App() {
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 ["vistorias_limpezas", "limpezas_incidencias"].includes(activeSection) 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  : "text-slate-600 hover:text-white hover:bg-slate-800/30"
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -1664,7 +1664,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "vistorias_limpezas" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/50-limpeza.png" alt="Limpezas" className="w-4 h-4 object-contain shrink-0" />
@@ -1679,7 +1679,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "limpezas_incidencias" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/52-avaria-encontrada.png" alt="Incidências" className="w-4 h-4 object-contain shrink-0" />
@@ -1704,7 +1704,7 @@ export default function App() {
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 ["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "manutencao_agenda", "agenda_manutencao", "inventario_tecnico"].includes(activeSection)
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  : "text-slate-600 hover:text-white hover:bg-slate-800/30"
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -1725,7 +1725,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "manutencao_ocorrencias" || activeSection === "ocorrencias" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/29-avaria.png" alt="Ocorrências" className="w-4 h-4 object-contain shrink-0" />
@@ -1741,7 +1741,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "limpezas_vistorias" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/02-equipamentos-tecnicos.png" alt="Vistoria Técnica" className="w-4 h-4 object-contain shrink-0" />
@@ -1757,7 +1757,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "manutencao_intervencoes" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/28-intervencao.png" alt="Intervenções" className="w-4 h-4 object-contain shrink-0" />
@@ -1773,7 +1773,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "manutencao_concluidas" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/39-intervencao-concluida.png" alt="Concluídas" className="w-4 h-4 object-contain shrink-0" />
@@ -1789,7 +1789,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "manutencao_agenda" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/30-equipamento.png" alt="Agenda" className="w-4 h-4 object-contain shrink-0" />
@@ -1809,7 +1809,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "agenda_manutencao"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-clipboard-list text-emerald-400 text-xs"></i>
@@ -1825,7 +1825,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "inventario_tecnico"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-boxes-stacked text-emerald-400 text-xs"></i>
@@ -1850,7 +1850,7 @@ export default function App() {
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 activeSection === "fornecedores" 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  : "text-slate-600 hover:text-white hover:bg-slate-800/30"
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -1872,7 +1872,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "fornecedores" && fornecedoresTab === "fornecedores" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-handshake text-emerald-400 text-xs"></i>
@@ -1888,7 +1888,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "fornecedores" && fornecedoresTab === "contratos" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-file-contract text-emerald-400 text-xs"></i>
@@ -1925,7 +1925,7 @@ export default function App() {
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 activeSection === "portal_orcamentos"
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  : "text-slate-600 hover:text-white hover:bg-slate-800/30"
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -1946,7 +1946,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "portal_orcamentos"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-file-invoice text-emerald-400 text-xs"></i>
@@ -1961,7 +1961,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "quotas_orcamento"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <Calculator className="w-4 h-4 shrink-0" />
@@ -1982,7 +1982,7 @@ export default function App() {
             className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
               activeSection === "assembleias"
                 ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                : "text-slate-600 hover:text-white hover:bg-slate-800/30"
             }`}
           >
             <div className="flex items-center gap-2.5">
@@ -2009,7 +2009,7 @@ export default function App() {
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 ["contencioso_juridico", "contencioso_juridico_processos", "contencioso_juridico_nd", "contencioso_juridico_doc_obrig", "contencioso_juridico_cartas", "contencioso_juridico_bni", "contencioso_juridico_regulamento", "contencioso_juridico_estatutos", "contencioso_juridico_ia"].includes(activeSection)
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  : "text-slate-600 hover:text-white hover:bg-slate-800/30"
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -2030,7 +2030,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contencioso_juridico" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/22-documento-geral.png" alt="Contencioso" className="w-4 h-4 object-contain shrink-0" />
@@ -2045,7 +2045,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contencioso_juridico_processos" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/23-contrato.png" alt="Processos & Provas" className="w-4 h-4 object-contain shrink-0" />
@@ -2060,7 +2060,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contencioso_juridico_nd" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/23-contrato.png" alt="Carta de Não Dívida" className="w-4 h-4 object-contain shrink-0" />
@@ -2075,7 +2075,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contencioso_juridico_doc_obrig" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/15-documentos-da-fracao.png" alt="Documentos" className="w-4 h-4 object-contain shrink-0" />
@@ -2090,7 +2090,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contencioso_juridico_cartas" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/60-nota-de-cobranca.png" alt="Cobrança" className="w-4 h-4 object-contain shrink-0" />
@@ -2105,7 +2105,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contencioso_juridico_bni" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/23-contrato.png" alt="Injunção" className="w-4 h-4 object-contain shrink-0" />
@@ -2120,7 +2120,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contencioso_juridico_regulamento" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/03-regras-do-predio.png" alt="Regulamento" className="w-4 h-4 object-contain shrink-0" />
@@ -2135,7 +2135,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contencioso_juridico_estatutos" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/03-regras-do-predio.png" alt="Estatutos" className="w-4 h-4 object-contain shrink-0" />
@@ -2150,7 +2150,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contencioso_juridico_ia" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/82-automacao.png" alt="Assistente IA" className="w-4 h-4 object-contain shrink-0" />
@@ -2175,7 +2175,7 @@ export default function App() {
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 activeSection === "ia_avancada"
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  : "text-slate-600 hover:text-white hover:bg-slate-800/30"
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -2203,7 +2203,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "ia_avancada" && iaInitialTab === "juridico" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-scale-balanced text-emerald-400 text-xs"></i>
@@ -2231,7 +2231,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "ia_avancada" && iaInitialTab === "cerebro_ia" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-brain text-emerald-400 text-xs"></i>
@@ -2246,7 +2246,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "ia_importacao"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-file-import text-emerald-400 text-xs"></i>
@@ -2261,7 +2261,7 @@ export default function App() {
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "ia_classificador"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-shuffle text-emerald-400 text-xs"></i>
@@ -2282,7 +2282,7 @@ export default function App() {
             className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
               activeSection === "minutas_oficiais" || activeSection === "simulador_emails"
                 ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                : "text-slate-600 hover:text-white hover:bg-slate-800/30"
             }`}
           >
             <div className="flex items-center gap-2.5">
@@ -2305,7 +2305,7 @@ export default function App() {
             className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
               activeSection === "arquivo" || activeSection === "documentos"
                 ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                : "text-slate-600 hover:text-white hover:bg-slate-800/30"
             }`}
           >
             <div className="flex items-center gap-2.5">
@@ -2329,7 +2329,7 @@ export default function App() {
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2.5 ${
                 activeSection === "ficha_gestora" 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  : "text-slate-600 hover:text-white hover:bg-slate-800/30"
               }`}
             >
               <img src="/modulos/17-documentos-pessoais.png" alt="Empresa Gestora" className="w-5 h-5 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
@@ -2383,7 +2383,7 @@ export default function App() {
                     className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                       activeSection === "configuracoes_ia"
                         ? "bg-emerald-500/25 text-emerald-200 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                        : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
@@ -2406,7 +2406,7 @@ export default function App() {
                     className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                       activeSection === "configuracoes_templates"
                         ? "bg-emerald-500/25 text-emerald-200 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                        : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
@@ -2429,7 +2429,7 @@ export default function App() {
                     className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                       activeSection === "configuracoes_notificacoes"
                         ? "bg-emerald-500/25 text-emerald-200 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                        : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
@@ -2452,7 +2452,7 @@ export default function App() {
                     className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                       activeSection === "configuracoes_logs"
                         ? "bg-emerald-500/25 text-emerald-200 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                        : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
@@ -2475,7 +2475,7 @@ export default function App() {
                     className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                       activeSection === "configuracoes_exportacao"
                         ? "bg-emerald-500/25 text-emerald-200 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                        : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
@@ -2506,7 +2506,7 @@ export default function App() {
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2.5 ${
                 activeSection === "auditoria_interna"
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                  : "text-slate-600 hover:text-white hover:bg-slate-800/30"
               }`}
             >
               <i className="fa-solid fa-magnifying-glass-chart text-emerald-400 text-sm w-5 text-center shrink-0"></i>
@@ -2539,7 +2539,7 @@ export default function App() {
               <div className="flex items-center space-x-1">
                 <button
                   onClick={() => setTheme(prev => prev === "light" ? "dark" : "light")}
-                  className="text-[8px] bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded px-1 py-0.5 font-bold cursor-pointer flex items-center"
+                  className="text-[8px] bg-slate-800 hover:bg-slate-700 text-slate-600 border border-slate-700 rounded px-1 py-0.5 font-bold cursor-pointer flex items-center"
                   title="Alternar Tema de Cores"
                 >
                   {theme === "light" ? (
@@ -2685,14 +2685,14 @@ export default function App() {
                 {activeSection === "manutencao_concluidas" && "Histórico de Manutenções Concluídas"}
                 {activeSection === "manutencao_arquivo" && "Arquivo Documental Registado"}
               </h2>
-              <p className={`text-[10px] sm:text-xs transition-colors duration-300 truncate ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}>
+              <p className={`text-[10px] sm:text-xs transition-colors duration-300 truncate ${theme === "dark" ? "text-slate-600" : "text-slate-500"}`}>
                 Isolamento Multi-Prédio: {predioAtivo?.id_predio !== "predio-temp" && (predioAtivo?.nome || predioAtivo?.morada_linha1) ? (predioAtivo.nome || `${predioAtivo.morada_linha1} ${predioAtivo.num_porta || ""}`) : "Base Limpa (Aguardando Dados)"}
               </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
-            <span className={`hidden sm:inline-block text-[11px] font-mono-custom font-medium px-2 py-0.5 rounded border transition-colors duration-300 ${theme === "dark" ? "bg-slate-800 text-slate-300 border-slate-700" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
+            <span className={`hidden sm:inline-block text-[11px] font-mono-custom font-medium px-2 py-0.5 rounded border transition-colors duration-300 ${theme === "dark" ? "bg-slate-800 text-slate-600 border-slate-700" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
               NIF: {predioAtivo?.id_predio !== "predio-temp" ? predioAtivo?.nif : "---"}
             </span>
             <div className={`hidden sm:block h-6 w-px transition-colors duration-300 ${theme === "dark" ? "bg-slate-800" : "bg-slate-200"}`}></div>
@@ -2701,7 +2701,7 @@ export default function App() {
               onClick={() => carregarDadosReais()}
               disabled={aAtualizarGlobal}
               title="Atualizar dados agora"
-              className={`hidden lg:flex items-center gap-1.5 text-[11px] font-mono-custom px-2 py-0.5 rounded border transition-colors duration-300 disabled:opacity-60 cursor-pointer ${theme === "dark" ? "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700" : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"}`}
+              className={`hidden lg:flex items-center gap-1.5 text-[11px] font-mono-custom px-2 py-0.5 rounded border transition-colors duration-300 disabled:opacity-60 cursor-pointer ${theme === "dark" ? "bg-slate-800 text-slate-600 border-slate-700 hover:bg-slate-700" : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"}`}
             >
               <i className={`fa-solid fa-rotate ${aAtualizarGlobal ? "animate-spin" : ""}`}></i>
               <span>{aAtualizarGlobal ? "A atualizar…" : `Atualizado às ${ultimaAtualizacaoGlobal.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}`}</span>

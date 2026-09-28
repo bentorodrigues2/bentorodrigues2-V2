@@ -707,10 +707,10 @@ export function GestaoComunicacoes({
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">Histórico de Comunicados Enviados</h4>
               <div className="space-y-3">
                 {loadingComunicados ? (
-                  <div className="text-center text-slate-400 py-10 text-xs"><i className="fa-solid fa-spinner fa-spin mr-2"></i>A carregar...</div>
+                  <div className="text-center text-slate-600 py-10 text-xs"><i className="fa-solid fa-spinner fa-spin mr-2"></i>A carregar...</div>
                 ) : comunicadosList.length === 0 ? (
-                  <div className="text-center text-slate-400 py-10 px-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
-                    <i className="fa-solid fa-bullhorn text-2xl mb-2 text-slate-300 block"></i>
+                  <div className="text-center text-slate-600 py-10 px-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
+                    <i className="fa-solid fa-bullhorn text-2xl mb-2 text-slate-600 block"></i>
                     Nenhum comunicado enviado até ao momento. Utilize o formulário para disparar um comunicado para todos os condóminos.
                   </div>
                 ) : (
@@ -723,7 +723,7 @@ export function GestaoComunicacoes({
                         </span>
                       </div>
                       <p className="text-xs text-slate-600 leading-relaxed">{item.mensagem}</p>
-                      <div className="flex justify-between items-center text-[10px] text-slate-400 pt-1 border-t border-slate-200/60">
+                      <div className="flex justify-between items-center text-[10px] text-slate-600 pt-1 border-t border-slate-200/60">
                         <span>Data: {item.created_at ? new Date(item.created_at).toLocaleDateString("pt-PT") : ""}</span>
                         <span className="text-emerald-600 font-bold">✓ Enviado a {item.total_enviados}/{item.total_destinatarios} fração(ões)</span>
                       </div>
@@ -774,10 +774,10 @@ export function GestaoComunicacoes({
 
             <div className="space-y-2 max-w-2xl">
               {loadingConversas ? (
-                <div className="text-center text-slate-400 py-8 text-xs"><i className="fa-solid fa-spinner fa-spin mr-2"></i>A carregar...</div>
+                <div className="text-center text-slate-600 py-8 text-xs"><i className="fa-solid fa-spinner fa-spin mr-2"></i>A carregar...</div>
               ) : conversas.length === 0 ? (
-                <div className="text-center text-slate-400 py-8 px-2 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
-                  <i className="fa-regular fa-comments text-2xl mb-1 text-slate-300 block"></i>
+                <div className="text-center text-slate-600 py-8 px-2 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
+                  <i className="fa-regular fa-comments text-2xl mb-1 text-slate-600 block"></i>
                   Nenhuma mensagem recebida na caixa de entrada.
                 </div>
               ) : (
@@ -858,14 +858,14 @@ export function GestaoComunicacoes({
                             <a href={m.anexo_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-white/70 p-2 rounded-lg border border-black/10 hover:bg-white">
                               <i className="fa-solid fa-file text-emerald-700"></i>
                               <span className="font-bold truncate max-w-[160px]">{m.anexo_nome || "Documento"}</span>
-                              <i className="fa-solid fa-download text-[10px] text-slate-400 ml-auto"></i>
+                              <i className="fa-solid fa-download text-[10px] text-slate-600 ml-auto"></i>
                             </a>
                           )}
                           {m.anexo_tipo === "audio" && m.anexo_url && (
                             <audio controls src={m.anexo_url} className="max-w-[220px] h-8" />
                           )}
                           <div>{m.texto}</div>
-                          <div className="text-[9px] text-slate-400 text-right">{m.created_at ? new Date(m.created_at).toLocaleString("pt-PT") : ""}</div>
+                          <div className="text-[9px] text-slate-600 text-right">{m.created_at ? new Date(m.created_at).toLocaleString("pt-PT") : ""}</div>
                         </div>
                       </div>
                     ))}
@@ -926,7 +926,7 @@ export function GestaoComunicacoes({
                     <button
                       type="button"
                       onClick={() => { setShowAnexoMenu(v => !v); setShowEmojiPicker(false); }}
-                      className="text-slate-400 hover:text-emerald-600 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer shrink-0"
+                      className="text-slate-600 hover:text-emerald-600 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer shrink-0"
                       title="Anexar ficheiro"
                     >
                       <i className="fa-solid fa-paperclip"></i>
@@ -934,7 +934,7 @@ export function GestaoComunicacoes({
                     <button
                       type="button"
                       onClick={() => { setShowEmojiPicker(v => !v); setShowAnexoMenu(false); }}
-                      className="text-slate-400 hover:text-emerald-600 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer shrink-0"
+                      className="text-slate-600 hover:text-emerald-600 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer shrink-0"
                       title="Emoji"
                     >
                       <i className="fa-regular fa-face-smile"></i>
@@ -949,7 +949,7 @@ export function GestaoComunicacoes({
                     <button
                       type="button"
                       onClick={aGravarAudio ? handlePararGravacaoAudio : handleIniciarGravacaoAudio}
-                      className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer shrink-0 transition-colors ${aGravarAudio ? "bg-red-600 text-white animate-pulse" : "text-slate-400 hover:text-emerald-600"}`}
+                      className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer shrink-0 transition-colors ${aGravarAudio ? "bg-red-600 text-white animate-pulse" : "text-slate-600 hover:text-emerald-600"}`}
                       title={aGravarAudio ? "Parar gravação" : "Gravar nota de voz"}
                     >
                       <i className="fa-solid fa-microphone"></i>
@@ -1025,10 +1025,10 @@ export function GestaoComunicacoes({
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">Sondagens Ativas e Resultados (ponderado por permilagem)</h4>
               <div className="space-y-4">
                 {loadingSondagens ? (
-                  <div className="text-center text-slate-400 py-10 text-xs"><i className="fa-solid fa-spinner fa-spin mr-2"></i>A carregar...</div>
+                  <div className="text-center text-slate-600 py-10 text-xs"><i className="fa-solid fa-spinner fa-spin mr-2"></i>A carregar...</div>
                 ) : sondagensList.length === 0 ? (
-                  <div className="text-center text-slate-400 py-10 px-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
-                    <i className="fa-solid fa-square-poll-horizontal text-2xl mb-2 text-slate-300 block"></i>
+                  <div className="text-center text-slate-600 py-10 px-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
+                    <i className="fa-solid fa-square-poll-horizontal text-2xl mb-2 text-slate-600 block"></i>
                     Nenhuma sondagem ou votação ativa no momento. Utilize o formulário para criar uma nova sondagem para os condóminos.
                   </div>
                 ) : (
@@ -1114,10 +1114,10 @@ export function GestaoComunicacoes({
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">Inquéritos em Andamento</h4>
               <div className="space-y-3">
                 {loadingQuestionarios ? (
-                  <div className="text-center text-slate-400 py-10 text-xs"><i className="fa-solid fa-spinner fa-spin mr-2"></i>A carregar...</div>
+                  <div className="text-center text-slate-600 py-10 text-xs"><i className="fa-solid fa-spinner fa-spin mr-2"></i>A carregar...</div>
                 ) : questionariosList.length === 0 ? (
-                  <div className="text-center text-slate-400 py-10 px-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
-                    <i className="fa-solid fa-clipboard-question text-2xl mb-2 text-slate-300 block"></i>
+                  <div className="text-center text-slate-600 py-10 px-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs">
+                    <i className="fa-solid fa-clipboard-question text-2xl mb-2 text-slate-600 block"></i>
                     Nenhum inquérito ou questionário criado até ao momento. Utilize o formulário para lançar um inquérito de auscultação aos condóminos.
                   </div>
                 ) : (
@@ -1137,7 +1137,7 @@ export function GestaoComunicacoes({
                         </div>
                       </div>
                       <p className="text-xs text-slate-600">{q.descricao}</p>
-                      <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-200">
+                      <div className="flex justify-between items-center text-[10px] text-slate-600 pt-2 border-t border-slate-200">
                         <span>Criado em: {q.created_at ? new Date(q.created_at).toLocaleDateString("pt-PT") : ""}</span>
                         <span className="font-bold text-emerald-700">{(q.respostas || []).length} Respostas Recebidas</span>
                       </div>

@@ -872,25 +872,25 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
           </div>
           <div>
             <h3 className="text-sm font-bold">Consola de Perfis e Acreditações PWA</h3>
-            <p className="text-[11px] text-slate-400">Simule o acesso de agentes externos de manutenção e limpeza para testar as permissões.</p>
+            <p className="text-[11px] text-slate-600">Simule o acesso de agentes externos de manutenção e limpeza para testar as permissões.</p>
           </div>
         </div>
         <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
           <button
             onClick={() => { setActiveProfile("ADMIN"); if (activeTab === "vistorias") {} }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeProfile === "ADMIN" ? "bg-emerald-600 text-white shadow" : "text-slate-400 hover:text-white"}`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeProfile === "ADMIN" ? "bg-emerald-600 text-white shadow" : "text-slate-600 hover:text-white"}`}
           >
             <i className="fa-solid fa-user-shield mr-1.5"></i>Administrador
           </button>
           <button
             onClick={() => { setActiveProfile("TECNICO"); setActiveTab("vistorias"); }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeProfile === "TECNICO" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-white"}`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeProfile === "TECNICO" ? "bg-blue-600 text-white shadow" : "text-slate-600 hover:text-white"}`}
           >
             <i className="fa-solid fa-helmet-safety mr-1.5"></i>Técnico Vistorias
           </button>
           <button
             onClick={() => { setActiveProfile("LIMPEZAS"); setActiveTab("limpezas"); }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeProfile === "LIMPEZAS" ? "bg-indigo-600 text-white shadow" : "text-slate-400 hover:text-white"}`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeProfile === "LIMPEZAS" ? "bg-indigo-600 text-white shadow" : "text-slate-600 hover:text-white"}`}
           >
             <i className="fa-solid fa-broom-ball mr-1.5"></i>Empresa Limpezas
           </button>
@@ -1125,7 +1125,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                                 setPlanificacaoVistorias(prev => prev.filter(p => p.id !== item.id));
                               }}
                               title="Remover"
-                              className="p-1 text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
+                              className="p-1 text-slate-600 hover:text-red-600 transition-colors cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -1153,7 +1153,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 <h3 className="text-sm font-bold text-slate-800">Lançar Relatório de Vistoria</h3>
                 
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Data da Vistoria *</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Data da Vistoria *</label>
                   <input
                     type="date"
                     required
@@ -1164,7 +1164,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Técnico / Inspetor Responsável *</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Técnico / Inspetor Responsável *</label>
                   <input
                     type="text"
                     required
@@ -1176,7 +1176,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Compartimento / Local *</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Compartimento / Local *</label>
                   <input
                     type="text"
                     required
@@ -1188,7 +1188,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Descrição Detalhada da Anomalia *</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Descrição Detalhada da Anomalia *</label>
                   <textarea
                     required
                     rows={3}
@@ -1200,7 +1200,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Classificação de Gravidade *</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Classificação de Gravidade *</label>
                   <div className="grid grid-cols-3 gap-2 mt-1">
                     {(["Baixa", "Média", "Alta"] as const).map(g => (
                       <button
@@ -1226,7 +1226,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 {/* Custo, Periodicidade, Impacto e Alertas */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col">
-                    <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Custo Previsto (€)</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Custo Previsto (€)</label>
                     <input
                       type="text"
                       inputMode="decimal"
@@ -1237,7 +1237,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                     />
                   </div>
                   <div className="flex flex-col">
-                    <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Periodicidade</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Periodicidade</label>
                     <select
                       value={vPeriodicidade}
                       onChange={e => setVPeriodicidade(e.target.value as any)}
@@ -1255,7 +1255,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
 
                 <div className="grid grid-cols-2 gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                   <div className="flex flex-col">
-                    <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Impacto Orçamental</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Impacto Orçamental</label>
                     <select
                       value={vImpactoOrcamento}
                       onChange={e => setVImpactoOrcamento(e.target.value as any)}
@@ -1276,13 +1276,13 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                       />
                       <span>Notificar Alerta</span>
                     </label>
-                    <span className="text-[8px] text-slate-400 block mt-1">Alerta email/PWA a cada ciclo</span>
+                    <span className="text-[8px] text-slate-600 block mt-1">Alerta email/PWA a cada ciclo</span>
                   </div>
                 </div>
 
                 {/* FILE UPLOAD COMPONENT FOR PHOTOGRAPHS */}
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Evidências Fotográficas (Auto-WebP)</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Evidências Fotográficas (Auto-WebP)</label>
                   <div
                     onDragEnter={handleDrag}
                     onDragOver={handleDrag}
@@ -1301,9 +1301,9 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                       accept="image/*"
                       className="hidden"
                     />
-                    <div className="text-slate-400 text-lg"><i className="fa-solid fa-cloud-arrow-up"></i></div>
+                    <div className="text-slate-600 text-lg"><i className="fa-solid fa-cloud-arrow-up"></i></div>
                     <span className="text-[10px] font-bold text-slate-600">Arraste ou clique para carregar imagens</span>
-                    <span className="text-[9px] text-slate-400">Compresão e conversão WebP ativa na PWA</span>
+                    <span className="text-[9px] text-slate-600">Compresão e conversão WebP ativa na PWA</span>
                   </div>
 
                   {/* Thumbnail gallery preview */}
@@ -1338,7 +1338,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
           {/* Vistorias List & Records (Visible to everyone) */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex justify-between items-center no-print">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Registo de Anomalias Ativas</h4>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">Registo de Anomalias Ativas</h4>
               <div className="flex space-x-2">
                 <button
                   onClick={exportarVistoriasXLS}
@@ -1358,7 +1358,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
             </div>
 
             {currentBuildingVistorias.length === 0 ? (
-              <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center text-slate-400 text-xs">
+              <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center text-slate-600 text-xs">
                 Nenhuma anomalia identificada no condomínio de momento.
               </div>
             ) : (
@@ -1382,7 +1382,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                           </span>
                         </div>
                         <h4 className="text-sm font-bold text-slate-800 mt-1.5 flex items-center">
-                          <i className="fa-solid fa-location-crosshairs text-slate-400 mr-2 text-xs"></i>
+                          <i className="fa-solid fa-location-crosshairs text-slate-600 mr-2 text-xs"></i>
                           {v.local}
                         </h4>
                       </div>
@@ -1412,21 +1412,21 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                     {/* Parâmetros Backoffice da Inspeção */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100 text-[11px] font-medium text-slate-600">
                       <div>
-                        <span className="text-[9px] text-slate-400 block uppercase font-bold tracking-wider">Custo Previsto</span>
+                        <span className="text-[9px] text-slate-600 block uppercase font-bold tracking-wider">Custo Previsto</span>
                         <span className="font-mono text-slate-800 font-bold">{v.custo_previsto !== undefined ? `${v.custo_previsto.toFixed(2)}€` : "—"}</span>
                       </div>
                       <div>
-                        <span className="text-[9px] text-slate-400 block uppercase font-bold tracking-wider">Periodicidade</span>
+                        <span className="text-[9px] text-slate-600 block uppercase font-bold tracking-wider">Periodicidade</span>
                         <span className="text-slate-800 font-semibold">{v.periodicidade || "Pontual"}</span>
                       </div>
                       <div>
-                        <span className="text-[9px] text-slate-400 block uppercase font-bold tracking-wider">Impacto Orçamental</span>
+                        <span className="text-[9px] text-slate-600 block uppercase font-bold tracking-wider">Impacto Orçamental</span>
                         <span className={`font-semibold ${
                           v.impacto_orcamento === "Alto" ? "text-red-600 font-black" : v.impacto_orcamento === "Médio" ? "text-amber-600" : "text-emerald-600"
                         }`}>{v.impacto_orcamento || "Baixo"}</span>
                       </div>
                       <div>
-                        <span className="text-[9px] text-slate-400 block uppercase font-bold tracking-wider">Notificação Ciclo</span>
+                        <span className="text-[9px] text-slate-600 block uppercase font-bold tracking-wider">Notificação Ciclo</span>
                         <span className="flex items-center text-slate-800 font-semibold">
                           {v.alerta_automatico ? (
                             <>
@@ -1445,7 +1445,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
 
                     {v.fotos.length > 0 && (
                       <div className="space-y-1">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block">Evidências Fotográficas</span>
+                        <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wide block">Evidências Fotográficas</span>
                         <div className="flex space-x-2 overflow-x-auto py-1">
                           {v.fotos.map((img, index) => (
                             <div key={index} className="h-16 w-24 rounded-lg overflow-hidden border border-slate-200 shrink-0 shadow-sm">
@@ -1456,7 +1456,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                       </div>
                     )}
 
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-400 pt-2 border-t border-slate-50">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-600 pt-2 border-t border-slate-50">
                       <span className="flex items-center"><i className="fa-solid fa-calendar mr-1.5"></i>Registado: {formatDatePT(v.data)}</span>
                       <span className="flex items-center"><i className="fa-solid fa-user-check mr-1.5"></i>Vistoriador: {v.tecnico}</span>
                     </div>
@@ -1524,13 +1524,13 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
               <div className="bg-slate-50 dark:bg-slate-900/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-slate-500 uppercase">Total Equipamentos</span>
-                  <ShieldCheck className="w-4 h-4 text-slate-400" />
+                  <ShieldCheck className="w-4 h-4 text-slate-600" />
                 </div>
                 <div className="text-xl font-black text-slate-800 dark:text-white mt-1">
                   {equipamentosSCIE.reduce((acc, e) => acc + e.quantidade, 0)}
-                  <span className="text-[11px] font-normal text-slate-400 ml-1">unidades</span>
+                  <span className="text-[11px] font-normal text-slate-600 ml-1">unidades</span>
                 </div>
-                <span className="text-[10px] text-slate-400 block mt-0.5">{equipamentosSCIE.length} referências registadas</span>
+                <span className="text-[10px] text-slate-600 block mt-0.5">{equipamentosSCIE.length} referências registadas</span>
               </div>
 
               <div className="bg-slate-50 dark:bg-slate-900/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
@@ -1540,9 +1540,9 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 </div>
                 <div className="text-xl font-black text-slate-800 dark:text-white mt-1">
                   {equipamentosSCIE.filter(e => e.tipo === "Extintor").reduce((acc, e) => acc + e.quantidade, 0)}
-                  <span className="text-[11px] font-normal text-slate-400 ml-1">unidades</span>
+                  <span className="text-[11px] font-normal text-slate-600 ml-1">unidades</span>
                 </div>
-                <span className="text-[10px] text-slate-400 block mt-0.5">Pó Químico ABC e CO2</span>
+                <span className="text-[10px] text-slate-600 block mt-0.5">Pó Químico ABC e CO2</span>
               </div>
 
               <div className="bg-slate-50 dark:bg-slate-900/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
@@ -1552,9 +1552,9 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 </div>
                 <div className="text-xl font-black text-slate-800 dark:text-white mt-1">
                   {equipamentosSCIE.filter(e => e.tipo !== "Extintor").reduce((acc, e) => acc + e.quantidade, 0)}
-                  <span className="text-[11px] font-normal text-slate-400 ml-1">sistemas</span>
+                  <span className="text-[11px] font-normal text-slate-600 ml-1">sistemas</span>
                 </div>
-                <span className="text-[10px] text-slate-400 block mt-0.5">Carretéis, alarmes & sprinklers</span>
+                <span className="text-[10px] text-slate-600 block mt-0.5">Carretéis, alarmes & sprinklers</span>
               </div>
 
               {(() => {
@@ -1654,7 +1654,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 ))}
               </div>
 
-              <span className="text-xs text-slate-400 font-medium">
+              <span className="text-xs text-slate-600 font-medium">
                 A mostrar {equipamentosSCIE.filter(e => filtroScie === "TODOS" || e.tipo === filtroScie).length} de {equipamentosSCIE.length}
               </span>
             </div>
@@ -1662,7 +1662,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
             {/* SCIE Table */}
             <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl">
               {equipamentosSCIE.filter(e => filtroScie === "TODOS" || e.tipo === filtroScie).length === 0 ? (
-                <div className="p-8 text-center text-slate-400 text-xs space-y-2">
+                <div className="p-8 text-center text-slate-600 text-xs space-y-2">
                   <p>Nenhum equipamento SCIE encontrado para este filtro.</p>
                   <button
                     type="button"
@@ -1743,7 +1743,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                                   type="button"
                                   onClick={() => handleEditarScie(eq)}
                                   title="Editar Equipamento"
-                                  className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                                  className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
                                 >
                                   <Edit3 className="w-3.5 h-3.5" />
                                 </button>
@@ -1751,7 +1751,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                                   type="button"
                                   onClick={() => handleEliminarScie(eq.id)}
                                   title="Eliminar Equipamento"
-                                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                                  className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -1782,7 +1782,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                   <button
                     type="button"
                     onClick={resetScieForm}
-                    className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 cursor-pointer"
+                    className="text-slate-600 hover:text-slate-600 dark:hover:text-white p-1 cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -1942,7 +1942,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col">
-                    <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Data (DD-MM-AAAA) *</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Data (DD-MM-AAAA) *</label>
                     <input
                       type="text"
                       required
@@ -1953,7 +1953,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                     />
                   </div>
                   <div className="flex flex-col">
-                    <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Hora (HH:MM) *</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Hora (HH:MM) *</label>
                     <input
                       type="time"
                       required
@@ -1965,7 +1965,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Nome do Operador / Executor *</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Nome do Operador / Executor *</label>
                   <input
                     type="text"
                     required
@@ -1977,7 +1977,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Áreas Intervencionadas *</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Áreas Intervencionadas *</label>
                   <div className="grid grid-cols-2 gap-2 mt-1 max-h-36 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-100">
                     {areasDisponiveis.map(area => {
                       const isSelected = lAreas.includes(area);
@@ -2001,7 +2001,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Observações do Serviço</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Observações do Serviço</label>
                   <textarea
                     rows={2}
                     placeholder="Líquidos utilizados, estado dos contentores de lixo, ou recados especiais para a Administração..."
@@ -2012,7 +2012,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 </div>
 
                 <div className="flex flex-col space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Evidências Fotográficas (WebP Auto-Compress)</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600">Evidências Fotográficas (WebP Auto-Compress)</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
@@ -2083,7 +2083,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
           {/* Historical Logs & Table (Visible to everyone) */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex justify-between items-center no-print">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 font-sans">Caderno de Higienizações Digital</h4>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 font-sans">Caderno de Higienizações Digital</h4>
               <div className="flex space-x-2">
                 <button
                   onClick={exportarLimpezasXLS}
@@ -2117,7 +2117,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                     <tr key={l.id_limpeza} className="border-b border-slate-100 hover:bg-slate-50/50">
                       <td className="p-3">
                         <div className="font-bold text-slate-800">{l.data}</div>
-                        <div className="text-[10px] text-slate-400 font-medium font-mono-custom flex items-center"><i className="fa-solid fa-clock mr-1"></i>{l.hora}</div>
+                        <div className="text-[10px] text-slate-600 font-medium font-mono-custom flex items-center"><i className="fa-solid fa-clock mr-1"></i>{l.hora}</div>
                       </td>
                       <td className="p-3 font-semibold text-slate-700">{l.executor}</td>
                       <td className="p-3">
@@ -2259,7 +2259,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                         <Camera className="w-4 h-4" />
                       </div>
                       <span className="text-xs font-bold text-slate-700">Tirar Fotografia / Anexar Ficheiro</span>
-                      <span className="text-[10px] text-slate-400">Suporta câmara do smartphone ou upload de ficheiro de imagem</span>
+                      <span className="text-[10px] text-slate-600">Suporta câmara do smartphone ou upload de ficheiro de imagem</span>
                     </button>
                   )}
                 </div>
@@ -2284,7 +2284,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
               </div>
 
               {incidenciasLimpeza.length === 0 ? (
-                <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center text-slate-400 text-xs">
+                <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center text-slate-600 text-xs">
                   Sem incidências reportadas pela equipa de limpezas até ao momento.
                 </div>
               ) : (
@@ -2335,12 +2335,12 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
 
                       {inc.foto && (
                         <div className="pt-1">
-                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Fotografia da Evidência</span>
+                          <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wide block mb-1">Fotografia da Evidência</span>
                           <img src={inc.foto} alt="Evidência" className="h-28 w-48 object-cover rounded-xl border border-slate-200 shadow-sm" />
                         </div>
                       )}
 
-                      <div className="flex items-center justify-between text-[10px] text-slate-400 pt-2 border-t border-slate-50 font-medium">
+                      <div className="flex items-center justify-between text-[10px] text-slate-600 pt-2 border-t border-slate-50 font-medium">
                         <span>Reportado por: <strong className="text-slate-700">{inc.operador}</strong></span>
                         <span>{inc.data} às {inc.hora}</span>
                       </div>
@@ -2371,11 +2371,11 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                     Placa de Limpeza Digital • CondoManager AI
                   </span>
                   <h3 className="text-lg font-extrabold text-white tracking-tight mt-1">{predio?.nome || "Edifício de Habitação"}</h3>
-                  <p className="text-[10px] text-slate-400 font-medium">{predio?.morada_linha1 || ""}, {predio?.num_porta || ""} • {predio?.localidade || ""}</p>
+                  <p className="text-[10px] text-slate-600 font-medium">{predio?.morada_linha1 || ""}, {predio?.num_porta || ""} • {predio?.localidade || ""}</p>
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-bold text-white font-mono-custom">{new Date().toLocaleTimeString("pt-PT", {hour: "2-digit", minute:"2-digit"})}</div>
-                  <div className="text-[9px] text-slate-400 font-semibold font-mono-custom">{new Date().toLocaleDateString("pt-PT")}</div>
+                  <div className="text-[9px] text-slate-600 font-semibold font-mono-custom">{new Date().toLocaleDateString("pt-PT")}</div>
                 </div>
               </div>
 
@@ -2401,13 +2401,13 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                         </div>
                         <div className="flex flex-wrap gap-1">
                           {l.areas.map(a => (
-                            <span key={a} className="text-[8px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded font-semibold">
+                            <span key={a} className="text-[8px] bg-slate-800 text-slate-600 px-1.5 py-0.5 rounded font-semibold">
                               {a}
                             </span>
                           ))}
                         </div>
                         {l.observacoes && (
-                          <p className="text-[10px] text-slate-400 italic font-medium leading-relaxed">
+                          <p className="text-[10px] text-slate-600 italic font-medium leading-relaxed">
                             "{l.observacoes}"
                           </p>
                         )}
@@ -2446,7 +2446,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                   </div>
                   <div>
                     <h5 className="text-[11px] font-black text-white">Quadro de Avisos Sem Papel</h5>
-                    <p className="text-[9px] text-slate-400 leading-relaxed max-w-xs">
+                    <p className="text-[9px] text-slate-600 leading-relaxed max-w-xs">
                       Este painel digital de condomínio substitui os antigos papéis afixados na entrada do prédio. Aponte a câmara do telemóvel para auditar todo o histórico e reportar falhas.
                     </p>
                   </div>
@@ -2461,8 +2461,8 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
             </div>
           </div>
           
-          <p className="text-xs text-slate-400 mt-4 font-medium flex items-center max-w-lg text-center">
-            <i className="fa-solid fa-circle-info text-slate-400 mr-2"></i>
+          <p className="text-xs text-slate-600 mt-4 font-medium flex items-center max-w-lg text-center">
+            <i className="fa-solid fa-circle-info text-slate-600 mr-2"></i>
             Esta visualização simula de forma fidedigna o e-screen de 10 polegadas afixado no átrio de entrada do edifício. Os dados são sincronizados sem fios em tempo real com o servidor.
           </p>
         </div>
@@ -2477,14 +2477,14 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
             </span>
             <div>
               <h3 className="text-sm font-bold text-slate-800">Análise Financeira e Previsão de Custos de Limpeza</h3>
-              <p className="text-xs text-slate-400">Controle o custo mensal e anual dos serviços de higienização, avalie o impacto no orçamento e faça previsões de aumentos automáticos.</p>
+              <p className="text-xs text-slate-600">Controle o custo mensal e anual dos serviços de higienização, avalie o impacto no orçamento e faça previsões de aumentos automáticos.</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Inputs Panel */}
             <div className="space-y-4 bg-slate-50 p-5 rounded-xl border border-slate-200">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 border-b border-slate-200 pb-2">Parâmetros Financeiros</h4>
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 border-b border-slate-200 pb-2">Parâmetros Financeiros</h4>
               
               <div className="flex flex-col">
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Custo Mensal da Limpeza (€) *</label>
@@ -2525,7 +2525,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-white p-4 rounded-xl border border-slate-100 flex items-center justify-between">
                   <div>
-                    <span className="text-slate-400 text-[9px] font-bold uppercase block">Custo Mensal Padrão</span>
+                    <span className="text-slate-600 text-[9px] font-bold uppercase block">Custo Mensal Padrão</span>
                     <h3 className="text-lg font-black text-slate-800 font-mono mt-0.5">{(parseValorMonetario(limpezaCustoMensal) || 0).toFixed(2)}€</h3>
                   </div>
                   <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs"><i className="fa-solid fa-calendar-day"></i></div>
@@ -2533,7 +2533,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
 
                 <div className="bg-white p-4 rounded-xl border border-slate-100 flex items-center justify-between">
                   <div>
-                    <span className="text-slate-400 text-[9px] font-bold uppercase block">Custo Anual Total</span>
+                    <span className="text-slate-600 text-[9px] font-bold uppercase block">Custo Anual Total</span>
                     <h3 className="text-lg font-black text-slate-800 font-mono mt-0.5">{((parseValorMonetario(limpezaCustoMensal) || 0) * 12).toFixed(2)}€</h3>
                   </div>
                   <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg text-xs"><i className="fa-solid fa-coins"></i></div>
@@ -2541,7 +2541,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
 
                 <div className="bg-white p-4 rounded-xl border border-slate-100 flex items-center justify-between">
                   <div>
-                    <span className="text-slate-400 text-[9px] font-bold uppercase block">Impacto no Orçamento</span>
+                    <span className="text-slate-600 text-[9px] font-bold uppercase block">Impacto no Orçamento</span>
                     <h3 className="text-lg font-black text-slate-800 font-mono mt-0.5">
                       {(((parseValorMonetario(limpezaCustoMensal) || 0) * 12 / (parseValorMonetario(orcamentoGeralLimpeza) || 5000)) * 100).toFixed(1)}%
                     </h3>
@@ -2553,7 +2553,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
               {/* Progress representation bar */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col justify-between">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Impacto Visual no Orçamento Geral do Prédio</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Impacto Visual no Orçamento Geral do Prédio</span>
                   <div className="w-full bg-slate-200 rounded-full h-2.5 mt-2 overflow-hidden relative">
                     <div 
                       className={`h-full rounded-full transition-all ${
@@ -2567,7 +2567,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                     ></div>
                   </div>
                 </div>
-                <div className="flex justify-between items-center text-[10px] text-slate-400 mt-2 font-mono">
+                <div className="flex justify-between items-center text-[10px] text-slate-600 mt-2 font-mono">
                   <span>Mínimo (0%)</span>
                   <span className="font-bold text-slate-600">Consumo Geral: {(((parseValorMonetario(limpezaCustoMensal) || 0) * 12 / (parseValorMonetario(orcamentoGeralLimpeza) || 5000)) * 100).toFixed(1)}%</span>
                   <span>Máximo Recomendado (25%)</span>
@@ -2580,7 +2580,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
           <div className="border-t border-slate-100 pt-5 space-y-4">
             <div>
               <h4 className="text-xs font-bold text-slate-800">Previsão Multianual de Aumentos de Custos de Limpeza</h4>
-              <p className="text-xs text-slate-400">Simule o comportamento dos encargos com higienização nos próximos 3 anos com base na taxa de inflação de {taxaInflacaoPrevisao}%.</p>
+              <p className="text-xs text-slate-600">Simule o comportamento dos encargos com higienização nos próximos 3 anos com base na taxa de inflação de {taxaInflacaoPrevisao}%.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2624,7 +2624,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
               {/* Visual forecast bar charts CSS only */}
               <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 flex flex-col justify-between">
                 <div>
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-200 pb-2">Projeção Gráfica do Encargo Anual</h4>
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-600 border-b border-slate-200 pb-2">Projeção Gráfica do Encargo Anual</h4>
                   
                   <div className="flex justify-around items-end h-32 pt-4">
                     {[0, 1, 2, 3].map(offset => {
@@ -2643,14 +2643,14 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                             className={`w-8 rounded-t-md transition-all shadow-sm ${offset === 0 ? "bg-amber-500" : "bg-amber-600/60"}`}
                             style={{ height: `${heightPercent}px` }}
                           ></div>
-                          <span className="text-[9px] text-slate-400 font-bold">{yearVal}</span>
+                          <span className="text-[9px] text-slate-600 font-bold">{yearVal}</span>
                         </div>
                       );
                     })}
                   </div>
                 </div>
                 
-                <p className="text-[9px] text-slate-400 leading-relaxed text-center mt-3">
+                <p className="text-[9px] text-slate-600 leading-relaxed text-center mt-3">
                   A projeção assume capitalização anual de taxas composta e estabilidade contratual. Recomenda-se prever provisões orçamentais no Fundo de Reserva.
                 </p>
               </div>

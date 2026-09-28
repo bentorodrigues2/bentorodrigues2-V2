@@ -1613,7 +1613,7 @@ Com os meus cumprimentos,
                 className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500"
               />
               <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Locais:</span>
+                <span className="text-[10px] font-bold text-slate-600 uppercase">Locais:</span>
                 <button
                   type="button"
                   onClick={() => setLocalReuniao("Sala Comum do Condomínio")}
@@ -1673,7 +1673,7 @@ Com os meus cumprimentos,
                       className="rounded text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
                     />
                     <span className="font-medium">{o.descricao}</span>
-                    <span className="text-slate-400">— {o.fornecedorNome} ({o.custoTotal.toFixed(2)} €) [{o.estado}]</span>
+                    <span className="text-slate-600">— {o.fornecedorNome} ({o.custoTotal.toFixed(2)} €) [{o.estado}]</span>
                   </label>
                 ))}
               </div>
@@ -1845,7 +1845,7 @@ Com os meus cumprimentos,
           </div>
           
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-[11px] text-slate-400">
+            <div className="flex items-center justify-between text-[11px] text-slate-600">
               <span className="font-mono">{emailConvocatoria.length} caracteres • {emailConvocatoria.split(/\s+/).filter(Boolean).length} palavras</span>
               <span className="text-emerald-700 font-semibold flex items-center gap-1">
                 <i className="fa-solid fa-shield-check"></i> Pronto para envio e submissão
@@ -1865,7 +1865,7 @@ Com os meus cumprimentos,
       <div className="space-y-4">
         <h4 className="text-sm font-bold text-slate-700">Agenda de Reuniões & Convocatórias</h4>
         {predioReunioes.length === 0 ? (
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-center text-slate-400 text-xs">
+          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-center text-slate-600 text-xs">
             Nenhuma reunião agendada neste condomínio.
           </div>
         ) : (
@@ -1918,8 +1918,8 @@ Com os meus cumprimentos,
               <div className="pr-24 space-y-2">
                 <h4 className="text-lg font-bold text-slate-800">{r.tema}</h4>
                 <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                  <span className="flex items-center"><i className="fa-solid fa-calendar mr-1.5 text-slate-400"></i>{r.data}</span>
-                  <span className="flex items-center"><i className="fa-solid fa-clock mr-1.5 text-slate-400"></i>1ª Conv: {r.hora}</span>
+                  <span className="flex items-center"><i className="fa-solid fa-calendar mr-1.5 text-slate-600"></i>{r.data}</span>
+                  <span className="flex items-center"><i className="fa-solid fa-clock mr-1.5 text-slate-600"></i>1ª Conv: {r.hora}</span>
                   <span className="flex items-center text-amber-600 font-semibold"><i className="fa-solid fa-scale-balanced mr-1.5"></i>2ª Conv: {somarMinutos(r.hora, 30)}</span>
                   {r.isVideoconferencia && (
                     <a
@@ -1937,7 +1937,7 @@ Com os meus cumprimentos,
               </div>
 
               <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-2">Ordens de Trabalho Oficiais</span>
+                <span className="text-[10px] uppercase font-bold text-slate-600 block mb-2">Ordens de Trabalho Oficiais</span>
                 <p className="text-xs text-slate-700 whitespace-pre-line leading-relaxed font-medium">{r.ordens_trabalho}</p>
               </div>
 
@@ -2106,28 +2106,28 @@ Com os meus cumprimentos,
                     <button
                       type="button"
                       onClick={() => setActiveTab("quorum")}
-                      className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${activeTab === "quorum" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-400 hover:text-slate-600"}`}
+                      className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${activeTab === "quorum" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-600 hover:text-slate-600"}`}
                     >
                       <i className="fa-solid fa-users mr-1.5"></i> Folha de Presenças & Quórum
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab("votacoes")}
-                      className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${activeTab === "votacoes" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-400 hover:text-slate-600"}`}
+                      className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${activeTab === "votacoes" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-600 hover:text-slate-600"}`}
                     >
                       <i className="fa-solid fa-check-to-slot mr-1.5"></i> Votações em Tempo Real (‰)
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab("ata")}
-                      className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${activeTab === "ata" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-400 hover:text-slate-600"}`}
+                      className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${activeTab === "ata" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-600 hover:text-slate-600"}`}
                     >
                       <i className="fa-solid fa-robot mr-1.5"></i> Redigir Ata por IA
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab("assinaturas")}
-                      className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${activeTab === "assinaturas" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-400 hover:text-slate-600"}`}
+                      className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${activeTab === "assinaturas" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-600 hover:text-slate-600"}`}
                     >
                       <i className="fa-solid fa-signature mr-1.5"></i> Assinaturas & Emissão
                     </button>
@@ -2215,7 +2215,7 @@ Com os meus cumprimentos,
                               const representative = activeMeeting.representantes?.[f.id_fracao] || "";
                               return (
                                 <tr key={f.id_fracao} className="border-b border-slate-100 hover:bg-slate-50/50">
-                                  <td className="p-3 font-bold text-slate-800">Fração {f.fracao_nome} <span className="text-[10px] text-slate-400 font-normal">({f.piso})</span></td>
+                                  <td className="p-3 font-bold text-slate-800">Fração {f.fracao_nome} <span className="text-[10px] text-slate-600 font-normal">({f.piso})</span></td>
                                   <td className="p-3 text-slate-700 font-medium">{f.proprietario.nome}</td>
                                   <td className="p-3 font-mono-custom text-slate-600 font-bold">{f.permilagem}‰</td>
                                   <td className="p-3">
@@ -2270,7 +2270,7 @@ Com os meus cumprimentos,
                                         </button>
                                       </div>
                                     ) : (
-                                      <span className="text-slate-400 italic text-[10px]">Não se aplica</span>
+                                      <span className="text-slate-600 italic text-[10px]">Não se aplica</span>
                                     )}
                                   </td>
                                 </tr>
@@ -2285,7 +2285,7 @@ Com os meus cumprimentos,
                           onChange={handleUploadDeclaracaoRepresentacao}
                           className="hidden"
                         />
-                        <p className="text-[10px] text-slate-400 mt-2 flex items-center gap-1.5">
+                        <p className="text-[10px] text-slate-600 mt-2 flex items-center gap-1.5">
                           <i className="fa-solid fa-lock"></i>
                           As declarações de representação (procurações) anexadas com o clipe ficam guardadas no Arquivo Digital com acesso restrito à administração — nunca aparecem aos condóminos nem no PDF da ata descarregado/partilhado.
                         </p>
@@ -2323,12 +2323,12 @@ Com os meus cumprimentos,
                               Requisitos Imperativos de Ata (Lei n.º 8/2022 / DL 268/94)
                             </h5>
                           </div>
-                          <span className="text-[10px] text-slate-300 font-mono">
+                          <span className="text-[10px] text-slate-600 font-mono">
                             Art. 1.º e 6.º do Decreto-Lei n.º 268/94
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-[11px] text-slate-300">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-[11px] text-slate-600">
                           <div className="flex items-start space-x-2 bg-slate-800/80 p-2.5 rounded-lg border border-slate-700">
                             <i className="fa-solid fa-circle-check text-emerald-400 text-xs mt-0.5"></i>
                             <div>
@@ -2356,7 +2356,7 @@ Com os meus cumprimentos,
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 border-t border-slate-800">
                           <div className="flex flex-col">
-                            <label className="text-[10px] font-bold text-slate-300 uppercase mb-1">Presidente da Mesa (Assina Ata)</label>
+                            <label className="text-[10px] font-bold text-slate-600 uppercase mb-1">Presidente da Mesa (Assina Ata)</label>
                             <input 
                               type="text" 
                               value={presidenteMesa} 
@@ -2367,7 +2367,7 @@ Com os meus cumprimentos,
                           </div>
 
                           <div className="flex flex-col">
-                            <label className="text-[10px] font-bold text-slate-300 uppercase mb-1">Local da Reunião</label>
+                            <label className="text-[10px] font-bold text-slate-600 uppercase mb-1">Local da Reunião</label>
                             <input 
                               type="text" 
                               value={localReuniao} 
@@ -2433,7 +2433,7 @@ Com os meus cumprimentos,
                               <i className="fa-solid fa-file-lines text-slate-500"></i>
                               <span>Texto Integral da Ata de Assembleia de Condóminos</span>
                             </label>
-                            <span className="text-[11px] text-slate-400 font-mono">
+                            <span className="text-[11px] text-slate-600 font-mono">
                               {ataTexto.length} caracteres • {ataTexto.split(/\s+/).filter(Boolean).length} palavras
                             </span>
                           </div>
@@ -2511,13 +2511,13 @@ Com os meus cumprimentos,
                               Lei n.º 8/2022
                             </span>
                           </div>
-                          <p className="text-[11px] text-slate-300">
+                          <p className="text-[11px] text-slate-600">
                             A lei impõe que a ata seja <strong>assinada por quem presidiu à mesa (Administrador)</strong> e <strong>subscrita por todos os condóminos presentes e representados</strong> ({activeQuorum}‰).
                           </p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                             <div className="bg-slate-800 p-2.5 rounded-lg border border-slate-700 flex items-center justify-between px-3">
                               <div>
-                                <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Presidente da Mesa (Administrador)</span>
+                                <span className="text-[9px] uppercase tracking-wider text-slate-600 font-bold block">Presidente da Mesa (Administrador)</span>
                                 <span className="text-xs text-slate-200 font-semibold">{presidenteMesa || loggedUser.nome}</span>
                               </div>
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${activeMeeting.assinaturas?.some(a => a.fracao === "Presidente" || a.fracao === "Administrador") ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-amber-500/20 text-amber-400 border border-amber-500/30"}`}>
@@ -2526,7 +2526,7 @@ Com os meus cumprimentos,
                             </div>
                             <div className="bg-slate-800 p-2.5 rounded-lg border border-slate-700 flex items-center justify-between px-3">
                               <div>
-                                <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Subscrições de Presentes / Representados</span>
+                                <span className="text-[9px] uppercase tracking-wider text-slate-600 font-bold block">Subscrições de Presentes / Representados</span>
                                 <span className="text-xs text-slate-200 font-semibold">{predioFracoes.filter(f => (activeMeeting.folha_presencas?.[f.id_fracao] || "Ausente") !== "Ausente" && activeMeeting.assinaturas?.some(a => a.fracao === f.fracao_nome)).length} de {predioFracoes.filter(f => (activeMeeting.folha_presencas?.[f.id_fracao] || "Ausente") !== "Ausente").length} frações</span>
                               </div>
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
@@ -2548,14 +2548,14 @@ Com os meus cumprimentos,
                               <i className="fa-solid fa-signature text-emerald-500 mr-1.5"></i>
                               Colher Assinatura Digital na PWA
                             </h6>
-                            <p className="text-[10px] text-slate-400">
+                            <p className="text-[10px] text-slate-600">
                               O condómino assina com o dedo ou ponteiro no ecrã e a assinatura é carimbada na ata.
                             </p>
 
                             <div className="space-y-2">
                               <div className="grid grid-cols-1 gap-2">
                                 <div className="flex flex-col">
-                                  <label className="text-[10px] font-bold text-slate-400 mb-1">Escolher Condómino Presente</label>
+                                  <label className="text-[10px] font-bold text-slate-600 mb-1">Escolher Condómino Presente</label>
                                   <select
                                     value={signerFracao}
                                     onChange={e => {
@@ -2591,7 +2591,7 @@ Com os meus cumprimentos,
                                 </div>
 
                                 <div className="flex flex-col">
-                                  <label className="text-[10px] font-bold text-slate-400 mb-1">
+                                  <label className="text-[10px] font-bold text-slate-600 mb-1">
                                     Nome Completo do Signatário
                                     {activeMeeting.folha_presencas?.[predioFracoes.find(f => f.fracao_nome === signerFracao)?.id_fracao || ""] === "Representado" && (
                                       <span className="text-indigo-600 font-normal"> — assina em representação de {predioFracoes.find(f => f.fracao_nome === signerFracao)?.proprietario.nome}</span>
@@ -2621,7 +2621,7 @@ Com os meus cumprimentos,
 
                               {/* Physical drawing Canvas */}
                               <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50 relative">
-                                <span className="absolute top-1.5 left-2 text-[8px] uppercase tracking-wider font-bold text-slate-400 pointer-events-none select-none">
+                                <span className="absolute top-1.5 left-2 text-[8px] uppercase tracking-wider font-bold text-slate-600 pointer-events-none select-none">
                                   Quadro de Assinatura Digital
                                 </span>
                                 <canvas
@@ -2662,12 +2662,12 @@ Com os meus cumprimentos,
                                 <i className="fa-solid fa-file-pdf text-indigo-500 mr-1.5"></i>
                                 Assinatura Manuscrita Física (Papel)
                               </h6>
-                              <p className="text-[10px] text-slate-400 mt-1">
+                              <p className="text-[10px] text-slate-600 mt-1">
                                 Imprima a ata com linhas de assinatura individuais pré-configuradas para todos os proprietários que estiveram presentes ou representados.
                               </p>
                               
                               <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-lg text-[10px] space-y-1 text-slate-600 max-h-[140px] overflow-y-auto font-mono-custom">
-                                <p className="font-bold uppercase text-slate-400 text-[8px] mb-1">Linhas de Assinatura pré-calculadas:</p>
+                                <p className="font-bold uppercase text-slate-600 text-[8px] mb-1">Linhas de Assinatura pré-calculadas:</p>
                                 <p>- O Presidente da Mesa ({loggedUser.nome})</p>
                                 {predioFracoes.filter(f => {
                                   const presence = activeMeeting.folha_presencas?.[f.id_fracao] || "Ausente";
@@ -2731,7 +2731,7 @@ Com os meus cumprimentos,
                                 <i className="fa-solid fa-file-signature text-emerald-600"></i>
                                 <span>Assinaturas Eletrónicas Carimbadas ({activeMeeting.assinaturas.length})</span>
                               </h5>
-                              <p className="text-[10px] text-slate-400">Assinaturas e métricas de identidade registadas com selo eIDAS e carimbo temporal RFC 3161.</p>
+                              <p className="text-[10px] text-slate-600">Assinaturas e métricas de identidade registadas com selo eIDAS e carimbo temporal RFC 3161.</p>
                             </div>
 
                             <button
@@ -2766,7 +2766,7 @@ Com os meus cumprimentos,
                                   <span>Eliminar</span>
                                 </button>
                                 <span className="text-[10px] font-bold text-slate-700 truncate w-full">{ass.nome}</span>
-                                <span className="text-[8px] uppercase tracking-wide font-bold text-slate-400 mb-1">{ass.fracao}</span>
+                                <span className="text-[8px] uppercase tracking-wide font-bold text-slate-600 mb-1">{ass.fracao}</span>
                                 {ehRepresentacao && (
                                   <span className="text-[7px] text-indigo-600 font-bold -mt-1 mb-1">em representação de {fracaoDaAss!.proprietario.nome}</span>
                                 )}
@@ -2822,19 +2822,19 @@ Com os meus cumprimentos,
 
             <div className="grid grid-cols-3 gap-2 text-center bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
               <div>
-                <span className="text-[10px] text-slate-400 font-bold uppercase block">Sim 👍</span>
+                <span className="text-[10px] text-slate-600 font-bold uppercase block">Sim 👍</span>
                 <span className="font-mono font-bold text-emerald-700 text-sm">
                   {selectedPollModalReuniao.votosPresenca?.filter(v => v.opcao === "Sim").length || 0}
                 </span>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 font-bold uppercase block">Não 👎</span>
+                <span className="text-[10px] text-slate-600 font-bold uppercase block">Não 👎</span>
                 <span className="font-mono font-bold text-red-600 text-sm">
                   {selectedPollModalReuniao.votosPresenca?.filter(v => v.opcao === "Não").length || 0}
                 </span>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 font-bold uppercase block">Sem Leitura / Resposta</span>
+                <span className="text-[10px] text-slate-600 font-bold uppercase block">Sem Leitura / Resposta</span>
                 <span className="font-mono font-bold text-slate-500 text-sm">
                   {selectedPollModalReuniao.votosPresenca?.filter(v => !v.leuMensagem).length || 0}
                 </span>
@@ -2865,7 +2865,7 @@ Com os meus cumprimentos,
                     </div>
                   ))
                 ) : (
-                  <p className="text-xs text-slate-400 italic">Ainda não há respostas registadas.</p>
+                  <p className="text-xs text-slate-600 italic">Ainda não há respostas registadas.</p>
                 )}
               </div>
 
@@ -2886,7 +2886,7 @@ Com os meus cumprimentos,
                     </div>
                   ))
                 ) : (
-                  <p className="text-xs text-slate-400 italic">Todos os condóminos já leram e responderam à sondagem!</p>
+                  <p className="text-xs text-slate-600 italic">Todos os condóminos já leram e responderam à sondagem!</p>
                 )}
               </div>
             </div>

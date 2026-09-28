@@ -449,7 +449,7 @@ export function GestaoContas({
         {predioContas.length === 0 ? (
           /* Estado Vazio - Sem contas ativas de teste */
           <div id="empty-contas-state" className="p-8 text-center bg-white rounded-2xl border border-dashed border-slate-300 space-y-3 shadow-xs">
-            <div className="h-12 w-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+            <div className="h-12 w-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center mx-auto">
               <CreditCard className="w-6 h-6" />
             </div>
             <div>
@@ -493,24 +493,24 @@ export function GestaoContas({
 
                     <div className="text-xs space-y-2 text-slate-600">
                       <p className="flex items-center">
-                        <span className="font-semibold text-slate-400 w-16">IBAN:</span>
+                        <span className="font-semibold text-slate-600 w-16">IBAN:</span>
                         <span className="font-mono ml-1 font-bold text-slate-800">{c.iban}</span>
                       </p>
                       {c.balcao && (
                         <p className="flex items-center">
-                          <span className="text-slate-400 w-16">Balcão:</span>
+                          <span className="text-slate-600 w-16">Balcão:</span>
                           <span className="ml-1 text-slate-700">{c.balcao}</span>
                         </p>
                       )}
                       {c.morada_balcao && (
                         <p className="flex items-center">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400 mr-1 shrink-0" />
+                          <MapPin className="w-3.5 h-3.5 text-slate-600 mr-1 shrink-0" />
                           <span className="text-slate-700">{c.morada_balcao}</span>
                         </p>
                       )}
                       {c.contacto_banco && (
                         <p className="flex items-center">
-                          <Phone className="w-3.5 h-3.5 text-slate-400 mr-1 shrink-0" />
+                          <Phone className="w-3.5 h-3.5 text-slate-600 mr-1 shrink-0" />
                           <span className="font-mono text-slate-700">{c.contacto_banco}</span>
                         </p>
                       )}
@@ -518,12 +518,12 @@ export function GestaoContas({
                       {c.gestor_contas && (
                         <div className="space-y-1 pt-1 border-t border-slate-100">
                           <p className="flex items-center">
-                            <UserCheck className="w-3.5 h-3.5 text-slate-400 mr-1.5 shrink-0" />
+                            <UserCheck className="w-3.5 h-3.5 text-slate-600 mr-1.5 shrink-0" />
                             <span className="text-slate-700 font-medium">Gestor: {c.gestor_contas}</span>
                           </p>
                           {c.email_gestor && (
                             <p className="flex items-center text-slate-500 pl-5 font-mono text-[11px]">
-                              <Mail className="w-3 h-3 text-slate-400 mr-1 shrink-0" />
+                              <Mail className="w-3 h-3 text-slate-600 mr-1 shrink-0" />
                               <span>{c.email_gestor}</span>
                             </p>
                           )}

@@ -291,7 +291,7 @@ export function AuditoriaInterna({
             <i className="fa-solid fa-clock-rotate-left text-lg"></i>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase font-bold text-slate-400 truncate">Total de Registos</p>
+            <p className="text-[10px] uppercase font-bold text-slate-600 truncate">Total de Registos</p>
             <p className="text-lg sm:text-xl font-extrabold text-slate-800 dark:text-white">{logs.length}</p>
           </div>
         </div>
@@ -301,7 +301,7 @@ export function AuditoriaInterna({
             <i className="fa-solid fa-file-shield text-lg"></i>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase font-bold text-slate-400 truncate">Cobertura Documental</p>
+            <p className="text-[10px] uppercase font-bold text-slate-600 truncate">Cobertura Documental</p>
             <p className="text-lg sm:text-xl font-extrabold text-slate-800 dark:text-white">
               {documentos.length > 5 ? "95%" : "68%"}
             </p>
@@ -313,7 +313,7 @@ export function AuditoriaInterna({
             <i className="fa-solid fa-circle-check text-lg"></i>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase font-bold text-slate-400 truncate">Conformidade Geral</p>
+            <p className="text-[10px] uppercase font-bold text-slate-600 truncate">Conformidade Geral</p>
             <p className="text-lg sm:text-xl font-extrabold text-slate-800 dark:text-white">Excelente</p>
           </div>
         </div>
@@ -323,7 +323,7 @@ export function AuditoriaInterna({
             <i className="fa-solid fa-triangle-exclamation text-lg"></i>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase font-bold text-slate-400 truncate">Apólices em Risco</p>
+            <p className="text-[10px] uppercase font-bold text-slate-600 truncate">Apólices em Risco</p>
             <p className="text-lg sm:text-xl font-extrabold text-slate-800 dark:text-white">
               {fracoes.filter(f => !f.apolice_validade || new Date(f.apolice_validade) < new Date("2026-07-16")).length} Unidades
             </p>
@@ -367,7 +367,7 @@ export function AuditoriaInterna({
                 <span className="bg-indigo-500 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
                   Relatório PDF Gerado
                 </span>
-                <span className="text-xs text-slate-400">{scanReport.data_emissao}</span>
+                <span className="text-xs text-slate-600">{scanReport.data_emissao}</span>
               </div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
                 Relatório de Auditoria e Conformidade Legal
@@ -382,7 +382,7 @@ export function AuditoriaInterna({
               </button>
               <button 
                 onClick={() => setScanReport(null)}
-                className="text-xs font-bold text-slate-400 hover:text-slate-600 px-2 cursor-pointer"
+                className="text-xs font-bold text-slate-600 hover:text-slate-600 px-2 cursor-pointer"
               >
                 Fechar Relatório
               </button>
@@ -504,7 +504,7 @@ export function AuditoriaInterna({
 
               <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase block">SCORE DE COMPLIANCE</span>
+                  <span className="text-[10px] text-slate-600 font-bold uppercase block">SCORE DE COMPLIANCE</span>
                   <span className="text-xl font-black text-indigo-600 dark:text-indigo-400">{scanReport.docs.score}%</span>
                 </div>
                 <div className={`px-2.5 py-1 text-xs font-black rounded-lg ${scanReport.ponto_situacao === "Conforme" ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"}`}>
@@ -520,7 +520,7 @@ export function AuditoriaInterna({
       <div className="flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto whitespace-nowrap scrollbar-none pb-0.5">
         <button 
           onClick={() => setActiveTab("historico")}
-          className={`px-5 py-3 text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${activeTab === "historico" ? "border-emerald-500 text-emerald-500" : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"}`}
+          className={`px-5 py-3 text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${activeTab === "historico" ? "border-emerald-500 text-emerald-500" : "border-transparent text-slate-600 hover:text-slate-600 dark:hover:text-slate-200"}`}
         >
           <i className="fa-solid fa-list-check"></i>
           Histórico de Alterações
@@ -528,7 +528,7 @@ export function AuditoriaInterna({
 
         <button 
           onClick={() => setActiveTab("financeira")}
-          className={`px-5 py-3 text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${activeTab === "financeira" ? "border-emerald-500 text-emerald-500" : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"}`}
+          className={`px-5 py-3 text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${activeTab === "financeira" ? "border-emerald-500 text-emerald-500" : "border-transparent text-slate-600 hover:text-slate-600 dark:hover:text-slate-200"}`}
         >
           <i className="fa-solid fa-scale-balanced"></i>
           Auditoria Financeira
@@ -536,7 +536,7 @@ export function AuditoriaInterna({
 
         <button 
           onClick={() => setActiveTab("documental")}
-          className={`px-5 py-3 text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${activeTab === "documental" ? "border-emerald-500 text-emerald-500" : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"}`}
+          className={`px-5 py-3 text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${activeTab === "documental" ? "border-emerald-500 text-emerald-500" : "border-transparent text-slate-600 hover:text-slate-600 dark:hover:text-slate-200"}`}
         >
           <i className="fa-solid fa-folder-tree"></i>
           Auditoria Documental
@@ -544,7 +544,7 @@ export function AuditoriaInterna({
 
         <button 
           onClick={() => setActiveTab("ia_audit")}
-          className={`px-5 py-3 text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${activeTab === "ia_audit" ? "border-violet-500 text-violet-400 bg-violet-950/30 font-bold" : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"}`}
+          className={`px-5 py-3 text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${activeTab === "ia_audit" ? "border-violet-500 text-violet-400 bg-violet-950/30 font-bold" : "border-transparent text-slate-600 hover:text-slate-600 dark:hover:text-slate-200"}`}
         >
           <i className="fa-solid fa-robot text-violet-400"></i>
           🔥 Logs de Auditoria IA
@@ -573,21 +573,21 @@ export function AuditoriaInterna({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono">
               <div className="p-4 bg-slate-800/80 rounded-xl border border-slate-700">
-                <span className="text-[10px] text-slate-400 uppercase block">Total de Automações Executadas</span>
+                <span className="text-[10px] text-slate-600 uppercase block">Total de Automações Executadas</span>
                 <span className="text-2xl font-black text-white block mt-1">{totalDecisoesIA}</span>
                 <span className="text-[10px] text-emerald-400 block mt-1">Contagem real deste prédio</span>
               </div>
 
               <div className="p-4 bg-slate-800/80 rounded-xl border border-slate-700">
-                <span className="text-[10px] text-slate-400 uppercase block">Última Execução</span>
+                <span className="text-[10px] text-slate-600 uppercase block">Última Execução</span>
                 <span className="text-lg font-black text-violet-300 block mt-1">{ultimaExecucaoIA}</span>
-                <span className="text-[10px] text-slate-400 block mt-1">Registo mais recente</span>
+                <span className="text-[10px] text-slate-600 block mt-1">Registo mais recente</span>
               </div>
 
               <div className="p-4 bg-slate-800/80 rounded-xl border border-slate-700">
-                <span className="text-[10px] text-slate-400 uppercase block">Origem Mais Frequente</span>
+                <span className="text-[10px] text-slate-600 uppercase block">Origem Mais Frequente</span>
                 <span className="text-sm font-black text-amber-400 block mt-1 leading-tight">{origemMaisFrequente ? origemMaisFrequente.label : "—"}</span>
-                <span className="text-[10px] text-slate-400 block mt-1">{origemMaisFrequente ? `${origemMaisFrequente.total} ocorrência(s)` : "Sem dados ainda"}</span>
+                <span className="text-[10px] text-slate-600 block mt-1">{origemMaisFrequente ? `${origemMaisFrequente.total} ocorrência(s)` : "Sem dados ainda"}</span>
               </div>
             </div>
           </div>
@@ -602,7 +602,7 @@ export function AuditoriaInterna({
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-mono text-[10px] uppercase">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-600 font-mono text-[10px] uppercase">
                     <th className="p-3">Data / Hora</th>
                     <th className="p-3">Módulo</th>
                     <th className="p-3">Detalhe</th>
@@ -611,8 +611,8 @@ export function AuditoriaInterna({
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-sans">
                   {decisoesIA.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="p-8 text-center text-slate-400">
-                        <i className="fa-solid fa-robot text-2xl mb-2 block text-slate-300"></i>
+                      <td colSpan={3} className="p-8 text-center text-slate-600">
+                        <i className="fa-solid fa-robot text-2xl mb-2 block text-slate-600"></i>
                         Ainda sem decisões automáticas registadas para este prédio.
                       </td>
                     </tr>
@@ -649,7 +649,7 @@ export function AuditoriaInterna({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3.5 py-2 text-xs focus:outline-none focus:border-emerald-500 pl-8 text-slate-700 dark:text-white"
               />
-              <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+              <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-600 text-xs"></i>
             </div>
 
             <div>
@@ -688,7 +688,7 @@ export function AuditoriaInterna({
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
+                <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-600 font-bold border-b border-slate-100 dark:border-slate-800">
                   <tr>
                     <th className="p-4">Utilizador / Quem</th>
                     <th className="p-4">Quando / Data</th>
@@ -700,8 +700,8 @@ export function AuditoriaInterna({
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                   {filteredLogs.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-8 text-center text-slate-400">
-                        <i className="fa-solid fa-folder-open text-2xl mb-2 block text-slate-300"></i>
+                      <td colSpan={5} className="p-8 text-center text-slate-600">
+                        <i className="fa-solid fa-folder-open text-2xl mb-2 block text-slate-600"></i>
                         Nenhum registo de auditoria corresponde aos filtros de pesquisa selecionados.
                       </td>
                     </tr>
@@ -715,12 +715,12 @@ export function AuditoriaInterna({
                             </div>
                             <div>
                               <p className="font-bold text-slate-800 dark:text-white leading-none">{log.usuario}</p>
-                              <span className="text-[9px] text-slate-400 flex items-center gap-1 mt-0.5">
+                              <span className="text-[9px] text-slate-600 flex items-center gap-1 mt-0.5">
                                 <span className={`px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-[8px] ${
                                   log.role === "ADMIN" ? "bg-emerald-500/10 text-emerald-500" :
                                   log.role === "EMPRESA_GESTORA" ? "bg-violet-500/10 text-violet-500" :
                                   log.role === "TECNICO" ? "bg-amber-500/10 text-amber-500" :
-                                  "bg-slate-500/10 text-slate-400"
+                                  "bg-slate-500/10 text-slate-600"
                                 }`}>
                                   {log.role}
                                 </span>
@@ -740,14 +740,14 @@ export function AuditoriaInterna({
                             log.seccao === "Frações" ? "bg-indigo-500/10 text-indigo-500" :
                             log.seccao === "Ocorrências" ? "bg-orange-500/10 text-orange-500" :
                             log.seccao === "Configurações" ? "bg-violet-500/10 text-violet-500" :
-                            "bg-slate-500/10 text-slate-400"
+                            "bg-slate-500/10 text-slate-600"
                           }`}>
                             {log.seccao}
                           </span>
                         </td>
                         <td className="p-4 max-w-sm">
                           <p className="font-medium text-slate-700 dark:text-slate-200 truncate">{log.descricao}</p>
-                          <p className="text-[10px] text-slate-400 truncate font-mono mt-0.5">
+                          <p className="text-[10px] text-slate-600 truncate font-mono mt-0.5">
                             Modificado: {log.valores_posteriores}
                           </p>
                         </td>
@@ -792,26 +792,26 @@ export function AuditoriaInterna({
               <div className="space-y-3.5">
                 <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Soma dos Saldos Bancários</p>
+                    <p className="text-[10px] font-bold text-slate-600 uppercase">Soma dos Saldos Bancários</p>
                     <p className="text-lg font-black text-slate-800 dark:text-white">
                       {contas.reduce((sum, c) => sum + c.saldo, 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] text-slate-400 block font-bold">CONTAS EXAMINADAS</span>
+                    <span className="text-[10px] text-slate-600 block font-bold">CONTAS EXAMINADAS</span>
                     <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{contas.length} Contas ativas</span>
                   </div>
                 </div>
 
                 <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Soma das Receitas no Período</p>
+                    <p className="text-[10px] font-bold text-slate-600 uppercase">Soma das Receitas no Período</p>
                     <p className="text-base font-bold text-emerald-500">
                       +{movimentos.filter(m => m.tipo === "Receita").reduce((sum, m) => sum + m.valor, 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Soma das Despesas</p>
+                    <p className="text-[10px] font-bold text-slate-600 uppercase">Soma das Despesas</p>
                     <p className="text-base font-bold text-rose-500">
                       -{movimentos.filter(m => m.tipo === "Despesa").reduce((sum, m) => sum + m.valor, 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
                     </p>
@@ -853,13 +853,13 @@ export function AuditoriaInterna({
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg">
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">Saldo em Fundo de Reserva</p>
+                        <p className="text-[10px] text-slate-600 font-bold uppercase">Saldo em Fundo de Reserva</p>
                         <p className="text-base font-extrabold text-indigo-500">
                           {saldoFCR.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
                         </p>
                       </div>
                       <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg">
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">Rácio sobre Orçamento</p>
+                        <p className="text-[10px] text-slate-600 font-bold uppercase">Rácio sobre Orçamento</p>
                         <p className={`text-base font-extrabold ${isConforme ? "text-emerald-500" : "text-red-500"}`}>
                           {orcamentoAnual > 0 ? `${racio.toFixed(1)}%` : "N/D"} {orcamentoAnual > 0 && (isConforme ? "(Aprovado)" : "(Insuficiente)")}
                         </p>
@@ -869,7 +869,7 @@ export function AuditoriaInterna({
                     <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
                       <div className={`h-full rounded-full ${isConforme ? "bg-indigo-600" : "bg-red-500"}`} style={{ width: `${Math.min(racio * 10, 100)}%` }}></div>
                     </div>
-                    <div className="flex justify-between text-[10px] text-slate-400 font-bold uppercase">
+                    <div className="flex justify-between text-[10px] text-slate-600 font-bold uppercase">
                       <span>Contribuição Real: {orcamentoAnual > 0 ? `${racio.toFixed(1)}%` : "N/D"}</span>
                       <span>Mínimo de Lei: 10%</span>
                     </div>
@@ -906,7 +906,7 @@ export function AuditoriaInterna({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/30 space-y-2">
                 <p className="font-bold text-xs text-slate-700 dark:text-slate-200">Alertas de Duplicidade (Extrato)</p>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-600">
                   O algoritmo procura transações de despesas ou receitas com valores e descrições idênticas executadas no mesmo dia ou com um desvio máximo de 48 horas.
                 </p>
                 <div className="p-3 bg-emerald-500/10 text-emerald-500 text-xs rounded-lg font-semibold flex items-center gap-1.5 mt-2">
@@ -916,7 +916,7 @@ export function AuditoriaInterna({
 
               <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/30 space-y-2">
                 <p className="font-bold text-xs text-slate-700 dark:text-slate-200">Limites de Autorização Conjunta (Threshold)</p>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-600">
                   Segundo os estatutos, despesas superiores a 1.000€ exigem dupla assinatura ou ata de aprovação anexada para fins de auditoria documental.
                 </p>
                 <div className="p-3 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs rounded-lg space-y-1 mt-2 border border-amber-500/20">
@@ -961,7 +961,7 @@ export function AuditoriaInterna({
                     </div>
                     <div>
                       <p className="text-xs font-bold text-slate-800 dark:text-white">Regulamento Interno do Condomínio</p>
-                      <p className="text-[10px] text-slate-400">Revisado e em vigor (DL 268/94 Artigo 9º)</p>
+                      <p className="text-[10px] text-slate-600">Revisado e em vigor (DL 268/94 Artigo 9º)</p>
                     </div>
                   </div>
                   <span className="px-2.5 py-1 text-[10px] font-bold bg-emerald-500/20 text-emerald-400 rounded-lg flex items-center gap-1">
@@ -977,7 +977,7 @@ export function AuditoriaInterna({
                     </div>
                     <div>
                       <p className="text-xs font-bold text-slate-800 dark:text-white">Ata da Última Assembleia Geral de Contas</p>
-                      <p className="text-[10px] text-slate-400">Aprovação de contas do exercício de 2025</p>
+                      <p className="text-[10px] text-slate-600">Aprovação de contas do exercício de 2025</p>
                     </div>
                   </div>
                   <span className="px-2.5 py-1 text-[10px] font-bold bg-emerald-500/20 text-emerald-400 rounded-lg flex items-center gap-1">
@@ -993,7 +993,7 @@ export function AuditoriaInterna({
                     </div>
                     <div>
                       <p className="text-xs font-bold text-slate-800 dark:text-white">Contrato de Manutenção de Elevadores (OTIS)</p>
-                      <p className="text-[10px] text-slate-400">Obrigatório por lei para edifícios com elevador</p>
+                      <p className="text-[10px] text-slate-600">Obrigatório por lei para edifícios com elevador</p>
                     </div>
                   </div>
                   <span className="px-2.5 py-1 text-[10px] font-bold bg-emerald-500/20 text-emerald-400 rounded-lg flex items-center gap-1">
@@ -1009,7 +1009,7 @@ export function AuditoriaInterna({
                     </div>
                     <div>
                       <p className="text-xs font-bold text-slate-800 dark:text-white">Apólice de Seguro Multirriscos de Condomínio</p>
-                      <p className="text-[10px] text-slate-400">Cobertura de áreas comuns e reconstrução do imóvel</p>
+                      <p className="text-[10px] text-slate-600">Cobertura de áreas comuns e reconstrução do imóvel</p>
                     </div>
                   </div>
                   <span className="px-2.5 py-1 text-[10px] font-bold bg-emerald-500/20 text-emerald-400 rounded-lg flex items-center gap-1">
@@ -1026,7 +1026,7 @@ export function AuditoriaInterna({
                   <i className="fa-solid fa-shield-halved text-purple-500"></i>
                   Validador de Seguros Individuais
                 </h3>
-                <p className="text-[11px] text-slate-400 mt-1">Artigo 1429º do Código Civil</p>
+                <p className="text-[11px] text-slate-600 mt-1">Artigo 1429º do Código Civil</p>
               </div>
               <p className="text-xs text-slate-500">
                 O seguro contra o risco de incêndio da fração e áreas comuns é obrigatório por lei. O administrador tem o dever de exigir o comprovativo anual aos condóminos.
@@ -1057,7 +1057,7 @@ export function AuditoriaInterna({
                       </div>
                       <p className="text-[10px] text-slate-500">Proprietário: {f.proprietario.nome}</p>
                       {hasApolice && (
-                        <p className="text-[10px] font-mono text-slate-400">
+                        <p className="text-[10px] font-mono text-slate-600">
                           {f.seguradora} - {f.apolice_num} (Expira: {f.apolice_validade})
                         </p>
                       )}
@@ -1090,7 +1090,7 @@ export function AuditoriaInterna({
               </h4>
               <button 
                 onClick={() => setSelectedLog(null)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                className="text-slate-600 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 <i className="fa-solid fa-xmark text-lg"></i>
               </button>
@@ -1099,12 +1099,12 @@ export function AuditoriaInterna({
             <div className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="text-slate-400 font-bold block text-[10px] uppercase">Utilizador / Autor</span>
+                  <span className="text-slate-600 font-bold block text-[10px] uppercase">Utilizador / Autor</span>
                   <p className="font-extrabold text-slate-800 dark:text-white mt-0.5">{selectedLog.usuario}</p>
                   <p className="text-slate-500 font-mono text-[10px]">{selectedLog.email}</p>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-bold block text-[10px] uppercase">Perfil de Acesso</span>
+                  <span className="text-slate-600 font-bold block text-[10px] uppercase">Perfil de Acesso</span>
                   <span className="inline-block mt-1 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                     {selectedLog.role}
                   </span>
@@ -1113,11 +1113,11 @@ export function AuditoriaInterna({
 
               <div className="grid grid-cols-2 gap-4 border-t border-slate-100 dark:border-slate-800/80 pt-3">
                 <div>
-                  <span className="text-slate-400 font-bold block text-[10px] uppercase">Data & Hora</span>
+                  <span className="text-slate-600 font-bold block text-[10px] uppercase">Data & Hora</span>
                   <p className="font-mono mt-0.5 text-slate-700 dark:text-slate-300">{selectedLog.data_hora}</p>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-bold block text-[10px] uppercase">Secção / Categoria</span>
+                  <span className="text-slate-600 font-bold block text-[10px] uppercase">Secção / Categoria</span>
                   <span className="inline-block mt-1 px-2 py-0.5 rounded font-bold text-[9px] bg-indigo-50 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400">
                     {selectedLog.seccao}
                   </span>
@@ -1125,7 +1125,7 @@ export function AuditoriaInterna({
               </div>
 
               <div className="border-t border-slate-100 dark:border-slate-800/80 pt-3">
-                <span className="text-slate-400 font-bold block text-[10px] uppercase">Descrição do Evento</span>
+                <span className="text-slate-600 font-bold block text-[10px] uppercase">Descrição do Evento</span>
                 <p className="mt-1 font-medium text-slate-800 dark:text-white leading-relaxed bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800/60">
                   {selectedLog.descricao}
                 </p>
@@ -1133,20 +1133,20 @@ export function AuditoriaInterna({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 border-t border-slate-100 dark:border-slate-800/80 pt-3">
                 <div>
-                  <span className="text-slate-400 font-bold block text-[10px] uppercase">Estado Anterior (Antes)</span>
+                  <span className="text-slate-600 font-bold block text-[10px] uppercase">Estado Anterior (Antes)</span>
                   <div className="mt-1 font-mono text-[10px] text-slate-500 bg-slate-50 dark:bg-slate-800/40 p-2 rounded border border-slate-100 dark:border-slate-800/60 break-all h-20 overflow-y-auto">
                     {selectedLog.valores_anteriores || "-"}
                   </div>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-bold block text-[10px] uppercase">Estado Posterior (Depois)</span>
+                  <span className="text-slate-600 font-bold block text-[10px] uppercase">Estado Posterior (Depois)</span>
                   <div className="mt-1 font-mono text-[10px] text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/40 p-2 rounded border border-slate-100 dark:border-slate-800/60 break-all h-20 overflow-y-auto">
                     {selectedLog.valores_posteriores || "-"}
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 border-t border-slate-100 dark:border-slate-800/80 pt-3 text-[10px] text-slate-400 font-mono">
+              <div className="grid grid-cols-2 gap-4 border-t border-slate-100 dark:border-slate-800/80 pt-3 text-[10px] text-slate-600 font-mono">
                 <div>
                   <span>IP DE ORIGEM:</span> <span className="font-bold text-slate-600 dark:text-slate-300">{selectedLog.ip || "Não registado"}</span>
                 </div>

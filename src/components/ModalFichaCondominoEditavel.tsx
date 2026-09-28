@@ -557,7 +557,7 @@ export function ModalFichaCondominoEditavel({
               <span>Gravar</span>
             </button>
           ) : (
-            <div className="text-[11px] text-slate-400 italic">
+            <div className="text-[11px] text-slate-600 italic">
               * Edição livre para impressão / exportação de ficha de cadastro.
             </div>
           )}

@@ -337,7 +337,7 @@ export function EnciclopediaPlataforma({ documentos, onOpenManual }: Enciclopedi
                 <Sparkles className="w-3 h-3 text-emerald-300" />
                 Enciclopédia Oficial & Central de Conhecimento
               </span>
-              <span className="bg-slate-800 text-slate-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
+              <span className="bg-slate-800 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">
                 Desktop PC + Telemóvel PWA
               </span>
             </div>
@@ -345,16 +345,16 @@ export function EnciclopediaPlataforma({ documentos, onOpenManual }: Enciclopedi
               <BookOpen className="w-6 h-6 text-emerald-400" />
               Enciclopédia de Utilização da Plataforma
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-3xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-600 max-w-3xl leading-relaxed">
               Consulte os manuais ilustrados detalhados por perfil, assista a demonstrações em vídeo sobre instalação da PWA no telemóvel e pesquise respostas instantâneas para qualquer operação do condomínio.
             </p>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
             <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-3 text-center min-w-[120px]">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block">Manuais Ilustrados</span>
+              <span className="text-[10px] uppercase font-bold text-slate-600 block">Manuais Ilustrados</span>
               <span className="text-lg font-black text-emerald-400">9 Guias</span>
-              <span className="text-[9px] text-slate-400 block">Por Perfil de Acesso</span>
+              <span className="text-[9px] text-slate-600 block">Por Perfil de Acesso</span>
             </div>
           </div>
         </div>
@@ -363,7 +363,7 @@ export function EnciclopediaPlataforma({ documentos, onOpenManual }: Enciclopedi
       {/* BARRA DE PESQUISA GLOBAL DA ENCICLOPÉDIA */}
       <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
         <div className="relative">
-          <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-5 h-5 text-slate-600 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={termoBusca}
@@ -374,7 +374,7 @@ export function EnciclopediaPlataforma({ documentos, onOpenManual }: Enciclopedi
           {termoBusca && (
             <button
               onClick={() => setTermoBusca("")}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 font-bold bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded cursor-pointer"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-600 hover:text-slate-600 font-bold bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded cursor-pointer"
             >
               Limpar
             </button>
@@ -462,7 +462,7 @@ export function EnciclopediaPlataforma({ documentos, onOpenManual }: Enciclopedi
                 <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span>
                 <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 inline-block"></span>
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
-                <span className="font-mono text-[10px] text-slate-400 ml-1">CondoManager Video Player HD</span>
+                <span className="font-mono text-[10px] text-slate-600 ml-1">CondoManager Video Player HD</span>
               </div>
               <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-mono font-bold">
                 {videoAtivo.duracao}
@@ -490,7 +490,7 @@ export function EnciclopediaPlataforma({ documentos, onOpenManual }: Enciclopedi
 
               {/* ETAPA ATUAL DO VÍDEO */}
               <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-xl max-w-md mx-auto">
-                <span className="text-[9px] uppercase font-bold text-slate-400 block mb-0.5">Etapa Atual em Exibição:</span>
+                <span className="text-[9px] uppercase font-bold text-slate-600 block mb-0.5">Etapa Atual em Exibição:</span>
                 <p className="text-xs font-bold text-emerald-300">
                   {videoAtivo.etapasSimuladas.find(e => videoProgresso <= e.tempo)?.titulo || videoAtivo.etapasSimuladas[videoAtivo.etapasSimuladas.length - 1].titulo}
                 </p>
@@ -518,7 +518,7 @@ export function EnciclopediaPlataforma({ documentos, onOpenManual }: Enciclopedi
 
                   <button
                     onClick={reiniciarVideo}
-                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-lg flex items-center gap-1 cursor-pointer transition-all"
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-600 px-2.5 py-1.5 rounded-lg flex items-center gap-1 cursor-pointer transition-all"
                     title="Reiniciar Vídeo"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
@@ -526,7 +526,7 @@ export function EnciclopediaPlataforma({ documentos, onOpenManual }: Enciclopedi
                   </button>
                 </div>
 
-                <span className="text-[11px] text-slate-400 font-mono">
+                <span className="text-[11px] text-slate-600 font-mono">
                   {videoProgresso}% Concluído
                 </span>
               </div>
@@ -586,7 +586,7 @@ export function EnciclopediaPlataforma({ documentos, onOpenManual }: Enciclopedi
 
         {topicosFiltrados.length === 0 ? (
           <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 text-center space-y-3">
-            <BookOpen className="w-10 h-10 text-slate-400 mx-auto" />
+            <BookOpen className="w-10 h-10 text-slate-600 mx-auto" />
             <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Nenhum tópico encontrado para a pesquisa</h4>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
               Tente pesquisar com outros termos como 'PWA', 'Quotas', 'MB WAY', 'Prédio' ou 'Manual'.
@@ -689,7 +689,7 @@ export function EnciclopediaPlataforma({ documentos, onOpenManual }: Enciclopedi
                             <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                               {manualDoc.nome}
                             </span>
-                            <span className="text-[10px] text-slate-400 font-mono">({manualDoc.tamanho})</span>
+                            <span className="text-[10px] text-slate-600 font-mono">({manualDoc.tamanho})</span>
                           </div>
 
                           <div className="flex items-center gap-2">
@@ -725,7 +725,7 @@ export function EnciclopediaPlataforma({ documentos, onOpenManual }: Enciclopedi
               <Download className="w-5 h-5 text-emerald-400" />
               Manuais Ilustrados Oficiais por Perfil de Acesso
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-600">
               Disponíveis para consulta e impressão a qualquer momento no Arquivo Digital
             </p>
           </div>
@@ -749,20 +749,20 @@ export function EnciclopediaPlataforma({ documentos, onOpenManual }: Enciclopedi
                     <span className="text-[9px] font-bold uppercase bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded">
                       {manual.tipo}
                     </span>
-                    <span className="text-[10px] font-mono text-slate-400">{manual.tamanho}</span>
+                    <span className="text-[10px] font-mono text-slate-600">{manual.tamanho}</span>
                   </div>
 
                   <h5 className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors line-clamp-2">
                     {manual.nome}
                   </h5>
 
-                  <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                  <p className="text-[11px] text-slate-600 line-clamp-2 leading-relaxed">
                     {manual.descricao}
                   </p>
                 </div>
 
                 <div className="pt-2 border-t border-slate-700/60 flex items-center justify-between">
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-[10px] text-slate-600">
                     Perfis: {manual.relevancia_perfis?.join(", ") || "Todos"}
                   </span>
 

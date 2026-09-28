@@ -354,7 +354,7 @@ export function PainelControlo({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold text-[#333] uppercase tracking-wider">Módulo de Administração: Indicadores do Prédio</h4>
-              <span className="text-[10px] text-slate-400 font-medium">Clique em qualquer indicador para navegar para o módulo</span>
+              <span className="text-[10px] text-slate-600 font-medium">Clique em qualquer indicador para navegar para o módulo</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
               {indicadores.map((ind, idx) => {
@@ -395,7 +395,7 @@ export function PainelControlo({
                 );
               })}
             </div>
-            <p className="text-[10px] text-slate-400">
+            <p className="text-[10px] text-slate-600">
               "Total Líquido" = Conta(s) à Ordem ({totalContaOrdem.toLocaleString("pt-PT")} €) + Fundo de Reserva ({totalFundoReserva.toLocaleString("pt-PT")} €)
               {dividasPendentesValor > 0 && ` − Dívidas Pendentes a Fornecedores (${dividasPendentesValor.toLocaleString("pt-PT")} €)`}. Uma conta com saldo negativo (ex: obras pagas antes de reforço de fundos) reduz este total tanto quanto uma dívida por pagar.
             </p>
@@ -421,7 +421,7 @@ export function PainelControlo({
               <p className="text-xs text-slate-500 mt-0.5">Defina o balanço de abertura bancário, dívidas/créditos de frações e histórico.</p>
             </div>
           </div>
-          <i className="fa-solid fa-arrow-right text-slate-400 group-hover:text-amber-600 group-hover:translate-x-1 transition-all"></i>
+          <i className="fa-solid fa-arrow-right text-slate-600 group-hover:text-amber-600 group-hover:translate-x-1 transition-all"></i>
         </div>
 
         <div 
@@ -440,7 +440,7 @@ export function PainelControlo({
               <p className="text-xs text-slate-500 mt-0.5">Descarregue exemplares em PDF ou simule os envios automáticos para o seu e-mail.</p>
             </div>
           </div>
-          <i className="fa-solid fa-arrow-right text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all"></i>
+          <i className="fa-solid fa-arrow-right text-slate-600 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all"></i>
         </div>
       </div>
 
@@ -462,7 +462,7 @@ export function PainelControlo({
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-600">
                 {predioMovements.length === 0
                   ? "O gráfico inicia a zero e reflete automaticamente os saldos e despesas reais lançados no prédio."
                   : "Receitas de quotas vs. despesas de manutenção calculadas conforme os saldos do prédio."}
@@ -507,7 +507,7 @@ export function PainelControlo({
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
               </span>
             </h3>
-            <p className="text-xs text-slate-400 mb-4">Reconciliação e alertas pendentes de validação.</p>
+            <p className="text-xs text-slate-600 mb-4">Reconciliação e alertas pendentes de validação.</p>
             
             <div className="space-y-3">
               {quotasEmAtraso.length === 0 ? (
@@ -530,7 +530,7 @@ export function PainelControlo({
                 ))
               )}
               {quotasEmAtraso.length > 2 && (
-                <p className="text-[10px] text-slate-400">+ {quotasEmAtraso.length - 2} outra(s) fração(ões) com quotas em atraso.</p>
+                <p className="text-[10px] text-slate-600">+ {quotasEmAtraso.length - 2} outra(s) fração(ões) com quotas em atraso.</p>
               )}
             </div>
           </div>
@@ -550,7 +550,7 @@ export function PainelControlo({
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-sm font-bold text-slate-800">Transações e Movimentos de Caixa</h3>
-            <p className="text-xs text-slate-400">Lançamentos confirmados e reconciliados recentemente.</p>
+            <p className="text-xs text-slate-600">Lançamentos confirmados e reconciliados recentemente.</p>
           </div>
           <button 
             onClick={() => exportToXLS("Saldos_Movimentos", ["Data", "Tipo", "Descricao", "Valor"], predioMovements.map(m=>[m.data, m.tipo, m.descricao, m.valor.toString()]))} 
@@ -564,7 +564,7 @@ export function PainelControlo({
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-slate-100 text-slate-400 font-bold">
+              <tr className="border-b border-slate-100 text-slate-600 font-bold">
                 <th className="py-2">Data</th>
                 <th className="py-2">Tipo</th>
                 <th className="py-2">Descrição</th>

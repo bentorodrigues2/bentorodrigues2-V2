@@ -462,7 +462,7 @@ export function GestaoReservas({
                           />
                         </div>
                       ) : (
-                        <p className="text-[10px] text-slate-400 italic">
+                        <p className="text-[10px] text-slate-600 italic">
                           Apenas administradores podem ajustar capacidades.
                         </p>
                       )}
@@ -490,15 +490,15 @@ export function GestaoReservas({
                     <div key={area.key} className="py-4 first:pt-0 last:pb-0 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                       <div className="space-y-1">
                         <div className="flex items-center space-x-2">
-                          <i className={`fa-solid ${area.icon} text-slate-400 text-xs`}></i>
+                          <i className={`fa-solid ${area.icon} text-slate-600 text-xs`}></i>
                           <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">{area.name}</span>
                         </div>
-                        <p className="text-[11px] text-slate-400">Regras regulamentares</p>
+                        <p className="text-[11px] text-slate-600">Regras regulamentares</p>
                       </div>
 
                       <div className="md:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div className="flex flex-col">
-                          <label className="text-[10px] uppercase font-bold text-slate-400">Aprovação Prévia</label>
+                          <label className="text-[10px] uppercase font-bold text-slate-600">Aprovação Prévia</label>
                           <select
                             value={rule.requer_aprovacao ? "true" : "false"}
                             disabled={loggedUser.role !== "ADMIN"}
@@ -511,7 +511,7 @@ export function GestaoReservas({
                         </div>
 
                         <div className="flex flex-col">
-                          <label className="text-[10px] uppercase font-bold text-slate-400">Duração Max (h)</label>
+                          <label className="text-[10px] uppercase font-bold text-slate-600">Duração Max (h)</label>
                           <input
                             type="number"
                             min="1"
@@ -524,7 +524,7 @@ export function GestaoReservas({
                         </div>
 
                         <div className="flex flex-col">
-                          <label className="text-[10px] uppercase font-bold text-slate-400">Caução Requerida (€)</label>
+                          <label className="text-[10px] uppercase font-bold text-slate-600">Caução Requerida (€)</label>
                           <MoneyInput
                             value={rule.caucao}
                             disabled={loggedUser.role !== "ADMIN"}
@@ -534,7 +534,7 @@ export function GestaoReservas({
                         </div>
 
                         <div className="flex flex-col">
-                          <label className="text-[10px] uppercase font-bold text-slate-400">Dias Úteis Apenas</label>
+                          <label className="text-[10px] uppercase font-bold text-slate-600">Dias Úteis Apenas</label>
                           <select
                             value={rule.apenas_dias_uteis ? "true" : "false"}
                             disabled={loggedUser.role !== "ADMIN"}
@@ -565,7 +565,7 @@ export function GestaoReservas({
                 <i className="fa-solid fa-calendar-plus text-emerald-500 mr-2"></i>
                 Agendar Espaço Comum
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-600">
                 Selecione o espaço comum pretendido e insira os dados necessários de utilização.
               </p>
 
@@ -690,19 +690,19 @@ export function GestaoReservas({
                   <h4 className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Regras de Utilização ({areaComum}):</h4>
                   <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-600 dark:text-slate-300">
                     <div className="flex items-center space-x-1">
-                      <span className="font-bold text-slate-400">Lotação:</span>
+                      <span className="font-bold text-slate-600">Lotação:</span>
                       <span className="font-semibold text-emerald-600">{getCapacidadeLimit(areaComum)} pax</span>
                     </div>
                     <div className="flex items-center space-x-1">
-                      <span className="font-bold text-slate-400">Aprovação:</span>
+                      <span className="font-bold text-slate-600">Aprovação:</span>
                       <span className="font-semibold text-amber-600">{getRegraForArea(areaComum).requer_aprovacao ? "Necessária" : "Automática"}</span>
                     </div>
                     <div className="flex items-center space-x-1">
-                      <span className="font-bold text-slate-400">Duração Máx:</span>
+                      <span className="font-bold text-slate-600">Duração Máx:</span>
                       <span className="font-semibold">{getRegraForArea(areaComum).duracao_maxima_horas} horas</span>
                     </div>
                     <div className="flex items-center space-x-1">
-                      <span className="font-bold text-slate-400">Caução:</span>
+                      <span className="font-bold text-slate-600">Caução:</span>
                       <span className="font-semibold">{getRegraForArea(areaComum).caucao > 0 ? `${getRegraForArea(areaComum).caucao} €` : "Isento"}</span>
                     </div>
                   </div>
@@ -749,8 +749,8 @@ export function GestaoReservas({
               </div>
 
               {getFilteredReservas().length === 0 ? (
-                <div className="text-center py-12 text-slate-400 space-y-2">
-                  <i className="fa-regular fa-calendar text-4xl text-slate-300"></i>
+                <div className="text-center py-12 text-slate-600 space-y-2">
+                  <i className="fa-regular fa-calendar text-4xl text-slate-600"></i>
                   <p className="text-xs">Não existem reservas agendadas pendentes de realização.</p>
                 </div>
               ) : (
@@ -780,11 +780,11 @@ export function GestaoReservas({
                             </td>
                             <td className="p-3 font-mono-custom">
                               <p className="font-semibold text-slate-900 dark:text-slate-100">{r.data}</p>
-                              <p className="text-[10px] text-slate-400">{r.hora_inicio}h às {r.hora_fim}h</p>
+                              <p className="text-[10px] text-slate-600">{r.hora_inicio}h às {r.hora_fim}h</p>
                             </td>
                             <td className="p-3">
                               <p className="font-semibold text-slate-800 dark:text-slate-200">Fração {matchingFrac?.fracao_nome || "N/A"}</p>
-                              <p className="text-[10px] text-slate-400">{r.responsavel}</p>
+                              <p className="text-[10px] text-slate-600">{r.responsavel}</p>
                               {r.servicos_adicionais && r.servicos_adicionais.length > 0 && (
                                 <div className="flex flex-wrap gap-1 mt-1">
                                   {r.servicos_adicionais.map(svc => (
@@ -838,7 +838,7 @@ export function GestaoReservas({
           </div>
 
           {getFilteredReservas().length === 0 ? (
-            <div className="text-center py-16 text-slate-400 space-y-2">
+            <div className="text-center py-16 text-slate-600 space-y-2">
               <i className="fa-solid fa-circle-check text-4xl text-emerald-500"></i>
               <p className="text-xs">Não existem pedidos de reserva pendentes de aprovação.</p>
             </div>
@@ -863,21 +863,21 @@ export function GestaoReservas({
 
                       <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
                         <div>
-                          <p className="text-[10px] text-slate-400 uppercase font-bold">Fração / Condómino</p>
+                          <p className="text-[10px] text-slate-600 uppercase font-bold">Fração / Condómino</p>
                           <p className="font-semibold text-slate-800 dark:text-slate-200">Fração {matchingFrac?.fracao_nome || "N/A"}</p>
-                          <p className="text-slate-400 text-[10px]">{r.responsavel}</p>
+                          <p className="text-slate-600 text-[10px]">{r.responsavel}</p>
                         </div>
                         <div>
-                          <p className="text-[10px] text-slate-400 uppercase font-bold">Data & Horário</p>
+                          <p className="text-[10px] text-slate-600 uppercase font-bold">Data & Horário</p>
                           <p className="font-semibold text-slate-800 dark:text-slate-200 font-mono-custom">{r.data}</p>
-                          <p className="text-slate-400 text-[10px] font-mono-custom">{r.hora_inicio}h às {r.hora_fim}h</p>
+                          <p className="text-slate-600 text-[10px] font-mono-custom">{r.hora_inicio}h às {r.hora_fim}h</p>
                         </div>
                         <div>
-                          <p className="text-[10px] text-slate-400 uppercase font-bold">Lotação Planeada</p>
+                          <p className="text-[10px] text-slate-600 uppercase font-bold">Lotação Planeada</p>
                           <p className="font-bold text-slate-800 dark:text-slate-200 font-mono-custom">{r.num_pessoas} pessoas</p>
                         </div>
                         <div>
-                          <p className="text-[10px] text-slate-400 uppercase font-bold">Caução Regulamentar</p>
+                          <p className="text-[10px] text-slate-600 uppercase font-bold">Caução Regulamentar</p>
                           <p className="font-bold text-slate-800 dark:text-slate-200 font-mono-custom">
                             {rule.caucao > 0 ? `${rule.caucao} €` : "Isento"}
                           </p>
@@ -902,7 +902,7 @@ export function GestaoReservas({
                           </button>
                         </>
                       ) : (
-                        <p className="text-[11px] text-slate-400 italic text-center w-full">
+                        <p className="text-[11px] text-slate-600 italic text-center w-full">
                           Apenas utilizadores com perfil ADMIN podem validar ou aprovar reservas.
                         </p>
                       )}
@@ -929,7 +929,7 @@ export function GestaoReservas({
           </div>
 
           {getFilteredReservas().length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-12">
+            <p className="text-xs text-slate-600 text-center py-12">
               Não existem registos arquivados no histórico deste prédio.
             </p>
           ) : (
@@ -952,16 +952,16 @@ export function GestaoReservas({
                     return (
                       <tr key={r.id_reserva} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30 text-slate-700 dark:text-slate-300">
                         <td className="p-3 font-semibold flex items-center space-x-2">
-                          <i className={`fa-solid ${area?.icon || "fa-calendar"} text-slate-400`}></i>
+                          <i className={`fa-solid ${area?.icon || "fa-calendar"} text-slate-600`}></i>
                           <span>{r.area_comum}</span>
                         </td>
                         <td className="p-3 font-mono-custom">
                           <p className="font-semibold">{r.data}</p>
-                          <p className="text-[10px] text-slate-400">{r.hora_inicio}h às {r.hora_fim}h</p>
+                          <p className="text-[10px] text-slate-600">{r.hora_inicio}h às {r.hora_fim}h</p>
                         </td>
                         <td className="p-3">
                           <p className="font-semibold">Fração {matchingFrac?.fracao_nome || "N/A"}</p>
-                          <p className="text-[10px] text-slate-400">{r.responsavel}</p>
+                          <p className="text-[10px] text-slate-600">{r.responsavel}</p>
                         </td>
                         <td className="p-3 text-center font-mono-custom">
                           {r.num_pessoas} pax

@@ -251,10 +251,10 @@ export function VotacaoAssembleiaVirtual({ predio, fracoes, reuniao, loggedUser,
             <span className="p-1.5 bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1">
               <Vote className="h-3.5 w-3.5" /> Assembleia Virtual & Votação PWA
             </span>
-            <span className="text-xs text-slate-300 font-mono">Art. 1432.º Código Civil</span>
+            <span className="text-xs text-slate-600 font-mono">Art. 1432.º Código Civil</span>
           </div>
           <h2 className="text-xl font-bold tracking-tight">Votação em Tempo Real por Permilagem (‰)</h2>
-          <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+          <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
             Permita que os condóminos votem a partir do seu telemóvel ou presencialmente. O sistema calcula a permilagem exata em direto e redige as deliberações com força jurídica para a ata.
           </p>
         </div>
@@ -455,7 +455,7 @@ export function VotacaoAssembleiaVirtual({ predio, fracoes, reuniao, loggedUser,
                   return (
                     <tr key={f.id_fracao} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                       <td className="p-3 font-bold text-slate-900 dark:text-white">
-                        Fração {f.fracao_nome} <span className="text-[10px] text-slate-400 font-normal">({f.piso})</span>
+                        Fração {f.fracao_nome} <span className="text-[10px] text-slate-600 font-normal">({f.piso})</span>
                       </td>
                       <td className="p-3 text-slate-700 dark:text-slate-300">{f.proprietario.nome}</td>
                       <td className="p-3 font-mono font-bold text-indigo-600 dark:text-indigo-400">{f.permilagem}‰</td>
@@ -490,13 +490,13 @@ export function VotacaoAssembleiaVirtual({ predio, fracoes, reuniao, loggedUser,
                           </button>
                         </div>
                       </td>
-                      <td className="p-3 text-[10px] font-mono text-slate-400">
+                      <td className="p-3 text-[10px] font-mono text-slate-600">
                         {votoRegistado ? (
                           <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
                             <CheckCircle2 className="h-3 w-3" /> PWA ({votoRegistado.data_hora?.split(" ")[1] || "Agora"})
                           </span>
                         ) : (
-                          <span className="text-slate-400 italic">Aguarda Voto</span>
+                          <span className="text-slate-600 italic">Aguarda Voto</span>
                         )}
                       </td>
                     </tr>
@@ -522,7 +522,7 @@ export function VotacaoAssembleiaVirtual({ predio, fracoes, reuniao, loggedUser,
               <button
                 type="button"
                 onClick={() => setShowNovoPontoModal(false)}
-                className="text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                className="text-slate-600 hover:text-slate-600 text-xs font-bold cursor-pointer"
               >
                 ✕
               </button>

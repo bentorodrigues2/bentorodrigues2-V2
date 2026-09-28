@@ -139,7 +139,7 @@ export const SendingReactionModal: React.FC<SendingReactionModalProps> = ({
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-[9999] flex items-center justify-center p-4 animate-fade-in">
       <div className="bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden w-full max-w-sm flex flex-col items-center p-6 text-center text-white">
-        <h4 className="text-xs font-black uppercase tracking-wider text-slate-300 mb-4">
+        <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 mb-4">
           {activeTitle || (phase === "sending" ? "A Processar Envio..." : activeType === "email" ? "E-mail Enviado" : "Mensagem Enviada")}
         </h4>
 
@@ -151,7 +151,7 @@ export const SendingReactionModal: React.FC<SendingReactionModalProps> = ({
           />
         </div>
 
-        <p className="text-xs text-slate-400 font-medium">
+        <p className="text-xs text-slate-600 font-medium">
           {phase === "sending"
             ? "A comunicar com os servidores e canais de notificação..."
             : activeType === "email"

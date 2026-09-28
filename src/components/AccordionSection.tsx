@@ -26,12 +26,12 @@ export function AccordionSection({ title, subtitle, icon, badge, defaultOpen = f
           {icon && <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">{icon}</div>}
           <div className="min-w-0">
             <h3 className="text-sm font-bold text-slate-800 truncate">{title}</h3>
-            {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+            {subtitle && <p className="text-xs text-slate-600 mt-0.5">{subtitle}</p>}
           </div>
         </div>
         <div className="flex items-center gap-2.5 shrink-0">
           {badge}
-          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+          <ChevronDown className={`w-4 h-4 text-slate-600 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
         </div>
       </button>
       {open && (

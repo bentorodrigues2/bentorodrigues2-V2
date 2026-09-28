@@ -163,11 +163,11 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Compilation panel */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4 h-fit">
-          <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2">Gerador de Relatórios</h4>
+          <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 border-b border-slate-100 pb-2">Gerador de Relatórios</h4>
           
           <div className="space-y-3">
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Tipo de Prestação de Contas</label>
+              <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Tipo de Prestação de Contas</label>
               <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-100">
                 {(["mensal", "trimestral", "anual"] as const).map(t => (
                   <button
@@ -258,10 +258,10 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
         <div className="lg:col-span-2 space-y-6">
           {!compiledReport ? (
             <div className="bg-slate-50 p-12 rounded-2xl border border-dashed border-slate-200 text-center flex flex-col items-center justify-center space-y-3">
-              <div className="text-slate-300 text-3xl"><i className="fa-solid fa-file-contract"></i></div>
+              <div className="text-slate-600 text-3xl"><i className="fa-solid fa-file-contract"></i></div>
               <div className="max-w-md">
                 <h4 className="text-xs font-bold text-slate-700">Nenhum relatório compilado no momento</h4>
-                <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
                   Defina o tipo, o mês ou trimestre pretendido no painel esquerdo e clique em "Compilar" para gerar um balanço contábil completo com anotações estatísticas e anexos reconciliados automaticamente.
                 </p>
               </div>
@@ -297,7 +297,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                     </span>
                   </div>
                   <h3 className="text-base font-extrabold text-slate-800 mt-2">{compiledReport.titulo}</h3>
-                  <p className="text-[11px] text-slate-400 mt-1 flex items-center">
+                  <p className="text-[11px] text-slate-600 mt-1 flex items-center">
                     <i className="fa-solid fa-building mr-1.5"></i>Condomínio: {predio?.nome || predio?.morada_linha1 || "Geral"} | Emitido em: {compiledReport.dataEmissao}
                   </p>
                 </div>
@@ -351,12 +351,12 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
 
               {/* AUTOMATIC GRAPHS SECTION */}
               <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block border-b border-slate-200 pb-2">
+                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block border-b border-slate-200 pb-2">
                   <i className="fa-solid fa-chart-column mr-1 text-blue-500"></i> Gráficos de Repartição de Despesas
                 </span>
                 
                 {Object.keys(compiledReport.despesasPorCategoria).length === 0 ? (
-                  <p className="text-xs text-slate-400 py-4 text-center">Nenhuma despesa registada neste período para segmentar.</p>
+                  <p className="text-xs text-slate-600 py-4 text-center">Nenhuma despesa registada neste período para segmentar.</p>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                     {/* Visual Progress bar bars */}
@@ -382,13 +382,13 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                     <div className="flex flex-col items-center justify-center p-4 border border-slate-200 rounded-lg bg-white">
                       <div className="relative h-24 w-24 rounded-full border-8 border-blue-500 flex items-center justify-center">
                         <div className="text-center">
-                          <span className="text-[9px] text-slate-400 uppercase block font-bold tracking-wider">Eficiência</span>
+                          <span className="text-[9px] text-slate-600 uppercase block font-bold tracking-wider">Eficiência</span>
                           <span className="text-xs font-black text-slate-800">
                             {compiledReport.totalReceitas > 0 ? ((1 - compiledReport.totalDespesas / compiledReport.totalReceitas) * 100).toFixed(0) : "100"}%
                           </span>
                         </div>
                       </div>
-                      <p className="text-[9px] text-slate-400 mt-3 text-center">
+                      <p className="text-[9px] text-slate-600 mt-3 text-center">
                         Taxa de retenção de capital das receitas de quotas arrecadadas no período de referência.
                       </p>
                     </div>
@@ -398,7 +398,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
 
               {/* Transactions list in report */}
               <div className="space-y-2">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Detalhe dos Movimentos Consolidados</span>
+                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">Detalhe dos Movimentos Consolidados</span>
                 <div className="overflow-x-auto border border-slate-100 rounded-xl">
                   <table className="w-full text-xs text-left border-collapse">
                     <thead>

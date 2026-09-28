@@ -260,7 +260,7 @@ export function MultiCondominio({
             {/* Saldo Consolidado */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm flex items-center justify-between">
               <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Caixa Consolidado</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Caixa Consolidado</span>
                 <p className="text-xl font-bold font-mono text-slate-800 dark:text-white">
                   {totalSaldoConsolidado.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
                 </p>
@@ -276,7 +276,7 @@ export function MultiCondominio({
             {/* Total Cobrado / Emitido */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm flex items-center justify-between">
               <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Receitas de Quotas</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Total Receitas de Quotas</span>
                 <p className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
                   +{totalReceitas.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
                 </p>
@@ -292,7 +292,7 @@ export function MultiCondominio({
             {/* Dívida Consolidada */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm flex items-center justify-between">
               <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Dívida / Quotas Pendentes</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Dívida / Quotas Pendentes</span>
                 <p className="text-xl font-bold font-mono text-red-600 dark:text-red-400">
                   {totalDividaConsolidada.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
                 </p>
@@ -308,7 +308,7 @@ export function MultiCondominio({
             {/* Prédios e Frações */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm flex items-center justify-between">
               <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Portefólio Ativo</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Portefólio Ativo</span>
                 <p className="text-xl font-bold text-slate-800 dark:text-white">
                   {totalPredios} Edifícios
                 </p>
@@ -568,9 +568,9 @@ export function MultiCondominio({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {teams.filter(t => t.id_predio === selectedPredioId).length === 0 ? (
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center col-span-full space-y-2">
-                <Users className="h-8 w-8 text-slate-400 mx-auto" />
+                <Users className="h-8 w-8 text-slate-600 mx-auto" />
                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Sem equipa registada neste condomínio</h4>
-                <p className="text-[10px] text-slate-400">Adicione prestadores de serviços, técnicos de manutenção ou equipas de limpeza.</p>
+                <p className="text-[10px] text-slate-600">Adicione prestadores de serviços, técnicos de manutenção ou equipas de limpeza.</p>
               </div>
             ) : (
               teams.filter(t => t.id_predio === selectedPredioId).map(t => (
@@ -594,15 +594,15 @@ export function MultiCondominio({
                     {/* Detalhes de contacto */}
                     <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
                       <p className="flex items-center text-[11px]">
-                        <Briefcase className="h-3.5 w-3.5 mr-1.5 text-slate-400 shrink-0" />
+                        <Briefcase className="h-3.5 w-3.5 mr-1.5 text-slate-600 shrink-0" />
                         <strong>Empresa:</strong> <span className="ml-1 text-slate-800 dark:text-slate-300">{t.empresa}</span>
                       </p>
                       <p className="flex items-center text-[11px]">
-                        <Phone className="h-3.5 w-3.5 mr-1.5 text-slate-400 shrink-0" />
+                        <Phone className="h-3.5 w-3.5 mr-1.5 text-slate-600 shrink-0" />
                         <strong>Telefone:</strong> <span className="ml-1 text-slate-800 dark:text-slate-300 font-mono">{t.telefone}</span>
                       </p>
                       <p className="flex items-center text-[11px]">
-                        <Mail className="h-3.5 w-3.5 mr-1.5 text-slate-400 shrink-0" />
+                        <Mail className="h-3.5 w-3.5 mr-1.5 text-slate-600 shrink-0" />
                         <strong>E-mail:</strong> <span className="ml-1 truncate text-slate-800 dark:text-slate-300 font-mono text-[10px]">{t.email}</span>
                       </p>
                     </div>
@@ -763,7 +763,7 @@ export function MultiCondominio({
                     placeholder="Ex: 22h às 8h nos dias úteis"
                     className="w-full bg-white dark:bg-slate-800 dark:text-white border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs focus:outline-emerald-500 disabled:opacity-60"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">Este limite de som será mostrado a todos os condóminos que criam reservas ou anúncios.</p>
+                  <p className="text-[10px] text-slate-600 mt-1">Este limite de som será mostrado a todos os condóminos que criam reservas ou anúncios.</p>
                 </div>
 
                 {/* Gestão de Resíduos e Lixo */}
@@ -807,7 +807,7 @@ export function MultiCondominio({
                       />
                     </div>
                   </div>
-                  <p className="text-[10px] text-slate-400">Restrições ativas para segurança sanitária e de conforto de condóminos.</p>
+                  <p className="text-[10px] text-slate-600">Restrições ativas para segurança sanitária e de conforto de condóminos.</p>
                 </div>
 
               </div>

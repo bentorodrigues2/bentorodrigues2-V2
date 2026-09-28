@@ -1312,7 +1312,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
             {resultadoValidacao && (
               <div className="p-4 rounded-xl bg-slate-800/90 border border-slate-700 space-y-3 animate-fadeIn">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono uppercase text-slate-400">Resultado da Análise Regulamentar</span>
+                  <span className="text-xs font-mono uppercase text-slate-600">Resultado da Análise Regulamentar</span>
                   <span className={`px-3 py-1 rounded-full text-xs font-extrabold flex items-center space-x-1.5 ${
                     resultadoValidacao.decisao === "Aprovado"
                       ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
@@ -1328,8 +1328,8 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                 </div>
 
                 <div className="space-y-1 text-xs">
-                  <span className="font-bold text-slate-300 block">Fundamentação:</span>
-                  <p className="text-slate-300">{resultadoValidacao.fundamentacao}</p>
+                  <span className="font-bold text-slate-600 block">Fundamentação:</span>
+                  <p className="text-slate-600">{resultadoValidacao.fundamentacao}</p>
                 </div>
 
                 <div className="p-3 bg-violet-950/40 border border-violet-800/50 rounded-lg text-xs text-violet-200 flex items-start space-x-2">
@@ -1370,7 +1370,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
 
         {/* Filtro dinâmico de pesquisa */}
         <div className="relative">
-          <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+          <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-600 text-sm"></i>
           <input
             type="text"
             value={searchQuery}
@@ -1381,7 +1381,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
+              className="absolute right-3 top-2.5 text-slate-600 hover:text-slate-600 text-xs cursor-pointer"
             >
               <i className="fa-solid fa-xmark"></i>
             </button>
@@ -1405,7 +1405,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
               <tbody className="divide-y divide-slate-100">
                 {prediosFiltrados.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-slate-400">
+                    <td colSpan={6} className="py-8 text-center text-slate-600">
                       <i className="fa-solid fa-building-circle-exclamation text-2xl mb-2 block"></i>
                       Nenhum prédio encontrado com os critérios de pesquisa.
                     </td>
@@ -1436,13 +1436,13 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                                 referrerPolicy="no-referrer"
                               />
                             ) : (
-                              <div className="h-10 w-12 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center shrink-0 border border-slate-700">
+                              <div className="h-10 w-12 rounded-lg bg-slate-800 text-slate-600 flex items-center justify-center shrink-0 border border-slate-700">
                                 <i className="fa-solid fa-building text-base"></i>
                               </div>
                             )}
                             <div>
                               <p className="font-bold text-slate-800 text-xs">{displayName}</p>
-                              <span className="text-[10px] text-slate-400 font-mono-custom">ID: {p.id_predio}</span>
+                              <span className="text-[10px] text-slate-600 font-mono-custom">ID: {p.id_predio}</span>
                             </div>
                           </div>
                         </td>
@@ -1450,7 +1450,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                         {/* Morada */}
                         <td className="py-3 px-4 space-y-0.5">
                           <p className="text-slate-800 font-medium">
-                            <i className="fa-solid fa-location-dot text-slate-400 mr-1.5 text-[10px]"></i>
+                            <i className="fa-solid fa-location-dot text-slate-600 mr-1.5 text-[10px]"></i>
                             {p.morada_linha1} Nº{p.num_porta} {p.letra_porta ? `(${p.letra_porta})` : ""}
                           </p>
                           <p className="text-[11px] text-slate-500 font-mono-custom pl-4">
@@ -1476,7 +1476,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                               </span>
                             </div>
                           ) : (
-                            <span className="text-[11px] text-slate-400 italic">Não configurado</span>
+                            <span className="text-[11px] text-slate-600 italic">Não configurado</span>
                           )}
                         </td>
 
@@ -1505,7 +1505,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                                 </span>
                               )}
                               {!p.patrimonio?.tem_elevador && !p.patrimonio?.tem_garagem && !p.patrimonio?.tem_piscina && !p.patrimonio?.tem_sala_comum && (
-                                <span className="text-slate-400 text-[11px] font-normal">Básico</span>
+                                <span className="text-slate-600 text-[11px] font-normal">Básico</span>
                               )}
                             </div>
                           </td>
@@ -1635,7 +1635,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
           <div className="flex flex-col">
             <label className="text-xs font-semibold text-slate-500 mb-1">Código Postal (Interativo) *</label>
             <input type="text" value={codigoPostal} onChange={e => setCodigoPostal(e.target.value)} placeholder="Ex: 2840-124 (para teste)" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-blue-500 font-mono-custom" />
-            <p className="text-[10px] text-slate-400 mt-1">Insira '2840-124' ou '2775-245' para autocompletar.</p>
+            <p className="text-[10px] text-slate-600 mt-1">Insira '2840-124' ou '2775-245' para autocompletar.</p>
           </div>
           <div className="flex flex-col">
             <label className="text-xs font-semibold text-slate-500 mb-1">Localidade *</label>

@@ -300,11 +300,11 @@ export function DashboardKPIs({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-800 dark:text-white">Indicadores de Desempenho & KPIs do Condomínio</h2>
-          <p className="text-xs text-slate-400">Análise financeira, jurídica e de operações do Edifício {predio.nome || "Exemplo"}</p>
+          <p className="text-xs text-slate-600">Análise financeira, jurídica e de operações do Edifício {predio.nome || "Exemplo"}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center space-x-2 font-mono-custom text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3.5 py-1.5 w-fit">
-            <Clock size={13} className="text-slate-400" />
+            <Clock size={13} className="text-slate-600" />
             <span>Data de Referência: <strong>{anchorDate.toLocaleDateString("pt-PT")}</strong></span>
           </div>
           <button
@@ -322,63 +322,63 @@ export function DashboardKPIs({
 
       {/* METRICS ROW 1: FINANCEIRO */}
       <div className="space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center">
           <DollarSign size={13} className="mr-1.5 text-emerald-500" /> Indicadores Financeiros
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           
           <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-4">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Receitas Coletadas</span>
+            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide block">Receitas Coletadas</span>
             <div className="flex items-baseline space-x-1.5 mt-1.5">
               <span className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400 font-mono-custom">
                 {totalRevenues.toLocaleString("pt-PT")} €
               </span>
               <TrendingUp size={14} className="text-emerald-500 shrink-0" />
             </div>
-            <span className="text-[9px] text-slate-400 block mt-1">Acumulado do exercício</span>
+            <span className="text-[9px] text-slate-600 block mt-1">Acumulado do exercício</span>
           </div>
 
           <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-4">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Despesas Executadas</span>
+            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide block">Despesas Executadas</span>
             <div className="flex items-baseline space-x-1.5 mt-1.5">
               <span className="text-lg font-extrabold text-red-600 dark:text-red-400 font-mono-custom">
                 {totalExpenses.toLocaleString("pt-PT")} €
               </span>
               <TrendingDown size={14} className="text-red-500 shrink-0" />
             </div>
-            <span className="text-[9px] text-slate-400 block mt-1">Faturas & Fornecedores liquidados</span>
+            <span className="text-[9px] text-slate-600 block mt-1">Faturas & Fornecedores liquidados</span>
           </div>
 
           <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-4">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Saldo de Caixa</span>
+            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide block">Saldo de Caixa</span>
             <div className="flex items-baseline space-x-1.5 mt-1.5">
               <span className={`text-lg font-extrabold font-mono-custom ${cashBalance >= 0 ? "text-slate-800 dark:text-white" : "text-red-600"}`}>
                 {cashBalance.toLocaleString("pt-PT")} €
               </span>
             </div>
-            <span className="text-[9px] text-slate-400 block mt-1">Disponível em contas correntes</span>
+            <span className="text-[9px] text-slate-600 block mt-1">Disponível em contas correntes</span>
           </div>
 
           <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-4">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Fundo de Reserva</span>
+            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide block">Fundo de Reserva</span>
             <div className="flex items-baseline space-x-1.5 mt-1.5">
               <span className="text-lg font-extrabold text-indigo-600 dark:text-indigo-400 font-mono-custom">
                 {finalReserveFundValue.toLocaleString("pt-PT")} €
               </span>
               <ShieldCheck size={14} className="text-indigo-500 shrink-0" />
             </div>
-            <span className="text-[9px] text-slate-400 block mt-1">Legalmente garantido (Dec-Lei 268/94)</span>
+            <span className="text-[9px] text-slate-600 block mt-1">Legalmente garantido (Dec-Lei 268/94)</span>
           </div>
 
           <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-4 col-span-2 md:col-span-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Taxa de Inadimplência</span>
+            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide block">Taxa de Inadimplência</span>
             <div className="flex items-baseline space-x-1.5 mt-1.5">
               <span className={`text-lg font-extrabold font-mono-custom ${delinquencyRate > 15 ? "text-amber-600" : "text-emerald-600"}`}>
                 {delinquencyRate.toFixed(1)} %
               </span>
-              <Percent size={14} className="text-slate-400 shrink-0" />
+              <Percent size={14} className="text-slate-600 shrink-0" />
             </div>
-            <span className="text-[9px] text-slate-400 block mt-1">Dívida pendente: <strong>{totalOutstandingDebt.toLocaleString("pt-PT")} €</strong></span>
+            <span className="text-[9px] text-slate-600 block mt-1">Dívida pendente: <strong>{totalOutstandingDebt.toLocaleString("pt-PT")} €</strong></span>
           </div>
 
         </div>
@@ -389,45 +389,45 @@ export function DashboardKPIs({
         
         {/* KPI Jurídicos */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center">
             <Scale size={13} className="mr-1.5 text-red-500" /> Indicadores Jurídicos
           </h3>
           <div className="grid grid-cols-2 gap-4">
             
             <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-4 space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Ações em Contencioso</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide block">Ações em Contencioso</span>
               <div className="flex items-baseline justify-between mt-1">
                 <span className="text-xl font-extrabold text-red-600 font-mono-custom">{activeLitigationsCount}</span>
                 <span className="bg-red-50 text-red-700 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">Judicial</span>
               </div>
-              <p className="text-[9px] text-slate-400 pt-1">Fractions com mora superior a 60 dias</p>
+              <p className="text-[9px] text-slate-600 pt-1">Fractions com mora superior a 60 dias</p>
             </div>
 
             <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-4 space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Votos Inibidos</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide block">Votos Inibidos</span>
               <div className="flex items-baseline justify-between mt-1">
                 <span className="text-xl font-extrabold text-red-600 font-mono-custom">{inhibitedVotesCount}</span>
                 <span className="bg-amber-50 text-amber-700 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">Suspenso</span>
               </div>
-              <p className="text-[9px] text-slate-400 pt-1">Inibição de direito de voto em assembleia</p>
+              <p className="text-[9px] text-slate-600 pt-1">Inibição de direito de voto em assembleia</p>
             </div>
 
             <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-4 space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Processos Pré-Contencioso</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide block">Processos Pré-Contencioso</span>
               <div className="flex items-baseline justify-between mt-1">
                 <span className="text-xl font-extrabold text-amber-600 font-mono-custom">{preLitigationsCount}</span>
                 <span className="bg-amber-50 text-amber-700 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">Aviso</span>
               </div>
-              <p className="text-[9px] text-slate-400 pt-1">Fractions com mora entre 30 e 60 dias</p>
+              <p className="text-[9px] text-slate-600 pt-1">Fractions com mora entre 30 e 60 dias</p>
             </div>
 
             <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-4 space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Avisos e Cartas Enviadas</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide block">Avisos e Cartas Enviadas</span>
               <div className="flex items-baseline justify-between mt-1">
                 <span className="text-xl font-extrabold text-slate-800 dark:text-white font-mono-custom">{sentLettersOfNotice}</span>
                 <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">Registadas</span>
               </div>
-              <p className="text-[9px] text-slate-400 pt-1">Notificações extrajudiciais com AR enviadas</p>
+              <p className="text-[9px] text-slate-600 pt-1">Notificações extrajudiciais com AR enviadas</p>
             </div>
 
           </div>
@@ -435,13 +435,13 @@ export function DashboardKPIs({
 
         {/* KPI Operacionais */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center">
             <Wrench size={13} className="mr-1.5 text-indigo-500" /> Indicadores Operacionais
           </h3>
           <div className="grid grid-cols-2 gap-4">
             
             <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-4 space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Sinistros & Ocorrências</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide block">Sinistros & Ocorrências</span>
               <div className="flex items-baseline justify-between mt-1">
                 <span className="text-xl font-extrabold text-amber-600 font-mono-custom">{unresolvedOccurrences}</span>
                 {unresolvedOccurrences > 0 ? (
@@ -452,20 +452,20 @@ export function DashboardKPIs({
                   <span className="bg-emerald-50 text-emerald-700 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">Zero</span>
                 )}
               </div>
-              <p className="text-[9px] text-slate-400 pt-1">Ocorrências registadas em aberto</p>
+              <p className="text-[9px] text-slate-600 pt-1">Ocorrências registadas em aberto</p>
             </div>
 
             <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-4 space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Reservas Efetuadas</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide block">Reservas Efetuadas</span>
               <div className="flex items-baseline justify-between mt-1">
                 <span className="text-xl font-extrabold text-indigo-600 dark:text-indigo-400 font-mono-custom">{totalReservations}</span>
                 <span className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">Agenda</span>
               </div>
-              <p className="text-[9px] text-slate-400 pt-1">Uso de churrasqueira, spa e ginásio</p>
+              <p className="text-[9px] text-slate-600 pt-1">Uso de churrasqueira, spa e ginásio</p>
             </div>
 
             <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-4 space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Eficiência de Limpeza</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide block">Eficiência de Limpeza</span>
               <div className="flex items-baseline justify-between mt-1">
                 <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono-custom">
                   {cleaningEfficiencyScore === null ? "—" : `${cleaningEfficiencyScore}%`}
@@ -478,11 +478,11 @@ export function DashboardKPIs({
                   </span>
                 )}
               </div>
-              <p className="text-[9px] text-slate-400 pt-1">{limpezas.length} limpeza(s) registada(s), {incidenciasLimpeza.length} incidência(s)</p>
+              <p className="text-[9px] text-slate-600 pt-1">{limpezas.length} limpeza(s) registada(s), {incidenciasLimpeza.length} incidência(s)</p>
             </div>
 
             <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-4 space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Vistorias Técnicas</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide block">Vistorias Técnicas</span>
               <div className="flex items-baseline justify-between mt-1">
                 <span className="text-xl font-extrabold text-slate-800 dark:text-white font-mono-custom">
                   {vistoriasConformidade === null ? "—" : `${vistoriasConformidade}%`}
@@ -495,7 +495,7 @@ export function DashboardKPIs({
                   </span>
                 )}
               </div>
-              <p className="text-[9px] text-slate-400 pt-1">{equipamentosConformes} de {equipamentosScie.length} equipamento(s) em dia</p>
+              <p className="text-[9px] text-slate-600 pt-1">{equipamentosConformes} de {equipamentosScie.length} equipamento(s) em dia</p>
             </div>
 
           </div>
@@ -510,7 +510,7 @@ export function DashboardKPIs({
         <div className="bg-white dark:bg-[#0f172a] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 space-y-4">
           <div>
             <h4 className="text-xs font-bold text-slate-800 dark:text-white">Fluxo de Caixa Mensal (Receitas vs Despesas)</h4>
-            <p className="text-[10px] text-slate-400">Projeção e histórico recente de movimentos financeiros comuns</p>
+            <p className="text-[10px] text-slate-600">Projeção e histórico recente de movimentos financeiros comuns</p>
           </div>
           <div className="h-64 text-xs font-sans">
             <ResponsiveContainer width="100%" height="100%">
@@ -537,7 +537,7 @@ export function DashboardKPIs({
         <div className="bg-white dark:bg-[#0f172a] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 space-y-4">
           <div>
             <h4 className="text-xs font-bold text-slate-800 dark:text-white">Distribuição de Despesas por Categoria</h4>
-            <p className="text-[10px] text-slate-400">Onde é gasto o orçamento ordinário do condomínio</p>
+            <p className="text-[10px] text-slate-600">Onde é gasto o orçamento ordinário do condomínio</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
             <div className="h-48 text-xs">
@@ -587,7 +587,7 @@ export function DashboardKPIs({
         <div className="bg-white dark:bg-[#0f172a] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 space-y-4">
           <div>
             <h4 className="text-xs font-bold text-slate-800 dark:text-white">Volume de Quotas Emitidas vs Cobrança de Quotas</h4>
-            <p className="text-[10px] text-slate-400">Histórico de faturação acumulada e liquidações efetuadas pelos condóminos</p>
+            <p className="text-[10px] text-slate-600">Histórico de faturação acumulada e liquidações efetuadas pelos condóminos</p>
           </div>
           <div className="h-64 text-xs font-sans">
             <ResponsiveContainer width="100%" height="100%">
@@ -623,7 +623,7 @@ export function DashboardKPIs({
         <div className="bg-white dark:bg-[#0f172a] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 space-y-4">
           <div>
             <h4 className="text-xs font-bold text-slate-800 dark:text-white">Taxa de Ocupação e Reservas por Área Comum</h4>
-            <p className="text-[10px] text-slate-400">Total de agendamentos validados para cada espaço de lazer e convívio</p>
+            <p className="text-[10px] text-slate-600">Total de agendamentos validados para cada espaço de lazer e convívio</p>
           </div>
           <div className="h-64 text-xs font-sans">
             <ResponsiveContainer width="100%" height="100%">

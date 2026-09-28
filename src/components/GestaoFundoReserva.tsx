@@ -153,7 +153,7 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column: Setup parameters */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2">Parâmetros do Condomínio</h4>
+          <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 border-b border-slate-100 pb-2">Parâmetros do Condomínio</h4>
           
           <div className="flex flex-col">
             <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Orçamento Geral Anual aprovado (€) *</label>
@@ -194,7 +194,7 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
               onChange={valor => setContribuicaoMensalExtra(Math.max(0, valor))}
               className="border border-slate-200 px-3 py-2 text-xs rounded-lg font-mono focus:outline-emerald-500 bg-slate-50/50"
             />
-            <p className="text-[9px] text-slate-400 mt-1">Reforço adicional arrecadado através das quotas mensais regulares das frações.</p>
+            <p className="text-[9px] text-slate-600 mt-1">Reforço adicional arrecadado através das quotas mensais regulares das frações.</p>
           </div>
         </div>
 
@@ -203,31 +203,31 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
               <div>
-                <span className="text-slate-400 text-[9px] font-bold uppercase block tracking-wider">Fundo Mínimo Legal</span>
+                <span className="text-slate-600 text-[9px] font-bold uppercase block tracking-wider">Fundo Mínimo Legal</span>
                 <span className="text-[9px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded font-bold uppercase tracking-wide mt-1 inline-block">Mínimo 10% (DL 268/94)</span>
                 <h3 className="text-xl font-black text-slate-800 font-mono mt-2">{fundoMinimoLegal.toFixed(2)}€</h3>
               </div>
-              <p className="text-[10px] text-slate-400 mt-2 leading-tight border-t border-slate-100 pt-2">Montante abaixo do qual o condomínio fica sujeito a infração legal.</p>
+              <p className="text-[10px] text-slate-600 mt-2 leading-tight border-t border-slate-100 pt-2">Montante abaixo do qual o condomínio fica sujeito a infração legal.</p>
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
               <div>
-                <span className="text-slate-400 text-[9px] font-bold uppercase block tracking-wider">Fundo Recomendado</span>
+                <span className="text-slate-600 text-[9px] font-bold uppercase block tracking-wider">Fundo Recomendado</span>
                 <span className="text-[9px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded font-bold uppercase tracking-wide mt-1 inline-block">Adequado a {(getAgeModifier() * 100 + 10).toFixed(0)}%</span>
                 <h3 className="text-xl font-black text-slate-800 font-mono mt-2">{fundoRecomendado.toFixed(2)}€</h3>
               </div>
-              <p className="text-[10px] text-slate-400 mt-2 leading-tight border-t border-slate-100 pt-2">Meta prudencial para garantir reparações estruturais, pintura e elevadores.</p>
+              <p className="text-[10px] text-slate-600 mt-2 leading-tight border-t border-slate-100 pt-2">Meta prudencial para garantir reparações estruturais, pintura e elevadores.</p>
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
               <div>
-                <span className="text-slate-400 text-[9px] font-bold uppercase block tracking-wider">Taxa de Cobertura</span>
+                <span className="text-slate-600 text-[9px] font-bold uppercase block tracking-wider">Taxa de Cobertura</span>
                 <span className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase tracking-wide mt-1 inline-block ${isAbaixoDoMinimo ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"}`}>
                   {isAbaixoDoMinimo ? "Crítico" : "Conforme"}
                 </span>
                 <h3 className="text-xl font-black text-slate-800 font-mono mt-2">{percentagemAtualLegal.toFixed(1)}%</h3>
               </div>
-              <p className="text-[10px] text-slate-400 mt-2 leading-tight border-t border-slate-100 pt-2">Percentagem do saldo disponível atual sobre o limite legal obrigatório.</p>
+              <p className="text-[10px] text-slate-600 mt-2 leading-tight border-t border-slate-100 pt-2">Percentagem do saldo disponível atual sobre o limite legal obrigatório.</p>
             </div>
           </div>
 
@@ -245,7 +245,7 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
                 style={{ width: `${Math.min(100, (saldoAtualFCR / fundoRecomendado) * 100)}%` }}
               ></div>
             </div>
-            <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+            <div className="flex justify-between text-[9px] font-bold text-slate-600 uppercase tracking-wider">
               <span>0%</span>
               <span className="text-red-500">Mínimo Legal ({fundoMinimoLegal.toFixed(0)}€)</span>
               <span className="text-indigo-600">Recomendado ({fundoRecomendado.toFixed(0)}€)</span>
@@ -258,7 +258,7 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
       {/* Projeção Multianual do Fundo */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
         <div>
-          <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Projeção Multianual do Fundo de Reserva</h4>
+          <h4 className="text-xs font-black uppercase tracking-wider text-slate-600">Projeção Multianual do Fundo de Reserva</h4>
           <p className="text-xs text-slate-500 mt-1">
             Simulação da evolução do saldo nos próximos 5 anos, assumindo uma poupança regular de <strong className="font-mono">{(contribuicaoMensalExtra * 12).toFixed(2)}€/ano</strong> (sem considerar despesas imprevistas).
           </p>
@@ -302,7 +302,7 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
           {/* Bar charts projection (CSS-only bento component) */}
           <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 flex flex-col justify-between">
             <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block border-b border-slate-200 pb-2">Projeção Gráfica do Saldo FCR</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block border-b border-slate-200 pb-2">Projeção Gráfica do Saldo FCR</span>
               <div className="flex justify-around items-end h-32 pt-4">
                 {projecoes.map((p, idx) => {
                   // Normalize height percentage
@@ -322,13 +322,13 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
                         }`}
                         style={{ height: `${Math.max(12, heightPercent)}px` }}
                       ></div>
-                      <span className="text-[9px] font-black text-slate-400">{p.ano}</span>
+                      <span className="text-[9px] font-black text-slate-600">{p.ano}</span>
                     </div>
                   );
                 })}
               </div>
             </div>
-            <p className="text-[9px] text-slate-400 leading-normal text-center mt-3">
+            <p className="text-[9px] text-slate-600 leading-normal text-center mt-3">
               * A projeção considera depósitos de reforços mensais cumulativos consistentes de {contribuicaoMensalExtra}€ sem deduções para obras.
             </p>
           </div>

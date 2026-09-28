@@ -58,7 +58,7 @@ export default function SetPasswordScreen({ email, onDone }: SetPasswordScreenPr
       <div className="max-w-[380px] w-full bg-[#0d1424] border border-slate-800 p-5 rounded-2xl shadow-2xl text-slate-100 space-y-4">
         <div className="text-center">
           <h2 className="text-sm font-extrabold tracking-wider text-white uppercase">Defina a sua Palavra-passe</h2>
-          {email && <p className="text-[11px] text-slate-400 mt-1">{email}</p>}
+          {email && <p className="text-[11px] text-slate-600 mt-1">{email}</p>}
         </div>
 
         {errorMessage && (
@@ -69,7 +69,7 @@ export default function SetPasswordScreen({ email, onDone }: SetPasswordScreenPr
 
         <form onSubmit={handleSubmit} className="space-y-3 text-left">
           <div className="space-y-1">
-            <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">Nova Palavra-passe</label>
+            <label className="text-[9px] font-extrabold text-slate-600 uppercase tracking-widest block">Nova Palavra-passe</label>
             <input
               type="password"
               value={password}
@@ -80,7 +80,7 @@ export default function SetPasswordScreen({ email, onDone }: SetPasswordScreenPr
             />
           </div>
           <div className="space-y-1">
-            <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">Confirmar Palavra-passe</label>
+            <label className="text-[9px] font-extrabold text-slate-600 uppercase tracking-widest block">Confirmar Palavra-passe</label>
             <input
               type="password"
               value={confirmPassword}

@@ -349,7 +349,7 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
                 Submenu
               </span>
             </div>
-            <span className="text-[9px] text-slate-400 block">Password, Biometria, Sons e Notificações</span>
+            <span className="text-[9px] text-slate-600 block">Password, Biometria, Sons e Notificações</span>
           </div>
         </div>
         
@@ -357,7 +357,7 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
           {isOpen ? (
             <ChevronUp className="h-4 w-4 text-emerald-400" />
           ) : (
-            <ChevronDown className="h-4 w-4 text-slate-400" />
+            <ChevronDown className="h-4 w-4 text-slate-600" />
           )}
         </div>
       </button>
@@ -381,7 +381,7 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
 
             <form onSubmit={handleUpdatePassword} className="space-y-2">
               <div>
-                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Password Atual</label>
+                <label className="text-[9px] font-bold text-slate-600 uppercase block mb-1">Password Atual</label>
                 <input
                   type="password"
                   placeholder="••••••••"
@@ -393,7 +393,7 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Nova Password</label>
+                  <label className="text-[9px] font-bold text-slate-600 uppercase block mb-1">Nova Password</label>
                   <input
                     type="password"
                     placeholder="Mínimo 8 carateres"
@@ -403,7 +403,7 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Confirmar Password</label>
+                  <label className="text-[9px] font-bold text-slate-600 uppercase block mb-1">Confirmar Password</label>
                   <input
                     type="password"
                     placeholder="Repita a password"
@@ -438,7 +438,7 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
                 </div>
                 <div className="text-left">
                   <span className="font-extrabold text-[10px] text-slate-800 dark:text-white block">Face ID / Touch ID / Biometria</span>
-                  <span className="text-[8px] text-slate-400">Autenticação rápida e encriptada no dispositivo</span>
+                  <span className="text-[8px] text-slate-600">Autenticação rápida e encriptada no dispositivo</span>
                 </div>
               </div>
 
@@ -469,7 +469,7 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
               {/* Som do App */}
               <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2.5 rounded-xl flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  {soundAppEnabled ? <Volume2 className="h-3.5 w-3.5 text-emerald-500" /> : <VolumeX className="h-3.5 w-3.5 text-slate-400" />}
+                  {soundAppEnabled ? <Volume2 className="h-3.5 w-3.5 text-emerald-500" /> : <VolumeX className="h-3.5 w-3.5 text-slate-600" />}
                   <span className="font-extrabold text-[9.5px] text-slate-700 dark:text-slate-300">Som da Aplicação</span>
                 </div>
                 <button
@@ -520,7 +520,7 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
             </div>
 
             <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2.5 rounded-xl space-y-1.5">
-              <label className="text-[9px] font-bold text-slate-400 uppercase block">Selecione o Tom de Alerta</label>
+              <label className="text-[9px] font-bold text-slate-600 uppercase block">Selecione o Tom de Alerta</label>
               <select
                 value={selectedNotificationSound}
                 onChange={(e) => {
@@ -560,7 +560,7 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
                     <Smartphone className="h-3.5 w-3.5 text-emerald-500" />
                     <div>
                       <span className="font-extrabold text-[9.5px] text-slate-700 dark:text-slate-300 block">Notificações Push</span>
-                      <span className="text-[8px] text-slate-400">Dispositivo móvel</span>
+                      <span className="text-[8px] text-slate-600">Dispositivo móvel</span>
                     </div>
                   </div>
                   <button
@@ -581,7 +581,7 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
                     <Bell className="h-3.5 w-3.5 text-emerald-500" />
                     <div>
                       <span className="font-extrabold text-[9.5px] text-slate-700 dark:text-slate-300 block">Alertas Pop-up</span>
-                      <span className="text-[8px] text-slate-400">Avisos urgentes na tela</span>
+                      <span className="text-[8px] text-slate-600">Avisos urgentes na tela</span>
                     </div>
                   </div>
                   <button
@@ -616,7 +616,7 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
 
                 {emailEnabled && (
                   <div>
-                    <label className="text-[8px] font-bold text-slate-400 uppercase block mb-1">E-mail para Receber Alertas</label>
+                    <label className="text-[8px] font-bold text-slate-600 uppercase block mb-1">E-mail para Receber Alertas</label>
                     <input
                       type="email"
                       value={contactEmail}
@@ -647,7 +647,7 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
 
                 {smsEnabled && (
                   <div>
-                    <label className="text-[8px] font-bold text-slate-400 uppercase block mb-1">Telemóvel de Receção SMS</label>
+                    <label className="text-[8px] font-bold text-slate-600 uppercase block mb-1">Telemóvel de Receção SMS</label>
                     <input
                       type="text"
                       value={contactSms}

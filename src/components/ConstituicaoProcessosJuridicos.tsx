@@ -723,13 +723,13 @@ export function ConstituicaoProcessosJuridicos({
         return {
           icon: "fa-file-lines",
           label: "Outro Documento",
-          color: "bg-slate-500/20 text-slate-300 border-slate-500/40"
+          color: "bg-slate-500/20 text-slate-600 border-slate-500/40"
         };
       default:
         return {
           icon: "fa-paperclip",
           label: "Comprovativo Judicial",
-          color: "bg-slate-500/20 text-slate-300 border-slate-500/40"
+          color: "bg-slate-500/20 text-slate-600 border-slate-500/40"
         };
     }
   };
@@ -762,13 +762,13 @@ export function ConstituicaoProcessosJuridicos({
               <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2.5 py-0.5 rounded-md text-[11px] font-mono font-bold">
                 MÓDULO JURÍDICO OFICIAL
               </span>
-              <span className="text-xs text-slate-400 font-bold">Código Civil & DL 268/94</span>
+              <span className="text-xs text-slate-600 font-bold">Código Civil & DL 268/94</span>
             </div>
             <h3 className="text-lg font-bold text-white mt-1 flex items-center gap-2">
               <i className="fa-solid fa-gavel text-emerald-400"></i>
               Constituição de Processos Judiciais & Acervo Probatório
             </h3>
-            <p className="text-xs text-slate-300 mt-1 max-w-3xl leading-relaxed">
+            <p className="text-xs text-slate-600 mt-1 max-w-3xl leading-relaxed">
               Estruture processos por falta de pagamento de quotas ou infrações ao regulamento. Reúna e indexe de forma juridicamente admissível recibos de cartas AR CTT, capturas de ecrã (WhatsApp/e-mails), relatórios fotográficos de danos e atas com força executiva para entrega em tribunal ou Balcão Nacional de Injunções.
             </p>
           </div>
@@ -795,28 +795,28 @@ export function ConstituicaoProcessosJuridicos({
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4">
           <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-            <span className="text-[10px] text-slate-400 uppercase font-bold block">Processos Ativos</span>
+            <span className="text-[10px] text-slate-600 uppercase font-bold block">Processos Ativos</span>
             <span className="text-xl font-bold text-white font-mono">{processos.length}</span>
             <span className="text-[10px] text-emerald-400 block mt-0.5">Em contencioso judicial</span>
           </div>
           <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-            <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Reclamado em Juízo</span>
+            <span className="text-[10px] text-slate-600 uppercase font-bold block">Total Reclamado em Juízo</span>
             <span className="text-xl font-bold text-rose-400 font-mono">
               {processos.reduce((acc, p) => acc + p.valor_total_pedido, 0).toFixed(2)} €
             </span>
-            <span className="text-[10px] text-slate-400 block mt-0.5">Capital + Juros 4% + Custas</span>
+            <span className="text-[10px] text-slate-600 block mt-0.5">Capital + Juros 4% + Custas</span>
           </div>
           <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-            <span className="text-[10px] text-slate-400 uppercase font-bold block">Provas & Anexos Juntos</span>
+            <span className="text-[10px] text-slate-600 uppercase font-bold block">Provas & Anexos Juntos</span>
             <span className="text-xl font-bold text-amber-300 font-mono">
               {processos.reduce((acc, p) => acc + p.provas.length, 0)} Docs
             </span>
             <span className="text-[10px] text-amber-400/90 block mt-0.5">Recibos AR, Prints e Fotos</span>
           </div>
           <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-            <span className="text-[10px] text-slate-400 uppercase font-bold block">Sincronização com Arquivo</span>
+            <span className="text-[10px] text-slate-600 uppercase font-bold block">Sincronização com Arquivo</span>
             <span className="text-xl font-bold text-emerald-300 font-mono">100% Ativa</span>
-            <span className="text-[10px] text-slate-400 block mt-0.5">Pasta ⚖️ Processos Jurídicos</span>
+            <span className="text-[10px] text-slate-600 block mt-0.5">Pasta ⚖️ Processos Jurídicos</span>
           </div>
         </div>
       </div>
@@ -871,7 +871,7 @@ export function ConstituicaoProcessosJuridicos({
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800">
+                    <div className="flex items-center justify-between text-[10px] text-slate-600 mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800">
                       <span className="flex items-center gap-1 font-medium">
                         <i className="fa-solid fa-paperclip text-emerald-500"></i>
                         {proc.provas.length} prova{proc.provas.length !== 1 ? "s" : ""}
@@ -959,7 +959,7 @@ export function ConstituicaoProcessosJuridicos({
                 {/* Case Info Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                   <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Réu / Executado</span>
+                    <span className="text-[10px] text-slate-600 uppercase font-bold block">Réu / Executado</span>
                     <span className="font-bold text-slate-800 dark:text-white block mt-0.5">{currentProcesso.nome_reu}</span>
                     <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
                       Fração {currentProcesso.fracao_nome} • NIF: {currentProcesso.nif_reu}
@@ -967,7 +967,7 @@ export function ConstituicaoProcessosJuridicos({
                   </div>
 
                   <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Tribunal & Mandatário</span>
+                    <span className="text-[10px] text-slate-600 uppercase font-bold block">Tribunal & Mandatário</span>
                     <span className="font-bold text-slate-800 dark:text-white block mt-0.5">{currentProcesso.tribunal_competente}</span>
                     <span className="text-[10px] text-slate-500 dark:text-slate-400 block line-clamp-1">
                       Resp: {currentProcesso.mandatario_responsavel}
@@ -1010,13 +1010,13 @@ export function ConstituicaoProcessosJuridicos({
                       <div key={d.id} className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200 dark:border-slate-800 text-xs">
                         <div>
                           <span className="font-semibold text-slate-800 dark:text-white">{d.descricao}</span>
-                          <span className="text-[10px] text-slate-400 block">{formatDatePT(d.data)}</span>
+                          <span className="text-[10px] text-slate-600 block">{formatDatePT(d.data)}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-bold text-slate-800 dark:text-white">{d.valor.toFixed(2)} €</span>
                           <button
                             onClick={() => handleRemoveDespesaExtra(d.id)}
-                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
+                            className="p-1.5 text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
                           >
                             <i className="fa-solid fa-trash-can text-[10px]"></i>
                           </button>
@@ -1106,7 +1106,7 @@ export function ConstituicaoProcessosJuridicos({
                       placeholder="Pesquisar prova..."
                       className="w-full pl-7 pr-3 py-1 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-white"
                     />
-                    <i className="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-[10px] text-slate-400"></i>
+                    <i className="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-[10px] text-slate-600"></i>
                   </div>
                 </div>
 
@@ -1151,7 +1151,7 @@ export function ConstituicaoProcessosJuridicos({
                                   <i className={`fa-solid ${badge.icon} mr-1`}></i>
                                   {prova.tipo_documento_outro || badge.label}
                                 </span>
-                                <span className="text-[10px] text-slate-400 font-mono">
+                                <span className="text-[10px] text-slate-600 font-mono">
                                   {formatDatePT(prova.data_documento)}
                                 </span>
                               </div>
@@ -1219,7 +1219,7 @@ export function ConstituicaoProcessosJuridicos({
                   </div>
                 ) : (
                   <div className="p-8 text-center bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl space-y-3">
-                    <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
+                    <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center mx-auto text-slate-600">
                       <i className="fa-solid fa-file-circle-question text-xl"></i>
                     </div>
                     <div className="space-y-1">
@@ -1261,7 +1261,7 @@ export function ConstituicaoProcessosJuridicos({
                       <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-slate-800 dark:text-white">{item.fase}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">{item.data_hora}</span>
+                          <span className="text-[10px] text-slate-600 font-mono">{item.data_hora}</span>
                         </div>
                         <p className="text-[11px] text-slate-600 dark:text-slate-300">{item.descricao}</p>
                         <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium block">
@@ -1275,7 +1275,7 @@ export function ConstituicaoProcessosJuridicos({
             </>
           ) : (
             <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center flex flex-col items-center justify-center space-y-4 min-h-[400px]">
-              <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+              <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600">
                 <i className="fa-solid fa-folder-plus text-2xl text-emerald-500"></i>
               </div>
               <div className="space-y-1">
@@ -1315,7 +1315,7 @@ export function ConstituicaoProcessosJuridicos({
               </div>
               <button
                 onClick={() => setShowAddProvaModal(false)}
-                className="text-slate-400 hover:text-white p-2 rounded-lg cursor-pointer"
+                className="text-slate-600 hover:text-white p-2 rounded-lg cursor-pointer"
               >
                 <i className="fa-solid fa-xmark text-base"></i>
               </button>
@@ -1463,7 +1463,7 @@ export function ConstituicaoProcessosJuridicos({
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
                   <span>Ficheiro da Prova / Imagem / Print (Folha Vertical A4)</span>
-                  <span className="text-[10px] text-slate-400">Formatos aceites: PNG, JPG, PDF, WEBP</span>
+                  <span className="text-[10px] text-slate-600">Formatos aceites: PNG, JPG, PDF, WEBP</span>
                 </label>
 
                 <div
@@ -1517,7 +1517,7 @@ export function ConstituicaoProcessosJuridicos({
                         <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
                           Arraste o documento aqui ou clique para procurar no computador
                         </p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">
+                        <p className="text-[10px] text-slate-600 mt-0.5">
                           Ex: Fotografia do aviso CTT, captura de ecrã do WhatsApp ou PDF da ata
                         </p>
                       </div>
@@ -1609,7 +1609,7 @@ export function ConstituicaoProcessosJuridicos({
               </h3>
               <button
                 onClick={() => { setShowNovoProcessoModal(false); resetFormNovoProcesso(); }}
-                className="text-slate-400 hover:text-white p-2 rounded-lg cursor-pointer"
+                className="text-slate-600 hover:text-white p-2 rounded-lg cursor-pointer"
               >
                 <i className="fa-solid fa-xmark text-base"></i>
               </button>
@@ -1690,7 +1690,7 @@ export function ConstituicaoProcessosJuridicos({
                     onChange={(e) => setNovoValorCapital(e.target.value)}
                     className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl font-mono text-slate-800 dark:text-white"
                   />
-                  <p className="text-[9px] text-slate-400">Preenchido a partir dos avisos reais em dívida desta fração — continua editável se precisar de ajustar.</p>
+                  <p className="text-[9px] text-slate-600">Preenchido a partir dos avisos reais em dívida desta fração — continua editável se precisar de ajustar.</p>
                 </div>
 
                 <div className="space-y-1">
@@ -1756,7 +1756,7 @@ export function ConstituicaoProcessosJuridicos({
               </h3>
               <button
                 onClick={() => setShowAddMarcoModal(false)}
-                className="text-slate-400 hover:text-white p-2 rounded-lg cursor-pointer"
+                className="text-slate-600 hover:text-white p-2 rounded-lg cursor-pointer"
               >
                 <i className="fa-solid fa-xmark text-base"></i>
               </button>
@@ -1836,14 +1836,14 @@ export function ConstituicaoProcessosJuridicos({
                 </span>
                 <div>
                   <h4 className="text-sm font-bold">{lightboxProva.titulo}</h4>
-                  <span className="text-[11px] text-slate-400 font-mono">
+                  <span className="text-[11px] text-slate-600 font-mono">
                     {formatDatePT(lightboxProva.data_documento)} • {lightboxProva.ficheiro_nome}
                   </span>
                 </div>
               </div>
               <button
                 onClick={() => setLightboxProva(null)}
-                className="text-slate-400 hover:text-white p-2 rounded-lg cursor-pointer"
+                className="text-slate-600 hover:text-white p-2 rounded-lg cursor-pointer"
               >
                 <i className="fa-solid fa-xmark text-lg"></i>
               </button>
@@ -1859,19 +1859,19 @@ export function ConstituicaoProcessosJuridicos({
               ) : (
                 <div className="p-12 text-center space-y-3">
                   <i className="fa-solid fa-file-pdf text-5xl text-rose-500"></i>
-                  <p className="text-sm font-bold text-slate-300">{lightboxProva.ficheiro_nome}</p>
+                  <p className="text-sm font-bold text-slate-600">{lightboxProva.ficheiro_nome}</p>
                   <p className="text-xs text-slate-500">Documento PDF certificado pronto para anexação judicial.</p>
                 </div>
               )}
 
               {lightboxProva.descricao && (
-                <p className="text-xs text-slate-300 mt-4 max-w-2xl text-center bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                <p className="text-xs text-slate-600 mt-4 max-w-2xl text-center bg-slate-900/90 p-3 rounded-xl border border-slate-800">
                   {lightboxProva.descricao}
                 </p>
               )}
             </div>
 
-            <div className="p-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 bg-slate-900">
+            <div className="p-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-600 bg-slate-900">
               <span>{lightboxProva.observacoes_juridicas || "Elemento probatório oficial CondoManager AI"}</span>
               <button
                 onClick={() => setLightboxProva(null)}

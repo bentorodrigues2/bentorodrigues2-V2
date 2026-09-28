@@ -1336,7 +1336,7 @@ export default function PWACondominoView({
                   <span className="text-[9px] font-extrabold text-rose-500 uppercase tracking-widest block">
                     🔔 Alertas & Notificações Ativos
                   </span>
-                  <span className="text-[7px] text-slate-400 uppercase font-bold">Deslize para a direita para fechar</span>
+                  <span className="text-[7px] text-slate-600 uppercase font-bold">Deslize para a direita para fechar</span>
                 </div>
                 <div className="space-y-1.5 text-[10px] overflow-hidden">
                   {activeNotifs.map((notif) => (
@@ -1435,7 +1435,7 @@ export default function PWACondominoView({
                       ActivoBank) aparecer aqui automaticamente. */}
                   {contas.length > 0 && (
                     <div className="space-y-1.5 pt-1">
-                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">Saldo por Conta Bancária</span>
+                      <span className="text-[8px] font-black text-slate-600 uppercase tracking-wider block">Saldo por Conta Bancária</span>
                       <div className="grid grid-cols-2 gap-2">
                         {contas.map(c => {
                           const saldoConta = Number(c.saldo) || 0;
@@ -1446,8 +1446,8 @@ export default function PWACondominoView({
                               onClick={() => setActiveTab("financeiro")}
                               className={`text-left rounded-xl p-2.5 border cursor-pointer hover:brightness-95 transition-all ${saldoConta >= 0 ? "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800" : "bg-red-50 border-red-300"}`}
                             >
-                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wide block truncate">{c.banco || "Conta"}</span>
-                              <span className="text-[8px] text-slate-400 block truncate">{c.tipo}{c.is_principal ? " • Principal" : ""}</span>
+                              <span className="text-[8px] font-bold text-slate-600 uppercase tracking-wide block truncate">{c.banco || "Conta"}</span>
+                              <span className="text-[8px] text-slate-600 block truncate">{c.tipo}{c.is_principal ? " • Principal" : ""}</span>
                               <span className={`text-xs font-black block mt-0.5 ${saldoConta >= 0 ? "text-slate-800 dark:text-white" : "text-red-700"}`}>{saldoConta.toLocaleString("pt-PT")} €</span>
                             </button>
                           );
@@ -1630,7 +1630,7 @@ export default function PWACondominoView({
                               <div key={a.id_aviso} className="flex justify-between items-center bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-lg px-2.5 py-1.5 text-[10px]">
                                 <div className="truncate pr-2">
                                   <span className="font-bold text-slate-700 dark:text-slate-200 block truncate">{a.descricao}</span>
-                                  <span className="text-[8px] text-slate-400">Vencimento: {formatDatePT(a.vencimento || a.data)}</span>
+                                  <span className="text-[8px] text-slate-600">Vencimento: {formatDatePT(a.vencimento || a.data)}</span>
                                 </div>
                                 <span className="font-black text-amber-700 dark:text-amber-400 shrink-0">
                                   {(Number(a.valor) - Number(a.valor_pago || 0)).toFixed(2)} €
@@ -1862,7 +1862,7 @@ export default function PWACondominoView({
 
             {/* Smart Search */}
             <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-600" />
               <input 
                 type="text"
                 placeholder="Pesquisa inteligente de faturas, atas..."
@@ -1898,17 +1898,17 @@ export default function PWACondominoView({
                 <div className="p-1.5 bg-white dark:bg-slate-900 border border-indigo-50 dark:border-slate-800 rounded-lg text-center flex flex-col items-center justify-center space-y-1">
                   <span className="text-base">📁</span>
                   <span className="text-[8px] truncate max-w-[60px] block">Frações</span>
-                  <span className="text-[7px] text-slate-400">2 ficheiros</span>
+                  <span className="text-[7px] text-slate-600">2 ficheiros</span>
                 </div>
                 <div className="p-1.5 bg-white dark:bg-slate-900 border border-indigo-50 dark:border-slate-800 rounded-lg text-center flex flex-col items-center justify-center space-y-1">
                   <span className="text-base">📁</span>
                   <span className="text-[8px] truncate max-w-[60px] block">Condomínio</span>
-                  <span className="text-[7px] text-slate-400">6 ficheiros</span>
+                  <span className="text-[7px] text-slate-600">6 ficheiros</span>
                 </div>
                 <div className="p-1.5 bg-white dark:bg-slate-900 border border-indigo-50 dark:border-slate-800 rounded-lg text-center flex flex-col items-center justify-center space-y-1">
                   <span className="text-base">📁</span>
                   <span className="text-[8px] truncate max-w-[60px] block">Faturas</span>
-                  <span className="text-[7px] text-slate-400">24 faturas</span>
+                  <span className="text-[7px] text-slate-600">24 faturas</span>
                 </div>
               </div>
             </div>
@@ -1916,7 +1916,7 @@ export default function PWACondominoView({
              {/* List of Documents */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Documentos Oficiais</span>
+                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">Documentos Oficiais</span>
                 <button
                   onClick={() => {
                     const filteredDocs = documentos
@@ -1986,7 +1986,7 @@ export default function PWACondominoView({
               )}
               
               {documentos.length === 0 ? (
-                <div className="text-center py-8 text-[10px] text-slate-400 italic">
+                <div className="text-center py-8 text-[10px] text-slate-600 italic">
                   Nenhum documento encontrado.
                 </div>
               ) : (
@@ -2017,7 +2017,7 @@ export default function PWACondominoView({
                         <span className="text-lg">📄</span>
                         <div className="truncate">
                           <span className="font-bold text-slate-800 dark:text-slate-200 block truncate">{doc.nome}</span>
-                          <span className="text-[8px] text-slate-400 uppercase font-bold">{doc.categoria || doc.tipo} • Ano {doc.data_upload.split("-")[0] || "N/A"}</span>
+                          <span className="text-[8px] text-slate-600 uppercase font-bold">{doc.categoria || doc.tipo} • Ano {doc.data_upload.split("-")[0] || "N/A"}</span>
                         </div>
                       </div>
                       <div className="flex items-center space-x-1 shrink-0 font-bold">
@@ -2070,15 +2070,15 @@ export default function PWACondominoView({
                   <div className="p-4 space-y-3.5 overflow-y-auto flex-1">
                     <div className="bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 flex justify-between">
                       <div>
-                        <span className="text-slate-400 block text-[8px] uppercase">Emitido por</span>
+                        <span className="text-slate-600 block text-[8px] uppercase">Emitido por</span>
                         <strong className="text-slate-800 dark:text-slate-200">Administração / Gestora</strong>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[8px] uppercase">Data de Envio</span>
+                        <span className="text-slate-600 block text-[8px] uppercase">Data de Envio</span>
                         <strong className="text-slate-800 dark:text-slate-200">{selectedDocPreview.data_upload}</strong>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[8px] uppercase">Assinado Digitalmente</span>
+                        <span className="text-slate-600 block text-[8px] uppercase">Assinado Digitalmente</span>
                         <strong className="text-emerald-600 flex items-center"><Check className="h-2.5 w-2.5 mr-0.5" /> Sim</strong>
                       </div>
                     </div>
@@ -2126,17 +2126,17 @@ export default function PWACondominoView({
 
             {/* List of active and finished interventions */}
             <div className="space-y-3">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Registo de Ocorrências</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">Registo de Ocorrências</span>
               
               <div className="space-y-2.5">
                 {ocorrenciasFracaoTodas.length === 0 && (
-                  <p className="text-slate-400 text-[10px] text-center py-6 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">Nenhuma avaria reportada até ao momento.</p>
+                  <p className="text-slate-600 text-[10px] text-center py-6 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">Nenhuma avaria reportada até ao momento.</p>
                 )}
                 {ocorrenciasFracaoTodas.map((interv: any) => (
                   <div key={interv.id_ocorr} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3 rounded-xl shadow-xs space-y-2 text-[10px]">
                     <div className="flex justify-between items-start">
                       <div>
-                        <span className="text-[8px] text-slate-400 font-extrabold block uppercase tracking-wider font-mono">{formatDatePT(interv.data)}</span>
+                        <span className="text-[8px] text-slate-600 font-extrabold block uppercase tracking-wider font-mono">{formatDatePT(interv.data)}</span>
                         <h4 className="font-extrabold text-slate-800 dark:text-slate-200">{interv.categoria || "Outros"}</h4>
                       </div>
                       <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase ${
@@ -2151,7 +2151,7 @@ export default function PWACondominoView({
                     <p className="text-slate-500 leading-tight">"{interv.descricao}"</p>
 
                     <div className="flex justify-between items-center pt-1.5 border-t border-slate-100 dark:border-slate-800/60 text-[9px]">
-                      <span className="text-slate-400">{interv.tecnico_atribuido ? <>Técnico: <strong className="text-slate-600 dark:text-slate-300">{interv.tecnico_atribuido}</strong></> : "Aguarda triagem da administração"}</span>
+                      <span className="text-slate-600">{interv.tecnico_atribuido ? <>Técnico: <strong className="text-slate-600 dark:text-slate-300">{interv.tecnico_atribuido}</strong></> : "Aguarda triagem da administração"}</span>
                       {interv.medidas_tomadas && (
                         <button
                           onClick={() => alert(`Medidas tomadas:\n${interv.medidas_tomadas}`)}
@@ -2213,7 +2213,7 @@ export default function PWACondominoView({
                     <Camera className="h-3.5 w-3.5" />
                     <span>Capturar Foto</span>
                   </button>
-                  <span className="text-[9px] text-slate-400 italic">
+                  <span className="text-[9px] text-slate-600 italic">
                     {newIntervPhotoName || "Sem anexo fotográfico"}
                   </span>
                 </div>
@@ -2239,10 +2239,10 @@ export default function PWACondominoView({
             </div>
 
             <div className="space-y-3">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Estado de Obras Ativas</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">Estado de Obras Ativas</span>
 
               {obrasReais.length === 0 && (
-                <p className="text-slate-400 text-[10px] text-center py-6 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">Nenhuma obra registada até ao momento.</p>
+                <p className="text-slate-600 text-[10px] text-center py-6 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">Nenhuma obra registada até ao momento.</p>
               )}
 
               {obrasReais.map(obra => (
@@ -2265,7 +2265,7 @@ export default function PWACondominoView({
                   <p className="text-slate-500 leading-tight">
                     {obra.dataInicio ? `Início: ${formatDatePT(obra.dataInicio)}` : ""}{obra.dataFim ? ` • Fim: ${formatDatePT(obra.dataFim)}` : ""}
                   </p>
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex justify-between text-[9px] text-slate-400 font-bold">
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex justify-between text-[9px] text-slate-600 font-bold">
                     <span>{obra.fornecedorNome ? `Empreiteiro: ${obra.fornecedorNome}` : "Fornecedor por adjudicar"}</span>
                   </div>
                 </div>
@@ -2284,23 +2284,23 @@ export default function PWACondominoView({
             </div>
 
             <div className="space-y-3">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Histórico de Higienização</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">Histórico de Higienização</span>
               
               <div className="space-y-2.5">
                 {limpezasHistorico.map(limp => (
                   <div key={limp.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3 rounded-xl shadow-xs space-y-2 text-[10px]">
                     <div className="flex justify-between font-bold">
-                      <span className="text-slate-400 uppercase tracking-wider text-[8px] font-mono">{limp.id} • {limp.data} às {limp.hora}</span>
+                      <span className="text-slate-600 uppercase tracking-wider text-[8px] font-mono">{limp.id} • {limp.data} às {limp.hora}</span>
                       <span className="text-emerald-600 flex items-center"><CheckCircle className="h-3 w-3 mr-0.5" /> {limp.estado}</span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 leading-tight">
                       <div>
-                        <span className="text-[8px] text-slate-400 uppercase block font-bold">Técnico Responsável</span>
+                        <span className="text-[8px] text-slate-600 uppercase block font-bold">Técnico Responsável</span>
                         <strong className="text-slate-700 dark:text-slate-300">{limp.tecnico}</strong>
                       </div>
                       <div>
-                        <span className="text-[8px] text-slate-400 uppercase block font-bold">Anomalias Detetadas</span>
+                        <span className="text-[8px] text-slate-600 uppercase block font-bold">Anomalias Detetadas</span>
                         <strong className={limp.avariaDetetada !== "Nenhuma" ? "text-red-600" : "text-emerald-600"}>
                           {limp.avariaDetetada}
                         </strong>
@@ -2309,7 +2309,7 @@ export default function PWACondominoView({
 
                     {/* Interactive ratings inside simulator */}
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 space-y-1.5">
-                      <span className="text-[8px] font-bold text-slate-400 uppercase block">Avalie a qualidade do serviço</span>
+                      <span className="text-[8px] font-bold text-slate-600 uppercase block">Avalie a qualidade do serviço</span>
                       <div className="flex items-center justify-between">
                         <div className="flex space-x-1">
                           {[1, 2, 3, 4, 5].map(star => (
@@ -2322,12 +2322,12 @@ export default function PWACondominoView({
                               className="cursor-pointer"
                             >
                               <Star className={`h-4 w-4 ${
-                                (cleaningRatings[limp.id] || 0) >= star ? "text-amber-500 fill-amber-500" : "text-slate-300 dark:text-slate-700"
+                                (cleaningRatings[limp.id] || 0) >= star ? "text-amber-500 fill-amber-500" : "text-slate-600 dark:text-slate-700"
                               }`} />
                             </button>
                           ))}
                         </div>
-                        <span className="text-[8px] text-slate-400 font-bold">
+                        <span className="text-[8px] text-slate-600 font-bold">
                           {cleaningRatings[limp.id] ? "Obrigado!" : "Por avaliar"}
                         </span>
                       </div>
@@ -2471,7 +2471,7 @@ export default function PWACondominoView({
             <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3.5 rounded-xl shadow-sm space-y-3 text-[10px]">
               <span className="text-[9px] font-extrabold text-teal-600 uppercase tracking-widest block">8.3 Envio de Comprovativos (Leitura IA)</span>
               
-              <p className="text-[9px] text-slate-400 leading-normal">
+              <p className="text-[9px] text-slate-600 leading-normal">
                 Submeta o talão de transferência ou PDF bancário. A IA efetuará a leitura ótica em tempo real para liquidação automática de quotas.
               </p>
 
@@ -2481,7 +2481,7 @@ export default function PWACondominoView({
                   <div className="py-4 space-y-2 flex flex-col items-center">
                     <RefreshCw className="h-6 w-6 text-indigo-500 animate-spin" />
                     <span className="font-bold text-slate-700 dark:text-slate-300">A IA está a analisar o documento...</span>
-                    <span className="text-[8px] text-slate-400 font-mono">OCR & Validação de Referência Ativa</span>
+                    <span className="text-[8px] text-slate-600 font-mono">OCR & Validação de Referência Ativa</span>
                   </div>
                 ) : comprovativoExtractedData ? (
                   <div className="text-left space-y-3">
@@ -2491,13 +2491,13 @@ export default function PWACondominoView({
                     </div>
 
                     <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-2.5 rounded-lg space-y-1.5 text-[9px]">
-                      <span className="font-extrabold uppercase text-slate-400 text-[8px] block tracking-wider">Leitura IA do Comprovativo</span>
+                      <span className="font-extrabold uppercase text-slate-600 text-[8px] block tracking-wider">Leitura IA do Comprovativo</span>
                       <div className="grid grid-cols-2 gap-2 text-[9px] font-semibold">
                         <div>Valor Lido: <strong className="font-mono text-slate-800 dark:text-white">{comprovativoExtractedData.valor.toFixed(2)} €</strong></div>
                         <div>Referência: <strong className="font-mono text-indigo-600">{comprovativoExtractedData.referencia}</strong></div>
                         <div className="col-span-2">Classificação: <strong className="text-emerald-600">{comprovativoExtractedData.classificacao}</strong></div>
                         <div className="col-span-2 text-indigo-600 text-[8px] leading-tight">💡 {comprovativoExtractedData.sugestaoLancamento}</div>
-                        <div className="col-span-2 text-slate-400 text-[8px] leading-tight font-medium italic">ℹ️ {comprovativoExtractedData.ajusteFuturo}</div>
+                        <div className="col-span-2 text-slate-600 text-[8px] leading-tight font-medium italic">ℹ️ {comprovativoExtractedData.ajusteFuturo}</div>
                       </div>
                     </div>
 
@@ -2531,7 +2531,7 @@ export default function PWACondominoView({
                     >
                       Selecionar Comprovativo
                     </button>
-                    <p className="text-[8px] text-slate-400 leading-tight">Arraste ficheiro PDF ou tire fotografia do talão</p>
+                    <p className="text-[8px] text-slate-600 leading-tight">Arraste ficheiro PDF ou tire fotografia do talão</p>
                     <input 
                       id="pwa-comprovativo-file" 
                       type="file" 
@@ -2569,19 +2569,19 @@ export default function PWACondominoView({
                 <span className="text-[9px] font-extrabold text-teal-600 uppercase tracking-widest block">Capacidade Máxima de Espaços Comuns</span>
                 <div className="grid grid-cols-2 gap-2 text-[9px] font-bold">
                   <div className="p-2 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-100">
-                    <span className="text-slate-400 block text-[7px] uppercase">Salão de Festas</span>
+                    <span className="text-slate-600 block text-[7px] uppercase">Salão de Festas</span>
                     <span className="text-slate-700 dark:text-slate-300">Máx. 40 Pessoas</span>
                   </div>
                   <div className="p-2 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-100">
-                    <span className="text-slate-400 block text-[7px] uppercase">Ginásio Comum</span>
+                    <span className="text-slate-600 block text-[7px] uppercase">Ginásio Comum</span>
                     <span className="text-slate-700 dark:text-slate-300">Máx. 5 Pessoas</span>
                   </div>
                   <div className="p-2 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-100">
-                    <span className="text-slate-400 block text-[7px] uppercase">Elevadores</span>
+                    <span className="text-slate-600 block text-[7px] uppercase">Elevadores</span>
                     <span className="text-slate-700 dark:text-slate-300">Máx. 4 Pessoas</span>
                   </div>
                   <div className="p-2 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-100">
-                    <span className="text-slate-400 block text-[7px] uppercase">Parque Infantil</span>
+                    <span className="text-slate-600 block text-[7px] uppercase">Parque Infantil</span>
                     <span className="text-slate-700 dark:text-slate-300">Máx. 12 Crianças</span>
                   </div>
                 </div>
@@ -2610,7 +2610,7 @@ export default function PWACondominoView({
             </div>
 
             {comunicadosFeed.length === 0 ? (
-              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-4 rounded-xl text-[10px] text-slate-400 text-center">
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-4 rounded-xl text-[10px] text-slate-600 text-center">
                 Sem comunicados publicados ainda.
               </div>
             ) : (
@@ -2628,13 +2628,13 @@ export default function PWACondominoView({
                       }`}>
                         {c.urgencia === "urgente" ? "🚨 Urgente" : "Comunicado"}
                       </span>
-                      <span className="text-slate-400 text-[8px]">
+                      <span className="text-slate-600 text-[8px]">
                         {c.created_at ? new Date(c.created_at).toLocaleDateString("pt-PT") : ""}
                       </span>
                     </div>
                     <h4 className="font-extrabold text-slate-800 dark:text-white text-xs">{c.titulo}</h4>
                     <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">{c.mensagem}</p>
-                    {c.autor_nome && <p className="text-slate-400 text-[8px] pt-1">— {c.autor_nome}</p>}
+                    {c.autor_nome && <p className="text-slate-600 text-[8px] pt-1">— {c.autor_nome}</p>}
                   </div>
                 ))}
               </div>
@@ -2650,7 +2650,7 @@ export default function PWACondominoView({
 
             {/* Sondagens Ativas — reais (Supabase), uma por cada sondagem em curso */}
             {sondagensFeed.filter(s => s.estado === "ativa").length === 0 ? (
-              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-4 rounded-xl text-[10px] text-slate-400 text-center">
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-4 rounded-xl text-[10px] text-slate-600 text-center">
                 Sem sondagens ativas neste momento.
               </div>
             ) : (
@@ -2659,7 +2659,7 @@ export default function PWACondominoView({
                   <span className="text-[9px] font-extrabold text-indigo-600 uppercase tracking-widest block">Sondagem Ativa do Edifício</span>
 
                   {jaVotouSondagem(s) ? (
-                    <div className="flex flex-col items-center justify-center py-5 text-slate-400 text-center">
+                    <div className="flex flex-col items-center justify-center py-5 text-slate-600 text-center">
                       <Check className="h-5 w-5 text-emerald-500 mb-1.5" />
                       <span className="text-[9px] font-extrabold text-slate-800 dark:text-slate-100">O seu voto foi registado com sucesso!</span>
                     </div>
@@ -2677,7 +2677,7 @@ export default function PWACondominoView({
                             className="w-full text-left p-2 bg-slate-50 hover:bg-indigo-50 dark:bg-slate-950 dark:hover:bg-indigo-950/20 border border-slate-100 dark:border-slate-800 rounded-lg font-bold flex justify-between items-center cursor-pointer transition-all disabled:opacity-50"
                           >
                             <span>{op}</span>
-                            <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                            <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
                           </button>
                         ))}
                       </div>
@@ -2690,7 +2690,7 @@ export default function PWACondominoView({
             {/* Arquivo de Sondagens — as já fechadas ou já votadas por si, com resultados reais */}
             {sondagensFeed.filter(s => s.estado === "fechada" || jaVotouSondagem(s)).length > 0 && (
               <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3.5 rounded-xl shadow-xs space-y-3 text-[10px]">
-                <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">📂 Arquivo de Sondagens</span>
+                <span className="text-[9px] font-extrabold text-slate-600 uppercase tracking-widest block">📂 Arquivo de Sondagens</span>
 
                 {sondagensFeed.filter(s => s.estado === "fechada" || jaVotouSondagem(s)).map(s => {
                   const votos = s.votos || [];
@@ -2722,7 +2722,7 @@ export default function PWACondominoView({
                               </div>
                             );
                           })}
-                          <div className="text-[7px] text-slate-400 text-center font-bold pt-1">
+                          <div className="text-[7px] text-slate-600 text-center font-bold pt-1">
                             Total de votos registados: {totalVotos} frações
                           </div>
                         </div>
@@ -2740,7 +2740,7 @@ export default function PWACondominoView({
                 {questionariosFeed.filter(q => q.estado === "ativo").map(q => (
                   <div key={q.id_questionario} className="p-2.5 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-100 dark:border-slate-800/60 space-y-1.5">
                     <h5 className="font-extrabold text-slate-800 dark:text-slate-100">{q.titulo}</h5>
-                    {q.descricao && <p className="text-slate-400 text-[9px]">{q.descricao}</p>}
+                    {q.descricao && <p className="text-slate-600 text-[9px]">{q.descricao}</p>}
                     {jaRespondeuQuestionario(q) ? (
                       <span className="text-[8px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded font-extrabold uppercase inline-block">Já respondeu</span>
                     ) : (
@@ -2776,7 +2776,7 @@ export default function PWACondominoView({
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="text-sm font-black tracking-tight text-slate-800 dark:text-white">💬 Mensagens & Atendimento</h3>
-                <span className="text-[9px] text-slate-400">Canal direto com a administração e piquete</span>
+                <span className="text-[9px] text-slate-600">Canal direto com a administração e piquete</span>
               </div>
               <span className="text-[8.5px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 font-extrabold px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
@@ -2811,7 +2811,7 @@ export default function PWACondominoView({
             <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm space-y-3 relative">
               <div className="h-64 bg-slate-50 dark:bg-slate-950/70 border border-slate-100 dark:border-slate-800 rounded-2xl p-3 space-y-2.5 overflow-y-auto">
                 {mensagens.length === 0 && (
-                  <p className="text-slate-400 text-[10px] text-center py-6">Sem conversas ainda — escreva à administração abaixo.</p>
+                  <p className="text-slate-600 text-[10px] text-center py-6">Sem conversas ainda — escreva à administração abaixo.</p>
                 )}
 
                 {/* Conversas reais (Supabase) */}
@@ -2835,7 +2835,7 @@ export default function PWACondominoView({
                     </div>
                     {ticket.respostaAdmin && (
                       <div className="p-2.5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-1.5 max-w-[85%] shadow-xs">
-                        <div className="flex justify-between font-bold text-slate-400 text-[8px]">
+                        <div className="flex justify-between font-bold text-slate-600 text-[8px]">
                           <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">🏢 Administração do Condomínio</span>
                           <span>{ticket.dataResposta}</span>
                         </div>
@@ -3036,7 +3036,7 @@ export default function PWACondominoView({
                     </div>
                     <div>
                       <span className="font-bold text-[9.5px] block">Documento / PDF</span>
-                      <span className="text-[7.5px] text-slate-400">PDF, Word, Excel, TXT</span>
+                      <span className="text-[7.5px] text-slate-600">PDF, Word, Excel, TXT</span>
                     </div>
                   </button>
 
@@ -3053,7 +3053,7 @@ export default function PWACondominoView({
                     </div>
                     <div>
                       <span className="font-bold text-[9.5px] block">Tirar Fotografia (Câmara)</span>
-                      <span className="text-[7.5px] text-slate-400">Acesso à câmara móvel/PC</span>
+                      <span className="text-[7.5px] text-slate-600">Acesso à câmara móvel/PC</span>
                     </div>
                   </button>
 
@@ -3070,7 +3070,7 @@ export default function PWACondominoView({
                     </div>
                     <div>
                       <span className="font-bold text-[9.5px] block">Galeria de Fotos</span>
-                      <span className="text-[7.5px] text-slate-400">Compressão .WEBP imediata</span>
+                      <span className="text-[7.5px] text-slate-600">Compressão .WEBP imediata</span>
                     </div>
                   </button>
                 </div>
@@ -3250,13 +3250,13 @@ export default function PWACondominoView({
                 </div>
                 <div>
                   <h4 className="font-extrabold text-slate-800 dark:text-white text-xs">{perfilNome}</h4>
-                  <span className="text-[8px] text-slate-400 uppercase font-extrabold">3º Andar Esquerdo • Entrada: 12/07/2026</span>
+                  <span className="text-[8px] text-slate-600 uppercase font-extrabold">3º Andar Esquerdo • Entrada: 12/07/2026</span>
                 </div>
               </div>
 
               <div className="space-y-2.5">
                 <div>
-                  <span className="text-slate-400 block text-[8px] uppercase font-bold">Nome do Condómino</span>
+                  <span className="text-slate-600 block text-[8px] uppercase font-bold">Nome do Condómino</span>
                   <input
                     type="text"
                     value={perfilNome}
@@ -3266,7 +3266,7 @@ export default function PWACondominoView({
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-[8px] uppercase font-bold">Email de Registo</span>
+                  <span className="text-slate-600 block text-[8px] uppercase font-bold">Email de Registo</span>
                   <input
                     type="email"
                     value={perfilEmail}
@@ -3276,7 +3276,7 @@ export default function PWACondominoView({
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-[8px] uppercase font-bold">Telefone Móvel</span>
+                  <span className="text-slate-600 block text-[8px] uppercase font-bold">Telefone Móvel</span>
                   <input
                     type="text"
                     value={perfilTlm}
@@ -3287,7 +3287,7 @@ export default function PWACondominoView({
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <span className="text-slate-400 block text-[8px] uppercase font-bold">Contribuinte (NIF)</span>
+                    <span className="text-slate-600 block text-[8px] uppercase font-bold">Contribuinte (NIF)</span>
                     <input
                       type="text"
                       value={perfilNif}
@@ -3296,7 +3296,7 @@ export default function PWACondominoView({
                     />
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[8px] uppercase font-bold">Data de Nascimento</span>
+                    <span className="text-slate-600 block text-[8px] uppercase font-bold">Data de Nascimento</span>
                     <input
                       type="text"
                       value={perfilNascimento}
@@ -3307,7 +3307,7 @@ export default function PWACondominoView({
                 </div>
 
                 <div>
-                  <span className="text-slate-400 block text-[8px] uppercase font-bold">Morada (Não Editável)</span>
+                  <span className="text-slate-600 block text-[8px] uppercase font-bold">Morada (Não Editável)</span>
                   <div className="w-full bg-slate-100 dark:bg-slate-500/10 border border-slate-200 dark:border-slate-900 p-2 rounded-lg font-bold text-slate-500 dark:text-white cursor-not-allowed select-none">
                     {perfilMorada}
                   </div>
@@ -3317,7 +3317,7 @@ export default function PWACondominoView({
                   <span className="text-emerald-500 font-extrabold text-[9px] uppercase tracking-wide block">💳 Dados Bancários</span>
                   
                   <div>
-                    <span className="text-slate-400 block text-[8px] uppercase font-bold">IBAN</span>
+                    <span className="text-slate-600 block text-[8px] uppercase font-bold">IBAN</span>
                     <input
                       type="text"
                       value={perfilIban}
@@ -3328,7 +3328,7 @@ export default function PWACondominoView({
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <span className="text-slate-400 block text-[8px] uppercase font-bold">Entidade Bancária</span>
+                      <span className="text-slate-600 block text-[8px] uppercase font-bold">Entidade Bancária</span>
                       <input
                         type="text"
                         value={perfilBanco}
@@ -3337,7 +3337,7 @@ export default function PWACondominoView({
                       />
                     </div>
                     <div>
-                      <span className="text-slate-400 block text-[8px] uppercase font-bold">Titular da Conta</span>
+                      <span className="text-slate-600 block text-[8px] uppercase font-bold">Titular da Conta</span>
                       <input
                         type="text"
                         value={perfilIbanTitular}
@@ -3376,7 +3376,7 @@ export default function PWACondominoView({
                   <div className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800">
                     <div>
                       <span className="text-xs font-bold text-slate-800 dark:text-white block">🔔 Notificações Push</span>
-                      <span className="text-[9.5px] text-slate-400">Receba avisos, sondagens e comunicados urgentes neste dispositivo</span>
+                      <span className="text-[9.5px] text-slate-600">Receba avisos, sondagens e comunicados urgentes neste dispositivo</span>
                     </div>
                     <button
                       type="button"
@@ -3412,7 +3412,7 @@ export default function PWACondominoView({
                           />
                         </label>
                       ))}
-                      <p className="text-[9px] text-slate-400 pt-1">As notificações de ocorrências, documentos e assembleias são sempre enviadas.</p>
+                      <p className="text-[9px] text-slate-600 pt-1">As notificações de ocorrências, documentos e assembleias são sempre enviadas.</p>
                     </div>
                   )}
                 </div>
@@ -3462,7 +3462,7 @@ export default function PWACondominoView({
                     <Lock className="h-3.5 w-3.5 mr-1.5 text-emerald-600" /> Segurança da Conta
                   </h4>
                   <div className="space-y-1">
-                    <label className="text-slate-400 block text-[8px] uppercase font-bold">Nova Password de Acesso</label>
+                    <label className="text-slate-600 block text-[8px] uppercase font-bold">Nova Password de Acesso</label>
                     <input
                       type="password"
                       placeholder="Mínimo 8 caracteres"
@@ -3511,7 +3511,7 @@ export default function PWACondominoView({
                 PWA Condómino Activo
               </span>
               <h3 className="text-sm font-black text-slate-800 dark:text-white">Selecione o Serviço do Condomínio</h3>
-              <p className="text-[9px] text-slate-400">Serviços digitais totalmente integrados e certificados pelo AI Studio</p>
+              <p className="text-[9px] text-slate-600">Serviços digitais totalmente integrados e certificados pelo AI Studio</p>
             </div>
 
             {/* 10 Modules Beautiful Bento Grid Layout */}
@@ -3528,7 +3528,7 @@ export default function PWACondominoView({
                 </div>
                 <div>
                   <span className="font-extrabold text-slate-800 dark:text-slate-200 block">Dashboard</span>
-                  <span className="text-[8px] text-slate-400">Estado geral do prédio e resumo</span>
+                  <span className="text-[8px] text-slate-600">Estado geral do prédio e resumo</span>
                 </div>
               </button>
 
@@ -3545,7 +3545,7 @@ export default function PWACondominoView({
                   </div>
                   <div>
                     <span className="font-extrabold text-slate-800 dark:text-slate-200 block">Arquivo</span>
-                    <span className="text-[8px] text-slate-400">Arquivo digital de documentos e faturas</span>
+                    <span className="text-[8px] text-slate-600">Arquivo digital de documentos e faturas</span>
                   </div>
                 </button>
               )}
@@ -3561,7 +3561,7 @@ export default function PWACondominoView({
                 </div>
                 <div>
                   <span className="font-extrabold text-slate-800 dark:text-slate-200 block">Intervenções</span>
-                  <span className="text-[8px] text-slate-400">Reportar e seguir avarias</span>
+                  <span className="text-[8px] text-slate-600">Reportar e seguir avarias</span>
                 </div>
               </button>
 
@@ -3576,7 +3576,7 @@ export default function PWACondominoView({
                 </div>
                 <div>
                   <span className="font-extrabold text-slate-800 dark:text-slate-200 block">Obras</span>
-                  <span className="text-[8px] text-slate-400">Prazos e orçamentos</span>
+                  <span className="text-[8px] text-slate-600">Prazos e orçamentos</span>
                 </div>
               </button>
 
@@ -3591,7 +3591,7 @@ export default function PWACondominoView({
                 </div>
                 <div>
                   <span className="font-extrabold text-slate-800 dark:text-slate-200 block">Limpezas</span>
-                  <span className="text-[8px] text-slate-400">Placa virtual e relatórios</span>
+                  <span className="text-[8px] text-slate-600">Placa virtual e relatórios</span>
                 </div>
               </button>
 
@@ -3608,7 +3608,7 @@ export default function PWACondominoView({
                   </div>
                   <div>
                     <span className="font-extrabold text-slate-800 dark:text-slate-200 block">Financeiro</span>
-                    <span className="text-[8px] text-slate-400">IBAN, Quotas, Comprovativos IA</span>
+                    <span className="text-[8px] text-slate-600">IBAN, Quotas, Comprovativos IA</span>
                   </div>
                 </button>
               )}
@@ -3624,7 +3624,7 @@ export default function PWACondominoView({
                 </div>
                 <div>
                   <span className="font-extrabold text-slate-800 dark:text-slate-200 block">Regras do Prédio</span>
-                  <span className="text-[8px] text-slate-400">Silêncio e regulamentos comuns</span>
+                  <span className="text-[8px] text-slate-600">Silêncio e regulamentos comuns</span>
                 </div>
               </button>
 
@@ -3643,7 +3643,7 @@ export default function PWACondominoView({
                 </div>
                 <div>
                   <span className="font-extrabold text-slate-800 dark:text-slate-200 block">Sondagens</span>
-                  <span className="text-[8px] text-slate-400">Votações rápidas e questionários</span>
+                  <span className="text-[8px] text-slate-600">Votações rápidas e questionários</span>
                 </div>
               </button>
 
@@ -3658,7 +3658,7 @@ export default function PWACondominoView({
                 </div>
                 <div>
                   <span className="font-extrabold text-slate-800 dark:text-slate-200 block">Perfil</span>
-                  <span className="text-[8px] text-slate-400">Contactos e alterações de acesso</span>
+                  <span className="text-[8px] text-slate-600">Contactos e alterações de acesso</span>
                 </div>
               </button>
 
@@ -3683,11 +3683,11 @@ export default function PWACondominoView({
             <button onClick={() => alert("Reservas de Espaços Comuns")} className="flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white">
               <Clock className="h-3.5 w-3.5 text-[#1A1A1A]" /> <span className="text-[#1A1A1A] dark:text-slate-200">Reservar</span>
             </button>
-            <span className="text-slate-300">|</span>
+            <span className="text-slate-600">|</span>
             <button onClick={() => alert("Regras de Utilização Gerais")} className="flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white">
               <FileText className="h-3.5 w-3.5" /> <span>Regras</span>
             </button>
-            <span className="text-slate-300">|</span>
+            <span className="text-slate-600">|</span>
             <button onClick={() => alert("Agenda de Ocupação Atualizada")} className="flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white">
               <Clock className="h-3.5 w-3.5" /> <span>Agenda</span>
             </button>
@@ -3700,7 +3700,7 @@ export default function PWACondominoView({
             <button onClick={() => alert("Obras Ativas em Curso no Prédio")} className="flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white">
               <Wrench className="h-3.5 w-3.5 text-[#1A1A1A]" /> <span className="text-[#1A1A1A] dark:text-slate-200">Obras em Curso</span>
             </button>
-            <span className="text-slate-300">|</span>
+            <span className="text-slate-600">|</span>
             <button onClick={() => alert("Histórico de Obras Concluídas")} className="flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white">
               <FileText className="h-3.5 w-3.5" /> <span>Histórico</span>
             </button>
@@ -3713,7 +3713,7 @@ export default function PWACondominoView({
             <button onClick={() => alert("Sondagens Ativas para Votação")} className="flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white">
               <Vote className="h-3.5 w-3.5 text-[#1A1A1A]" /> <span className="text-[#1A1A1A] dark:text-slate-200">Ativas</span>
             </button>
-            <span className="text-slate-300">|</span>
+            <span className="text-slate-600">|</span>
             <button onClick={() => alert("Resultados das Sondagens Encerradas")} className="flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white">
               <FileText className="h-3.5 w-3.5" /> <span>Resultados</span>
             </button>
@@ -3726,11 +3726,11 @@ export default function PWACondominoView({
             <button onClick={() => setDocumentCategory("Pendentes")} className={`flex items-center space-x-1 ${documentCategory === 'Pendentes' ? 'text-[#1A1A1A] dark:text-white font-black' : 'hover:text-[#1A1A1A]'}`}>
               <Clock className="h-3.5 w-3.5" /> <span>Pendentes</span>
             </button>
-            <span className="text-slate-300">|</span>
+            <span className="text-slate-600">|</span>
             <button onClick={() => setDocumentCategory("Todos")} className={`flex items-center space-x-1 ${documentCategory === 'Todos' ? 'text-[#1A1A1A] dark:text-white font-black' : 'hover:text-[#1A1A1A]'}`}>
               <FileText className="h-3.5 w-3.5" /> <span>Todos</span>
             </button>
-            <span className="text-slate-300">|</span>
+            <span className="text-slate-600">|</span>
             <button onClick={() => setDocumentCategory("Biblioteca")} className={`flex items-center space-x-1 ${documentCategory === 'Biblioteca' ? 'text-[#1A1A1A] dark:text-white font-black' : 'hover:text-[#1A1A1A]'}`}>
               <Archive className="h-3.5 w-3.5" /> <span>Biblioteca Documental</span>
             </button>
@@ -3743,7 +3743,7 @@ export default function PWACondominoView({
             <button onClick={() => alert("Contacto Direto com a Administração")} className="flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white">
               <MessageSquare className="h-3.5 w-3.5 text-[#1A1A1A]" /> <span className="text-[#1A1A1A] dark:text-slate-200">Mensagens</span>
             </button>
-            <span className="text-slate-300">|</span>
+            <span className="text-slate-600">|</span>
             <button onClick={() => alert("Contactos de Emergência do Prédio")} className="flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white">
               <Smartphone className="h-3.5 w-3.5" /> <span>Emergência</span>
             </button>
@@ -3756,7 +3756,7 @@ export default function PWACondominoView({
             <button onClick={() => setQuotaState(quotaState === "pago" ? "todos" : "pago")} className={`flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white ${quotaState === "pago" ? "text-[#1A1A1A] dark:text-white font-black" : ""}`}>
               <CheckCircle className="h-3.5 w-3.5 text-[#1A1A1A]" /> <span className="text-[#1A1A1A] dark:text-slate-200">Quotas Liquidadas</span>
             </button>
-            <span className="text-slate-300">|</span>
+            <span className="text-slate-600">|</span>
             <button onClick={() => setQuotaState(quotaState === "atraso" ? "todos" : "atraso")} className={`flex items-center space-x-1 hover:text-[#1A1A1A] dark:hover:text-white ${quotaState === "atraso" ? "text-[#1A1A1A] dark:text-white font-black" : ""}`}>
               <AlertTriangle className="h-3.5 w-3.5" /> <span>Em Atraso</span>
             </button>
@@ -3815,9 +3815,9 @@ export default function PWACondominoView({
               <div className="p-4 overflow-y-auto space-y-4 flex-1">
                 {activePwaModal === "reportar_avaria" && (
                   <form onSubmit={(e) => { handleReportAvaria(e); setActivePwaModal(null); }} className="space-y-3">
-                    <p className="text-[10px] text-slate-300">Reporte problemas em espaços ou equipamentos comuns do prédio.</p>
+                    <p className="text-[10px] text-slate-600">Reporte problemas em espaços ou equipamentos comuns do prédio.</p>
                     <div className="space-y-1">
-                      <label className="font-extrabold uppercase text-[8px] text-slate-400 block">Equipamento / Área</label>
+                      <label className="font-extrabold uppercase text-[8px] text-slate-600 block">Equipamento / Área</label>
                       <select
                         value={newIntervEquipamento}
                         onChange={e => setNewIntervEquipamento(e.target.value)}
@@ -3832,7 +3832,7 @@ export default function PWACondominoView({
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <label className="font-extrabold uppercase text-[8px] text-slate-400 block">Descrição Detalhada</label>
+                      <label className="font-extrabold uppercase text-[8px] text-slate-600 block">Descrição Detalhada</label>
                       <textarea
                         required
                         rows={3}
@@ -3843,7 +3843,7 @@ export default function PWACondominoView({
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="font-extrabold uppercase text-[8px] text-slate-400 block">Fotografia de Evidência</label>
+                      <label className="font-extrabold uppercase text-[8px] text-slate-600 block">Fotografia de Evidência</label>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
@@ -3853,7 +3853,7 @@ export default function PWACondominoView({
                           <Camera className="h-3 w-3 text-emerald-400" />
                           <span>Tirar Foto (.WEBP)</span>
                         </button>
-                        <span className="text-[9px] text-slate-400 italic truncate max-w-[120px]">
+                        <span className="text-[9px] text-slate-600 italic truncate max-w-[120px]">
                           {newIntervPhotoName || "Nenhum ficheiro"}
                         </span>
                       </div>
@@ -3869,16 +3869,16 @@ export default function PWACondominoView({
 
                 {activePwaModal === "ver_intervencoes" && (
                   <div className="space-y-3">
-                    <p className="text-[10px] text-slate-300">Lista de intervenções e vistorias registadas no seu prédio:</p>
+                    <p className="text-[10px] text-slate-600">Lista de intervenções e vistorias registadas no seu prédio:</p>
                     <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
                       {ocorrenciasFracaoTodas.length === 0 && (
-                        <p className="text-slate-400 text-[10px] text-center py-6">Nenhuma avaria reportada até ao momento.</p>
+                        <p className="text-slate-600 text-[10px] text-center py-6">Nenhuma avaria reportada até ao momento.</p>
                       )}
                       {ocorrenciasFracaoTodas.map((interv: any) => (
                         <div key={interv.id_ocorr} className="bg-slate-800 border border-slate-800 p-3 rounded-xl space-y-1.5">
                           <div className="flex justify-between items-start">
                             <div>
-                              <span className="text-[8px] font-mono text-slate-400 font-extrabold">{formatDatePT(interv.data)}</span>
+                              <span className="text-[8px] font-mono text-slate-600 font-extrabold">{formatDatePT(interv.data)}</span>
                               <h4 className="font-extrabold text-white text-[11px]">{interv.categoria || "Outros"}</h4>
                             </div>
                             <span className={`px-1.5 py-0.5 rounded text-[7px] font-extrabold uppercase ${
@@ -3889,9 +3889,9 @@ export default function PWACondominoView({
                               {interv.estado}
                             </span>
                           </div>
-                          <p className="text-slate-300 leading-normal text-[10px]">"{interv.descricao}"</p>
-                          <div className="text-[8px] text-slate-400 border-t border-slate-800/60 pt-1 flex justify-between">
-                            <span>{interv.tecnico_atribuido ? <>Técnico: <strong className="text-slate-300">{interv.tecnico_atribuido}</strong></> : "Aguarda triagem"}</span>
+                          <p className="text-slate-600 leading-normal text-[10px]">"{interv.descricao}"</p>
+                          <div className="text-[8px] text-slate-600 border-t border-slate-800/60 pt-1 flex justify-between">
+                            <span>{interv.tecnico_atribuido ? <>Técnico: <strong className="text-slate-600">{interv.tecnico_atribuido}</strong></> : "Aguarda triagem"}</span>
                           </div>
                         </div>
                       ))}
@@ -3908,7 +3908,7 @@ export default function PWACondominoView({
                         <div className="py-4 space-y-2 flex flex-col items-center">
                           <RefreshCw className="h-6 w-6 text-emerald-400 animate-spin" />
                           <span className="font-bold text-slate-200">A processar comprovativo com IA...</span>
-                          <span className="text-[7px] font-mono text-slate-400">Extração ótica inteligente ativa</span>
+                          <span className="text-[7px] font-mono text-slate-600">Extração ótica inteligente ativa</span>
                         </div>
                       ) : comprovativoExtractedData ? (
                         <div className="text-left space-y-3">
@@ -3918,15 +3918,15 @@ export default function PWACondominoView({
                           </div>
                           <div className="bg-slate-800 p-2.5 rounded-lg border border-slate-800 space-y-1">
                             <div className="flex justify-between font-mono">
-                              <span className="text-slate-400 text-[8px]">VALOR EXTRAÍDO:</span>
+                              <span className="text-slate-600 text-[8px]">VALOR EXTRAÍDO:</span>
                               <strong className="text-white text-[11px]">{comprovativoExtractedData.valor.toFixed(2)} €</strong>
                             </div>
                             <div className="flex justify-between font-mono">
-                              <span className="text-slate-400 text-[8px]">REFERÊNCIA:</span>
+                              <span className="text-slate-600 text-[8px]">REFERÊNCIA:</span>
                               <strong className="text-indigo-400">{comprovativoExtractedData.referencia}</strong>
                             </div>
-                            <div className="text-slate-400 text-[8px] mt-1 border-t border-slate-800 pt-1 leading-normal">
-                              💡 <strong className="text-slate-300">{comprovativoExtractedData.sugestaoLancamento}</strong>
+                            <div className="text-slate-600 text-[8px] mt-1 border-t border-slate-800 pt-1 leading-normal">
+                              💡 <strong className="text-slate-600">{comprovativoExtractedData.sugestaoLancamento}</strong>
                             </div>
                           </div>
                           <div className="flex gap-2">
@@ -3935,7 +3935,7 @@ export default function PWACondominoView({
                                 setComprovativoUpload(null);
                                 setComprovativoExtractedData(null);
                               }}
-                              className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-bold"
+                              className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-600 rounded-lg font-bold"
                             >
                               Voltar a Enviar
                             </button>
@@ -3960,7 +3960,7 @@ export default function PWACondominoView({
                           >
                             Selecionar Comprovativo
                           </button>
-                          <p className="text-[8px] text-slate-400">Suporta PDFs bancários ou fotos do talão de multibanco</p>
+                          <p className="text-[8px] text-slate-600">Suporta PDFs bancários ou fotos do talão de multibanco</p>
                           <input 
                             id="pwa-popup-comprovativo" 
                             type="file" 
@@ -3981,7 +3981,7 @@ export default function PWACondominoView({
                     {/* IBAN do Prédio */}
                     <div className="bg-slate-800 p-3 rounded-xl border border-slate-800 space-y-1">
                       <div className="flex justify-between items-center">
-                        <span className="text-[8px] uppercase tracking-wider text-slate-400 font-extrabold">IBAN para Transferência</span>
+                        <span className="text-[8px] uppercase tracking-wider text-slate-600 font-extrabold">IBAN para Transferência</span>
                         <button
                           onClick={() => handleCopyToClipboard(ibanPredio, "IBAN")}
                           className="text-emerald-400 hover:underline font-bold text-[8px]"
@@ -3990,13 +3990,13 @@ export default function PWACondominoView({
                         </button>
                       </div>
                       <strong className="text-white block font-mono text-[10px] break-all">{ibanPredio}</strong>
-                      <span className="text-[8px] text-slate-400 block">Banco de Destino: {contaPrincipal?.banco || "Conta do Condomínio"}</span>
+                      <span className="text-[8px] text-slate-600 block">Banco de Destino: {contaPrincipal?.banco || "Conta do Condomínio"}</span>
                     </div>
 
                     {/* Referência Individual */}
                     <div className="bg-slate-800 p-3 rounded-xl border border-slate-800 space-y-1">
                       <div className="flex justify-between items-center">
-                        <span className="text-[8px] uppercase tracking-wider text-slate-400 font-extrabold">Referência da Fração</span>
+                        <span className="text-[8px] uppercase tracking-wider text-slate-600 font-extrabold">Referência da Fração</span>
                         <button
                           onClick={() => handleCopyToClipboard(fractionRef, "Referência")}
                           className="text-emerald-400 hover:underline font-bold text-[8px]"
@@ -4005,7 +4005,7 @@ export default function PWACondominoView({
                         </button>
                       </div>
                       <strong className="text-emerald-400 font-mono text-xs block tracking-widest">{fractionRef}</strong>
-                      <span className="text-[8px] text-slate-400 block">Identificador individual da Fração {condominoFracao?.fracao_nome || "—"}.</span>
+                      <span className="text-[8px] text-slate-600 block">Identificador individual da Fração {condominoFracao?.fracao_nome || "—"}.</span>
                     </div>
 
                     {/* Quota Extraordinária — só aparece se existir mesmo um aviso extraordinário pendente para esta fração */}
@@ -4015,16 +4015,16 @@ export default function PWACondominoView({
                         <div className="grid grid-cols-2 gap-2 text-[8px] leading-relaxed">
                           {contaExtra?.iban && (
                             <div>
-                              <span className="text-slate-400 block">IBAN da Conta Extra</span>
-                              <div className="flex items-center gap-1 font-mono text-slate-300">
+                              <span className="text-slate-600 block">IBAN da Conta Extra</span>
+                              <div className="flex items-center gap-1 font-mono text-slate-600">
                                 <span className="truncate max-w-[80px]">{contaExtra.iban}</span>
                                 <button onClick={() => handleCopyToClipboard(contaExtra.iban!, "IBAN da Conta Extra")} className="text-emerald-400 shrink-0">Copiar</button>
                               </div>
                             </div>
                           )}
                           <div>
-                            <span className="text-slate-400 block">Referência</span>
-                            <span className="font-mono text-slate-300">{fractionRefExtra}</span>
+                            <span className="text-slate-600 block">Referência</span>
+                            <span className="font-mono text-slate-600">{fractionRefExtra}</span>
                           </div>
                         </div>
                       </div>
@@ -4044,7 +4044,7 @@ export default function PWACondominoView({
                     <div className="flex-grow bg-slate-950/40 border border-slate-800 rounded-2xl p-3 space-y-2.5 overflow-y-auto min-h-[160px]">
                       {/* Admin greeting */}
                       <div className="p-2.5 bg-slate-800 rounded-2xl border border-slate-800 space-y-1 max-w-[85%]">
-                        <div className="flex justify-between font-bold text-slate-400 text-[8px]">
+                        <div className="flex justify-between font-bold text-slate-600 text-[8px]">
                           <span className="text-emerald-400 font-extrabold">🏢 Administração do Prédio</span>
                           <span>Hoje 16:15</span>
                         </div>
@@ -4109,7 +4109,7 @@ export default function PWACondominoView({
                                       />
                                     ))}
                                   </div>
-                                  <div className="flex justify-between text-[7.5px] font-mono text-slate-400">
+                                  <div className="flex justify-between text-[7.5px] font-mono text-slate-600">
                                     <span>{isPlaying ? "A reproduzir áudio..." : "Nota de voz"}</span>
                                     <span>0:04</span>
                                   </div>
@@ -4131,7 +4131,7 @@ export default function PWACondominoView({
                                 <File className="h-4 w-4 text-emerald-400 shrink-0" />
                                 <div className="truncate flex-1">
                                   <span className="text-[9px] font-bold text-white block truncate">{msg.replace("📎 ", "")}</span>
-                                  <span className="text-[7.5px] text-slate-400">Documento PDF/Anexo verificado</span>
+                                  <span className="text-[7.5px] text-slate-600">Documento PDF/Anexo verificado</span>
                                 </div>
                               </div>
                             ) : (
@@ -4196,7 +4196,7 @@ export default function PWACondominoView({
                     {isEmojiPickerOpen && (
                       <div className="absolute bottom-14 left-2 right-2 bg-slate-900 border border-slate-700 p-2.5 rounded-2xl shadow-2xl z-50 animate-fade-in">
                         <div className="flex justify-between items-center pb-1.5 mb-1.5 border-b border-slate-800">
-                          <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Selecionar Emoji</span>
+                          <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-600">Selecionar Emoji</span>
                           <button 
                             type="button" 
                             onClick={() => setIsEmojiPickerOpen(false)}
@@ -4227,7 +4227,7 @@ export default function PWACondominoView({
                     {isAttachmentMenuOpen && (
                       <div className="absolute bottom-14 left-2 bg-slate-900 border border-slate-700 p-2 rounded-2xl shadow-2xl z-50 animate-fade-in space-y-1 min-w-[190px]">
                         <div className="flex justify-between items-center pb-1 mb-1 border-b border-slate-800 px-1">
-                          <span className="text-[8.5px] font-extrabold uppercase tracking-wider text-slate-400">Anexar Ficheiro</span>
+                          <span className="text-[8.5px] font-extrabold uppercase tracking-wider text-slate-600">Anexar Ficheiro</span>
                           <button 
                             type="button" 
                             onClick={() => setIsAttachmentMenuOpen(false)}
@@ -4251,7 +4251,7 @@ export default function PWACondominoView({
                           </div>
                           <div>
                             <span className="font-bold text-[9.5px] block">Documento / PDF</span>
-                            <span className="text-[7.5px] text-slate-400">PDF, Word, Excel, TXT</span>
+                            <span className="text-[7.5px] text-slate-600">PDF, Word, Excel, TXT</span>
                           </div>
                         </button>
 
@@ -4269,7 +4269,7 @@ export default function PWACondominoView({
                           </div>
                           <div>
                             <span className="font-bold text-[9.5px] block">Tirar Fotografia (Câmara)</span>
-                            <span className="text-[7.5px] text-slate-400">Acesso à câmara móvel/PC</span>
+                            <span className="text-[7.5px] text-slate-600">Acesso à câmara móvel/PC</span>
                           </div>
                         </button>
 
@@ -4287,7 +4287,7 @@ export default function PWACondominoView({
                           </div>
                           <div>
                             <span className="font-bold text-[9.5px] block">Galeria de Fotos</span>
-                            <span className="text-[7.5px] text-slate-400">Compressão .WEBP imediata</span>
+                            <span className="text-[7.5px] text-slate-600">Compressão .WEBP imediata</span>
                           </div>
                         </button>
                       </div>
@@ -4358,7 +4358,7 @@ export default function PWACondominoView({
                         className={`p-1.5 rounded-xl cursor-pointer transition-colors shrink-0 ${
                           isAttachmentMenuOpen || chatPhotoWebp || chatDocAttachment
                             ? "bg-emerald-600 text-white shadow-xs"
-                            : "bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white"
+                            : "bg-slate-800 hover:bg-slate-700 text-slate-600 hover:text-white"
                         }`}
                         title="Anexar documento, fotografia ou aceder à câmara (Clip)"
                       >
@@ -4447,7 +4447,7 @@ export default function PWACondominoView({
                         <div key={idx} className="bg-slate-800 border border-slate-800 p-2.5 rounded-xl flex justify-between items-center gap-2">
                           <div className="space-y-1 truncate">
                             <h4 className="font-extrabold text-white text-[10.5px] truncate">{cont.servico}</h4>
-                            <span className="text-[8px] text-slate-400 block truncate">{cont.desc}</span>
+                            <span className="text-[8px] text-slate-600 block truncate">{cont.desc}</span>
                             <strong className="text-emerald-400 font-mono text-[9.5px]">{cont.num}</strong>
                           </div>
                           <button
@@ -4465,7 +4465,7 @@ export default function PWACondominoView({
                 {activePwaModal === "arquivo_completo" && (
                   <div className="space-y-3.5 text-[10px]">
                     <div className="relative">
-                      <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                      <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-600" />
                       <input 
                         type="text"
                         placeholder="Pesquisa inteligente de faturas, atas..."
@@ -4481,7 +4481,7 @@ export default function PWACondominoView({
                           key={cat}
                           onClick={() => setDocumentCategory(cat as any)}
                           className={`px-2.5 py-1 rounded-full cursor-pointer shrink-0 transition-colors ${
-                            documentCategory === cat ? "bg-emerald-500 text-slate-950 font-black" : "bg-slate-800 hover:bg-slate-700 text-slate-300"
+                            documentCategory === cat ? "bg-emerald-500 text-slate-950 font-black" : "bg-slate-800 hover:bg-slate-700 text-slate-600"
                           }`}
                         >
                           {cat}
@@ -4505,7 +4505,7 @@ export default function PWACondominoView({
                               <span className="text-base shrink-0">📄</span>
                               <div className="truncate">
                                 <span className="font-bold text-white block truncate text-[10.5px]">{doc.nome}</span>
-                                <span className="text-[8px] text-slate-400 font-mono uppercase">{doc.categoria || doc.tipo} • {doc.data_upload}</span>
+                                <span className="text-[8px] text-slate-600 font-mono uppercase">{doc.categoria || doc.tipo} • {doc.data_upload}</span>
                               </div>
                             </div>
                             <div className="flex gap-1 shrink-0 font-bold">
@@ -4514,7 +4514,7 @@ export default function PWACondominoView({
                                   setSelectedDocPreview(doc);
                                   alert(`A abrir visualizador de IA para: ${doc.nome}`);
                                 }}
-                                className="p-1 text-slate-400 hover:text-emerald-400 cursor-pointer"
+                                className="p-1 text-slate-600 hover:text-emerald-400 cursor-pointer"
                               >
                                 <Eye className="h-3.5 w-3.5" />
                               </button>
@@ -4525,7 +4525,7 @@ export default function PWACondominoView({
                                   doc.nome,
                                   [{ label: "Condomínio", value: predio.nome }, { label: "Data Upload", value: doc.data_upload }]
                                 )}
-                                className="p-1 text-slate-400 hover:text-emerald-400 cursor-pointer"
+                                className="p-1 text-slate-600 hover:text-emerald-400 cursor-pointer"
                               >
                                 <Download className="h-3.5 w-3.5" />
                               </button>
@@ -4548,12 +4548,12 @@ export default function PWACondominoView({
                         <div key={idx} className="bg-slate-800 border border-slate-800 p-3 rounded-xl space-y-2">
                           <div className="flex justify-between items-start">
                             <div>
-                              <span className="text-[8px] font-mono text-slate-400 font-extrabold">{ata.id} • {ata.data}</span>
+                              <span className="text-[8px] font-mono text-slate-600 font-extrabold">{ata.id} • {ata.data}</span>
                               <h4 className="font-extrabold text-white text-[10.5px]">{ata.nome}</h4>
                             </div>
                             <span className="px-1.5 py-0.5 rounded text-[7px] font-bold bg-amber-950 text-amber-400 border border-amber-900/30 uppercase">{ata.estado}</span>
                           </div>
-                          <p className="text-slate-400 leading-normal text-[9px]">Deliberações aprovadas: Orçamento da pintura das fachadas por votação maioritária qualificada.</p>
+                          <p className="text-slate-600 leading-normal text-[9px]">Deliberações aprovadas: Orçamento da pintura das fachadas por votação maioritária qualificada.</p>
                           <div className="flex gap-2 pt-1 border-t border-slate-800/60">
                             <button
                               onClick={() => generateAndDownloadPdf(
@@ -4585,7 +4585,7 @@ export default function PWACondominoView({
                     
                     <div className="space-y-2">
                       <div className="space-y-1">
-                        <label className="font-extrabold uppercase text-[8px] text-slate-400 block">Selecione o Espaço</label>
+                        <label className="font-extrabold uppercase text-[8px] text-slate-600 block">Selecione o Espaço</label>
                         <select
                           value={bookingSpace}
                           onChange={e => setBookingSpace(e.target.value)}
@@ -4598,7 +4598,7 @@ export default function PWACondominoView({
                       </div>
 
                       <div className="space-y-1">
-                        <label className="font-extrabold uppercase text-[8px] text-slate-400 block">Data da Reserva</label>
+                        <label className="font-extrabold uppercase text-[8px] text-slate-600 block">Data da Reserva</label>
                         <input
                           type="date"
                           value={bookingDate}
@@ -4608,7 +4608,7 @@ export default function PWACondominoView({
                       </div>
 
                       <div className="space-y-1">
-                        <label className="font-extrabold uppercase text-[8px] text-slate-400 block">Período Horário</label>
+                        <label className="font-extrabold uppercase text-[8px] text-slate-600 block">Período Horário</label>
                         <select
                           value={bookingTime}
                           onChange={e => setBookingTime(e.target.value)}
@@ -4621,7 +4621,7 @@ export default function PWACondominoView({
                       </div>
 
                       <div className="space-y-1">
-                        <label className="font-extrabold uppercase text-[8px] text-slate-400 block">Nº Estimado de Convidados</label>
+                        <label className="font-extrabold uppercase text-[8px] text-slate-600 block">Nº Estimado de Convidados</label>
                         <input
                           type="number"
                           min={1}
@@ -4660,10 +4660,10 @@ export default function PWACondominoView({
                       {limpezasHistorico.map(limp => (
                         <div key={limp.id} className="bg-slate-800 border border-slate-800 p-3 rounded-xl space-y-2">
                           <div className="flex justify-between font-bold">
-                            <span className="text-slate-400 uppercase text-[8px] font-mono">{limp.id} • {limp.data} às {limp.hora}</span>
+                            <span className="text-slate-600 uppercase text-[8px] font-mono">{limp.id} • {limp.data} às {limp.hora}</span>
                             <span className="text-emerald-400 flex items-center gap-1"><Check className="h-3 w-3" /> {limp.estado}</span>
                           </div>
-                          <div className="grid grid-cols-2 gap-2 text-[9px] leading-tight text-slate-300">
+                          <div className="grid grid-cols-2 gap-2 text-[9px] leading-tight text-slate-600">
                             <div>Técnico: <strong className="text-white block mt-0.5">{limp.tecnico}</strong></div>
                             <div>Anomalias: <strong className={`block mt-0.5 ${limp.avariaDetetada !== "Nenhuma" ? "text-rose-400 font-bold" : "text-emerald-400"}`}>{limp.avariaDetetada}</strong></div>
                           </div>
@@ -4680,7 +4680,7 @@ export default function PWACondominoView({
                     <div className="space-y-2.5">
                       {limpezasHistorico.slice(0, 2).map(limp => (
                         <div key={limp.id} className="bg-slate-800 border border-slate-800 p-3 rounded-xl space-y-2">
-                          <div className="flex justify-between text-slate-400 font-bold text-[8px]">
+                          <div className="flex justify-between text-slate-600 font-bold text-[8px]">
                             <span>{limp.id} • {limp.data}</span>
                             <span className="text-slate-700">Responsável: {limp.tecnico}</span>
                           </div>
@@ -4698,7 +4698,7 @@ export default function PWACondominoView({
                                   className="cursor-pointer"
                                 >
                                   <Star className={`h-4 w-4 ${
-                                    (cleaningRatings[limp.id] || 0) >= star ? "text-amber-400 fill-amber-400" : "text-slate-600 hover:text-slate-400"
+                                    (cleaningRatings[limp.id] || 0) >= star ? "text-amber-400 fill-amber-400" : "text-slate-600 hover:text-slate-600"
                                   }`} />
                                 </button>
                               ))}
@@ -4721,14 +4721,14 @@ export default function PWACondominoView({
                       const sondagemAtiva = sondagensFeed.find(s => s.estado === "ativa" && !jaVotouSondagem(s));
                       const sondagemVotada = sondagensFeed.find(s => s.estado === "ativa" && jaVotouSondagem(s));
                       if (!sondagemAtiva && !sondagemVotada) {
-                        return <p className="text-slate-400 text-center py-4">Sem sondagens ativas neste momento.</p>;
+                        return <p className="text-slate-600 text-center py-4">Sem sondagens ativas neste momento.</p>;
                       }
                       if (!sondagemAtiva) {
                         return (
                           <div className="bg-slate-800 border border-slate-800 p-3.5 rounded-xl flex flex-col items-center justify-center py-4 text-center">
                             <CheckCircle className="h-6 w-6 text-emerald-400 mb-2" />
                             <span className="font-extrabold text-white">Voto já registado nesta sondagem!</span>
-                            <span className="text-[8.5px] text-slate-400 mt-1">Obrigado pelo seu contributo para as decisões comunitárias.</span>
+                            <span className="text-[8.5px] text-slate-600 mt-1">Obrigado pelo seu contributo para as decisões comunitárias.</span>
                           </div>
                         );
                       }
@@ -4746,7 +4746,7 @@ export default function PWACondominoView({
                                 className="w-full text-left p-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 rounded-xl font-bold flex justify-between items-center transition-all cursor-pointer disabled:opacity-50"
                               >
                                 <span>{op}</span>
-                                <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                                <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
                               </button>
                             ))}
                           </div>
@@ -4761,7 +4761,7 @@ export default function PWACondominoView({
                     <p className="text-slate-700">Consulte os resultados reais das sondagens do condomínio:</p>
 
                     {sondagensFeed.length === 0 ? (
-                      <p className="text-slate-400 text-center py-4">Sem sondagens registadas ainda.</p>
+                      <p className="text-slate-600 text-center py-4">Sem sondagens registadas ainda.</p>
                     ) : (
                       sondagensFeed.map(s => {
                         const votos = s.votos || [];
@@ -4769,14 +4769,14 @@ export default function PWACondominoView({
                         return (
                           <div key={s.id_sondagem} className="bg-slate-800 border border-slate-800 p-3.5 rounded-xl space-y-3">
                             <div className="space-y-1">
-                              <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded border ${s.estado === "ativa" ? "bg-emerald-950 text-emerald-400 border-emerald-900/30" : "bg-slate-800 text-slate-400 border-slate-700"}`}>
+                              <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded border ${s.estado === "ativa" ? "bg-emerald-950 text-emerald-400 border-emerald-900/30" : "bg-slate-800 text-slate-600 border-slate-700"}`}>
                                 {s.estado === "ativa" ? "Deliberação Ativa" : "Encerrada"}
                               </span>
                               <h4 className="font-extrabold text-white text-[11px] mt-1">{s.pergunta}</h4>
                             </div>
 
                             {totalVotos === 0 ? (
-                              <p className="text-slate-400 text-[9px]">Ainda sem votos registados.</p>
+                              <p className="text-slate-600 text-[9px]">Ainda sem votos registados.</p>
                             ) : (
                               <div className="space-y-2.5 pt-1.5">
                                 {s.opcoes.map(op => {
@@ -4796,7 +4796,7 @@ export default function PWACondominoView({
                                 })}
                               </div>
                             )}
-                            <span className="text-[7.5px] text-slate-400 font-mono uppercase font-bold text-center block pt-1 border-t border-slate-800">Total de Votos: {totalVotos}</span>
+                            <span className="text-[7.5px] text-slate-600 font-mono uppercase font-bold text-center block pt-1 border-t border-slate-800">Total de Votos: {totalVotos}</span>
                           </div>
                         );
                       })
@@ -4810,7 +4810,7 @@ export default function PWACondominoView({
                     
                     <div className="space-y-3">
                       {obrasReais.length === 0 && (
-                        <p className="text-slate-400 text-[10px] text-center py-6">Nenhuma obra registada até ao momento.</p>
+                        <p className="text-slate-600 text-[10px] text-center py-6">Nenhuma obra registada até ao momento.</p>
                       )}
                       {obrasReais.map(obra => (
                         <div key={obra.id} className="bg-slate-800 border border-slate-800 p-3.5 rounded-xl space-y-2">
@@ -4825,10 +4825,10 @@ export default function PWACondominoView({
                             </div>
                             <span className="font-bold text-indigo-400 font-mono">{obra.custoTotal.toLocaleString("pt-PT")} €</span>
                           </div>
-                          <p className="text-slate-400 leading-relaxed text-[9.5px]">
+                          <p className="text-slate-600 leading-relaxed text-[9.5px]">
                             {obra.dataInicio ? `Início: ${formatDatePT(obra.dataInicio)}` : ""}{obra.dataFim ? ` • Fim: ${formatDatePT(obra.dataFim)}` : ""}
                           </p>
-                          <div className="pt-2 border-t border-slate-800 flex justify-between text-[8px] text-slate-400 font-bold">
+                          <div className="pt-2 border-t border-slate-800 flex justify-between text-[8px] text-slate-600 font-bold">
                             <span>{obra.fornecedorNome ? `Empreiteiro: ${obra.fornecedorNome}` : "Fornecedor por adjudicar"}</span>
                           </div>
                         </div>
@@ -4852,10 +4852,10 @@ export default function PWACondominoView({
                         <div key={idx} className="bg-slate-800 border border-slate-800 p-3 rounded-xl space-y-1.5">
                           <div className="flex justify-between font-mono">
                             <span className="text-emerald-400 font-black text-[11px]">Ano {item.ano}</span>
-                            <span className="text-slate-400">{item.custo}</span>
+                            <span className="text-slate-600">{item.custo}</span>
                           </div>
                           <h4 className="font-extrabold text-white text-[10.5px]">{item.obra}</h4>
-                          <div className="flex justify-between items-center text-[8px] pt-1 border-t border-slate-800/60 text-slate-400">
+                          <div className="flex justify-between items-center text-[8px] pt-1 border-t border-slate-800/60 text-slate-600">
                             <span>Estado: <strong className="text-slate-200">{item.status}</strong></span>
                             <span>Prioridade: <strong className={item.prioridade === "Alta" ? "text-rose-400" : item.prioridade === "Média" ? "text-amber-400" : "text-emerald-400"}>{item.prioridade}</strong></span>
                           </div>
@@ -4955,7 +4955,7 @@ export default function PWACondominoView({
                       <audio controls src={m.anexo_url} className="max-w-[220px] h-8" />
                     )}
                     <p className="leading-normal text-[10px]">{m.texto}</p>
-                    <div className={`text-[9px] text-right ${m.autor === "condomino" ? "text-emerald-100" : "text-slate-400"}`}>
+                    <div className={`text-[9px] text-right ${m.autor === "condomino" ? "text-emerald-100" : "text-slate-600"}`}>
                       {m.created_at ? new Date(m.created_at).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}
                     </div>
                   </div>
@@ -5077,7 +5077,7 @@ export default function PWACondominoView({
             
             <div className="space-y-1">
               <h4 className="font-extrabold text-sm uppercase tracking-wider text-emerald-400">A Registar Biometria</h4>
-              <p className="text-[10px] text-slate-400 leading-normal">
+              <p className="text-[10px] text-slate-600 leading-normal">
                 A efetuar varredura segura de sensor Face ID ou Touch ID...
               </p>
             </div>
@@ -5119,7 +5119,7 @@ export default function PWACondominoView({
               </button>
             </div>
 
-            <p className="text-[9.5px] text-slate-300 leading-normal">
+            <p className="text-[9.5px] text-slate-600 leading-normal">
               Utilize o dedo ou caneta stylus para desenhar a sua assinatura no quadro abaixo. A assinatura será autenticada e vinculada à fração <strong>{condominoFracao?.fracao_nome || "3º Esq."}</strong>.
             </p>
 
@@ -5147,7 +5147,7 @@ export default function PWACondominoView({
               <button
                 type="button"
                 onClick={clearPwaCanvas}
-                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-[10px] cursor-pointer"
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-600 font-bold rounded-xl text-[10px] cursor-pointer"
               >
                 Limpar Quadro
               </button>

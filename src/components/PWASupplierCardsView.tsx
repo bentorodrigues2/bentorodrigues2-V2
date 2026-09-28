@@ -341,7 +341,7 @@ export function PWASupplierCardsView({
           </div>
         </div>
         {onClose && (
-          <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800 cursor-pointer text-xs font-bold">
+          <button onClick={onClose} className="text-slate-600 hover:text-white p-1 rounded-lg bg-slate-800 cursor-pointer text-xs font-bold">
             ✕ Fechar
           </button>
         )}
@@ -354,7 +354,7 @@ export function PWASupplierCardsView({
           className={`flex-1 py-2.5 rounded-t-xl text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
             activeTab === "perfil"
               ? "bg-slate-900 text-emerald-400 border-t-2 border-emerald-500 shadow-inner"
-              : "text-slate-400 hover:text-slate-200"
+              : "text-slate-600 hover:text-slate-200"
           }`}
         >
           <span>👤</span>
@@ -365,7 +365,7 @@ export function PWASupplierCardsView({
           className={`flex-1 py-2.5 rounded-t-xl text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
             activeTab === "seguranca"
               ? "bg-slate-900 text-emerald-400 border-t-2 border-emerald-500 shadow-inner"
-              : "text-slate-400 hover:text-slate-200"
+              : "text-slate-600 hover:text-slate-200"
           }`}
         >
           <span>🔐</span>
@@ -376,7 +376,7 @@ export function PWASupplierCardsView({
           className={`flex-1 py-2.5 rounded-t-xl text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
             activeTab === "financeiro"
               ? "bg-slate-900 text-emerald-400 border-t-2 border-emerald-500 shadow-inner"
-              : "text-slate-400 hover:text-slate-200"
+              : "text-slate-600 hover:text-slate-200"
           }`}
         >
           <span>🧾</span>
@@ -404,7 +404,7 @@ export function PWASupplierCardsView({
                   )}
                 </div>
                 <div className="space-y-1 flex-1">
-                  <label className="block text-[10px] font-bold text-slate-300 uppercase">Fotografia / Logótipo (Formato WebP)</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase">Fotografia / Logótipo (Formato WebP)</label>
                   <label className="inline-block bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-[10px] cursor-pointer transition-colors">
                     <i className="fa-solid fa-upload mr-1"></i> Carregar & Converter em WebP
                     <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
@@ -415,39 +415,39 @@ export function PWASupplierCardsView({
 
               <div className="space-y-2">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Empresa / Fornecedor</label>
-                  <input type="text" value={myFornecedor.nome} disabled className="w-full bg-slate-900 border border-slate-800 p-2 rounded-lg text-slate-400 font-bold" />
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Empresa / Fornecedor</label>
+                  <input type="text" value={myFornecedor.nome} disabled className="w-full bg-slate-900 border border-slate-800 p-2 rounded-lg text-slate-600 font-bold" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">NIF Contribuinte</label>
-                    <input type="text" value={myFornecedor.nif} disabled className="w-full bg-slate-900 border border-slate-800 p-2 rounded-lg text-slate-400 font-mono" />
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">NIF Contribuinte</label>
+                    <input type="text" value={myFornecedor.nif} disabled className="w-full bg-slate-900 border border-slate-800 p-2 rounded-lg text-slate-600 font-mono" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Data de Nascimento</label>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Data de Nascimento</label>
                     <input type="date" value={dataNascimento} onChange={e => setDataNascimento(e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white font-mono focus:border-emerald-500 focus:outline-none" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">IBAN de Cobrança</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">IBAN de Cobrança</label>
                   <input type="text" value={iban} onChange={e => setIban(e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-emerald-400 font-mono font-bold focus:border-emerald-500 focus:outline-none" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">E-mail de Notificações</label>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">E-mail de Notificações</label>
                     <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white font-mono focus:border-emerald-500 focus:outline-none" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">Telemóvel Direto</label>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Telemóvel Direto</label>
                     <input type="text" value={telemovel} onChange={e => setTelemovel(e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white font-mono focus:border-emerald-500 focus:outline-none" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">Morada Fiscal / Operações</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Morada Fiscal / Operações</label>
                   <input type="text" value={morada} onChange={e => setMorada(e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white focus:border-emerald-500 focus:outline-none" />
                 </div>
               </div>
@@ -468,17 +468,17 @@ export function PWASupplierCardsView({
               </h3>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Palavra-passe Atual</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Palavra-passe Atual</label>
                 <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} placeholder="••••••••" className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white focus:border-emerald-500 focus:outline-none" />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">Nova Palavra-passe</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Nova Palavra-passe</label>
                   <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="••••••••" className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white focus:border-emerald-500 focus:outline-none" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">Confirmar Palavra-passe</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Confirmar Palavra-passe</label>
                   <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white focus:border-emerald-500 focus:outline-none" />
                 </div>
               </div>
@@ -501,7 +501,7 @@ export function PWASupplierCardsView({
                     onClick={handleAtivarPush}
                     disabled={ativandoPush || pushAtivo}
                     className={`px-3 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
-                      pushAtivo ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" : "bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700"
+                      pushAtivo ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" : "bg-slate-800 text-slate-600 border border-slate-700 hover:bg-slate-700"
                     }`}
                   >
                     {pushAtivo ? "✓ Ativas" : ativandoPush ? "A ativar..." : "Ativar"}
@@ -518,13 +518,13 @@ export function PWASupplierCardsView({
               <div className="flex items-center justify-between bg-slate-900 p-3 rounded-lg border border-slate-800">
                 <div>
                   <p className="font-bold text-white text-[11px]">Autenticação Biométrica (Touch ID / Face ID)</p>
-                  <p className="text-[9px] text-slate-400">Permite aceder rapidamente à PWA com biometria no telemóvel.</p>
+                  <p className="text-[9px] text-slate-600">Permite aceder rapidamente à PWA com biometria no telemóvel.</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setBiometriaAtiva(!biometriaAtiva)}
                   className={`px-3 py-1.5 rounded-lg font-bold text-[10px] transition-all cursor-pointer ${
-                    biometriaAtiva ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400"
+                    biometriaAtiva ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-600"
                   }`}
                 >
                   {biometriaAtiva ? "Ativo ✓" : "Inativo"}
@@ -542,7 +542,7 @@ export function PWASupplierCardsView({
               <button
                 onClick={() => setFinSubTab("ai_upload")}
                 className={`py-2 rounded-lg text-center transition-all cursor-pointer ${
-                  finSubTab === "ai_upload" ? "bg-emerald-600 text-white" : "text-slate-400 hover:text-white"
+                  finSubTab === "ai_upload" ? "bg-emerald-600 text-white" : "text-slate-600 hover:text-white"
                 }`}
               >
                 🤖 Reconhecimento AI (PDF/DOC/JPEG)
@@ -550,7 +550,7 @@ export function PWASupplierCardsView({
               <button
                 onClick={() => setFinSubTab("manual")}
                 className={`py-2 rounded-lg text-center transition-all cursor-pointer ${
-                  finSubTab === "manual" ? "bg-emerald-600 text-white" : "text-slate-400 hover:text-white"
+                  finSubTab === "manual" ? "bg-emerald-600 text-white" : "text-slate-600 hover:text-white"
                 }`}
               >
                 ✍️ Recibo Manual c/ Assinatura
@@ -564,7 +564,7 @@ export function PWASupplierCardsView({
                   <h3 className="font-bold text-emerald-400 text-xs uppercase flex items-center gap-2">
                     <i className="fa-solid fa-wand-magic-sparkles"></i> Enviar Recibo de Cobrança com Leitura IA
                   </h3>
-                  <p className="text-[10px] text-slate-400">Suporta ficheiros em formato PDF, DOC ou imagens JPEG. A IA lê e extrai automaticamente NIF, valor, mês, categoria e IBAN.</p>
+                  <p className="text-[10px] text-slate-600">Suporta ficheiros em formato PDF, DOC ou imagens JPEG. A IA lê e extrai automaticamente NIF, valor, mês, categoria e IBAN.</p>
                 </div>
 
                 <div className="border-2 border-dashed border-emerald-500/40 rounded-xl p-6 text-center space-y-3 bg-slate-900/50 hover:bg-slate-900 transition-colors">
@@ -599,30 +599,30 @@ export function PWASupplierCardsView({
                       <span className="font-bold text-emerald-400 uppercase text-[10px] flex items-center gap-1.5">
                         <i className="fa-solid fa-circle-check text-emerald-400"></i> Extração Concluída com Sucesso
                       </span>
-                      <span className="text-[10px] font-mono text-slate-400">{aiResult.data}</span>
+                      <span className="text-[10px] font-mono text-slate-600">{aiResult.data}</span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
                       <div className="bg-slate-950 p-2 rounded border border-slate-800">
-                        <span className="text-[9px] text-slate-400 block uppercase font-sans">NIF Emissor:</span>
+                        <span className="text-[9px] text-slate-600 block uppercase font-sans">NIF Emissor:</span>
                         <span className="text-white font-bold">{aiResult.nif}</span>
                       </div>
                       <div className="bg-slate-950 p-2 rounded border border-slate-800">
-                        <span className="text-[9px] text-slate-400 block uppercase font-sans">Valor Total (€):</span>
+                        <span className="text-[9px] text-slate-600 block uppercase font-sans">Valor Total (€):</span>
                         <span className="text-emerald-400 font-bold text-sm">{Number(aiResult.valor).toFixed(2)}€</span>
                       </div>
                       <div className="bg-slate-950 p-2 rounded border border-slate-800">
-                        <span className="text-[9px] text-slate-400 block uppercase font-sans">Mês / Ano:</span>
+                        <span className="text-[9px] text-slate-600 block uppercase font-sans">Mês / Ano:</span>
                         <span className="text-white font-bold">{aiResult.mes}</span>
                       </div>
                       <div className="bg-slate-950 p-2 rounded border border-slate-800">
-                        <span className="text-[9px] text-slate-400 block uppercase font-sans">Categoria:</span>
+                        <span className="text-[9px] text-slate-600 block uppercase font-sans">Categoria:</span>
                         <span className="text-white font-bold">{aiResult.categoria}</span>
                       </div>
                     </div>
 
                     <div className="bg-slate-950 p-2 rounded border border-slate-800 text-[10px] font-mono">
-                      <span className="text-[9px] text-slate-400 block uppercase font-sans">IBAN Extraído:</span>
+                      <span className="text-[9px] text-slate-600 block uppercase font-sans">IBAN Extraído:</span>
                       <span className="text-emerald-300 font-bold">{aiResult.iban}</span>
                     </div>
 
@@ -646,36 +646,36 @@ export function PWASupplierCardsView({
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">NIF Emissor</label>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">NIF Emissor</label>
                     <input type="text" value={reciboNif} onChange={e => setReciboNif(e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white font-mono focus:border-emerald-500 focus:outline-none" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Valor (€)</label>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Valor (€)</label>
                     <input type="text" value={reciboValor} onChange={e => setReciboValor(e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-emerald-400 font-mono font-bold focus:border-emerald-500 focus:outline-none" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Mês de Referência</label>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Mês de Referência</label>
                     <input type="text" value={reciboMes} onChange={e => setReciboMes(e.target.value)} placeholder="Ex: Julho/2026" className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white focus:border-emerald-500 focus:outline-none" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Categoria (Atribuída)</label>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Categoria (Atribuída)</label>
                     <input type="text" value={reciboCategoria} onChange={e => setReciboCategoria(e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-white focus:border-emerald-500 focus:outline-none font-bold" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">IBAN para Liquidação</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">IBAN para Liquidação</label>
                   <input type="text" value={reciboIban} onChange={e => setReciboIban(e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-emerald-400 font-mono focus:border-emerald-500 focus:outline-none" />
                 </div>
 
                 {/* Signature Canvas */}
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <label className="block text-[10px] font-bold text-slate-300 uppercase">Assinatura Eletrónica do Fornecedor *</label>
-                    <button type="button" onClick={clearCanvas} className="text-[10px] text-slate-400 hover:text-red-400 cursor-pointer">
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase">Assinatura Eletrónica do Fornecedor *</label>
+                    <button type="button" onClick={clearCanvas} className="text-[10px] text-slate-600 hover:text-red-400 cursor-pointer">
                       Limpar Assinatura
                     </button>
                   </div>
@@ -694,7 +694,7 @@ export function PWASupplierCardsView({
                       className="w-full h-[100px] cursor-crosshair bg-slate-50"
                     />
                     {!hasSignature && (
-                      <span className="absolute inset-0 flex items-center justify-center text-slate-400 text-[10px] pointer-events-none italic">
+                      <span className="absolute inset-0 flex items-center justify-center text-slate-600 text-[10px] pointer-events-none italic">
                         Desenhe a sua assinatura aqui com o dedo ou rato
                       </span>
                     )}

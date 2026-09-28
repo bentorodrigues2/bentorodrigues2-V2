@@ -91,7 +91,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
           <div>
-            <span className="text-[10px] text-slate-400 uppercase block font-bold">Total Equipamentos</span>
+            <span className="text-[10px] text-slate-600 uppercase block font-bold">Total Equipamentos</span>
             <span className="text-xl font-bold font-mono">{equipamentos.length}</span>
           </div>
           <div className="bg-blue-50 dark:bg-blue-950/40 p-2.5 rounded-lg text-blue-500">
@@ -101,7 +101,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
 
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
           <div>
-            <span className="text-[10px] text-slate-400 uppercase block font-bold">Estado Excelente</span>
+            <span className="text-[10px] text-slate-600 uppercase block font-bold">Estado Excelente</span>
             <span className="text-xl font-bold font-mono text-emerald-600">{equipamentos.filter(e => e.estado === "Excelente").length}</span>
           </div>
           <div className="bg-emerald-50 dark:bg-emerald-950/40 p-2.5 rounded-lg text-emerald-500">
@@ -111,7 +111,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
 
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
           <div>
-            <span className="text-[10px] text-slate-400 uppercase block font-bold">Em Monitorização</span>
+            <span className="text-[10px] text-slate-600 uppercase block font-bold">Em Monitorização</span>
             <span className="text-xl font-bold font-mono text-amber-600">{equipamentos.filter(e => e.estado === "Operacional").length}</span>
           </div>
           <div className="bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-lg text-amber-500">
@@ -121,7 +121,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
 
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
           <div>
-            <span className="text-[10px] text-slate-400 uppercase block font-bold">Manutenção / Crítico</span>
+            <span className="text-[10px] text-slate-600 uppercase block font-bold">Manutenção / Crítico</span>
             <span className="text-xl font-bold font-mono text-red-600">{equipamentos.filter(e => ["Necessita Manutenção", "Crítico"].includes(e.estado)).length}</span>
           </div>
           <div className="bg-red-50 dark:bg-red-950/40 p-2.5 rounded-lg text-red-500">
@@ -135,7 +135,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
         {/* Left column: Add customized equipment */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 h-fit">
           <div>
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1">
               <Plus className="h-4 w-4 text-emerald-500" />
               Adicionar Equipamento Personalizado
             </h3>
@@ -144,7 +144,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
 
           <form onSubmit={handleAddCustom} className="space-y-3.5">
             <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Nome do Equipamento / Modelo</label>
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nome do Equipamento / Modelo</label>
               <input
                 type="text"
                 value={nome}
@@ -156,7 +156,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Categoria Técnica</label>
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Categoria Técnica</label>
               <select
                 value={categoria}
                 onChange={e => setCategoria(e.target.value)}
@@ -170,7 +170,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Localização (Andar)</label>
+                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Localização (Andar)</label>
                 <select
                   value={andar}
                   onChange={e => setAndar(e.target.value)}
@@ -188,7 +188,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Estado de Conservação</label>
+                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Estado de Conservação</label>
                 <select
                   value={estado}
                   onChange={e => setEstado(e.target.value as any)}
@@ -203,7 +203,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Fabricante / Fornecedor</label>
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Fabricante / Fornecedor</label>
               <input
                 type="text"
                 value={fabricante}
@@ -214,7 +214,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Notas Técnicas / Observações</label>
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Notas Técnicas / Observações</label>
               <textarea
                 value={detalhes}
                 onChange={e => setDetalhes(e.target.value)}
@@ -240,7 +240,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
           {/* Planta / Schema visual do Edifício */}
           <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
             <div>
-              <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
                 <Building className="h-4 w-4 text-blue-500" />
                 Mapa Visual Técnico do Edifício
               </h3>
@@ -252,7 +252,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
               
               {/* Cobertura */}
               <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg flex justify-between items-center hover:border-slate-700 transition-colors">
-                <span className="font-bold text-slate-400">🏢 COBERTURA / TELHADO:</span>
+                <span className="font-bold text-slate-600">🏢 COBERTURA / TELHADO:</span>
                 <div className="flex gap-1.5 flex-wrap">
                   {equipamentos.filter(e => e.andar.toLowerCase().includes("cobertura") || e.andar.toLowerCase().includes("telhado")).map(e => (
                     <span key={e.id} className="bg-blue-500/10 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold" title={e.detalhes}>
@@ -267,7 +267,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
 
               {/* Pisos intermédios */}
               <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg flex justify-between items-center hover:border-slate-700 transition-colors">
-                <span className="font-bold text-slate-400">🏢 PISOS SUPERIORES (1º ao 3º):</span>
+                <span className="font-bold text-slate-600">🏢 PISOS SUPERIORES (1º ao 3º):</span>
                 <div className="flex gap-1.5 flex-wrap">
                   {equipamentos.filter(e => e.andar.includes("Piso 1") || e.andar.includes("Piso 2") || e.andar.includes("Piso 3") || e.andar.includes("Todos")).map(e => (
                     <span key={e.id} className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold" title={e.detalhes}>
@@ -279,7 +279,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
 
               {/* Piso 0 */}
               <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg flex justify-between items-center hover:border-slate-700 transition-colors">
-                <span className="font-bold text-slate-400">🏢 PISO 0 / ÁTRIO & LAZER:</span>
+                <span className="font-bold text-slate-600">🏢 PISO 0 / ÁTRIO & LAZER:</span>
                 <div className="flex gap-1.5 flex-wrap">
                   {equipamentos.filter(e => e.andar.includes("Piso 0") || e.andar.toLowerCase().includes("átrio")).map(e => (
                     <span key={e.id} className="bg-purple-500/10 text-purple-400 border border-purple-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold" title={e.detalhes}>
@@ -291,7 +291,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
 
               {/* Garagem & Subterrâneos */}
               <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg flex justify-between items-center hover:border-slate-700 transition-colors">
-                <span className="font-bold text-slate-400">🚗 SUBTERRÂNEOS (Piso -1 ao -2):</span>
+                <span className="font-bold text-slate-600">🚗 SUBTERRÂNEOS (Piso -1 ao -2):</span>
                 <div className="flex gap-1.5 flex-wrap">
                   {equipamentos.filter(e => e.andar.includes("-1") || e.andar.includes("-2") || e.andar.toLowerCase().includes("garagem")).map(e => (
                     <span key={e.id} className="bg-amber-500/10 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold" title={e.detalhes}>
@@ -303,7 +303,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
 
               {/* Exterior */}
               <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg flex justify-between items-center hover:border-slate-700 transition-colors">
-                <span className="font-bold text-slate-400">🌳 ÁREAS EXTERIORES & PISCINA:</span>
+                <span className="font-bold text-slate-600">🌳 ÁREAS EXTERIORES & PISCINA:</span>
                 <div className="flex gap-1.5 flex-wrap">
                   {equipamentos.filter(e => e.andar.toLowerCase().includes("exterior") || e.andar.toLowerCase().includes("jardim")).map(e => (
                     <span key={e.id} className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold" title={e.detalhes}>
@@ -318,7 +318,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
 
           {/* Equipment table list */}
           <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Listagem de Equipamentos Registados</h3>
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-600">Listagem de Equipamentos Registados</h3>
             
             <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
               {equipamentos.map(e => (
@@ -340,7 +340,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
                     <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">{e.nome}</h4>
                     <p className="text-[11px] text-slate-500 font-medium leading-tight">{e.detalhes}</p>
                     
-                    <div className="flex gap-3 text-[10px] text-slate-400 pt-1 font-semibold">
+                    <div className="flex gap-3 text-[10px] text-slate-600 pt-1 font-semibold">
                       <span>Piso: <strong className="text-slate-600 dark:text-slate-300">{e.andar}</strong></span>
                       <span>•</span>
                       <span>Fabricante: <strong className="text-slate-600 dark:text-slate-300">{e.fabricante || "N/A"}</strong></span>
@@ -351,7 +351,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
 
                   <button
                     onClick={() => handleRemove(e.id)}
-                    className="p-1.5 rounded-lg border bg-white dark:bg-slate-900 text-slate-400 hover:text-red-500 hover:border-red-200 shrink-0 self-end sm:self-center cursor-pointer shadow-sm"
+                    className="p-1.5 rounded-lg border bg-white dark:bg-slate-900 text-slate-600 hover:text-red-500 hover:border-red-200 shrink-0 self-end sm:self-center cursor-pointer shadow-sm"
                     title="Remover Equipamento"
                   >
                     <Trash2 className="h-4 w-4" />

@@ -662,12 +662,12 @@ export function GestaoSinistrosSeguros({
             <span className="p-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
               <ShieldCheck className="h-3.5 w-3.5" /> Gestão de Seguros & Sinistros
             </span>
-            <span className="text-xs text-slate-400 font-mono">Artigo 1429.º do Código Civil</span>
+            <span className="text-xs text-slate-600 font-mono">Artigo 1429.º do Código Civil</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
             Seguro Obrigatório de Incêndio & Gestão de Sinistros
           </h2>
-          <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+          <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
             Controlo rigoroso das apólices de seguro contra o risco de incêndio de cada fração e das partes comuns do edifício, com leitura OCR por IA, gestão de alertas de caducidade e acompanhamento de sinistros.
           </p>
         </div>
@@ -678,7 +678,7 @@ export function GestaoSinistrosSeguros({
               type="button"
               onClick={() => setActiveTab("apolices_fracoes")}
               className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer ${
-                activeTab === "apolices_fracoes" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-300 hover:text-white"
+                activeTab === "apolices_fracoes" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-600 hover:text-white"
               }`}
             >
               Apólices das Frações ({predioFracoes.length})
@@ -687,7 +687,7 @@ export function GestaoSinistrosSeguros({
               type="button"
               onClick={() => setActiveTab("sinistros")}
               className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer ${
-                activeTab === "sinistros" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-300 hover:text-white"
+                activeTab === "sinistros" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-600 hover:text-white"
               }`}
             >
               Sinistros Ativos ({sinistros.length})
@@ -696,7 +696,7 @@ export function GestaoSinistrosSeguros({
               type="button"
               onClick={() => setActiveTab("apolice_predio")}
               className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer ${
-                activeTab === "apolice_predio" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-300 hover:text-white"
+                activeTab === "apolice_predio" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-600 hover:text-white"
               }`}
             >
               Seguro Partes Comuns {apoliceEdificio ? "✓" : "•"}
@@ -767,7 +767,7 @@ export function GestaoSinistrosSeguros({
                 <Building2 className="h-5 w-5" />
               </div>
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Total de Frações</span>
+                <span className="text-[10px] uppercase font-bold text-slate-600 block">Total de Frações</span>
                 <span className="text-lg font-black text-slate-800 dark:text-white font-mono">{predioFracoes.length}</span>
               </div>
             </div>
@@ -797,7 +797,7 @@ export function GestaoSinistrosSeguros({
                 <Sparkles className="h-5 w-5" />
               </div>
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Conformidade Legal</span>
+                <span className="text-[10px] uppercase font-bold text-slate-600 block">Conformidade Legal</span>
                 <span className="text-lg font-black text-blue-600 dark:text-blue-400 font-mono">
                   {predioFracoes.length > 0 ? Math.round((fracoesValidas.length / predioFracoes.length) * 100) : 0}%
                 </span>
@@ -808,7 +808,7 @@ export function GestaoSinistrosSeguros({
           {/* Search & Filters */}
           <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="relative w-full sm:w-80">
-              <Search className="h-4 w-4 text-slate-400 absolute left-3 top-3" />
+              <Search className="h-4 w-4 text-slate-600 absolute left-3 top-3" />
               <input
                 type="text"
                 value={searchTerm}
@@ -841,7 +841,7 @@ export function GestaoSinistrosSeguros({
           {/* Fraction List */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
             {fracoesFiltradas.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 text-xs">
+              <div className="p-8 text-center text-slate-600 text-xs">
                 Nenhuma fração encontrada com os filtros selecionados.
               </div>
             ) : (
@@ -883,7 +883,7 @@ export function GestaoSinistrosSeguros({
                               • {fracao.proprietario?.nome || "Sem proprietário atribuído"}
                             </span>
                             {fracao.proprietario?.email && (
-                              <span className="text-[11px] text-slate-400 font-mono">
+                              <span className="text-[11px] text-slate-600 font-mono">
                                 ({fracao.proprietario.email})
                               </span>
                             )}
@@ -962,7 +962,7 @@ export function GestaoSinistrosSeguros({
                 <Flame className="h-4 w-4 text-amber-500" />
                 <span>Processos de Sinistro do Edifício</span>
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-600">
                 Registo e acompanhamento de sinistros (partes comuns ou frações), peritagens, estimativas de danos e indemnizações.
               </p>
             </div>
@@ -983,7 +983,7 @@ export function GestaoSinistrosSeguros({
                 <ShieldCheck className="h-8 w-8" />
               </div>
               <h4 className="font-bold text-base text-slate-800 dark:text-white">Nenhum sinistro em aberto</h4>
-              <p className="text-xs text-slate-400 max-w-md mx-auto">
+              <p className="text-xs text-slate-600 max-w-md mx-auto">
                 Não existem processos de sinistro ativos ou pendentes de peritagem no edifício. Pode registar uma nova ocorrência caso ocorra um dano por água, incêndio ou sinistro elétrico.
               </p>
               <button
@@ -1031,7 +1031,7 @@ export function GestaoSinistrosSeguros({
                       <button
                         type="button"
                         onClick={() => abrirModalSinistro(sinistro)}
-                        className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                        className="p-1.5 text-slate-600 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
                         title="Editar Sinistro"
                       >
                         <Edit3 className="h-4 w-4" />
@@ -1054,19 +1054,19 @@ export function GestaoSinistrosSeguros({
 
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-950 p-3.5 rounded-2xl text-xs font-mono">
                     <div>
-                      <span className="text-slate-400 text-[10px] block font-sans">Nº Processo Seguradora</span>
+                      <span className="text-slate-600 text-[10px] block font-sans">Nº Processo Seguradora</span>
                       <strong className="text-slate-800 dark:text-slate-200">{sinistro.num_processo_sinistro}</strong>
                     </div>
                     <div>
-                      <span className="text-slate-400 text-[10px] block font-sans">Seguradora / Apólice</span>
+                      <span className="text-slate-600 text-[10px] block font-sans">Seguradora / Apólice</span>
                       <span className="text-slate-700 dark:text-slate-300">{sinistro.seguradora} ({sinistro.num_apolice})</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 text-[10px] block font-sans">Peritagem</span>
+                      <span className="text-slate-600 text-[10px] block font-sans">Peritagem</span>
                       <span className="text-slate-700 dark:text-slate-300">{sinistro.perito_nome || "Aguardando perito"}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 text-[10px] block font-sans">Estimativa / Aprovado</span>
+                      <span className="text-slate-600 text-[10px] block font-sans">Estimativa / Aprovado</span>
                       <strong className="text-emerald-600 font-black">
                         {sinistro.valor_estimado_danos.toFixed(2)} €
                         {sinistro.valor_indemnizacao_aprovado ? ` • Ap.: ${sinistro.valor_indemnizacao_aprovado.toFixed(2)} €` : ""}
@@ -1075,7 +1075,7 @@ export function GestaoSinistrosSeguros({
                   </div>
 
                   {sinistro.observacoes && (
-                    <p className="text-[11px] text-slate-400 italic">
+                    <p className="text-[11px] text-slate-600 italic">
                       ℹ️ {sinistro.observacoes}
                     </p>
                   )}
@@ -1096,7 +1096,7 @@ export function GestaoSinistrosSeguros({
                 <h3 className="font-black text-sm text-slate-900 dark:text-white">
                   Apólice de Seguro das Partes Comuns (Multirriscos Condomínio)
                 </h3>
-                <span className="text-xs text-slate-400">Edifício: {predio.nome}</span>
+                <span className="text-xs text-slate-600">Edifício: {predio.nome}</span>
               </div>
             </div>
 
@@ -1158,7 +1158,7 @@ export function GestaoSinistrosSeguros({
             <div className="p-8 text-center space-y-3 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
               <ShieldAlert className="h-10 w-10 text-amber-500 mx-auto" />
               <h4 className="font-bold text-sm text-slate-800 dark:text-white">Nenhuma apólice de partes comuns associada</h4>
-              <p className="text-xs text-slate-400 max-w-md mx-auto">
+              <p className="text-xs text-slate-600 max-w-md mx-auto">
                 Ainda não foi carregada ou registada a apólice de seguro multirriscos para as áreas comuns deste edifício. Pode carregar o documento em PDF ou imagem para extração automática por IA ou preencher manualmente.
               </p>
               <button
@@ -1182,13 +1182,13 @@ export function GestaoSinistrosSeguros({
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold">Companhia de Seguros</span>
+                  <span className="text-[10px] text-slate-600 uppercase font-bold">Companhia de Seguros</span>
                   <h4 className="font-bold text-sm text-slate-800 dark:text-white">{apoliceEdificio.seguradora}</h4>
                   <span className="text-xs font-mono text-emerald-600 font-bold block">Apólice: {apoliceEdificio.apolice_numero}</span>
                 </div>
 
                 <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold">Capital Seguro Edifício</span>
+                  <span className="text-[10px] text-slate-600 uppercase font-bold">Capital Seguro Edifício</span>
                   <h4 className="font-black text-base text-slate-900 dark:text-white font-mono">
                     {apoliceEdificio.capital_seguro_edificio ? `${apoliceEdificio.capital_seguro_edificio.toLocaleString("pt-PT")} €` : "Não especificado"}
                   </h4>
@@ -1198,7 +1198,7 @@ export function GestaoSinistrosSeguros({
                 </div>
 
                 <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold">Validade da Apólice</span>
+                  <span className="text-[10px] text-slate-600 uppercase font-bold">Validade da Apólice</span>
                   <h4 className="font-black text-base text-emerald-600 font-mono">
                     {apoliceEdificio.apolice_validade}
                   </h4>
@@ -1210,7 +1210,7 @@ export function GestaoSinistrosSeguros({
 
               {apoliceEdificio.contacto_mediador && (
                 <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 text-xs flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-slate-400" />
+                  <Phone className="h-4 w-4 text-slate-600" />
                   <span className="text-slate-500">Mediador / Contacto:</span>
                   <strong className="text-slate-800 dark:text-slate-200">{apoliceEdificio.contacto_mediador}</strong>
                 </div>
@@ -1233,7 +1233,7 @@ export function GestaoSinistrosSeguros({
                   <h3 className="font-bold text-sm leading-tight">
                     Seguro de Incêndio • Fração {modalSeguroFracao.fracao.fracao_nome}
                   </h3>
-                  <span className="text-xs text-slate-300">
+                  <span className="text-xs text-slate-600">
                     Proprietário: {modalSeguroFracao.fracao.proprietario?.nome || "Vago"}
                   </span>
                 </div>
@@ -1241,7 +1241,7 @@ export function GestaoSinistrosSeguros({
               <button 
                 type="button" 
                 onClick={() => setModalSeguroFracao({ isOpen: false, fracao: null })} 
-                className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer"
+                className="text-slate-600 hover:text-white text-lg font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -1469,13 +1469,13 @@ export function GestaoSinistrosSeguros({
                   <h3 className="font-bold text-sm leading-tight">
                     Apólice das Partes Comuns (Multirriscos Edifício)
                   </h3>
-                  <span className="text-xs text-slate-300">{predio.nome}</span>
+                  <span className="text-xs text-slate-600">{predio.nome}</span>
                 </div>
               </div>
               <button 
                 type="button" 
                 onClick={() => setModalSeguroPartesComunsOpen(false)} 
-                className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer"
+                className="text-slate-600 hover:text-white text-lg font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -1664,13 +1664,13 @@ export function GestaoSinistrosSeguros({
                   <h3 className="font-bold text-sm leading-tight">
                     {modalSinistro.sinistroEditando ? "Editar Processo de Sinistro" : "Participar Novo Sinistro"}
                   </h3>
-                  <span className="text-xs text-slate-300">Condomínio {predio.nome}</span>
+                  <span className="text-xs text-slate-600">Condomínio {predio.nome}</span>
                 </div>
               </div>
               <button 
                 type="button" 
                 onClick={() => setModalSinistro({ isOpen: false, sinistroEditando: null })} 
-                className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer"
+                className="text-slate-600 hover:text-white text-lg font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -1955,13 +1955,13 @@ export function GestaoSinistrosSeguros({
                 <ShieldAlert className="h-5 w-5 text-red-400" />
                 <div>
                   <h3 className="font-bold text-sm leading-tight">Solicitação de Comprovativo de Seguro</h3>
-                  <span className="text-xs text-slate-300">Fração {notifModalFracao.fracao_nome} • {notifModalFracao.proprietario?.nome}</span>
+                  <span className="text-xs text-slate-600">Fração {notifModalFracao.fracao_nome} • {notifModalFracao.proprietario?.nome}</span>
                 </div>
               </div>
               <button 
                 type="button" 
                 onClick={() => setNotifModalFracao(null)} 
-                className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer"
+                className="text-slate-600 hover:text-white text-lg font-bold cursor-pointer"
               >
                 ✕
               </button>

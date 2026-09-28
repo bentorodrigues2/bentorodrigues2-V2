@@ -158,12 +158,12 @@ export function MuralDigitalReservas({
             <span className="p-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
               <Megaphone className="h-3.5 w-3.5" /> Comunidade & Convivência
             </span>
-            <span className="text-xs text-slate-400 font-mono">Portal do Condómino</span>
+            <span className="text-xs text-slate-600 font-mono">Portal do Condómino</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
             Mural Digital de Avisos & Reserva de Espaços Comuns
           </h2>
-          <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+          <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
             Canal transparente de comunicação interna para publicações da administração e agendamento de espaços comuns (Salão do Condomínio, Churrasqueira, Terraço).
           </p>
         </div>
@@ -174,7 +174,7 @@ export function MuralDigitalReservas({
               type="button"
               onClick={() => setActiveTab("mural")}
               className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer ${
-                activeTab === "mural" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-300 hover:text-white"
+                activeTab === "mural" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-600 hover:text-white"
               }`}
             >
               Mural de Avisos ({avisosMural.length})
@@ -183,7 +183,7 @@ export function MuralDigitalReservas({
               type="button"
               onClick={() => setActiveTab("reservas")}
               className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer ${
-                activeTab === "reservas" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-300 hover:text-white"
+                activeTab === "reservas" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-600 hover:text-white"
               }`}
             >
               Reserva de Espaços ({reservas.length})
@@ -242,7 +242,7 @@ export function MuralDigitalReservas({
                   )}
 
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 font-mono">
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-slate-600 font-mono">
                       <span>{aviso.data_publicacao}</span>
                       <span>•</span>
                       <span className="text-emerald-600 font-sans uppercase tracking-wider">{aviso.tipo}</span>
@@ -257,7 +257,7 @@ export function MuralDigitalReservas({
                   </p>
 
                   <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
-                    <span className="text-[11px] text-slate-400">Por: <strong>{aviso.autor}</strong></span>
+                    <span className="text-[11px] text-slate-600">Por: <strong>{aviso.autor}</strong></span>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
@@ -280,7 +280,7 @@ export function MuralDigitalReservas({
                           }
                         }}
                         title="Eliminar comunicado"
-                        className="p-1 text-slate-400 hover:text-red-600 transition-colors cursor-pointer rounded-md"
+                        className="p-1 text-slate-600 hover:text-red-600 transition-colors cursor-pointer rounded-md"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -302,7 +302,7 @@ export function MuralDigitalReservas({
                 <CalendarCheck className="h-5 w-5 text-emerald-500" />
                 <span>Gestão de Reservas de Espaços Comuns</span>
               </h3>
-              <p className="text-xs text-slate-400">Salão de Festas do Edifício, Churrasqueira & Terraço Comum.</p>
+              <p className="text-xs text-slate-600">Salão de Festas do Edifício, Churrasqueira & Terraço Comum.</p>
             </div>
 
             <button
@@ -341,7 +341,7 @@ export function MuralDigitalReservas({
                         <h4 className="font-black text-sm text-slate-900 dark:text-white">
                           {reserva.espaco.replace(/_/g, " ")} • Fração {reserva.fracao_nome} ({reserva.solicitante_nome})
                         </h4>
-                        <span className="text-xs text-slate-400 font-mono">
+                        <span className="text-xs text-slate-600 font-mono">
                           Data: {reserva.data_evento} • Horário: {reserva.hora_inicio} às {reserva.hora_fim}
                         </span>
                       </div>
@@ -357,15 +357,15 @@ export function MuralDigitalReservas({
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-950 p-3.5 rounded-2xl text-xs font-mono">
                     <div>
-                      <span className="text-slate-400 text-[10px] block font-sans">Finalidade do Evento</span>
+                      <span className="text-slate-600 text-[10px] block font-sans">Finalidade do Evento</span>
                       <strong className="text-slate-800 dark:text-slate-200">{reserva.finalidade}</strong>
                     </div>
                     <div>
-                      <span className="text-slate-400 text-[10px] block font-sans">Lotação Prevista</span>
+                      <span className="text-slate-600 text-[10px] block font-sans">Lotação Prevista</span>
                       <span className="text-slate-700 dark:text-slate-300">{reserva.num_pessoas_estimado} Pessoas</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 text-[10px] block font-sans">Caução de Limpeza</span>
+                      <span className="text-slate-600 text-[10px] block font-sans">Caução de Limpeza</span>
                       <strong className={reserva.caucao_paga ? "text-emerald-600 font-bold" : "text-amber-600 font-bold"}>
                         {reserva.valor_caucao?.toFixed(2) || "50.00"} € ({reserva.caucao_paga ? "Paga" : "Pendente"})
                       </strong>
@@ -397,7 +397,7 @@ export function MuralDigitalReservas({
                         }
                       }}
                       title="Cancelar Reserva"
-                      className="p-1.5 text-slate-400 hover:text-red-600 transition-colors cursor-pointer rounded-lg flex items-center gap-1 text-xs"
+                      className="p-1.5 text-slate-600 hover:text-red-600 transition-colors cursor-pointer rounded-lg flex items-center gap-1 text-xs"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">Cancelar</span>
@@ -419,7 +419,7 @@ export function MuralDigitalReservas({
               <button 
                 type="button" 
                 onClick={() => setNovoAvisoModalOpen(false)} 
-                className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer"
+                className="text-slate-600 hover:text-white text-lg font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -508,7 +508,7 @@ export function MuralDigitalReservas({
               <button 
                 type="button" 
                 onClick={() => setNovaReservaModalOpen(false)} 
-                className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer"
+                className="text-slate-600 hover:text-white text-lg font-bold cursor-pointer"
               >
                 ✕
               </button>

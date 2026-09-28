@@ -194,19 +194,19 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
               <span className="p-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
                 <Bot className="h-3.5 w-3.5" /> Leitor IA de Anexos & OCR
               </span>
-              <span className="text-xs text-slate-400 font-mono">Google AI Studio & Gemini Vision</span>
+              <span className="text-xs text-slate-600 font-mono">Google AI Studio & Gemini Vision</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
               Reconhecimento Automático de Faturas e Comprovativos
             </h2>
-            <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
+            <p className="text-xs text-slate-600 max-w-3xl leading-relaxed">
               Faça a triagem ótica e reconhecimento inteligente de faturas de fornecedores ou comprovativos de transferência recebidos por e-mail oficial (<code className="text-emerald-300 bg-emerald-950/80 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono">{predio.email || "oficial@condomanager.pt"}</code>). O Gemini extrai entidades, NIFs, datas e valores para lançamento imediato na contabilidade.
             </p>
           </div>
 
           {/* KPI Badge Oficial */}
           <div className="bg-slate-900/90 border border-emerald-500/30 p-3 px-5 rounded-2xl text-right shrink-0 shadow-lg">
-            <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Identificado</span>
+            <span className="text-[10px] uppercase font-bold text-slate-600 block">Total Identificado</span>
             <span className="text-base font-black font-mono text-emerald-400">{totalValor.toFixed(2)} €</span>
           </div>
         </div>
@@ -247,8 +247,8 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
               <div className="absolute top-0 right-0 w-8 h-8 bg-slate-200 dark:bg-slate-800 rounded-bl-xl border-b border-l border-slate-300 dark:border-slate-700 shadow-xs pointer-events-none"></div>
 
               {/* Folha Header */}
-              <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono pt-1">
-                <span className="flex items-center gap-1"><FileText className="h-3 w-3 text-slate-400" /> DOC-A4</span>
+              <div className="flex items-center justify-between text-[10px] text-slate-600 font-mono pt-1">
+                <span className="flex items-center gap-1"><FileText className="h-3 w-3 text-slate-600" /> DOC-A4</span>
                 <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">Digitalizar</span>
               </div>
 
@@ -290,7 +290,7 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
               </div>
 
               {/* Folha Footer Supported Formats */}
-              <div className="border-t border-slate-200 dark:border-slate-800/80 pt-2 text-[10px] text-slate-400 space-y-1">
+              <div className="border-t border-slate-200 dark:border-slate-800/80 pt-2 text-[10px] text-slate-600 space-y-1">
                 <div className="flex justify-center gap-1 font-mono font-bold text-[9px] text-slate-500 dark:text-slate-400">
                   <span className="bg-white dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">PDF</span>
                   <span className="bg-white dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">JPG</span>
@@ -349,7 +349,7 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
 
           {/* Caixa de Pesquisa */}
           <div className="relative">
-            <Search className="h-3.5 w-3.5 absolute left-3 top-2.5 text-slate-400" />
+            <Search className="h-3.5 w-3.5 absolute left-3 top-2.5 text-slate-600" />
             <input
               type="text"
               value={pesquisa}
@@ -362,7 +362,7 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
           {/* LISTA DINÂMICA DE DOCUMENTOS */}
           <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1 divide-y divide-slate-100 dark:divide-slate-800/60">
             {docsFiltrados.length === 0 ? (
-              <p className="text-xs text-slate-400 italic text-center py-8">Nenhum documento corresponde aos filtros.</p>
+              <p className="text-xs text-slate-600 italic text-center py-8">Nenhum documento corresponde aos filtros.</p>
             ) : (
               docsFiltrados.map((doc) => {
                 const isSelected = docSelecionado?.id === doc.id;
@@ -392,7 +392,7 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
                           <span className="font-bold text-slate-900 dark:text-white truncate block">
                             {doc.dadosExtraidos.fornecedorNome || doc.nomeArquivo}
                           </span>
-                          <span className="text-[11px] text-slate-400 truncate block">
+                          <span className="text-[11px] text-slate-600 truncate block">
                             {doc.nomeArquivo} • {doc.tamanho}
                           </span>
                         </div>
@@ -448,7 +448,7 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
                     }`}>
                       {docSelecionado.tipo === "COMPROVATIVO_TRANSFERENCIA" ? "Comprovativo" : "Fatura Fornecedor"}
                     </span>
-                    <span className="text-[11px] text-slate-400 font-mono">{docSelecionado.dadosExtraidos.numeroFatura || "S/N"}</span>
+                    <span className="text-[11px] text-slate-600 font-mono">{docSelecionado.dadosExtraidos.numeroFatura || "S/N"}</span>
                   </div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white mt-1">
                     {docSelecionado.dadosExtraidos.fornecedorNome || "Entidade Detetada"}
@@ -480,43 +480,43 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
               {/* Extracted Fields Grid */}
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="p-2.5 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Valor Total</span>
+                  <span className="text-[10px] text-slate-600 font-bold uppercase block">Valor Total</span>
                   <span className="text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">
                     {docSelecionado.dadosExtraidos.valorTotal.toFixed(2)} €
                   </span>
                   {docSelecionado.dadosExtraidos.valorIva && (
-                    <span className="text-[10px] text-slate-400 block">
+                    <span className="text-[10px] text-slate-600 block">
                       IVA ({docSelecionado.dadosExtraidos.taxaIva}): {docSelecionado.dadosExtraidos.valorIva.toFixed(2)}€
                     </span>
                   )}
                 </div>
 
                 <div className="p-2.5 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase block">NIF Entidade</span>
+                  <span className="text-[10px] text-slate-600 font-bold uppercase block">NIF Entidade</span>
                   <span className="font-bold font-mono text-slate-800 dark:text-slate-200">
                     {docSelecionado.dadosExtraidos.nif || "Não detetado"}
                   </span>
-                  <span className="text-[10px] text-slate-400 block">
+                  <span className="text-[10px] text-slate-600 block">
                     Doc: {docSelecionado.dadosExtraidos.numeroFatura || "—"}
                   </span>
                 </div>
 
                 <div className="p-2.5 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Rubrica</span>
+                  <span className="text-[10px] text-slate-600 font-bold uppercase block">Rubrica</span>
                   <span className="font-bold text-emerald-700 dark:text-emerald-400 truncate block">
                     {docSelecionado.dadosExtraidos.categoriaRubrica}
                   </span>
                 </div>
 
                 <div className="p-2.5 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Data / Vencimento</span>
+                  <span className="text-[10px] text-slate-600 font-bold uppercase block">Data / Vencimento</span>
                   <span className="font-mono text-slate-800 dark:text-slate-200 font-bold block">
                     {formatDatePT(docSelecionado.dadosExtraidos.dataDocumento || "")}
                   </span>
                 </div>
 
                 <div className="col-span-2 p-2.5 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase block">IBAN de Liquidação</span>
+                  <span className="text-[10px] text-slate-600 font-bold uppercase block">IBAN de Liquidação</span>
                   <span className="font-mono text-[11px] font-bold text-slate-800 dark:text-slate-200 truncate block">
                     {docSelecionado.dadosExtraidos.ibanDestino || "Não especificado"}
                   </span>
@@ -525,8 +525,8 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
 
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 text-slate-400 text-xs text-center space-y-2">
-              <FileText className="h-10 w-10 text-slate-300 dark:text-slate-700" />
+            <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 text-slate-600 text-xs text-center space-y-2">
+              <FileText className="h-10 w-10 text-slate-600 dark:text-slate-700" />
               <p>Selecione um documento da lista para visualizar a extração de dados fiscais.</p>
             </div>
           )}

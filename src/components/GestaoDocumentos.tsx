@@ -2172,7 +2172,7 @@ export function GestaoDocumentos({
             {busca && (
               <button
                 onClick={() => setBusca("")}
-                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-700 p-0.5"
+                className="absolute right-2.5 top-2.5 text-slate-600 hover:text-slate-700 p-0.5"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -2303,11 +2303,11 @@ export function GestaoDocumentos({
                       : "bg-slate-50 hover:bg-emerald-50 border-emerald-200 hover:border-emerald-400"
                   }`}
                 >
-                  <FolderOpen className={`h-6 w-6 mb-1 group-hover:scale-110 transition-transform ${isEmpty ? "text-slate-400 group-hover:text-emerald-600" : "text-emerald-600"}`} />
+                  <FolderOpen className={`h-6 w-6 mb-1 group-hover:scale-110 transition-transform ${isEmpty ? "text-slate-600 group-hover:text-emerald-600" : "text-emerald-600"}`} />
                   <span className="text-xs font-bold text-slate-800 line-clamp-1 group-hover:text-emerald-900">
                     {folderName}
                   </span>
-                  <span className={`text-[10px] mt-0.5 font-medium ${isEmpty ? "text-slate-400" : "text-slate-500"}`}>
+                  <span className={`text-[10px] mt-0.5 font-medium ${isEmpty ? "text-slate-600" : "text-slate-500"}`}>
                     {isEmpty ? "0 ficheiros (Pronta)" : `${folderDocs.length} ficheiro${folderDocs.length !== 1 ? "s" : ""}`}
                   </span>
                 </button>
@@ -2532,7 +2532,7 @@ export function GestaoDocumentos({
                             <FileText className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                             <div className="min-w-0">
                               <span className="font-bold text-slate-900 block truncate max-w-[320px] group-hover:text-emerald-700">{doc.nome}</span>
-                              <span className="text-[10px] text-slate-400">{doc.tamanho}{doc.arquivado ? " · ✓ Arquivado" : ""}</span>
+                              <span className="text-[10px] text-slate-600">{doc.tamanho}{doc.arquivado ? " · ✓ Arquivado" : ""}</span>
                             </div>
                           </div>
                         </td>
@@ -3215,7 +3215,7 @@ export function GestaoDocumentos({
 
                 <button
                   onClick={() => setActivePdfViewerDoc(null)}
-                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer ml-1"
+                  className="p-2 text-slate-600 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer ml-1"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -3225,7 +3225,7 @@ export function GestaoDocumentos({
             {/* Modal Embedded Preview Frame */}
             <div className="flex-1 bg-white relative p-2">
               {activePdfViewerDoc.caminho && !pdfViewerRealUrl ? (
-                <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs gap-2">
+                <div className="w-full h-full flex items-center justify-center text-slate-600 text-xs gap-2">
                   <RefreshCw className="h-4 w-4 animate-spin" />
                   <span>A carregar documento real do arquivo...</span>
                 </div>
@@ -3279,7 +3279,7 @@ export function GestaoDocumentos({
               </div>
               <button
                 onClick={() => setEditingDoc(null)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
+                className="p-1.5 text-slate-600 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -3287,7 +3287,7 @@ export function GestaoDocumentos({
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">Nome do Ficheiro / Título Documental</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Nome do Ficheiro / Título Documental</label>
                 <input
                   type="text"
                   value={editNome}
@@ -3297,7 +3297,7 @@ export function GestaoDocumentos({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">Categoria / Tipo de Documento</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Categoria / Tipo de Documento</label>
                 <input
                   type="text"
                   value={editCategoria}
@@ -3307,7 +3307,7 @@ export function GestaoDocumentos({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">Autor / Emitente Responsável</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Autor / Emitente Responsável</label>
                 <input
                   type="text"
                   value={editAutor}
@@ -3317,7 +3317,7 @@ export function GestaoDocumentos({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">Conteúdo / Descrição do Documento</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Conteúdo / Descrição do Documento</label>
                 <textarea
                   rows={4}
                   value={editDesc}
@@ -3327,7 +3327,7 @@ export function GestaoDocumentos({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">Nota da Alteração (fica registada no histórico de versões)</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Nota da Alteração (fica registada no histórico de versões)</label>
                 <input
                   type="text"
                   value={editNotaAlteracao}
@@ -3339,10 +3339,10 @@ export function GestaoDocumentos({
 
               {editingDoc.versoes && editingDoc.versoes.length > 0 && (
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-300 mb-1">Histórico de Versões</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Histórico de Versões</label>
                   <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
                     {[...editingDoc.versoes].reverse().map(v => (
-                      <div key={v.id_versao} className="bg-slate-800/70 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[10px] text-slate-300 flex justify-between items-center gap-2">
+                      <div key={v.id_versao} className="bg-slate-800/70 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[10px] text-slate-600 flex justify-between items-center gap-2">
                         <span className="font-mono text-emerald-400 font-bold shrink-0">v{v.versao}</span>
                         <span className="flex-1 truncate">{v.descricao_alteracao}</span>
                         <span className="text-slate-500 shrink-0">{v.carregado_por}</span>
@@ -3361,7 +3361,7 @@ export function GestaoDocumentos({
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
               <button
                 onClick={() => setEditingDoc(null)}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer"
+                className="bg-slate-800 hover:bg-slate-700 text-slate-600 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer"
               >
                 Cancelar
               </button>
@@ -3394,7 +3394,7 @@ export function GestaoDocumentos({
               </div>
               <button
                 onClick={() => setEmailModalDoc(null)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
+                className="p-1.5 text-slate-600 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -3406,7 +3406,7 @@ export function GestaoDocumentos({
                 <FileText className="h-4 w-4 text-emerald-400 shrink-0" />
                 <div className="min-w-0">
                   <span className="font-bold text-white block truncate">{emailModalDoc.nome}</span>
-                  <span className="text-[10px] text-slate-400">{emailModalDoc.tipo} • {emailModalDoc.tamanho || "PDF"}</span>
+                  <span className="text-[10px] text-slate-600">{emailModalDoc.tipo} • {emailModalDoc.tamanho || "PDF"}</span>
                 </div>
               </div>
               <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700 shrink-0">
@@ -3417,7 +3417,7 @@ export function GestaoDocumentos({
             <div className="space-y-3 text-xs">
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-[11px] font-bold text-slate-300">
+                  <label className="block text-[11px] font-bold text-slate-600">
                     Endereço de E-mail de Envio (Destinatário) *
                   </label>
                   <span className="text-[9px] text-emerald-400 font-medium">Obrigatório</span>
@@ -3431,7 +3431,7 @@ export function GestaoDocumentos({
                   required
                 />
                 <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                  <span className="text-[9px] text-slate-400">Atalhos rápidos:</span>
+                  <span className="text-[9px] text-slate-600">Atalhos rápidos:</span>
                   {[
                     { label: "Administração", email: predio.email_condominio || "administracao@condomanagerai.com" },
                     { label: "Empresa Gestora", email: "gestao@condomanager.ai" },
@@ -3441,7 +3441,7 @@ export function GestaoDocumentos({
                       key={sug.label}
                       type="button"
                       onClick={() => setEmailDestinatario(sug.email)}
-                      className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[9px] border border-slate-700 cursor-pointer"
+                      className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-600 text-[9px] border border-slate-700 cursor-pointer"
                     >
                       {sug.label}
                     </button>
@@ -3450,7 +3450,7 @@ export function GestaoDocumentos({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">Assunto do E-mail</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Assunto do E-mail</label>
                 <input
                   type="text"
                   value={emailAssunto}
@@ -3460,7 +3460,7 @@ export function GestaoDocumentos({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">Mensagem / Observações de Acompanhamento</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Mensagem / Observações de Acompanhamento</label>
                 <textarea
                   rows={3}
                   value={emailMensagem}
@@ -3477,7 +3477,7 @@ export function GestaoDocumentos({
                   onChange={e => setEmailEnviarCopiaAdmin(e.target.checked)}
                   className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-400"
                 />
-                <label htmlFor="emailCopiaAdmin" className="text-[10.5px] text-slate-300 cursor-pointer">
+                <label htmlFor="emailCopiaAdmin" className="text-[10.5px] text-slate-600 cursor-pointer">
                   Enviar cópia de confirmação para o e-mail da Administração
                 </label>
               </div>
@@ -3486,7 +3486,7 @@ export function GestaoDocumentos({
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
               <button
                 onClick={() => setEmailModalDoc(null)}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer"
+                className="bg-slate-800 hover:bg-slate-700 text-slate-600 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer"
               >
                 Cancelar
               </button>

@@ -34,7 +34,7 @@ export function ColumnFilterDropdown({ label, options, selected, onChange }: Col
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
-        className={`inline-flex items-center ml-1 cursor-pointer ${filtroAtivo ? "text-emerald-600" : "text-slate-400 hover:text-slate-600"}`}
+        className={`inline-flex items-center ml-1 cursor-pointer ${filtroAtivo ? "text-emerald-600" : "text-slate-600 hover:text-slate-600"}`}
         title={`Filtrar por ${label}`}
       >
         <Filter className="w-3 h-3" fill={filtroAtivo ? "currentColor" : "none"} />
@@ -55,13 +55,13 @@ export function ColumnFilterDropdown({ label, options, selected, onChange }: Col
             <button type="button" onClick={() => onChange(new Set(opcoesUnicas))} className="text-[10px] text-emerald-600 hover:underline cursor-pointer">
               Selecionar Tudo
             </button>
-            <button type="button" onClick={() => onChange(new Set())} className="text-[10px] text-slate-400 hover:underline cursor-pointer">
+            <button type="button" onClick={() => onChange(new Set())} className="text-[10px] text-slate-600 hover:underline cursor-pointer">
               Limpar
             </button>
           </div>
           <div className="max-h-48 overflow-y-auto space-y-0.5">
             {opcoesFiltradas.length === 0 ? (
-              <p className="text-[10px] text-slate-400 px-1 py-1">Sem resultados.</p>
+              <p className="text-[10px] text-slate-600 px-1 py-1">Sem resultados.</p>
             ) : (
               opcoesFiltradas.map((o) => (
                 <label key={o} className="flex items-center gap-1.5 px-1 py-0.5 rounded hover:bg-slate-50 cursor-pointer text-xs">

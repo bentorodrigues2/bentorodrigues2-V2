@@ -878,7 +878,7 @@ A Administração do Condomínio`
                     Modelos Editáveis
                   </span>
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+                <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
                   Minutas oficiais prontas para edição e exportação em PDF, com simulador completo de e-mails institucionais e anexos oficiais.
                 </p>
               </div>
@@ -921,7 +921,7 @@ A Administração do Condomínio`
             className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center space-x-2 cursor-pointer ${
               activeTab === "minutas_oficiais"
                 ? "bg-emerald-600 text-white shadow-md"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                : "text-slate-600 hover:text-white hover:bg-slate-800/60"
             }`}
           >
             <FileCode className="h-4 w-4 text-emerald-400" />
@@ -933,7 +933,7 @@ A Administração do Condomínio`
             className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center space-x-2 cursor-pointer ${
               activeTab === "simulador_emails"
                 ? "bg-emerald-600 text-white shadow-md"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                : "text-slate-600 hover:text-white hover:bg-slate-800/60"
             }`}
           >
             <Mail className="h-4 w-4 text-emerald-400" />
@@ -1065,7 +1065,7 @@ A Administração do Condomínio`
                         onChange={(e) => setAtaHora1(e.target.value)}
                         className="w-1/2 px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-center"
                       />
-                      <span className="text-slate-400">/</span>
+                      <span className="text-slate-600">/</span>
                       <input
                         type="text"
                         value={ataHora2}
@@ -1579,19 +1579,19 @@ A Administração do Condomínio`
               {activeEmailTemplate.canal === "MENSAGEM" ? (
                 <div className="space-y-1.5 text-xs border-b border-slate-200 dark:border-slate-800 pb-3">
                   <div className="flex items-center">
-                    <span className="w-24 font-bold text-slate-400 uppercase text-[10px]">Canal:</span>
+                    <span className="w-24 font-bold text-slate-600 uppercase text-[10px]">Canal:</span>
                     <span className="font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1">
                       <MessageSquare className="h-3.5 w-3.5" /> Mensagem Interna na Aplicação (Sem Envio de E-mail)
                     </span>
                   </div>
                   <div className="flex items-center">
-                    <span className="w-24 font-bold text-slate-400 uppercase text-[10px]">Destinatário:</span>
+                    <span className="w-24 font-bold text-slate-600 uppercase text-[10px]">Destinatário:</span>
                     <span className="font-bold text-slate-800 dark:text-white">
                       {fracoes[0]?.proprietario.nome || "José Carlos Guerra"} (Fração A - 1º Dto)
                     </span>
                   </div>
                   <div className="flex items-center">
-                    <span className="w-24 font-bold text-slate-400 uppercase text-[10px]">Solicitação:</span>
+                    <span className="w-24 font-bold text-slate-600 uppercase text-[10px]">Solicitação:</span>
                     <span className="font-extrabold text-slate-900 dark:text-white">
                       #TCK-2026-089 (Avaria no Portão da Garagem)
                     </span>
@@ -1600,19 +1600,19 @@ A Administração do Condomínio`
               ) : (
                 <div className="space-y-1.5 text-xs border-b border-slate-200 dark:border-slate-800 pb-3">
                   <div className="flex items-center">
-                    <span className="w-16 font-bold text-slate-400 uppercase text-[10px]">De:</span>
+                    <span className="w-16 font-bold text-slate-600 uppercase text-[10px]">De:</span>
                     <span className="font-bold text-slate-800 dark:text-white">
                       Condomínio {predio.nome || "Edifício Estrela da Barra"} &lt;{(predio as any).email_administracao || (predio as any).email || "administracao@condomanagerai.com"}&gt;
                     </span>
                   </div>
                   <div className="flex items-center">
-                    <span className="w-16 font-bold text-slate-400 uppercase text-[10px]">Para:</span>
+                    <span className="w-16 font-bold text-slate-600 uppercase text-[10px]">Para:</span>
                     <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
                       {testEmailRecipient}
                     </span>
                   </div>
                   <div className="flex items-center">
-                    <span className="w-16 font-bold text-slate-400 uppercase text-[10px]">Assunto:</span>
+                    <span className="w-16 font-bold text-slate-600 uppercase text-[10px]">Assunto:</span>
                     <span className="font-extrabold text-slate-900 dark:text-white">
                       {activeEmailTemplate.assunto}
                     </span>
@@ -1631,7 +1631,7 @@ A Administração do Condomínio`
                       <span className="text-xs font-bold text-slate-800 dark:text-white block">
                         Sem anexo de e-mail
                       </span>
-                      <span className="text-[9px] text-slate-400 uppercase font-semibold">Comunicação registada no histórico de mensagens da solicitação</span>
+                      <span className="text-[9px] text-slate-600 uppercase font-semibold">Comunicação registada no histórico de mensagens da solicitação</span>
                     </div>
                   </div>
                   <span className="text-[10px] font-bold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 px-2.5 py-1 rounded-lg">
@@ -1672,7 +1672,7 @@ A Administração do Condomínio`
                       <span className="text-xs font-bold text-slate-800 dark:text-white block">
                         {activeEmailTemplate.anexoSimulado}
                       </span>
-                      <span className="text-[9px] text-slate-400 uppercase font-semibold">Documento Oficial CondoManager AI</span>
+                      <span className="text-[9px] text-slate-600 uppercase font-semibold">Documento Oficial CondoManager AI</span>
                     </div>
                   </div>
                   <button

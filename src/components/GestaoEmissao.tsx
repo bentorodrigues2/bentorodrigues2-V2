@@ -658,7 +658,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                       </td>
                       <td className="p-2.5 text-right">
                         {loggedUser.role === "ADMIN" && (
-                          <button onClick={() => handleRemoverRevisaoOrcamento(r)} className="text-slate-400 hover:text-red-500 cursor-pointer" title="Eliminar">
+                          <button onClick={() => handleRemoverRevisaoOrcamento(r)} className="text-slate-600 hover:text-red-500 cursor-pointer" title="Eliminar">
                             <i className="fa-solid fa-trash-can"></i>
                           </button>
                         )}
@@ -760,7 +760,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
             <tbody>
               {predioAvisos.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-6 text-center text-slate-400 italic">
+                  <td colSpan={9} className="p-6 text-center text-slate-600 italic">
                     Nenhum aviso emitido para este condomínio.
                   </td>
                 </tr>
@@ -849,17 +849,17 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
             <div className="w-full md:w-80 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 p-5 flex flex-col justify-between overflow-y-auto shrink-0">
               <div className="space-y-4">
                 <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
-                  <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400">Editor do Documento</h3>
+                  <h3 className="font-bold text-xs uppercase tracking-wider text-slate-600">Editor do Documento</h3>
                   <button 
                     onClick={fecharModal}
-                    className="text-slate-400 hover:text-slate-600 text-sm cursor-pointer"
+                    className="text-slate-600 hover:text-slate-600 text-sm cursor-pointer"
                   >
                     <i className="fa-solid fa-xmark"></i>
                   </button>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Tipo de Documento</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Tipo de Documento</label>
                   <div className="grid grid-cols-2 gap-1.5 p-0.5 bg-slate-100 dark:bg-slate-900 rounded-lg">
                     <button
                       type="button"
@@ -887,7 +887,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                 </div>
 
                 <div className="space-y-1.5 pt-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Condómino / Proprietário</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Condómino / Proprietário</label>
                   <input
                     type="text"
                     value={customCondomino}
@@ -897,7 +897,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Descritivo Oficial</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Descritivo Oficial</label>
                   <textarea
                     rows={2}
                     value={customDescritivo}
@@ -908,7 +908,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
 
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Quota Mensal (€)</label>
+                    <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Quota Mensal (€)</label>
                     <MoneyInput
                       value={customQuotaMensal}
                       onChange={setCustomQuotaMensal}
@@ -916,7 +916,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Quota Extra (€)</label>
+                    <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Quota Extra (€)</label>
                     <MoneyInput
                       value={customQuotaExtra}
                       onChange={setCustomQuotaExtra}
@@ -926,7 +926,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">IBAN do Prédio</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">IBAN do Prédio</label>
                   <input
                     type="text"
                     value={customIban}
@@ -939,7 +939,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                 {docType === "RECIBO" ? (
                   <div className="grid grid-cols-1 gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Data de Liquidação</label>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Data de Liquidação</label>
                       <input
                         type="date"
                         value={customDataPagamento}
@@ -948,7 +948,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Nº Recibo</label>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Nº Recibo</label>
                       <input
                         type="text"
                         value={customNrecibo}
@@ -959,7 +959,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                   </div>
                 ) : (
                   <div className="space-y-1 border-t border-slate-100 dark:border-slate-800 pt-3">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Data Limite de Pagamento</label>
+                    <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Data Limite de Pagamento</label>
                     <input
                       type="date"
                       value={customDataLimite}
@@ -970,7 +970,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                 )}
 
                 <div className="space-y-1 pt-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Estado do Aviso Global</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Estado do Aviso Global</label>
                   <div className="flex space-x-1.5">
                     <button
                       type="button"
@@ -984,7 +984,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                       className={`flex-1 py-1 text-[9px] font-extrabold rounded-md border ${
                         selectedAviso.estado === "Pendente"
                           ? "bg-amber-100 text-amber-800 border-amber-300"
-                          : "bg-slate-50 border-slate-200 text-slate-400"
+                          : "bg-slate-50 border-slate-200 text-slate-600"
                       }`}
                     >
                       Marcar Pendente
@@ -1000,7 +1000,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                       className={`flex-1 py-1 text-[9px] font-extrabold rounded-md border disabled:cursor-not-allowed ${
                         selectedAviso.estado === "Pago"
                           ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                          : "bg-slate-50 border-slate-200 text-slate-400"
+                          : "bg-slate-50 border-slate-200 text-slate-600"
                       }`}
                     >
                       Marcar Pago
@@ -1095,11 +1095,11 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
             <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 p-6 md:p-10 overflow-y-auto flex flex-col items-center">
               <div className="w-full max-w-md bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 space-y-5">
                 <div className="text-center space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pré-visualização de Dados</p>
+                  <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Pré-visualização de Dados</p>
                   <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase">
                     {docType === "RECIBO" ? `Recibo Nº ${customNrecibo}` : "Nota de Cobrança"}
                   </h3>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[10px] text-slate-600">
                     Fração {fracoes.find(f => f.id_fracao === selectedAviso.id_fracao)?.fracao_nome || "?"} — {customCondomino}
                   </p>
                 </div>
@@ -1134,7 +1134,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                   <p><strong className="text-slate-700 dark:text-slate-300">IBAN:</strong> {customIban || escolherIbanContaPorTipo(contas, selectedAviso.tipo) || predio.iban || "—"}</p>
                 </div>
 
-                <p className="text-[9px] text-slate-400 text-center leading-relaxed">
+                <p className="text-[9px] text-slate-600 text-center leading-relaxed">
                   Isto é apenas um resumo dos dados. O documento oficial (PDF em A5, com marca de água, numeração e assinatura da administração) é gerado no botão "Descarregar PDF Oficial" ao lado.
                 </p>
               </div>
@@ -1150,13 +1150,13 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
           <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
             <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
               <h3 className="text-sm font-bold">Editar Aviso {editingAviso.id_aviso.toUpperCase()}</h3>
-              <button onClick={() => setEditingAviso(null)} className="text-slate-400 hover:text-white cursor-pointer">
+              <button onClick={() => setEditingAviso(null)} className="text-slate-600 hover:text-white cursor-pointer">
                 <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
             <div className="p-5 space-y-3 text-xs">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Descrição</label>
+                <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Descrição</label>
                 <input
                   type="text"
                   value={editDescricao}
@@ -1166,7 +1166,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Valor Total (€) *</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Valor Total (€) *</label>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -1176,7 +1176,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Fundo de Reserva (€)</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Fundo de Reserva (€)</label>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -1188,7 +1188,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Vencimento</label>
+                <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Vencimento</label>
                 <input
                   type="date"
                   value={editVencimento}

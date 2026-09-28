@@ -392,8 +392,8 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio }: AIAssi
                   </span>
                 </h3>
               </div>
-              <p className="text-xs text-slate-400 flex items-center gap-1.5">
-                <span className="text-slate-300 font-medium">{predio.nome || "Condomínio"}</span>
+              <p className="text-xs text-slate-600 flex items-center gap-1.5">
+                <span className="text-slate-600 font-medium">{predio.nome || "Condomínio"}</span>
                 <span>•</span>
                 <span>{loggedUser.nome} ({loggedUser.role})</span>
               </p>
@@ -418,7 +418,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio }: AIAssi
                   ]);
                 }
               }}
-              className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition-colors"
+              className="p-2 text-slate-600 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition-colors"
               title="Nova Conversa / Limpar"
             >
               <RefreshCw className="h-4 w-4" />
@@ -429,7 +429,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio }: AIAssi
               type="button"
               id="btn-gemini-fullscreen"
               onClick={() => setIsFullScreen(!isFullScreen)}
-              className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition-colors hidden sm:block"
+              className="p-2 text-slate-600 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition-colors hidden sm:block"
               title={isFullScreen ? "Reduzir Janela" : "Ecrã Inteiro"}
             >
               {isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
@@ -440,7 +440,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio }: AIAssi
               type="button"
               id="btn-gemini-close"
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-white hover:bg-red-500/20 hover:text-red-400 rounded-xl transition-colors"
+              className="p-2 text-slate-600 hover:text-white hover:bg-red-500/20 hover:text-red-400 rounded-xl transition-colors"
               title="Fechar Assistente"
             >
               <X className="h-5 w-5" />
@@ -580,7 +580,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio }: AIAssi
                     </div>
 
                     {/* Document preview snippet */}
-                    <div className="mt-3 max-h-56 overflow-y-auto bg-slate-900/90 border border-slate-800/80 rounded-lg p-3 text-xs font-mono text-slate-300 whitespace-pre-wrap leading-relaxed">
+                    <div className="mt-3 max-h-56 overflow-y-auto bg-slate-900/90 border border-slate-800/80 rounded-lg p-3 text-xs font-mono text-slate-600 whitespace-pre-wrap leading-relaxed">
                       {msg.documentArtifact.content}
                     </div>
                   </div>
@@ -617,7 +617,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio }: AIAssi
                     <button
                       type="button"
                       onClick={() => handleCopy(msg.text, msg.id)}
-                      className="hover:text-white flex items-center gap-1 text-slate-300 transition-colors"
+                      className="hover:text-white flex items-center gap-1 text-slate-600 transition-colors"
                       title="Copiar mensagem"
                     >
                       {copiedId === msg.id ? (
@@ -667,7 +667,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio }: AIAssi
           
           {/* Quick Prompt Chips */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-2 scrollbar-none">
-            <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider shrink-0 flex items-center gap-1 mr-1">
+            <span className="text-[11px] text-slate-600 font-bold uppercase tracking-wider shrink-0 flex items-center gap-1 mr-1">
               <Zap className="h-3 w-3 text-amber-400" /> Sugestões:
             </span>
             {quickPrompts.map((item, index) => (
@@ -676,7 +676,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio }: AIAssi
                 type="button"
                 onClick={() => handleSendMessage(item.prompt)}
                 disabled={isLoading}
-                className="text-xs bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white px-3 py-1.5 rounded-full border border-slate-800 hover:border-emerald-500/40 shrink-0 transition-all cursor-pointer"
+                className="text-xs bg-slate-900 hover:bg-slate-800 text-slate-600 hover:text-white px-3 py-1.5 rounded-full border border-slate-800 hover:border-emerald-500/40 shrink-0 transition-all cursor-pointer"
               >
                 {item.label}
               </button>
@@ -713,7 +713,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio }: AIAssi
                   <button
                     type="button"
                     onClick={() => setAttachedDocs((prev) => prev.filter((d) => d.id !== doc.id))}
-                    className="text-slate-400 hover:text-red-400 ml-1"
+                    className="text-slate-600 hover:text-red-400 ml-1"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -741,7 +741,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio }: AIAssi
                 type="button"
                 id="btn-gemini-attach-file"
                 onClick={() => fileInputRef.current?.click()}
-                className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+                className="p-2 text-slate-600 hover:text-emerald-400 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
                 title="Anexar Ficheiros, Documentos ou Fotografias"
               >
                 <Paperclip className="h-5 w-5" />

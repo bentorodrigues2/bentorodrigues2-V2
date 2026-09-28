@@ -19,7 +19,7 @@ export default function AuthModal({ onClose, onLoginSuccess, onOpenSecurityLogs 
       >
         <button
           onClick={onClose}
-          className="absolute -top-3 -right-3 z-10 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white h-8 w-8 rounded-full border border-slate-700 flex items-center justify-center font-bold text-sm shadow-lg transition-colors cursor-pointer"
+          className="absolute -top-3 -right-3 z-10 bg-slate-800 hover:bg-slate-700 text-slate-600 hover:text-white h-8 w-8 rounded-full border border-slate-700 flex items-center justify-center font-bold text-sm shadow-lg transition-colors cursor-pointer"
           title="Fechar Portal"
         >
           ✕

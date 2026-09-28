@@ -196,12 +196,12 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
             <span className="p-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
               <Wrench className="h-3.5 w-3.5" /> Agenda de Manutenção
             </span>
-            <span className="text-xs text-slate-400 font-mono">Plano Preventivo & Vistorias Obrigatórias</span>
+            <span className="text-xs text-slate-600 font-mono">Plano Preventivo & Vistorias Obrigatórias</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
             Plano Preventivo de Manutenção e Vistorias (Checklist do Edifício)
           </h2>
-          <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+          <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
             Calendário técnico com alarmes automáticos para inspeções obrigatórias por lei: Elevadores (DGEG/EMA), Limpeza de Chaminés e Condutas de Fumo, Recarga de Extintores (SCIE), Rede de Gás e Desinfeção de Cisternas.
           </p>
         </div>
@@ -212,7 +212,7 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
               type="button"
               onClick={() => setActiveTab("checklist")}
               className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer ${
-                activeTab === "checklist" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-300 hover:text-white"
+                activeTab === "checklist" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-600 hover:text-white"
               }`}
             >
               Checklist & Alarmes ({itensManutencao.length})
@@ -221,7 +221,7 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
               type="button"
               onClick={() => setActiveTab("calendario")}
               className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer ${
-                activeTab === "calendario" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-300 hover:text-white"
+                activeTab === "calendario" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-600 hover:text-white"
               }`}
             >
               Linha Temporal & Vencimentos
@@ -245,7 +245,7 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
               <AlertTriangle className="h-3 w-3" /> Vistorias Expiradas / Em Alerta
             </span>
             <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">{countAlertas}</div>
-            <span className="text-[10px] text-slate-400">Requer intervenção imediata da administração</span>
+            <span className="text-[10px] text-slate-600">Requer intervenção imediata da administração</span>
           </div>
           <div className="p-3 bg-red-100 dark:bg-red-900/40 text-red-600 rounded-2xl font-black">
             <Bell className="h-6 w-6" />
@@ -265,7 +265,7 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
               <Clock className="h-3 w-3" /> A Expirar em &lt;45 Dias
             </span>
             <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">{countAExpirar}</div>
-            <span className="text-[10px] text-slate-400">Agendamentos preventivos recomendados</span>
+            <span className="text-[10px] text-slate-600">Agendamentos preventivos recomendados</span>
           </div>
           <div className="p-3 bg-amber-100 dark:bg-amber-900/40 text-amber-600 rounded-2xl font-black">
             <Calendar className="h-6 w-6" />
@@ -285,7 +285,7 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
               <CheckCircle2 className="h-3 w-3" /> Em Plena Conformidade Legal
             </span>
             <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">{countConformes}</div>
-            <span className="text-[10px] text-slate-400">Certificados válidos e relatórios arquivados</span>
+            <span className="text-[10px] text-slate-600">Certificados válidos e relatórios arquivados</span>
           </div>
           <div className="p-3 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 rounded-2xl font-black">
             <ShieldCheck className="h-6 w-6" />
@@ -394,7 +394,7 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
                           <h3 className="font-black text-sm text-slate-900 dark:text-white leading-tight">
                             {item.titulo}
                           </h3>
-                          <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                          <span className="text-[10px] text-slate-600 font-mono block mt-0.5">
                             Base Legal: {item.base_legal_dgeg}
                           </span>
                         </div>
@@ -416,11 +416,11 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
                     <div className="bg-slate-50 dark:bg-slate-950/50 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-2 text-xs">
                       <div className="grid grid-cols-2 gap-2 text-[11px]">
                         <div>
-                          <span className="text-slate-400 text-[10px] font-bold block">Última Inspeção</span>
+                          <span className="text-slate-600 text-[10px] font-bold block">Última Inspeção</span>
                           <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{item.ultima_inspecao_data}</span>
                         </div>
                         <div>
-                          <span className="text-slate-400 text-[10px] font-bold block">Próxima Obrigatória</span>
+                          <span className="text-slate-600 text-[10px] font-bold block">Próxima Obrigatória</span>
                           <span className={`font-mono font-black ${isExpirado ? "text-red-600" : isAExpirar ? "text-amber-600" : "text-emerald-600"}`}>
                             {item.proxima_inspecao_data}
                           </span>
@@ -494,7 +494,7 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
               <Calendar className="h-4 w-4 text-emerald-500" />
               <span>Cronograma Anual de Vistorias & Manutenção Periódica</span>
             </h3>
-            <span className="text-xs text-slate-400 font-mono">Ano 2026 - 2027</span>
+            <span className="text-xs text-slate-600 font-mono">Ano 2026 - 2027</span>
           </div>
 
           <div className="space-y-3">
@@ -511,7 +511,7 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
                     </div>
                     <div>
                       <h4 className="font-bold text-sm text-slate-800 dark:text-white">{item.titulo}</h4>
-                      <p className="text-xs text-slate-400">{item.entidade_responsavel} • Periodicidade: {item.periodicidade_meses} meses</p>
+                      <p className="text-xs text-slate-600">{item.entidade_responsavel} • Periodicidade: {item.periodicidade_meses} meses</p>
                     </div>
                   </div>
 
@@ -547,13 +547,13 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
                 </div>
                 <div>
                   <h3 className="font-bold text-sm leading-tight">Registo de Vistoria / Inspeção Técnica</h3>
-                  <span className="text-xs text-slate-300">{selectedItemForAction.titulo}</span>
+                  <span className="text-xs text-slate-600">{selectedItemForAction.titulo}</span>
                 </div>
               </div>
               <button 
                 type="button" 
                 onClick={() => setActionModalType(null)} 
-                className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer"
+                className="text-slate-600 hover:text-white text-lg font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -637,7 +637,7 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
               <button
                 type="button"
                 onClick={() => setShowNovoItemModal(false)}
-                className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer"
+                className="text-slate-600 hover:text-white text-lg font-bold cursor-pointer"
               >
                 ✕
               </button>

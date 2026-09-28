@@ -199,12 +199,12 @@ export function EnviosProgramados({
             <span className="p-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
               <Calendar className="h-3.5 w-3.5" /> Agenda de Notificações
             </span>
-            <span className="text-xs text-slate-400 font-mono">Fila & Log de Envios Programados (Scheduler Dashboard)</span>
+            <span className="text-xs text-slate-600 font-mono">Fila & Log de Envios Programados (Scheduler Dashboard)</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
             Envios Programados
           </h2>
-          <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+          <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
             Painel visual onde a administração antevê a lista de e-mails e notificações Push PWA que serão gerados no <strong>Dia 25</strong> (Emissão de Notas de Cobrança com prazo até dia 08) e no <strong>Dia 5</strong> (Lembretes Cordiais de Vencimento) — uma pré-visualização calculada aqui, os valores reais de quota são só confirmados no dia do envio. O botão "Forçar Disparo" dispara mesmo a rotina real; o "Pausar" por item é só um filtro visual nesta pré-visualização e não impede o envio real desse dia.
           </p>
         </div>
@@ -225,7 +225,7 @@ export function EnviosProgramados({
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5">
         <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total em Fila</span>
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">Total em Fila</span>
             <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">{filaEnvios.length}</div>
             <span className="text-[10px] text-slate-500">Notificações preparadas</span>
           </div>
@@ -377,7 +377,7 @@ export function EnviosProgramados({
                       "{item.mensagem_preview}"
                     </p>
 
-                    <div className="flex items-center gap-3 pt-1 text-[11px] text-slate-400">
+                    <div className="flex items-center gap-3 pt-1 text-[11px] text-slate-600">
                       <span className="flex items-center gap-1"><Mail className="h-3 w-3 text-emerald-500" /> E-mail ({item.destinatario_email})</span>
                       <span className="flex items-center gap-1"><Smartphone className="h-3 w-3 text-blue-500" /> Push PWA Mobile</span>
                       {item.canais.pdf_anexo && (
@@ -439,7 +439,7 @@ export function EnviosProgramados({
               <button 
                 type="button" 
                 onClick={() => setPreviewItem(null)} 
-                className="text-slate-400 hover:text-white text-lg font-bold cursor-pointer"
+                className="text-slate-600 hover:text-white text-lg font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -448,23 +448,23 @@ export function EnviosProgramados({
             <div className="p-6 space-y-4 text-xs">
               <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-slate-400 font-bold">Destinatário:</span>
+                  <span className="text-slate-600 font-bold">Destinatário:</span>
                   <strong className="text-slate-900 dark:text-white">{previewItem.destinatario_nome} (Fração {previewItem.fracao_nome})</strong>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400 font-bold">E-mail:</span>
+                  <span className="text-slate-600 font-bold">E-mail:</span>
                   <span className="font-mono text-emerald-600 font-bold">{previewItem.destinatario_email}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400 font-bold">Ref. Individual Fração:</span>
+                  <span className="text-slate-600 font-bold">Ref. Individual Fração:</span>
                   <span className="font-mono font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{previewItem.referencia_fracao}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400 font-bold">Montante a Cobrar:</span>
+                  <span className="text-slate-600 font-bold">Montante a Cobrar:</span>
                   <strong className="font-mono text-slate-900 dark:text-white">{previewItem.montante.toFixed(2)} €</strong>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400 font-bold">Prazo Limite:</span>
+                  <span className="text-slate-600 font-bold">Prazo Limite:</span>
                   <strong className="text-slate-700 dark:text-slate-300">{previewItem.prazo_limite_texto}</strong>
                 </div>
               </div>

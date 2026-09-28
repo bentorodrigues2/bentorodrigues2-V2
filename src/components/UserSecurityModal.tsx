@@ -48,13 +48,13 @@ export const UserSecurityModal: React.FC<UserSecurityModalProps> = ({
                   {loggedUser.role}
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400">{loggedUser.email}</p>
+              <p className="text-[10px] text-slate-600">{loggedUser.email}</p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 text-slate-600 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -90,7 +90,7 @@ export const UserSecurityModal: React.FC<UserSecurityModalProps> = ({
 
           {/* Submenu Expansível de Segurança */}
           <div>
-            <h4 className="text-[9.5px] font-extrabold uppercase tracking-widest text-slate-400 mb-2">
+            <h4 className="text-[9.5px] font-extrabold uppercase tracking-widest text-slate-600 mb-2">
               Configurações & Submenu de Segurança
             </h4>
             <UserSecuritySubmenu

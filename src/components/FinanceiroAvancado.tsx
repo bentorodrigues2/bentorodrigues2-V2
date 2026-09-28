@@ -768,12 +768,12 @@ export function FinanceiroAvancado({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-800 dark:text-white">Partilha Direta por Email</h3>
-                  <p className="text-[10px] text-slate-400">Documento: {emailModal.docTitle}</p>
+                  <p className="text-[10px] text-slate-600">Documento: {emailModal.docTitle}</p>
                 </div>
               </div>
               <button 
                 onClick={() => setEmailModal(prev => ({ ...prev, isOpen: false }))}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+                className="text-slate-600 hover:text-slate-600 dark:hover:text-white transition-colors"
               >
                 <i className="fa-solid fa-xmark text-lg"></i>
               </button>
@@ -781,7 +781,7 @@ export function FinanceiroAvancado({
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Destinatário (Email do Condómino)</label>
+                <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Destinatário (Email do Condómino)</label>
                 <input 
                   type="email" 
                   value={emailModal.recipient} 
@@ -790,7 +790,7 @@ export function FinanceiroAvancado({
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Assunto do Email</label>
+                <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Assunto do Email</label>
                 <input 
                   type="text" 
                   value={emailModal.subject} 
@@ -799,7 +799,7 @@ export function FinanceiroAvancado({
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Mensagem Anexa e Pré-visualização do Documento</label>
+                <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Mensagem Anexa e Pré-visualização do Documento</label>
                 <textarea 
                   rows={5}
                   value={emailModal.bodyText}
@@ -871,7 +871,7 @@ export function FinanceiroAvancado({
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-slate-400">Selecionar Condómino / Fração:</span>
+                <span className="text-[11px] font-bold text-slate-600">Selecionar Condómino / Fração:</span>
                 <select
                   value={selectedFracaoId}
                   onChange={e => setSelectedFracaoId(e.target.value)}
@@ -889,14 +889,14 @@ export function FinanceiroAvancado({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               {/* Left Column: Editable Receipt Config */}
               <div className="lg:col-span-5 space-y-4 bg-slate-50 dark:bg-slate-900/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-800">
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-2">
                   <i className="fa-solid fa-pen-to-square text-emerald-500"></i>
                   <span>Dados do Recibo (100% Editável)</span>
                 </h3>
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">N.º do Recibo</label>
+                    <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">N.º do Recibo</label>
                     <input
                       type="text"
                       value={reciboNum}
@@ -905,7 +905,7 @@ export function FinanceiroAvancado({
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Data de Emissão</label>
+                    <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Data de Emissão</label>
                     <input
                       type="text"
                       value={reciboData}
@@ -919,7 +919,7 @@ export function FinanceiroAvancado({
                   <span className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider">Discriminação das Quotas (€)</span>
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div>
-                      <label className="block text-[9px] font-bold text-slate-400 mb-0.5">Quota Mensal (€)</label>
+                      <label className="block text-[9px] font-bold text-slate-600 mb-0.5">Quota Mensal (€)</label>
                       <input
                         type="text"
                         value={reciboQuotaMensal}
@@ -928,7 +928,7 @@ export function FinanceiroAvancado({
                       />
                     </div>
                     <div>
-                      <label className="block text-[9px] font-bold text-slate-400 mb-0.5">Fundo Reserva (€)</label>
+                      <label className="block text-[9px] font-bold text-slate-600 mb-0.5">Fundo Reserva (€)</label>
                       <input
                         type="text"
                         value={reciboFundoReserva}
@@ -937,7 +937,7 @@ export function FinanceiroAvancado({
                       />
                     </div>
                     <div>
-                      <label className="block text-[9px] font-bold text-slate-400 mb-0.5">Quota Extra (€)</label>
+                      <label className="block text-[9px] font-bold text-slate-600 mb-0.5">Quota Extra (€)</label>
                       <input
                         type="text"
                         value={reciboQuotaExtra}
@@ -954,7 +954,7 @@ export function FinanceiroAvancado({
 
                 <div className="grid grid-cols-1 gap-3 text-xs">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Método de Pagamento</label>
+                    <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Método de Pagamento</label>
                     <select
                       value={reciboMetodo}
                       onChange={e => setReciboMetodo(e.target.value)}
@@ -968,7 +968,7 @@ export function FinanceiroAvancado({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Conta Bancária a Creditar *</label>
+                    <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Conta Bancária a Creditar *</label>
                     <select
                       value={reciboContaId}
                       onChange={e => setReciboContaId(e.target.value)}
@@ -983,7 +983,7 @@ export function FinanceiroAvancado({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Período / Referência de Quotas</label>
+                  <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Período / Referência de Quotas</label>
                   <input
                     type="text"
                     value={reciboReferencia}
@@ -993,7 +993,7 @@ export function FinanceiroAvancado({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Observações e Notas</label>
+                  <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Observações e Notas</label>
                   <textarea
                     rows={2}
                     value={reciboObs}
@@ -1003,7 +1003,7 @@ export function FinanceiroAvancado({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Assinatura no Recibo</label>
+                  <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Assinatura no Recibo</label>
                   <input
                     type="text"
                     value={reciboAssinatura}
@@ -1130,7 +1130,7 @@ export function FinanceiroAvancado({
                           className="font-mono text-[11px] font-black text-white bg-transparent focus:outline-none w-28"
                         />
                       </div>
-                      <div className="text-[9.5px] text-slate-300 mt-0.5">
+                      <div className="text-[9.5px] text-slate-600 mt-0.5">
                         Data de Pagamento: <input 
                           type="text" 
                           value={reciboData} 
@@ -1138,7 +1138,7 @@ export function FinanceiroAvancado({
                           className="w-24 bg-transparent text-slate-200 font-semibold focus:outline-none"
                         />
                       </div>
-                      <div className="text-[8.5px] text-slate-400 mt-0.5 truncate max-w-[260px]">
+                      <div className="text-[8.5px] text-slate-600 mt-0.5 truncate max-w-[260px]">
                         Nºs Movimentos: MOV-2026-QM-{reciboNum}, MOV-2026-FR-{reciboNum}...
                       </div>
                     </div>
@@ -1216,7 +1216,7 @@ export function FinanceiroAvancado({
 
                   {/* Signatures & Authenticity Footer */}
                   <div className="pt-4 flex justify-between items-end text-xs relative z-10">
-                    <div className="text-slate-400 text-[8.5px]">
+                    <div className="text-slate-600 text-[8.5px]">
                       Emitido via CondoManager AI • Documento nº {reciboNum} • Autenticidade Digital Garantida
                     </div>
                     <div className="text-center min-w-[240px]">
@@ -1265,14 +1265,14 @@ export function FinanceiroAvancado({
                     <i className={`fa-solid ${actionType === "DEVOLVER" ? "fa-hand-holding-dollar text-emerald-500" : "fa-gavel text-red-500"}`}></i>
                     <span>{actionType === "DEVOLVER" ? "Devolução de Caução" : "Retenção de Caução por Danos"}</span>
                   </h3>
-                  <button onClick={() => { setSelectedCaucaoId(null); setActionType(null); }} className="text-slate-400 hover:text-slate-600">
+                  <button onClick={() => { setSelectedCaucaoId(null); setActionType(null); }} className="text-slate-600 hover:text-slate-600">
                     <i className="fa-solid fa-xmark"></i>
                   </button>
                 </div>
 
                 <div className="space-y-3 text-xs">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Valor do Montante (€)</label>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Valor do Montante (€)</label>
                     <input
                       type="text"
                       inputMode="decimal"
@@ -1282,7 +1282,7 @@ export function FinanceiroAvancado({
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Data da Operação</label>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Data da Operação</label>
                     <input
                       type="date"
                       value={actionData}
@@ -1292,7 +1292,7 @@ export function FinanceiroAvancado({
                   </div>
                   {actionType === "DEVOLVER" ? (
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Comprovativo / Ref. Devolução</label>
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Comprovativo / Ref. Devolução</label>
                       <input
                         type="text"
                         placeholder="Ex: TRF-DEV-992120"
@@ -1303,7 +1303,7 @@ export function FinanceiroAvancado({
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Justificação dos Danos / Penalização *</label>
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Justificação dos Danos / Penalização *</label>
                       <textarea
                         rows={3}
                         placeholder="Descreva detalhadamente os danos causados nas áreas comuns ou violação do regulamento..."
@@ -1334,7 +1334,7 @@ export function FinanceiroAvancado({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white dark:bg-[#0f172a] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-bold uppercase text-slate-400 block">Cauções Ativas (Em Custódia)</span>
+                <span className="text-[10px] font-bold uppercase text-slate-600 block">Cauções Ativas (Em Custódia)</span>
                 <span className="text-xl font-black text-amber-600 dark:text-amber-400 font-mono">
                   €{caucoes.filter(c => c.estado === "Ativa (Retida)").reduce((a, b) => a + b.valor, 0).toFixed(2)}
                 </span>
@@ -1346,7 +1346,7 @@ export function FinanceiroAvancado({
 
             <div className="bg-white dark:bg-[#0f172a] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-bold uppercase text-slate-400 block">Total Devolvido a Condóminos</span>
+                <span className="text-[10px] font-bold uppercase text-slate-600 block">Total Devolvido a Condóminos</span>
                 <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
                   €{caucoes.filter(c => c.estado === "Devolvida").reduce((a, b) => a + (b.valor_devolvido || b.valor), 0).toFixed(2)}
                 </span>
@@ -1358,7 +1358,7 @@ export function FinanceiroAvancado({
 
             <div className="bg-white dark:bg-[#0f172a] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-bold uppercase text-slate-400 block">Total Retido (Reparação de Danos)</span>
+                <span className="text-[10px] font-bold uppercase text-slate-600 block">Total Retido (Reparação de Danos)</span>
                 <span className="text-xl font-black text-red-600 dark:text-red-400 font-mono">
                   €{caucoes.filter(c => c.estado === "Retida (Danos/Penalização)").reduce((a, b) => a + (b.valor_retido || b.valor), 0).toFixed(2)}
                 </span>
@@ -1380,7 +1380,7 @@ export function FinanceiroAvancado({
 
               <form onSubmit={registarNovaCaucao} className="space-y-3 text-xs">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Fração *</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Fração *</label>
                   <select
                     required
                     value={cFracaoId}
@@ -1397,7 +1397,7 @@ export function FinanceiroAvancado({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Titular / Requerente</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Titular / Requerente</label>
                   <input
                     type="text"
                     placeholder="Nome do condómino ou empresa..."
@@ -1408,7 +1408,7 @@ export function FinanceiroAvancado({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Finalidade da Caução *</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Finalidade da Caução *</label>
                   <select
                     value={cFinalidade}
                     onChange={e => setCFinalidade(e.target.value as any)}
@@ -1423,7 +1423,7 @@ export function FinanceiroAvancado({
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Valor (€) *</label>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Valor (€) *</label>
                     <input
                       type="text"
                       inputMode="decimal"
@@ -1435,7 +1435,7 @@ export function FinanceiroAvancado({
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Data Depósito *</label>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Data Depósito *</label>
                     <input
                       type="date"
                       required
@@ -1448,7 +1448,7 @@ export function FinanceiroAvancado({
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Método *</label>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Método *</label>
                     <select
                       value={cMetodo}
                       onChange={e => setCMetodo(e.target.value as any)}
@@ -1462,7 +1462,7 @@ export function FinanceiroAvancado({
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Ref. Comprovativo</label>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Ref. Comprovativo</label>
                     <input
                       type="text"
                       placeholder="Ex: MBW-12345"
@@ -1529,7 +1529,7 @@ export function FinanceiroAvancado({
                         <span className="text-sm font-black text-slate-800 dark:text-white font-mono block">
                           €{c.valor.toFixed(2)}
                         </span>
-                        <span className="text-[10px] text-slate-400 font-mono block">Ref: {c.comprovativo_ref || "N/A"}</span>
+                        <span className="text-[10px] text-slate-600 font-mono block">Ref: {c.comprovativo_ref || "N/A"}</span>
                       </div>
 
                       {c.estado === "Ativa (Retida)" && (
@@ -1619,13 +1619,13 @@ export function FinanceiroAvancado({
                 </div>
 
                 <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                  <span className="text-[10px] font-bold uppercase text-slate-600 block">
                     Frações em Incumprimento
                   </span>
                   <div className="text-xl font-black text-slate-800 dark:text-white mt-1 font-mono">
                     {predioFracoes.filter(f => getFracaoBalance(f.id_fracao) < 0).length} / {predioFracoes.length}
                   </div>
-                  <span className="text-[10px] text-slate-400 mt-1 block">Com avisos pendentes</span>
+                  <span className="text-[10px] text-slate-600 mt-1 block">Com avisos pendentes</span>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40">
@@ -1639,7 +1639,7 @@ export function FinanceiroAvancado({
                 </div>
 
                 <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                  <span className="text-[10px] font-bold uppercase text-slate-600 block">
                     Taxa de Adimplência
                   </span>
                   <div className="text-xl font-black text-cyan-600 dark:text-cyan-400 mt-1 font-mono">
@@ -1647,7 +1647,7 @@ export function FinanceiroAvancado({
                       ? Math.round((predioFracoes.filter(f => getFracaoBalance(f.id_fracao) >= 0).length / predioFracoes.length) * 100) 
                       : 100}%
                   </div>
-                  <span className="text-[10px] text-slate-400 mt-1 block">Índice global de cobrança</span>
+                  <span className="text-[10px] text-slate-600 mt-1 block">Índice global de cobrança</span>
                 </div>
               </div>
 
@@ -1659,7 +1659,7 @@ export function FinanceiroAvancado({
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold uppercase text-slate-400 bg-slate-50 dark:bg-slate-900">
+                      <tr className="border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold uppercase text-slate-600 bg-slate-50 dark:bg-slate-900">
                         <th className="py-3 px-4">Fração & Piso</th>
                         <th className="py-3 px-4">Condómino / Proprietário</th>
                         <th className="py-3 px-4">NIF</th>
@@ -1691,7 +1691,7 @@ export function FinanceiroAvancado({
                                   {pendCount} quota(s)
                                 </span>
                               ) : (
-                                <span className="text-slate-400 text-[11px]">Nenhum</span>
+                                <span className="text-slate-600 text-[11px]">Nenhum</span>
                               )}
                             </td>
                             <td className="py-3 px-4 font-mono font-bold">
@@ -1766,7 +1766,7 @@ export function FinanceiroAvancado({
 
               {!ehCondomino && (
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold text-slate-400">Selecionar Fração:</span>
+                  <span className="text-[11px] font-bold text-slate-600">Selecionar Fração:</span>
                   <select
                     value={selectedFracaoId}
                     onChange={e => setSelectedFracaoId(e.target.value)}
@@ -1790,8 +1790,8 @@ export function FinanceiroAvancado({
                 {predioContas.map(c => (
                   <div key={c.id_conta} className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 p-3.5 rounded-xl flex items-center justify-between">
                     <div>
-                      <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block">{c.descricao || c.tipo} — {c.banco}</span>
-                      <span className="text-[10px] text-slate-400 font-mono">Saldo do Condomínio</span>
+                      <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-600 block">{c.descricao || c.tipo} — {c.banco}</span>
+                      <span className="text-[10px] text-slate-600 font-mono">Saldo do Condomínio</span>
                     </div>
                     <span className="text-base font-black font-mono text-slate-800 dark:text-white">{(c.saldo_atual ?? c.saldo ?? 0).toFixed(2)} €</span>
                   </div>
@@ -1834,7 +1834,7 @@ export function FinanceiroAvancado({
                   </div>
 
                   <div className="text-right">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider block text-slate-400">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider block text-slate-600">
                       Saldo Atual (Regra Cor)
                     </span>
                     {getFracaoBalance(selectedFracao.id_fracao) >= 0 ? (
@@ -1889,7 +1889,7 @@ export function FinanceiroAvancado({
                   <div id="extrato-individual-container" className="overflow-x-auto bg-slate-50/50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
-                        <tr className="border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold uppercase text-slate-400 bg-white dark:bg-slate-900">
+                        <tr className="border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold uppercase text-slate-600 bg-white dark:bg-slate-900">
                           <th className="py-2.5 px-3">Data</th>
                           <th className="py-2.5 px-3">Tipo / Descrição do Movimento</th>
                           <th className="py-2.5 px-3 text-right">Valor Quota / Débito</th>
@@ -1930,7 +1930,7 @@ export function FinanceiroAvancado({
                           ))}
                         {predioAvisos.filter(a => a.id_fracao === selectedFracao.id_fracao).length === 0 && (
                           <tr>
-                            <td colSpan={5} className="py-6 text-center text-slate-400 text-xs italic">
+                            <td colSpan={5} className="py-6 text-center text-slate-600 text-xs italic">
                               Sem registos históricos de quotas ou avisos para esta fração.
                             </td>
                           </tr>
@@ -2003,7 +2003,7 @@ export function FinanceiroAvancado({
                   className={`px-3.5 py-2 text-xs font-bold rounded-t-lg transition-colors cursor-pointer border-b-2 ${
                     mapaTipo === t
                       ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
-                      : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                      : "border-transparent text-slate-600 hover:text-slate-600 dark:hover:text-slate-600"
                   }`}
                 >
                   {t === "ordinaria" ? "Quotas Ordinárias" : "Quotas Extraordinárias"}
@@ -2013,7 +2013,7 @@ export function FinanceiroAvancado({
 
             {!ehCondomino && (
               <div className="relative max-w-xs">
-                <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-xs"></i>
                 <input
                   type="text"
                   value={mapaBusca}
@@ -2064,7 +2064,7 @@ export function FinanceiroAvancado({
                     return (
                     <tr key={l.fracao.id_fracao} className={corLinha}>
                       <td className={`sticky left-0 z-10 ${corLinha} py-2 px-3 font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap min-w-[90px]`}>
-                        {l.fracao.fracao_nome} <span className="text-slate-400 font-normal">({l.fracao.piso})</span>
+                        {l.fracao.fracao_nome} <span className="text-slate-600 font-normal">({l.fracao.piso})</span>
                       </td>
                       {!ehCondomino && (
                         <td className={`sticky left-[90px] z-10 ${corLinha} py-2 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap min-w-[160px] shadow-[2px_0_4px_rgba(0,0,0,0.08)]`}>{l.nomeExibido}</td>
@@ -2084,7 +2084,7 @@ export function FinanceiroAvancado({
                             <button type="button" onClick={() => handleGuardarQuotaEditada(l.fracao.id_fracao)} className="text-emerald-600 hover:text-emerald-800 cursor-pointer" title="Guardar">
                               <i className="fa-solid fa-check"></i>
                             </button>
-                            <button type="button" onClick={() => setEditandoCelulaChave(null)} className="text-slate-400 hover:text-red-500 cursor-pointer" title="Cancelar">
+                            <button type="button" onClick={() => setEditandoCelulaChave(null)} className="text-slate-600 hover:text-red-500 cursor-pointer" title="Cancelar">
                               <i className="fa-solid fa-xmark"></i>
                             </button>
                           </div>
@@ -2095,7 +2095,7 @@ export function FinanceiroAvancado({
                               <button
                                 type="button"
                                 onClick={() => { setEditandoCelulaChave(`quota|${l.fracao.id_fracao}`); setValorQuotaEditado(String(l.quotaMensal ?? "")); }}
-                                className="text-slate-300 hover:text-indigo-600 cursor-pointer"
+                                className="text-slate-600 hover:text-indigo-600 cursor-pointer"
                                 title="Corrigir quota mensal"
                               >
                                 <i className="fa-solid fa-pen text-[9px]"></i>
@@ -2170,7 +2170,7 @@ export function FinanceiroAvancado({
                   })}
                   {mapaLinhas.length === 0 && (
                     <tr>
-                      <td colSpan={16} className="py-6 text-center text-slate-400 text-xs italic">
+                      <td colSpan={16} className="py-6 text-center text-slate-600 text-xs italic">
                         Sem frações para mostrar.
                       </td>
                     </tr>
@@ -2185,12 +2185,12 @@ export function FinanceiroAvancado({
                       {mapaLinhasHistoricas.map((l, idx) => (
                         <tr key={`${l.fracao.id_fracao}-hist-${idx}`} className="bg-slate-50/70 dark:bg-slate-900/20 italic">
                           <td className="sticky left-0 z-10 bg-slate-50 dark:bg-slate-900 py-2 px-3 font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap min-w-[90px]">
-                            {l.fracao.fracao_nome} <span className="text-slate-400 font-normal">({l.fracao.piso})</span>
+                            {l.fracao.fracao_nome} <span className="text-slate-600 font-normal">({l.fracao.piso})</span>
                           </td>
                           <td className="sticky left-[90px] z-10 bg-slate-50 dark:bg-slate-900 py-2 px-3 text-slate-500 dark:text-slate-400 whitespace-nowrap min-w-[160px] shadow-[2px_0_4px_rgba(0,0,0,0.08)]">
-                            {l.nomeExibido} <span className="text-slate-400 font-normal">({l.periodoExibido})</span>
+                            {l.nomeExibido} <span className="text-slate-600 font-normal">({l.periodoExibido})</span>
                           </td>
-                          <td className="py-2 px-2 text-right whitespace-nowrap text-slate-400 font-bold border-r-2 border-slate-200 dark:border-slate-800">
+                          <td className="py-2 px-2 text-right whitespace-nowrap text-slate-600 font-bold border-r-2 border-slate-200 dark:border-slate-800">
                             {l.quotaMensal !== null ? `${l.quotaMensal.toFixed(2)}€` : "—"}
                           </td>
                           {l.meses.map((c, mIdx) => (

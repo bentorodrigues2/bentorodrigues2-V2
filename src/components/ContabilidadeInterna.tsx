@@ -255,7 +255,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
         <button
           onClick={() => setActiveTabContab("plano")}
           className={`px-4 py-2 text-xs font-bold transition-all border-b-2 cursor-pointer ${
-            activeTabContab === "plano" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-400 hover:text-slate-600"
+            activeTabContab === "plano" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-600 hover:text-slate-600"
           }`}
         >
           <i className="fa-solid fa-folder-open mr-1.5"></i> Plano de Contas
@@ -263,7 +263,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
         <button
           onClick={() => setActiveTabContab("reconciliacao")}
           className={`px-4 py-2 text-xs font-bold transition-all border-b-2 cursor-pointer ${
-            activeTabContab === "reconciliacao" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-400 hover:text-slate-600"
+            activeTabContab === "reconciliacao" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-600 hover:text-slate-600"
           }`}
         >
           <i className="fa-solid fa-receipt mr-1.5"></i> Reconciliação com Comprovativos
@@ -271,7 +271,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
         <button
           onClick={() => setActiveTabContab("motor_regras")}
           className={`px-4 py-2 text-xs font-bold transition-all border-b-2 cursor-pointer ${
-            activeTabContab === "motor_regras" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-400 hover:text-slate-600"
+            activeTabContab === "motor_regras" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-600 hover:text-slate-600"
           }`}
         >
           <i className="fa-solid fa-bolt mr-1.5"></i> Categorização Automática
@@ -283,7 +283,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
           {/* Add account */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 h-fit">
-            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2">Criar Conta Contábil</h4>
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 border-b border-slate-100 pb-2">Criar Conta Contábil</h4>
             <form onSubmit={handleAdicionarConta} className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-1 flex flex-col">
@@ -345,7 +345,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
           {/* List of accounts */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex justify-between items-center">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Rubricas Contábeis Ativas</h4>
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-600">Rubricas Contábeis Ativas</h4>
               <button
                 onClick={() => {
                   const headers = ["Código", "Nome da Rubrica", "Tipo", "Descrição"];
@@ -377,7 +377,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                       </span>
                     </div>
                     <h5 className="text-xs font-bold text-slate-800">{c.nome}</h5>
-                    <p className="text-[10px] text-slate-400 leading-relaxed">{c.descricao}</p>
+                    <p className="text-[10px] text-slate-600 leading-relaxed">{c.descricao}</p>
                   </div>
                 </div>
               ))}
@@ -434,23 +434,23 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
 
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs font-mono">
                   <div className="p-2.5 bg-slate-800/80 rounded-lg">
-                    <span className="text-[9px] text-slate-400 uppercase block">Fornecedor / Emitente</span>
+                    <span className="text-[9px] text-slate-600 uppercase block">Fornecedor / Emitente</span>
                     <span className="font-bold text-white text-[11px] block">{ocrResult.fornecedor}</span>
                   </div>
 
                   <div className="p-2.5 bg-slate-800/80 rounded-lg">
-                    <span className="text-[9px] text-slate-400 uppercase block">Nº Documento & Data</span>
+                    <span className="text-[9px] text-slate-600 uppercase block">Nº Documento & Data</span>
                     <span className="font-bold text-white text-[11px] block">{ocrResult.num_fatura}</span>
-                    <span className="text-[9px] text-slate-400">{ocrResult.data_emissao}</span>
+                    <span className="text-[9px] text-slate-600">{ocrResult.data_emissao}</span>
                   </div>
 
                   <div className="p-2.5 bg-slate-800/80 rounded-lg">
-                    <span className="text-[9px] text-slate-400 uppercase block">Valor Total</span>
+                    <span className="text-[9px] text-slate-600 uppercase block">Valor Total</span>
                     <span className="font-bold text-emerald-400 text-sm block">€{ocrResult.valor_total.toFixed(2)}</span>
                   </div>
 
                   <div className="p-2.5 bg-slate-800/80 rounded-lg col-span-2 md:col-span-3">
-                    <span className="text-[9px] text-slate-400 uppercase block">Cruzamento Bancário</span>
+                    <span className="text-[9px] text-slate-600 uppercase block">Cruzamento Bancário</span>
                     {ocrResult.movimento_correspondente ? (
                       <>
                         <span className="font-bold text-cyan-300 text-[10px] block truncate">{ocrResult.movimento_correspondente}</span>
@@ -486,7 +486,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Bank movements */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2 flex justify-between">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 border-b border-slate-100 pb-2 flex justify-between">
                 <span>Movimentos por Justificar</span>
                 <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-mono">{movimentosReconciliacao.length}</span>
               </h4>
@@ -494,7 +494,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                 {movimentosReconciliacao.map(m => (
                   <div key={m.id_mov} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
                     <div>
-                      <span className="text-[9px] text-slate-400 block font-mono">{m.data}</span>
+                      <span className="text-[9px] text-slate-600 block font-mono">{m.data}</span>
                       <span className="text-[11px] font-black text-slate-700 block">{m.descricao}</span>
                       <span className="text-[9px] text-slate-500 block">Sugerido para: {m.categoria}</span>
                     </div>
@@ -515,7 +515,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
 
             {/* Uploaded invoices / receipts */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2 flex justify-between">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 border-b border-slate-100 pb-2 flex justify-between">
                 <span>Comprovativos Carregados (Faturas/Recibos)</span>
                 <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono">Arquivo Digital</span>
               </h4>
@@ -527,7 +527,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                         <i className="fa-solid fa-file-pdf text-rose-600 mr-1.5 text-xs"></i>
                         {doc.nome_ficheiro}
                       </span>
-                      <span className="text-[8px] text-slate-400 font-mono block mt-0.5">Extraído por OCR: {doc.data_sugerida} | Ref: {doc.descricao_sugerida}</span>
+                      <span className="text-[8px] text-slate-600 font-mono block mt-0.5">Extraído por OCR: {doc.data_sugerida} | Ref: {doc.descricao_sugerida}</span>
                     </div>
                     <div className="text-right">
                       <span className="text-xs font-mono font-bold text-slate-800 block">{doc.valor_sugerido.toFixed(2)}€</span>
@@ -549,7 +549,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
       {activeTabContab === "motor_regras" && (
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4 max-w-3xl mx-auto animate-fadeIn">
           <div className="border-b border-slate-100 pb-2">
-            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Demonstração: Motor de Regras e Categorização Automática</h4>
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-600">Demonstração: Motor de Regras e Categorização Automática</h4>
             <p className="text-xs text-slate-500 mt-1">
               Introduza um descritivo livre (ex: do seu extrato bancário ou faturas OCR) e o algoritmo CondoManager AI associará automaticamente à rubrica correspondente do plano de contas nacional (SNC).
             </p>
@@ -588,7 +588,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                   <div className="font-mono text-xs font-extrabold text-indigo-700 bg-white border border-indigo-100 px-3 py-1.5 rounded-lg inline-block mt-2">
                     Conta {sugestaoConta.codigo} — {sugestaoConta.nome} ({sugestaoConta.tipo})
                   </div>
-                  <p className="text-[9px] text-slate-400 mt-1 leading-normal">
+                  <p className="text-[9px] text-slate-600 mt-1 leading-normal">
                     * Baseado em regras semânticas de relevância linguística (Regra SNB para faturas de serviços recorrentes).
                   </p>
                 </div>
@@ -596,7 +596,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
             )}
 
             <div className="border-t border-slate-100 pt-3">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Exemplos Práticos Disponíveis</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-2">Exemplos Práticos Disponíveis</span>
               <div className="flex flex-wrap gap-2">
                 {[
                   "Fatura Água da EPAL Garagem",

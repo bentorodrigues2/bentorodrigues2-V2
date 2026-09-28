@@ -436,7 +436,7 @@ export function AssistenteImportacao({ onImportComplete, loggedUser }: Assistent
           </div>
           <div>
             <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Migração & Importador Global por IA</h3>
-            <p className="text-xs text-slate-400">Importação autónoma de prédios e condóminos de outras empresas gestoras.</p>
+            <p className="text-xs text-slate-600">Importação autónoma de prédios e condóminos de outras empresas gestoras.</p>
           </div>
         </div>
 
@@ -446,14 +446,14 @@ export function AssistenteImportacao({ onImportComplete, loggedUser }: Assistent
             <span className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === "upload" ? "bg-violet-600 text-white" : "bg-violet-100 dark:bg-violet-950 text-violet-600 dark:text-violet-400"}`}>1</span>
             <span className="text-xs font-semibold text-slate-500">Extração</span>
           </div>
-          <i className="fa-solid fa-chevron-right text-[10px] text-slate-300"></i>
+          <i className="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
           <div className="flex items-center space-x-2">
-            <span className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === "homologation" ? "bg-violet-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}>2</span>
+            <span className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === "homologation" ? "bg-violet-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-600"}`}>2</span>
             <span className="text-xs font-semibold text-slate-500">Homologação</span>
           </div>
-          <i className="fa-solid fa-chevron-right text-[10px] text-slate-300"></i>
+          <i className="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
           <div className="flex items-center space-x-2">
-            <span className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === "success" ? "bg-emerald-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}>3</span>
+            <span className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === "success" ? "bg-emerald-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-600"}`}>3</span>
             <span className="text-xs font-semibold text-slate-500">Pronto</span>
           </div>
         </div>
@@ -478,7 +478,7 @@ export function AssistenteImportacao({ onImportComplete, loggedUser }: Assistent
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm space-y-4">
               <div>
                 <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-1">Cole os dados do Condomínio (Ata, Tabelas, PDF Copiado)</h4>
-                <p className="text-xs text-slate-400">A Inteligência Artificial irá ler toda a estrutura do edifício, frações, nomes, NIFs, e-mails e quotas em atraso automaticamente.</p>
+                <p className="text-xs text-slate-600">A Inteligência Artificial irá ler toda a estrutura do edifício, frações, nomes, NIFs, e-mails e quotas em atraso automaticamente.</p>
               </div>
 
               {anexoFile ? (
@@ -486,7 +486,7 @@ export function AssistenteImportacao({ onImportComplete, loggedUser }: Assistent
                   <i className="fa-solid fa-file-lines text-3xl text-violet-500"></i>
                   <div>
                     <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{anexoFile.nome}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Ficheiro pronto para leitura pela IA multimodal (Gemini lê o documento real, PDF ou Excel)</p>
+                    <p className="text-[10px] text-slate-600 mt-0.5">Ficheiro pronto para leitura pela IA multimodal (Gemini lê o documento real, PDF ou Excel)</p>
                   </div>
                   <button
                     type="button"
@@ -525,7 +525,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
                 <label htmlFor="file-upload" className="flex flex-col items-center cursor-pointer text-center">
                   <i className="fa-solid fa-cloud-arrow-up text-2xl text-violet-400 dark:text-violet-500 mb-2"></i>
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Arraste um ficheiro ou clique para carregar</span>
-                  <span className="text-[10px] text-slate-400 mt-1">Formatos suportados: TXT, PDF extraído, CSV, XLS</span>
+                  <span className="text-[10px] text-slate-600 mt-1">Formatos suportados: TXT, PDF extraído, CSV, XLS</span>
                 </label>
               </div>
 
@@ -560,7 +560,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
                   <i className="fa-solid fa-circle-play text-violet-500 mr-2"></i>
                   Demonstrações Rápidas
                 </h4>
-                <p className="text-xs text-slate-400 mt-1">Clique para pré-carregar um exemplo realista e ver a inteligência artificial em ação instantânea.</p>
+                <p className="text-xs text-slate-600 mt-1">Clique para pré-carregar um exemplo realista e ver a inteligência artificial em ação instantânea.</p>
               </div>
 
               <div className="space-y-3">
@@ -572,9 +572,9 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-700 dark:text-slate-200 group-hover:text-violet-600 dark:group-hover:text-violet-400">{preset.name}</span>
-                      <i className="fa-solid fa-arrow-right text-[10px] text-slate-300 group-hover:translate-x-1 transition-transform"></i>
+                      <i className="fa-solid fa-arrow-right text-[10px] text-slate-600 group-hover:translate-x-1 transition-transform"></i>
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">{preset.description}</p>
+                    <p className="text-[10px] text-slate-600 mt-1 leading-relaxed">{preset.description}</p>
                   </button>
                 ))}
               </div>
@@ -709,7 +709,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
                   
                   <div className="flex items-center justify-between py-1 bg-slate-50 dark:bg-slate-950 px-2.5 rounded">
                     <span className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold flex items-center">
-                      <i className="fa-solid fa-elevator mr-1.5 text-slate-400"></i> Elevador
+                      <i className="fa-solid fa-elevator mr-1.5 text-slate-600"></i> Elevador
                     </span>
                     <input
                       type="checkbox"
@@ -724,7 +724,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
 
                   {importedPredio.patrimonio?.tem_elevador && (
                     <div className="pl-4">
-                      <label className="block text-[10px] text-slate-400 mb-0.5">Nº de Elevadores</label>
+                      <label className="block text-[10px] text-slate-600 mb-0.5">Nº de Elevadores</label>
                       <input
                         type="number"
                         value={importedPredio.patrimonio?.num_elevadores || 1}
@@ -739,7 +739,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
 
                   <div className="flex items-center justify-between py-1 bg-slate-50 dark:bg-slate-950 px-2.5 rounded">
                     <span className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold flex items-center">
-                      <i className="fa-solid fa-car mr-1.5 text-slate-400"></i> Garagem / Estacionamento
+                      <i className="fa-solid fa-car mr-1.5 text-slate-600"></i> Garagem / Estacionamento
                     </span>
                     <input
                       type="checkbox"
@@ -754,7 +754,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
 
                   <div className="flex items-center justify-between py-1 bg-slate-50 dark:bg-slate-950 px-2.5 rounded">
                     <span className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold flex items-center">
-                      <i className="fa-solid fa-tree mr-1.5 text-slate-400"></i> Jardins e Lazer
+                      <i className="fa-solid fa-tree mr-1.5 text-slate-600"></i> Jardins e Lazer
                     </span>
                     <input
                       type="checkbox"
@@ -778,7 +778,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
                     <i className="fa-solid fa-door-open text-violet-500 mr-2"></i>
                     2. Frações, Proprietários & Saldos ({importedFracoes.length})
                   </span>
-                  <span className="text-xs text-slate-400 font-normal">Edite livremente abaixo</span>
+                  <span className="text-xs text-slate-600 font-normal">Edite livremente abaixo</span>
                 </h3>
 
                 <div className="overflow-x-auto">
@@ -835,7 +835,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
                                   updated[idx].tipologia = e.target.value;
                                   setImportedFracoes(updated);
                                 }}
-                                className="w-full bg-transparent border-b border-transparent focus:border-violet-500 focus:outline-none p-0.5 text-slate-400 text-[10px]"
+                                className="w-full bg-transparent border-b border-transparent focus:border-violet-500 focus:outline-none p-0.5 text-slate-600 text-[10px]"
                               />
                             </td>
 
@@ -930,9 +930,9 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
                                   }}
                                   className={`w-20 bg-transparent border-b border-transparent text-right focus:border-violet-500 focus:outline-none p-0.5 font-bold ${frac.saldo_inicial < 0 ? "text-rose-600" : frac.saldo_inicial > 0 ? "text-emerald-600" : "text-slate-500"}`}
                                 />
-                                <span className="text-[11px] font-bold text-slate-400 ml-0.5">€</span>
+                                <span className="text-[11px] font-bold text-slate-600 ml-0.5">€</span>
                               </div>
-                              <span className="text-[9px] text-slate-400 block mt-0.5">
+                              <span className="text-[9px] text-slate-600 block mt-0.5">
                                 {frac.saldo_inicial < 0 ? "Dívida inicial" : frac.saldo_inicial > 0 ? "Saldo Credor" : "Sem saldo"}
                               </span>
                             </td>
@@ -1012,7 +1012,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
               </div>
               <button 
                 onClick={() => setShowReportModal(false)}
-                className="text-slate-400 hover:text-white cursor-pointer"
+                className="text-slate-600 hover:text-white cursor-pointer"
               >
                 <i className="fa-solid fa-xmark"></i>
               </button>
@@ -1022,15 +1022,15 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
             <div className="p-6 space-y-4">
               <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-lg border border-slate-100 dark:border-slate-800 text-xs space-y-2">
                 <div className="flex items-center">
-                  <span className="font-bold text-slate-400 w-16">De:</span>
+                  <span className="font-bold text-slate-600 w-16">De:</span>
                   <span className="text-slate-700 dark:text-slate-300 font-mono-custom">sistema@condomanager.pt</span>
                 </div>
                 <div className="flex items-center border-t border-slate-200 dark:border-slate-800 pt-2">
-                  <span className="font-bold text-slate-400 w-16">Para:</span>
+                  <span className="font-bold text-slate-600 w-16">Para:</span>
                   <span className="text-slate-700 dark:text-slate-300 font-mono-custom">{emailReport.to}</span>
                 </div>
                 <div className="flex items-center border-t border-slate-200 dark:border-slate-800 pt-2">
-                  <span className="font-bold text-slate-400 w-16">Assunto:</span>
+                  <span className="font-bold text-slate-600 w-16">Assunto:</span>
                   <span className="text-slate-800 dark:text-slate-100 font-bold">{emailReport.subject}</span>
                 </div>
               </div>

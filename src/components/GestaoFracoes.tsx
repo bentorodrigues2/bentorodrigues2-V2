@@ -1572,7 +1572,7 @@ export function GestaoFracoes({
                   <span className="text-base">📄</span>
                   <div>
                     <div className="font-bold">Ficha PDF (Vazia & Editável)</div>
-                    <div className="text-[10px] text-slate-400">Preencher / editar e descarregar ficha</div>
+                    <div className="text-[10px] text-slate-600">Preencher / editar e descarregar ficha</div>
                   </div>
                 </button>
 
@@ -1587,7 +1587,7 @@ export function GestaoFracoes({
                   <span className="text-base">📋</span>
                   <div>
                     <div className="font-bold">Fichas Preenchidas (PDF)</div>
-                    <div className="text-[10px] text-slate-400">Relatório completo em PDF</div>
+                    <div className="text-[10px] text-slate-600">Relatório completo em PDF</div>
                   </div>
                 </button>
 
@@ -1602,7 +1602,7 @@ export function GestaoFracoes({
                   <span className="text-base">📊</span>
                   <div>
                     <div className="font-bold">Exportar Excel (XLS)</div>
-                    <div className="text-[10px] text-slate-400">Tabela de condóminos e frações em XLS</div>
+                    <div className="text-[10px] text-slate-600">Tabela de condóminos e frações em XLS</div>
                   </div>
                 </button>
               </div>
@@ -1910,7 +1910,7 @@ export function GestaoFracoes({
                 <tbody className="divide-y divide-slate-100">
                   {predioFracoes.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-slate-400">
+                      <td colSpan={6} className="py-8 text-center text-slate-600">
                         Nenhuma fração registada ainda neste condomínio. Utilize o formulário acima para registar a primeira fração.
                       </td>
                     </tr>
@@ -2171,7 +2171,7 @@ export function GestaoFracoes({
                     onChange={e => setPropDataNascimento(e.target.value)} 
                     className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white font-medium text-slate-800" 
                   />
-                  <span className="text-[10px] text-slate-400 mt-0.5">Para cartão de aniversário</span>
+                  <span className="text-[10px] text-slate-600 mt-0.5">Para cartão de aniversário</span>
                 </div>
               </div>
 
@@ -2291,7 +2291,7 @@ export function GestaoFracoes({
                         >
                           <i className="fa-solid fa-file-arrow-up text-emerald-600 text-lg"></i>
                           <p className="text-xs font-bold text-slate-700">Carregar Imagem ou PDF de Assinatura</p>
-                          <p className="text-[9.5px] text-slate-400">Suporta PNG, JPG, WEBP e PDF</p>
+                          <p className="text-[9.5px] text-slate-600">Suporta PNG, JPG, WEBP e PDF</p>
                         </button>
                       </div>
 
@@ -2360,9 +2360,9 @@ export function GestaoFracoes({
                       <i className="fa-solid fa-plus"></i> Adicionar Conta
                     </button>
                   </div>
-                  <p className="text-[9.5px] text-slate-400">Útil quando o pagamento pode vir de outra conta (ex: cônjuge, conta conjunta) — usado na conciliação para identificar a fração automaticamente pelo IBAN de quem pagou.</p>
+                  <p className="text-[9.5px] text-slate-600">Útil quando o pagamento pode vir de outra conta (ex: cônjuge, conta conjunta) — usado na conciliação para identificar a fração automaticamente pelo IBAN de quem pagou.</p>
                   {propContasAdicionais.length === 0 && (
-                    <p className="text-[10px] text-slate-400 italic">Nenhuma conta adicional registada.</p>
+                    <p className="text-[10px] text-slate-600 italic">Nenhuma conta adicional registada.</p>
                   )}
                   {propContasAdicionais.map((conta, idx) => (
                     <div key={idx} className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center bg-white border border-slate-200 rounded-lg p-2">
@@ -2906,7 +2906,7 @@ export function GestaoFracoes({
             {/* Filtros da tabela dinâmica */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pb-1">
               <div className="relative flex-1">
-                <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-xs"></i>
                 <input
                   type="text"
                   value={filtroPropTexto}
@@ -2962,7 +2962,7 @@ export function GestaoFracoes({
                 <tbody className="divide-y divide-slate-100">
                   {proprietariosFiltrados.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-slate-400">
+                      <td colSpan={8} className="py-8 text-center text-slate-600">
                         {todosProprietarios.length === 0
                           ? "Nenhum proprietário registado ainda. Preencha o formulário acima para registar o primeiro condómino."
                           : "Nenhum proprietário corresponde aos filtros ativos."}
@@ -2988,7 +2988,7 @@ export function GestaoFracoes({
                             <div>
                               <div className="font-bold text-slate-900">{prop.nome}</div>
                               {prop.iban && (
-                                <div className="text-[10px] text-slate-400 font-mono">
+                                <div className="text-[10px] text-slate-600 font-mono">
                                   IBAN: {prop.iban.slice(0, 8)}...
                                 </div>
                               )}
@@ -3238,12 +3238,12 @@ export function GestaoFracoes({
                       <td className="p-3">
                         <span className="font-bold text-slate-900 block">{res.fracao}</span>
                         <span className="font-semibold text-violet-700 block">{res.nome}</span>
-                        <span className="text-[10px] text-slate-400 block">{res.tipo}</span>
+                        <span className="text-[10px] text-slate-600 block">{res.tipo}</span>
                       </td>
                       <td className="p-3 font-mono">
                         <span className="block font-semibold">{res.nif}</span>
                         <span className="block text-slate-500">{res.email}</span>
-                        <span className="block text-slate-400">{res.telefone}</span>
+                        <span className="block text-slate-600">{res.telefone}</span>
                       </td>
                       <td className="p-3 font-mono text-[11px]">
                         <span className="block text-emerald-700">Entrada: {res.data_entrada}</span>
@@ -3298,7 +3298,7 @@ export function GestaoFracoes({
                             <i className="fa-solid fa-door-open mr-1"></i> {registandoSaida === res.id ? "A registar..." : "Registar Saída"}
                           </button>
                         ) : (
-                          <span className="text-[10px] text-slate-400 font-mono">Desvinculado</span>
+                          <span className="text-[10px] text-slate-600 font-mono">Desvinculado</span>
                         )}
                       </td>
                     </tr>
@@ -3379,7 +3379,7 @@ export function GestaoFracoes({
                 </span>
                 <div>
                   <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Ficha Individual — Fração {selectedFracao.fracao_nome} ({selectedFracao.piso})</h3>
-                  <p className="text-xs text-slate-400">Permilagem legal: <span className="font-semibold text-slate-600">{selectedFracao.permilagem}‰</span> • Tipologia: <span className="font-semibold text-slate-600">{selectedFracao.tipologia}</span></p>
+                  <p className="text-xs text-slate-600">Permilagem legal: <span className="font-semibold text-slate-600">{selectedFracao.permilagem}‰</span> • Tipologia: <span className="font-semibold text-slate-600">{selectedFracao.tipologia}</span></p>
                 </div>
               </div>
               <div className="flex items-center space-x-2 shrink-0">
@@ -3419,17 +3419,17 @@ export function GestaoFracoes({
                       )}
                       <div>
                         <h4 className="text-sm font-bold text-slate-800">{selectedFracao.proprietario.nome}</h4>
-                        <p className="text-xs text-slate-400 font-mono">NIF: {selectedFracao.proprietario.nif}</p>
+                        <p className="text-xs text-slate-600 font-mono">NIF: {selectedFracao.proprietario.nif}</p>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 text-xs text-slate-600 pt-1">
                       <div>
-                        <span className="text-[10px] uppercase font-semibold text-slate-400 block">E-mail de Contacto</span>
+                        <span className="text-[10px] uppercase font-semibold text-slate-600 block">E-mail de Contacto</span>
                         <a href={`mailto:${selectedFracao.proprietario.email}`} className="text-emerald-600 hover:underline font-mono font-semibold break-all">{selectedFracao.proprietario.email}</a>
                       </div>
                       <div>
-                        <span className="text-[10px] uppercase font-semibold text-slate-400 block">Telemóvel / Telefone</span>
+                        <span className="text-[10px] uppercase font-semibold text-slate-600 block">Telemóvel / Telefone</span>
                         <a href={`tel:${selectedFracao.proprietario.tlm}`} className="text-slate-700 hover:underline font-mono font-semibold">{selectedFracao.proprietario.tlm || "Sem Telefone"}</a>
                       </div>
                       <div className="col-span-2 border-t border-slate-100 dark:border-slate-800 pt-2.5 space-y-1">
@@ -3460,10 +3460,10 @@ export function GestaoFracoes({
                       )}
 
                       <div className="col-span-2 border-t border-slate-100 pt-2">
-                        <span className="text-[10px] uppercase font-semibold text-slate-400 block">IBAN de Cobrança / Reembolsos</span>
+                        <span className="text-[10px] uppercase font-semibold text-slate-600 block">IBAN de Cobrança / Reembolsos</span>
                         <span className="font-mono font-semibold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 block mt-0.5 text-[11px] select-all">{selectedFracao.proprietario.iban || "IBAN Não Disponibilizado"}</span>
                         {selectedFracao.proprietario.iban && (
-                          <p className="text-[9px] text-slate-400 mt-1">Titular: {selectedFracao.proprietario.titular_conta} ({selectedFracao.proprietario.entidade_bancaria})</p>
+                          <p className="text-[9px] text-slate-600 mt-1">Titular: {selectedFracao.proprietario.titular_conta} ({selectedFracao.proprietario.entidade_bancaria})</p>
                         )}
                       </div>
                       {selectedFracao.proprietario.morada_alternativa && (
@@ -3500,7 +3500,7 @@ export function GestaoFracoes({
                     )}
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400 italic">Nenhum proprietário cadastrado para esta fração.</p>
+                  <p className="text-xs text-slate-600 italic">Nenhum proprietário cadastrado para esta fração.</p>
                 )}
               </div>
 
@@ -3520,21 +3520,21 @@ export function GestaoFracoes({
                       )}
                       <div>
                         <h4 className="text-sm font-bold text-slate-800">{selectedFracao.inquilino.nome}</h4>
-                        <p className="text-xs text-slate-400 font-mono">NIF: {selectedFracao.inquilino.nif || "Não Fornecido"}</p>
+                        <p className="text-xs text-slate-600 font-mono">NIF: {selectedFracao.inquilino.nif || "Não Fornecido"}</p>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 text-xs text-slate-600 pt-1">
                       <div>
-                        <span className="text-[10px] uppercase font-semibold text-slate-400 block">E-mail de Contacto</span>
+                        <span className="text-[10px] uppercase font-semibold text-slate-600 block">E-mail de Contacto</span>
                         <a href={`mailto:${selectedFracao.inquilino.email}`} className="text-violet-600 hover:underline font-mono font-semibold break-all">{selectedFracao.inquilino.email}</a>
                       </div>
                       <div>
-                        <span className="text-[10px] uppercase font-semibold text-slate-400 block">Telemóvel / Telefone</span>
+                        <span className="text-[10px] uppercase font-semibold text-slate-600 block">Telemóvel / Telefone</span>
                         <a href={`tel:${selectedFracao.inquilino.tlm}`} className="text-slate-700 hover:underline font-mono font-semibold">{selectedFracao.inquilino.tlm || "Sem Telefone"}</a>
                       </div>
                       <div className="col-span-2 border-t border-slate-100 pt-2">
-                        <span className="text-[10px] uppercase font-semibold text-slate-400 block">Canal Preferencial para Avisos</span>
+                        <span className="text-[10px] uppercase font-semibold text-slate-600 block">Canal Preferencial para Avisos</span>
                         <div className="flex items-center mt-1 text-slate-700 font-semibold">
                           <i className={`fa-solid ${selectedFracao.notificacao_preferencial.includes('Digital') ? 'fa-envelope-open text-emerald-600' : 'fa-truck-ramp-box text-blue-600'} mr-2 text-sm`}></i>
                           <span>{selectedFracao.notificacao_preferencial}</span>
@@ -3543,8 +3543,8 @@ export function GestaoFracoes({
                     </div>
                   </div>
                 ) : (
-                  <div className="h-full flex flex-col justify-center items-center text-center p-6 text-slate-400 space-y-2">
-                    <i className="fa-solid fa-home-user text-2xl text-slate-300"></i>
+                  <div className="h-full flex flex-col justify-center items-center text-center p-6 text-slate-600 space-y-2">
+                    <i className="fa-solid fa-home-user text-2xl text-slate-600"></i>
                     <p className="text-xs font-semibold text-slate-500">Proprietário Habita a Fração</p>
                     <p className="text-[9px] max-w-xs">Não existe inquilino associado. Toda a correspondência legal e notificações são direcionadas para o proprietário.</p>
                   </div>
@@ -3751,7 +3751,7 @@ export function GestaoFracoes({
                 <tr key={f.id_fracao} onClick={() => !isEditingPermilages && setSelectedFracaoId(f.id_fracao)} className={`border-b border-slate-100 transition-colors ${isSelected ? 'bg-emerald-50/50 font-medium' : 'hover:bg-slate-50/50'} ${isEditingPermilages ? '' : 'cursor-pointer'}`}>
                   <td className="p-3">
                     <div className="font-bold text-slate-800">Fração {f.fracao_nome}</div>
-                    <div className="text-[10px] text-slate-400 font-semibold">{f.piso} • {f.tipologia}</div>
+                    <div className="text-[10px] text-slate-600 font-semibold">{f.piso} • {f.tipologia}</div>
                   </td>
                   <td className="p-3 font-mono font-bold text-slate-700">
                     {isEditingPermilages ? (
@@ -3764,7 +3764,7 @@ export function GestaoFracoes({
                           onChange={e => setTempPermilages({ ...tempPermilages, [f.id_fracao]: e.target.value })}
                           className="w-16 border border-slate-300 rounded px-1.5 py-0.5 text-xs text-center font-bold font-mono text-slate-800 focus:outline-emerald-500"
                         />
-                        <span className="text-slate-400">‰</span>
+                        <span className="text-slate-600">‰</span>
                       </div>
                     ) : (
                       <span>{f.permilagem}‰</span>
@@ -3773,7 +3773,7 @@ export function GestaoFracoes({
                   <td className="p-3">
                     {f.administrador_interno === "Sim" ? (
                       <span className="bg-red-50 text-red-700 border border-red-200 text-[10px] font-bold px-2 py-0.5 rounded">Adm. Interno</span>
-                    ) : <span className="text-slate-400">Condómino</span>}
+                    ) : <span className="text-slate-600">Condómino</span>}
                   </td>
                   <td className="p-3">
                     {f.proprietario ? (
@@ -3781,7 +3781,7 @@ export function GestaoFracoes({
                         {f.proprietario.foto && <img src={f.proprietario.foto} className="h-6 w-6 rounded-full border border-slate-300" />}
                         <div>
                           <p className="font-semibold text-slate-700">{f.proprietario.nome}</p>
-                          <p className="text-[10px] text-slate-400 font-mono">{f.proprietario.iban ? `${f.proprietario.entidade_bancaria}` : "Sem Banco"}</p>
+                          <p className="text-[10px] text-slate-600 font-mono">{f.proprietario.iban ? `${f.proprietario.entidade_bancaria}` : "Sem Banco"}</p>
                         </div>
                       </div>
                     ) : (
@@ -3810,17 +3810,17 @@ export function GestaoFracoes({
                         {f.inquilino.foto && <img src={f.inquilino.foto} className="h-6 w-6 rounded-full border border-slate-300" />}
                         <div>
                           <p className="font-semibold text-violet-700">{f.inquilino.nome}</p>
-                          <p className="text-[9px] text-slate-400">Arrendatário</p>
+                          <p className="text-[9px] text-slate-600">Arrendatário</p>
                         </div>
                       </div>
-                    ) : <span className="text-slate-400">Proprietário Habita</span>}
+                    ) : <span className="text-slate-600">Proprietário Habita</span>}
                   </td>
                   <td className="p-3 font-semibold text-slate-500">{f.notificacao_preferencial}</td>
                   <td className="p-3">
                     <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 flex flex-col space-y-1.5 w-fit">
                       <div className="flex items-center space-x-2">
                         <span className="text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100">Mensalidade {code}</span>
-                        <button type="button" onClick={() => copiarCodigo(`Mensalidade ${code}`)} className="text-slate-400 hover:text-slate-600 text-xs cursor-pointer" title="Copiar"><i className="fa-solid fa-copy"></i></button>
+                        <button type="button" onClick={() => copiarCodigo(`Mensalidade ${code}`)} className="text-slate-600 hover:text-slate-600 text-xs cursor-pointer" title="Copiar"><i className="fa-solid fa-copy"></i></button>
                       </div>
                     </div>
                   </td>
@@ -3865,19 +3865,19 @@ export function GestaoFracoes({
             <div className="bg-white rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl border border-slate-200 max-h-[85vh] flex flex-col">
               <div className="bg-slate-900 px-6 py-4 text-white flex justify-between items-center shrink-0">
                 <div className="flex items-center space-x-2">
-                  <History className="w-4 h-4 text-slate-300" />
+                  <History className="w-4 h-4 text-slate-600" />
                   <div>
                     <h3 className="font-bold text-sm">Histórico de Proprietários — Fração {fracaoHist.fracao_nome}</h3>
-                    <p className="text-[10px] text-slate-300">Proprietário atual: <strong>{fracaoHist.proprietario?.nome || "—"}</strong></p>
+                    <p className="text-[10px] text-slate-600">Proprietário atual: <strong>{fracaoHist.proprietario?.nome || "—"}</strong></p>
                   </div>
                 </div>
-                <button onClick={() => setHistoricoModalFracaoId(null)} className="text-slate-300 hover:text-white cursor-pointer">
+                <button onClick={() => setHistoricoModalFracaoId(null)} className="text-slate-600 hover:text-white cursor-pointer">
                   <i className="fa-solid fa-xmark text-lg"></i>
                 </button>
               </div>
               <div className="p-5 space-y-3 overflow-y-auto">
                 {historico.length === 0 ? (
-                  <p className="text-xs text-slate-400 text-center py-6">Ainda não há proprietários anteriores registados para esta fração.</p>
+                  <p className="text-xs text-slate-600 text-center py-6">Ainda não há proprietários anteriores registados para esta fração.</p>
                 ) : historico.map((h, idx) => {
                   const avisosDoProprietario = (avisos || []).filter(a =>
                     a.id_fracao === historicoModalFracaoId &&
@@ -3900,7 +3900,7 @@ export function GestaoFracoes({
                           Avisos / Recibos em nome deste proprietário ({avisosDoProprietario.length})
                         </p>
                         {avisosDoProprietario.length === 0 ? (
-                          <p className="text-[10px] text-slate-400">Nenhum documento encontrado.</p>
+                          <p className="text-[10px] text-slate-600">Nenhum documento encontrado.</p>
                         ) : (
                           <ul className="space-y-1 max-h-28 overflow-y-auto">
                             {avisosDoProprietario.map(a => (
@@ -3917,7 +3917,7 @@ export function GestaoFracoes({
                           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
                             Registos Arquivados — Condóminos → Ex-Proprietários → {h.proprietario.nome}
                           </p>
-                          <label className={`text-[9px] font-bold px-2 py-1 rounded cursor-pointer border ${aArquivarRegistoDe === h.proprietario.nome ? "bg-slate-100 text-slate-400 border-slate-200" : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"}`}>
+                          <label className={`text-[9px] font-bold px-2 py-1 rounded cursor-pointer border ${aArquivarRegistoDe === h.proprietario.nome ? "bg-slate-100 text-slate-600 border-slate-200" : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"}`}>
                             {aArquivarRegistoDe === h.proprietario.nome ? "A arquivar..." : "+ Arquivar Registo"}
                             <input
                               type="file"
@@ -3936,16 +3936,16 @@ export function GestaoFracoes({
                             d.categoria === "Condóminos" && d.tema === "Ex-Proprietários" && d.sub_pasta === h.proprietario.nome
                           );
                           return registosDoProprietario.length === 0 ? (
-                            <p className="text-[10px] text-slate-400">Ainda sem registos arquivados.</p>
+                            <p className="text-[10px] text-slate-600">Ainda sem registos arquivados.</p>
                           ) : (
                             <ul className="space-y-1 max-h-28 overflow-y-auto">
                               {registosDoProprietario.map(d => (
                                 <li key={d.id_doc} className="text-[10px] text-slate-600 flex justify-between gap-2 bg-white rounded px-2 py-1 border border-slate-100">
-                                  <span className="truncate">{d.tipo === "Registo" ? <i className="fa-solid fa-file-lines mr-1 text-slate-400"></i> : <i className="fa-solid fa-paperclip mr-1 text-slate-400"></i>}{d.nome}</span>
+                                  <span className="truncate">{d.tipo === "Registo" ? <i className="fa-solid fa-file-lines mr-1 text-slate-600"></i> : <i className="fa-solid fa-paperclip mr-1 text-slate-600"></i>}{d.nome}</span>
                                   {d.caminho ? (
                                     <a href={d.caminho} target="_blank" rel="noreferrer" className="font-bold text-emerald-600 hover:underline shrink-0">Abrir</a>
                                   ) : (
-                                    <span className="text-slate-400 shrink-0">{d.data_upload}</span>
+                                    <span className="text-slate-600 shrink-0">{d.data_upload}</span>
                                   )}
                                 </li>
                               ))}

@@ -452,7 +452,7 @@ export function FichaEmpresaGestora({
           </div>
           <button 
             onClick={() => setFeedbackMsg(null)}
-            className="text-slate-400 hover:text-white text-xs font-bold px-2 py-1"
+            className="text-slate-600 hover:text-white text-xs font-bold px-2 py-1"
           >
             ✕
           </button>
@@ -466,7 +466,7 @@ export function FichaEmpresaGestora({
             <Building2 className="h-6 w-6" />
           </div>
           <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Prédios Administrados</span>
+            <span className="text-[10px] uppercase font-bold text-slate-600 block tracking-wider">Prédios Administrados</span>
             <span className="text-2xl font-black text-slate-800 dark:text-white font-mono">{totalPrediosCount}</span>
           </div>
         </div>
@@ -476,7 +476,7 @@ export function FichaEmpresaGestora({
             <Users className="h-6 w-6" />
           </div>
           <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Frações Totais</span>
+            <span className="text-[10px] uppercase font-bold text-slate-600 block tracking-wider">Frações Totais</span>
             <span className="text-2xl font-black text-slate-800 dark:text-white font-mono">{totalFracoesCount}</span>
           </div>
         </div>
@@ -486,8 +486,8 @@ export function FichaEmpresaGestora({
             <DollarSign className="h-6 w-6" />
           </div>
           <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Faturação de Portfolio</span>
-            <span className="text-2xl font-black text-slate-800 dark:text-white font-mono">{(totalFaturacaoMensal).toLocaleString()} €<span className="text-xs font-medium text-slate-400">/mês</span></span>
+            <span className="text-[10px] uppercase font-bold text-slate-600 block tracking-wider">Faturação de Portfolio</span>
+            <span className="text-2xl font-black text-slate-800 dark:text-white font-mono">{(totalFaturacaoMensal).toLocaleString()} €<span className="text-xs font-medium text-slate-600">/mês</span></span>
           </div>
         </div>
 
@@ -496,7 +496,7 @@ export function FichaEmpresaGestora({
             <ShieldAlert className="h-6 w-6" />
           </div>
           <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Inadimplência Global</span>
+            <span className="text-[10px] uppercase font-bold text-slate-600 block tracking-wider">Inadimplência Global</span>
             <span className="text-2xl font-black text-red-600 dark:text-red-400 font-mono">{totalTaxaInadimplencia} %</span>
           </div>
         </div>
@@ -515,13 +515,13 @@ export function FichaEmpresaGestora({
               <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1.5">
                 <Sparkles className="h-3 w-3" /> Motor Google AI Studio & Gemini
               </span>
-              <span className="text-xs text-slate-400 font-mono">Regras Globais de E-mail</span>
+              <span className="text-xs text-slate-600 font-mono">Regras Globais de E-mail</span>
             </div>
             <h3 className="text-xl font-black text-white flex items-center gap-2">
               <Bot className="h-6 w-6 text-emerald-400" />
               <span>Configuração do Autoresponder & Triagem Inteligente por IA</span>
             </h3>
-            <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
+            <p className="text-xs text-slate-600 max-w-3xl leading-relaxed">
               Defina as diretrizes centrais sobre a gestão de caixas de correio da empresa gestora vs. caixas individuais de cada condomínio. A IA adaptará as assinaturas, a leitura dos históricos de frações e as respostas automáticas conforme a sua seleção.
             </p>
           </div>
@@ -538,7 +538,7 @@ export function FichaEmpresaGestora({
               <h4 className="text-sm font-bold text-white leading-snug">
                 Qual o e-mail principal a usar no Autoresponder de respostas automáticas aos condóminos?
               </h4>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
+              <p className="text-[11px] text-slate-600 leading-relaxed">
                 Determina o endereço de remetente e a assinatura institucional presente nos e-mails automáticos emitidos pelo sistema (ex: confirmações de pagamentos, avisos de corte e recibos).
               </p>
             </div>
@@ -550,7 +550,7 @@ export function FichaEmpresaGestora({
                 className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
                   empresaConfig.email_autoresponder_principal === "EMPRESA"
                     ? "bg-emerald-950/60 border-emerald-500 text-white shadow-sm ring-1 ring-emerald-500/50"
-                    : "bg-slate-950/40 border-slate-800 text-slate-300 hover:border-slate-700"
+                    : "bg-slate-950/40 border-slate-800 text-slate-600 hover:border-slate-700"
                 }`}
               >
                 <input 
@@ -564,10 +564,10 @@ export function FichaEmpresaGestora({
                   <span className="font-bold text-xs block text-emerald-300">
                     🏢 E-mail Corporativo da Empresa Gestora
                   </span>
-                  <span className="text-[10.5px] text-slate-300 block font-mono">
+                  <span className="text-[10.5px] text-slate-600 block font-mono">
                     {empresaConfig.email_corporativo || "contacto@gestaoforte.pt"}
                   </span>
-                  <span className="text-[9.5px] text-slate-400 block">
+                  <span className="text-[9.5px] text-slate-600 block">
                     Centraliza todas as respostas sob a marca da empresa gestora.
                   </span>
                 </div>
@@ -579,7 +579,7 @@ export function FichaEmpresaGestora({
                 className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
                   empresaConfig.email_autoresponder_principal === "CONDOMINIO"
                     ? "bg-emerald-950/60 border-emerald-500 text-white shadow-sm ring-1 ring-emerald-500/50"
-                    : "bg-slate-950/40 border-slate-800 text-slate-300 hover:border-slate-700"
+                    : "bg-slate-950/40 border-slate-800 text-slate-600 hover:border-slate-700"
                 }`}
               >
                 <input 
@@ -593,10 +593,10 @@ export function FichaEmpresaGestora({
                   <span className="font-bold text-xs block text-emerald-300">
                     🏘️ E-mail Dedicado de Cada Prédio / Condomínio (Recomendado)
                   </span>
-                  <span className="text-[10.5px] text-slate-300 block font-mono">
+                  <span className="text-[10.5px] text-slate-600 block font-mono">
                     ex: edificio.estrela@condomanager.pt
                   </span>
-                  <span className="text-[9.5px] text-slate-400 block">
+                  <span className="text-[9.5px] text-slate-600 block">
                     Respostas saem personalizadas com a identidade de cada edifício individual.
                   </span>
                 </div>
@@ -614,7 +614,7 @@ export function FichaEmpresaGestora({
               <h4 className="text-sm font-bold text-white leading-snug">
                 Qual a caixa de e-mail a ser monitorizada e gerida pela IA para busca de informação?
               </h4>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
+              <p className="text-[11px] text-slate-600 leading-relaxed">
                 Define onde o modelo de IA do AI Studio vai ler mensagens de condóminos, consultar o histórico da fração e extrair ocorrências automaticamente.
               </p>
             </div>
@@ -626,7 +626,7 @@ export function FichaEmpresaGestora({
                 className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
                   empresaConfig.email_gestao_ia === "EMPRESA"
                     ? "bg-emerald-950/60 border-emerald-500 text-white shadow-sm ring-1 ring-emerald-500/50"
-                    : "bg-slate-950/40 border-slate-800 text-slate-300 hover:border-slate-700"
+                    : "bg-slate-950/40 border-slate-800 text-slate-600 hover:border-slate-700"
                 }`}
               >
                 <input 
@@ -640,7 +640,7 @@ export function FichaEmpresaGestora({
                   <span className="font-bold text-xs block text-emerald-300">
                     📥 Caixa de Entrada Global da Empresa Gestora
                   </span>
-                  <span className="text-[9.5px] text-slate-400 block">
+                  <span className="text-[9.5px] text-slate-600 block">
                     A IA tria todos os e-mails recebidos centralmente e associa automaticamente ao respetivo prédio por NIF, morada ou fração mencionada.
                   </span>
                 </div>
@@ -652,7 +652,7 @@ export function FichaEmpresaGestora({
                 className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
                   empresaConfig.email_gestao_ia === "CONDOMINIO"
                     ? "bg-emerald-950/60 border-emerald-500 text-white shadow-sm ring-1 ring-emerald-500/50"
-                    : "bg-slate-950/40 border-slate-800 text-slate-300 hover:border-slate-700"
+                    : "bg-slate-950/40 border-slate-800 text-slate-600 hover:border-slate-700"
                 }`}
               >
                 <input 
@@ -666,7 +666,7 @@ export function FichaEmpresaGestora({
                   <span className="font-bold text-xs block text-emerald-300">
                     📫 Caixas de Correio Individuais por Prédio (Recomendado)
                   </span>
-                  <span className="text-[9.5px] text-slate-400 block">
+                  <span className="text-[9.5px] text-slate-600 block">
                     A IA processa o canal direto de cada prédio registado, garantindo isolamento de contexto e respostas ultra-precisas para os condóminos.
                   </span>
                 </div>
@@ -676,7 +676,7 @@ export function FichaEmpresaGestora({
         </div>
 
         {/* Resumo da Configuração Atual */}
-        <div className="p-4 bg-slate-950/60 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-300">
+        <div className="p-4 bg-slate-950/60 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
           <div className="flex items-center gap-2.5">
             <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
             <span>
@@ -746,7 +746,7 @@ export function FichaEmpresaGestora({
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {gestores.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-slate-400">
+                    <td colSpan={7} className="py-8 text-center text-slate-600">
                       Nenhum gestor registado na empresa gestora. Clique no botão acima para adicionar.
                     </td>
                   </tr>
@@ -773,7 +773,7 @@ export function FichaEmpresaGestora({
                             )}
                             <div>
                               <span className="block font-bold text-slate-800 dark:text-white">{gestor.nome}</span>
-                              <span className="text-[9px] text-slate-400 font-mono">ID: {gestor.id_gestor}</span>
+                              <span className="text-[9px] text-slate-600 font-mono">ID: {gestor.id_gestor}</span>
                             </div>
                           </div>
                         </td>
@@ -789,7 +789,7 @@ export function FichaEmpresaGestora({
                         {/* E-mail Direto */}
                         <td className="py-3.5 px-4 font-mono text-slate-700 dark:text-slate-300">
                           <a href={`mailto:${gestor.email}`} className="hover:text-emerald-600 flex items-center gap-1.5">
-                            <Mail className="h-3.5 w-3.5 text-slate-400" />
+                            <Mail className="h-3.5 w-3.5 text-slate-600" />
                             <span>{gestor.email}</span>
                           </a>
                         </td>
@@ -798,7 +798,7 @@ export function FichaEmpresaGestora({
                         <td className="py-3.5 px-4">
                           <div className="flex flex-wrap gap-1 max-w-[200px]">
                             {prediosAssociados.length === 0 ? (
-                              <span className="text-[10px] text-slate-400 italic">Nenhum</span>
+                              <span className="text-[10px] text-slate-600 italic">Nenhum</span>
                             ) : (
                               prediosAssociados.map(p => (
                                 <span 
@@ -914,7 +914,7 @@ export function FichaEmpresaGestora({
                   : "border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20"
               }`}
             >
-              <span className="text-[10px] font-bold text-slate-400 block uppercase">Logótipo da Empresa</span>
+              <span className="text-[10px] font-bold text-slate-600 block uppercase">Logótipo da Empresa</span>
               <div className="h-24 w-24 rounded-2xl mx-auto overflow-hidden shadow-sm flex items-center justify-center border bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800">
                 <img src={gestoraLogo} alt="Gestora Logo" className="object-contain h-full w-full max-h-full max-w-full p-1" referrerPolicy="no-referrer" />
               </div>
@@ -938,7 +938,7 @@ export function FichaEmpresaGestora({
                     }
                   }}
                 />
-                <p className="text-[8px] text-slate-400 mt-1.5">Arraste a imagem aqui ou clique para procurar (WebP, PNG, JPG)</p>
+                <p className="text-[8px] text-slate-600 mt-1.5">Arraste a imagem aqui ou clique para procurar (WebP, PNG, JPG)</p>
               </div>
             </div>
 
@@ -946,7 +946,7 @@ export function FichaEmpresaGestora({
             <div className="md:col-span-2 space-y-3.5">
               <div className="grid grid-cols-2 gap-3.5">
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1">Nome da Empresa Gestora</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase mb-1">Nome da Empresa Gestora</label>
                   <input 
                     type="text" 
                     value={empresaConfig.nome_empresa}
@@ -955,7 +955,7 @@ export function FichaEmpresaGestora({
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1">NIF Coletivo</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase mb-1">NIF Coletivo</label>
                   <input 
                     type="text" 
                     value={empresaConfig.nif}
@@ -967,7 +967,7 @@ export function FichaEmpresaGestora({
 
               <div className="grid grid-cols-2 gap-3.5">
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1">E-mail Corporativo</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase mb-1">E-mail Corporativo</label>
                   <input 
                     type="email" 
                     value={empresaConfig.email_corporativo}
@@ -976,7 +976,7 @@ export function FichaEmpresaGestora({
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1">Telefone de Apoio</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase mb-1">Telefone de Apoio</label>
                   <input 
                     type="text" 
                     value={empresaConfig.telefone}
@@ -990,7 +990,7 @@ export function FichaEmpresaGestora({
 
           {/* Color theme chooser (white label live colors) */}
           <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-3">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">Esquema de Cores do Portal de Marca (Branding)</span>
+            <span className="text-[10px] font-bold text-slate-600 block uppercase">Esquema de Cores do Portal de Marca (Branding)</span>
             <div className="flex flex-wrap gap-3">
               {brandingColors.map((color) => (
                 <button
@@ -1003,7 +1003,7 @@ export function FichaEmpresaGestora({
                 </button>
               ))}
             </div>
-            <p className="text-[9px] text-slate-400 italic">Ao selecionar uma cor, o CondoManager adapta automaticamente todo o portal do administrador e dos condóminos com as cores institucionais da Empresa Gestora.</p>
+            <p className="text-[9px] text-slate-600 italic">Ao selecionar uma cor, o CondoManager adapta automaticamente todo o portal do administrador e dos condóminos com as cores institucionais da Empresa Gestora.</p>
           </div>
         </div>
 
@@ -1071,7 +1071,7 @@ export function FichaEmpresaGestora({
               <button
                 type="button"
                 onClick={() => setIsGestorModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold p-1"
+                className="text-slate-600 hover:text-slate-600 dark:hover:text-white font-bold p-1"
               >
                 ✕
               </button>
@@ -1107,7 +1107,7 @@ export function FichaEmpresaGestora({
                     placeholder="Ex: 912 345 678"
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3.5 py-2 text-xs rounded-xl text-slate-800 dark:text-white font-mono focus:outline-none focus:border-emerald-500"
                   />
-                  <span className="text-[9px] text-slate-400 block">Ficará visível para os condóminos</span>
+                  <span className="text-[9px] text-slate-600 block">Ficará visível para os condóminos</span>
                 </div>
 
                 <div className="space-y-1">
@@ -1218,7 +1218,7 @@ export function FichaEmpresaGestora({
                           className="h-3.5 w-3.5 text-emerald-600 rounded border-slate-300 cursor-pointer"
                         />
                         <span className="truncate">{p?.nome || `${p?.morada_linha1 || ""}, Nº ${p?.num_porta || ""}`}</span>
-                        {p.email && <span className="text-[9px] text-slate-400 font-mono ml-auto truncate">({p.email})</span>}
+                        {p.email && <span className="text-[9px] text-slate-600 font-mono ml-auto truncate">({p.email})</span>}
                       </label>
                     );
                   })}

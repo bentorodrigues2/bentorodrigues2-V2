@@ -990,7 +990,7 @@ export function ConfiguracaoArranqueSaldos({
                   Balanço de Abertura
                 </span>
               </h1>
-              <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+              <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
                 Defina os saldos bancários de abertura, as dívidas transitadas por fração e o histórico inicial de movimentos sem fricção.
               </p>
             </div>
@@ -998,7 +998,7 @@ export function ConfiguracaoArranqueSaldos({
 
           <div className="flex items-center space-x-3 bg-slate-950/60 px-4 py-2 rounded-xl border border-slate-800">
             <div className="text-right">
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">Ativo Líquido de Arranque</span>
+              <span className="text-[10px] text-slate-600 uppercase font-bold block">Ativo Líquido de Arranque</span>
               <span className="text-sm sm:text-base font-black text-emerald-400 font-mono">
                 {ativoLiquidoAbertura.toLocaleString("pt-PT", { minimumFractionDigits: 2 })} €
               </span>
@@ -1025,11 +1025,11 @@ export function ConfiguracaoArranqueSaldos({
                     ? "bg-emerald-600 text-white font-black border-emerald-500 shadow-md ring-1 ring-emerald-400"
                     : isCompleted
                     ? "bg-slate-900/80 text-emerald-400 border-emerald-500/40"
-                    : "bg-slate-950/40 text-slate-400 border-slate-800 hover:bg-slate-900/60"
+                    : "bg-slate-950/40 text-slate-600 border-slate-800 hover:bg-slate-900/60"
                 }`}
               >
                 <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                  isActive ? "bg-white text-emerald-700" : isCompleted ? "bg-emerald-500 text-slate-950" : "bg-slate-800 text-slate-400"
+                  isActive ? "bg-white text-emerald-700" : isCompleted ? "bg-emerald-500 text-slate-950" : "bg-slate-800 text-slate-600"
                 }`}>
                   {isCompleted ? <Check className="h-3.5 w-3.5" /> : s.step}
                 </span>
@@ -1077,7 +1077,7 @@ export function ConfiguracaoArranqueSaldos({
                 onChange={(e) => handleAlterarDataAbertura(e.target.value)}
                 className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold text-slate-900 dark:text-white"
               />
-              <span className="text-[10px] text-slate-400 mt-0.5 block">
+              <span className="text-[10px] text-slate-600 mt-0.5 block">
                 Data do extrato de transição ou início de mandato.{" "}
                 {aGuardarDataAbertura ? "A guardar…" : predio.data_inicio_gestao === dataAbertura ? "✓ Guardada." : ""}
               </span>
@@ -1098,7 +1098,7 @@ export function ConfiguracaoArranqueSaldos({
               de numerário, é tudo eletrónico) */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">Total Bancos & Caixa</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase block">Total Bancos & Caixa</span>
               <span className="text-base font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5 block">
                 {totalBancosCaixa.toFixed(2)} €
               </span>
@@ -1240,7 +1240,7 @@ export function ConfiguracaoArranqueSaldos({
                             onChange={(e) => handleUpdateContaArranque(conta.id_conta, { nome: e.target.value })}
                             className="text-xs font-black text-slate-800 dark:text-white bg-transparent border-b border-transparent hover:border-slate-400 focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 rounded px-1 py-0.5 w-full"
                           />
-                          <span className="text-[10px] text-slate-400 block px-1">
+                          <span className="text-[10px] text-slate-600 block px-1">
                             {conta.is_principal ? "Conta Principal à Ordem" : isIntervencao ? "Conta Afeta a Obras / Intervenções" : conta.tipo}
                           </span>
                         </div>
@@ -1250,7 +1250,7 @@ export function ConfiguracaoArranqueSaldos({
                         <button
                           type="button"
                           onClick={() => handleRemoveConta(conta.id_conta)}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
                           title="Eliminar esta conta"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -1278,7 +1278,7 @@ export function ConfiguracaoArranqueSaldos({
                             placeholder="0,00"
                             className="w-full pl-2.5 pr-6 py-1.5 text-xs font-black font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                           />
-                          <span className="absolute right-2.5 top-1.5 text-xs font-bold text-slate-400">€</span>
+                          <span className="absolute right-2.5 top-1.5 text-xs font-bold text-slate-600">€</span>
                         </div>
                       </div>
 
@@ -1366,7 +1366,7 @@ export function ConfiguracaoArranqueSaldos({
                     <tr key={sf.id_fracao} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="p-3 font-medium">
                         <span className="font-bold text-slate-900 dark:text-white block">{sf.fracao_nome}</span>
-                        <span className="text-[10px] text-slate-400">{sf.proprietario_nome}</span>
+                        <span className="text-[10px] text-slate-600">{sf.proprietario_nome}</span>
                       </td>
 
                       <td className="p-3">
@@ -1399,12 +1399,12 @@ export function ConfiguracaoArranqueSaldos({
                               onChange={(valor) => handleUpdateSaldoFracao(sf.id_fracao, { valor_saldo: valor })}
                               className="w-full px-2.5 py-1.5 text-xs font-mono font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950"
                             />
-                            <span className="absolute right-2 top-1.5 text-[10px] text-slate-400 font-bold">€</span>
+                            <span className="absolute right-2 top-1.5 text-[10px] text-slate-600 font-bold">€</span>
                           </div>
                         ) : sf.tipo_saldo === "DIVIDA" ? (
                           <span className="font-mono font-black text-red-600 dark:text-red-400">{sf.valor_saldo.toFixed(2)} €</span>
                         ) : (
-                          <span className="text-slate-400 font-mono font-medium">0,00 €</span>
+                          <span className="text-slate-600 font-mono font-medium">0,00 €</span>
                         )}
                       </td>
 
@@ -1425,7 +1425,7 @@ export function ConfiguracaoArranqueSaldos({
                               : "Configurar Dívidas"}
                           </button>
                         ) : (
-                          <span className="text-slate-400">-</span>
+                          <span className="text-slate-600">-</span>
                         )}
                       </td>
 
@@ -1445,7 +1445,7 @@ export function ConfiguracaoArranqueSaldos({
             </table>
           </div>
 
-          <p className="text-[10px] text-slate-400 flex items-center gap-1.5">
+          <p className="text-[10px] text-slate-600 flex items-center gap-1.5">
             <Scale className="h-3 w-3" />
             Cada dívida configurada aqui gera avisos reais por fração — aparecem automaticamente em Financeiro (Emissão de Quotas) e são cruzados com a área Jurídica (Contencioso) para eventuais processos, tal como qualquer outra quota em atraso.
           </p>
@@ -1489,9 +1489,9 @@ export function ConfiguracaoArranqueSaldos({
                     <Scale className="h-4 w-4 text-red-400" />
                     Discriminação da Dívida — Fração {sf.fracao_nome}
                   </h3>
-                  <p className="text-[10px] text-slate-400 mt-0.5">{sf.proprietario_nome} · Total: <strong className="text-red-400">{sf.valor_saldo.toFixed(2)} €</strong></p>
+                  <p className="text-[10px] text-slate-600 mt-0.5">{sf.proprietario_nome} · Total: <strong className="text-red-400">{sf.valor_saldo.toFixed(2)} €</strong></p>
                 </div>
-                <button onClick={() => setModalDividaFracaoId(null)} className="text-slate-300 hover:text-white cursor-pointer p-1">
+                <button onClick={() => setModalDividaFracaoId(null)} className="text-slate-600 hover:text-white cursor-pointer p-1">
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -1512,10 +1512,10 @@ export function ConfiguracaoArranqueSaldos({
                       <Plus className="h-3 w-3" /> Adicionar Período
                     </button>
                   </div>
-                  <p className="text-[10px] text-slate-400">Pode adicionar vários períodos se o valor da quota mudou ao longo do tempo (ex: um valor até certa data, outro depois).</p>
+                  <p className="text-[10px] text-slate-600">Pode adicionar vários períodos se o valor da quota mudou ao longo do tempo (ex: um valor até certa data, outro depois).</p>
 
                   {sf.dividasQuotasOrdinarias.length === 0 ? (
-                    <p className="text-[11px] text-slate-400 italic py-2">Sem períodos de quota ordinária em dívida.</p>
+                    <p className="text-[11px] text-slate-600 italic py-2">Sem períodos de quota ordinária em dívida.</p>
                   ) : (
                     <div className="space-y-2">
                       {sf.dividasQuotasOrdinarias.map((p) => {
@@ -1565,13 +1565,13 @@ export function ConfiguracaoArranqueSaldos({
                               <button
                                 type="button"
                                 onClick={() => handleRemovePeriodoQuotaOrdinaria(sf.id_fracao, p.id)}
-                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer shrink-0"
+                                className="p-1.5 text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer shrink-0"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
                             </div>
                             <div className="col-span-2 sm:col-span-5 pt-1.5 border-t border-indigo-200/60 dark:border-indigo-900/40 flex items-center gap-2">
-                              <label className={`text-[10px] font-bold px-2 py-1 rounded cursor-pointer border flex items-center gap-1 ${aArquivarComprovativoId === p.id ? "bg-slate-100 text-slate-400 border-slate-200" : "bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 border-indigo-300 dark:border-indigo-700 hover:bg-indigo-50"}`}>
+                              <label className={`text-[10px] font-bold px-2 py-1 rounded cursor-pointer border flex items-center gap-1 ${aArquivarComprovativoId === p.id ? "bg-slate-100 text-slate-600 border-slate-200" : "bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 border-indigo-300 dark:border-indigo-700 hover:bg-indigo-50"}`}>
                                 <UploadCloud className="h-3 w-3" />
                                 {aArquivarComprovativoId === p.id ? "A arquivar..." : "Anexar Comprovativo"}
                                 <input
@@ -1615,7 +1615,7 @@ export function ConfiguracaoArranqueSaldos({
                   </div>
 
                   {sf.dividasQuotasExtras.length === 0 ? (
-                    <p className="text-[11px] text-slate-400 italic py-2">Sem quotas extraordinárias em dívida.</p>
+                    <p className="text-[11px] text-slate-600 italic py-2">Sem quotas extraordinárias em dívida.</p>
                   ) : (
                     <div className="space-y-2">
                       {sf.dividasQuotasExtras.map((it) => (
@@ -1685,13 +1685,13 @@ export function ConfiguracaoArranqueSaldos({
                             <button
                               type="button"
                               onClick={() => handleRemoveDividaQuotaExtra(sf.id_fracao, it.id)}
-                              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer shrink-0 justify-self-end"
+                              className="p-1.5 text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer shrink-0 justify-self-end"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>
                           <div className="pt-1.5 border-t border-amber-200/60 dark:border-amber-900/40 flex items-center gap-2">
-                            <label className={`text-[10px] font-bold px-2 py-1 rounded cursor-pointer border flex items-center gap-1 ${aArquivarComprovativoId === it.id ? "bg-slate-100 text-slate-400 border-slate-200" : "bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700 hover:bg-amber-50"}`}>
+                            <label className={`text-[10px] font-bold px-2 py-1 rounded cursor-pointer border flex items-center gap-1 ${aArquivarComprovativoId === it.id ? "bg-slate-100 text-slate-600 border-slate-200" : "bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700 hover:bg-amber-50"}`}>
                               <UploadCloud className="h-3 w-3" />
                               {aArquivarComprovativoId === it.id ? "A arquivar..." : "Anexar Comprovativo"}
                               <input
@@ -1934,7 +1934,7 @@ export function ConfiguracaoArranqueSaldos({
                     <td className="p-2.5 text-center">
                       <button
                         onClick={(e) => { e.stopPropagation(); handleRemoveMovimentoHistorico(m.id); }}
-                        className="p-1 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                        className="p-1 text-slate-600 hover:text-red-500 transition-colors cursor-pointer"
                         title="Remover"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -1987,7 +1987,7 @@ export function ConfiguracaoArranqueSaldos({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">Saldo Total em Bancos / Caixa</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase block">Saldo Total em Bancos / Caixa</span>
               <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono mt-1 block">
                 {totalBancosCaixa.toFixed(2)} €
               </span>
@@ -1995,7 +1995,7 @@ export function ConfiguracaoArranqueSaldos({
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">Dívidas Transitadas a Cobrar</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase block">Dívidas Transitadas a Cobrar</span>
               <span className="text-lg font-black text-red-600 dark:text-red-400 font-mono mt-1 block">
                 +{totalDividasReceber.toFixed(2)} €
               </span>
@@ -2005,7 +2005,7 @@ export function ConfiguracaoArranqueSaldos({
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">Créditos de Condóminos</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase block">Créditos de Condóminos</span>
               <span className="text-lg font-black text-amber-600 dark:text-amber-400 font-mono mt-1 block">
                 -{totalCreditosFracoes.toFixed(2)} €
               </span>
@@ -2034,7 +2034,7 @@ export function ConfiguracaoArranqueSaldos({
                 <div key={c.id_conta} className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
                   <div className="min-w-0 pr-2">
                     <span className="font-bold text-slate-900 dark:text-white block truncate">{c.nome}</span>
-                    <span className="text-[10px] text-slate-400 block truncate">{c.banco} • {c.tipo}</span>
+                    <span className="text-[10px] text-slate-600 block truncate">{c.banco} • {c.tipo}</span>
                   </div>
                   <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs shrink-0">
                     {Number(c.saldo).toFixed(2)} €
@@ -2088,7 +2088,7 @@ export function ConfiguracaoArranqueSaldos({
                 <Settings2 className="h-4 w-4 text-emerald-400" />
                 Corrigir Movimento
               </h3>
-              <button onClick={() => setEditandoMovId(null)} className="text-slate-300 hover:text-white cursor-pointer p-1">
+              <button onClick={() => setEditandoMovId(null)} className="text-slate-600 hover:text-white cursor-pointer p-1">
                 <X className="h-5 w-5" />
               </button>
             </div>

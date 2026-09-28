@@ -351,7 +351,7 @@ export function ClassificadorDocumentos({ predio, fracoes, contas, setContas, mo
           </span>
         </div>
         <h2 className="relative text-lg font-black mt-2">Classificador Geral de Documentos</h2>
-        <p className="relative text-xs text-slate-300 mt-1 max-w-2xl">
+        <p className="relative text-xs text-slate-600 mt-1 max-w-2xl">
           Carregue qualquer documento (ata, extrato bancário, fatura, apólice de seguro...) e a IA identifica o que é e sugere a ação certa — arquivar, importar movimentos, lançar uma despesa ou associar a um seguro.
         </p>
       </div>
@@ -379,7 +379,7 @@ export function ClassificadorDocumentos({ predio, fracoes, contas, setContas, mo
             <label className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-10 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
               <i className="fa-solid fa-cloud-arrow-up text-3xl text-emerald-500 mb-3"></i>
               <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Arraste ou clique para carregar um documento</span>
-              <span className="text-[11px] text-slate-400 mt-1">PDF, imagem, ou foto — qualquer tipo de documento do condomínio</span>
+              <span className="text-[11px] text-slate-600 mt-1">PDF, imagem, ou foto — qualquer tipo de documento do condomínio</span>
               <input
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png,.webp"
@@ -393,12 +393,12 @@ export function ClassificadorDocumentos({ predio, fracoes, contas, setContas, mo
                 <i className="fa-solid fa-file-lines text-xl text-emerald-500"></i>
                 <div>
                   <p className="text-sm font-bold text-slate-800 dark:text-white">{anexo.nome}</p>
-                  <p className="text-[10px] text-slate-400">{(anexo.file.size / 1024).toFixed(0)} KB</p>
+                  <p className="text-[10px] text-slate-600">{(anexo.file.size / 1024).toFixed(0)} KB</p>
                 </div>
               </div>
               {!resultado && (
                 <div className="flex items-center gap-2">
-                  <button onClick={reiniciar} className="text-xs font-bold text-slate-400 hover:text-rose-600 cursor-pointer">
+                  <button onClick={reiniciar} className="text-xs font-bold text-slate-600 hover:text-rose-600 cursor-pointer">
                     Remover
                   </button>
                   <button
@@ -428,10 +428,10 @@ export function ClassificadorDocumentos({ predio, fracoes, contas, setContas, mo
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{resultado.resumo}</p>
                     </div>
                   </div>
-                  <span className="text-[10px] font-bold text-slate-400 shrink-0">Confiança: {Math.round((resultado.confianca || 0) * 100)}%</span>
+                  <span className="text-[10px] font-bold text-slate-600 shrink-0">Confiança: {Math.round((resultado.confianca || 0) * 100)}%</span>
                 </div>
                 <div className="mt-3 flex items-center gap-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Não é isto? Corrigir:</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase">Não é isto? Corrigir:</label>
                   <select
                     value={tipoConfirmado}
                     onChange={(e) => { setTipoConfirmado(e.target.value as TipoDocumento); setMovimentosExtraidos(null); setDadosComprovativo(null); }}
@@ -448,7 +448,7 @@ export function ClassificadorDocumentos({ predio, fracoes, contas, setContas, mo
               {tipoConfirmado === "ata" && (
                 <div className="space-y-3">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Descrição para o Arquivo</label>
+                    <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Descrição para o Arquivo</label>
                     <input
                       type="text"
                       value={descricaoArquivo}
@@ -471,7 +471,7 @@ export function ClassificadorDocumentos({ predio, fracoes, contas, setContas, mo
               {tipoConfirmado === "outro" && (
                 <div className="space-y-3">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Descrição para o Arquivo</label>
+                    <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Descrição para o Arquivo</label>
                     <input
                       type="text"
                       value={descricaoArquivo}
@@ -533,13 +533,13 @@ export function ClassificadorDocumentos({ predio, fracoes, contas, setContas, mo
                   ) : (
                     <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl p-4 space-y-3">
                       <div className="grid grid-cols-2 gap-3 text-xs">
-                        <div><span className="text-slate-400">Entidade:</span> <strong>{dadosComprovativo.entidade || "—"}</strong></div>
-                        <div><span className="text-slate-400">Valor:</span> <strong>{Number(dadosComprovativo.valor_total || 0).toFixed(2)} €</strong></div>
-                        <div><span className="text-slate-400">Data:</span> <strong>{dadosComprovativo.data_documento || "—"}</strong></div>
-                        <div><span className="text-slate-400">Categoria:</span> <strong>{dadosComprovativo.categoria_contabilistica || "—"}</strong></div>
+                        <div><span className="text-slate-600">Entidade:</span> <strong>{dadosComprovativo.entidade || "—"}</strong></div>
+                        <div><span className="text-slate-600">Valor:</span> <strong>{Number(dadosComprovativo.valor_total || 0).toFixed(2)} €</strong></div>
+                        <div><span className="text-slate-600">Data:</span> <strong>{dadosComprovativo.data_documento || "—"}</strong></div>
+                        <div><span className="text-slate-600">Categoria:</span> <strong>{dadosComprovativo.categoria_contabilistica || "—"}</strong></div>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Conta a Debitar *</label>
+                        <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Conta a Debitar *</label>
                         <select
                           value={contaDestinoId}
                           onChange={(e) => setContaDestinoId(e.target.value)}
@@ -580,7 +580,7 @@ export function ClassificadorDocumentos({ predio, fracoes, contas, setContas, mo
                   ) : (
                     <div className="space-y-3">
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Conta de Destino *</label>
+                        <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Conta de Destino *</label>
                         <select
                           value={contaDestinoId}
                           onChange={(e) => setContaDestinoId(e.target.value)}
