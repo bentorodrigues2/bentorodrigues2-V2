@@ -20,7 +20,7 @@ import {
   AlertTriangle,
   Upload
 } from "lucide-react";
-import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondagem, Questionario } from "../types";
+import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondagem, Questionario, MensagemConversa } from "../types";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
 import { generateCondominoPwaManualPDF, gerarReferenciaBR23EExtra } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
@@ -34,6 +34,7 @@ import {
   fetchMensagensConversaFromSupabase,
   saveMensagemConversaToSupabase,
   uploadAnexoConversaToStorage,
+  marcarMensagensConversaComoLidas,
   fetchComunicadosFromSupabase,
   fetchSondagensFromSupabase,
   saveVotoSondagemToSupabase,
@@ -1006,6 +1007,52 @@ export function PortalCondomino({
     return () => { supabase.removeChannel(canal); };
   }, [activeUserFracao?.id_fracao, carregarMensagensReais]);
 
+  // Conversa completa (estilo WhatsApp) com a administração — substitui o
+  // "bilhete" (1ª mensagem + 1ª resposta) por todas as mensagens reais da
+  // conversa, em ordem, incluindo anexos e contagem real de por-ler.
+  const idConversaPortal = activeUserFracao?.id_fracao ? "conv-" + activeUserFracao.id_fracao : "";
+  const [mensagensThreadPortal, setMensagensThreadPortal] = useState<MensagemConversa[]>([]);
+  const carregarThreadPortal = React.useCallback(async () => {
+    if (!idConversaPortal) return;
+    const dados = await fetchMensagensConversaFromSupabase(idConversaPortal);
+    setMensagensThreadPortal(dados || []);
+  }, [idConversaPortal]);
+  useEffect(() => { carregarThreadPortal(); }, [carregarThreadPortal]);
+  const naoLidasThreadPortal = mensagensThreadPortal.filter(m => m.autor === "administracao" && !m.lida).length;
+
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !idConversaPortal) return;
+    const canal = supabase
+      .channel(`portal_thread_${idConversaPortal}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "mensagens_conversa", filter: `id_conversa=eq.${idConversaPortal}` },
+        (payload: any) => {
+          const nova = payload.new;
+          setMensagensThreadPortal(prev => prev.some(m => m.id_mensagem === nova.id_mensagem) ? prev : [...prev, {
+            id_mensagem: nova.id_mensagem,
+            id_conversa: nova.id_conversa,
+            autor: nova.autor,
+            texto: nova.texto,
+            created_at: nova.created_at,
+            anexo_url: nova.anexo_url || undefined,
+            anexo_tipo: nova.anexo_tipo || undefined,
+            anexo_nome: nova.anexo_nome || undefined,
+            lida: !!nova.lida
+          }]);
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(canal); };
+  }, [idConversaPortal]);
+
+  useEffect(() => {
+    if (!msgDrawerOpen || !idConversaPortal || naoLidasThreadPortal === 0) return;
+    marcarMensagensConversaComoLidas(idConversaPortal, "administracao").then(() => {
+      setMensagensThreadPortal(prev => prev.map(m => m.autor === "administracao" ? { ...m, lida: true } : m));
+    });
+  }, [msgDrawerOpen, idConversaPortal]);
+
   // Comunicados, Sondagens & Questionários (feed real do condómino)
   const [comunicadosFeed, setComunicadosFeed] = useState<Comunicado[]>([]);
   const [sondagensFeed, setSondagensFeed] = useState<Sondagem[]>([]);
@@ -1939,9 +1986,9 @@ export function PortalCondomino({
                 alt="Mensagens"
                 className="w-8 h-8 object-contain pointer-events-none drop-shadow-sm"
               />
-              {respostasPorLer > 0 && (
+              {naoLidasThreadPortal > 0 && (
                 <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-black border-2 border-white shadow-md animate-pulse">
-                  {respostasPorLer}
+                  {naoLidasThreadPortal}
                 </span>
               )}
             </div>
@@ -2000,7 +2047,7 @@ export function PortalCondomino({
                     </span>
                   </div>
 
-                  {mensagens.length === 0 ? (
+                  {mensagensThreadPortal.length === 0 ? (
                     <div className="text-center py-12 px-4 space-y-2">
                       <div className="w-12 h-12 mx-auto rounded-full bg-emerald-100/80 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                         <i className="fa-regular fa-comment-dots text-xl"></i>
@@ -2011,82 +2058,37 @@ export function PortalCondomino({
                       </p>
                     </div>
                   ) : (
-                    mensagens.map((msg) => {
-                    const isUser = msg.nome_remetente.includes(loggedUser.nome) || msg.id_fracao === "frac-1";
-                    return (
-                      <React.Fragment key={msg.id}>
-                        {/* User Message Bubble */}
-                        <div className="flex justify-end">
-                          <div className="max-w-[85%] bg-[#D9FDD3] dark:bg-[#005c4b] text-slate-900 dark:text-slate-100 rounded-2xl rounded-tr-xs p-3 shadow-xs border border-emerald-200/50 space-y-2">
-                            {msg.assunto && msg.assunto !== "Mensagem Direta" && msg.assunto !== "Mensagem de Voz" && (
-                              <div className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 border-b border-emerald-300/40 pb-1">
-                                {msg.assunto}
-                              </div>
-                            )}
-
-                            {/* Voice Audio Note Player */}
-                            {msg.audioUrl && (
-                              <audio controls src={msg.audioUrl} className="w-full h-9" />
-                            )}
-
-                            {/* Attached Photo */}
-                            {msg.anexoTipo !== "documento" && msg.anexoWebP && (
-                              <a href={msg.anexoWebP} target="_blank" rel="noopener noreferrer" className="rounded-xl overflow-hidden border border-emerald-300/40 bg-white block">
-                                <img src={msg.anexoWebP} alt="Anexo" className="max-h-48 w-full object-cover" />
-                              </a>
-                            )}
-
-                            {/* Attached Document */}
-                            {msg.anexoTipo === "documento" && msg.anexoWebP && (
-                              <a href={msg.anexoWebP} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-white/70 p-2 rounded-lg border border-emerald-300/40">
-                                <i className="fa-solid fa-file text-emerald-700"></i>
-                                <span className="text-xs font-bold truncate">{msg.anexoNome || "Documento"}</span>
-                              </a>
-                            )}
-
-                            {/* Text Message */}
-                            {msg.mensagem && !msg.audioUrl && (
-                              <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.mensagem}</p>
-                            )}
-
-                            <div className="flex items-center justify-end space-x-1 text-[9.5px] text-slate-500 dark:text-emerald-200/70 font-mono-custom">
-                              <span>{msg.data}</span>
-                              <CheckCheck className="h-3.5 w-3.5 text-blue-500 inline ml-1" />
+                    mensagensThreadPortal.map((m) => (
+                      <div key={m.id_mensagem} className={`flex ${m.autor === "condomino" ? "justify-end" : "justify-start"}`}>
+                        <div className={`max-w-[85%] rounded-2xl p-3 shadow-xs space-y-1.5 ${m.autor === "condomino" ? "bg-[#D9FDD3] dark:bg-[#005c4b] text-slate-900 dark:text-slate-100 rounded-tr-xs border border-emerald-200/50" : "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-xs border border-slate-200 dark:border-slate-700"}`}>
+                          {m.autor === "administracao" && (
+                            <div className="text-[10px] font-bold text-[#075E54] dark:text-emerald-400 flex items-center gap-1">
+                              <Shield className="h-3 w-3 text-emerald-600 inline mr-1" /> Administração do Condomínio
                             </div>
+                          )}
+                          {m.anexo_tipo === "audio" && m.anexo_url && (
+                            <audio controls src={m.anexo_url} className="w-full h-9" />
+                          )}
+                          {m.anexo_tipo === "foto" && m.anexo_url && (
+                            <a href={m.anexo_url} target="_blank" rel="noopener noreferrer" className="rounded-xl overflow-hidden border border-black/10 bg-white block">
+                              <img src={m.anexo_url} alt="Anexo" className="max-h-48 w-full object-cover" />
+                            </a>
+                          )}
+                          {m.anexo_tipo === "documento" && m.anexo_url && (
+                            <a href={m.anexo_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-black/5 p-2 rounded-lg">
+                              <i className="fa-solid fa-file text-emerald-700"></i>
+                              <span className="text-xs font-bold truncate">{m.anexo_nome || "Documento"}</span>
+                            </a>
+                          )}
+                          <p className="text-xs leading-relaxed whitespace-pre-wrap">{m.texto}</p>
+                          <div className={`flex items-center ${m.autor === "condomino" ? "justify-end" : "justify-between"} space-x-1 text-[9.5px] text-slate-500 dark:text-slate-400 font-mono-custom`}>
+                            <span>{m.created_at ? new Date(m.created_at).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}</span>
+                            {m.autor === "condomino" && <CheckCheck className="h-3.5 w-3.5 text-blue-500 inline ml-1" />}
                           </div>
                         </div>
-
-                        {/* Admin Reply Bubble */}
-                        {msg.respostaAdmin && (
-                          <div className="flex justify-start">
-                            <div className="max-w-[85%] bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-2xl rounded-tl-xs p-3 shadow-xs border border-slate-200 dark:border-slate-700 space-y-1.5">
-                              <div className="text-[10px] font-bold text-[#075E54] dark:text-emerald-400 flex items-center gap-1">
-                                <Shield className="h-3 w-3 text-emerald-600 inline mr-1" /> Administração do Condomínio
-                              </div>
-                              {msg.anexoRespostaTipo === "audio" && msg.anexoRespostaUrl && (
-                                <audio controls src={msg.anexoRespostaUrl} className="w-full h-9" />
-                              )}
-                              {msg.anexoRespostaTipo === "foto" && msg.anexoRespostaUrl && (
-                                <a href={msg.anexoRespostaUrl} target="_blank" rel="noopener noreferrer" className="rounded-xl overflow-hidden border border-slate-200 bg-white block">
-                                  <img src={msg.anexoRespostaUrl} alt="Anexo" className="max-h-48 w-full object-cover" />
-                                </a>
-                              )}
-                              {msg.anexoRespostaTipo === "documento" && msg.anexoRespostaUrl && (
-                                <a href={msg.anexoRespostaUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
-                                  <i className="fa-solid fa-file text-emerald-700"></i>
-                                  <span className="text-xs font-bold truncate">{msg.anexoRespostaNome || "Documento"}</span>
-                                </a>
-                              )}
-                              <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.respostaAdmin}</p>
-                              <div className="text-right text-[9.5px] text-slate-400 font-mono-custom">
-                                {msg.dataResposta || msg.data}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </React.Fragment>
-                    );
-                  }))}
+                      </div>
+                    ))
+                  )}
                 </div>
 
                 {/* Previews of attached Photo, Document or Audio Note */}

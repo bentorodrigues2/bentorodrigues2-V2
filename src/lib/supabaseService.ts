@@ -1929,7 +1929,8 @@ export async function fetchMensagensConversaFromSupabase(idConversa: string): Pr
       created_at: row.created_at,
       anexo_url: row.anexo_url || undefined,
       anexo_tipo: row.anexo_tipo || undefined,
-      anexo_nome: row.anexo_nome || undefined
+      anexo_nome: row.anexo_nome || undefined,
+      lida: !!row.lida
     }));
   } catch (err) {
     return null;
@@ -1947,6 +1948,18 @@ export async function saveMensagemConversaToSupabase(mensagem: MensagemConversa)
     anexo_tipo: mensagem.anexo_tipo || null,
     anexo_nome: mensagem.anexo_nome || null
   });
+}
+
+// Marca como lidas todas as mensagens de uma conversa escritas pelo AUTOR
+// OPOSTO ao de quem está a ver — usado para a contagem de "por ler" do
+// cartão/badge de Mensagens ficar sempre correta em ambos os lados.
+export async function marcarMensagensConversaComoLidas(idConversa: string, autorDasMensagens: "condomino" | "administracao"): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpdate("mensagens_conversa", { lida: true }, [
+    ["id_conversa", "eq", idConversa],
+    ["autor", "eq", autorDasMensagens],
+    ["lida", "eq", false]
+  ]);
 }
 
 export async function fetchSondagensFromSupabase(idPredio?: string): Promise<Sondagem[] | null> {

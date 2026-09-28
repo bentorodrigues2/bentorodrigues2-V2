@@ -32,6 +32,7 @@ import {
   fetchMensagensConversaFromSupabase,
   saveMensagemConversaToSupabase,
   uploadAnexoConversaToStorage,
+  marcarMensagensConversaComoLidas,
   fetchComunicadosFromSupabase,
   fetchSondagensFromSupabase,
   saveVotoSondagemToSupabase,
@@ -399,6 +400,66 @@ export default function PWACondominoView({
       return novo;
     });
   }, [activeTab, showChatModal, mensagens, loggedUser.email]);
+
+  // Conversa completa (estilo WhatsApp) com a administração — substitui o
+  // "bilhete" (1ª mensagem + 1ª resposta) por todas as mensagens reais da
+  // conversa, em ordem, incluindo anexos e contagem real de por-ler.
+  const idConversaPwa = condominoFracao?.id_fracao ? "conv-" + condominoFracao.id_fracao : "";
+  const [mensagensThreadPwa, setMensagensThreadPwa] = useState<MensagemConversa[]>([]);
+  const carregarThreadPwa = React.useCallback(async () => {
+    if (!idConversaPwa) return;
+    const dados = await fetchMensagensConversaFromSupabase(idConversaPwa);
+    setMensagensThreadPwa(dados || []);
+  }, [idConversaPwa]);
+  useEffect(() => { carregarThreadPwa(); }, [carregarThreadPwa]);
+
+  const naoLidasThreadPwa = mensagensThreadPwa.filter(m => m.autor === "administracao" && !m.lida).length;
+
+  // Realtime: novas mensagens (dos dois lados) chegam sozinhas à conversa
+  // aberta — única responsável por acrescentar ao thread (nunca um
+  // acrescento local otimista em paralelo, que já causou mensagens
+  // duplicadas do lado do admin por esta mesma razão).
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !idConversaPwa) return;
+    const canal = supabase
+      .channel(`pwa_thread_${idConversaPwa}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "mensagens_conversa", filter: `id_conversa=eq.${idConversaPwa}` },
+        (payload: any) => {
+          const nova = payload.new;
+          setMensagensThreadPwa(prev => prev.some(m => m.id_mensagem === nova.id_mensagem) ? prev : [...prev, {
+            id_mensagem: nova.id_mensagem,
+            id_conversa: nova.id_conversa,
+            autor: nova.autor,
+            texto: nova.texto,
+            created_at: nova.created_at,
+            anexo_url: nova.anexo_url || undefined,
+            anexo_tipo: nova.anexo_tipo || undefined,
+            anexo_nome: nova.anexo_nome || undefined,
+            lida: !!nova.lida
+          }]);
+          if (nova.autor === "administracao") {
+            playNotificationTone();
+            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+              try { new Notification("Nova mensagem da Administração", { body: nova.texto, icon: "/marca/10-icone-negativo.png" }); } catch {}
+            }
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(canal); };
+  }, [idConversaPwa]);
+
+  // Marca como lidas as mensagens do admin assim que o condómino abre a
+  // conversa (cartão "Mensagens" ou botão flutuante).
+  useEffect(() => {
+    if (!showChatModal || !idConversaPwa || naoLidasThreadPwa === 0) return;
+    marcarMensagensConversaComoLidas(idConversaPwa, "administracao").then(() => {
+      setMensagensThreadPwa(prev => prev.map(m => m.autor === "administracao" ? { ...m, lida: true } : m));
+    });
+  }, [showChatModal, idConversaPwa]);
+
   const [comunicadosFeed, setComunicadosFeed] = useState<Comunicado[]>([]);
   const [sondagensFeed, setSondagensFeed] = useState<Sondagem[]>([]);
   const [questionariosFeed, setQuestionariosFeed] = useState<Questionario[]>([]);
@@ -709,11 +770,11 @@ export default function PWACondominoView({
   const getNotificationCount = (cardId: string) => {
     if (cardId === "ocorrencias") return ocorrenciasAbertasReais.length;
     if (cardId === "financas") return avisosPendentesFracaoReais.length;
-    // Era um useState(true) nunca recalculado a partir de dados reais — o
-    // cartão "Comunicados" mostrava sempre "+1 Nova" a piscar, mesmo sem
-    // nenhuma resposta por ler. Usa agora a mesma contagem real já correta
-    // do botão de mensagens (respostasPorLerPwa).
-    if (cardId === "comunicacoes") return respostasPorLerPwa > 0 ? 1 : 0;
+    // O cartão "Mensagens" é que mostra mesmo a contagem de respostas por
+    // ler (antes estava, por engano, emprestada ao cartão "Comunicados",
+    // que é para avisos em massa da administração, não para a conversa
+    // direta) — ver getPillTextForCard abaixo.
+    if (cardId === "mensagens") return naoLidasThreadPwa;
     if (cardId === "sondagens") return sondagensPorVotar.length > 0 ? 1 : 0;
     return 0;
   };
@@ -722,7 +783,7 @@ export default function PWACondominoView({
     switch (cardId) {
       case "ocorrencias": return ocorrenciasAbertasReais.length > 0 ? `${ocorrenciasAbertasReais.length} Ativa(s)` : "Sem Registos";
       case "financas": return avisosPendentesFracaoReais.length > 0 ? `${avisosPendentesFracaoReais.length} Pendente(s)` : "Regularizado";
-      case "comunicacoes": return respostasPorLerPwa > 0 ? `${respostasPorLerPwa} Nova(s)` : "Sem Alertas";
+      case "mensagens": return naoLidasThreadPwa > 0 ? `${naoLidasThreadPwa} Nova(s)` : "Sem Alertas";
       case "documentos": return `${documentosFracaoReais.length} Ficheiro(s)`;
       case "reservas_limpezas": return reservasFracaoReais.length > 0 ? `${reservasFracaoReais.length} Ativa(s)` : "Ativo";
       case "sondagens": return sondagensPorVotar.length > 0 ? `${sondagensPorVotar.length} Ativa(s)` : "Votado";
@@ -1273,7 +1334,7 @@ export default function PWACondominoView({
               const CartaoFinanca = ({ label, valor, full }: { label: string; valor: number; full?: boolean }) => (
                 <button
                   type="button"
-                  onClick={() => setActiveTab("financas")}
+                  onClick={() => setActiveTab("financeiro")}
                   className={`${full ? "w-full" : "flex-1"} rounded-xl p-3 border text-left cursor-pointer hover:brightness-95 transition-all ${
                     valor >= 0 ? "bg-[#A7F3D0] border-[#34D399]" : "bg-red-100 border-red-400"
                   }`}
@@ -1303,7 +1364,7 @@ export default function PWACondominoView({
                             <button
                               type="button"
                               key={c.id_conta}
-                              onClick={() => setActiveTab("financas")}
+                              onClick={() => setActiveTab("financeiro")}
                               className={`text-left rounded-xl p-2.5 border cursor-pointer hover:brightness-95 transition-all ${saldoConta >= 0 ? "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800" : "bg-red-50 border-red-300"}`}
                             >
                               <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wide block truncate">{c.banco || "Conta"}</span>
@@ -1384,6 +1445,7 @@ export default function PWACondominoView({
                 {[
                   { id: "ocorrencias", label: "Ocorrências", desc: "Avarias & Apoio", image: "/modulos/29-avaria.png" },
                   { id: "financas", label: "Finanças", desc: "Quotas & Comprovativos", image: "/modulos/59-recibo.png" },
+                  { id: "mensagens", label: "Mensagens", desc: "Fale com a Administração", image: "/modulos/74-mensagem-individual.png" },
                   { id: "comunicacoes", label: "Comunicados", desc: "Canal Interno & Avisos", image: "/modulos/21-notificacoes-inquilino.png" },
                   { id: "documentos", label: "Arquivo Digital", desc: "Ficheiros & Fotos", image: "/modulos/27-arquivo-automatico.png" },
                   { id: "reservas_limpezas", label: "Reservas", desc: "Áreas Comuns", image: "/modulos/82-automacao.png" },
@@ -1410,7 +1472,7 @@ export default function PWACondominoView({
                   return (
                     <button
                       key={card.id}
-                      onClick={() => setSelectedSubmenu(selectedSubmenu === card.id ? null : card.id)}
+                      onClick={() => card.id === "mensagens" ? setShowChatModal(true) : setSelectedSubmenu(selectedSubmenu === card.id ? null : card.id)}
                       className={`w-full h-[115px] bg-emerald-50 hover:bg-emerald-100/90 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-950 dark:text-emerald-100 border-2 border-emerald-500 dark:border-emerald-400/80 rounded-2xl flex flex-col items-center justify-between text-center p-2.5 relative select-none hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-sm ${
                         selectedSubmenu === card.id ? "ring-2 ring-emerald-600 border-emerald-600 shadow-md" : ""
                       }`}
@@ -4803,9 +4865,9 @@ export default function PWACondominoView({
               alt="Mensagens"
               className="w-8 h-8 object-contain pointer-events-none drop-shadow-sm"
             />
-            {respostasPorLerPwa > 0 && (
+            {naoLidasThreadPwa > 0 && (
               <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-black border-2 border-white shadow-md animate-pulse">
-                {respostasPorLerPwa}
+                {naoLidasThreadPwa}
               </span>
             )}
           </div>
@@ -4838,47 +4900,31 @@ export default function PWACondominoView({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3 space-y-2.5 bg-slate-50 dark:bg-slate-950/70 min-h-[200px]">
-              {mensagens.length === 0 && (
-                <p className="text-slate-400 text-[10px] text-center py-6">Sem conversas ainda — escreva à administração abaixo.</p>
+            <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[#e5ddd5] dark:bg-slate-950/70 bg-[radial-gradient(#d9d0c7_1px,transparent_1px)] dark:bg-none bg-[length:14px_14px] min-h-[200px]">
+              {mensagensThreadPwa.length === 0 && (
+                <p className="text-slate-500 text-[10px] text-center py-6 bg-white/70 dark:bg-slate-900/70 rounded-lg px-2 mx-auto w-fit">Sem conversas ainda — escreva à administração abaixo.</p>
               )}
-              {mensagens.map((ticket) => (
-                <React.Fragment key={ticket.id_conversa}>
-                  <div className="p-2.5 bg-emerald-600 text-white rounded-2xl space-y-1.5 ml-auto max-w-[85%] shadow-xs">
-                    <div className="flex justify-between font-bold text-emerald-100 text-[8px] flex-row-reverse">
-                      <span>Você</span>
-                      <span>{ticket.data}</span>
+              {mensagensThreadPwa.map((m) => (
+                <div key={m.id_mensagem} className={`flex ${m.autor === "condomino" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[85%] p-2.5 rounded-2xl space-y-1.5 shadow-xs ${m.autor === "condomino" ? "bg-emerald-600 text-white" : "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700"}`}>
+                    {m.autor === "administracao" && (
+                      <div className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400">🏢 Administração do Condomínio</div>
+                    )}
+                    {m.anexo_tipo === "foto" && m.anexo_url && (
+                      <a href={m.anexo_url} target="_blank" rel="noopener noreferrer"><img src={m.anexo_url} alt="" className="max-h-48 rounded-lg" /></a>
+                    )}
+                    {m.anexo_tipo === "documento" && m.anexo_url && (
+                      <a href={m.anexo_url} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 p-1.5 rounded-lg text-[10px] ${m.autor === "condomino" ? "bg-emerald-700/60" : "bg-slate-100 dark:bg-slate-700"}`}><File className="h-3.5 w-3.5" /><span className="truncate">{m.anexo_nome}</span></a>
+                    )}
+                    {m.anexo_tipo === "audio" && m.anexo_url && (
+                      <audio controls src={m.anexo_url} className="max-w-[220px] h-8" />
+                    )}
+                    <p className="leading-normal text-[10px]">{m.texto}</p>
+                    <div className={`text-[9px] text-right ${m.autor === "condomino" ? "text-emerald-100" : "text-slate-400"}`}>
+                      {m.created_at ? new Date(m.created_at).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}
                     </div>
-                    {ticket.anexoTipo === "foto" && ticket.anexoUrl && (
-                      <a href={ticket.anexoUrl} target="_blank" rel="noopener noreferrer"><img src={ticket.anexoUrl} alt="" className="max-h-40 rounded-lg" /></a>
-                    )}
-                    {ticket.anexoTipo === "documento" && ticket.anexoUrl && (
-                      <a href={ticket.anexoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-emerald-700/60 p-1.5 rounded-lg text-[10px]"><File className="h-3.5 w-3.5" /><span className="truncate">{ticket.anexoNome}</span></a>
-                    )}
-                    {ticket.anexoTipo === "audio" && ticket.anexoUrl && (
-                      <audio controls src={ticket.anexoUrl} className="max-w-[200px] h-8" />
-                    )}
-                    <p className="text-white leading-normal text-[10px]">{ticket.mensagem}</p>
                   </div>
-                  {ticket.respostaAdmin && (
-                    <div className="p-2.5 bg-white dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-750 space-y-1.5 max-w-[85%] shadow-xs">
-                      <div className="flex justify-between font-bold text-slate-400 text-[8px]">
-                        <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">🏢 Administração do Condomínio</span>
-                        <span>{ticket.dataResposta}</span>
-                      </div>
-                      {ticket.anexoRespostaTipo === "foto" && ticket.anexoRespostaUrl && (
-                        <a href={ticket.anexoRespostaUrl} target="_blank" rel="noopener noreferrer"><img src={ticket.anexoRespostaUrl} alt="" className="max-h-40 rounded-lg" /></a>
-                      )}
-                      {ticket.anexoRespostaTipo === "documento" && ticket.anexoRespostaUrl && (
-                        <a href={ticket.anexoRespostaUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 p-1.5 rounded-lg text-[10px]"><File className="h-3.5 w-3.5" /><span className="truncate">{ticket.anexoRespostaNome}</span></a>
-                      )}
-                      {ticket.anexoRespostaTipo === "audio" && ticket.anexoRespostaUrl && (
-                        <audio controls src={ticket.anexoRespostaUrl} className="max-w-[200px] h-8" />
-                      )}
-                      <p className="text-slate-700 dark:text-slate-200 leading-normal text-[10px]">{ticket.respostaAdmin}</p>
-                    </div>
-                  )}
-                </React.Fragment>
+                </div>
               ))}
             </div>
 

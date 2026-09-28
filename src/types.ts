@@ -880,6 +880,7 @@ export interface MensagemConversa {
   anexo_url?: string;
   anexo_tipo?: "foto" | "documento" | "audio";
   anexo_nome?: string;
+  lida?: boolean;
 }
 
 export interface ConversaCondomino {

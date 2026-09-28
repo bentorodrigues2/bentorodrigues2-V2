@@ -10,6 +10,7 @@ import {
   fetchMensagensConversaFromSupabase,
   saveMensagemConversaToSupabase,
   uploadAnexoConversaToStorage,
+  marcarMensagensConversaComoLidas,
   fetchSondagensFromSupabase,
   saveSondagemToSupabase,
   fetchQuestionariosFromSupabase,
@@ -255,6 +256,13 @@ export function GestaoComunicacoes({
   const carregarMensagens = useCallback(async (idConversa: string) => {
     const dados = await fetchMensagensConversaFromSupabase(idConversa);
     setMensagensSelecionadas(dados || []);
+    // Marca como lidas as mensagens do condómino assim que o admin abre a
+    // conversa — para a contagem de por-ler ficar sempre correta.
+    if ((dados || []).some(m => m.autor === "condomino" && !m.lida)) {
+      marcarMensagensConversaComoLidas(idConversa, "condomino").then(() => {
+        setMensagensSelecionadas(prev => prev.map(m => m.autor === "condomino" ? { ...m, lida: true } : m));
+      });
+    }
   }, []);
 
   useEffect(() => {
