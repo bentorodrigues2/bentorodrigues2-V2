@@ -80,7 +80,8 @@ const TABELAS_PERMITIDAS = new Set([
   "dividas_fornecedores",
   "revisoes_orcamento",
   "pagamentos_dividas_fornecedores",
-  "pagamentos"
+  "pagamentos",
+  "correspondencia"
 ]);
 
 // Registos de auditoria: só select e insert, mesmo por este proxy — para
@@ -118,7 +119,8 @@ const TABELAS_ESCRITA_SO_GESTAO = new Set([
   "equipas_prestadores",
   "rfps",
   "propostas",
-  "agendamentos_avisos"
+  "agendamentos_avisos",
+  "correspondencia"
 ]);
 
 // Leitura dos registos de auditoria: só gestão + AUDITOR (é o único papel
@@ -144,7 +146,7 @@ const TABELAS_COM_ID_PREDIO = new Set([
   "inventario_tecnico", "mural_avisos", "reservas_espacos_mural",
   "equipas_prestadores", "rfps", "dividas_fornecedores",
   "revisoes_orcamento", "pagamentos_dividas_fornecedores", "questionarios",
-  "agendamentos_avisos"
+  "agendamentos_avisos", "correspondencia"
 ]);
 
 // Tabelas sem id_predio próprio, mas com id_fracao — isoladas pela fração

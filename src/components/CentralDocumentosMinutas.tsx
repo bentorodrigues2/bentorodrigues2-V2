@@ -1,12 +1,14 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { jsPDF } from "jspdf";
-import { Predio, Fracao, LoggedUser, Conta, Documento, Correspondencia, CorrespondenciaAnexo, Movimento, ProcessoJuridico } from "../types";
+import { Predio, Fracao, LoggedUser, Conta, Documento, Correspondencia, CorrespondenciaAnexo, Movimento, ProcessoJuridico, EmpresaGestoraConfig } from "../types";
 import {
   uploadDocumentoToStorage,
   saveDocumentoToSupabase,
   fetchCorrespondenciaFromSupabase,
   saveCorrespondenciaToSupabase,
+  deleteCorrespondenciaFromSupabase,
   fetchProcessosJuridicosFromSupabase,
+  fetchEmpresaGestoraConfig,
   saveContaToSupabase,
   saveMovimentoToSupabase,
   registarLogAuditoria
@@ -124,12 +126,19 @@ export function CentralDocumentosMinutas({
   // Nova Carta (redação livre, sem modelo pré-definido)
   const [cartaAssunto, setCartaAssunto] = useState("");
   const [cartaDestinatarioNome, setCartaDestinatarioNome] = useState("");
-  const [cartaDestinatarioMorada, setCartaDestinatarioMorada] = useState("");
+  const [cartaDestMoradaLinha1, setCartaDestMoradaLinha1] = useState("");
+  const [cartaDestNumPorta, setCartaDestNumPorta] = useState("");
+  const [cartaDestPiso, setCartaDestPiso] = useState("");
+  const [cartaDestCodPostal, setCartaDestCodPostal] = useState("");
+  const [cartaDestLocalidade, setCartaDestLocalidade] = useState("");
   const [cartaIdFracao, setCartaIdFracao] = useState("");
   const [cartaPontosChave, setCartaPontosChave] = useState("");
   const [cartaConteudo, setCartaConteudo] = useState("");
-  const [cartaTipoEnvio, setCartaTipoEnvio] = useState<Correspondencia["tipo_envio"]>("Correio Registado");
+  const [cartaMetodoEnvio, setCartaMetodoEnvio] = useState<"Correio" | "Email" | "Em Mão">("Correio");
+  const [cartaRegistado, setCartaRegistado] = useState(true);
+  const [cartaAvisoRececao, setCartaAvisoRececao] = useState(false);
   const [cartaIdProcesso, setCartaIdProcesso] = useState("");
+  const [empresaGestoraConfig, setEmpresaGestoraConfig] = useState<EmpresaGestoraConfig | null>(null);
   const [aGerarCartaIA, setAGerarCartaIA] = useState(false);
   const [aGuardarCarta, setAGuardarCarta] = useState(false);
   const [cartaFicheiroComprovativo, setCartaFicheiroComprovativo] = useState<File | null>(null);
@@ -152,21 +161,29 @@ export function CentralDocumentosMinutas({
     setACarregarCorrespondencia(true);
     Promise.all([
       fetchCorrespondenciaFromSupabase(predio.id_predio),
-      fetchProcessosJuridicosFromSupabase(predio.id_predio)
-    ]).then(([corresp, processos]) => {
+      fetchProcessosJuridicosFromSupabase(predio.id_predio),
+      fetchEmpresaGestoraConfig()
+    ]).then(([corresp, processos, gestora]) => {
       setCorrespondencias(corresp || []);
       setProcessosJuridicos(processos || []);
+      setEmpresaGestoraConfig(gestora || null);
     }).finally(() => setACarregarCorrespondencia(false));
   }, [predio?.id_predio, podeGerirCorrespondencia]);
 
   const resetFormNovaCarta = () => {
     setCartaAssunto("");
     setCartaDestinatarioNome("");
-    setCartaDestinatarioMorada("");
+    setCartaDestMoradaLinha1("");
+    setCartaDestNumPorta("");
+    setCartaDestPiso("");
+    setCartaDestCodPostal("");
+    setCartaDestLocalidade("");
     setCartaIdFracao("");
     setCartaPontosChave("");
     setCartaConteudo("");
-    setCartaTipoEnvio("Correio Registado");
+    setCartaMetodoEnvio("Correio");
+    setCartaRegistado(true);
+    setCartaAvisoRececao(false);
     setCartaIdProcesso("");
     setCartaFicheiroComprovativo(null);
     setCartaLancarCusto(false);
@@ -175,16 +192,64 @@ export function CentralDocumentosMinutas({
     setCorresRespondendoA(null);
   };
 
+  // Ao escolher uma fração, preenche o destinatário e a morada a partir dos
+  // dados reais do condómino — "morada_alternativa" quando definida (mora
+  // fora do prédio), caso contrário a própria morada do edifício + piso da
+  // fração (é onde o condómino realmente recebe correio).
+  const handleSelecionarFracaoCarta = (idFracao: string) => {
+    setCartaIdFracao(idFracao);
+    const fracao = fracoes.find(f => f.id_fracao === idFracao);
+    if (!fracao) return;
+    setCartaDestinatarioNome(fracao.proprietario?.nome || "");
+    if (fracao.proprietario?.morada_alternativa) {
+      setCartaDestMoradaLinha1(fracao.proprietario.morada_alternativa);
+      setCartaDestNumPorta("");
+      setCartaDestPiso("");
+      setCartaDestCodPostal("");
+      setCartaDestLocalidade("");
+    } else {
+      setCartaDestMoradaLinha1(predio.morada_linha1 || "");
+      setCartaDestNumPorta(predio.num_porta || "");
+      setCartaDestPiso(fracao.fracao_nome || "");
+      setCartaDestCodPostal(predio.codigo_postal || "");
+      setCartaDestLocalidade(predio.localidade || "");
+    }
+  };
+
   const handleAbrirNovaCarta = (respondendoA?: Correspondencia) => {
     resetFormNovaCarta();
     if (respondendoA) {
       setCorresRespondendoA(respondendoA);
       setCartaAssunto(`Resposta: ${respondendoA.assunto}`);
       setCartaDestinatarioNome(respondendoA.remetente_nome || "");
-      setCartaIdFracao(respondendoA.id_fracao || "");
+      if (respondendoA.id_fracao) handleSelecionarFracaoCarta(respondendoA.id_fracao);
       setCartaIdProcesso(respondendoA.id_processo_juridico || "");
     }
     setModalCorrespAberto("nova_carta");
+  };
+
+  // Junta as partes estruturadas da morada numa única linha para gravação e
+  // para o PDF (mesma convenção de composição usada nos outros documentos).
+  const composeDestinatarioMorada = () => {
+    const partes: string[] = [];
+    if (cartaDestMoradaLinha1) {
+      partes.push(cartaDestNumPorta ? `${cartaDestMoradaLinha1}, N.º ${cartaDestNumPorta}` : cartaDestMoradaLinha1);
+    }
+    if (cartaDestPiso) partes.push(cartaDestPiso);
+    const linha1 = partes.join(", ");
+    const linha2 = [cartaDestCodPostal, cartaDestLocalidade].filter(Boolean).join(" ");
+    return [linha1, linha2].filter(Boolean).join("\n");
+  };
+
+  // Compõe o tipo de envio final a partir do método base + serviços
+  // adicionais (registado / aviso de receção são escolha múltipla sobre o
+  // envio por correio, não opções mutuamente exclusivas).
+  const composeTipoEnvio = (): Correspondencia["tipo_envio"] => {
+    if (cartaMetodoEnvio === "Email") return "Email";
+    if (cartaMetodoEnvio === "Em Mão") return "Em Mão";
+    if (cartaRegistado && cartaAvisoRececao) return "Registado com AR";
+    if (cartaRegistado) return "Correio Registado";
+    return "Correio Simples";
   };
 
   const handleGerarCartaIA = async () => {
@@ -278,9 +343,9 @@ export function CentralDocumentosMinutas({
         assunto: cartaAssunto,
         conteudo: cartaConteudo,
         destinatario_nome: cartaDestinatarioNome || undefined,
-        destinatario_morada: cartaDestinatarioMorada || undefined,
+        destinatario_morada: composeDestinatarioMorada() || undefined,
         id_fracao: cartaIdFracao || undefined,
-        tipo_envio: cartaTipoEnvio,
+        tipo_envio: composeTipoEnvio(),
         estado: estadoFinal,
         data_criacao: new Date().toISOString(),
         data_envio: estadoFinal === "Enviada" ? new Date().toISOString().split("T")[0] : undefined,
@@ -372,6 +437,91 @@ export function CentralDocumentosMinutas({
     const atualizada = { ...corresp, estado: "Devolvida" as const };
     setCorrespondencias(prev => prev.map(c => c.id_corresp === corresp.id_corresp ? atualizada : c));
     await saveCorrespondenciaToSupabase(atualizada);
+  };
+
+  const handleEliminarCorrespondencia = async (corresp: Correspondencia) => {
+    if (!window.confirm(`Eliminar definitivamente a correspondência "${corresp.assunto}"? Esta ação não pode ser desfeita.`)) return;
+    const ok = await deleteCorrespondenciaFromSupabase(corresp.id_corresp);
+    if (!ok) {
+      alert("Erro ao eliminar a correspondência.");
+      return;
+    }
+    setCorrespondencias(prev => prev.filter(c => c.id_corresp !== corresp.id_corresp));
+    registarLogAuditoria("Correspondência", `Eliminou correspondência: ${corresp.assunto}`, predio.id_predio, loggedUser);
+  };
+
+  // Gera o PDF oficial da carta (logótipo, destinatário, corpo redigido e
+  // assinatura/contactos reais da administração) — devolverDoc=true dá o
+  // objeto jsPDF para o botão "Imprimir" abrir a pré-visualização de
+  // impressão do browser em vez de descarregar o ficheiro.
+  const gerarCorrespondenciaPDF = (corresp: Correspondencia, modo: "download" | "print") => {
+    try {
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      let y = addPdfHeaderWithLogo(doc, predio.nome || "Condomínio");
+
+      const dataFormatada = formatDatePT((corresp.data_envio || corresp.data_criacao || new Date().toISOString()).split("T")[0]);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(51, 65, 85);
+      doc.text(`${predio.localidade || ""}, ${dataFormatada}`, 196, y, { align: "right" });
+      y += 10;
+
+      if (corresp.destinatario_nome) {
+        doc.setFont("helvetica", "bold");
+        doc.text(corresp.destinatario_nome, 14, y);
+        y += 5;
+        doc.setFont("helvetica", "normal");
+        (corresp.destinatario_morada || "").split("\n").filter(Boolean).forEach(linha => {
+          doc.text(linha, 14, y);
+          y += 5;
+        });
+        y += 4;
+      }
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.text(`Assunto: ${corresp.assunto}`, 14, y);
+      y += 9;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(30, 41, 59);
+      const corpoLines = doc.splitTextToSize(corresp.conteudo || "", 182);
+      doc.text(corpoLines, 14, y);
+      y += corpoLines.length * 4.8 + 14;
+
+      if (y > 250) { doc.addPage(); y = 20; }
+      doc.setDrawColor(148, 163, 184);
+      doc.line(14, y, 80, y);
+      y += 4;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`${loggedUser.nome} • Administração do Condomínio`, 14, y);
+      y += 6;
+
+      const contactoEmail = predio.email_condominio || predio.email;
+      const contactoTlm = empresaGestoraConfig?.telefone;
+      if (contactoEmail || contactoTlm) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text([contactoEmail, contactoTlm].filter(Boolean).join(" • "), 14, y);
+      }
+
+      doc.setFontSize(6.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text("CondoManager AI • Documento Oficial de Correspondência", 105, 285, { align: "center" });
+
+      if (modo === "print") {
+        (doc as any).autoPrint();
+        window.open(doc.output("bloburl"), "_blank");
+      } else {
+        doc.save(`Correspondencia_${corresp.assunto.replace(/[^a-zA-Z0-9]+/g, "_")}.pdf`);
+      }
+    } catch (e: any) {
+      alert("Erro ao gerar o PDF da carta: " + e.message);
+    }
   };
 
   const correspondenciasFiltradas = useMemo(() => {
@@ -2227,6 +2377,28 @@ A Administração do Condomínio`
                             </button>
                           </>
                         )}
+                        {corresp.direcao === "Enviada" && (
+                          <>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); gerarCorrespondenciaPDF(corresp, "download"); }}
+                              className="px-2.5 py-1.5 text-[11px] font-bold rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1 cursor-pointer"
+                            >
+                              <Download className="h-3.5 w-3.5" /> Exportar PDF
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); gerarCorrespondenciaPDF(corresp, "print"); }}
+                              className="px-2.5 py-1.5 text-[11px] font-bold rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1 cursor-pointer"
+                            >
+                              <Printer className="h-3.5 w-3.5" /> Imprimir
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleEliminarCorrespondencia(corresp); }}
+                          className="px-2.5 py-1.5 text-[11px] font-bold rounded-lg border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                        </button>
                       </div>
                     </div>
 
@@ -2292,29 +2464,18 @@ A Administração do Condomínio`
                       <input value={cartaAssunto} onChange={e => setCartaAssunto(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="Ex: Notificação de dívida, resposta a reclamação..." />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-600 dark:text-slate-600">Destinatário</label>
-                      <input value={cartaDestinatarioNome} onChange={e => setCartaDestinatarioNome(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="Nome do destinatário" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-600 dark:text-slate-600">Morada</label>
-                      <input value={cartaDestinatarioMorada} onChange={e => setCartaDestinatarioMorada(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="Morada de envio" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-600 dark:text-slate-600">Fração (opcional)</label>
-                      <select value={cartaIdFracao} onChange={e => setCartaIdFracao(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg">
-                        <option value="">—</option>
-                        {fracoes.map(f => <option key={f.id_fracao} value={f.id_fracao}>{f.fracao_nome}</option>)}
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-600">Fração / Destinatário</label>
+                      <select value={cartaIdFracao} onChange={e => handleSelecionarFracaoCarta(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg">
+                        <option value="">— Escolher fração / condómino —</option>
+                        {fracoes.map(f => <option key={f.id_fracao} value={f.id_fracao}>{f.fracao_nome} — {f.proprietario?.nome}</option>)}
                       </select>
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-bold text-slate-600 dark:text-slate-600">Tipo de Envio</label>
-                      <select value={cartaTipoEnvio} onChange={e => setCartaTipoEnvio(e.target.value as any)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg">
-                        <option>Correio Simples</option>
-                        <option>Correio Registado</option>
-                        <option>Registado com AR</option>
-                        <option>Email</option>
-                        <option>Em Mão</option>
-                      </select>
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-600">Nome do Destinatário</label>
+                      <input value={cartaDestinatarioNome} onChange={e => setCartaDestinatarioNome(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="Preenchido ao escolher a fração" />
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-600 dark:text-slate-600 flex items-center gap-1"><Scale className="h-3.5 w-3.5" /> Ligar a Processo Jurídico</label>
@@ -2323,6 +2484,60 @@ A Administração do Condomínio`
                         {processosJuridicos.map(p => <option key={p.id_processo} value={p.id_processo}>{p.id_processo} — {p.titulo_processo}</option>)}
                       </select>
                     </div>
+                  </div>
+
+                  <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 space-y-3">
+                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Morada de Envio (preenchida automaticamente ao escolher a fração)</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="sm:col-span-2">
+                        <label className="text-[11px] font-bold text-slate-500">Morada</label>
+                        <input value={cartaDestMoradaLinha1} onChange={e => setCartaDestMoradaLinha1(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="Rua / Avenida" />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-500">Número</label>
+                        <input value={cartaDestNumPorta} onChange={e => setCartaDestNumPorta(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="N.º" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-500">Piso / Fração</label>
+                        <input value={cartaDestPiso} onChange={e => setCartaDestPiso(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="Ex: 2º Esq" />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-500">Código Postal</label>
+                        <input value={cartaDestCodPostal} onChange={e => setCartaDestCodPostal(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="0000-000" />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-500">Localidade</label>
+                        <input value={cartaDestLocalidade} onChange={e => setCartaDestLocalidade(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="Localidade" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 space-y-2">
+                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Tipo de Envio</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(["Correio", "Email", "Em Mão"] as const).map(m => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setCartaMetodoEnvio(m)}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${cartaMetodoEnvio === m ? "bg-emerald-600 text-white shadow-sm" : "bg-slate-100 dark:bg-slate-800 text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700"}`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                    {cartaMetodoEnvio === "Correio" && (
+                      <div className="flex flex-wrap gap-4 pt-1">
+                        <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                          <input type="checkbox" checked={cartaRegistado} onChange={e => setCartaRegistado(e.target.checked)} /> Registado
+                        </label>
+                        <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
+                          <input type="checkbox" checked={cartaAvisoRececao} onChange={e => setCartaAvisoRececao(e.target.checked)} /> Com Aviso de Receção
+                        </label>
+                      </div>
+                    )}
                   </div>
 
                   <div>

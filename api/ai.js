@@ -931,25 +931,29 @@ Analisa o pedido face ao regulamento e à lei aplicável e devolve APENAS um JSO
         return res.status(400).json({ error: "Indique o assunto e os pontos-chave da carta." });
       }
 
-      const prompt = `És a Administração do condomínio "${predio?.nome || "Condomínio"}" (NIF ${predio?.nif || ""}, ${predio?.morada_linha1 || ""}) e vais redigir uma carta formal em português de Portugal, de raiz, sem usar nenhum modelo pré-definido — o conteúdo depende inteiramente do que é pedido abaixo.
+      const saudacao = destinatarioNome ? `Exmo(a). Sr(a). ${destinatarioNome},` : "Exmo(a). Senhor(a),";
+
+      const prompt = `És a Administração do condomínio "${predio?.nome || "Condomínio"}" e vais redigir o CORPO de uma carta formal em português de Portugal, de raiz, sem usar nenhum modelo pré-definido — o conteúdo depende inteiramente do que é pedido abaixo.
 
 ASSUNTO DA CARTA: ${assunto}
-DESTINATÁRIO: ${destinatarioNome || "(a preencher)"}
+DESTINATÁRIO: ${destinatarioNome || "(não indicado)"}
 PONTOS-CHAVE A INCLUIR (indicados livremente pelo administrador, pode ser sobre qualquer assunto do condomínio — dívidas, obras, regulamento, avisos, reclamações, respostas, convocatórias avulsas, etc.):
 ${pontosChave}
 
 TOM PRETENDIDO: ${tom || "formal e institucional, mas claro e respeitoso"}
 
-REGRAS:
-1. Escreve a carta completa, pronta a imprimir e enviar por correio (CTT), incluindo saudação inicial e despedida.
-2. Não inventes factos, valores ou prazos que não constem dos pontos-chave — usa exatamente o que foi indicado.
-3. Cita a legislação aplicável (Código Civil, DL 268/94) apenas se for genuinamente relevante ao assunto indicado.
-4. Termina com:
+REGRAS ESTRITAS:
+1. NÃO escrevas cabeçalho do condomínio, morada, NIF, bloco de endereço do destinatário nem data — a aplicação insere tudo isso automaticamente antes do teu texto. Começa diretamente pela saudação.
+2. NUNCA uses colchetes ou campos por preencher como "[Nome do Condómino]", "[Data de hoje]", "[Código Postal e Localidade]" ou semelhantes. Só tens os dados que te são dados acima — usa exatamente esses. Se um dado (ex.: morada, NIF, valor) não constar dos pontos-chave, simplesmente não o menciones; nunca inventes nem deixes um placeholder por preencher.
+3. Não inventes factos, valores ou prazos que não constem dos pontos-chave — usa exatamente o que foi indicado.
+4. Cita a legislação aplicável (Código Civil, DL 268/94) apenas se for genuinamente relevante ao assunto indicado.
+5. Começa a carta exatamente com a saudação: "${saudacao}"
+6. Termina com:
 Com os melhores cumprimentos,
 
 A Administração do Condomínio
 
-Devolve apenas o texto final da carta, sem comentários nem explicações adicionais.`.trim();
+Devolve apenas o texto do corpo da carta (saudação + parágrafos + despedida), sem comentários nem explicações adicionais.`.trim();
 
       const responseText = await generateWithFallback({
         contents: [{ role: "user", parts: [{ text: prompt }] }]
