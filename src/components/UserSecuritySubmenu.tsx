@@ -5,7 +5,7 @@ import { playNotificationTone } from "../lib/soundService";
 import { createSecurityLog } from "../lib/authSecurity";
 import { supabase } from "../lib/supabaseClient";
 import { subscribeUserToPush } from "../utils/subscribeUser";
-import { savePushSubscriptionToSupabase, dbSelect, dbUpdate } from "../lib/supabaseService";
+import { savePushSubscriptionToSupabase, deletePushSubscriptionFromSupabase, dbSelect, dbUpdate } from "../lib/supabaseService";
 import { browserSupportsWebAuthn, registarBiometriaNesteDispositivo, removerBiometriaNesteDispositivo } from "../utils/webauthn";
 
 interface UserSecuritySubmenuProps {
@@ -77,11 +77,42 @@ export const UserSecuritySubmenu: React.FC<UserSecuritySubmenuProps> = ({
   const [smsEnabled, setSmsEnabled] = useState<boolean>(true);
   const [popupEnabled, setPopupEnabled] = useState<boolean>(true);
 
+  // O interruptor arrancava sempre em "desligado", mesmo com uma subscrição
+  // real e ativa neste dispositivo — sem verificar o estado real do
+  // navegador, qualquer recarregar da página fazia parecer que tinha sido
+  // desativado, quando nunca chegou a sê-lo de facto. Lê o estado real do
+  // Service Worker/PushManager assim que o submenu monta.
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      try {
+        if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+        const reg = await navigator.serviceWorker.getRegistration();
+        const subscription = await reg?.pushManager.getSubscription();
+        if (subscription && !cancelado) setPushEnabled(true);
+      } catch { /* sem Service Worker disponível — mantém-se desligado */ }
+    })();
+    return () => { cancelado = true; };
+  }, []);
+
   // Liga/desliga notificações push reais neste dispositivo (subscrição Web Push guardada no Supabase)
   const handleTogglePush = async () => {
     if (ativandoPush) return;
     if (pushEnabled) {
-      setPushEnabled(false);
+      setAtivandoPush(true);
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const subscription = await reg?.pushManager.getSubscription();
+        if (subscription) {
+          await deletePushSubscriptionFromSupabase(subscription.endpoint);
+          await subscription.unsubscribe();
+        }
+        setPushEnabled(false);
+      } catch {
+        alert("❌ Não foi possível desativar as notificações. Tente novamente.");
+      } finally {
+        setAtivandoPush(false);
+      }
       return;
     }
     setAtivandoPush(true);
