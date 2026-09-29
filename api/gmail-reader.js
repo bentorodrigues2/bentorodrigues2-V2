@@ -150,14 +150,24 @@ export default async function handler(req, res) {
         }
       }
 
+      // Isolado do resto: se marcar como lido falhar (ex.: âmbito OAuth
+      // insuficiente), o processamento real (leitura, extração,
+      // lançamento do movimento/pagamento) já aconteceu com sucesso
+      // acima e não deve ser perdido — antes, uma exceção aqui saía do
+      // "for" inteiro e da função toda, devolvendo 500 mesmo quando este
+      // e os emails anteriores do lote tinham sido processados bem.
       if (processadoComSucesso) {
-        await gmail.users.messages.modify({
-          userId: "me",
-          id: msg.id,
-          requestBody: {
-            removeLabelIds: ["UNREAD"]
-          }
-        });
+        try {
+          await gmail.users.messages.modify({
+            userId: "me",
+            id: msg.id,
+            requestBody: {
+              removeLabelIds: ["UNREAD"]
+            }
+          });
+        } catch (errModify) {
+          console.error("[gmail-reader] Falha ao marcar email como lido (fica por ler, retoma-se sozinho):", errModify);
+        }
       }
     }
 

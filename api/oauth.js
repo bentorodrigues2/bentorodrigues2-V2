@@ -18,14 +18,20 @@ export default async function handler(req, res) {
     }
 
     // Reautorização do Gmail usado de facto pelo leitor automático
-    // (gmail-reader.js -> GMAIL_CLIENT_ID/GMAIL_CLIENT_SECRET/GMAIL_REFRESH_TOKEN,
-    // âmbito gmail.readonly + gmail.send). O redirect_uri aponta para
-    // /api/gmail/callback (ficheiro próprio, único URI já registado nos
-    // "URIs de redirecionamento autorizados" do cliente OAuth
-    // "bentorodrigues2-oauth" na Google Cloud Console para este par de
-    // credenciais) — só o passo inicial fica aqui, fundido com o resto
-    // deste dispatcher, porque só o URI de CALLBACK precisa de bater
-    // certo com o registado; o início do fluxo pode estar em qualquer rota.
+    // (gmail-reader.js -> GMAIL_CLIENT_ID/GMAIL_CLIENT_SECRET/GMAIL_REFRESH_TOKEN).
+    // O redirect_uri aponta para /api/gmail/callback (ficheiro próprio,
+    // único URI já registado nos "URIs de redirecionamento autorizados"
+    // do cliente OAuth "bentorodrigues2-oauth" na Google Cloud Console
+    // para este par de credenciais) — só o passo inicial fica aqui,
+    // fundido com o resto deste dispatcher, porque só o URI de CALLBACK
+    // precisa de bater certo com o registado.
+    //
+    // gmail.modify (em vez de só gmail.readonly) — sem isto,
+    // gmail.users.messages.modify (usado para marcar o email como lido
+    // depois de processado) falhava sempre com "Insufficient Permission
+    // / ACCESS_TOKEN_SCOPE_INSUFFICIENT", mesmo com um refresh_token
+    // válido — confirmado em produção. gmail.modify já inclui a
+    // capacidade de enviar, por isso substitui também gmail.send.
     if (acao === "gmail_auth") {
       const url =
         "https://accounts.google.com/o/oauth2/v2/auth?" +
@@ -34,8 +40,7 @@ export default async function handler(req, res) {
           redirect_uri: "https://bentorodrigues2.vercel.app/api/gmail/callback",
           response_type: "code",
           scope: [
-            "https://www.googleapis.com/auth/gmail.readonly",
-            "https://www.googleapis.com/auth/gmail.send"
+            "https://www.googleapis.com/auth/gmail.modify"
           ].join(" "),
           access_type: "offline",
           prompt: "consent"
