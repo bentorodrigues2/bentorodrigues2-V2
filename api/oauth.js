@@ -18,25 +18,16 @@ export default async function handler(req, res) {
     }
 
     // Reautorização do Gmail usado de facto pelo leitor automático
-    // (gmail-reader.js -> GMAIL_CLIENT_ID/GMAIL_CLIENT_SECRET/GMAIL_REFRESH_TOKEN,
-    // âmbito gmail.readonly + gmail.send). É um par de credenciais diferente
-    // do usado em "url"/"callback" acima (GMAIL_OAUTH_CLIENT_ID, âmbito
-    // completo mail.google.com) — este é que estava sem nenhuma rota ligada,
-    // por isso não havia forma nenhuma de gerar um novo refresh_token quando
-    // o antigo expirava.
-    if (acao === "gmail_auth") {
-      const mod = await import("../services/gmail/auth.js");
-      return mod.default(req, res);
-    }
-
-    if (acao === "gmail_callback") {
-      const mod = await import("../services/gmail/callback.js");
-      return mod.default(req, res);
-    }
+    // (gmail-reader.js) passou a ter rota própria em /api/gmail/auth e
+    // /api/gmail/callback — usa exatamente o URI de redirecionamento já
+    // registado na Google Cloud Console para o cliente
+    // "bentorodrigues2-oauth" (https://bentorodrigues2.vercel.app/api/gmail/callback),
+    // em vez de depender de GMAIL_OAUTH_REDIRECT (que aponta para outro
+    // URI, não registado para este cliente).
 
     return res.status(400).json({
       ok: false,
-      error: "Ação inválida. Use url | callback | autoresponder | gmail_auth | gmail_callback"
+      error: "Ação inválida. Use url | callback | autoresponder"
     });
 
   } catch (err) {
