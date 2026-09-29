@@ -859,7 +859,7 @@ export function PWASimulator({
       id_predio: predio.id_predio,
       nome: `Recibo Quotas ${extractedVals.fracao} - ${numRecibo}.pdf`,
       tipo: "Recibo de Condomínio",
-      data_upload: new Date().toLocaleDateString("pt-PT").replace(/\//g, "-"),
+      data_upload: new Date().toISOString().split("T")[0],
       tamanho: "115 KB",
       categoria: "Recibos",
       visibilidade: "Público"
@@ -931,7 +931,7 @@ export function PWASimulator({
       id_predio: predio.id_predio,
       nome: `Apólice Seguro Fração ${condominoFracao?.fracao_nome || "A"} - ${extractedInsApolice}.pdf`,
       tipo: "Apólice de Seguro",
-      data_upload: new Date().toLocaleDateString("pt-PT").replace(/\//g, "-"),
+      data_upload: new Date().toISOString().split("T")[0],
       tamanho: "245 KB",
       categoria: "Seguros",
       visibilidade: "Público"
@@ -983,7 +983,7 @@ export function PWASimulator({
       id_predio: predio.id_predio,
       nome: `Apólice Seguro Fração ${targetFrac.fracao_nome} - ${manualInsApolice}.pdf`,
       tipo: "Apólice de Seguro",
-      data_upload: new Date().toLocaleDateString("pt-PT").replace(/\//g, "-"),
+      data_upload: new Date().toISOString().split("T")[0],
       tamanho: "150 KB",
       categoria: "Seguros",
       visibilidade: "Público"
