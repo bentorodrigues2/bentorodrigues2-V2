@@ -392,6 +392,50 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     }
   };
 
+  // Ligar um pagamento a notas de cobrança (avisos) específicas já
+  // existentes — útil quando o valor não corresponde a "N meses seguidos
+  // a partir de uma data" (ver confirmarDivisaoEmMeses) mas sim a um
+  // conjunto disperso já identificado (ex: correções de "Diferença de
+  // Quota" de uma revisão de orçamento). O recibo emitido tem uma rubrica
+  // por aviso escolhido; o saldo da conta NÃO é creditado outra vez (o
+  // backend salta esse passo sempre que avisos_ids é indicado).
+  const [ligandoAvisosMovId, setLigandoAvisosMovId] = useState<string | null>(null);
+  const [avisosSelecionadosParaLigar, setAvisosSelecionadosParaLigar] = useState<string[]>([]);
+  const [aLigarAvisos, setALigarAvisos] = useState(false);
+
+  const confirmarPagamentoComAvisos = async (idPagamento: string, avisosIds: string[]) => {
+    if (avisosIds.length === 0) {
+      alert("Escolha pelo menos uma nota de cobrança para ligar a este pagamento.");
+      return;
+    }
+    setALigarAvisos(true);
+    try {
+      const resp = await fetch("/api/pagamento?acao=confirmar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_pagamento: idPagamento, avisos_ids: avisosIds })
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        alert(`Erro ao confirmar o pagamento: ${data?.error || "erro desconhecido"}`);
+        return;
+      }
+      const novos = await fetchMovimentosFromSupabase(predio.id_predio);
+      if (novos) setMovements(novos);
+      setLigandoAvisosMovId(null);
+      setDetalheMovId(null);
+      setAvisosSelecionadosParaLigar([]);
+      registarLogAuditoria("Financeira", "Confirmou pagamento ligado a notas de cobrança específicas", predio.id_predio, loggedUser, `${avisosIds.length} nota(s) de cobrança`);
+      alert(data.email_enviado
+        ? `✅ Pagamento confirmado e ligado a ${avisosIds.length} nota(s) de cobrança! O recibo corrigido (com uma rubrica por nota) foi gerado e enviado por email ao condómino. O saldo da conta não foi alterado (valor já estava refletido).`
+        : `✅ Pagamento confirmado e recibo gerado. (O condómino não tem email registado — o recibo está disponível no Arquivo Digital.) O saldo da conta não foi alterado.`);
+    } catch (err: any) {
+      alert(`Erro ao confirmar o pagamento: ${err?.message || "erro desconhecido"}`);
+    } finally {
+      setALigarAvisos(false);
+    }
+  };
+
   const confirmarPagamentoEEnviarRecibo = async (mov: Movimento) => {
     let idPagamento = mov.descricao?.match(/\[pagamento:([^\]]+)\]/)?.[1];
 
@@ -1602,6 +1646,77 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                     )}
                   </div>
                 )}
+
+                {idPagamentoDetalhe && mov.id_fracao && (() => {
+                  const avisosFracaoDetalhe = (avisos || [])
+                    .filter(a => a.id_fracao === mov.id_fracao)
+                    .sort((a, b) => new Date(b.vencimento).getTime() - new Date(a.vencimento).getTime());
+                  if (avisosFracaoDetalhe.length === 0) return null;
+                  const somaSelecionada = avisosFracaoDetalhe
+                    .filter(a => avisosSelecionadosParaLigar.includes(a.id_aviso))
+                    .reduce((s, a) => s + a.valor, 0);
+                  const somaBate = Math.abs(somaSelecionada - mov.valor) < 0.05;
+                  return (
+                    <div className="bg-sky-50 border border-sky-200 rounded-lg p-2.5 space-y-2">
+                      {ligandoAvisosMovId === mov.id_mov ? (
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] text-sky-800 font-semibold">
+                            Escolha as notas de cobrança que este pagamento salda (ex: correções de "Diferença de Quota" dispersas, não meses seguidos):
+                          </p>
+                          <div className="max-h-40 overflow-y-auto space-y-1 bg-white rounded border border-sky-200 p-1.5">
+                            {avisosFracaoDetalhe.map(a => (
+                              <label key={a.id_aviso} className="flex items-start gap-1.5 text-[10px] text-slate-700 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={avisosSelecionadosParaLigar.includes(a.id_aviso)}
+                                  onChange={(e) => setAvisosSelecionadosParaLigar(prev =>
+                                    e.target.checked ? [...prev, a.id_aviso] : prev.filter(id => id !== a.id_aviso)
+                                  )}
+                                  className="mt-0.5"
+                                />
+                                <span>
+                                  <strong>{a.valor.toFixed(2)}€</strong> — {a.descricao} ({formatDatePT(a.vencimento)}, {a.estado})
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                          <p className={`text-[10px] font-bold ${somaBate ? "text-emerald-700" : "text-red-600"}`}>
+                            Selecionado: {somaSelecionada.toFixed(2)}€ / Valor do movimento: {mov.valor.toFixed(2)}€ {somaBate ? "✓ bate certo" : "— ainda não bate certo"}
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => confirmarPagamentoComAvisos(idPagamentoDetalhe, avisosSelecionadosParaLigar)}
+                              disabled={aLigarAvisos || avisosSelecionadosParaLigar.length === 0}
+                              className="bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                            >
+                              {aLigarAvisos ? "A confirmar…" : "Confirmar e Emitir Recibo destas Notas"}
+                            </button>
+                            <button
+                              onClick={() => { setLigandoAvisosMovId(null); setAvisosSelecionadosParaLigar([]); }}
+                              className="text-sky-600 hover:text-sky-800 text-[10px] underline cursor-pointer"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            const sugestao = selecionarAvisosCobertosPeloValor(
+                              [...avisosFracaoDetalhe].sort((a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime()),
+                              mov.valor
+                            );
+                            setAvisosSelecionadosParaLigar(sugestao.map(a => a.id_aviso));
+                            setLigandoAvisosMovId(mov.id_mov);
+                          }}
+                          className="bg-sky-100 hover:bg-sky-200 text-sky-800 px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                        >
+                          Ligar a Notas de Cobrança Específicas
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-700 block">Descrição</label>
