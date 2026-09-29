@@ -2806,7 +2806,7 @@ export async function deletePropostaFromSupabase(idProposal: string): Promise<bo
  * Upload do PDF de uma proposta comercial para o bucket privado
  * "documentos" — devolve o caminho no Storage (não um URL público, o
  * bucket é privado), para abrir depois com um URL assinado, tal como o
- * resto do Arquivo Digital (ver /api/documento?acao=descarregar).
+ * resto do Arquivo Digital (ver /api/pdf?acao=descarregar).
  */
 export async function uploadPropostaFicheiro(file: File, idRfp: string, idProposal: string): Promise<string | null> {
   if (!isSupabaseConfigured()) return null;

@@ -1259,7 +1259,7 @@ export function PortalOrcamentos({
                                       <span
                                         className="text-emerald-500 hover:underline cursor-pointer"
                                         onClick={async () => {
-                                          const resp = await fetch("/api/documento?acao=descarregar", {
+                                          const resp = await fetch("/api/pdf?acao=descarregar", {
                                             method: "POST",
                                             headers: { "Content-Type": "application/json" },
                                             body: JSON.stringify({ caminho: a.caminho })

@@ -1,6 +1,7 @@
 import { gerarDocumentoPDF, guardarNoArquivo, registarDocumento, enviarEmailPDF } from "../server/lib/pdfService.js";
 import { supabase } from "../server/lib/supabaseServer.js";
 import { exigirSessaoValida } from "../server/lib/verificarSessao.js";
+import { arquivarAnexoOriginal } from "../server/lib/multimodalService.js";
 import {
   generateCondominoPwaManualPDF,
   gerarPdfRegistoFornecedorHomologado,
@@ -233,7 +234,119 @@ async function gerarDocumentoEspecial(tipo, config, body) {
   return { caminho, email_enviado: enviados > 0, total_enviados: enviados };
 }
 
+/**
+ * Reenvia por email um documento já arquivado no Supabase Storage (Arquivo
+ * Digital) — usado pelo botão "Enviar por Email" em GestaoDocumentos.tsx.
+ * Movido de api/documento.js (fundido aqui para caber no limite de 12
+ * funções serverless do plano Hobby da Vercel) — chamado via ?acao=,
+ * distinto do dispatcher por ?tipo= usado pelo resto deste ficheiro.
+ */
+async function enviarDocumentoExistente({ caminho, nomeFicheiro, to, assunto, mensagem, nomeDestinatario, cc }) {
+  const { data, error } = await supabase.storage.from("documentos").download(caminho);
+  if (error || !data) {
+    throw new Error(error?.message || "Documento não encontrado no arquivo");
+  }
+
+  const arrayBuffer = await data.arrayBuffer();
+  const pdfBuffer = Buffer.from(arrayBuffer);
+
+  await enviarEmailPDF({
+    to,
+    nomeDestinatario,
+    assunto,
+    mensagem,
+    pdfBuffer,
+    nome: nomeFicheiro,
+    cc
+  });
+}
+
+/** Antigo /api/documento — ver comentário em enviarDocumentoExistente acima. */
+async function handleAcaoDocumento(req, res, acao) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Método não permitido" });
+  }
+
+  const utilizador = await exigirSessaoValida(req, res);
+  if (!utilizador) return;
+
+  try {
+    const body = req.body || {};
+
+    if (acao === "descarregar") {
+      const { caminho } = body;
+      if (!caminho) {
+        return res.status(400).json({ error: "caminho é obrigatório" });
+      }
+
+      const { data, error } = await supabase.storage.from("documentos").createSignedUrl(caminho, 300);
+      if (error || !data?.signedUrl) {
+        return res.status(404).json({ error: error?.message || "Documento não encontrado no arquivo" });
+      }
+
+      return res.status(200).json({ ok: true, url: data.signedUrl });
+    }
+
+    if (acao === "enviar") {
+      const { caminho, nome, email, assunto, mensagem, nomeDestinatario, cc } = body;
+      if (!caminho || !email) {
+        return res.status(400).json({ error: "caminho e email são obrigatórios" });
+      }
+
+      await enviarDocumentoExistente({
+        caminho,
+        nomeFicheiro: nome || caminho.split("/").pop(),
+        to: email,
+        assunto: assunto || `Documento: ${nome || "Documento"}`,
+        mensagem: mensagem || `Segue em anexo o documento solicitado.`,
+        nomeDestinatario,
+        cc
+      });
+
+      return res.status(200).json({ ok: true, email_enviado: true });
+    }
+
+    if (acao === "anexar") {
+      const { fileBase64, fileName, mimeType, predio, ano, tema, tipo, fluxo, descricao, categoria, fracao, visibilidade } = body;
+      if (!fileBase64 || !fileName) {
+        return res.status(400).json({ error: "fileBase64 e fileName são obrigatórios" });
+      }
+
+      const buffer = Buffer.from(fileBase64, "base64");
+      const caminho = await arquivarAnexoOriginal({
+        buffer,
+        filename: fileName,
+        mimeType: mimeType || "application/octet-stream",
+        ano: ano || new Date().getFullYear(),
+        tema: tema || "Assembleias",
+        tipo: tipo || "Anexo",
+        predio: predio || "geral",
+        fracao: fracao || "geral",
+        fluxo: fluxo || "anexo_manual",
+        origem: "upload_admin",
+        categoria: categoria || undefined,
+        visibilidade: visibilidade || "Público",
+        descricao
+      });
+
+      return res.status(200).json({ ok: true, caminho });
+    }
+
+    return res.status(400).json({ error: "Ação inválida. Use acao=descarregar|enviar|anexar" });
+  } catch (err) {
+    console.error("Erro em /api/pdf (acao=documento):", err);
+    return res.status(500).json({ error: err?.message || String(err) });
+  }
+}
+
 export default async function handler(req, res) {
+  // Antigo /api/documento?acao=X — fundido neste ficheiro (ver
+  // handleAcaoDocumento acima). Distinto do dispatcher por ?tipo= abaixo.
+  const acaoDocumento = req.query?.acao;
+  if (acaoDocumento) {
+    return handleAcaoDocumento(req, res, acaoDocumento);
+  }
+
   const tipo = req.query?.tipo;
   const config = TIPOS[tipo];
 

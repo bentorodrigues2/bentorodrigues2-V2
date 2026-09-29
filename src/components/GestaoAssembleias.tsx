@@ -1060,7 +1060,7 @@ Com os meus cumprimentos,
         ? await comprimirParaWebP(file)
         : await lerComoBase64(file);
 
-      const resp = await fetch("/api/documento?acao=anexar", {
+      const resp = await fetch("/api/pdf?acao=anexar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1165,7 +1165,7 @@ Com os meus cumprimentos,
         ? await comprimirParaWebP(file)
         : await lerComoBase64(file);
 
-      const resp = await fetch("/api/documento?acao=anexar", {
+      const resp = await fetch("/api/pdf?acao=anexar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

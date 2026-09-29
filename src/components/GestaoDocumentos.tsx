@@ -93,7 +93,7 @@ export function GestaoDocumentos({
     setPdfViewerRealUrl(null);
     if (!activePdfViewerDoc?.caminho) return;
 
-    fetch("/api/documento?acao=descarregar", {
+    fetch("/api/pdf?acao=descarregar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ caminho: activePdfViewerDoc.caminho })
@@ -1104,7 +1104,7 @@ export function GestaoDocumentos({
     // pessoa completamente diferente da do documento realmente clicado.
     if (docItem.caminho) {
       try {
-        const resp = await fetch("/api/documento?acao=descarregar", {
+        const resp = await fetch("/api/pdf?acao=descarregar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ caminho: docItem.caminho })
@@ -1572,7 +1572,7 @@ export function GestaoDocumentos({
 
     triggerSendReaction("email", `A enviar "${docNome}" para ${dest}...`, async () => {
       try {
-        const resp = await fetch("/api/documento?acao=enviar", {
+        const resp = await fetch("/api/pdf?acao=enviar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
