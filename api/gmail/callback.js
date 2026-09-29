@@ -12,7 +12,18 @@ export default async function handler(req, res) {
   const code = req.query.code;
 
   if (!code) {
-    return res.status(400).send("Código OAuth em falta (o pedido não veio da Google).");
+    // Mostra tudo o que a Google devolveu (ex.: error=access_denied quando
+    // se cancela o consentimento, ou error=admin_policy_enforced numa conta
+    // Workspace) — antes só dizia "código em falta", sem nenhuma pista do
+    // que realmente aconteceu do lado da Google.
+    return res.status(400).send(
+      `<html><body style="font-family: sans-serif; padding: 2rem;">` +
+      `<h2>A Google não devolveu um código de autorização.</h2>` +
+      `<p>Parâmetros recebidos:</p>` +
+      `<pre style="background:#f1f5f9;padding:1rem;border-radius:8px;word-break:break-all;">${JSON.stringify(req.query, null, 2)}</pre>` +
+      `<p>Causas comuns: cancelaste o ecrã de consentimento, ou escolheste uma conta Google diferente de <strong>bentorodrgues2@gmail.com</strong>. Volta a <a href="https://bentorodrigues2.vercel.app/api/oauth?acao=gmail_auth">tentar aqui</a>, e desta vez conclui o consentimento com essa conta.</p>` +
+      `</body></html>`
+    );
   }
 
   const resp = await fetch("https://oauth2.googleapis.com/token", {
