@@ -35,7 +35,7 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: "Método não permitido" });
     }
 
-    const { id_pagamento, num_meses, mes_inicio, tipo } = req.body || {};
+    const { id_pagamento, num_meses, mes_inicio, tipo, ja_reconciliado } = req.body || {};
     if (!id_pagamento || !num_meses || Number(num_meses) < 2 || !mes_inicio) {
       return res.status(400).json({ error: "id_pagamento, num_meses (mínimo 2) e mes_inicio (AAAA-MM) são obrigatórios." });
     }
@@ -212,13 +212,21 @@ export default async function handler(req, res) {
     // única transação bancária real, mesmo dividida em N meses de quota) —
     // mesma lógica de confirmar-pagamento.js, sem isto o Painel de Controlo
     // nunca refletia estas entradas.
-    try {
-      const contaAlvo = escolherContaPorTipo(contasPredio, "Quota Ordinária");
-      if (contaAlvo?.id_conta) {
-        await ajustarSaldoConta(contaAlvo.id_conta, valorTotal);
+    //
+    // ja_reconciliado=true salta este passo — usado quando o valor já
+    // estava refletido no saldo real da conta antes desta correção (ex:
+    // já tinha sido reconhecido por um extrato bancário importado
+    // separadamente), e só faltava mesmo o comprovativo para justificar o
+    // movimento e emitir o recibo — creditar aqui duplicaria o valor.
+    if (!ja_reconciliado) {
+      try {
+        const contaAlvo = escolherContaPorTipo(contasPredio, "Quota Ordinária");
+        if (contaAlvo?.id_conta) {
+          await ajustarSaldoConta(contaAlvo.id_conta, valorTotal);
+        }
+      } catch (errSaldo) {
+        console.warn("[dividir-pagamento-meses] Aviso ao creditar saldo da conta:", errSaldo?.message || errSaldo);
       }
-    } catch (errSaldo) {
-      console.warn("[dividir-pagamento-meses] Aviso ao creditar saldo da conta:", errSaldo?.message || errSaldo);
     }
 
     const hash = createHash("sha256").update(`${id_pagamento}-dividido-${numMeses}-${Date.now()}`).digest("hex");

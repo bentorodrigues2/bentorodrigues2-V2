@@ -357,14 +357,19 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
   const [dividindoMesesMovId, setDividindoMesesMovId] = useState<string | null>(null);
   const [mesInicioDivisao, setMesInicioDivisao] = useState<string>(() => new Date().toISOString().slice(0, 7));
   const [aDividirMeses, setADividirMeses] = useState(false);
+  // Divisão manual — disponível mesmo quando a deteção automática não
+  // aciona (ex: o comprovativo cobre meses antigos, a taxas antigas, que
+  // já não batem certo com a quota mensal atual usada na heurística).
+  const [numMesesManual, setNumMesesManual] = useState<string>("2");
+  const [jaReconciliadoDivisao, setJaReconciliadoDivisao] = useState(false);
 
-  const confirmarDivisaoEmMeses = async (idPagamento: string, numMeses: number) => {
+  const confirmarDivisaoEmMeses = async (idPagamento: string, numMeses: number, jaReconciliado: boolean = false) => {
     setADividirMeses(true);
     try {
       const resp = await fetch("/api/pagamento?acao=dividir-pagamento-meses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_pagamento: idPagamento, num_meses: numMeses, mes_inicio: mesInicioDivisao })
+        body: JSON.stringify({ id_pagamento: idPagamento, num_meses: numMeses, mes_inicio: mesInicioDivisao, ja_reconciliado: jaReconciliado })
       });
       const data = await resp.json();
       if (!resp.ok) {
@@ -374,9 +379,12 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       const novos = await fetchMovimentosFromSupabase(predio.id_predio);
       if (novos) setMovements(novos);
       setDividindoMesesMovId(null);
-      alert(data.email_enviado
+      setDetalheMovId(null);
+      setJaReconciliadoDivisao(false);
+      const notaSaldo = jaReconciliado ? " O saldo da conta não foi alterado (valor já estava refletido)." : "";
+      alert((data.email_enviado
         ? `✅ Pagamento dividido em ${numMeses} meses! O recibo único (com uma rubrica por mês) foi gerado e enviado por email ao condómino.`
-        : `✅ Pagamento dividido em ${numMeses} meses e recibo gerado. (O condómino não tem email registado — o recibo está disponível no Arquivo Digital.)`);
+        : `✅ Pagamento dividido em ${numMeses} meses e recibo gerado. (O condómino não tem email registado — o recibo está disponível no Arquivo Digital.)`) + notaSaldo);
     } catch (err: any) {
       alert(`Erro ao dividir o pagamento: ${err?.message || "erro desconhecido"}`);
     } finally {
@@ -1524,10 +1532,74 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
                   {mov.id_fracao && <p><strong className="text-slate-600">Fração:</strong> {fracoes.find(f => f.id_fracao === mov.id_fracao)?.fracao_nome || mov.id_fracao}</p>}
                 </div>
 
-                {infoMesesDetalhe && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-[11px] text-amber-800">
-                    💡 Este valor equivale a <strong>{infoMesesDetalhe.mesesDetectados} meses</strong> da quota desta fração ({infoMesesDetalhe.quotaMensal.toFixed(2)}€/mês) — provavelmente: <strong>{nomesDosMesesCobertos(infoMesesDetalhe.mesInicioSugerido, infoMesesDetalhe.mesesDetectados)}</strong>.
-                    <br />Para dividir em {infoMesesDetalhe.mesesDetectados} recibos mensais, feche este detalhe e use o botão "Dividir em {infoMesesDetalhe.mesesDetectados} recibos mensais" no cartão deste pagamento em "Pagamentos por Confirmar".
+                {idPagamentoDetalhe && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 space-y-2">
+                    {infoMesesDetalhe ? (
+                      <p className="text-[11px] text-amber-800">
+                        💡 Este valor equivale a <strong>{infoMesesDetalhe.mesesDetectados} meses</strong> da quota desta fração ({infoMesesDetalhe.quotaMensal.toFixed(2)}€/mês) — provavelmente: <strong>{nomesDosMesesCobertos(infoMesesDetalhe.mesInicioSugerido, infoMesesDetalhe.mesesDetectados)}</strong>.
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-amber-800">
+                        Este pagamento não foi detetado automaticamente como vários meses (ex: cobre meses com uma tarifa antiga, diferente da quota atual) — podes dividir manualmente abaixo.
+                      </p>
+                    )}
+                    {dividindoMesesMovId === mov.id_mov ? (
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <label className="text-[10px] text-amber-700 font-semibold">Nº de meses:</label>
+                          <input
+                            type="number"
+                            min={2}
+                            value={numMesesManual}
+                            onChange={(e) => setNumMesesManual(e.target.value)}
+                            className="w-14 border border-amber-300 rounded px-1.5 py-0.5 text-[10px]"
+                          />
+                          <label className="text-[10px] text-amber-700 font-semibold">A partir de:</label>
+                          <input
+                            type="month"
+                            value={mesInicioDivisao}
+                            onChange={(e) => setMesInicioDivisao(e.target.value)}
+                            className="border border-amber-300 rounded px-1.5 py-0.5 text-[10px]"
+                          />
+                        </div>
+                        {Number(numMesesManual) >= 2 && (
+                          <p className="text-[10px] text-amber-700">
+                            Vai cobrir: <strong>{nomesDosMesesCobertos(mesInicioDivisao, Number(numMesesManual))}</strong>
+                          </p>
+                        )}
+                        <label className="flex items-center gap-1.5 text-[10px] text-amber-800 font-semibold cursor-pointer">
+                          <input type="checkbox" checked={jaReconciliadoDivisao} onChange={(e) => setJaReconciliadoDivisao(e.target.checked)} />
+                          Este valor já está refletido no saldo bancário (não creditar de novo)
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => confirmarDivisaoEmMeses(idPagamentoDetalhe, Number(numMesesManual), jaReconciliadoDivisao)}
+                            disabled={aDividirMeses || Number(numMesesManual) < 2}
+                            className="bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                          >
+                            {aDividirMeses ? "A dividir…" : `Dividir e Emitir Recibo Corrigido`}
+                          </button>
+                          <button
+                            onClick={() => setDividindoMesesMovId(null)}
+                            className="text-amber-600 hover:text-amber-800 text-[10px] underline cursor-pointer"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setNumMesesManual(String(infoMesesDetalhe?.mesesDetectados || 2));
+                          setMesInicioDivisao(infoMesesDetalhe?.mesInicioSugerido || new Date().toISOString().slice(0, 7));
+                          setJaReconciliadoDivisao(false);
+                          setDividindoMesesMovId(mov.id_mov);
+                        }}
+                        className="bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 rounded text-[10px] font-bold cursor-pointer"
+                      >
+                        Dividir em vários meses & Emitir Recibo Corrigido
+                      </button>
+                    )}
                   </div>
                 )}
 
