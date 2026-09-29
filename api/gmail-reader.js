@@ -168,6 +168,13 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error("Erro no gmail-reader:", err);
-    return res.status(500).json({ error: "Erro no gmail-reader" });
+    // Detalhe real do erro na resposta — a mensagem genérica anterior
+    // tornava impossível perceber de fora se era um token inválido, uma
+    // permissão em falta, ou outra causa qualquer, sem aceder aos logs
+    // do servidor.
+    return res.status(500).json({
+      error: "Erro no gmail-reader",
+      detail: err?.response?.data?.error_description || err?.response?.data?.error || err?.message || String(err)
+    });
   }
 }
