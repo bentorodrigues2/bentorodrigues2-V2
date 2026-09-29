@@ -814,6 +814,138 @@ export async function generateDynamicReportPDF(opts: DynamicReportOptions) {
       doc.text(`Total em Aberto: ${totalDividas.toFixed(2)}€`, 160, y + 5.5);
 
       y += 16;
+    } else if (opts.tipoRelatorio === "extrato_quotas") {
+      // Discriminado por mês/ano em dívida, com cada quota separada entre
+      // Quota Mensal (ordinária) e Fundo Comum de Reserva — antes mostrava
+      // só um total agregado por fração, sem indicar quais meses estavam
+      // em falta nem quanto era FCR vs. quota ordinária.
+      const MESES_PT = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+      const formatarMesAno = (dataStr: string) => {
+        const d = new Date(dataStr);
+        if (isNaN(d.getTime())) return dataStr || "—";
+        return `${MESES_PT[d.getMonth()]}/${d.getFullYear()}`;
+      };
+
+      let totalGeralMensal = 0;
+      let totalGeralFcr = 0;
+
+      scopeFracoes.forEach((f) => {
+        const avisosFracao = (opts.avisosList || [])
+          .filter((a: any) => a.id_fracao === f.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"))
+          .sort((a: any, b: any) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime());
+
+        if (y > 255) {
+          doc.addPage();
+          y = addPdfHeaderWithLogo(doc);
+        }
+
+        // Cabeçalho da fração
+        doc.setFillColor(15, 23, 42);
+        doc.rect(14, y, 182, 7, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(`FRAÇÃO ${f.fracao_nome} — ${f.proprietario?.nome || "Proprietário"}`, 17, y + 4.8);
+        y += 7;
+
+        if (avisosFracao.length === 0) {
+          doc.setFillColor(240, 253, 244);
+          doc.rect(14, y, 182, 7, "F");
+          doc.setDrawColor(203, 213, 225);
+          doc.rect(14, y, 182, 7, "S");
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7);
+          doc.setTextColor(5, 150, 105);
+          doc.text("Sem meses em dívida — situação regularizada.", 17, y + 4.8);
+          y += 9;
+          return;
+        }
+
+        // Cabeçalho de colunas
+        doc.setFillColor(226, 232, 240);
+        doc.rect(14, y, 182, 6, "F");
+        doc.setDrawColor(203, 213, 225);
+        doc.rect(14, y, 182, 6, "S");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(6.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text("MÊS / ANO", 17, y + 4);
+        doc.text("TIPO", 60, y + 4);
+        doc.text("QUOTA MENSAL", 108, y + 4);
+        doc.text("FCR", 140, y + 4);
+        doc.text("TOTAL / ESTADO", 165, y + 4);
+        y += 6;
+
+        let subtotalMensal = 0;
+        let subtotalFcr = 0;
+
+        avisosFracao.forEach((a: any, idx: number) => {
+          if (y > 270) {
+            doc.addPage();
+            y = addPdfHeaderWithLogo(doc);
+          }
+          const fcr = Number(a.valor_fundo_reserva) || 0;
+          const mensal = Number(a.valor) - fcr;
+          subtotalMensal += mensal;
+          subtotalFcr += fcr;
+          totalGeralMensal += mensal;
+          totalGeralFcr += fcr;
+
+          const rowBg = idx % 2 === 0 ? 255 : 248;
+          doc.setFillColor(rowBg, rowBg, rowBg);
+          doc.rect(14, y, 182, 6.5, "F");
+          doc.setDrawColor(226, 232, 240);
+          doc.rect(14, y, 182, 6.5, "S");
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7);
+          doc.setTextColor(15, 23, 42);
+          doc.text(formatarMesAno(a.vencimento), 17, y + 4.3);
+          doc.setFontSize(6.5);
+          doc.setTextColor(71, 85, 105);
+          doc.text(a.tipo?.includes("Extraordinária") ? "Extraordinária" : "Ordinária", 60, y + 4.3);
+          doc.setTextColor(15, 23, 42);
+          doc.text(`${mensal.toFixed(2)}€`, 108, y + 4.3);
+          doc.text(`${fcr.toFixed(2)}€`, 140, y + 4.3);
+
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(a.estado === "Pendente" ? 220 : 217, a.estado === "Pendente" ? 38 : 119, a.estado === "Pendente" ? 38 : 6);
+          doc.text(`${Number(a.valor).toFixed(2)}€ (${a.estado})`, 165, y + 4.3);
+
+          y += 6.5;
+        });
+
+        doc.setFillColor(236, 253, 245);
+        doc.rect(14, y, 182, 6.5, "F");
+        doc.setDrawColor(52, 211, 153);
+        doc.rect(14, y, 182, 6.5, "S");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7);
+        doc.setTextColor(4, 120, 87);
+        doc.text(`Subtotal Fração ${f.fracao_nome} (${avisosFracao.length} meses em dívida)`, 17, y + 4.3);
+        doc.text(`Mensal: ${subtotalMensal.toFixed(2)}€`, 108, y + 4.3);
+        doc.text(`FCR: ${subtotalFcr.toFixed(2)}€`, 140, y + 4.3);
+        doc.text(`Total: ${(subtotalMensal + subtotalFcr).toFixed(2)}€`, 165, y + 4.3);
+        y += 9;
+      });
+
+      totalQuotas = totalGeralMensal + totalGeralFcr;
+      totalDividas = totalGeralMensal + totalGeralFcr;
+
+      if (y > 260) {
+        doc.addPage();
+        y = addPdfHeaderWithLogo(doc);
+      }
+      doc.setFillColor(15, 23, 42);
+      doc.rect(14, y, 182, 9, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(255, 255, 255);
+      doc.text(`TOTAL GERAL EM DÍVIDA (${scopeFracoes.length} FRAÇÃO/ÕES)`, 17, y + 5.8);
+      doc.text(`Quota Mensal: ${totalGeralMensal.toFixed(2)}€`, 95, y + 5.8);
+      doc.text(`FCR: ${totalGeralFcr.toFixed(2)}€`, 145, y + 5.8);
+      doc.text(`Total: ${(totalGeralMensal + totalGeralFcr).toFixed(2)}€`, 170, y + 5.8);
+      y += 16;
     } else {
 
     // Build Table Header
