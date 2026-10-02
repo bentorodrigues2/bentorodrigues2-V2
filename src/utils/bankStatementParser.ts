@@ -240,19 +240,24 @@ export function matchBankTransactions(
         const normFrac = normalizeBankText(f.fracao_nome);
         const normPiso = normalizeBankText(f.piso);
         const normOwner = normalizeBankText(f.proprietario?.nome || "");
-        // Nomes de contas bancárias adicionais associadas ao proprietário
-        // (ex: cônjuge/coproprietário que transfere a partir da sua própria
-        // conta, com o seu próprio nome) — sem isto, uma transferência feita
-        // por um coproprietário nunca era reconhecida, mesmo já tendo a
-        // conta bancária dele registada na fração. Cada titular é verificado
+        // Nomes de todos os coproprietários registados da fração — tanto os
+        // coproprietários "a sério" (fracao.proprietarios_adicionais, com
+        // ficha própria em Gestão de Frações) como titulares de contas
+        // bancárias adicionais do proprietário principal (ex: cônjuge que
+        // transfere a partir da sua própria conta). Sem isto, uma
+        // transferência feita por qualquer um destes nunca era reconhecida,
+        // mesmo já estando registado na fração. Cada nome é verificado
         // SEPARADAMENTE (nunca misturando palavras de nomes de pessoas
         // diferentes no mesmo "every"), senão exigir as palavras de dois
         // nomes em simultâneo tornava hasOwnerName impossível de bater
-        // certo quando só um dos dois transfere de cada vez.
-        const normOwnersAdicionais = (f.proprietario?.contas_bancarias_adicionais || [])
+        // certo quando só uma das pessoas transfere de cada vez.
+        const normCoproprietarios = (f.proprietarios_adicionais || [])
+          .map(p => normalizeBankText(p.nome || ""))
+          .filter(Boolean);
+        const normContasAdicionais = (f.proprietario?.contas_bancarias_adicionais || [])
           .map(c => normalizeBankText(c.titular || ""))
           .filter(Boolean);
-        const titularesCandidatos = [normOwner, ...normOwnersAdicionais].filter(Boolean);
+        const titularesCandidatos = [normOwner, ...normCoproprietarios, ...normContasAdicionais].filter(Boolean);
         const palavrasPorTitular = titularesCandidatos.map(nome => nome.split(" ").filter(w => w.length > 2));
 
         // Check exact fraction code match (e.g., "3º Dto" -> "3 dto", "RC Esq" -> "rc esq")
