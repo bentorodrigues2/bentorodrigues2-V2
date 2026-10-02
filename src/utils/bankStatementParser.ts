@@ -339,6 +339,16 @@ export function matchBankTransactions(
         } else if ((hasFracName || hasPiso) && !exactAmountMatch && fracaoAvisos.length > 0) {
           curConfidence = 80;
           curReason = `Fração (${f.fracao_nome}) identificada no descritivo, mas o valor não bate certo com nenhuma combinação de meses em aberto — escolhe à mão que mês(es) este pagamento cobre.`;
+        } else if (hasOwnerName && !exactAmountMatch && fracaoAvisos.length > 0) {
+          // Faltava este caso: nome do proprietário/coproprietário encontrado
+          // por inteiro (sinal tão forte como o código da fração), mas sem
+          // nenhuma combinação exata de meses em aberto — ficava sem
+          // nenhuma fração sugerida (confiança 0) só porque os outros ramos
+          // de "nome bate certo" exigem também exactAmountMatch. Era
+          // exatamente o caso de um pagamento parcial (ex: "paga 2 meses e
+          // um bocado do 3º") de alguém já identificado sem ambiguidade.
+          curConfidence = 80;
+          curReason = `Nome do Proprietário/Coproprietário (${f.proprietario?.nome}) identificado no descritivo, mas o valor não bate certo com nenhuma combinação de meses em aberto — escolhe à mão como aplicar este pagamento.`;
         } else if (hasOwnerPartial && exactAmountMatch) {
           curConfidence = 85;
           curReason = `Apelido do condómino e valor da quota (${tx.valor.toFixed(2)}€) coincidentes.`;

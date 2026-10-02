@@ -1308,6 +1308,77 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
     }
   };
 
+  // Aceita um pagamento que cobre alguns meses completos + uma PARTE do mês
+  // seguinte (ex: condómino paga 2 meses e vai completar o 3º mais tarde) —
+  // pedido explícito do administrador para não obrigar o valor pago a bater
+  // EXATAMENTE certo com uma combinação de meses inteiros. Divide o mês
+  // parcialmente coberto em dois avisos reais (o valor realmente recebido,
+  // já "Pago", e o saldo que continua em dívida nesse mês, "Pendente") —
+  // mesma técnica já usada manualmente noutros pagamentos parciais deste
+  // prédio — e depois reaproveita aprovarPagamentoCondomino sem alterações,
+  // já com a lista de avisos a fechar a somar exatamente ao valor pago.
+  const aprovarPagamentoCondominoParcial = async (item: any, index: number) => {
+    if (!setAvisos) {
+      alert("Sistema de avisos não disponível de momento.");
+      return;
+    }
+    const avisosFracaoPendentes = avisos
+      .filter(a => a.id_fracao === item.fracaoSugeridaId && a.estado === "Pendente" && avisoPertenceAContaExtrato(a))
+      .sort((a, b) => (a.vencimento || a.data).localeCompare(b.vencimento || b.data));
+
+    let restante = item.valor;
+    const idsTotalmenteCobertos: string[] = [];
+    let avisoAlvo: Aviso | null = null;
+    for (const a of avisosFracaoPendentes) {
+      if (restante <= 0.004) break;
+      if (a.valor <= restante + 0.004) {
+        idsTotalmenteCobertos.push(a.id_aviso);
+        restante = Math.round((restante - a.valor) * 100) / 100;
+      } else {
+        avisoAlvo = a;
+        break;
+      }
+    }
+
+    if (!avisoAlvo || restante <= 0) {
+      alert("Este valor não deixa nenhum mês parcialmente coberto depois dos meses completos — confirma se o valor está certo ou usa a seleção normal de meses acima.");
+      return;
+    }
+
+    const valorParcial = restante;
+    const proporcao = valorParcial / avisoAlvo.valor;
+    const fcrParcial = avisoAlvo.valor_fundo_reserva ? Math.round(avisoAlvo.valor_fundo_reserva * proporcao * 100) / 100 : undefined;
+    const idAvisoParcial = `aviso-parcial-${avisoAlvo.id_aviso}-${Date.now()}`;
+    const avisoParcialPago: Aviso = {
+      ...avisoAlvo,
+      id_aviso: idAvisoParcial,
+      valor: valorParcial,
+      valor_fundo_reserva: fcrParcial,
+      descricao: `${avisoAlvo.descricao} — pagamento parcial de ${valorParcial.toFixed(2)}€ (de ${avisoAlvo.valor.toFixed(2)}€), recebido em ${formatDatePT(item.data)}`,
+      estado: "Pago",
+      data: item.data
+    };
+    const valorRestanteAviso = Math.round((avisoAlvo.valor - valorParcial) * 100) / 100;
+    const avisoAlvoAtualizado: Aviso = {
+      ...avisoAlvo,
+      valor: valorRestanteAviso,
+      valor_fundo_reserva: avisoAlvo.valor_fundo_reserva ? Math.round((avisoAlvo.valor_fundo_reserva - (fcrParcial || 0)) * 100) / 100 : undefined,
+      descricao: `${avisoAlvo.descricao} — saldo em dívida após pagamento parcial de ${valorParcial.toFixed(2)}€ em ${formatDatePT(item.data)}`
+    };
+
+    setAvisos(prev => [
+      ...prev.map(a => a.id_aviso === avisoAlvo!.id_aviso ? avisoAlvoAtualizado : a),
+      avisoParcialPago
+    ]);
+    const okAvisos = await saveAvisosToSupabase([avisoAlvoAtualizado, avisoParcialPago]);
+    if (!okAvisos) {
+      alert("❌ Não foi possível gravar a divisão deste mês em dívida. Tente novamente.");
+      return;
+    }
+
+    await aprovarPagamentoCondomino({ ...item, avisosPendentesIds: [...idsTotalmenteCobertos, idAvisoParcial] }, index);
+  };
+
   // Aprova em lote todos os pagamentos de condóminos detetados com boa
   // confiança — equivalente ao "Conciliar Todas as Quotas (1-Clique)" que
   // existia só no ecrã "Conciliação Bancária".
@@ -2581,6 +2652,28 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                               .filter(a => (item.avisosPendentesIds || []).includes(a.id_aviso))
                               .reduce((s, a) => s + a.valor, 0);
                             const bateCerto = Math.abs(somaSelecionada - item.valor) < 0.05;
+
+                            // Prévia do "pagamento parcial": quantos meses
+                            // completos este valor cobre + quanto sobra para
+                            // o mês seguinte (ex: paga 2 meses e vai
+                            // completar o 3º mais tarde) — alternativa à
+                            // seleção manual acima, que só aceita valores que
+                            // batem EXATAMENTE certo com meses inteiros.
+                            let restanteParcial = item.valor;
+                            let mesesCompletosParcial = 0;
+                            let avisoParcialPreview: Aviso | null = null;
+                            for (const a of avisosFracaoPendentes) {
+                              if (restanteParcial <= 0.004) break;
+                              if (a.valor <= restanteParcial + 0.004) {
+                                mesesCompletosParcial++;
+                                restanteParcial = Math.round((restanteParcial - a.valor) * 100) / 100;
+                              } else {
+                                avisoParcialPreview = a;
+                                break;
+                              }
+                            }
+                            const mostraOpcaoParcial = !bateCerto && !!avisoParcialPreview && restanteParcial > 0;
+
                             return (
                               <>
                                 <div className="border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50">
@@ -2610,6 +2703,23 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                                     </p>
                                   )}
                                 </div>
+
+                                {mostraOpcaoParcial && (
+                                  <div className="border border-amber-200 bg-amber-50 rounded-lg p-2 space-y-1.5">
+                                    <p className="text-[10px] text-amber-800">
+                                      💡 Este valor cobre <strong>{mesesCompletosParcial} mês(es) completo(s)</strong> + <strong>{restanteParcial.toFixed(2)}€</strong> por conta de "{avisoParcialPreview!.descricao}" (vence {formatDatePT(avisoParcialPreview!.vencimento || avisoParcialPreview!.data)}, {avisoParcialPreview!.valor.toFixed(2)}€) — ficam <strong>{(avisoParcialPreview!.valor - restanteParcial).toFixed(2)}€</strong> em dívida nesse mês.
+                                    </p>
+                                    <button
+                                      onClick={() => aprovarPagamentoCondominoParcial(item, index)}
+                                      disabled={aprovandoCondominoIndex === index || aprovandoTodosCondominos}
+                                      className="w-full bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                                    >
+                                      <i className={`fa-solid ${aprovandoCondominoIndex === index ? "fa-spinner animate-spin" : "fa-coins"}`}></i>
+                                      <span>{aprovandoCondominoIndex === index ? "A aprovar..." : "Aceitar como Pagamento Parcial & Emitir Recibo"}</span>
+                                    </button>
+                                  </div>
+                                )}
+
                                 <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                                   <span className="font-bold text-emerald-700 font-mono-custom text-sm">+{item.valor.toFixed(2)}€</span>
                                   <button
