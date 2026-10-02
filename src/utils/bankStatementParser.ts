@@ -240,7 +240,20 @@ export function matchBankTransactions(
         const normFrac = normalizeBankText(f.fracao_nome);
         const normPiso = normalizeBankText(f.piso);
         const normOwner = normalizeBankText(f.proprietario?.nome || "");
-        const ownerFirstLast = normOwner.split(" ").filter(w => w.length > 2);
+        // Nomes de contas bancárias adicionais associadas ao proprietário
+        // (ex: cônjuge/coproprietário que transfere a partir da sua própria
+        // conta, com o seu próprio nome) — sem isto, uma transferência feita
+        // por um coproprietário nunca era reconhecida, mesmo já tendo a
+        // conta bancária dele registada na fração. Cada titular é verificado
+        // SEPARADAMENTE (nunca misturando palavras de nomes de pessoas
+        // diferentes no mesmo "every"), senão exigir as palavras de dois
+        // nomes em simultâneo tornava hasOwnerName impossível de bater
+        // certo quando só um dos dois transfere de cada vez.
+        const normOwnersAdicionais = (f.proprietario?.contas_bancarias_adicionais || [])
+          .map(c => normalizeBankText(c.titular || ""))
+          .filter(Boolean);
+        const titularesCandidatos = [normOwner, ...normOwnersAdicionais].filter(Boolean);
+        const palavrasPorTitular = titularesCandidatos.map(nome => nome.split(" ").filter(w => w.length > 2));
 
         // Check exact fraction code match (e.g., "3º Dto" -> "3 dto", "RC Esq" -> "rc esq")
         // — como palavra inteira, nunca substring solta (ver contemPalavraInteira).
@@ -262,9 +275,10 @@ export function matchBankTransactions(
         const hasFracName = normFrac.length > 1 && contemPalavraInteira(normDesc, normFrac);
         const hasPiso = normPiso.length > 1 && contemPalavraInteira(normDesc, normPiso);
 
-        // Check owner name matches
-        const hasOwnerName = ownerFirstLast.length >= 2 && ownerFirstLast.every(namePart => normDesc.includes(namePart));
-        const hasOwnerPartial = ownerFirstLast.some(namePart => normDesc.includes(namePart));
+        // Check owner (or additional co-owner) name matches — cada titular
+        // candidato é testado à vez; basta UM deles bater certo sozinho.
+        const hasOwnerName = palavrasPorTitular.some(partes => partes.length >= 2 && partes.every(p => normDesc.includes(p)));
+        const hasOwnerPartial = palavrasPorTitular.some(partes => partes.some(p => normDesc.includes(p)));
 
         // Referência individual da fração (ex: "BR23E-FR-K") — quando o
         // condómino a inclui no descritivo da transferência, é o sinal mais

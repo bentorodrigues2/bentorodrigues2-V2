@@ -953,7 +953,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
       // tipo, valor a ±0,05€, dentro de 10 dias da data) já existente, ou —
       // para receitas — quando já existe um aviso PAGO com o mesmo valor.
       const JANELA_DUPLICADO_MS = 10 * 24 * 60 * 60 * 1000;
-      const jaLancadoAntes = (dataMov: string, valorMov: number, tipoMov: "Receita" | "Despesa"): boolean => {
+      const jaLancadoAntes = (dataMov: string, valorMov: number, tipoMov: "Receita" | "Despesa", idFracaoMatch?: string): boolean => {
         const tData = new Date(dataMov).getTime();
         const movDuplicado = predioMovements.some(mv => {
           if (mv.tipo !== tipoMov || Math.abs(mv.valor - valorMov) > 0.05) return false;
@@ -961,8 +961,24 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
           return !isNaN(dm) && !isNaN(tData) && Math.abs(dm - tData) <= JANELA_DUPLICADO_MS;
         });
         if (movDuplicado) return true;
-        if (tipoMov === "Receita") {
-          return avisos.some(a => a.id_predio === predio.id_predio && ["Paga", "Pago", "Liquidado"].includes(a.estado) && Math.abs(a.valor - valorMov) < 0.05);
+        // Este segundo teste existe para apanhar pagamentos já lançados por
+        // OUTRA via (ex: aviso marcado "Pago" manualmente, sem passar por
+        // aqui) — mas tinha de ficar restrito à MESMA fração e a um
+        // vencimento próximo da data deste movimento. Sem isso, qualquer
+        // quota mensal de valor fixo (a norma neste prédio: a mesma fração
+        // paga sempre o mesmo valor todos os meses) coincidia sempre com
+        // algum aviso já pago de um mês anterior, e o extrato inteiro era
+        // ignorado como "já lançado" mesmo sem nenhum movimento real
+        // correspondente — foi isto que fez o saldo da conta deixar de bater
+        // certo com extratos reais importados.
+        if (tipoMov === "Receita" && idFracaoMatch) {
+          return avisos.some(a =>
+            a.id_predio === predio.id_predio &&
+            a.id_fracao === idFracaoMatch &&
+            ["Paga", "Pago", "Liquidado"].includes(a.estado) &&
+            Math.abs(a.valor - valorMov) < 0.05 &&
+            Math.abs(new Date(a.vencimento || a.data).getTime() - tData) <= JANELA_DUPLICADO_MS
+          );
         }
         return false;
       };
@@ -970,8 +986,8 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
       const comCruzamento = (data.movimentos || []).map((m: any) => {
         const ehReceita = String(m.tipo || "").toLowerCase().startsWith("rec");
         const valorAbs = Math.abs(Number(m.valor) || 0);
-        const jaLancado = jaLancadoAntes(m.data, valorAbs, ehReceita ? "Receita" : "Despesa");
         const matchFracao = ehReceita ? matchesFracao[idxReceita++] : undefined;
+        const jaLancado = jaLancadoAntes(m.data, valorAbs, ehReceita ? "Receita" : "Despesa", matchFracao?.fracao_sugerida_id);
         const ehPagamentoCondomino = !!matchFracao && matchFracao.confianca_percent >= 65 && !!matchFracao.fracao_sugerida_id;
 
         const resultado = ehPagamentoCondomino ? null : cruzarMovimentoComFornecedor(predioFornecedores, {
