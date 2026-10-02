@@ -489,14 +489,36 @@ export function CentralDocumentosMinutas({
       doc.text(corpoLines, 14, y);
       y += corpoLines.length * 4.8 + 14;
 
-      if (y > 250) { doc.addPage(); y = 20; }
-      doc.setDrawColor(148, 163, 184);
-      doc.line(14, y, 80, y);
-      y += 4;
+      if (y > 235) { doc.addPage(); y = 20; }
+
+      // Assinatura digital real da administração (guardada em
+      // predio.patrimonio.assinatura_admin_base64 — a mesma já usada nos
+      // recibos oficiais) — antes esta carta só tinha uma linha em branco
+      // para assinar à mão.
+      const assinaturaAdmin = predio.patrimonio?.assinatura_admin_base64;
+      if (assinaturaAdmin && assinaturaAdmin.startsWith("data:image")) {
+        try {
+          doc.addImage(assinaturaAdmin, "PNG", 14, y, 45, 18);
+          y += 20;
+        } catch {
+          doc.setDrawColor(148, 163, 184);
+          doc.line(14, y, 80, y);
+          y += 4;
+        }
+      } else {
+        doc.setDrawColor(148, 163, 184);
+        doc.line(14, y, 80, y);
+        y += 4;
+      }
+
       doc.setFont("helvetica", "bold");
       doc.setFontSize(8.5);
       doc.setTextColor(15, 23, 42);
-      doc.text(`${loggedUser.nome} • Administração do Condomínio`, 14, y);
+      // "loggedUser.nome" já descreve o cargo em várias contas (ex:
+      // "Administrador do Condomínio") — só acrescenta o sufixo de cargo
+      // quando o nome não o repete, para nunca sair duplicado.
+      const nomeAssinante = loggedUser.nome || "A Administração do Condomínio";
+      doc.text(/administra/i.test(nomeAssinante) ? nomeAssinante : `${nomeAssinante} • Administração do Condomínio`, 14, y);
       y += 6;
 
       const contactoEmail = predio.email_condominio || predio.email;
