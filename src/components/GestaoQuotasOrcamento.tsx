@@ -1023,7 +1023,7 @@ export function GestaoQuotasOrcamento({
       doc.setFont("helvetica", "normal");
 
       predioFracoes.forEach((f) => {
-        const regShare = calcularQuotaOrdinaria(f);
+        const regShare = quotaCalculadaRevisao(f);
         const extShare = extraPorMesTotal * (f.permilagem / 1000);
         const totalShare = regShare + extShare;
 
@@ -2138,14 +2138,14 @@ export function GestaoQuotasOrcamento({
                     <td colSpan={2} className="p-3 uppercase text-[10px] tracking-wider">Total ({predioFracoesFiltradas.length === predioFracoes.length ? "Global" : "Filtrado"})</td>
                     <td className="p-3 text-center font-mono font-black">{predioFracoesFiltradas.reduce((acc, f) => acc + (Number(f.permilagem) || 0), 0)}‰</td>
                     <td className="p-3 text-right font-mono font-black text-emerald-800">
-                      {predioFracoesFiltradas.reduce((acc, f) => acc + Math.round(calcularQuotaOrdinaria(f) * 0.9 * 100) / 100, 0).toFixed(2)} €
+                      {predioFracoesFiltradas.reduce((acc, f) => acc + Math.round(quotaCalculadaRevisao(f) * 0.9 * 100) / 100, 0).toFixed(2)} €
                     </td>
                     <td className="p-3 text-right font-mono font-black text-amber-800">
-                      {predioFracoesFiltradas.reduce((acc, f) => acc + Math.round(calcularQuotaOrdinaria(f) * 0.1 * 100) / 100, 0).toFixed(2)} €
+                      {predioFracoesFiltradas.reduce((acc, f) => acc + Math.round(quotaCalculadaRevisao(f) * 0.1 * 100) / 100, 0).toFixed(2)} €
                     </td>
                     <td className="p-3 text-right font-mono font-black text-slate-950 text-sm">
                       {predioFracoesFiltradas.reduce((acc, f) => {
-                        const qt = calcularQuotaOrdinaria(f);
+                        const qt = quotaCalculadaRevisao(f);
                         return acc + Math.round(qt * 0.9 * 100) / 100 + Math.round(qt * 0.1 * 100) / 100;
                       }, 0).toFixed(2)} €
                     </td>
