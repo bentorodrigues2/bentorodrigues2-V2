@@ -957,6 +957,17 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
         const tData = new Date(dataMov).getTime();
         const movDuplicado = predioMovements.some(mv => {
           if (mv.tipo !== tipoMov || Math.abs(mv.valor - valorMov) > 0.05) return false;
+          // Para receitas com fração identificada, o movimento só conta como
+          // o MESMO pagamento se for da MESMA fração — sem isto, duas quotas
+          // de frações diferentes com o valor arredondado igual por
+          // coincidência (ex: 51.13€ da Fração E e 51.13€ da Fração K, muito
+          // comum depois de uma revisão de orçamento uniforme) davam-se por
+          // "já lançadas" uma à outra, mesmo sendo pessoas e pagamentos
+          // completamente diferentes. Bug confirmado em produção: a
+          // transferência real do administrador (Fração K) foi descartada
+          // como duplicada só por já existir um pagamento da Fração E com o
+          // valor igual.
+          if (tipoMov === "Receita" && idFracaoMatch && mv.id_fracao && mv.id_fracao !== idFracaoMatch) return false;
           const dm = new Date(mv.data).getTime();
           return !isNaN(dm) && !isNaN(tData) && Math.abs(dm - tData) <= JANELA_DUPLICADO_MS;
         });
