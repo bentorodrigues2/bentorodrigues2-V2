@@ -580,11 +580,13 @@ Analisa o documento em anexo (a imagem/PDF real, nome de ficheiro original: "${n
 - "ATA_ASSEMBLEIA_TITULO_EXECUTIVO": ata de assembleia de condóminos (sobretudo se aprova orçamento/quotas ou liquida dívida)
 - "EXTRATO_CONTA_CORRENTE_DIVIDA": extrato de conta-corrente do condómino, mapa de quotas em atraso, ou cálculo de juros de mora
 - "CERTIDAO_REGISTO_PREDIAL": certidão do registo predial da fração
-- "OUTRO_COMPROVATIVO": qualquer outro documento que não se enquadre nos anteriores (contrato, orçamento, correspondência genérica, etc.)
+- "OUTRO_COMPROVATIVO": qualquer outro documento que não se enquadre nos anteriores (contrato, orçamento, correspondência genérica, Requerimento Inicial, Injunção, Petição Inicial, etc.)
 
-Se escolheres "OUTRO_COMPROVATIVO", sugere também um nome curto e concreto para o tipo de documento (ex: "Declaração de Não Dívida", "Fatura de Custas de Tribunal").
+Se escolheres "OUTRO_COMPROVATIVO", sugere também um nome curto e concreto para o tipo de documento (ex: "Declaração de Não Dívida", "Fatura de Custas de Tribunal", "Requerimento Inicial", "Injunção").
 
 Se o documento tiver uma data visível (ex: data da carta, do email, da fotografia), e/ou um código de rastreio CTT visível, extrai-os também.
+
+Se o documento for um Requerimento Inicial, Petição Inicial, Injunção ou documento equivalente que formalmente reclama/pede um valor em tribunal (identifica isto pelo conteúdo, não só pelo nome do ficheiro), extrai também o valor TOTAL reclamado/pedido nele (capital em dívida + juros de mora + custas, se discriminados — soma tudo o que é pedido ao tribunal). Nunca inventes um valor: se não conseguires ler nenhum valor monetário claro no documento, devolve null.
 
 Devolve APENAS JSON estrito, sem markdown:
 {
@@ -593,7 +595,8 @@ Devolve APENAS JSON estrito, sem markdown:
   "tipo_outro_sugerido": "só quando tipo é OUTRO_COMPROVATIVO, senão null",
   "resumo": "Uma frase curta e concreta a dizer o que este documento concretamente mostra",
   "data_documento": "AAAA-MM-DD se visível no documento, senão null",
-  "codigo_rastreio_ctt": "código de rastreio se visível, senão null"
+  "codigo_rastreio_ctt": "código de rastreio se visível, senão null",
+  "valor_reclamado": "número (ex: 1234.56) só quando for um Requerimento Inicial/Petição/Injunção com valor total pedido identificável, senão null"
 }`;
 
       const responseText = await generateWithFallback({

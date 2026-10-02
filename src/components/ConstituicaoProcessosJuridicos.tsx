@@ -197,7 +197,19 @@ export function ConstituicaoProcessosJuridicos({
     urlPreview: string;
     tipoFicheiro: "imagem" | "pdf" | "documento";
     erro?: string;
+    // Preenchido quando a IA deteta que o documento é um Requerimento
+    // Inicial (ou equivalente) com um valor reclamado explícito — para
+    // comparar logo com o valor_total_pedido já registado neste processo.
+    ehRequerimentoInicial?: boolean;
+    valorReclamadoDetetado?: number;
   }
+
+  // Limite conservador de tamanho de ficheiro para a classificação por IA —
+  // o pedido vai em JSON (base64, ~33% maior que o ficheiro original) e a
+  // função serverless da Vercel rejeita payloads grandes antes mesmo de
+  // correr o código (erro "Request Entity Too Large", que nem é JSON válido
+  // — daí o "Unexpected token" que aparecia sem explicação nenhuma).
+  const LIMITE_FICHEIRO_IA_BYTES = 3.5 * 1024 * 1024;
   const [showLoteProvaModal, setShowLoteProvaModal] = useState<boolean>(false);
   const [itensLoteProva, setItensLoteProva] = useState<ItemLoteProva[]>([]);
   const [aAnalisarLote, setAAnalisarLote] = useState<boolean>(false);
@@ -238,6 +250,9 @@ export function ConstituicaoProcessosJuridicos({
       for (const item of itensLoteProva) {
         setItensLoteProva((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: "a_analisar" } : i)));
         try {
+          if (item.file.size > LIMITE_FICHEIRO_IA_BYTES) {
+            throw new Error(`Ficheiro demasiado grande para a IA analisar (${(item.file.size / (1024 * 1024)).toFixed(1)} MB — limite de ${(LIMITE_FICHEIRO_IA_BYTES / (1024 * 1024)).toFixed(1)} MB). Comprime o PDF/imagem ou escolhe o tipo manualmente e anexa à mesma.`);
+          }
           const base64 = await fileParaBase64(item.file);
           const previewDataUrl = item.tipoFicheiro === "imagem" ? `data:${item.file.type};base64,${base64}` : "";
           const resp = await fetch("/api/ai?acao=classificar-prova-juridica", {
@@ -245,11 +260,22 @@ export function ConstituicaoProcessosJuridicos({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ base64, mimeType: item.file.type || "application/octet-stream", nomeFicheiro: item.file.name })
           });
-          const dados = await resp.json();
+          // A resposta pode não ser JSON de todo (ex: página de erro "Request
+          // Entity Too Large" devolvida antes de chegar ao nosso código) — ler
+          // sempre como texto primeiro evita o erro "Unexpected token" sem
+          // explicação nenhuma, e dá uma mensagem compreensível em vez disso.
+          const textoResp = await resp.text();
+          let dados: any = null;
+          try {
+            dados = JSON.parse(textoResp);
+          } catch {
+            throw new Error(resp.ok ? "A IA devolveu uma resposta inesperada." : `Erro do servidor (${resp.status}) ao analisar este ficheiro — tenta um ficheiro mais pequeno ou escolhe o tipo manualmente.`);
+          }
           if (!resp.ok || !dados?.tipo) throw new Error(dados?.error || "Falha ao classificar.");
 
           const tipoDetectado = dados.tipo as TipoProvaJuridica;
           const preset = getPresetProofDefaults(tipoDetectado);
+          const ehRequerimento = /requerimento inicial/i.test(dados.tipo_outro_sugerido || "") || /requerimento inicial/i.test(dados.resumo || "");
           setItensLoteProva((prev) => prev.map((i) => (i.id === item.id ? {
             ...i,
             status: "analisado",
@@ -259,7 +285,9 @@ export function ConstituicaoProcessosJuridicos({
             resumo: dados.resumo || "",
             dataDocumento: dados.data_documento || "",
             codigoCtt: dados.codigo_rastreio_ctt || "",
-            urlPreview: previewDataUrl
+            urlPreview: previewDataUrl,
+            ehRequerimentoInicial: ehRequerimento,
+            valorReclamadoDetetado: typeof dados.valor_reclamado === "number" ? dados.valor_reclamado : undefined
           } : i)));
         } catch (errItem: any) {
           setItensLoteProva((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: "erro", erro: errItem?.message || "Erro ao analisar." } : i)));
@@ -1836,7 +1864,7 @@ export function ConstituicaoProcessosJuridicos({
               >
                 <i className="fa-solid fa-cloud-arrow-up text-2xl text-indigo-500 mb-2"></i>
                 <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Clica para escolher vários ficheiros (PNG, JPG, PDF)</p>
-                <p className="text-[10px] text-slate-500 mt-0.5">Podes selecionar os 20 documentos do caso de uma só vez</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">Podes selecionar os 20 documentos do caso de uma só vez (máx. {(LIMITE_FICHEIRO_IA_BYTES / (1024 * 1024)).toFixed(1)} MB por ficheiro)</p>
               </div>
 
               {itensLoteProva.length > 0 && (
@@ -1905,6 +1933,21 @@ export function ConstituicaoProcessosJuridicos({
                                 className="w-full text-[11px] border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg px-2 py-1"
                               />
                               {item.resumo && <p className="text-[10px] text-slate-500 italic">{item.resumo}</p>}
+                              {item.ehRequerimentoInicial && item.valorReclamadoDetetado !== undefined && (() => {
+                                const valorSistema = currentProcesso.valor_total_pedido;
+                                const diferenca = Math.round((item.valorReclamadoDetetado! - valorSistema) * 100) / 100;
+                                const bateCerto = Math.abs(diferenca) < 0.5;
+                                return (
+                                  <div className={`text-[10px] rounded-lg px-2 py-1.5 border ${bateCerto ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-amber-50 border-amber-300 text-amber-900"}`}>
+                                    <strong>Valor reclamado no documento:</strong> {item.valorReclamadoDetetado!.toFixed(2)}€ — <strong>valor registado no processo:</strong> {valorSistema.toFixed(2)}€
+                                    {bateCerto ? (
+                                      <span className="block font-bold">✓ Os valores batem certo.</span>
+                                    ) : (
+                                      <span className="block font-bold">⚠️ Não bate certo — diferença de {Math.abs(diferenca).toFixed(2)}€ ({diferenca > 0 ? "documento pede mais" : "documento pede menos"} do que o processo tem registado). Confirma qual está correto antes de avançar.</span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           )}
                         </div>
