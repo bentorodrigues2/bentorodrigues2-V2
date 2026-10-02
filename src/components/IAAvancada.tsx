@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Predio, Fracao, Aviso, Movimento, Fornecedor, LoggedUser } from "../types";
-import { generateAndDownloadPdf } from "../utils";
+import { generateAndDownloadPdf, formatDatePT } from "../utils";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar, LineChart, Line, ComposedChart } from "recharts";
 import { SendingReactionModal } from "./SendingReactionModal";
 import { MoneyInput } from "./MoneyInput";
-import { fetchObrasExtraFromSupabase } from "../lib/supabaseService";
+import { fetchObrasExtraFromSupabase, fetchInventarioTecnicoFromSupabase } from "../lib/supabaseService";
 import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
+import type { EquipamentoTecnico } from "./InventarioTecnico";
 
 interface IAAvancadaProps {
   predio: Predio;
@@ -1009,6 +1010,62 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
   // State for Task 10: IA Avançada Previsões
   const [selectedPrevisaoTab, setSelectedPrevisaoTab] = useState<"dividas" | "manutencao" | "obras" | "financeira">("dividas");
 
+  // Dados reais para as 4 previsões — antes as 4 abas eram JSX totalmente
+  // estático com nomes e números inventados (ex: "Maria Antónia", "Elevadores
+  // Otis Gen2 68%"), nunca lendo fracoes/avisos/movements/equipamentos reais
+  // do prédio. Carregados uma vez ao abrir o ecrã.
+  const [equipamentosReais, setEquipamentosReais] = useState<EquipamentoTecnico[]>([]);
+  const [obrasPrevisaoReais, setObrasPrevisaoReais] = useState<ObraExtraordinaria[]>([]);
+  const [aCarregarPrevisoes, setACarregarPrevisoes] = useState(true);
+  const [saudeFinanceiraAnalise, setSaudeFinanceiraAnalise] = useState<string>("");
+  const [aGerarSaudeFinanceira, setAGerarSaudeFinanceira] = useState(false);
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      setACarregarPrevisoes(true);
+      const [equipamentos, obras] = await Promise.all([
+        fetchInventarioTecnicoFromSupabase(predio.id_predio),
+        fetchObrasExtraFromSupabase(predio.id_predio)
+      ]);
+      if (!cancelado) {
+        setEquipamentosReais(equipamentos || []);
+        setObrasPrevisaoReais((obras || []).filter(o => o.estado !== "Concluída"));
+        setACarregarPrevisoes(false);
+      }
+    })();
+    return () => { cancelado = true; };
+  }, [predio.id_predio]);
+
+  const handleGerarSaudeFinanceira = async () => {
+    setAGerarSaudeFinanceira(true);
+    try {
+      // Saldo real aproximado a partir dos movimentos efetivamente
+      // confirmados (um Movimento Cego por justificar nunca conta para o
+      // saldo, à semelhança da regra usada em GestaoMovimentos.tsx).
+      const movimentosContados = (movements || []).filter(m => m.estado !== "Movimento Cego / Por Justificar");
+      const saldoAtualReal = Math.round(movimentosContados.reduce((s, m) => s + (m.tipo === "Receita" ? m.valor : -m.valor), 0) * 100) / 100;
+      const amostraMovimentos = [...movimentosContados]
+        .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+        .slice(0, 40)
+        .map(m => ({ data: m.data, tipo: m.tipo, valor: m.valor, categoria: m.categoria }));
+
+      const response = await fetch("/api/ai?acao=predict-reserve-fund", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ movements: amostraMovimentos, saldoAtual: saldoAtualReal })
+      });
+      const data = await response.json();
+      if (!response.ok || !data?.analysis) throw new Error(data?.error || "Erro ao gerar a análise de saúde financeira.");
+      setSaudeFinanceiraAnalise(data.analysis);
+    } catch (err: any) {
+      console.error(err);
+      alert("Erro ao gerar a análise de saúde financeira: " + err.message);
+    } finally {
+      setAGerarSaudeFinanceira(false);
+    }
+  };
+
   // Active rubrics for manual administration
   const [rubricas, setRubricas] = useState<Array<{ id: string; nome: string; valor: number; editable: boolean }>>([
     { id: "contratos", nome: "Contratos de Manutenção (Elevadores, Limpeza, etc.)", valor: 250 * 12, editable: true },
@@ -1699,277 +1756,243 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
             </div>
 
             {/* CONTENT OF PREDICTION 1: DIVIDAS */}
-            {selectedPrevisaoTab === "dividas" && (
+            {selectedPrevisaoTab === "dividas" && (() => {
+              const hoje = new Date();
+              const linhasDividas = (fracoes || []).map(f => {
+                const avisosEmDivida = (avisos || []).filter(a => a.id_fracao === f.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"));
+                const dividaAtual = Math.round(avisosEmDivida.reduce((s, a) => s + (Number(a.valor) || 0), 0) * 100) / 100;
+                const atrasos = avisosEmDivida
+                  .map(a => Math.floor((hoje.getTime() - new Date(a.vencimento).getTime()) / 86400000))
+                  .filter(d => d > 0);
+                const atrasoMedio = atrasos.length > 0 ? Math.round(atrasos.reduce((s, d) => s + d, 0) / atrasos.length) : 0;
+                const score = Math.min(100, atrasoMedio * 2 + avisosEmDivida.length * 8);
+                const nivel = score >= 60 ? "ALTO" : score >= 25 ? "MÉDIO" : avisosEmDivida.length > 0 ? "BAIXO" : "SEM DÍVIDA";
+                const acao = nivel === "ALTO"
+                  ? "Enviar plano de regularização com fracionamento e notificação formal."
+                  : nivel === "MÉDIO"
+                  ? "Enviar lembrete de quota em atraso por email/notificação."
+                  : nivel === "BAIXO"
+                  ? "Acompanhar; sem necessidade de ação imediata."
+                  : "Condómino em dia. Nenhuma ação necessária.";
+                return { fracao: f, dividaAtual, atrasoMedio, nivel, score, acao, numAvisos: avisosEmDivida.length };
+              }).filter(l => l.dividaAtual > 0).sort((a, b) => b.score - a.score);
+
+              const riscoMedio = linhasDividas.length > 0
+                ? Math.round(linhasDividas.reduce((s, l) => s + l.score, 0) / linhasDividas.length)
+                : 0;
+              const classesPorNivel: Record<string, { badge: string; valor: string }> = {
+                "ALTO": { badge: "bg-red-950 text-red-400 border border-red-800", valor: "text-red-400" },
+                "MÉDIO": { badge: "bg-amber-950 text-amber-400 border border-amber-800", valor: "text-amber-400" },
+                "BAIXO": { badge: "bg-emerald-950 text-emerald-400 border border-emerald-800", valor: "text-emerald-400" }
+              };
+
+              return (
               <div className="bg-slate-800/90 p-5 rounded-xl border border-slate-700 space-y-4 animate-fadeIn">
                 <div className="flex justify-between items-center border-b border-slate-700 pb-3">
                   <div>
                     <h4 className="text-sm font-black text-white flex items-center gap-2">
                       <i className="fa-solid fa-triangle-exclamation text-amber-400"></i>
-                      <span>Previsão de Dívidas & Probabilidade de Inadimplência por Fração</span>
+                      <span>Previsão de Dívidas & Risco de Inadimplência por Fração</span>
                     </h4>
                     <p className="text-xs text-slate-600 mt-0.5">
-                      Análise preditiva de risco baseada no histórico de pagamentos, dias de atraso e índice socioeconómico do condomínio.
+                      Calculado em tempo real a partir das notas de cobrança (avisos) pendentes e dos dias de atraso reais de cada fração.
                     </p>
                   </div>
                   <span className="text-xs font-mono font-bold text-amber-300 bg-amber-950/60 border border-amber-800 px-3 py-1 rounded-lg">
-                    Risco Médio do Prédio: 12%
+                    Risco Médio do Prédio: {riscoMedio}%
                   </span>
                 </div>
 
+                {linhasDividas.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic py-4 text-center">Nenhuma fração em dívida neste momento — todas as quotas estão regularizadas.</p>
+                ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left border-collapse">
                     <thead>
                       <tr className="border-b border-slate-700 text-slate-600 font-mono text-[10px] uppercase">
                         <th className="p-2.5">Fração / Condómino</th>
-                        <th className="p-2.5 text-center">Nível de Risco IA</th>
+                        <th className="p-2.5 text-center">Nível de Risco</th>
                         <th className="p-2.5 text-right">Dívida Atual</th>
                         <th className="p-2.5 text-center">Atraso Médio</th>
-                        <th className="p-2.5">Ação Automática Recomendada</th>
+                        <th className="p-2.5">Ação Recomendada</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-700/60 font-mono">
-                      <tr>
-                        <td className="p-2.5 font-bold text-white">Fração H (3º Dto) — Maria Antónia</td>
-                        <td className="p-2.5 text-center">
-                          <span className="bg-red-950 text-red-400 border border-red-800 px-2 py-0.5 rounded text-[10px] font-bold">ALTO (78%)</span>
-                        </td>
-                        <td className="p-2.5 text-right font-bold text-red-400">€250.00</td>
-                        <td className="p-2.5 text-center text-slate-600">42 dias</td>
-                        <td className="p-2.5 text-slate-600 font-sans text-[11px]">
-                          Enviar plano de regularização suave com fracionamento em 3x via WhatsApp/Email.
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-2.5 font-bold text-white">Fração F (2º Esq) — Luís Pereira</td>
-                        <td className="p-2.5 text-center">
-                          <span className="bg-amber-950 text-amber-400 border border-amber-800 px-2 py-0.5 rounded text-[10px] font-bold">MÉDIO (42%)</span>
-                        </td>
-                        <td className="p-2.5 text-right font-bold text-amber-400">€100.00</td>
-                        <td className="p-2.5 text-center text-slate-600">18 dias</td>
-                        <td className="p-2.5 text-slate-600 font-sans text-[11px]">
-                          Notificação push amigável no dia 25 com lembrete de quota.
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-2.5 font-bold text-white">Fração A (1º Esq) — João Silva</td>
-                        <td className="p-2.5 text-center">
-                          <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold">BAIXO (4%)</span>
-                        </td>
-                        <td className="p-2.5 text-right font-bold text-emerald-400">€0.00</td>
-                        <td className="p-2.5 text-center text-slate-600">0 dias</td>
-                        <td className="p-2.5 text-slate-600 font-sans text-[11px]">
-                          Condómino exemplar (Débito Direto ativo). Nenhuma intervenção requerida.
-                        </td>
-                      </tr>
+                      {linhasDividas.map(l => {
+                        const cls = classesPorNivel[l.nivel] || classesPorNivel["BAIXO"];
+                        return (
+                        <tr key={l.fracao.id_fracao}>
+                          <td className="p-2.5 font-bold text-white">Fração {l.fracao.fracao_nome} — {l.fracao.proprietario?.nome || "sem proprietário"}</td>
+                          <td className="p-2.5 text-center">
+                            <span className={`${cls.badge} px-2 py-0.5 rounded text-[10px] font-bold`}>{l.nivel} ({l.score}%)</span>
+                          </td>
+                          <td className={`p-2.5 text-right font-bold ${cls.valor}`}>€{l.dividaAtual.toFixed(2)}</td>
+                          <td className="p-2.5 text-center text-slate-600">{l.atrasoMedio} dias</td>
+                          <td className="p-2.5 text-slate-600 font-sans text-[11px]">{l.acao}</td>
+                        </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
+                )}
               </div>
-            )}
+              );
+            })()}
 
             {/* CONTENT OF PREDICTION 2: MANUTENÇÃO */}
-            {selectedPrevisaoTab === "manutencao" && (
+            {selectedPrevisaoTab === "manutencao" && (() => {
+              const estadoInfo: Record<string, { pct: number; cor: string; barra: string }> = {
+                "Crítico": { pct: 90, cor: "bg-red-950 text-red-400 border border-red-800", barra: "bg-red-500" },
+                "Necessita Manutenção": { pct: 65, cor: "bg-amber-950 text-amber-400 border border-amber-800", barra: "bg-amber-500" },
+                "Operacional": { pct: 30, cor: "bg-emerald-950 text-emerald-400 border border-emerald-800", barra: "bg-emerald-500" },
+                "Excelente": { pct: 10, cor: "bg-emerald-950 text-emerald-400 border border-emerald-800", barra: "bg-emerald-500" }
+              };
+              const criticos = equipamentosReais.filter(e => e.estado === "Crítico" || e.estado === "Necessita Manutenção").length;
+              return (
               <div className="bg-slate-800/90 p-5 rounded-xl border border-slate-700 space-y-4 animate-fadeIn">
                 <div className="flex justify-between items-center border-b border-slate-700 pb-3">
                   <div>
                     <h4 className="text-sm font-black text-white flex items-center gap-2">
                       <i className="fa-solid fa-gears text-cyan-400"></i>
-                      <span>Previsão de Manutenção Preventiva & Ciclo de Degradação de Equipamentos</span>
+                      <span>Previsão de Manutenção Preventiva & Estado dos Equipamentos</span>
                     </h4>
                     <p className="text-xs text-slate-600 mt-0.5">
-                      Modelo preditivo de desgaste técnico baseado na idade, número de utilizações e relatórios das folhas digitais.
+                      Baseado no estado e inspeções reais registados em Inventário Técnico para este prédio.
                     </p>
                   </div>
                   <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-800 px-3 py-1 rounded-lg">
-                    4 Equipamentos Críticos Monitorizados
+                    {equipamentosReais.length} Equipamento(s) Registado(s){criticos > 0 ? ` — ${criticos} a precisar de atenção` : ""}
                   </span>
                 </div>
 
+                {aCarregarPrevisoes ? (
+                  <p className="text-xs text-slate-500 italic py-4 text-center">A carregar equipamentos…</p>
+                ) : equipamentosReais.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic py-4 text-center">
+                    Nenhum equipamento registado. Adicione os equipamentos técnicos do prédio em "Inventário Técnico" para obter aqui uma previsão real de manutenção.
+                  </p>
+                ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-3.5 bg-slate-900/90 rounded-xl border border-slate-700 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-black text-white">Elevadores Otis Gen2 (2 Unidades)</span>
-                      <span className="text-[10px] bg-amber-950 text-amber-400 font-bold px-2 py-0.5 rounded border border-amber-800">
-                        Degradação: 68%
-                      </span>
+                  {equipamentosReais.map(eq => {
+                    const info = estadoInfo[eq.estado] || estadoInfo["Operacional"];
+                    return (
+                    <div key={eq.id} className="p-3.5 bg-slate-900/90 rounded-xl border border-slate-700 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-black text-white">{eq.nome}{eq.andar ? ` (${eq.andar})` : ""}</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${info.cor}`}>
+                          {eq.estado}
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                        <div className={`${info.barra} h-full`} style={{ width: `${info.pct}%` }}></div>
+                      </div>
+                      <p className="text-[11px] text-slate-600">
+                        <strong>Última Inspeção:</strong> {eq.ultimaInspecao || "não registada"} ({eq.frequenciaInspecao || "frequência não definida"})
+                      </p>
+                      {eq.fabricante && <span className="text-[10px] text-cyan-400 font-mono block">Fabricante: {eq.fabricante}</span>}
                     </div>
-                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                      <div className="bg-amber-500 h-full w-[68%]"></div>
-                    </div>
-                    <p className="text-[11px] text-slate-600">
-                      <strong>Data Prevista de Intervenção:</strong> Novembro 2026 (Substituição de patins e cabos de tração).
-                    </p>
-                    <span className="text-[10px] text-cyan-400 font-mono block">Custo Estimado: €850.00 (Incluso no contrato de manutenção)</span>
-                  </div>
-
-                  <div className="p-3.5 bg-slate-900/90 rounded-xl border border-slate-700 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-black text-white">Bombas de Água Grundfos (Grupo Sobressalente)</span>
-                      <span className="text-[10px] bg-red-950 text-red-400 font-bold px-2 py-0.5 rounded border border-red-800">
-                        Degradação: 82%
-                      </span>
-                    </div>
-                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                      <div className="bg-red-500 h-full w-[82%]"></div>
-                    </div>
-                    <p className="text-[11px] text-slate-600">
-                      <strong>Data Prevista de Intervenção:</strong> Setembro 2026 (Substituição de selos mecânicos e vedantes).
-                    </p>
-                    <span className="text-[10px] text-cyan-400 font-mono block">Custo Estimado: €320.00 (Cobrir via Fundo Manutenção)</span>
-                  </div>
-
-                  <div className="p-3.5 bg-slate-900/90 rounded-xl border border-slate-700 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-black text-white">Portão Automático da Garagem</span>
-                      <span className="text-[10px] bg-emerald-950 text-emerald-400 font-bold px-2 py-0.5 rounded border border-emerald-800">
-                        Degradação: 25%
-                      </span>
-                    </div>
-                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                      <div className="bg-emerald-500 h-full w-[25%]"></div>
-                    </div>
-                    <p className="text-[11px] text-slate-600">
-                      <strong>Data Prevista de Intervenção:</strong> Junho 2027 (Lubrificação e afinação de cremalheira).
-                    </p>
-                    <span className="text-[10px] text-cyan-400 font-mono block">Custo Estimado: €75.00</span>
-                  </div>
-
-                  <div className="p-3.5 bg-slate-900/90 rounded-xl border border-slate-700 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-black text-white">Sistema de Iluminação Comum LED</span>
-                      <span className="text-[10px] bg-emerald-950 text-emerald-400 font-bold px-2 py-0.5 rounded border border-emerald-800">
-                        Degradação: 15%
-                      </span>
-                    </div>
-                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                      <div className="bg-emerald-500 h-full w-[15%]"></div>
-                    </div>
-                    <p className="text-[11px] text-slate-600">
-                      <strong>Data Prevista de Intervenção:</strong> Março 2028 (Substituição pontual de armaduras de iluminação).
-                    </p>
-                    <span className="text-[10px] text-cyan-400 font-mono block">Custo Estimado: €120.00</span>
-                  </div>
+                    );
+                  })}
                 </div>
+                )}
               </div>
-            )}
+              );
+            })()}
 
             {/* CONTENT OF PREDICTION 3: OBRAS */}
-            {selectedPrevisaoTab === "obras" && (
+            {selectedPrevisaoTab === "obras" && (() => {
+              const obrasOrdenadas = [...obrasPrevisaoReais].sort((a, b) => new Date(a.dataInicio || 0).getTime() - new Date(b.dataInicio || 0).getTime());
+              const totalObras = Math.round(obrasOrdenadas.reduce((s, o) => s + (o.custoTotal || 0), 0) * 100) / 100;
+              const numFracoesObras = fracoes?.length || 1;
+              return (
               <div className="bg-slate-800/90 p-5 rounded-xl border border-slate-700 space-y-4 animate-fadeIn">
                 <div className="flex justify-between items-center border-b border-slate-700 pb-3">
                   <div>
                     <h4 className="text-sm font-black text-white flex items-center gap-2">
                       <i className="fa-solid fa-helmet-safety text-amber-400"></i>
-                      <span>Previsão de Obras Extraordinárias (Horizonte 12, 24 e 36 Meses)</span>
+                      <span>Previsão de Obras Extraordinárias Pendentes</span>
                     </h4>
                     <p className="text-xs text-slate-600 mt-0.5">
-                      Projeção estratégica de grande conservação, investimento estimado e taxa de cobertura do Fundo Comum de Reserva.
+                      Obras extraordinárias reais registadas para este prédio, ainda não concluídas.
                     </p>
                   </div>
                   <span className="text-xs font-mono font-bold text-amber-300 bg-amber-950/60 border border-amber-800 px-3 py-1 rounded-lg">
-                    FCR Atual: €2.150,00
+                    Total Pendente: €{totalObras.toFixed(2)}
                   </span>
                 </div>
 
+                {aCarregarPrevisoes ? (
+                  <p className="text-xs text-slate-500 italic py-4 text-center">A carregar obras…</p>
+                ) : obrasOrdenadas.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic py-4 text-center">
+                    Nenhuma obra extraordinária pendente registada. Registe obras em "Gestão de Manutenção & Intervenções" para obter aqui uma previsão real.
+                  </p>
+                ) : (
                 <div className="space-y-3 font-sans">
-                  <div className="p-4 bg-slate-900/90 rounded-xl border border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div>
-                      <span className="text-[9px] font-mono font-bold text-amber-400 uppercase tracking-widest bg-amber-950 px-2 py-0.5 rounded border border-amber-800">
-                        Horizonte 12 Meses (Ano 2026/2027)
-                      </span>
-                      <h5 className="text-xs font-black text-white mt-1">Impermeabilização do Telhado e Clarabóia Central</h5>
-                      <p className="text-[11px] text-slate-600 mt-0.5">Substituição de telas asfálticas danificadas para prevenir infiltrações no 4º andar.</p>
+                  {obrasOrdenadas.map(obra => (
+                    <div key={obra.id} className="p-4 bg-slate-900/90 rounded-xl border border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                      <div>
+                        <span className="text-[9px] font-mono font-bold text-amber-400 uppercase tracking-widest bg-amber-950 px-2 py-0.5 rounded border border-amber-800">
+                          {obra.estado} {obra.dataInicio ? `— Início ${formatDatePT(obra.dataInicio)}` : ""}
+                        </span>
+                        <h5 className="text-xs font-black text-white mt-1">{obra.descricao}</h5>
+                        {obra.fornecedorNome && <p className="text-[11px] text-slate-600 mt-0.5">Fornecedor: {obra.fornecedorNome}</p>}
+                      </div>
+                      <div className="text-right shrink-0 font-mono">
+                        <span className="text-sm font-extrabold text-amber-400 block">€{(obra.custoTotal || 0).toFixed(2)}</span>
+                        <span className="text-[10px] text-emerald-400 block">
+                          {numFracoesObras > 0 ? `€${Math.round((obra.custoTotal / numFracoesObras) * 100) / 100} por fração` : ""}
+                          {obra.mesesFracionamento ? ` em ${obra.mesesFracionamento}x` : ""}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right shrink-0 font-mono">
-                      <span className="text-sm font-extrabold text-amber-400 block">€3.500,00</span>
-                      <span className="text-[10px] text-emerald-400 block">Cobertura FCR: 61% (Requer cota extra de €1.350)</span>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-slate-900/90 rounded-xl border border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div>
-                      <span className="text-[9px] font-mono font-bold text-violet-400 uppercase tracking-widest bg-violet-950 px-2 py-0.5 rounded border border-violet-800">
-                        Horizonte 24 Meses (Ano 2027/2028)
-                      </span>
-                      <h5 className="text-xs font-black text-white mt-1">Pintura Geral da Fachada Posterior e Varandas</h5>
-                      <p className="text-[11px] text-slate-600 mt-0.5">Tratamento de fissuras com tinta elástica impermeável e lavagem de cantarias.</p>
-                    </div>
-                    <div className="text-right shrink-0 font-mono">
-                      <span className="text-sm font-extrabold text-violet-300 block">€12.000,00</span>
-                      <span className="text-[10px] text-violet-400 block">Sugerida quota extraordinária fracionada em 18x</span>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-slate-900/90 rounded-xl border border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div>
-                      <span className="text-[9px] font-mono font-bold text-sky-400 uppercase tracking-widest bg-sky-950 px-2 py-0.5 rounded border border-sky-800">
-                        Horizonte 36 Meses (Ano 2028/2029)
-                      </span>
-                      <h5 className="text-xs font-black text-white mt-1">Substituição Integral das Colunas de Água Comum</h5>
-                      <p className="text-[11px] text-slate-600 mt-0.5">Substituição das antigas tubagens de ferro por multicamada de alta durabilidade.</p>
-                    </div>
-                    <div className="text-right shrink-0 font-mono">
-                      <span className="text-sm font-extrabold text-sky-300 block">€8.200,00</span>
-                      <span className="text-[10px] text-slate-600 block">Planeamento de poupança contínua no FCR</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
+                )}
               </div>
-            )}
+              );
+            })()}
 
             {/* CONTENT OF PREDICTION 4: FINANCEIRA */}
-            {selectedPrevisaoTab === "financeira" && (
+            {selectedPrevisaoTab === "financeira" && (() => {
+              const movimentosContados = (movements || []).filter(m => m.estado !== "Movimento Cego / Por Justificar");
+              const saldoAtualReal = Math.round(movimentosContados.reduce((s, m) => s + (m.tipo === "Receita" ? m.valor : -m.valor), 0) * 100) / 100;
+              return (
               <div className="bg-slate-800/90 p-5 rounded-xl border border-slate-700 space-y-4 animate-fadeIn">
                 <div className="flex justify-between items-center border-b border-slate-700 pb-3">
                   <div>
                     <h4 className="text-sm font-black text-white flex items-center gap-2">
                       <i className="fa-solid fa-chart-line text-emerald-400"></i>
-                      <span>Previsão Financeira & Projeção de Cash Flow (6 e 12 Meses)</span>
+                      <span>Previsão Financeira & Saúde do Fundo de Reserva</span>
                     </h4>
                     <p className="text-xs text-slate-600 mt-0.5">
-                      Modelo preditivo de liquidez de tesouraria combinando quotas esperadas, sazonalidade e contratos fixos.
+                      Análise gerada por IA com base no saldo real e nos movimentos financeiros efetivos deste prédio (não dados de exemplo).
                     </p>
                   </div>
                   <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-3 py-1 rounded-lg">
-                    Saldo Projetado a 12m: €2.120,00
+                    Saldo Atual Real: €{saldoAtualReal.toFixed(2)}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono">
-                  <div className="p-4 bg-slate-900/90 rounded-xl border border-slate-700 space-y-2">
-                    <span className="text-[10px] font-bold text-slate-600 uppercase block">Projeção a 6 Meses (Dezembro 2026)</span>
-                    <div className="flex justify-between items-center text-xs text-slate-600 pt-1">
-                      <span>Receitas de Quotas Estimadas:</span>
-                      <span className="font-bold text-emerald-400">+ €7.080,00</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs text-slate-600">
-                      <span>Despesas Operacionais Fixas:</span>
-                      <span className="font-bold text-rose-400">- €6.240,00</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs text-slate-600 border-t border-slate-800 pt-2 font-bold">
-                      <span className="text-white">Saldo de Tesouraria Estimado:</span>
-                      <span className="text-emerald-400 text-sm">€2.040,00</span>
-                    </div>
-                  </div>
+                <button
+                  type="button"
+                  onClick={handleGerarSaudeFinanceira}
+                  disabled={aGerarSaudeFinanceira}
+                  className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer flex items-center gap-2"
+                >
+                  <i className="fa-solid fa-wand-magic-sparkles"></i>
+                  {aGerarSaudeFinanceira ? "A analisar com IA…" : saudeFinanceiraAnalise ? "Atualizar Análise" : "Gerar Análise de Saúde Financeira com IA"}
+                </button>
 
-                  <div className="p-4 bg-slate-900/90 rounded-xl border border-slate-700 space-y-2">
-                    <span className="text-[10px] font-bold text-slate-600 uppercase block">Projeção a 12 Meses (Junho 2027)</span>
-                    <div className="flex justify-between items-center text-xs text-slate-600 pt-1">
-                      <span>Receitas de Quotas Estimadas:</span>
-                      <span className="font-bold text-emerald-400">+ €14.160,00</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs text-slate-600">
-                      <span>Despesas Operacionais Fixas:</span>
-                      <span className="font-bold text-rose-400">- €12.480,00</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs text-slate-600 border-t border-slate-800 pt-2 font-bold">
-                      <span className="text-white">Saldo de Tesouraria Estimado:</span>
-                      <span className="text-emerald-400 text-sm">€2.120,00</span>
-                    </div>
-                  </div>
+                <div className="p-4 bg-slate-900/90 rounded-xl border border-slate-700">
+                  <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed">
+                    {saudeFinanceiraAnalise || "Gere a análise para obter um diagnóstico real da saúde financeira e do fundo de reserva, com base nos movimentos reais deste prédio."}
+                  </p>
                 </div>
               </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Controls & General Parameters */}
