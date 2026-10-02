@@ -266,7 +266,27 @@ export default async function handler(req, res) {
       // (fluxo antigo de comprovativo por email), mantém a divisão legal
       // mínima de 10% para o Fundo Comum de Reserva (DL 268/94, Art. 4.º).
       rubricas: avisosFechadosReais.length
-        ? avisosFechadosReais.map((a) => ({ descricao: a.descricao || `${a.tipo} — vencimento ${a.vencimento || a.data}`, valor: Number(a.valor || 0), tipo: a.tipo }))
+        ? avisosFechadosReais.flatMap((a) => {
+            const valorTotalAviso = Number(a.valor || 0);
+            const valorFcr = Number(a.valor_fundo_reserva || 0);
+            // Avisos de Quota Ordinária guardam a Quota + o FCR juntos num
+            // só registo (valor_fundo_reserva é só a parcela dentro de
+            // "valor") — sem isto, o recibo saía com 1 linha combinada
+            // ("Ordinária + Fundo de Reserva"), diferente da nota de
+            // cobrança do mesmo mês, que já sai sempre discriminada em 2
+            // linhas. Discrimina sempre aqui também, para nunca haver
+            // divergência entre os dois documentos.
+            if (valorFcr > 0 && valorFcr < valorTotalAviso) {
+              const valorOrdinaria = Math.round((valorTotalAviso - valorFcr) * 100) / 100;
+              const periodo = String(a.descricao || "").match(/-\s*([a-zàâãéêíóôõúç]+\s*\/\s*\d{4})\s*$/i)?.[1]?.trim();
+              const sufixoPeriodo = periodo ? ` - ${periodo}` : "";
+              return [
+                { descricao: `Quota de Condomínio Ordinária${sufixoPeriodo}`, valor: valorOrdinaria, tipo: a.tipo },
+                { descricao: `Fundo Comum de Reserva (FCR)${sufixoPeriodo}`, valor: valorFcr, tipo: "Fundo Comum de Reserva" }
+              ];
+            }
+            return [{ descricao: a.descricao || `${a.tipo} — vencimento ${a.vencimento || a.data}`, valor: valorTotalAviso, tipo: a.tipo }];
+          })
         : (() => {
             const total = Number(pagamento.valor || 0);
             const valorReserva = Math.round(total * 0.10 * 100) / 100;
