@@ -146,7 +146,24 @@ export function ConstituicaoProcessosJuridicos({
   const [novoValorCapital, setNovoValorCapital] = useState<string>("0.00");
   const [novoTribunal, setNovoTribunal] = useState<string>("Balcão Nacional de Injunções (BNI)");
   const [novoFase, setNovoFase] = useState<ProcessoJuridico["fase_processual"]>("INJUNCAO_BNI");
+  // Custas processuais — antes eram SEMPRE recalculadas a partir de
+  // calcularTaxaJusticaBNI (fixo, só olha ao capital), em TODOS os
+  // processos, mesmo os que já estavam registados para Julgado de Paz —
+  // não havia forma nenhuma de a corrigir, o valor da taxa BNI era sempre
+  // reescrito por cima a cada gravação. Passa a campo editável, com uma
+  // sugestão inicial consoante o tribunal escolhido (ver sugerirCustasPorTribunal).
+  const [novoCustas, setNovoCustas] = useState<string>("25.50");
   const [novoMandatario, setNovoMandatario] = useState<string>(`${loggedUser.nome} (Administrador do Condomínio)`);
+
+  // Sugestão de custas por tribunal — nunca impõe o valor, só pré-preenche
+  // quando o tribunal muda (continua 100% editável a seguir). O valor do
+  // Julgado de Paz (70€) foi confirmado pelo administrador; os valores do
+  // BNI mantêm a fórmula já existente (calcularTaxaJusticaBNI).
+  const sugerirCustasPorTribunal = (tribunal: string, capital: number): number => {
+    if (tribunal === "Julgado de Paz") return 70.0;
+    if (tribunal === "Balcão Nacional de Injunções (BNI)") return calcularTaxaJusticaBNI(capital);
+    return 0;
+  };
 
   // Despesas extra do processo em edição/detalhe (CTT registada,
   // declarações pedidas, custos de tribunal além da taxa de justiça, etc.)
@@ -452,6 +469,7 @@ export function ConstituicaoProcessosJuridicos({
     setNovoValorCapital("0.00");
     setNovoTribunal("Balcão Nacional de Injunções (BNI)");
     setNovoFase("INJUNCAO_BNI");
+    setNovoCustas(sugerirCustasPorTribunal("Balcão Nacional de Injunções (BNI)", 0).toFixed(2));
     setNovoMandatario(`${loggedUser.nome} (Administrador do Condomínio)`);
   };
 
@@ -468,6 +486,7 @@ export function ConstituicaoProcessosJuridicos({
     setNovoValorCapital(proc.valor_divida_capital.toFixed(2));
     setNovoTribunal(proc.tribunal_competente);
     setNovoFase(proc.fase_processual);
+    setNovoCustas(proc.custas_processuais_estimadas.toFixed(2));
     setNovoMandatario(proc.mandatario_responsavel);
     setShowNovoProcessoModal(true);
   };
@@ -543,7 +562,7 @@ export function ConstituicaoProcessosJuridicos({
     // Juros reais: soma dos juros de cada aviso em dívida pelos dias reais
     // de atraso, não uma estimativa fixa de "8 meses" para qualquer fração.
     const juros = Number(calcularJurosReaisFracao(fr.id_fracao).toFixed(2));
-    const custas = calcularTaxaJusticaBNI(capital);
+    const custas = parseValorMonetario(novoCustas);
 
     if (editingProcessoId) {
       const processoExistente = processos.find(p => p.id_processo === editingProcessoId);
@@ -2147,12 +2166,52 @@ export function ConstituicaoProcessosJuridicos({
                   </label>
                   <select
                     value={novoTribunal}
-                    onChange={(e) => setNovoTribunal(e.target.value)}
+                    onChange={(e) => {
+                      const novo = e.target.value;
+                      setNovoTribunal(novo);
+                      // Sugere a taxa típica do tribunal escolhido — continua
+                      // 100% editável a seguir, nunca é imposta.
+                      setNovoCustas(sugerirCustasPorTribunal(novo, parseValorMonetario(novoValorCapital)).toFixed(2));
+                    }}
                     className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white"
                   >
                     <option value="Balcão Nacional de Injunções (BNI)">Balcão Nacional de Injunções (BNI)</option>
                     <option value="Julgado de Paz">Julgado de Paz</option>
                     <option value="Tribunal Judicial da Comarca">Tribunal Judicial da Comarca</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Custas Processuais Estimadas (€)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={novoCustas}
+                    onChange={(e) => setNovoCustas(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl font-mono text-slate-800 dark:text-white"
+                  />
+                  <p className="text-[9px] text-slate-600">Sugestão automática pelo tribunal escolhido acima — continua editável (ex: taxa real paga, se diferente).</p>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Fase Processual
+                  </label>
+                  <select
+                    value={novoFase}
+                    onChange={(e) => setNovoFase(e.target.value as ProcessoJuridico["fase_processual"])}
+                    className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white"
+                  >
+                    <option value="PRE_CONTENCIOSO_NOTIFICACAO">Pré-Contencioso / Notificação</option>
+                    <option value="INJUNCAO_BNI">Injunção (BNI)</option>
+                    <option value="ACAO_EXECUTIVA">Ação Executiva</option>
+                    <option value="JULGADO_PAZ">Julgado de Paz</option>
+                    <option value="ACORDO_PAGAMENTO">Acordo de Pagamento</option>
+                    <option value="CONCLUIDO_EXTINTO">Concluído / Extinto</option>
                   </select>
                 </div>
               </div>
