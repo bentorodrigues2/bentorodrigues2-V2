@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import { Predio, Fracao, LoggedUser, ProcessoJuridico, ProcessoProva, TipoProvaJuridica, Documento, Aviso } from "../types";
 import { generateAndDownloadPdf, formatDatePT, parseValorMonetario } from "../utils";
-import { saveProcessoJuridicoToSupabase, deleteProcessoJuridicoFromSupabase } from "../lib/supabaseService";
+import { saveProcessoJuridicoToSupabase, deleteProcessoJuridicoFromSupabase, uploadDocumentoToStorage } from "../lib/supabaseService";
 import { MoneyInput } from "./MoneyInput";
 
 // Boilerplate jurídico de cada um dos 8 modelos de prova pré-definidos —
@@ -202,14 +202,20 @@ export function ConstituicaoProcessosJuridicos({
     // comparar logo com o valor_total_pedido já registado neste processo.
     ehRequerimentoInicial?: boolean;
     valorReclamadoDetetado?: number;
+    // URL real e permanente no Supabase Storage (preenchida ao analisar) —
+    // é o que fica guardado em url_preview da prova final, para PDFs
+    // continuarem consultáveis depois, não só imagens.
+    storageUrl?: string;
   }
 
-  // Limite conservador de tamanho de ficheiro para a classificação por IA —
-  // o pedido vai em JSON (base64, ~33% maior que o ficheiro original) e a
-  // função serverless da Vercel rejeita payloads grandes antes mesmo de
-  // correr o código (erro "Request Entity Too Large", que nem é JSON válido
-  // — daí o "Unexpected token" que aparecia sem explicação nenhuma).
-  const LIMITE_FICHEIRO_IA_BYTES = 3.5 * 1024 * 1024;
+  // Limite de tamanho de ficheiro aceite — o modelo multimodal do Gemini
+  // aceita conteúdo inline até ~20 MB; ficheiros maiores exigiriam a File
+  // API (fora de alcance aqui). Isto já não está ligado ao limite de
+  // payload da função serverless da Vercel: o ficheiro vai primeiro direto
+  // para o Supabase Storage (upload do browser, nunca passa pela função),
+  // e só o URL (pequeno) é enviado à IA, que o vai lá buscar do lado do
+  // servidor — por isso o limite pode ser bem mais alto do que antes.
+  const LIMITE_FICHEIRO_IA_BYTES = 18 * 1024 * 1024;
   const [showLoteProvaModal, setShowLoteProvaModal] = useState<boolean>(false);
   const [itensLoteProva, setItensLoteProva] = useState<ItemLoteProva[]>([]);
   const [aAnalisarLote, setAAnalisarLote] = useState<boolean>(false);
@@ -232,44 +238,46 @@ export function ConstituicaoProcessosJuridicos({
     setItensLoteProva((prev) => [...prev, ...novosItens]);
   };
 
-  const fileParaBase64 = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const resultado = reader.result as string;
-        resolve(resultado.split(",")[1] || "");
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-
   const handleAnalisarLoteProvas = async () => {
-    if (itensLoteProva.length === 0) return;
+    if (itensLoteProva.length === 0 || !currentProcesso) return;
     setAAnalisarLote(true);
     try {
       for (const item of itensLoteProva) {
         setItensLoteProva((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: "a_analisar" } : i)));
         try {
           if (item.file.size > LIMITE_FICHEIRO_IA_BYTES) {
-            throw new Error(`Ficheiro demasiado grande para a IA analisar (${(item.file.size / (1024 * 1024)).toFixed(1)} MB — limite de ${(LIMITE_FICHEIRO_IA_BYTES / (1024 * 1024)).toFixed(1)} MB). Comprime o PDF/imagem ou escolhe o tipo manualmente e anexa à mesma.`);
+            throw new Error(`Ficheiro demasiado grande (${(item.file.size / (1024 * 1024)).toFixed(1)} MB — limite de ${(LIMITE_FICHEIRO_IA_BYTES / (1024 * 1024)).toFixed(1)} MB). Comprime o PDF/imagem.`);
           }
-          const base64 = await fileParaBase64(item.file);
-          const previewDataUrl = item.tipoFicheiro === "imagem" ? `data:${item.file.type};base64,${base64}` : "";
+          // Envia o ficheiro primeiro para o Supabase Storage (upload direto
+          // do browser, nunca passa pela função serverless) e só manda o URL
+          // à IA, que o vai lá buscar do lado do servidor — evita por
+          // completo o limite de payload da função (era isto que dava
+          // "Request Entity Too Large" em ficheiros grandes) e já deixa o
+          // documento arquivado com um URL real e permanente, incluindo
+          // PDFs (antes só as imagens ficavam com uma prévia, em base64 só
+          // na memória do browser, nunca persistida).
+          const caminhoStorage = `provas-juridicas/${predio.id_predio}/${currentProcesso.id_processo}/${Date.now()}-${item.file.name}`;
+          const urlReal = await uploadDocumentoToStorage(item.file, caminhoStorage);
+          if (!urlReal) {
+            throw new Error("Não foi possível carregar o ficheiro para o Storage. Tente novamente.");
+          }
+          setItensLoteProva((prev) => prev.map((i) => (i.id === item.id ? { ...i, storageUrl: urlReal } : i)));
+
           const resp = await fetch("/api/ai?acao=classificar-prova-juridica", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ base64, mimeType: item.file.type || "application/octet-stream", nomeFicheiro: item.file.name })
+            body: JSON.stringify({ storageUrl: urlReal, mimeType: item.file.type || "application/octet-stream", nomeFicheiro: item.file.name })
           });
-          // A resposta pode não ser JSON de todo (ex: página de erro "Request
-          // Entity Too Large" devolvida antes de chegar ao nosso código) — ler
-          // sempre como texto primeiro evita o erro "Unexpected token" sem
-          // explicação nenhuma, e dá uma mensagem compreensível em vez disso.
+          // A resposta pode não ser JSON de todo (ex: página de erro
+          // devolvida antes de chegar ao nosso código) — ler sempre como
+          // texto primeiro evita o erro "Unexpected token" sem explicação
+          // nenhuma, e dá uma mensagem compreensível em vez disso.
           const textoResp = await resp.text();
           let dados: any = null;
           try {
             dados = JSON.parse(textoResp);
           } catch {
-            throw new Error(resp.ok ? "A IA devolveu uma resposta inesperada." : `Erro do servidor (${resp.status}) ao analisar este ficheiro — tenta um ficheiro mais pequeno ou escolhe o tipo manualmente.`);
+            throw new Error(resp.ok ? "A IA devolveu uma resposta inesperada." : `Erro do servidor (${resp.status}) ao analisar este ficheiro — tenta novamente ou escolhe o tipo manualmente.`);
           }
           if (!resp.ok || !dados?.tipo) throw new Error(dados?.error || "Falha ao classificar.");
 
@@ -285,7 +293,7 @@ export function ConstituicaoProcessosJuridicos({
             resumo: dados.resumo || "",
             dataDocumento: dados.data_documento || "",
             codigoCtt: dados.codigo_rastreio_ctt || "",
-            urlPreview: previewDataUrl,
+            urlPreview: i.tipoFicheiro === "imagem" ? urlReal : "",
             ehRequerimentoInicial: ehRequerimento,
             valorReclamadoDetetado: typeof dados.valor_reclamado === "number" ? dados.valor_reclamado : undefined
           } : i)));
@@ -324,7 +332,7 @@ export function ConstituicaoProcessosJuridicos({
         ficheiro_nome: item.file.name,
         tamanho: `${Math.max(1, Math.round(item.file.size / 1024))} KB`,
         tipo_ficheiro: item.tipoFicheiro,
-        url_preview: item.urlPreview || undefined,
+        url_preview: item.storageUrl || item.urlPreview || undefined,
         codigo_rastreio_ctt: item.codigoCtt || undefined,
         destinatario: dest,
         observacoes_juridicas: preset.observacoes_juridicas,

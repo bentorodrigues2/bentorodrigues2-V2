@@ -339,22 +339,39 @@ export function matchBankTransactions(
         } else if ((hasFracName || hasPiso) && !exactAmountMatch && fracaoAvisos.length > 0) {
           curConfidence = 80;
           curReason = `Fração (${f.fracao_nome}) identificada no descritivo, mas o valor não bate certo com nenhuma combinação de meses em aberto — escolhe à mão que mês(es) este pagamento cobre.`;
-        } else if (hasOwnerName && !exactAmountMatch && fracaoAvisos.length > 0) {
-          // Faltava este caso: nome do proprietário/coproprietário encontrado
-          // por inteiro (sinal tão forte como o código da fração), mas sem
-          // nenhuma combinação exata de meses em aberto — ficava sem
-          // nenhuma fração sugerida (confiança 0) só porque os outros ramos
-          // de "nome bate certo" exigem também exactAmountMatch. Era
-          // exatamente o caso de um pagamento parcial (ex: "paga 2 meses e
-          // um bocado do 3º") de alguém já identificado sem ambiguidade.
-          curConfidence = 80;
-          curReason = `Nome do Proprietário/Coproprietário (${f.proprietario?.nome}) identificado no descritivo, mas o valor não bate certo com nenhuma combinação de meses em aberto — escolhe à mão como aplicar este pagamento.`;
         } else if (hasOwnerPartial && exactAmountMatch) {
           curConfidence = 85;
           curReason = `Apelido do condómino e valor da quota (${tx.valor.toFixed(2)}€) coincidentes.`;
+        } else if (hasOwnerName && !exactAmountMatch) {
+          // Nome do proprietário/coproprietário encontrado por inteiro (sinal
+          // tão forte como o código da fração) — mantém-se mesmo sem avisos
+          // pendentes para esta fração (ex: pagamento adiantado, ou de um
+          // valor que ainda não foi emitido em aviso nenhum). Antes exigia
+          // sempre fracaoAvisos.length > 0, o que fazia o nome bater certo
+          // sem efeito nenhum (confiança 0) sempre que a fração certa já
+          // estava com tudo pago — e nesse caso, uma fração COMPLETAMENTE
+          // diferente (sem nenhuma relação com o nome) podia ganhar só por
+          // coincidência de valor (ver o ramo final, "Valor idêntico").
+          curConfidence = 75;
+          curReason = `Nome do Proprietário/Coproprietário (${f.proprietario?.nome}) identificado no descritivo${fracaoAvisos.length > 0 ? ", mas o valor não bate certo com nenhuma combinação de meses em aberto" : " — esta fração não tem avisos pendentes neste momento (pode ser um pagamento adiantado)"} — escolhe à mão como aplicar este pagamento.`;
+        } else if (hasOwnerPartial && !exactAmountMatch) {
+          // Mesma lógica do ramo anterior, mas para um nome só PARCIALMENTE
+          // reconhecido (ex: apelido cortado pelo banco por limite de
+          // caracteres, "...POMBO" em vez de "...POMBO DE SOUSA") — sinal
+          // mais fraco do que o nome completo, mas ainda assim muito mais
+          // fiável do que nenhum nome nenhum (ver ramo final).
+          curConfidence = 55;
+          curReason = `Nome parcial do Proprietário/Coproprietário (${f.proprietario?.nome}) identificado no descritivo (pode estar cortado pelo banco) — confirma a fração antes de aprovar.`;
         } else if (exactAmountMatch && fracaoAvisos.length > 0) {
-          curConfidence = 65;
-          curReason = `Valor idêntico à quota pendente da Fração ${f.fracao_nome}, sem referência textual explícita.`;
+          // Sinal mais fraco de todos — nenhuma referência nem nome bate
+          // certo, só o valor coincide com uma quota pendente de ALGUMA
+          // fração. Muito comum dar falsos positivos depois de uma revisão
+          // de orçamento (várias frações passam a ter o mesmo valor
+          // arredondado) — fica sempre abaixo do limiar de auto-confirmação,
+          // nunca pré-seleciona uma fração sozinho sem o administrador
+          // confirmar à mão.
+          curConfidence = 45;
+          curReason = `Valor idêntico à quota pendente da Fração ${f.fracao_nome}, sem nenhuma referência textual nem nome a confirmar — pode ser coincidência, confirma antes de aprovar.`;
         }
 
         if (curConfidence > confidence) {

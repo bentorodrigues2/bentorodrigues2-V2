@@ -2813,7 +2813,48 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                             {item.entidade_credora ? `${item.entidade_credora} ` : ""}{item.iban_credor ? `— IBAN ${item.iban_credor}` : ""}
                           </p>
                         )}
-                        {item.id_fornecedor ? (
+                        {item.tipo === "Receita" ? (
+                          // Confiança abaixo do limiar de auto-confirmação
+                          // (ex: só o apelido bate certo, cortado pelo banco,
+                          // ou só o valor coincide por acaso com outra
+                          // fração) — mostra o motivo para o administrador
+                          // perceber porquê, e deixa escolher a fração certa
+                          // à mão em vez de só oferecer "associar fornecedor"
+                          // (que não faz sentido nenhum para uma receita).
+                          <div className="mt-1.5 space-y-1">
+                            {item.motivoCorrespondenciaFracao && (
+                              <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-1">
+                                💡 {item.motivoCorrespondenciaFracao}
+                              </p>
+                            )}
+                            <label className="text-[9px] font-bold text-amber-600 uppercase block mb-0.5">Escolhe a fração deste pagamento</label>
+                            <select
+                              className="bg-amber-50 border border-amber-200 text-[10px] rounded px-1.5 py-1 focus:outline-none focus:border-violet-500 w-full"
+                              value={item.fracaoSugeridaId || ""}
+                              onChange={(e) => {
+                                const novaFracao = fracoes.find(f => f.id_fracao === e.target.value);
+                                const avisosDaFracaoNova = novaFracao
+                                  ? avisos.filter(a => a.id_fracao === novaFracao.id_fracao && a.estado === "Pendente" && avisoPertenceAContaExtrato(a)).sort((a, b) => (a.vencimento || a.data).localeCompare(b.vencimento || b.data))
+                                  : [];
+                                const avisosPendentesNovos = selecionarAvisosCobertosPeloValor(avisosDaFracaoNova, item.valor).map(a => a.id_aviso);
+                                setExtractedItems(prev => prev.map((x, i) => i === index ? {
+                                  ...x,
+                                  ehPagamentoCondomino: !!novaFracao,
+                                  fracaoSugeridaId: novaFracao?.id_fracao || "",
+                                  fracaoSugeridaNome: novaFracao?.fracao_nome || "?",
+                                  confiancaFracao: 100,
+                                  motivoCorrespondenciaFracao: "corrigido manualmente",
+                                  avisosPendentesIds: avisosPendentesNovos
+                                } : x));
+                              }}
+                            >
+                              <option value="">— Escolher fração —</option>
+                              {fracoes.filter(f => f.id_predio === predio.id_predio).map(f => (
+                                <option key={f.id_fracao} value={f.id_fracao}>{f.fracao_nome} — {f.proprietario?.nome || "sem proprietário"}</option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : item.id_fornecedor ? (
                           <p className="text-[10px] text-emerald-700 font-bold flex items-center mt-1">
                             <i className="fa-solid fa-circle-check mr-1"></i>
                             <span>Fornecedor identificado: {item.fornecedor_nome_sugerido} ({item.metodo_cruzamento === "iban" ? "por IBAN" : item.metodo_cruzamento === "referencia_contrato" ? "por referência de contrato" : "por nome"})</span>

@@ -565,9 +565,27 @@ Devolve APENAS JSON estrito:
     }
 
     try {
-      const { base64, mimeType, nomeFicheiro } = req.body || {};
-      if (!base64 || !mimeType) {
-        return res.status(400).json({ error: "base64 e mimeType são obrigatórios" });
+      const { mimeType, nomeFicheiro, storageUrl } = req.body || {};
+      let { base64 } = req.body || {};
+      if (!mimeType) {
+        return res.status(400).json({ error: "mimeType é obrigatório" });
+      }
+      if (!base64 && !storageUrl) {
+        return res.status(400).json({ error: "base64 ou storageUrl são obrigatórios" });
+      }
+
+      // Ficheiros grandes (ex: Atas digitalizadas) vão primeiro para o
+      // Supabase Storage pelo browser, e só o URL chega aqui — o pedido do
+      // browser até este endpoint fica sempre pequeno (nunca atinge o
+      // limite de payload da função serverless), e é o SERVIDOR que vai
+      // buscar o ficheiro real, sem esse limite aplicar à ligação de saída.
+      if (!base64 && storageUrl) {
+        const respFicheiro = await fetch(storageUrl);
+        if (!respFicheiro.ok) {
+          return res.status(502).json({ error: "Não foi possível descarregar o ficheiro do Storage para análise." });
+        }
+        const buffer = Buffer.from(await respFicheiro.arrayBuffer());
+        base64 = buffer.toString("base64");
       }
 
       const prompt = `És o assistente jurídico da administração de um condomínio em Portugal, a organizar um dossiê de prova documental para um processo judicial de cobrança de dívida/incumprimento contra um condómino.
