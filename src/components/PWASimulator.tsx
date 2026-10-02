@@ -39,6 +39,7 @@ import { ConfiguracoesAdministracao } from "./ConfiguracoesAdministracao";
 import { FichaEmpresaGestora } from "./FichaEmpresaGestora";
 import { PWASupplierCardsView } from "./PWASupplierCardsView";
 import { DashboardKPIs } from "./DashboardKPIs";
+import { PainelControlo } from "./PainelControlo";
 import { ContabilidadeInterna } from "./ContabilidadeInterna";
 import { InventarioTecnico } from "./InventarioTecnico";
 import { GestaoSinistrosSeguros } from "./GestaoSinistrosSeguros";
@@ -159,6 +160,31 @@ export function PWASimulator({
   const [pwaVibrateEnabled, setPwaVibrateEnabled] = useState<boolean>(true);
   const [selectedPwaSubmenu, setSelectedPwaSubmenu] = useState<string | null>(null);
   const [activePwaSubMenuDetails, setActivePwaSubMenuDetails] = useState<string | null>(null);
+
+  // Traduz as secções do Painel de Controlo real (o mesmo ecrã inicial do
+  // browser) para os IDs dos cartões/submenus desta PWA — para o ecrã
+  // inicial do Admin poder reutilizar exatamente os mesmos indicadores do
+  // browser (saldo por conta, Total Líquido, Lançamentos por Confirmar a
+  // vermelho, etc.) em vez da grelha de 16 ícones sem dados reais que
+  // existia antes.
+  const mapSecaoPainelParaSubmenuPwa = (secao: string): string => {
+    const mapa: Record<string, string> = {
+      predios: "predios",
+      fracoes: "fracoes",
+      manutencao_intervencoes: "obras",
+      manutencao_extraordinarias: "obras",
+      vistorias_limpezas: "limpeza",
+      documentos: "documentos",
+      comunicacao_chat: "comunicar",
+      comunicacao_sondagens: "comunicar",
+      financeiro_relatorios: "financas",
+      movimentos: "financas",
+      contas: "financas",
+      fundo_reserva: "financas",
+      contencioso_juridico: "assembleias"
+    };
+    return mapa[secao] || secao;
+  };
 
   // SMS-style notification counter helper for Admin cards
   const getNotificationCount = (cardId: string) => {
@@ -1300,51 +1326,78 @@ export function PWASimulator({
                     <p className="text-[10px] text-slate-500 dark:text-slate-400">Selecione qualquer painel para abrir o respetivo menu popup.</p>
                   </div>
 
+                  {/* ADMIN / EMPRESA_GESTORA / GESTOR — mesmo Painel de Controlo do
+                      browser (saldo por conta, Total Líquido, Lançamentos por
+                      Confirmar a vermelho quando há pendentes, etc.), em vez da
+                      grelha de 16 ícones de navegação sem dados reais que existia
+                      aqui antes e que o administrador reportou como confusa. */}
+                  {(loggedUser.role === "ADMIN" || loggedUser.role === "EMPRESA_GESTORA" || loggedUser.role === "GESTOR") && (
+                    <div className="relative z-10 -mx-1">
+                      <PainelControlo
+                        predio={predio}
+                        contas={contas}
+                        fracoes={fracoes}
+                        movements={movements}
+                        avisos={avisos}
+                        documentosCount={documentos.filter(d => d.id_predio === predio.id_predio).length}
+                        fornecedoresCount={fornecedores.filter(f => f.id_predio === predio.id_predio).length}
+                        ocorrenciasCount={ocorrencias.filter(o => o.id_predio === predio.id_predio).length}
+                        reservasCount={reservas.filter(r => r.id_predio === predio.id_predio).length}
+                        dividasPendentesValor={dividasPendentesValor}
+                        onSelectSection={(secao) => setSelectedPwaSubmenu(mapSecaoPainelParaSubmenuPwa(secao))}
+                        isAdmin={true}
+                      />
+                    </div>
+                  )}
+
+                  {/* Módulos sem indicador fixo garantido no Painel de Controlo
+                      (alguns só aparecem lá quando há contagem > 0 de dados que
+                      esta PWA não tem disponíveis, ex: obras/limpezas/alertas
+                      jurídicos) — mantidos aqui num bloco curto à parte, para
+                      nunca perder o acesso a eles, sem voltar à grelha longa de
+                      16 cartões de antes. */}
+                  {(loggedUser.role === "ADMIN" || loggedUser.role === "EMPRESA_GESTORA" || loggedUser.role === "GESTOR") && (
+                    <div className="space-y-2 relative z-10">
+                      <h4 className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Mais Módulos</h4>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        {[
+                          { id: "painel_kpis", label: "Painel & KPIs", desc: "Dashboard Geral do Condomínio", image: "/modulos/82-automacao.png" },
+                          { id: "predios", label: "Prédios", desc: "Regras, Edifícios & Blocos", image: "/modulos/01-predio.png" },
+                          { id: "obras", label: "Manutenção & Obras", desc: "Avarias, Intervenções & Limpeza", image: "/modulos/41-obra.png" },
+                          { id: "limpeza", label: "Limpeza", desc: "Vistorias & Relatórios", image: "/modulos/50-limpeza.png" },
+                          { id: "assembleias", label: "Assembleias & Legal", desc: "Atas, Convocatórias & Litígios", image: "/modulos/70-pessoa-de-contacto.png" },
+                          { id: "contabilidade", label: "Contabilidade", desc: "Plano de Contas & Lançamentos", image: "/modulos/59-recibo.png" },
+                          { id: "inventario", label: "Inventário Técnico", desc: "Equipamentos & Garantias", image: "/modulos/02-equipamentos-tecnicos.png" },
+                          { id: "seguros", label: "Seguros & Sinistros", desc: "Apólices & Participações", image: "/modulos/70-pessoa-de-contacto.png" },
+                          { id: "correspondencia", label: "Correspondência", desc: "Cartas CTT & Registos", image: "/modulos/75-mensagem.png" },
+                          { id: "fornecedores", label: "Fornecedores", desc: "Fichas & Orçamentos", image: "/modulos/67-fornecedor.png" },
+                          { id: "aprovacoes", label: "Aprovações & Agenda", desc: "Reservas & Recibos", image: "/modulos/82-automacao.png" },
+                          { id: "configuracoes", label: "Empresa Gestora", desc: "White-Label & Parâmetros", image: "/modulos/07-fracao.png" }
+                        ].map(card => {
+                          const notifCount = getNotificationCount(card.id);
+                          return (
+                            <button
+                              key={card.id}
+                              onClick={() => setSelectedPwaSubmenu(card.id)}
+                              className="w-full h-[90px] bg-emerald-50 hover:bg-emerald-100/90 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-950 dark:text-emerald-100 border border-emerald-400 dark:border-emerald-400/60 rounded-xl flex flex-col items-center justify-between text-center p-2 relative select-none hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-xs"
+                            >
+                              <img src={card.image} alt={card.label} className="h-7 w-7 object-contain mb-0.5 shrink-0 rounded-lg" />
+                              <span className="text-[9.5px] font-black text-emerald-950 dark:text-emerald-50 leading-tight block truncate max-w-full text-center">{card.label}</span>
+                              <span className="text-[7px] font-mono text-emerald-800/90 dark:text-emerald-300/90 leading-normal block truncate max-w-full text-center">{card.desc}</span>
+                              {notifCount > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-[18px] px-1 items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-black border border-white shadow-md animate-pulse z-10">
+                                  {notifCount}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Cards Grid based on current role */}
                   <div className="grid grid-cols-2 gap-2.5 relative z-10">
-                     {/* ADMIN / EMPRESA_GESTORA / GESTOR CARDS */}
-                     {(loggedUser.role === "ADMIN" || loggedUser.role === "EMPRESA_GESTORA" || loggedUser.role === "GESTOR") && [
-                        { id: "painel_kpis", label: "Painel & KPIs", desc: "Dashboard Geral do Condomínio", image: "/modulos/82-automacao.png" },
-                        { id: "predios", label: "Prédios", desc: "Regras, Edifícios & Blocos", image: "/modulos/01-predio.png" },
-                        { id: "fracoes", label: "Frações", desc: "Donos, Unidades & Frações", image: "/modulos/07-fracao.png" },
-                        { id: "financas", label: "Finanças & Contas", desc: "Saldos, Recibos & Extratos", image: "/modulos/59-recibo.png" },
-                        { id: "contabilidade", label: "Contabilidade", desc: "Plano de Contas & Lançamentos", image: "/modulos/59-recibo.png" },
-                        { id: "obras", label: "Manutenção & Obras", desc: "Avarias, Intervenções & Limpeza", image: "/modulos/41-obra.png" },
-                        { id: "inventario", label: "Inventário Técnico", desc: "Equipamentos & Garantias", image: "/modulos/02-equipamentos-tecnicos.png" },
-                        { id: "seguros", label: "Seguros & Sinistros", desc: "Apólices & Participações", image: "/modulos/70-pessoa-de-contacto.png" },
-                        { id: "documentos", label: "Arquivo", desc: "Pastas, Atas & Auditoria", image: "/modulos/27-arquivo-automatico.png" },
-                        { id: "correspondencia", label: "Correspondência", desc: "Cartas CTT & Registos", image: "/modulos/75-mensagem.png" },
-                        { id: "assembleias", label: "Assembleias & Legal", desc: "Atas, Convocatórias & Litígios", image: "/modulos/70-pessoa-de-contacto.png" },
-                        { id: "comunicar", label: "Mensagens", desc: "Avisos Push & Cérebro IA", image: "/modulos/21-notificacoes-inquilino.png" },
-                        { id: "fornecedores", label: "Fornecedores", desc: "Fichas & Orçamentos", image: "/modulos/67-fornecedor.png" },
-                        { id: "aprovacoes", label: "Aprovações & Agenda", desc: "Reservas & Recibos", image: "/modulos/82-automacao.png" },
-                        { id: "configuracoes", label: "Empresa Gestora", desc: "White-Label & Parâmetros", image: "/modulos/07-fracao.png" },
-                        { id: "limpeza", label: "Limpeza", desc: "Vistorias & Relatórios", image: "/modulos/50-limpeza.png" }
-                     ].map(card => {
-                       const notifCount = getNotificationCount(card.id);
-                       return (
-                         <button
-                           key={card.id}
-                           onClick={() => setSelectedPwaSubmenu(card.id)}
-                           className="w-full h-[115px] bg-emerald-50 hover:bg-emerald-100/90 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-950 dark:text-emerald-100 border-2 border-emerald-500 dark:border-emerald-400/80 rounded-2xl flex flex-col items-center justify-between text-center p-2.5 relative select-none hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-sm"
-                         >
-                           <img src={card.image} alt={card.label} className="h-10 w-10 object-contain mb-0.5 shrink-0 rounded-lg drop-shadow-sm" />
-                           <div className="flex flex-col items-center leading-none">
-                             <span className="text-[10px] font-black text-emerald-950 dark:text-emerald-50 leading-tight block truncate max-w-full text-center">{card.label}</span>
-                             <span className="text-[7.5px] font-mono text-emerald-800/90 dark:text-emerald-300/90 leading-normal block truncate max-w-full text-center mt-0.5">{card.desc}</span>
-                           </div>
-                           <span className="bg-emerald-100/90 dark:bg-emerald-900/90 text-emerald-900 dark:text-emerald-200 border border-emerald-400 dark:border-emerald-600 text-[8px] font-extrabold px-2.5 py-0.5 rounded-full shadow-xs uppercase tracking-wider truncate max-w-[90%] leading-none">
-                             {getPillTextForCard(card.id)}
-                           </span>
-                           {notifCount > 0 && (
-                             <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-[18px] px-1 items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-black border border-white shadow-md animate-pulse z-10">
-                               {notifCount}
-                             </span>
-                           )}
-                         </button>
-                       );
-                     })}
-
                      {/* TECNICO CARDS */}
                      {loggedUser.role === "TECNICO" && [
                                                { id: "vistoria", label: "Vistoria Checklist", desc: "Areas Comuns", image: "/modulos/02-equipamentos-tecnicos.png" },

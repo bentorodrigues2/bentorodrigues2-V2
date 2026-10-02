@@ -3279,12 +3279,17 @@ export default function App() {
       {/* GLOBAL SENDING REACTION MODAL */}
       <SendingReactionModal />
 
-      {/* FLOATING DRAGGABLE AI ASSISTANT FOR ADMIN AND GESTOR PROFILES */}
-      <DraggableAIFloatingButton
-        loggedUser={loggedUser}
-        predio={predioAtivo}
-        isPWA={false}
-      />
+      {/* FLOATING DRAGGABLE AI ASSISTANT FOR ADMIN AND GESTOR PROFILES —
+          só fora do modo PWA, que já tem o seu próprio botão flutuante
+          (senão aparecem os dois ao mesmo tempo quando o simulador PWA
+          está aberto). */}
+      {viewMode !== "PWA" && (
+        <DraggableAIFloatingButton
+          loggedUser={loggedUser}
+          predio={predioAtivo}
+          isPWA={false}
+        />
+      )}
 
     </div>
   );
