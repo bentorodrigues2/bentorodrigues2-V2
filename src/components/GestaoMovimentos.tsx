@@ -1103,13 +1103,18 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
     }
   };
 
-  const lancarItemExtraido = async (item: any, selectedContaId: string, fornecedorIdOverride?: string, mostrarAlerta: boolean = true) => {
+  const lancarItemExtraido = async (item: any, selectedContaId: string, fornecedorIdOverride?: string, mostrarAlerta: boolean = true, motivoManual?: string) => {
     if (!selectedContaId) {
       alert("Escolha a conta bancária para receber ou pagar este movimento!");
       return;
     }
 
     const idFornecedorFinal = fornecedorIdOverride || item.id_fornecedor || undefined;
+    // Registo manual de fornecedor/motivo quando não há nenhuma ficha de
+    // fornecedor que sirva (ex: CTT, selos, pequenas despesas avulsas) —
+    // sem isto, o único registo do motivo era o descritivo em bruto do
+    // banco, por vezes pouco claro (ex: "Ctt + Copias Ata N 30-E18128278").
+    const descricaoFinal = motivoManual ? `[Extraído por IA] ${item.descricao} — ${motivoManual}` : `[Extraído por IA] ${item.descricao}`;
     const novo: Movimento = {
       id_mov: "mov-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
       id_predio: predio.id_predio,
@@ -1117,7 +1122,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
       data: item.data,
       tipo: item.tipo,
       valor: item.valor,
-      descricao: `[Extraído por IA] ${item.descricao}`,
+      descricao: descricaoFinal,
       categoria: item.categoria,
       fotos: [],
       estado: "Justificado",
@@ -2814,7 +2819,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                             <span>Fornecedor identificado: {item.fornecedor_nome_sugerido} ({item.metodo_cruzamento === "iban" ? "por IBAN" : item.metodo_cruzamento === "referencia_contrato" ? "por referência de contrato" : "por nome"})</span>
                           </p>
                         ) : (
-                          <div className="mt-1.5">
+                          <div className="mt-1.5 space-y-1">
                             <label className="text-[9px] font-bold text-amber-600 uppercase block mb-0.5">Sem correspondência — associar fornecedor (opcional)</label>
                             <select
                               id={`extract-forn-select-${index}`}
@@ -2826,6 +2831,18 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                                 <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}</option>
                               ))}
                             </select>
+                            {/* Nem todos os pagamentos da administração são a
+                                um fornecedor com ficha própria (ex: CTT,
+                                selos, pequenas despesas avulsas) — em vez de
+                                obrigar a escolher da lista ou ficar sem
+                                nenhum registo do motivo, permite escrever
+                                livremente quem/porquê foi este pagamento. */}
+                            <input
+                              type="text"
+                              id={`extract-forn-motivo-${index}`}
+                              placeholder="Ou escreve o motivo/entidade (ex: CTT — cópias de ata)"
+                              className="bg-white border border-amber-200 text-[10px] rounded px-1.5 py-1 focus:outline-none focus:border-violet-500 w-full"
+                            />
                           </div>
                         )}
                       </div>
@@ -2836,7 +2853,8 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                           <button
                             onClick={() => {
                               const fornSel = document.getElementById(`extract-forn-select-${index}`) as HTMLSelectElement | null;
-                              lancarItemExtraido(item, contaExtratoId, fornSel?.value || undefined);
+                              const motivoInput = document.getElementById(`extract-forn-motivo-${index}`) as HTMLInputElement | null;
+                              lancarItemExtraido(item, contaExtratoId, fornSel?.value || undefined, true, motivoInput?.value?.trim() || undefined);
                             }}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white p-1 rounded transition-colors cursor-pointer"
                             title="Lançar Movimento Validado"
@@ -3010,6 +3028,23 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                       <span className="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded font-bold shrink-0 flex items-center gap-1">
                         <i className="fa-solid fa-check"></i> Fatura
                       </span>
+                    )}
+                    {/* Clip visível na própria linha (sem precisar de
+                        expandir) quando há mesmo um comprovativo/fatura real
+                        anexado — pedido explícito do administrador, para
+                        identificar de relance quais movimentos já têm prova
+                        documental consultável. */}
+                    {m.fotos && m.fotos.length > 0 && (
+                      <a
+                        href={m.fotos[0]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        title={`${m.fotos.length} ficheiro(s) anexado(s) — ver fatura/comprovativo`}
+                        className="text-slate-500 hover:text-indigo-600 shrink-0"
+                      >
+                        <i className="fa-solid fa-paperclip"></i>
+                      </a>
                     )}
                     <span className={`font-bold font-mono-custom text-sm shrink-0 ${m.tipo === 'Receita' ? 'text-emerald-600' : 'text-red-600'}`}>
                       {m.tipo === 'Receita' ? '+' : '-'}{m.valor.toFixed(2)}€
