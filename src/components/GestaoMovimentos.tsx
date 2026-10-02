@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso, Fornecedor, DividaFornecedor, PagamentoDivida } from "../types";
+import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso, Fornecedor, DividaFornecedor, PagamentoDivida, Documento } from "../types";
 import { formatDatePT, parseValorMonetario, exportToXLS, exportarTabelaParaPDF } from "../utils";
-import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria, fetchMovimentosFromSupabase, fetchPagamentosPendentesInfoFromSupabase, dbInsert, dbUpdate, fetchDividasFornecedoresFromSupabase, saveDividaFornecedorToSupabase, savePagamentoDividaToSupabase } from "../lib/supabaseService";
+import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria, fetchMovimentosFromSupabase, fetchPagamentosPendentesInfoFromSupabase, dbInsert, dbUpdate, fetchDividasFornecedoresFromSupabase, saveDividaFornecedorToSupabase, savePagamentoDividaToSupabase, uploadDocumentoToStorage, saveDocumentoToSupabase } from "../lib/supabaseService";
 import { cruzarMovimentoComFornecedor } from "../lib/fornecedorMatching";
 import { matchBankTransactions, selecionarAvisosCobertosPeloValor } from "../utils/bankStatementParser";
 import { Save, CheckCircle2 } from "lucide-react";
@@ -18,6 +18,7 @@ interface GestaoMovimentosProps {
   setAvisos?: React.Dispatch<React.SetStateAction<Aviso[]>>;
   fornecedores?: Fornecedor[];
   setFornecedores?: React.Dispatch<React.SetStateAction<Fornecedor[]>>;
+  onAddDocumento?: (doc: Documento) => void;
   loggedUser: LoggedUser;
 }
 
@@ -48,7 +49,7 @@ function formatarCategoriaMovimento(categoria?: string): string {
   return categoria;
 }
 
-export function GestaoMovimentos({ predio, contas, setContas, movements, setMovements, fracoes = [], avisos = [], setAvisos, fornecedores = [], setFornecedores, loggedUser }: GestaoMovimentosProps) {
+export function GestaoMovimentos({ predio, contas, setContas, movements, setMovements, fracoes = [], avisos = [], setAvisos, fornecedores = [], setFornecedores, onAddDocumento, loggedUser }: GestaoMovimentosProps) {
   // Espelho síncrono de "contas" — quando se lança vários movimentos em
   // sequência (ex: "Lançar Todos os Movimentos", ou várias parcelas do
   // mesmo extrato), cada chamada tinha de saber o saldo já atualizado
@@ -1388,12 +1389,76 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
   const [editDataMov, setEditDataMov] = useState<string>("");
   const [aGuardarDetalheMov, setAGuardarDetalheMov] = useState(false);
 
+  // Anexar fatura/comprovativo a uma Despesa para a justificar — facultativo,
+  // não mexe no saldo (ao contrário do Movimento Cego, esta despesa já está
+  // confirmada); serve só para arquivar prova documental organizada por
+  // fornecedor e ano em Arquivo → Fornecedores.
+  const [faturaDespesaFile, setFaturaDespesaFile] = useState<File | null>(null);
+  const [faturaDespesaFornecedor, setFaturaDespesaFornecedor] = useState("");
+  const [aAnexarFaturaDespesa, setAAnexarFaturaDespesa] = useState(false);
+
   const abrirDetalheMov = (m: Movimento) => {
     setDetalheMovId(m.id_mov);
     setEditValorMov(Math.abs(m.valor));
     setEditDescricaoMov(m.descricao);
     setEditFracaoIdMov(m.id_fracao || "");
     setEditDataMov(m.data || "");
+    setFaturaDespesaFile(null);
+    setFaturaDespesaFornecedor(m.descricao?.replace(/^\[Extraído por IA\]\s*/i, "").split(/[-–]/)[0]?.trim() || "");
+  };
+
+  const handleAnexarFaturaDespesa = async () => {
+    const mov = predioMovements.find(m => m.id_mov === detalheMovId);
+    if (!mov || !faturaDespesaFile) return;
+    const fornecedorNome = faturaDespesaFornecedor.trim() || "Fornecedor Não Identificado";
+    setAAnexarFaturaDespesa(true);
+    try {
+      const ano = (mov.data || new Date().toISOString()).slice(0, 4);
+      const caminhoStorage = `${ano}/Fornecedores/${predio.id_predio}/${Date.now()}-${faturaDespesaFile.name}`;
+      const urlReal = await uploadDocumentoToStorage(faturaDespesaFile, caminhoStorage);
+      if (!urlReal) {
+        alert("❌ Não foi possível carregar o ficheiro para o Storage. Tente novamente.");
+        return;
+      }
+      const novoDoc: Documento = {
+        id_doc: "doc-fatura-mov-" + Date.now(),
+        id_predio: predio.id_predio,
+        nome: `Fatura - ${fornecedorNome} (${formatDatePT(mov.data)})`,
+        tipo: faturaDespesaFile.type.includes("pdf") ? "PDF" : "Imagem",
+        data_upload: new Date().toISOString().split("T")[0],
+        tamanho: `${(faturaDespesaFile.size / 1024).toFixed(0)} KB`,
+        categoria: "Fornecedores",
+        descricao: `Fatura/comprovativo da despesa: ${mov.descricao}`,
+        visibilidade: "Administração",
+        autor: loggedUser.nome,
+        tema: "Faturas de Fornecedores",
+        ano,
+        sub_pasta: fornecedorNome,
+        fornecedor: fornecedorNome,
+        caminho: urlReal,
+        arquivado: true,
+        data_arquivamento: new Date().toISOString().split("T")[0],
+        tipo_arquivo: "documento",
+        relevancia_perfis: ["ADMIN", "EMPRESA_GESTORA", "CONTABILISTA"]
+      };
+      const guardado = await saveDocumentoToSupabase(novoDoc);
+      if (!guardado) {
+        alert("❌ Não foi possível arquivar a fatura no Supabase. Tente novamente.");
+        return;
+      }
+      onAddDocumento?.(novoDoc);
+      const movimentoAtualizado: Movimento = { ...mov, fotos: [...(mov.fotos || []), urlReal] };
+      await saveMovimentoToSupabase(movimentoAtualizado);
+      setMovements(prev => prev.map(m => m.id_mov === mov.id_mov ? movimentoAtualizado : m));
+      registarLogAuditoria("Financeira", "Anexou fatura/comprovativo a uma despesa", predio.id_predio, loggedUser, mov.descricao);
+      setFaturaDespesaFile(null);
+      alert(`✅ Fatura anexada e arquivada em Arquivo → Fornecedores → ${fornecedorNome} → ${ano}.`);
+    } catch (err) {
+      console.error("[GestaoMovimentos] Erro ao anexar fatura da despesa:", err);
+      alert("❌ Ocorreu um erro ao anexar a fatura. Tente novamente.");
+    } finally {
+      setAAnexarFaturaDespesa(false);
+    }
   };
 
   const handleGuardarDetalheMov = async () => {
@@ -1803,6 +1868,44 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                     Ao confirmar o pagamento, o mês a marcar como pago é sempre escolhido pelo valor (não por esta data) — mas esta data determina em que mês/ano este movimento aparece no Mapa de Pagamentos e no Extrato.
                   </p>
                 </div>
+
+                {mov.tipo === "Despesa" && (
+                  <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-2.5 space-y-2">
+                    <p className="text-[11px] font-bold text-indigo-800 flex items-center gap-1.5">
+                      <i className="fa-solid fa-paperclip"></i> Anexar Fatura/Comprovativo (facultativo)
+                    </p>
+                    <p className="text-[10px] text-indigo-700">
+                      Fica arquivada em Arquivo → Fornecedores, organizada por fornecedor e ano.
+                    </p>
+                    {(mov.fotos || []).length > 0 && (
+                      <p className="text-[10px] text-emerald-700 font-semibold">
+                        ✓ Já tem {(mov.fotos || []).length} ficheiro(s) anexado(s).
+                      </p>
+                    )}
+                    <input
+                      type="text"
+                      value={faturaDespesaFornecedor}
+                      onChange={e => setFaturaDespesaFornecedor(e.target.value)}
+                      placeholder="Nome do fornecedor (para o arquivo)"
+                      className="w-full border border-indigo-300 rounded-lg px-2.5 py-1.5 text-xs"
+                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="application/pdf,image/*"
+                        onChange={e => setFaturaDespesaFile(e.target.files?.[0] || null)}
+                        className="text-[10px] flex-1"
+                      />
+                      <button
+                        onClick={handleAnexarFaturaDespesa}
+                        disabled={!faturaDespesaFile || aAnexarFaturaDespesa}
+                        className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer shrink-0"
+                      >
+                        {aAnexarFaturaDespesa ? "A anexar…" : "Anexar"}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="p-4 border-t border-slate-200 flex items-center justify-between gap-2">
                 <button

@@ -2883,6 +2883,7 @@ export default function App() {
               setAvisos={setAvisos}
               fornecedores={fornecedores}
               setFornecedores={setFornecedores}
+              onAddDocumento={handleAddDocumento}
               loggedUser={loggedUser}
             />
           )}
