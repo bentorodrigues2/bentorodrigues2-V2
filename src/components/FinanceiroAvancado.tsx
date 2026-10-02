@@ -172,24 +172,46 @@ export function FinanceiroAvancado({
   // usa-se antes o valor do aviso real mais recente já emitido para essa
   // fração/tipo, seja qual for o ano, a fonte mais fiável de "quanto paga".
   const quotaMensalAtualPorFracao = useMemo(() => {
-    const mapa: Record<string, { valor: number; idAviso: string }> = {};
+    // Antes ignorava por completo os avisos "pagos adiantadamente" e as
+    // "Diferença de Quota" ao procurar o mais recente — bem-intencionado
+    // (nenhum dos dois é sozinho "a quota mensal"), mas quando TODOS os
+    // avisos de uma fração depois de uma revisão de orçamento são destes
+    // dois tipos (ex: fração que pagou vários meses adiantados e depois
+    // recebeu as respetivas correções "Diferença de Quota"), a procura
+    // caía sempre num aviso regular muito mais antigo, de ANTES da
+    // revisão — mostrando a taxa antiga mesmo para frações já a pagar a
+    // nova. Em vez de excluir, agrupa por fração+mês (um mês "paga
+    // adiantadamente" + a sua "Diferença de Quota" juntos somam o valor
+    // total real desse mês) e usa sempre o mês mais recente.
+    const porFracaoMes: Record<string, { soma: number; idAviso: string; ts: number }> = {};
     predioAvisos.forEach(a => {
       if (ehDividaAvulsaAnterior(a)) return;
       const ehExtra = String(a.tipo || "").includes("Extraordinária");
       if ((mapaTipo === "extraordinaria") !== ehExtra) return;
-      // Ignora avisos "pagos adiantadamente" (um comprovativo único dividido
-      // por vários meses, com o valor congelado à taxa de quando o
-      // pagamento foi feito) e "Diferença de Quota" (só o valor do
-      // acerto, não a quota total) — nenhum dos dois representa a
-      // quota mensal EM VIGOR, mesmo tendo uma data de vencimento mais
-      // recente do que a emissão regular do lote mensal.
-      const desc = String(a.descricao || "");
-      if (desc.includes("paga adiantadamente") || desc.startsWith("Diferença de Quota")) return;
       const dAtual = mesReferenciaAviso(a);
-      const existente = mapa[`${a.id_fracao}|d`] as unknown as number | undefined;
-      if (existente === undefined || dAtual.getTime() > existente) {
-        (mapa as any)[`${a.id_fracao}|d`] = dAtual.getTime();
-        mapa[a.id_fracao] = { valor: Number(a.valor || 0), idAviso: a.id_aviso };
+      if (isNaN(dAtual.getTime())) return;
+      const chave = `${a.id_fracao}|${dAtual.getFullYear()}-${dAtual.getMonth()}`;
+      const existente = porFracaoMes[chave];
+      const desc = String(a.descricao || "");
+      // Dentro do mesmo mês, o aviso regular/"paga adiantadamente" manda no
+      // id_aviso mostrado (é o que se edita); a "Diferença de Quota" só
+      // soma ao valor.
+      const ehDiferenca = desc.startsWith("Diferença de Quota");
+      if (!existente) {
+        porFracaoMes[chave] = { soma: Number(a.valor || 0), idAviso: ehDiferenca ? "" : a.id_aviso, ts: dAtual.getTime() };
+      } else {
+        existente.soma += Number(a.valor || 0);
+        if (!ehDiferenca) existente.idAviso = a.id_aviso;
+      }
+    });
+
+    const mapa: Record<string, { valor: number; idAviso: string }> = {};
+    const maisRecenteTs: Record<string, number> = {};
+    Object.entries(porFracaoMes).forEach(([chave, info]) => {
+      const idFracao = chave.split("|")[0];
+      if (maisRecenteTs[idFracao] === undefined || info.ts > maisRecenteTs[idFracao]) {
+        maisRecenteTs[idFracao] = info.ts;
+        mapa[idFracao] = { valor: Math.round(info.soma * 100) / 100, idAviso: info.idAviso };
       }
     });
     return mapa;

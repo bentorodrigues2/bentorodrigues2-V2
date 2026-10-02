@@ -553,19 +553,32 @@ export function GestaoQuotasOrcamento({
   // nunca pode divergir do que está realmente a ser cobrado a cada fração,
   // mesmo que o campo do orçamento anual fique temporariamente errado.
   const quotaRealAtualPorFracao = useMemo(() => {
-    const mapa: Record<string, number> = {};
-    const maisRecenteTs: Record<string, number> = {};
+    // Ver nota equivalente em FinanceiroAvancado.tsx (quotaMensalAtualPorFracao):
+    // excluir por completo "paga adiantadamente"/"Diferença de Quota" fazia
+    // cair numa taxa antiga, de antes da revisão, sempre que todos os
+    // avisos recentes de uma fração fossem destes dois tipos. Agrupa por
+    // fração+mês (soma o aviso "adiantado" + a sua "Diferença de Quota") e
+    // usa o mês mais recente.
+    const porFracaoMes: Record<string, { soma: number; ts: number }> = {};
     predioAvisos.forEach(a => {
       if (String(a.tipo || "").includes("Extraordinária")) return;
       const desc = String(a.descricao || "");
-      if (desc.includes("paga adiantadamente") || desc.startsWith("Diferença de Quota")) return;
       if (/administra[cç][aã]o anterior/i.test(desc) && !/liquidad/i.test(desc)) return;
       const d = new Date(a.vencimento || a.data);
       if (isNaN(d.getTime())) return;
-      const existente = maisRecenteTs[a.id_fracao];
-      if (existente === undefined || d.getTime() > existente) {
-        maisRecenteTs[a.id_fracao] = d.getTime();
-        mapa[a.id_fracao] = Number(a.valor || 0);
+      const chave = `${a.id_fracao}|${d.getFullYear()}-${d.getMonth()}`;
+      const existente = porFracaoMes[chave];
+      if (!existente) porFracaoMes[chave] = { soma: Number(a.valor || 0), ts: d.getTime() };
+      else existente.soma += Number(a.valor || 0);
+    });
+
+    const mapa: Record<string, number> = {};
+    const maisRecenteTs: Record<string, number> = {};
+    Object.entries(porFracaoMes).forEach(([chave, info]) => {
+      const idFracao = chave.split("|")[0];
+      if (maisRecenteTs[idFracao] === undefined || info.ts > maisRecenteTs[idFracao]) {
+        maisRecenteTs[idFracao] = info.ts;
+        mapa[idFracao] = Math.round(info.soma * 100) / 100;
       }
     });
     return mapa;
