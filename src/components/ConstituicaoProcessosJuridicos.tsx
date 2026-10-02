@@ -89,6 +89,34 @@ export function ConstituicaoProcessosJuridicos({
   onAddDocumento,
   avisos
 }: ConstituicaoProcessosJuridicosProps) {
+  // A tabela processos_juridicos nunca teve coluna "fracao_nome" — o campo
+  // vinha sempre a null do Supabase, e o fallback (fetchProcessosJuridicosFromSupabase)
+  // acabava por mostrar o id_fracao em bruto ("frac-1789782653192") em vez
+  // da letra real da fração. Deriva-se aqui sempre a partir de "fracoes"
+  // (que já está disponível como prop), nunca confiando no campo guardado.
+  const nomeFracaoReal = (proc: ProcessoJuridico): string =>
+    fracoes.find(f => f.id_fracao === proc.id_fracao)?.fracao_nome || proc.fracao_nome || "?";
+
+  // Descritivo do cálculo do "Valor Total do Pedido", com hipótese de
+  // correção quando há uma inconsistência óbvia entre a fase processual e o
+  // tribunal competente (ex: fase "Injunção BNI" mas tribunal "Julgado de
+  // Paz" — são vias processuais diferentes, com taxas de justiça
+  // diferentes; a taxa guardada em custas_processuais_estimadas pode estar
+  // a usar o valor da via errada). Nunca inventa um valor de substituição —
+  // só assinala a suspeita, para o administrador confirmar/corrigir.
+  const descritivoValorPedido = (proc: ProcessoJuridico): { texto: string; aviso?: string } => {
+    const totalDespesasExtra = (proc.despesas_extra || []).reduce((s, d) => s + d.valor, 0);
+    const texto = `Capital em dívida: ${proc.valor_divida_capital.toFixed(2)} €\nJuros de mora (${proc.taxa_juros}%): ${proc.valor_juros_mora.toFixed(2)} €\nCustas/Taxa de justiça: ${proc.custas_processuais_estimadas.toFixed(2)} €` +
+      (totalDespesasExtra > 0 ? `\nDespesas extra: ${totalDespesasExtra.toFixed(2)} € (${(proc.despesas_extra || []).map(d => `${d.descricao}: ${d.valor.toFixed(2)}€`).join(", ")})` : "") +
+      `\nTotal: ${proc.valor_total_pedido.toFixed(2)} €`;
+
+    const ehJulgadoDePaz = /julgado de paz/i.test(proc.tribunal_competente || "");
+    const aviso = (proc.fase_processual === "INJUNCAO_BNI" && ehJulgadoDePaz)
+      ? `⚠️ Hipótese de correção: a fase está registada como "Injunção BNI", mas o tribunal competente é "Julgado de Paz" — são vias processuais diferentes, com taxas de justiça diferentes. As custas de ${proc.custas_processuais_estimadas.toFixed(2)} € podem ainda ser a taxa do BNI, que já não se aplica. Confirma a taxa correta do Julgado de Paz e corrige a fase processual/custas se necessário.`
+      : undefined;
+    return { texto, aviso };
+  };
+
   // Selected Process
   const [selectedProcessoId, setSelectedProcessoId] = useState<string>(
     processos.find(p => p.id_predio === predio.id_predio)?.id_processo || processos[0]?.id_processo || ""
@@ -1072,6 +1100,7 @@ export function ConstituicaoProcessosJuridicos({
             <div className="space-y-2.5 max-h-[620px] overflow-y-auto pr-1">
               {processos.map(proc => {
                 const isSelected = proc.id_processo === selectedProcessoId;
+                const { texto: descritivoValor, aviso: avisoValor } = descritivoValorPedido(proc);
                 return (
                   <div
                     key={proc.id_processo}
@@ -1086,19 +1115,34 @@ export function ConstituicaoProcessosJuridicos({
                       <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
                         {proc.id_processo}
                       </span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                      {/* Descritivo do cálculo (capital + juros + custas +
+                          despesas extra) na própria dica do valor — pedido
+                          explícito do administrador, para poder confirmar de
+                          relance como o total foi composto, sem ter de abrir
+                          o processo. */}
+                      <span
+                        title={descritivoValor}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 cursor-help ${avisoValor ? "bg-amber-500/20 text-amber-500 border-amber-500/40" : "bg-rose-500/20 text-rose-400 border-rose-500/30"}`}
+                      >
+                        {avisoValor && <i className="fa-solid fa-triangle-exclamation"></i>}
                         {proc.valor_total_pedido.toFixed(2)} €
                       </span>
                     </div>
 
                     <div className="space-y-0.5">
                       <h5 className="text-xs font-bold text-slate-800 dark:text-white line-clamp-1">
-                        Fração {proc.fracao_nome} • {proc.nome_reu}
+                        Fração {nomeFracaoReal(proc)} • {proc.nome_reu}
                       </h5>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
                         {proc.titulo_processo}
                       </p>
                     </div>
+
+                    {avisoValor && (
+                      <p className="text-[9.5px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded px-1.5 py-1 mt-1.5 leading-snug">
+                        {avisoValor}
+                      </p>
+                    )}
 
                     <div className="flex items-center justify-between text-[10px] text-slate-600 mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800">
                       <span className="flex items-center gap-1 font-medium">
@@ -1199,7 +1243,7 @@ export function ConstituicaoProcessosJuridicos({
                     <span className="text-[10px] text-slate-600 uppercase font-bold block">Réu / Executado</span>
                     <span className="font-bold text-slate-800 dark:text-white block mt-0.5">{currentProcesso.nome_reu}</span>
                     <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
-                      Fração {currentProcesso.fracao_nome} • NIF: {currentProcesso.nif_reu}
+                      Fração {nomeFracaoReal(currentProcesso)} • NIF: {currentProcesso.nif_reu}
                     </span>
                   </div>
 
@@ -1220,6 +1264,12 @@ export function ConstituicaoProcessosJuridicos({
                       Cap: {currentProcesso.valor_divida_capital.toFixed(2)} € | Jur: {currentProcesso.valor_juros_mora.toFixed(2)} € | Taxa: {currentProcesso.custas_processuais_estimadas.toFixed(2)} €
                       {(currentProcesso.despesas_extra || []).length > 0 && ` | Desp: ${(currentProcesso.despesas_extra || []).reduce((s, d) => s + d.valor, 0).toFixed(2)} €`}
                     </span>
+                    {descritivoValorPedido(currentProcesso).aviso && (
+                      <p className="text-[9.5px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded px-1.5 py-1 mt-1.5 leading-snug flex items-start gap-1">
+                        <i className="fa-solid fa-triangle-exclamation mt-0.5 shrink-0"></i>
+                        <span>{descritivoValorPedido(currentProcesso).aviso}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
 
