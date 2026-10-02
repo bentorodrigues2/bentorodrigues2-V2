@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso, Fornecedor, DividaFornecedor, PagamentoDivida } from "../types";
 import { formatDatePT, parseValorMonetario, exportToXLS, exportarTabelaParaPDF } from "../utils";
 import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria, fetchMovimentosFromSupabase, fetchPagamentosPendentesInfoFromSupabase, dbInsert, dbUpdate, fetchDividasFornecedoresFromSupabase, saveDividaFornecedorToSupabase, savePagamentoDividaToSupabase } from "../lib/supabaseService";
@@ -10,6 +10,7 @@ import { MoneyInput } from "./MoneyInput";
 interface GestaoMovimentosProps {
   predio: Predio;
   contas: Conta[];
+  setContas?: React.Dispatch<React.SetStateAction<Conta[]>>;
   movements: Movimento[];
   setMovements: React.Dispatch<React.SetStateAction<Movimento[]>>;
   fracoes?: Fracao[];
@@ -47,7 +48,22 @@ function formatarCategoriaMovimento(categoria?: string): string {
   return categoria;
 }
 
-export function GestaoMovimentos({ predio, contas, movements, setMovements, fracoes = [], avisos = [], setAvisos, fornecedores = [], setFornecedores, loggedUser }: GestaoMovimentosProps) {
+export function GestaoMovimentos({ predio, contas, setContas, movements, setMovements, fracoes = [], avisos = [], setAvisos, fornecedores = [], setFornecedores, loggedUser }: GestaoMovimentosProps) {
+  // Espelho síncrono de "contas" — quando se lança vários movimentos em
+  // sequência (ex: "Lançar Todos os Movimentos", ou várias parcelas do
+  // mesmo extrato), cada chamada tinha de saber o saldo já atualizado
+  // pela chamada anterior, mas este componente só recebe "contas" como
+  // prop (sem setContas antes) e o React só atualiza esse valor no
+  // próximo render — nunca a tempo da 2ª/3ª chamada da mesma função. O
+  // resultado real em produção: só a ÚLTIMA dedução de um lote
+  // sobrevivia na base de dados, as anteriores eram silenciosamente
+  // substituídas (ex: fatura de limpeza com comissão+imposto de selo
+  // lançada em 3 linhas — só ~0,04€ ficava realmente descontado em vez
+  // dos ~90,94€ reais). O ref é atualizado de forma síncrona a cada
+  // ajuste, antes de qualquer await, para a chamada seguinte ler sempre o
+  // valor correto independentemente da velocidade de re-render do React.
+  const contasRef = useRef<Conta[]>(contas);
+  useEffect(() => { contasRef.current = contas; }, [contas]);
   // Lançamento Manual / Movimento Cego Form States
   const [contaId, setContaId] = useState("");
   const [valor, setValor] = useState("");
@@ -551,12 +567,14 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
         // Um Movimento Cego nunca tinha o seu valor refletido no saldo da
         // conta enquanto esperava justificação — só ao ser justificado é que
         // passa a contar como entrada/saída real confirmada.
-        const contaAlvo = contas.find(c => c.id_conta === movimentoAtualizado!.id_conta);
+        const contaAlvo = contasRef.current.find(c => c.id_conta === movimentoAtualizado!.id_conta);
         if (contaAlvo) {
           const contaAtualizada: Conta = {
             ...contaAlvo,
             saldo: (contaAlvo.saldo || 0) + (movimentoAtualizado.tipo === "Receita" ? movimentoAtualizado.valor : -movimentoAtualizado.valor)
           };
+          contasRef.current = contasRef.current.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c);
+          if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
           saveContaToSupabase(contaAtualizada).catch(console.error);
         }
       }
@@ -632,11 +650,13 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       is_movimento_cego: isCego
     };
 
-    const contaAlvo = contas.find(c => c.id_conta === contaId);
+    const contaAlvo = contasRef.current.find(c => c.id_conta === contaId);
     if (contaAlvo) {
-      if (tipo === 'Receita') contaAlvo.saldo += valorNumerico;
-      else contaAlvo.saldo -= valorNumerico;
-      saveContaToSupabase(contaAlvo).catch(console.error);
+      const novoSaldo = tipo === 'Receita' ? contaAlvo.saldo + valorNumerico : contaAlvo.saldo - valorNumerico;
+      const contaAtualizada: Conta = { ...contaAlvo, saldo: novoSaldo };
+      contasRef.current = contasRef.current.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c);
+      if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
+      saveContaToSupabase(contaAtualizada).catch(console.error);
     }
 
     setMovements([novo, ...movements]);
@@ -730,7 +750,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
     }
 
     const fracaoAlvo = fracoes.find(f => f.id_fracao === dividaFracaoId);
-    const contaAlvo = contas.find(c => c.id_conta === dividaContaDestinoId);
+    const contaAlvo = contasRef.current.find(c => c.id_conta === dividaContaDestinoId);
     const fracaoNome = fracaoAlvo?.fracao_nome ? `Fração ${fracaoAlvo.fracao_nome}` : "Fração";
 
     // 1. Criar Movimento de Receita
@@ -750,8 +770,10 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
 
     // 2. Creditar o saldo da conta selecionada
     if (contaAlvo) {
-      contaAlvo.saldo = (contaAlvo.saldo || 0) + val;
-      saveContaToSupabase(contaAlvo).catch(console.error);
+      const contaAtualizada: Conta = { ...contaAlvo, saldo: (contaAlvo.saldo || 0) + val };
+      contasRef.current = contasRef.current.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c);
+      if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
+      saveContaToSupabase(contaAtualizada).catch(console.error);
     }
 
     // 3. Se existirem avisos de dívida transitada, atualizar/liquidar
@@ -817,10 +839,12 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       is_movimento_cego: false
     };
 
-    const contaAlvo = contas.find(c => c.id_conta === targetContaId);
+    const contaAlvo = contasRef.current.find(c => c.id_conta === targetContaId);
     if (contaAlvo) {
-      contaAlvo.saldo -= email.extractedData.valor;
-      saveContaToSupabase(contaAlvo).catch(console.error);
+      const contaAtualizada: Conta = { ...contaAlvo, saldo: contaAlvo.saldo - email.extractedData.valor };
+      contasRef.current = contasRef.current.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c);
+      if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
+      saveContaToSupabase(contaAtualizada).catch(console.error);
     }
 
     setMovements([novo, ...movements]);
@@ -1073,11 +1097,16 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       id_fornecedor: idFornecedorFinal
     };
 
-    const contaAlvo = contas.find(c => c.id_conta === selectedContaId);
+    const contaAlvo = contasRef.current.find(c => c.id_conta === selectedContaId);
     if (contaAlvo) {
-      if (item.tipo === "Receita") contaAlvo.saldo += item.valor;
-      else contaAlvo.saldo -= item.valor;
-      await saveContaToSupabase(contaAlvo).catch(console.error);
+      const novoSaldo = item.tipo === "Receita" ? contaAlvo.saldo + item.valor : contaAlvo.saldo - item.valor;
+      const contaAtualizada: Conta = { ...contaAlvo, saldo: novoSaldo };
+      // Síncrono, antes do await — garante que a próxima chamada desta
+      // função (ex: dentro do mesmo lote "Lançar Todos") já lê este saldo
+      // atualizado, mesmo que o React ainda não tenha re-renderizado.
+      contasRef.current = contasRef.current.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c);
+      if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
+      await saveContaToSupabase(contaAtualizada).catch(console.error);
     }
 
     setMovements([novo, ...movements]);
@@ -1140,7 +1169,7 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
       alert("Sistema de avisos não disponível de momento.");
       return;
     }
-    const contaAlvo = contas.find(c => c.id_conta === contaExtratoId);
+    const contaAlvo = contasRef.current.find(c => c.id_conta === contaExtratoId);
     if (!contaAlvo) {
       alert("Escolha a conta bancária do extrato antes de aprovar pagamentos.");
       return;
@@ -1163,8 +1192,11 @@ export function GestaoMovimentos({ predio, contas, movements, setMovements, frac
         await saveAvisosToSupabase(avisosPagos);
       }
 
-      // 2. Atualizar saldo da conta
+      // 2. Atualizar saldo da conta — síncrono via contasRef (ver nota em
+      // lancarItemExtraido) para aprovações em lote acumularem certo.
       const contaAtualizada: Conta = { ...contaAlvo, saldo: (contaAlvo.saldo || 0) + item.valor };
+      contasRef.current = contasRef.current.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c);
+      if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
       saveContaToSupabase(contaAtualizada).catch(console.error);
 
       // 3. Lançar o movimento

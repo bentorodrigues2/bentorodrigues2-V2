@@ -2875,6 +2875,7 @@ export default function App() {
             <GestaoMovimentos
               predio={predioAtivo}
               contas={contas}
+              setContas={setContas}
               movements={movements}
               setMovements={setMovements}
               fracoes={fracoes}
