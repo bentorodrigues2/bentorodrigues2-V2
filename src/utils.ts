@@ -258,15 +258,101 @@ export function exportarTabelaParaPDF(
   }
 }
 
-export function exportToXLS(filename: string, headers: string[], rows: string[][]) {
-  let csvContent = "\uFEFF"; // BOM for Portuguese characters
-  csvContent += headers.join(";") + "\n";
-  rows.forEach(row => {
-    csvContent += row.map(v => typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : v).join(";") + "\n";
-  });
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const finalName = filename.endsWith(".xls") || filename.endsWith(".csv") ? filename : `${filename}.xls`;
-  downloadBlob(blob, finalName);
+// Exporta\u00E7\u00E3o de relat\u00F3rios para Excel \u2014 antes gerava um .csv disfar\u00E7ado de
+// .xls (sem formata\u00E7\u00E3o nenhuma, s\u00F3 texto separado por ";"), usado em todo o
+// projeto (16 ecr\u00E3s diferentes partilham esta mesma fun\u00E7\u00E3o). Passa agora a
+// gerar um .xlsx real, com o log\u00F3tipo oficial, cores da marca no cabe\u00E7alho,
+// largura de coluna ajustada ao conte\u00FAdo e linhas alternadas \u2014 mantendo a
+// mesma assinatura (filename, headers, rows) para n\u00E3o obrigar a mexer em
+// nenhum dos ecr\u00E3s que j\u00E1 a chamam.
+export async function exportToXLS(filename: string, headers: string[], rows: string[][]) {
+  try {
+    const ExcelJS = (await import("exceljs")).default;
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = "CondoManager AI";
+    workbook.created = new Date();
+
+    const sheet = workbook.addWorksheet("Relat\u00F3rio", { views: [{ showGridLines: false }] });
+    const numCols = Math.max(headers.length, 1);
+
+    try {
+      const base64Logo = (LOGO_HORIZONTAL_BASE64 || "").split(",")[1];
+      if (base64Logo) {
+        const imageId = workbook.addImage({ base64: base64Logo, extension: "png" });
+        sheet.addImage(imageId, { tl: { col: 0, row: 0.1 }, ext: { width: 200, height: 48 } });
+      }
+    } catch (errLogo) {
+      console.warn("[exportToXLS] N\u00E3o foi poss\u00EDvel incluir o log\u00F3tipo:", errLogo);
+    }
+    sheet.getRow(1).height = 20;
+    sheet.getRow(2).height = 20;
+    sheet.getRow(3).height = 10;
+
+    const tituloLimpo = filename.replace(/_/g, " ").replace(/\.(xlsx?|csv)$/i, "");
+    sheet.mergeCells(4, 1, 4, numCols);
+    const celulaTitulo = sheet.getCell(4, 1);
+    celulaTitulo.value = tituloLimpo;
+    celulaTitulo.font = { bold: true, size: 13, color: { argb: "FF0F172A" } };
+    celulaTitulo.alignment = { vertical: "middle", horizontal: "left" };
+
+    sheet.mergeCells(5, 1, 5, numCols);
+    const celulaData = sheet.getCell(5, 1);
+    const agora = new Date();
+    celulaData.value = `Gerado em ${agora.toLocaleDateString("pt-PT")} \u00E0s ${agora.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })} \u2014 CondoManager AI`;
+    celulaData.font = { italic: true, size: 9, color: { argb: "FF64748B" } };
+
+    const HEADER_ROW = 7;
+    const headerRow = sheet.getRow(HEADER_ROW);
+    headers.forEach((h, i) => {
+      const cell = headerRow.getCell(i + 1);
+      cell.value = h;
+      cell.font = { bold: true, size: 10, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF059669" } };
+      cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+      cell.border = { bottom: { style: "medium", color: { argb: "FF047857" } } };
+    });
+    headerRow.height = 24;
+
+    rows.forEach((row, rIdx) => {
+      const excelRow = sheet.getRow(HEADER_ROW + 1 + rIdx);
+      for (let cIdx = 0; cIdx < numCols; cIdx++) {
+        const val = row[cIdx] ?? "";
+        const cell = excelRow.getCell(cIdx + 1);
+        const comoNumero = typeof val === "string" && /^-?\d+([.,]\d{1,2})?\s?\u20AC?$/.test(val.trim());
+        cell.value = comoNumero ? Number(val.replace(",", ".").replace("\u20AC", "").trim()) : val;
+        cell.font = { size: 9.5, color: { argb: "FF1E293B" } };
+        cell.alignment = { vertical: "middle", horizontal: comoNumero ? "right" : "left" };
+        cell.border = {
+          top: { style: "hair", color: { argb: "FFE2E8F0" } },
+          bottom: { style: "hair", color: { argb: "FFE2E8F0" } }
+        };
+        if (rIdx % 2 === 1) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+        }
+      }
+    });
+
+    headers.forEach((h, i) => {
+      const maiorConteudo = rows.reduce((max, r) => Math.max(max, String(r[i] ?? "").length), h.length);
+      sheet.getColumn(i + 1).width = Math.min(Math.max(maiorConteudo + 3, 10), 45);
+    });
+
+    sheet.views = [{ state: "frozen", ySplit: HEADER_ROW, showGridLines: false }];
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const nomeFinal = filename.replace(/\.(xlsx?|csv)$/i, "") + ".xlsx";
+    downloadBlob(blob, nomeFinal);
+  } catch (err) {
+    console.error("[exportToXLS] Erro ao gerar Excel formatado, a usar CSV simples como alternativa:", err);
+    let csvContent = "\uFEFF";
+    csvContent += headers.join(";") + "\n";
+    rows.forEach(row => {
+      csvContent += row.map(v => typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : v).join(";") + "\n";
+    });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    downloadBlob(blob, filename.replace(/\.(xlsx?|csv)$/i, "") + ".csv");
+  }
 }
 
 export function generateAndDownloadPdf(
