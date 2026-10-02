@@ -155,6 +155,24 @@ export function GestaoQuotasOrcamento({
   const [aAplicarRevisao, setAAplicarRevisao] = useState(false);
   const [editingRevisaoId, setEditingRevisaoId] = useState<string | null>(null);
 
+  // Estado elevado das 3 secções/sub-secções do acordeão só para os
+  // atalhos abaixo poderem forçá-las a abrir e fazer scroll até elas a
+  // partir do ponto 1 (Orçamento Anual) — pedido explícito do administrador
+  // para não ter de ir caçar manualmente a tabela de cálculo lá em baixo.
+  const [secao2Aberta, setSecao2Aberta] = useState(false);
+  const [subSecao21Aberta, setSubSecao21Aberta] = useState(false);
+  const [subSecao22Aberta, setSubSecao22Aberta] = useState(false);
+  const abrirTabelaCalculoOrdinaria = () => {
+    setSecao2Aberta(true);
+    setSubSecao21Aberta(true);
+    setTimeout(() => document.getElementById("subseccao-2-1-tabela-calculo")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  };
+  const abrirTabelaCalculoExtra = () => {
+    setSecao2Aberta(true);
+    setSubSecao22Aberta(true);
+    setTimeout(() => document.getElementById("subseccao-2-2-tabela-extra")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  };
+
   const handleIniciarEdicaoRevisao = (r: RevisaoOrcamento) => {
     setEditingRevisaoId(r.id_revisao);
     setNovaRevisaoValor(String(r.valor));
@@ -1475,10 +1493,21 @@ export function GestaoQuotasOrcamento({
                 />
               </div>
             </div>
-            <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-semibold hover:bg-emerald-700 transition-colors cursor-pointer flex items-center space-x-2">
-              <i className="fa-solid fa-paper-plane"></i>
-              <span>Emitir Quotas em Lote Proporcional</span>
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-semibold hover:bg-emerald-700 transition-colors cursor-pointer flex items-center space-x-2">
+                <i className="fa-solid fa-paper-plane"></i>
+                <span>Emitir Quotas em Lote Proporcional</span>
+              </button>
+              <button
+                type="button"
+                onClick={abrirTabelaCalculoOrdinaria}
+                title="Mostra a tabela de cálculo por fração (Quota Mensal + Fundo de Reserva = Quota Ordinária) e permite exportar"
+                className="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors cursor-pointer flex items-center space-x-2"
+              >
+                <Calculator className="w-3.5 h-3.5" />
+                <span>Ver Tabela de Cálculo (Quota + FCR) por Fração</span>
+              </button>
+            </div>
           </form>
 
           <div className="border-t border-slate-100 pt-4 space-y-4">
@@ -1732,6 +1761,9 @@ export function GestaoQuotasOrcamento({
 
       {/* SECÇÃO 2 — CÁLCULO DE QUOTAS POR FRAÇÃO */}
       <AccordionSection
+        id="seccao-2-calculo-quotas"
+        open={secao2Aberta}
+        onToggle={setSecao2Aberta}
         title="2. Cálculo de Quotas por Fração"
         subtitle={`Repartição proporcional pela permilagem, quotas extraordinárias (obras/FCR) e discriminação das ${predioFracoes.length} frações`}
         icon={<Calculator className="w-4 h-4" />}
@@ -1963,9 +1995,9 @@ export function GestaoQuotasOrcamento({
               <div className="space-y-2">
                 <button
                   type="button"
-                  onClick={() => setQuotaExtraCalculada(true)}
+                  onClick={() => { setQuotaExtraCalculada(true); abrirTabelaCalculoExtra(); }}
                   disabled={(parseValorMonetario(orcamentoExtra) || 0) <= 0}
-                  title={(parseValorMonetario(orcamentoExtra) || 0) <= 0 ? "Define um Orçamento Extraordinário para calcular." : undefined}
+                  title={(parseValorMonetario(orcamentoExtra) || 0) <= 0 ? "Define um Orçamento Extraordinário para calcular." : "Calcula e abre a tabela de cálculo por fração (2.2), pronta a exportar"}
                   className="w-full px-4 py-2.5 bg-sky-700 hover:bg-sky-800 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
                 >
                   <Calculator className="w-3.5 h-3.5" />
@@ -2041,6 +2073,9 @@ export function GestaoQuotasOrcamento({
             com colunas de Quota Extra, mesmo para quem só queria ver uma
             das duas. Cada uma só mostra o que lhe diz respeito. */}
         <AccordionSection
+          id="subseccao-2-1-tabela-calculo"
+          open={subSecao21Aberta}
+          onToggle={setSubSecao21Aberta}
           title={`2.1 Quotas Ordinárias & Fundo de Reserva (${predioFracoes.length} Frações)`}
           subtitle="Cálculo proporcional exato pela permilagem, associado ao IBAN de crédito e referência de pagamento"
           icon={<FileText className="w-4 h-4" />}
@@ -2158,6 +2193,9 @@ export function GestaoQuotasOrcamento({
         </AccordionSection>
 
         <AccordionSection
+          id="subseccao-2-2-tabela-extra"
+          open={subSecao22Aberta}
+          onToggle={setSubSecao22Aberta}
           title={`2.2 Quota Extraordinária (${predioFracoes.length} Frações)`}
           subtitle="Só a repartição da obra/FCR extra selecionada — sem misturar com a quota ordinária mensal"
           icon={<HardHat className="w-4 h-4" />}

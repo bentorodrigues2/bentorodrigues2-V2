@@ -7,19 +7,32 @@ interface AccordionSectionProps {
   icon?: React.ReactNode;
   badge?: React.ReactNode;
   defaultOpen?: boolean;
+  // Modo controlado (opcional) — só entra em vigor quando AMBOS são
+  // passados, para permitir que um botão fora do acordeão (ex: um atalho
+  // "ver tabela de cálculo") o force a abrir e lhe faça scroll até ele,
+  // sem mudar o comportamento de quem não precisa disto.
+  open?: boolean;
+  onToggle?: (open: boolean) => void;
+  id?: string;
   children: React.ReactNode;
 }
 
 // Secção retrátil (acordeão) reutilizável — usada para transformar ecrãs
 // estáticos com tudo sempre visível (obrigando a scroll infinito) em blocos
 // que abrem/fecham conforme selecionados, mantendo tudo fechado por omissão.
-export function AccordionSection({ title, subtitle, icon, badge, defaultOpen = false, children }: AccordionSectionProps) {
-  const [open, setOpen] = useState(defaultOpen);
+export function AccordionSection({ title, subtitle, icon, badge, defaultOpen = false, open: openControlado, onToggle, id, children }: AccordionSectionProps) {
+  const [openInterno, setOpenInterno] = useState(defaultOpen);
+  const controlado = openControlado !== undefined && !!onToggle;
+  const open = controlado ? openControlado : openInterno;
+  const toggle = () => {
+    if (controlado) onToggle!(!open);
+    else setOpenInterno((o) => !o);
+  };
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div id={id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         className="w-full flex items-center justify-between gap-3 p-5 cursor-pointer hover:bg-slate-50/60 transition-colors text-left"
       >
         <div className="flex items-center gap-3 min-w-0">
