@@ -714,6 +714,22 @@ export function GestaoQuotasOrcamento({
         await saveAvisosToSupabase(avisosParaGuardar);
       }
 
+      // Ao registar uma revisão, o "orçamento anual" guardado fica com o
+      // valor em bruto introduzido nesse momento — mas aqui, ao aplicar,
+      // pode já ter havido correções manuais por fração ou regras em lote
+      // (overridesQuotaFracao/"+X€ em todas") que mudam o total realmente
+      // lançado nos avisos. Sem isto, o orçamento guardado ficava
+      // desatualizado em relação aos avisos reais, e qualquer ecrã que
+      // recalcula a quota teórica a partir dele (ex: "2.1 Quotas Ordinárias
+      // & Fundo de Reserva") continuava a mostrar o valor antigo, divergente
+      // do que o condómino via realmente cobrado — exatamente o "os valores
+      // não quadram" reportado pelo administrador.
+      const novoTotalAnualReal = Math.round(predioFracoes.reduce((s, f) => s + quotaFinalRevisao(f), 0) * 12 * 100) / 100;
+      if (novoTotalAnualReal > 0) {
+        setOrcamentoAnual(String(novoTotalAnualReal));
+        await persistirOrcamentoNoSupabase(novoTotalAnualReal);
+      }
+
       registarLogAuditoria(
         "Financeira",
         "Aplicou uma revisão de quota às frações",
@@ -2073,7 +2089,14 @@ export function GestaoQuotasOrcamento({
                   </tr>
                 ) : (
                   predioFracoesFiltradas.map((f) => {
-                    const quotaTotal = calcularQuotaOrdinaria(f);
+                    // Usa sempre o valor real já lançado em avisos quando
+                    // existe (quotaCalculadaRevisao já tem esta preferência),
+                    // só caindo para a fórmula teórica do orçamento quando
+                    // não há nenhum aviso real para a fração — sem isto, esta
+                    // tabela ficava dessincronizada de qualquer correção
+                    // manual por fração ou revisão aplicada que não tivesse
+                    // atualizado também o orçamento anual guardado.
+                    const quotaTotal = quotaCalculadaRevisao(f);
                     const quotaOrdinariaPart = Math.round(quotaTotal * 0.9 * 100) / 100;
                     const quotaFCRPart = Math.round(quotaTotal * 0.1 * 100) / 100;
                     const totalShare = quotaOrdinariaPart + quotaFCRPart;
