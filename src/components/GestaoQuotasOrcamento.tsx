@@ -462,7 +462,10 @@ export function GestaoQuotasOrcamento({
     if (!id) return;
     const obra = obrasAdjudicadasParaQuota.find((o) => o.id === id);
     if (!obra) return;
-    setDescricaoExtra(`${obra.descricao} — ${obra.fornecedorNome}`);
+    // Não inclui o nome do fornecedor que executa a obra — pedido explícito
+    // do administrador: recibos e notas de cobrança devem mostrar só o
+    // motivo da quota extra, nunca a empresa adjudicada.
+    setDescricaoExtra(obra.descricao);
     setOrcamentoExtra(String(obra.custoTotal));
     if (obra.mesesFracionamento && obra.mesesFracionamento > 0) {
       setNumPrestacoesExtra(obra.mesesFracionamento);
