@@ -551,6 +551,77 @@ Devolve APENAS JSON estrito:
     }
   }
 
+  // 8.5. CLASSIFICAR PROVA DOCUMENTAL JURÍDICA (?acao=classificar-prova-juridica)
+  // Usado no carregamento em lote de provas para um dossiê de processo
+  // judicial (ConstituicaoProcessosJuridicos.tsx) — em vez de escolher o
+  // tipo de documento um a um para cada ficheiro, a IA lê cada ficheiro
+  // real e sugere qual dos 8 modelos pré-definidos de prova lhe corresponde.
+  if (acao === "classificar-prova-juridica") {
+    if (req.method === "GET") {
+      return res.status(200).json({ status: "online", endpoint: "/api/ai?acao=classificar-prova-juridica" });
+    }
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
+
+    try {
+      const { base64, mimeType, nomeFicheiro } = req.body || {};
+      if (!base64 || !mimeType) {
+        return res.status(400).json({ error: "base64 e mimeType são obrigatórios" });
+      }
+
+      const prompt = `És o assistente jurídico da administração de um condomínio em Portugal, a organizar um dossiê de prova documental para um processo judicial de cobrança de dívida/incumprimento contra um condómino.
+
+Analisa o documento em anexo (a imagem/PDF real, nome de ficheiro original: "${nomeFicheiro || "desconhecido"}") e classifica-o numa destas categorias de prova:
+- "RECIBO_RECECAO_CARTA_AR": aviso de receção dos CTT, comprovativo de registo postal, ou carta registada com assinatura
+- "PRINT_CONVERSA_WHATSAPP": captura de ecrã de conversa de WhatsApp ou SMS
+- "PRINT_EMAIL_COMUNICACAO": captura de ecrã ou impressão de um e-mail
+- "FOTOGRAFIA_DANO_INFRACAO": fotografia de danos, obras não autorizadas, ou infração ao regulamento
+- "ATA_ASSEMBLEIA_TITULO_EXECUTIVO": ata de assembleia de condóminos (sobretudo se aprova orçamento/quotas ou liquida dívida)
+- "EXTRATO_CONTA_CORRENTE_DIVIDA": extrato de conta-corrente do condómino, mapa de quotas em atraso, ou cálculo de juros de mora
+- "CERTIDAO_REGISTO_PREDIAL": certidão do registo predial da fração
+- "OUTRO_COMPROVATIVO": qualquer outro documento que não se enquadre nos anteriores (contrato, orçamento, correspondência genérica, etc.)
+
+Se escolheres "OUTRO_COMPROVATIVO", sugere também um nome curto e concreto para o tipo de documento (ex: "Declaração de Não Dívida", "Fatura de Custas de Tribunal").
+
+Se o documento tiver uma data visível (ex: data da carta, do email, da fotografia), e/ou um código de rastreio CTT visível, extrai-os também.
+
+Devolve APENAS JSON estrito, sem markdown:
+{
+  "tipo": "RECIBO_RECECAO_CARTA_AR" | "PRINT_CONVERSA_WHATSAPP" | "PRINT_EMAIL_COMUNICACAO" | "FOTOGRAFIA_DANO_INFRACAO" | "ATA_ASSEMBLEIA_TITULO_EXECUTIVO" | "EXTRATO_CONTA_CORRENTE_DIVIDA" | "CERTIDAO_REGISTO_PREDIAL" | "OUTRO_COMPROVATIVO",
+  "confianca": 0.0 a 1.0,
+  "tipo_outro_sugerido": "só quando tipo é OUTRO_COMPROVATIVO, senão null",
+  "resumo": "Uma frase curta e concreta a dizer o que este documento concretamente mostra",
+  "data_documento": "AAAA-MM-DD se visível no documento, senão null",
+  "codigo_rastreio_ctt": "código de rastreio se visível, senão null"
+}`;
+
+      const responseText = await generateWithFallback({
+        contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType, data: base64 } }] }],
+        responseMimeType: "application/json"
+      });
+
+      let dados = null;
+      try {
+        dados = JSON.parse(responseText);
+      } catch {
+        const match = responseText.match(/\{[\s\S]*\}/);
+        if (match) {
+          try { dados = JSON.parse(match[0]); } catch { /* mantém null */ }
+        }
+      }
+
+      if (!dados || !dados.tipo) {
+        return res.status(502).json({ error: "A IA não conseguiu classificar este documento." });
+      }
+
+      return res.status(200).json({ ok: true, ...dados });
+    } catch (err) {
+      console.error("[api/ai?acao=classificar-prova-juridica] Erro:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao classificar o documento." });
+    }
+  }
+
   // 9.5. RECONHECER ANEXO REAL POR IA MULTIMODAL (?acao=reconhecer-anexo)
   // Usado por LeitorAnexosIA.tsx — lê mesmo o ficheiro (imagem/PDF) enviado,
   // ao contrário de "reconhecer-recibo" acima, que só analisa texto.

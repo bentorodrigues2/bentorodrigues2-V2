@@ -4,6 +4,72 @@ import { generateAndDownloadPdf, formatDatePT, parseValorMonetario } from "../ut
 import { saveProcessoJuridicoToSupabase, deleteProcessoJuridicoFromSupabase } from "../lib/supabaseService";
 import { MoneyInput } from "./MoneyInput";
 
+// Boilerplate jurídico de cada um dos 8 modelos de prova pré-definidos —
+// extraído para fora do componente (função pura) para poder ser reutilizado
+// tanto pelo preenchimento manual (applyPresetProof) como pelo carregamento
+// em lote com IA (handleAnalisarLoteProvas), sem duplicar o texto legal.
+function getPresetProofDefaults(tipo: TipoProvaJuridica): {
+  titulo: string;
+  descricao: string;
+  observacoes_juridicas: string;
+  tipo_ficheiro: "imagem" | "pdf" | "documento";
+} {
+  switch (tipo) {
+    case "RECIBO_RECECAO_CARTA_AR":
+      return {
+        titulo: "Aviso de Receção CTT (AR) Notificação de Quotas com Assinatura",
+        descricao: "Comprovativo do registo postal CTT e recibo de aviso de receção assinado presencialmente pelo réu, atestando a tomada de conhecimento da mora.",
+        observacoes_juridicas: "Prova plena da interpelação admonitória para efeitos do art. 805.º n.º 1 do Código Civil.",
+        tipo_ficheiro: "imagem"
+      };
+    case "PRINT_CONVERSA_WHATSAPP":
+      return {
+        titulo: "Print de Conversa WhatsApp com Confissão de Dívida e Recusa de Pagamento",
+        descricao: "Captura de ecrã certificada de troca de mensagens via WhatsApp com o número oficial do condómino réu onde assume os valores e adia o cumprimento.",
+        observacoes_juridicas: "Documento eletrónico nos termos do art. 368.º do Código Civil, corroborando a recusa ilegítima.",
+        tipo_ficheiro: "imagem"
+      };
+    case "PRINT_EMAIL_COMUNICACAO":
+      return {
+        titulo: "Print de E-mail de Notificação de Saldo Devedor com Confirmação de Leitura",
+        descricao: "Cópia e print do correio eletrónico enviado pela Administração para o endereço registado do condómino com recibo de entrega.",
+        observacoes_juridicas: "Comunicação formal enviada em cumprimento do Art. 1432.º do Código Civil.",
+        tipo_ficheiro: "imagem"
+      };
+    case "FOTOGRAFIA_DANO_INFRACAO":
+      return {
+        titulo: "Relatório Fotográfico de Danos / Obras não Autorizadas",
+        descricao: "Fotografia de alta resolução comprovando as alterações na fachada ou danos causados em partes comuns do edifício.",
+        observacoes_juridicas: "Peritagem visual e registo da infração ao regulamento de condomínio.",
+        tipo_ficheiro: "imagem"
+      };
+    case "ATA_ASSEMBLEIA_TITULO_EXECUTIVO":
+      return {
+        titulo: "Ata da Assembleia de Condóminos com Força Executiva (Art. 6.º DL 268/94)",
+        descricao: "Extrato da ata da reunião magna onde foi aprovado o orçamento, quotas e liquidado o montante em dívida, constituindo título executivo.",
+        observacoes_juridicas: "Título executivo extrajudicial bastante para instauração imediata de Ação Executiva.",
+        tipo_ficheiro: "pdf"
+      };
+    case "EXTRATO_CONTA_CORRENTE_DIVIDA":
+      return {
+        titulo: "Extrato de Conta-Corrente Atualizado com Juros de Mora",
+        descricao: "Demonstração detalhada mês a mês das quotas vencidas, débitos de conservação e juros de mora legais.",
+        observacoes_juridicas: "Liquidação aritmética da dívida nos termos do art. 716.º do Código de Processo Civil.",
+        tipo_ficheiro: "pdf"
+      };
+    case "CERTIDAO_REGISTO_PREDIAL":
+      return {
+        titulo: "Certidão Permanente do Registo Predial da Fração",
+        descricao: "Certidão do registo predial que identifica o(s) proprietário(s) registado(s) da fração autónoma, para efeitos de legitimidade processual.",
+        observacoes_juridicas: "Prova da titularidade do direito de propriedade nos termos do Código do Registo Predial.",
+        tipo_ficheiro: "pdf"
+      };
+    case "OUTRO_COMPROVATIVO":
+    default:
+      return { titulo: "", descricao: "", observacoes_juridicas: "", tipo_ficheiro: "documento" };
+  }
+}
+
 interface ConstituicaoProcessosJuridicosProps {
   predio: Predio;
   fracoes: Fracao[];
@@ -114,6 +180,179 @@ export function ConstituicaoProcessosJuridicos({
   const [isDraggingFile, setIsDraggingFile] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Carregamento em lote de várias provas de uma só vez, com a IA a
+  // reconhecer e a sugerir o tipo de cada documento — antes só era possível
+  // anexar um documento de cada vez, obrigando a repetir o formulário
+  // inteiro para um processo com, por exemplo, 20 documentos.
+  interface ItemLoteProva {
+    id: string;
+    file: File;
+    status: "pendente" | "a_analisar" | "analisado" | "erro";
+    tipo: TipoProvaJuridica;
+    tipoOutroSugerido: string;
+    titulo: string;
+    resumo: string;
+    dataDocumento: string;
+    codigoCtt: string;
+    urlPreview: string;
+    tipoFicheiro: "imagem" | "pdf" | "documento";
+    erro?: string;
+  }
+  const [showLoteProvaModal, setShowLoteProvaModal] = useState<boolean>(false);
+  const [itensLoteProva, setItensLoteProva] = useState<ItemLoteProva[]>([]);
+  const [aAnalisarLote, setAAnalisarLote] = useState<boolean>(false);
+  const loteFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSelecionarFicheirosLote = (files: FileList) => {
+    const novosItens: ItemLoteProva[] = Array.from(files).map((file) => ({
+      id: `lote-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      file,
+      status: "pendente",
+      tipo: "OUTRO_COMPROVATIVO",
+      tipoOutroSugerido: "",
+      titulo: "",
+      resumo: "",
+      dataDocumento: "",
+      codigoCtt: "",
+      urlPreview: "",
+      tipoFicheiro: file.type === "application/pdf" ? "pdf" : file.type.startsWith("image/") ? "imagem" : "documento"
+    }));
+    setItensLoteProva((prev) => [...prev, ...novosItens]);
+  };
+
+  const fileParaBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const resultado = reader.result as string;
+        resolve(resultado.split(",")[1] || "");
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const handleAnalisarLoteProvas = async () => {
+    if (itensLoteProva.length === 0) return;
+    setAAnalisarLote(true);
+    try {
+      for (const item of itensLoteProva) {
+        setItensLoteProva((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: "a_analisar" } : i)));
+        try {
+          const base64 = await fileParaBase64(item.file);
+          const previewDataUrl = item.tipoFicheiro === "imagem" ? `data:${item.file.type};base64,${base64}` : "";
+          const resp = await fetch("/api/ai?acao=classificar-prova-juridica", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ base64, mimeType: item.file.type || "application/octet-stream", nomeFicheiro: item.file.name })
+          });
+          const dados = await resp.json();
+          if (!resp.ok || !dados?.tipo) throw new Error(dados?.error || "Falha ao classificar.");
+
+          const tipoDetectado = dados.tipo as TipoProvaJuridica;
+          const preset = getPresetProofDefaults(tipoDetectado);
+          setItensLoteProva((prev) => prev.map((i) => (i.id === item.id ? {
+            ...i,
+            status: "analisado",
+            tipo: tipoDetectado,
+            tipoOutroSugerido: dados.tipo_outro_sugerido || "",
+            titulo: tipoDetectado === "OUTRO_COMPROVATIVO" ? (dados.tipo_outro_sugerido || i.file.name) : preset.titulo,
+            resumo: dados.resumo || "",
+            dataDocumento: dados.data_documento || "",
+            codigoCtt: dados.codigo_rastreio_ctt || "",
+            urlPreview: previewDataUrl
+          } : i)));
+        } catch (errItem: any) {
+          setItensLoteProva((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: "erro", erro: errItem?.message || "Erro ao analisar." } : i)));
+        }
+      }
+    } finally {
+      setAAnalisarLote(false);
+    }
+  };
+
+  const handleConfirmarLoteProvas = () => {
+    if (!currentProcesso) return;
+    const itensValidos = itensLoteProva.filter((i) => i.status === "analisado");
+    if (itensValidos.length === 0) {
+      showToast("Analisa pelo menos um documento com sucesso antes de juntar ao dossiê.");
+      return;
+    }
+
+    const dest = `${currentProcesso.nome_reu} (Fração ${currentProcesso.fracao_nome})`;
+    let numeroBase = currentProcesso.provas.length;
+    const novasProvas: ProcessoProva[] = itensValidos.map((item, idx) => {
+      numeroBase += 1;
+      const preset = getPresetProofDefaults(item.tipo);
+      return {
+        id_prova: `prv-${Date.now()}-${idx}`,
+        id_processo: currentProcesso.id_processo,
+        tipo: item.tipo,
+        titulo: item.titulo || preset.titulo || item.file.name,
+        tipo_documento_outro: item.tipo === "OUTRO_COMPROVATIVO" ? (item.tipoOutroSugerido || item.titulo) : undefined,
+        descricao: item.resumo || preset.descricao,
+        data_documento: item.dataDocumento || new Date().toISOString().split("T")[0],
+        data_adicao: new Date().toISOString().split("T")[0],
+        numero_documento_ordem: numeroBase,
+        ficheiro_nome: item.file.name,
+        tamanho: `${Math.max(1, Math.round(item.file.size / 1024))} KB`,
+        tipo_ficheiro: item.tipoFicheiro,
+        url_preview: item.urlPreview || undefined,
+        codigo_rastreio_ctt: item.codigoCtt || undefined,
+        destinatario: dest,
+        observacoes_juridicas: preset.observacoes_juridicas,
+        arquivado_no_arquivo_digital: true
+      };
+    });
+
+    const processoAtualizado: ProcessoJuridico = {
+      ...currentProcesso,
+      provas: [...currentProcesso.provas, ...novasProvas],
+      data_ultima_atualizacao: new Date().toISOString().split("T")[0],
+      historico_tramitacao: [
+        ...currentProcesso.historico_tramitacao,
+        {
+          id_fase: `tram-${Date.now()}`,
+          data_hora: new Date().toISOString().replace("T", " ").substring(0, 16),
+          fase: `Junção em Lote: ${novasProvas.length} Documento(s)`,
+          descricao: `Juntos aos autos ${novasProvas.length} documento(s) de prova, reconhecidos e classificados automaticamente por IA.`,
+          responsavel: loggedUser.nome
+        }
+      ]
+    };
+
+    setProcessos((prev) => prev.map((p) => (p.id_processo === currentProcesso.id_processo ? processoAtualizado : p)));
+    saveProcessoJuridicoToSupabase(processoAtualizado).catch(console.error);
+
+    if (onAddDocumento) {
+      novasProvas.forEach((prova) => {
+        onAddDocumento({
+          id_doc: `doc-jur-${prova.id_prova}`,
+          id_predio: predio.id_predio,
+          nome: `[Doc. ${prova.numero_documento_ordem}] ${prova.titulo} - Proc. ${currentProcesso.id_processo}`,
+          tipo: prova.tipo_ficheiro === "imagem" ? "Fotografia" : "Comprovativo Judicial",
+          data_upload: new Date().toISOString().split("T")[0],
+          tamanho: prova.tamanho,
+          categoria: "Processos Judiciais & Contencioso",
+          tema: "Contencioso e Ações Judiciais",
+          sub_pasta: "⚖️ Processos Jurídicos & Contencioso",
+          descricao: `${prova.descricao || ""} • Réu: ${currentProcesso.nome_reu} (Fração ${currentProcesso.fracao_nome}) • Tribunal: ${currentProcesso.tribunal_competente}`,
+          visibilidade: "Administração",
+          arquivado: true,
+          data_arquivamento: new Date().toISOString().split("T")[0],
+          tipo_arquivo: prova.tipo_ficheiro === "imagem" ? "fotografia" : "documento",
+          url_foto: prova.url_preview || undefined,
+          fornecedor: currentProcesso.tribunal_competente,
+          ano: new Date().getFullYear().toString(),
+          relevancia_perfis: ["ADMIN", "JURIDICO"]
+        });
+      });
+    }
+
+    showToast(`✅ ${novasProvas.length} documento(s) juntos ao dossiê com sucesso.`);
+    setItensLoteProva([]);
+    setShowLoteProvaModal(false);
+  };
+
   // Form: Novo Marco de Tramitação
   const [novoMarcoFase, setNovoMarcoFase] = useState<string>("Notificação Concluída / Apresentação de Provas");
   const [novoMarcoDesc, setNovoMarcoDesc] = useState<string>("");
@@ -213,62 +452,16 @@ export function ConstituicaoProcessosJuridicos({
     const dest = currentProcesso ? `${currentProcesso.nome_reu} (Fração ${currentProcesso.fracao_nome})` : "Condómino Devedor";
     setNovaProvaDestinatario(dest);
 
+    const preset = getPresetProofDefaults(presetType);
+    setNovaProvaTitulo(preset.titulo);
+    setNovaProvaDescricao(preset.descricao);
+    setNovaProvaFileNome("");
+    setNovaProvaTipoFicheiro(preset.tipo_ficheiro);
+    setNovaProvaUrlPreview("");
+    setNovaProvaObsJuridica(preset.observacoes_juridicas);
     if (presetType === "RECIBO_RECECAO_CARTA_AR") {
-      setNovaProvaTitulo("Aviso de Receção CTT (AR) Notificação de Quotas com Assinatura");
-      setNovaProvaDescricao("Comprovativo do registo postal CTT e recibo de aviso de receção assinado presencialmente pelo réu, atestando a tomada de conhecimento da mora.");
       setNovaProvaCodigoCtt("[SUBSTITUIR PELO CÓDIGO DE RASTREIO CTT REAL]");
       setNovaProvaDataEntrega("");
-      setNovaProvaFileNome("");
-      setNovaProvaTipoFicheiro("imagem");
-      setNovaProvaUrlPreview("");
-      setNovaProvaObsJuridica("Prova plena da interpelação admonitória para efeitos do art. 805.º n.º 1 do Código Civil.");
-    } else if (presetType === "PRINT_CONVERSA_WHATSAPP") {
-      setNovaProvaTitulo("Print de Conversa WhatsApp com Confissão de Dívida e Recusa de Pagamento");
-      setNovaProvaDescricao("Captura de ecrã certificada de troca de mensagens via WhatsApp com o número oficial do condómino réu onde assume os valores e adia o cumprimento.");
-      setNovaProvaFileNome("");
-      setNovaProvaTipoFicheiro("imagem");
-      setNovaProvaUrlPreview("");
-      setNovaProvaObsJuridica("Documento eletrónico nos termos do art. 368.º do Código Civil, corroborando a recusa ilegítima.");
-    } else if (presetType === "PRINT_EMAIL_COMUNICACAO") {
-      setNovaProvaTitulo("Print de E-mail de Notificação de Saldo Devedor com Confirmação de Leitura");
-      setNovaProvaDescricao("Cópia e print do correio eletrónico enviado pela Administração para o endereço registado do condómino com recibo de entrega.");
-      setNovaProvaFileNome("");
-      setNovaProvaTipoFicheiro("imagem");
-      setNovaProvaUrlPreview("");
-      setNovaProvaObsJuridica("Comunicação formal enviada em cumprimento do Art. 1432.º do Código Civil.");
-    } else if (presetType === "FOTOGRAFIA_DANO_INFRACAO") {
-      setNovaProvaTitulo("Relatório Fotográfico de Danos / Obras não Autorizadas");
-      setNovaProvaDescricao("Fotografia de alta resolução comprovando as alterações na fachada ou danos causados em partes comuns do edifício.");
-      setNovaProvaFileNome("");
-      setNovaProvaTipoFicheiro("imagem");
-      setNovaProvaUrlPreview("");
-      setNovaProvaObsJuridica("Peritagem visual e registo da infração ao regulamento de condomínio.");
-    } else if (presetType === "ATA_ASSEMBLEIA_TITULO_EXECUTIVO") {
-      setNovaProvaTitulo("Ata da Assembleia de Condóminos com Força Executiva (Art. 6.º DL 268/94)");
-      setNovaProvaDescricao("Extrato da ata da reunião magna onde foi aprovado o orçamento, quotas e liquidado o montante em dívida, constituindo título executivo.");
-      setNovaProvaFileNome("");
-      setNovaProvaTipoFicheiro("pdf");
-      setNovaProvaObsJuridica("Título executivo extrajudicial bastante para instauração imediata de Ação Executiva.");
-    } else if (presetType === "EXTRATO_CONTA_CORRENTE_DIVIDA") {
-      setNovaProvaTitulo("Extrato de Conta-Corrente Atualizado com Juros de Mora");
-      setNovaProvaDescricao("Demonstração detalhada mês a mês das quotas vencidas, débitos de conservação e juros de mora legais.");
-      setNovaProvaFileNome("");
-      setNovaProvaTipoFicheiro("pdf");
-      setNovaProvaObsJuridica("Liquidação aritmética da dívida nos termos do art. 716.º do Código de Processo Civil.");
-    } else if (presetType === "CERTIDAO_REGISTO_PREDIAL") {
-      setNovaProvaTitulo("Certidão Permanente do Registo Predial da Fração");
-      setNovaProvaDescricao("Certidão do registo predial que identifica o(s) proprietário(s) registado(s) da fração autónoma, para efeitos de legitimidade processual.");
-      setNovaProvaFileNome("");
-      setNovaProvaTipoFicheiro("pdf");
-      setNovaProvaUrlPreview("");
-      setNovaProvaObsJuridica("Prova da titularidade do direito de propriedade nos termos do Código do Registo Predial.");
-    } else if (presetType === "OUTRO_COMPROVATIVO") {
-      setNovaProvaTitulo("");
-      setNovaProvaDescricao("");
-      setNovaProvaFileNome("");
-      setNovaProvaTipoFicheiro("documento");
-      setNovaProvaUrlPreview("");
-      setNovaProvaObsJuridica("");
     }
   };
 
@@ -933,6 +1126,14 @@ export function ConstituicaoProcessosJuridicos({
                       <span>Adicionar Prova / Documento</span>
                     </button>
                     <button
+                      onClick={() => setShowLoteProvaModal(true)}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-2 cursor-pointer border border-indigo-400"
+                      title="Carrega vários documentos de uma vez — a IA reconhece o tipo de cada um e regista-os automaticamente"
+                    >
+                      <i className="fa-solid fa-wand-magic-sparkles"></i>
+                      <span>Carregar Vários Documentos (IA)</span>
+                    </button>
+                    <button
                       onClick={() => setShowAddMarcoModal(true)}
                       className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-slate-300 dark:border-slate-700"
                     >
@@ -1592,6 +1793,152 @@ export function ConstituicaoProcessosJuridicos({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: CARREGAMENTO EM LOTE DE PROVAS COM IA                              */}
+      {/* ========================================================================= */}
+      {showLoteProvaModal && currentProcesso && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-950 rounded-2xl max-w-3xl w-full my-8 shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-900 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  <i className="fa-solid fa-wand-magic-sparkles text-indigo-600"></i>
+                  Carregar Vários Documentos de Uma Vez (IA)
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Escolhe todos os documentos do processo de uma vez — a IA lê cada um e sugere o tipo de prova correspondente antes de juntar ao dossiê.
+                </p>
+              </div>
+              <button
+                onClick={() => { setShowLoteProvaModal(false); setItensLoteProva([]); }}
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer p-1"
+              >
+                <i className="fa-solid fa-xmark text-lg"></i>
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+              <input
+                ref={loteFileInputRef}
+                type="file"
+                multiple
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={(e) => { if (e.target.files && e.target.files.length > 0) handleSelecionarFicheirosLote(e.target.files); e.target.value = ""; }}
+              />
+              <div
+                onClick={() => loteFileInputRef.current?.click()}
+                className="border-2 border-dashed border-indigo-300 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20 hover:bg-indigo-100/60 rounded-2xl p-6 text-center cursor-pointer transition-all"
+              >
+                <i className="fa-solid fa-cloud-arrow-up text-2xl text-indigo-500 mb-2"></i>
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Clica para escolher vários ficheiros (PNG, JPG, PDF)</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">Podes selecionar os 20 documentos do caso de uma só vez</p>
+              </div>
+
+              {itensLoteProva.length > 0 && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{itensLoteProva.length} ficheiro(s) selecionado(s)</span>
+                    <button
+                      type="button"
+                      onClick={handleAnalisarLoteProvas}
+                      disabled={aAnalisarLote}
+                      className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                    >
+                      <i className={`fa-solid ${aAnalisarLote ? "fa-spinner fa-spin" : "fa-brain"}`}></i>
+                      <span>{aAnalisarLote ? "A analisar com IA..." : "Analisar Todos com IA"}</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {itensLoteProva.map((item) => (
+                      <div key={item.id} className="border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex flex-col sm:flex-row gap-3">
+                        <div className="flex items-center gap-2 sm:w-1/3 min-w-0">
+                          {item.urlPreview ? (
+                            <img src={item.urlPreview} alt="" className="h-12 w-12 object-cover rounded-lg border border-slate-200 dark:border-slate-800 shrink-0" />
+                          ) : (
+                            <div className="h-12 w-12 rounded-lg bg-slate-100 dark:bg-slate-900 flex items-center justify-center shrink-0 text-slate-400">
+                              <i className={`fa-solid ${item.tipoFicheiro === "pdf" ? "fa-file-pdf" : "fa-file"}`}></i>
+                            </div>
+                          )}
+                          <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate">{item.file.name}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {item.status === "pendente" && (
+                            <span className="text-[10px] text-slate-500 italic">Por analisar</span>
+                          )}
+                          {item.status === "a_analisar" && (
+                            <span className="text-[10px] text-indigo-600 font-bold"><i className="fa-solid fa-spinner fa-spin mr-1"></i>A analisar...</span>
+                          )}
+                          {item.status === "erro" && (
+                            <span className="text-[10px] text-rose-600 font-bold">❌ {item.erro}</span>
+                          )}
+                          {item.status === "analisado" && (
+                            <div className="space-y-1.5">
+                              <select
+                                value={item.tipo}
+                                onChange={(e) => {
+                                  const novoTipo = e.target.value as TipoProvaJuridica;
+                                  const preset = getPresetProofDefaults(novoTipo);
+                                  setItensLoteProva((prev) => prev.map((i) => (i.id === item.id ? { ...i, tipo: novoTipo, titulo: novoTipo === "OUTRO_COMPROVATIVO" ? i.titulo : preset.titulo } : i)));
+                                }}
+                                className="w-full text-[11px] border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg px-2 py-1"
+                              >
+                                <option value="RECIBO_RECECAO_CARTA_AR">✉️ Recibo AR CTT</option>
+                                <option value="PRINT_CONVERSA_WHATSAPP">💬 Print WhatsApp</option>
+                                <option value="PRINT_EMAIL_COMUNICACAO">📧 Print E-mail</option>
+                                <option value="FOTOGRAFIA_DANO_INFRACAO">📸 Fotografia Danos</option>
+                                <option value="ATA_ASSEMBLEIA_TITULO_EXECUTIVO">📜 Ata Executiva</option>
+                                <option value="EXTRATO_CONTA_CORRENTE_DIVIDA">📊 Extrato Juros</option>
+                                <option value="CERTIDAO_REGISTO_PREDIAL">🏛️ Certidão Predial</option>
+                                <option value="OUTRO_COMPROVATIVO">➕ Outro Documento</option>
+                              </select>
+                              <input
+                                type="text"
+                                value={item.titulo}
+                                onChange={(e) => setItensLoteProva((prev) => prev.map((i) => (i.id === item.id ? { ...i, titulo: e.target.value } : i)))}
+                                placeholder="Título do documento"
+                                className="w-full text-[11px] border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg px-2 py-1"
+                              />
+                              {item.resumo && <p className="text-[10px] text-slate-500 italic">{item.resumo}</p>}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setItensLoteProva((prev) => prev.filter((i) => i.id !== item.id))}
+                          className="text-slate-400 hover:text-rose-600 cursor-pointer shrink-0 self-start"
+                          title="Remover este ficheiro do lote"
+                        >
+                          <i className="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="p-5 border-t border-slate-100 dark:border-slate-900 flex items-center justify-end gap-2">
+              <button
+                onClick={() => { setShowLoteProvaModal(false); setItensLoteProva([]); }}
+                className="px-4 py-2 text-xs font-bold text-slate-500 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmarLoteProvas}
+                disabled={itensLoteProva.filter((i) => i.status === "analisado").length === 0}
+                className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer"
+              >
+                <i className="fa-solid fa-check-double"></i>
+                <span>Juntar {itensLoteProva.filter((i) => i.status === "analisado").length || ""} Documento(s) ao Dossiê</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
