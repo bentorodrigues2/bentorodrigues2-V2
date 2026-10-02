@@ -1103,7 +1103,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
     }
   };
 
-  const lancarItemExtraido = async (item: any, selectedContaId: string, fornecedorIdOverride?: string, mostrarAlerta: boolean = true, motivoManual?: string) => {
+  const lancarItemExtraido = async (item: any, selectedContaId: string, fornecedorIdOverride?: string, mostrarAlerta: boolean = true, motivoManual?: string, faturaFile?: File) => {
     if (!selectedContaId) {
       alert("Escolha a conta bancária para receber ou pagar este movimento!");
       return;
@@ -1145,6 +1145,50 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
     setMovements([novo, ...movements]);
     await saveMovimentoToSupabase(novo).catch(console.error);
     registarLogAuditoria("Financeira", "Lançou um item extraído do extrato bancário", predio.id_predio, loggedUser, novo.descricao);
+
+    // Fatura/comprovativo anexado já no momento do lançamento, em vez de
+    // obrigar a voltar depois a "Ver Detalhe" — mesmo arquivo organizado
+    // por fornecedor e ano já usado em handleAnexarFaturaDespesa.
+    if (faturaFile && item.tipo === "Despesa") {
+      try {
+        const fornecedorNomeFatura = fornecedores.find(f => f.id_fornecedor === idFornecedorFinal)?.nome || motivoManual?.trim() || "Fornecedor Não Identificado";
+        const ano = (item.data || new Date().toISOString()).slice(0, 4);
+        const caminhoStorage = `${ano}/Fornecedores/${predio.id_predio}/${Date.now()}-${faturaFile.name}`;
+        const urlFatura = await uploadDocumentoToStorage(faturaFile, caminhoStorage);
+        if (urlFatura) {
+          const novoDoc: Documento = {
+            id_doc: "doc-fatura-mov-" + Date.now(),
+            id_predio: predio.id_predio,
+            nome: `Fatura - ${fornecedorNomeFatura} (${formatDatePT(item.data)})`,
+            tipo: faturaFile.type.includes("pdf") ? "PDF" : "Imagem",
+            data_upload: new Date().toISOString().split("T")[0],
+            tamanho: `${(faturaFile.size / 1024).toFixed(0)} KB`,
+            categoria: "Fornecedores",
+            descricao: `Fatura/comprovativo da despesa: ${novo.descricao}`,
+            visibilidade: "Administração",
+            autor: loggedUser.nome,
+            tema: "Faturas de Fornecedores",
+            ano,
+            sub_pasta: fornecedorNomeFatura,
+            fornecedor: fornecedorNomeFatura,
+            caminho: urlFatura,
+            arquivado: true,
+            data_arquivamento: new Date().toISOString().split("T")[0],
+            tipo_arquivo: "documento",
+            relevancia_perfis: ["ADMIN", "EMPRESA_GESTORA", "CONTABILISTA"]
+          };
+          const guardado = await saveDocumentoToSupabase(novoDoc);
+          if (guardado) {
+            onAddDocumento?.(novoDoc);
+            const movComFatura: Movimento = { ...novo, fotos: [urlFatura] };
+            setMovements(prev => prev.map(m => m.id_mov === novo.id_mov ? movComFatura : m));
+            await saveMovimentoToSupabase(movComFatura).catch(console.error);
+          }
+        }
+      } catch (errFatura) {
+        console.error("[GestaoMovimentos] Erro ao anexar fatura ao lançar item extraído:", errFatura);
+      }
+    }
 
     // Era fire-and-forget (sem await) — ao lançar em lote vários pagamentos
     // ao MESMO fornecedor (ex: 2 transferências ao Luís Ventura no mesmo
@@ -2855,10 +2899,25 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                             </select>
                           </div>
                         ) : item.id_fornecedor ? (
-                          <p className="text-[10px] text-emerald-700 font-bold flex items-center mt-1">
-                            <i className="fa-solid fa-circle-check mr-1"></i>
-                            <span>Fornecedor identificado: {item.fornecedor_nome_sugerido} ({item.metodo_cruzamento === "iban" ? "por IBAN" : item.metodo_cruzamento === "referencia_contrato" ? "por referência de contrato" : "por nome"})</span>
-                          </p>
+                          <div className="flex items-center justify-between gap-2 mt-1">
+                            <p className="text-[10px] text-emerald-700 font-bold flex items-center">
+                              <i className="fa-solid fa-circle-check mr-1"></i>
+                              <span>Fornecedor identificado: {item.fornecedor_nome_sugerido} ({item.metodo_cruzamento === "iban" ? "por IBAN" : item.metodo_cruzamento === "referencia_contrato" ? "por referência de contrato" : "por nome"})</span>
+                            </p>
+                            {/* O cruzamento automático por vezes erra (ex:
+                                referência aprendida por engano de um
+                                movimento anterior não relacionado) — sem
+                                isto não havia forma nenhuma de corrigir,
+                                avançava sempre direto para o fornecedor
+                                sugerido. */}
+                            <button
+                              type="button"
+                              onClick={() => setExtractedItems(prev => prev.map((x, i) => i === index ? { ...x, id_fornecedor: undefined, fornecedor_nome_sugerido: undefined, metodo_cruzamento: undefined } : x))}
+                              className="text-[9px] text-slate-500 hover:text-red-600 underline cursor-pointer shrink-0"
+                            >
+                              Errado? Corrigir
+                            </button>
+                          </div>
                         ) : (
                           <div className="mt-1.5 space-y-1">
                             <label className="text-[9px] font-bold text-amber-600 uppercase block mb-0.5">Sem correspondência — associar fornecedor (opcional)</label>
@@ -2886,6 +2945,22 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                             />
                           </div>
                         )}
+                        {/* Anexar logo a fatura/comprovativo real ao
+                            lançar, em vez de obrigar a voltar depois a "Ver
+                            Detalhe" para o fazer — pedido explícito do
+                            administrador ("quero justificar manualmente e
+                            adicionar a respetiva fatura"). */}
+                        {item.tipo === "Despesa" && (
+                          <div className="mt-1.5">
+                            <label className="text-[9px] font-bold text-slate-600 uppercase block mb-0.5">Anexar fatura/comprovativo (opcional)</label>
+                            <input
+                              type="file"
+                              id={`extract-fatura-${index}`}
+                              accept="application/pdf,image/*"
+                              className="text-[10px] w-full"
+                            />
+                          </div>
+                        )}
                       </div>
                       <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                         <span className="font-bold text-slate-800 font-mono-custom text-sm">{item.tipo === "Receita" ? "+" : "-"}{item.valor.toFixed(2)}€</span>
@@ -2895,7 +2970,8 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                             onClick={() => {
                               const fornSel = document.getElementById(`extract-forn-select-${index}`) as HTMLSelectElement | null;
                               const motivoInput = document.getElementById(`extract-forn-motivo-${index}`) as HTMLInputElement | null;
-                              lancarItemExtraido(item, contaExtratoId, fornSel?.value || undefined, true, motivoInput?.value?.trim() || undefined);
+                              const faturaInput = document.getElementById(`extract-fatura-${index}`) as HTMLInputElement | null;
+                              lancarItemExtraido(item, contaExtratoId, fornSel?.value || undefined, true, motivoInput?.value?.trim() || undefined, faturaInput?.files?.[0] || undefined);
                             }}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white p-1 rounded transition-colors cursor-pointer"
                             title="Lançar Movimento Validado"

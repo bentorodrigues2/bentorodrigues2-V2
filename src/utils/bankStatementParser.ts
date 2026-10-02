@@ -258,7 +258,24 @@ export function matchBankTransactions(
           .map(c => normalizeBankText(c.titular || ""))
           .filter(Boolean);
         const titularesCandidatos = [normOwner, ...normCoproprietarios, ...normContasAdicionais].filter(Boolean);
-        const palavrasPorTitular = titularesCandidatos.map(nome => nome.split(" ").filter(w => w.length > 2));
+        // Maior prefixo CONTÍGUO de cada nome (a partir do primeiro
+        // carácter) encontrado no descritivo — cobre nomes cortados pelo
+        // banco por limite de caracteres, mesmo a meio de uma palavra (ex:
+        // "Teixeira" -> "Te"). Exige corresponder a partir do INÍCIO do
+        // nome, nunca uma palavra qualquer solta a meio — bug confirmado em
+        // produção: "Cristina" (de "Tânia Cristina ...") deu match com a
+        // Fração B só por causa da proprietária "Cristina Cavaquinho"
+        // partilhar esse primeiro nome, e "Pereira" (de "Catia Alexandra
+        // PEREIRA Teixeira Palma") deu match com a Fração A só por causa de
+        // "Maria Irene PEREIRA Bilreiro" partilhar esse apelido — nomes e
+        // apelidos comuns nunca chegam sozinhos para identificar ninguém.
+        const prefixoContiguoMaisLongo = (nomeCompleto: string): number => {
+          for (let len = nomeCompleto.length; len >= 6; len--) {
+            if (normDesc.includes(nomeCompleto.slice(0, len))) return len;
+          }
+          return 0;
+        };
+        const prefixosPorTitular = titularesCandidatos.map(nome => ({ nome, prefixo: prefixoContiguoMaisLongo(nome) }));
 
         // Check exact fraction code match (e.g., "3º Dto" -> "3 dto", "RC Esq" -> "rc esq")
         // — como palavra inteira, nunca substring solta (ver contemPalavraInteira).
@@ -282,8 +299,14 @@ export function matchBankTransactions(
 
         // Check owner (or additional co-owner) name matches — cada titular
         // candidato é testado à vez; basta UM deles bater certo sozinho.
-        const hasOwnerName = palavrasPorTitular.some(partes => partes.length >= 2 && partes.every(p => normDesc.includes(p)));
-        const hasOwnerPartial = palavrasPorTitular.some(partes => partes.some(p => normDesc.includes(p)));
+        // "Completo" exige o prefixo contíguo cobrir o nome quase todo
+        // (tolera só 1 carácter de folga, ex: um espaço a mais); "parcial"
+        // exige pelo menos ~15 caracteres contíguos desde o início do nome
+        // — o suficiente para cobrir nomes cortados pelo banco, mas nunca
+        // um único nome próprio ou apelido comum partilhado por acaso com
+        // outro proprietário.
+        const hasOwnerName = prefixosPorTitular.some(({ nome, prefixo }) => nome.length >= 6 && prefixo >= nome.length - 1);
+        const hasOwnerPartial = prefixosPorTitular.some(({ prefixo }) => prefixo >= 15);
 
         // Referência individual da fração (ex: "BR23E-FR-K") — quando o
         // condómino a inclui no descritivo da transferência, é o sinal mais
