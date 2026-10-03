@@ -2509,6 +2509,11 @@ export async function savePlanoManutencaoItemToSupabase(item: ItemPlanoManutenca
   });
 }
 
+export async function deletePlanoManutencaoItemFromSupabase(idItem: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbDelete("plano_manutencao_obrigatoria", [["id_item", "eq", idItem]]);
+}
+
 // ============================================================================
 // INVENTÁRIO TÉCNICO
 // ============================================================================
