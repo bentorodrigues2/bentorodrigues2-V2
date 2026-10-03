@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 import { Predio, LoggedUser, Movimento } from "../types";
 import { exportToXLS } from "../utils";
+import {
+  fetchPlanoContasFromSupabase, savePlanoContaToSupabase, PlanoContaRow,
+  fetchRegrasCategorizacaoFromSupabase, saveRegraCategorizacaoToSupabase, deleteRegraCategorizacaoFromSupabase, RegraCategorizacaoRow
+} from "../lib/supabaseService";
 
 interface ContabilidadeInternaProps {
   predio: Predio;
@@ -8,12 +12,7 @@ interface ContabilidadeInternaProps {
   movimentos?: Movimento[];
 }
 
-interface PlanoConta {
-  codigo: string;
-  nome: string;
-  tipo: "GASTO" | "RENDIMENTO" | "ATIVO" | "PASSIVO";
-  descricao: string;
-}
+type PlanoConta = PlanoContaRow;
 
 interface ComprovativoPendente {
   id_comprovativo: string;
@@ -24,24 +23,94 @@ interface ComprovativoPendente {
   estado: "Não Reconciliado" | "Sugerido" | "Reconciliado";
 }
 
+// Plano de Contas Oficial de Condomínios (SNC Simplificado) — usado para
+// semear a tabela real plano_contas na primeira vez que um prédio abre este
+// módulo (antes disto ficava só em useState local, perdido a cada refresh).
+const PLANO_CONTAS_DEFAULT: Array<Omit<PlanoConta, "id" | "id_predio">> = [
+  { codigo: "11", nome: "Caixa Geral de Condomínio", tipo: "ATIVO", descricao: "Fundo físico de maneio em numerário" },
+  { codigo: "12", nome: "Depósitos à Ordem", tipo: "ATIVO", descricao: "Contas bancárias correntes do condomínio" },
+  { codigo: "13", nome: "Fundo Comum de Reserva", tipo: "ATIVO", descricao: "Conta bancária específica para o FCR" },
+  { codigo: "61", nome: "Consumos de Água", tipo: "GASTO", descricao: "Faturas de água das partes comuns" },
+  { codigo: "62", nome: "Consumos de Eletricidade", tipo: "GASTO", descricao: "Faturas de eletricidade/luz comum" },
+  { codigo: "63", nome: "Manutenção Elevadores", tipo: "GASTO", descricao: "Contratos e assistência técnica de elevadores" },
+  { codigo: "64", nome: "Serviços de Limpeza", tipo: "GASTO", descricao: "Salários de limpezas ou faturas de empresas" },
+  { codigo: "65", nome: "Seguros de Edifício", tipo: "GASTO", descricao: "Apólices multirrisco comuns" },
+  { codigo: "68", nome: "Obras de Conservação", tipo: "GASTO", descricao: "Gastos com pinturas, telhado e reparos" },
+  { codigo: "71", nome: "Rendimentos de Quotas", tipo: "RENDIMENTO", descricao: "Contribuições de quotas ordinárias das frações" },
+  { codigo: "72", nome: "Rendimentos FCR", tipo: "RENDIMENTO", descricao: "Reforços das frações consignados ao FCR" },
+  { codigo: "78", nome: "Rendimentos Extraordinários", tipo: "RENDIMENTO", descricao: "Quotas extra para obras ou indemnizações" }
+];
+
+// Regras de categorização automática por omissão — as mesmas palavras-chave
+// que antes estavam escritas diretamente no código (hardcoded), agora
+// semeadas como registos editáveis na tabela regras_categorizacao.
+const REGRAS_DEFAULT: Array<{ palavra_chave: string; codigo_conta: string }> = [
+  { palavra_chave: "epal", codigo_conta: "61" },
+  { palavra_chave: "água", codigo_conta: "61" },
+  { palavra_chave: "agua", codigo_conta: "61" },
+  { palavra_chave: "edp", codigo_conta: "62" },
+  { palavra_chave: "luz", codigo_conta: "62" },
+  { palavra_chave: "eletricidade", codigo_conta: "62" },
+  { palavra_chave: "gás", codigo_conta: "62" },
+  { palavra_chave: "elevador", codigo_conta: "63" },
+  { palavra_chave: "otis", codigo_conta: "63" },
+  { palavra_chave: "schindler", codigo_conta: "63" },
+  { palavra_chave: "kone", codigo_conta: "63" },
+  { palavra_chave: "limp", codigo_conta: "64" },
+  { palavra_chave: "estrela", codigo_conta: "64" },
+  { palavra_chave: "higienizacao", codigo_conta: "64" },
+  { palavra_chave: "seguro", codigo_conta: "65" },
+  { palavra_chave: "fidelidade", codigo_conta: "65" },
+  { palavra_chave: "apolice", codigo_conta: "65" },
+  { palavra_chave: "allianz", codigo_conta: "65" },
+  { palavra_chave: "quota", codigo_conta: "71" },
+  { palavra_chave: "fração", codigo_conta: "71" },
+  { palavra_chave: "fracao", codigo_conta: "71" },
+  { palavra_chave: "condómino", codigo_conta: "71" },
+  { palavra_chave: "fcr", codigo_conta: "72" },
+  { palavra_chave: "reserva", codigo_conta: "72" }
+];
+const CODIGO_CONTA_FALLBACK = "68"; // Obras de Conservação / Geral — quando nenhuma regra bate certo
+
 export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: ContabilidadeInternaProps) {
   const [activeTabContab, setActiveTabContab] = useState<"plano" | "reconciliacao" | "motor_regras">("plano");
-  
-  // 1. Plano de Contas Oficial de Condomínios (SNC Simplificado)
-  const [planoContas, setPlanoContas] = useState<PlanoConta[]>([
-    { codigo: "11", nome: "Caixa Geral de Condomínio", tipo: "ATIVO", descricao: "Fundo físico de maneio em numerário" },
-    { codigo: "12", nome: "Depósitos à Ordem", tipo: "ATIVO", descricao: "Contas bancárias correntes do condomínio" },
-    { codigo: "13", nome: "Fundo Comum de Reserva", tipo: "ATIVO", descricao: "Conta bancária específica para o FCR" },
-    { codigo: "61", nome: "Consumos de Água", tipo: "GASTO", descricao: "Faturas de água das partes comuns" },
-    { codigo: "62", nome: "Consumos de Eletricidade", tipo: "GASTO", descricao: "Faturas de eletricidade/luz comum" },
-    { codigo: "63", nome: "Manutenção Elevadores", tipo: "GASTO", descricao: "Contratos e assistência técnica de elevadores" },
-    { codigo: "64", nome: "Serviços de Limpeza", tipo: "GASTO", descricao: "Salários de limpezas ou faturas de empresas" },
-    { codigo: "65", nome: "Seguros de Edifício", tipo: "GASTO", descricao: "Apólices multirrisco comuns" },
-    { codigo: "68", nome: "Obras de Conservação", tipo: "GASTO", descricao: "Gastos com pinturas, telhado e reparos" },
-    { codigo: "71", nome: "Rendimentos de Quotas", tipo: "RENDIMENTO", descricao: "Contribuições de quotas ordinárias das frações" },
-    { codigo: "72", nome: "Rendimentos FCR", tipo: "RENDIMENTO", descricao: "Reforços das frações consignados ao FCR" },
-    { codigo: "78", nome: "Rendimentos Extraordinários", tipo: "RENDIMENTO", descricao: "Quotas extra para obras ou indemnizações" }
-  ]);
+
+  // 1. Plano de Contas Oficial de Condomínios (SNC Simplificado) — carregado
+  // da tabela real plano_contas; semeia os valores por omissão na primeira
+  // vez que este prédio abre o módulo (nunca mais se perde no refresh).
+  const [planoContas, setPlanoContas] = useState<PlanoConta[]>([]);
+  const [regras, setRegras] = useState<RegraCategorizacaoRow[]>([]);
+  const [carregandoContabilidade, setCarregandoContabilidade] = useState(true);
+
+  React.useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      if (!predio.id_predio) return;
+      const [contasCarregadas, regrasCarregadas] = await Promise.all([
+        fetchPlanoContasFromSupabase(predio.id_predio),
+        fetchRegrasCategorizacaoFromSupabase(predio.id_predio)
+      ]);
+      if (cancelado) return;
+
+      if (contasCarregadas && contasCarregadas.length > 0) {
+        setPlanoContas(contasCarregadas);
+      } else {
+        const semeadas: PlanoConta[] = PLANO_CONTAS_DEFAULT.map(c => ({ ...c, id: `pc-${predio.id_predio}-${c.codigo}`, id_predio: predio.id_predio }));
+        setPlanoContas(semeadas);
+        semeadas.forEach(c => savePlanoContaToSupabase(c).catch(console.error));
+      }
+
+      if (regrasCarregadas && regrasCarregadas.length > 0) {
+        setRegras(regrasCarregadas);
+      } else {
+        const semeadas: RegraCategorizacaoRow[] = REGRAS_DEFAULT.map((r, i) => ({ ...r, id: `rc-${predio.id_predio}-${i}`, id_predio: predio.id_predio }));
+        setRegras(semeadas);
+        semeadas.forEach(r => saveRegraCategorizacaoToSupabase(r).catch(console.error));
+      }
+      setCarregandoContabilidade(false);
+    })();
+    return () => { cancelado = true; };
+  }, [predio.id_predio]);
 
   // Plano de Contas state helper
   const [novoCodigo, setNovoCodigo] = useState("");
@@ -60,12 +129,15 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
       return;
     }
     const nC: PlanoConta = {
+      id: `pc-${predio.id_predio}-${novoCodigo}`,
+      id_predio: predio.id_predio,
       codigo: novoCodigo,
       nome: novoNome,
       tipo: novoTipo,
       descricao: novaDesc
     };
-    setPlanoContas([...planoContas, nC].sort((a,b) => a.codigo.localeCompare(b.codigo)));
+    setPlanoContas(prev => [...prev, nC].sort((a, b) => a.codigo.localeCompare(b.codigo)));
+    savePlanoContaToSupabase(nC).catch(console.error);
     alert("Conta contábil adicionada com sucesso ao Plano de Contas!");
     setNovoCodigo("");
     setNovoNome("");
@@ -198,39 +270,51 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
     alert(`Reconciliador Inteligente CondoManager AI:\nEncontrados ${matchedCount} cruzamento(s) automático(s) por valor exato! Comprovativos vinculados à contabilidade. (Datas próximas ainda têm de ser confirmadas manualmente.)`);
   };
 
-  // 3. Motor de Categorização Semântica / Regras
+  // 3. Motor de Categorização Semântica / Regras — antes tinha as
+  // palavras-chave escritas diretamente no código (hardcoded, nunca
+  // editável); passa a usar as regras reais guardadas em
+  // regras_categorizacao, que o administrador pode agora gerir aqui.
   const [inputRegraDesc, setInputRegraDesc] = useState("");
   const [sugestaoConta, setSugestaoConta] = useState<PlanoConta | null>(null);
+  const [novaRegraPalavra, setNovaRegraPalavra] = useState("");
+  const [novaRegraConta, setNovaRegraConta] = useState("");
+
+  const classificarPorRegras = (descricaoLivre: string): PlanoConta | null => {
+    const desc = descricaoLivre.toLowerCase();
+    const regraEncontrada = regras.find(r => desc.includes(r.palavra_chave.toLowerCase()));
+    const codigo = regraEncontrada?.codigo_conta || CODIGO_CONTA_FALLBACK;
+    return planoContas.find(c => c.codigo === codigo) || null;
+  };
 
   const testarCategorizacaoAutomatica = () => {
     if (!inputRegraDesc) {
       alert("Introduza um descritivo de transação (Ex: 'Fatura Eletricidade EDP de Junho').");
       return;
     }
+    setSugestaoConta(classificarPorRegras(inputRegraDesc));
+  };
 
-    const desc = inputRegraDesc.toLowerCase();
-    let codeMatch = "68"; // Default: Obras de Conservação / Geral
-    
-    if (desc.includes("epal") || desc.includes("água") || desc.includes("agua")) {
-      codeMatch = "61";
-    } else if (desc.includes("edp") || desc.includes("luz") || desc.includes("eletricidade") || desc.includes("gás")) {
-      codeMatch = "62";
-    } else if (desc.includes("elevador") || desc.includes("otis") || desc.includes("schindler") || desc.includes("kone")) {
-      codeMatch = "63";
-    } else if (desc.includes("limp") || desc.includes("estrela") || desc.includes("higienizacao")) {
-      codeMatch = "64";
-    } else if (desc.includes("seguro") || desc.includes("fidelidade") || desc.includes("apolice") || desc.includes("allianz")) {
-      codeMatch = "65";
-    } else if (desc.includes("quota") || desc.includes("fração") || desc.includes("fracao") || desc.includes("condómino")) {
-      codeMatch = "71";
-    } else if (desc.includes("fcr") || desc.includes("reserva")) {
-      codeMatch = "72";
+  const handleAdicionarRegra = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!novaRegraPalavra.trim() || !novaRegraConta) {
+      alert("Indique a palavra-chave e a conta contábil de destino.");
+      return;
     }
+    const nova: RegraCategorizacaoRow = {
+      id: `rc-${predio.id_predio}-${Date.now()}`,
+      id_predio: predio.id_predio,
+      palavra_chave: novaRegraPalavra.trim().toLowerCase(),
+      codigo_conta: novaRegraConta
+    };
+    setRegras(prev => [...prev, nova]);
+    saveRegraCategorizacaoToSupabase(nova).catch(console.error);
+    setNovaRegraPalavra("");
+    setNovaRegraConta("");
+  };
 
-    const found = planoContas.find(c => c.codigo === codeMatch);
-    if (found) {
-      setSugestaoConta(found);
-    }
+  const handleEliminarRegra = (regra: RegraCategorizacaoRow) => {
+    setRegras(prev => prev.filter(r => r.id !== regra.id));
+    deleteRegraCategorizacaoFromSupabase(regra.id).catch(console.error);
   };
 
   return (
@@ -358,6 +442,9 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
               </button>
             </div>
 
+            {carregandoContabilidade ? (
+              <div className="p-8 text-center text-xs text-slate-500">A carregar o Plano de Contas...</div>
+            ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {planoContas.map(c => (
                 <div key={c.codigo} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-start justify-between hover:border-emerald-300 transition-colors">
@@ -382,6 +469,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                 </div>
               ))}
             </div>
+            )}
           </div>
         </div>
       )}
@@ -616,6 +704,59 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                     {txt}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 pt-4 space-y-3">
+              <h5 className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Regras de Categorização ({regras.length})</h5>
+              <p className="text-[10px] text-slate-500">Palavra-chave encontrada no descritivo → conta contábil associada automaticamente. A primeira regra que corresponder é usada; sem nenhuma correspondência, usa-se a Conta 68 (Obras de Conservação / Geral).</p>
+
+              <form onSubmit={handleAdicionarRegra} className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  placeholder="Palavra-chave (ex: nowo, vodafone)"
+                  value={novaRegraPalavra}
+                  onChange={e => setNovaRegraPalavra(e.target.value)}
+                  className="flex-grow border border-slate-200 px-3 py-2 text-xs rounded-lg focus:outline-emerald-500 bg-slate-50/50"
+                />
+                <select
+                  value={novaRegraConta}
+                  onChange={e => setNovaRegraConta(e.target.value)}
+                  className="border border-slate-200 px-3 py-2 text-xs rounded-lg focus:outline-emerald-500 bg-slate-50/50 cursor-pointer"
+                >
+                  <option value="">Conta de destino...</option>
+                  {planoContas.map(c => (
+                    <option key={c.codigo} value={c.codigo}>Conta {c.codigo} — {c.nome}</option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors cursor-pointer shrink-0"
+                >
+                  <i className="fa-solid fa-plus mr-1"></i> Adicionar Regra
+                </button>
+              </form>
+
+              <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                {regras.map(r => {
+                  const conta = planoContas.find(c => c.codigo === r.codigo_conta);
+                  return (
+                    <div key={r.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100">
+                      <span className="text-xs text-slate-700">
+                        <span className="font-mono font-bold bg-white border border-slate-200 px-1.5 py-0.5 rounded">{r.palavra_chave}</span>
+                        <i className="fa-solid fa-arrow-right mx-2 text-slate-400"></i>
+                        Conta {r.codigo_conta}{conta ? ` — ${conta.nome}` : ""}
+                      </span>
+                      <button
+                        onClick={() => handleEliminarRegra(r)}
+                        className="text-slate-400 hover:text-red-600 cursor-pointer px-2"
+                        title="Eliminar regra"
+                      >
+                        <i className="fa-solid fa-trash-can"></i>
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

@@ -2515,6 +2515,80 @@ export async function deletePlanoManutencaoItemFromSupabase(idItem: string): Pro
 }
 
 // ============================================================================
+// CONTABILIDADE INTERNA — PLANO DE CONTAS (SNC) & MOTOR DE REGRAS
+// (ContabilidadeInterna.tsx) — antes viviam só em useState local, perdidos
+// a cada refresh da página.
+// ============================================================================
+export interface PlanoContaRow {
+  id: string;
+  id_predio: string;
+  codigo: string;
+  nome: string;
+  tipo: "GASTO" | "RENDIMENTO" | "ATIVO" | "PASSIVO";
+  descricao: string;
+}
+
+export async function fetchPlanoContasFromSupabase(idPredio: string): Promise<PlanoContaRow[] | null> {
+  if (!isSupabaseConfigured() || !idPredio) return null;
+  const data = await dbSelect("plano_contas", { filtros: [["id_predio", "eq", idPredio]], order: { coluna: "codigo", asc: true } });
+  if (!data) return null;
+  return data.map((row: any) => ({
+    id: row.id,
+    id_predio: row.id_predio,
+    codigo: row.codigo,
+    nome: row.nome,
+    tipo: row.tipo,
+    descricao: row.descricao || ""
+  }));
+}
+
+export async function savePlanoContaToSupabase(conta: PlanoContaRow): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("plano_contas", {
+    id: conta.id,
+    id_predio: conta.id_predio,
+    codigo: conta.codigo,
+    nome: conta.nome,
+    tipo: conta.tipo,
+    descricao: conta.descricao || null
+  });
+}
+
+export interface RegraCategorizacaoRow {
+  id: string;
+  id_predio: string;
+  palavra_chave: string;
+  codigo_conta: string;
+}
+
+export async function fetchRegrasCategorizacaoFromSupabase(idPredio: string): Promise<RegraCategorizacaoRow[] | null> {
+  if (!isSupabaseConfigured() || !idPredio) return null;
+  const data = await dbSelect("regras_categorizacao", { filtros: [["id_predio", "eq", idPredio]] });
+  if (!data) return null;
+  return data.map((row: any) => ({
+    id: row.id,
+    id_predio: row.id_predio,
+    palavra_chave: row.palavra_chave,
+    codigo_conta: row.codigo_conta
+  }));
+}
+
+export async function saveRegraCategorizacaoToSupabase(regra: RegraCategorizacaoRow): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("regras_categorizacao", {
+    id: regra.id,
+    id_predio: regra.id_predio,
+    palavra_chave: regra.palavra_chave,
+    codigo_conta: regra.codigo_conta
+  });
+}
+
+export async function deleteRegraCategorizacaoFromSupabase(id: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbDelete("regras_categorizacao", [["id", "eq", id]]);
+}
+
+// ============================================================================
 // INVENTÁRIO TÉCNICO
 // ============================================================================
 export async function fetchInventarioTecnicoFromSupabase(idPredio: string): Promise<EquipamentoTecnico[] | null> {
