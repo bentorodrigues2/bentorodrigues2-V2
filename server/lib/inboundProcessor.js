@@ -4,7 +4,7 @@ import { gerarHtmlAutoresponder, gerarHtmlResposta } from "./htmlemail.js";
 import { classifyEmailCategory, generateCategoryResponse } from "../geminiService.js";
 import { extrairDadosDocumento, arquivarAnexoOriginal, extrairMovimentosExtrato } from "./multimodalService.js";
 import { cruzarMovimentoComFornecedor } from "./fornecedorMatching.js";
-import { escolherContaPorTipo } from "./contaSaldo.js";
+import { escolherContaPorTipo, ajustarSaldoConta } from "./contaSaldo.js";
 
 /**
  * Remetentes cujo email é 100% técnico/automático e nunca traz conteúdo
@@ -984,31 +984,190 @@ function movimentoExtratoJaLancado(movExtraido, movimentosExistentes) {
   });
 }
 
+/** Tolerância de valor para cruzar uma despesa do extrato com uma dívida a fornecedor pendente — mesmo critério (±0,05€) já usado em todo o resto da app para evitar falsos positivos de cêntimos. */
+const TOLERANCIA_VALOR_DIVIDA = 0.05;
+
+/**
+ * Pede ao fornecedor, por email, a fatura que falta para justificar uma
+ * despesa já confirmada pelo extrato bancário mas sem nenhum documento
+ * correspondente (nem dívida pendente arquivada, nem fatura recebida por
+ * email). Fecha sozinho o ciclo "o banco confirma que saiu dinheiro, mas
+ * falta o papel", em vez de depender do administrador se lembrar de pedir
+ * manualmente a cada fornecedor.
+ */
+async function solicitarFaturaEmFalta({ fornecedor, movimento, predioNome }) {
+  const destino = fornecedor.email_contacto || fornecedor.email;
+  if (!destino) return false;
+  try {
+    const mensagem =
+      `Identificámos no extrato bancário do condomínio <strong>${predioNome}</strong> um pagamento efetuado a <strong>${fornecedor.nome}</strong>, sem termos ainda a respetiva fatura/recibo arquivado:<br><br>` +
+      `<ul><li>Data: ${movimento.data}</li><li>Valor: ${Number(movimento.valor).toFixed(2)}€</li><li>Descritivo bancário: ${movimento.descricao}</li></ul>` +
+      `Agradecemos o envio da fatura/recibo correspondente, respondendo a este email com o documento em anexo, para regularizarmos a contabilidade do condomínio.`;
+    await enviarEmailResend({
+      to: destino,
+      subject: `Fatura em falta — pagamento de ${Number(movimento.valor).toFixed(2)}€ em ${movimento.data}`,
+      html: gerarHtmlResposta(fornecedor.nome, mensagem)
+    });
+    return true;
+  } catch (e) {
+    console.warn("[inboundProcessor] Aviso ao solicitar fatura em falta:", e?.message || e);
+    return false;
+  }
+}
+
+/**
+ * Lança na conta corrente (tabela movimentos) cada movimento do extrato
+ * ainda por justificar, e tenta fechar o ciclo contabilístico sozinho:
+ *  - Despesa com fornecedor identificado (IBAN/referência/nome) e com uma
+ *    dívida PENDENTE do mesmo fornecedor por um valor compatível já
+ *    registada (de uma fatura recebida antes por email, ver
+ *    registarFaturaFornecedor) → a dívida já tem o documento justificativo,
+ *    por isso o movimento nasce logo "Justificado" e a dívida passa a "Paga".
+ *  - Despesa com fornecedor identificado mas SEM dívida/fatura à espera →
+ *    fica "Movimento Cego / Por Justificar" e dispara automaticamente um
+ *    pedido de fatura por email ao fornecedor (se tiver email registado).
+ *  - Despesa sem fornecedor identificável (taxas bancárias, Imposto de
+ *    Selo, etc.) ou Receita (quotas/condóminos, tratadas pelo seu próprio
+ *    fluxo de "Pagamentos por Confirmar") → fica só "Movimento Cego / Por
+ *    Justificar", sem tentativa de pedido automático.
+ * Em qualquer um dos casos o saldo real da conta é atualizado — este é o
+ * momento em que o extrato bancário real confirma que o dinheiro saiu/entrou
+ * de facto (ver nota em registarComprovativoPendente sobre o saldo só ser
+ * tocado quando há confirmação bancária real, nunca só pela fatura chegar).
+ */
+async function lancarMovimentosEmFaltaDoExtrato({ emFalta, contaResolvida, predioNome }) {
+  const stats = { lancados: 0, autoJustificados: 0, pedidosFaturaEnviados: 0 };
+  if (!Array.isArray(emFalta) || emFalta.length === 0) return stats;
+
+  let fornecedoresPredio = [];
+  try {
+    const { data } = await supabase
+      .from("fornecedores")
+      .select("id_fornecedor, nome, iban, email, email_contacto, referencias_contrato")
+      .eq("id_predio", contaResolvida.id_predio);
+    fornecedoresPredio = data || [];
+  } catch (e) {
+    console.warn("[inboundProcessor] Aviso ao buscar fornecedores para cruzamento do extrato:", e?.message || e);
+  }
+
+  for (const m of emFalta) {
+    const isDespesa = m.tipo === "Despesa";
+    let fornecedor = null;
+    if (isDespesa && fornecedoresPredio.length > 0) {
+      const cruzamento = cruzarMovimentoComFornecedor(fornecedoresPredio, {
+        iban_credor: m.iban_credor,
+        numero_adc: m.numero_adc,
+        entidade_credora: m.entidade_credora,
+        entidade: m.entidade_credora,
+        descricao: m.descricao
+      });
+      fornecedor = cruzamento?.fornecedor || null;
+    }
+
+    let dividaCorrespondente = null;
+    if (fornecedor) {
+      try {
+        const { data: dividas } = await supabase
+          .from("dividas_fornecedores")
+          .select("id_divida, valor, documento_anexo")
+          .eq("id_predio", contaResolvida.id_predio)
+          .eq("id_fornecedor", fornecedor.id_fornecedor)
+          .eq("estado", "Pendente");
+        dividaCorrespondente = (dividas || []).find((d) => Math.abs(Number(d.valor) - Number(m.valor)) <= TOLERANCIA_VALOR_DIVIDA) || null;
+      } catch (e) {
+        console.warn("[inboundProcessor] Aviso ao procurar dívida pendente para cruzar com o extrato:", e?.message || e);
+      }
+    }
+
+    const idMovimentoGerado = `MOV-EXT-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const justificadoPelaDivida = Boolean(dividaCorrespondente);
+    const descricaoBase = fornecedor ? `${m.descricao} [${fornecedor.nome}]` : m.descricao;
+
+    const { data: movimentoInserido, error: errMov } = await supabase
+      .from("movimentos")
+      .insert({
+        id_movimento: idMovimentoGerado,
+        id_predio: contaResolvida.id_predio,
+        id_conta: contaResolvida.id_conta,
+        descricao: descricaoBase,
+        valor: m.valor,
+        tipo: m.tipo,
+        categoria: m.categoria || "Outro",
+        data: m.data,
+        estado: justificadoPelaDivida ? "Justificado" : "Movimento Cego / Por Justificar",
+        is_movimento_cego: !justificadoPelaDivida,
+        estado_conciliacao: justificadoPelaDivida ? "CONCILIADO" : "PENDENTE",
+        comprovativo_url: dividaCorrespondente?.documento_anexo || null,
+        origem: "extrato_bancario_email_inbound"
+      })
+      .select()
+      .maybeSingle();
+
+    if (errMov) {
+      console.warn("[inboundProcessor] Aviso ao lançar movimento do extrato:", errMov.message);
+      continue;
+    }
+    stats.lancados++;
+
+    await ajustarSaldoConta(contaResolvida.id_conta, m.tipo === "Receita" ? m.valor : -m.valor);
+
+    if (justificadoPelaDivida) {
+      stats.autoJustificados++;
+      await supabase
+        .from("dividas_fornecedores")
+        .update({
+          estado: "Pago",
+          valor_pago: m.valor,
+          data_pagamento: m.data,
+          id_conta_pagamento: contaResolvida.id_conta,
+          id_movimento_pagamento: movimentoInserido?.id_movimento || idMovimentoGerado
+        })
+        .eq("id_divida", dividaCorrespondente.id_divida);
+    } else if (fornecedor) {
+      const enviado = await solicitarFaturaEmFalta({ fornecedor, movimento: m, predioNome });
+      if (enviado) stats.pedidosFaturaEnviados++;
+    }
+  }
+
+  return stats;
+}
+
 /**
  * Notifica a administração por email sobre um extrato bancário acabado de
- * reconhecer e arquivar — resume quantos movimentos foram identificados e
- * quais ainda não estão lançados no sistema, para nunca ficar só "arquivado
- * em silêncio" sem o administrador saber que há trabalho por fazer.
+ * reconhecer e arquivar — resume quantos movimentos foram identificados,
+ * quantos já foram lançados e classificados automaticamente, e para quantos
+ * foi necessário pedir a fatura em falta ao fornecedor, para nunca ficar só
+ * "arquivado em silêncio" sem o administrador saber o que foi feito.
  */
-async function notificarAdminExtratoRecebido({ emailDestino, banco, caminhoArquivo, totalMovimentos, emFalta, erroLeitura }) {
+async function notificarAdminExtratoRecebido({ emailDestino, banco, caminhoArquivo, totalMovimentos, emFalta, erroLeitura, statsLancamento }) {
   if (!emailDestino) return;
   let mensagem;
   if (erroLeitura) {
     mensagem = `Foi recebido e arquivado automaticamente um extrato bancário do <strong>${banco}</strong> em Arquivo → Extratos Bancários.<br><br>Não foi possível ler automaticamente os movimentos deste extrato — confirme manualmente se está tudo lançado.`;
   } else if (emFalta.length === 0) {
-    mensagem = `Foi recebido e arquivado automaticamente um extrato bancário do <strong>${banco}</strong> em Arquivo → Extratos Bancários.<br><br>Foram identificados <strong>${totalMovimentos} movimento(s)</strong> neste extrato — todos já estão lançados no sistema. Nada a fazer.`;
+    mensagem = `Foi recebido e arquivado automaticamente um extrato bancário do <strong>${banco}</strong> em Arquivo → Extratos Bancários.<br><br>Foram identificados <strong>${totalMovimentos} movimento(s)</strong> neste extrato — todos já estavam lançados no sistema. Nada a fazer.`;
   } else {
+    const { lancados = 0, autoJustificados = 0, pedidosFaturaEnviados = 0 } = statsLancamento || {};
+    const porJustificar = Math.max(0, lancados - autoJustificados);
     const linhas = emFalta
       .slice(0, 30)
       .map((m) => `<li>${m.data} — ${m.descricao} — ${m.tipo === "Receita" ? "+" : "-"}${Number(m.valor).toFixed(2)}€</li>`)
       .join("");
-    mensagem = `Foi recebido e arquivado automaticamente um extrato bancário do <strong>${banco}</strong> em Arquivo → Extratos Bancários.<br><br>Foram identificados <strong>${totalMovimentos} movimento(s)</strong> neste extrato, dos quais <strong>${emFalta.length} ainda não estão lançados</strong> no sistema:<br><ul>${linhas}</ul>${emFalta.length > 30 ? "<p>(lista limitada aos primeiros 30 — confirme os restantes em Finanças → Movimentos.)</p>" : ""}Aceda a Finanças → Movimentos para os validar e lançar.`;
+    mensagem = `Foi recebido e arquivado automaticamente um extrato bancário do <strong>${banco}</strong> em Arquivo → Extratos Bancários.<br><br>` +
+      `Foram identificados <strong>${totalMovimentos} movimento(s)</strong> neste extrato, dos quais <strong>${lancados}</strong> foram agora lançados na conta corrente:` +
+      `<ul>` +
+      `<li><strong>${autoJustificados}</strong> já ${autoJustificados === 1 ? "foi" : "foram"} automaticamente justificado${autoJustificados === 1 ? "" : "s"} (tínhamos a fatura correspondente arquivada)</li>` +
+      `<li><strong>${pedidosFaturaEnviados}</strong> ficaram "Movimento Cego" e já foi pedida a fatura em falta diretamente ao fornecedor por email</li>` +
+      `<li><strong>${Math.max(0, porJustificar - pedidosFaturaEnviados)}</strong> ficaram "Movimento Cego" sem fornecedor identificável automaticamente (confirme manualmente)</li>` +
+      `</ul>` +
+      `Detalhe dos movimentos lançados:<ul>${linhas}</ul>${emFalta.length > 30 ? "<p>(lista limitada aos primeiros 30.)</p>" : ""}` +
+      `Aceda a Finanças → Movimentos para rever os que ainda ficaram por justificar.`;
   }
 
   try {
     await enviarEmailResend({
       to: emailDestino,
-      subject: `Extrato Bancário ${banco}${!erroLeitura && emFalta.length > 0 ? ` — ${emFalta.length} movimento(s) por lançar` : ""}`,
+      subject: `Extrato Bancário ${banco}${!erroLeitura && emFalta.length > 0 ? ` — ${emFalta.length} movimento(s) lançado(s)` : ""}`,
       html: gerarHtmlResposta("Administração", mensagem)
     });
   } catch (e) {
@@ -1086,12 +1245,19 @@ async function processarExtratoBancarioRecebido({ anexo, dadosExtraidosDoc }) {
 
     const emFalta = movimentosExtraidos.filter((m) => !movimentoExtratoJaLancado(m, movimentosExistentes || []));
 
+    const statsLancamento = await lancarMovimentosEmFaltaDoExtrato({
+      emFalta,
+      contaResolvida,
+      predioNome: predioRow?.nome || "Condomínio"
+    });
+
     await notificarAdminExtratoRecebido({
       emailDestino,
       banco,
       caminhoArquivo,
       totalMovimentos: movimentosExtraidos.length,
-      emFalta
+      emFalta,
+      statsLancamento
     });
   } catch (e) {
     console.error("[inboundProcessor] Erro ao processar extrato bancário recebido:", e?.message || e);
