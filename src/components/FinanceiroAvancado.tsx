@@ -283,16 +283,23 @@ export function FinanceiroAvancado({
       const avisosFracao = mapaAvisosDoTipoAno.filter(a => a.id_fracao === f.id_fracao);
       const meses: (CelulaMapa | null)[] = MESES_ABREV.map((_, mIdx) => {
         // Pode haver mais do que um aviso para a mesma fração/mês (ex: um
-        // pagamento dividido em meses já marcado "Pago" e, à parte, a
-        // emissão mensal automática regular que criou outro aviso
-        // "Pendente" para o mesmo mês) — antes escolhia-se sempre o
-        // primeiro que aparecesse (find), o que podia mostrar a vermelho um
-        // mês já efetivamente pago, só por ordem de carregamento. Se
-        // qualquer um dos avisos desse mês estiver Pago, o mês conta como
-        // pago.
+        // pagamento parcial que divide o aviso original em "Pendente" +
+        // "Pago", ou uma emissão regular a par de um pagamento dividido em
+        // meses). Escolher só UM aviso (como acontecia antes, com find())
+        // perdia por completo o valor do outro — ficava a faltar
+        // exatamente a parte não escolhida no total da linha (confirmado:
+        // explicava um total 91,48€ abaixo do valor real numa fração com
+        // Junho dividido 91,48€ Pendente + 11,36€ Pago). Soma-se agora o
+        // valor de TODOS os avisos do mês, e só se considera o mês "pago"
+        // quando NENHUM deles ainda estiver por liquidar — um mês
+        // parcialmente pago mostra-se como pendente (não paga a dívida
+        // toda), nunca como totalmente pago por engano.
         const avisosDoMes = avisosFracao.filter(a => mesReferenciaAviso(a).getMonth() === mIdx);
-        const aviso = avisosDoMes.find(a => a.estado === "Pago") || avisosDoMes[0];
-        return aviso ? { valor: Number(aviso.valor || 0), pago: aviso.estado === "Pago", idAviso: aviso.id_aviso } : null;
+        if (avisosDoMes.length === 0) return null;
+        const valorTotalMes = avisosDoMes.reduce((s, a) => s + (Number(a.valor) || 0), 0);
+        const todosPagos = avisosDoMes.every(a => a.estado === "Pago");
+        const avisoReferencia = avisosDoMes.find(a => a.estado === "Pago") || avisosDoMes[0];
+        return { valor: valorTotalMes, pago: todosPagos, idAviso: avisoReferencia.id_aviso };
       });
       const total = meses.reduce((s, c) => s + (c?.valor || 0), 0);
       const infoQuota = quotaMensalAtualPorFracao[f.id_fracao];
