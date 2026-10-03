@@ -3120,15 +3120,15 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                     onClick={() => setLinhaExtratoExpandida(expandida ? null : m.id_mov)}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50/70 transition-colors cursor-pointer text-xs"
                   >
-                    <i className={`fa-solid fa-chevron-right text-[9px] text-slate-600 transition-transform ${expandida ? "rotate-90" : ""}`}></i>
-                    <span className="font-mono-custom text-slate-500 whitespace-nowrap w-[72px] shrink-0">{formatDatePT(m.data)}</span>
+                    <i className={`fa-solid fa-chevron-right text-[9px] text-slate-700 transition-transform ${expandida ? "rotate-90" : ""}`}></i>
+                    <span className="font-mono-custom text-slate-700 font-semibold whitespace-nowrap w-[72px] shrink-0">{formatDatePT(m.data)}</span>
                     {/* Conta/banco de origem sempre visível na linha, sem
                         precisar de expandir — pedido explícito: sem isto não
                         dava para perceber a que conta/entidade bancária
                         pertence cada movimento só de relance. */}
                     <span
                       title={cta ? `${cta.banco} — ${cta.tipo}${cta.iban ? ` — ${cta.iban}` : ""}` : "Conta não identificada"}
-                      className="px-1.5 py-0.5 rounded font-bold text-[9.5px] shrink-0 bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1 max-w-[110px]"
+                      className="px-1.5 py-0.5 rounded font-bold text-[9.5px] shrink-0 bg-slate-200 text-slate-800 border border-slate-300 flex items-center gap-1 max-w-[110px]"
                     >
                       <i className="fa-solid fa-building-columns"></i>
                       <span className="truncate">{cta?.banco || "Conta ?"}</span>

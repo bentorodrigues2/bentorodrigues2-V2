@@ -189,6 +189,17 @@ export function PWASimulator({
     return mapa[secao] || secao;
   };
 
+  // Secções que têm de abrir diretamente o ecrã final (activePwaSubMenuDetails),
+  // sem passar pelo sub-menu intermédio — ex.: "Lançamentos por Confirmar" no
+  // Painel de Controlo tem de ir direto à lista de Movimentos para
+  // confirmar/justificar, não ao menu genérico "Finanças & Contas" (3
+  // opções à escolha). Reportado pelo administrador: o cartão "levava para
+  // outro sítio que nada tinha a ver com a confirmação de operações
+  // pendentes" — ia só até ao sub-menu, nunca ao ecrã em si.
+  const SECOES_COM_DESTINO_DIRETO: Record<string, string> = {
+    movimentos: "financas_movimentos"
+  };
+
   // SMS-style notification counter helper for Admin cards
   const getNotificationCount = (cardId: string) => {
     const ocorrenciasPendentes = ocorrencias.filter(o => o.estado === "Pendente" || o.estado === "Em Reclamacao" || o.estado === "Em curso").length;
@@ -1366,7 +1377,14 @@ export function PWASimulator({
                         ocorrenciasCount={ocorrencias.filter(o => o.id_predio === predio.id_predio).length}
                         reservasCount={reservas.filter(r => r.id_predio === predio.id_predio).length}
                         dividasPendentesValor={dividasPendentesValor}
-                        onSelectSection={(secao) => setSelectedPwaSubmenu(mapSecaoPainelParaSubmenuPwa(secao))}
+                        onSelectSection={(secao) => {
+                          const destinoDireto = SECOES_COM_DESTINO_DIRETO[secao];
+                          if (destinoDireto) {
+                            setActivePwaSubMenuDetails(destinoDireto);
+                          } else {
+                            setSelectedPwaSubmenu(mapSecaoPainelParaSubmenuPwa(secao));
+                          }
+                        }}
                         isAdmin={true}
                       />
                     </div>
