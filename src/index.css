@@ -50,86 +50,62 @@ html:not(.dark) .bg-white label {
   color: inherit;
 }
 
-/* PWA & Global Dark Mode - High Contrast White Text Rule */
+/* PWA & Global Dark Mode - High Contrast White Text Rule — só para os
+   ecrãs NATIVOS da PWA (bottom nav, cartões do ecrã inicial, etc.),
+   nunca para o backoffice reutilizado (ver bloco "ILHA CLARA" abaixo). */
 .dark .pwa-screen,
 .dark .pwa-container,
-.dark [data-pwa="true"],
-.dark .custom-pwa-backoffice-content {
+.dark [data-pwa="true"] {
   color: #ffffff;
 }
 
-/* Ensure all text labels, headings, spans and paragraphs in dark mode are crisp white and readable */
 .dark .pwa-screen .text-slate-800,
 .dark .pwa-screen .text-slate-900,
 .dark .pwa-screen .text-slate-700,
 .dark .pwa-screen .text-slate-600,
 .dark .pwa-screen .text-black,
 .dark .pwa-screen .text-\[\#333\],
-.dark .pwa-screen .text-\[\#555\],
-.dark .custom-pwa-backoffice-content .text-slate-800,
-.dark .custom-pwa-backoffice-content .text-slate-900,
-.dark .custom-pwa-backoffice-content .text-slate-700,
-.dark .custom-pwa-backoffice-content .text-slate-600,
-.dark .custom-pwa-backoffice-content .text-black {
+.dark .pwa-screen .text-\[\#555\] {
   color: #ffffff !important;
 }
 
 .dark .pwa-screen .text-slate-500,
-.dark .pwa-screen .text-slate-400,
-.dark .custom-pwa-backoffice-content .text-slate-500,
-.dark .custom-pwa-backoffice-content .text-slate-400 {
+.dark .pwa-screen .text-slate-400 {
   color: #e2e8f0 !important;
 }
 
-/* Cartões de componentes do backoffice reutilizados dentro da PWA (ex:
-   GestaoMovimentos, modais de detalhe) têm fundo branco fixo, sem
-   variante dark: própria — as regras de alto contraste acima, pensadas
-   para o resto do ecrã escuro da PWA, forçavam o texto destes cartões a
-   branco/quase-branco, tornando-o invisível em cima do próprio fundo
-   branco. Estas regras têm mais classes (logo mais especificidade) e
-   repõem texto escuro só dentro de um cartão .bg-white real, mesmo com
-   o tema escuro da PWA ativo. */
-.dark .pwa-screen .bg-white,
-.dark .custom-pwa-backoffice-content .bg-white {
-  color: #0f172a !important;
+/* ILHA CLARA — "Menu de Administração Adaptado para PWA" reutiliza
+   diretamente os mesmos ecrãs do browser (GestaoMovimentos,
+   GestaoFracoes, GestaoDocumentos, etc.), nenhum desenhado com modo
+   escuro em mente. Cada cartão destes já vem com o seu próprio par
+   fundo+texto explícito e sempre legível por si só no browser
+   (bg-white/text-slate-800, bg-teal-50/text-teal-800,
+   bg-amber-50/text-amber-900, bg-sky-50/text-sky-800, etc. — dezenas de
+   combinações). Uma tentativa anterior de forçar tudo a branco "para
+   alto contraste" tornava texto escuro invisível em cima destes fundos
+   claros, e corrigir cartão a cartão (branco, depois cada tom pastel)
+   nunca acabava — sempre aparecia mais um cartão ilegível. Esta zona
+   fica agora isenta por completo da sobreposição de cor do tema escuro
+   da PWA: as classes Tailwind originais de cada componente voltam a
+   aplicar-se sem reescrita nenhuma, exatamente como já funcionam no
+   browser — nenhuma cor sua é hoje definida por herança, são sempre
+   explícitas por elemento, por isso não precisam de nenhuma ajuda. */
+.dark .custom-pwa-backoffice-content {
+  color: #0f172a;
 }
 
-.dark .pwa-screen .bg-white .text-slate-800,
-.dark .pwa-screen .bg-white .text-slate-900,
-.dark .pwa-screen .bg-white .text-slate-700,
-.dark .pwa-screen .bg-white .text-black,
-.dark .custom-pwa-backoffice-content .bg-white .text-slate-800,
-.dark .custom-pwa-backoffice-content .bg-white .text-slate-900,
-.dark .custom-pwa-backoffice-content .bg-white .text-slate-700,
-.dark .custom-pwa-backoffice-content .bg-white .text-black {
-  color: #0f172a !important;
+.dark .custom-pwa-backoffice-content input:not([type="checkbox"]):not([type="radio"]),
+.dark .custom-pwa-backoffice-content select,
+.dark .custom-pwa-backoffice-content textarea {
+  color: #0f172a;
+  background-color: #ffffff;
+  border-color: #cbd5e1;
 }
 
-.dark .pwa-screen .bg-white .text-slate-600,
-.dark .custom-pwa-backoffice-content .bg-white .text-slate-600 {
-  color: #334155 !important;
-}
-
-.dark .pwa-screen .bg-white .text-slate-500,
-.dark .pwa-screen .bg-white .text-slate-400,
-.dark .custom-pwa-backoffice-content .bg-white .text-slate-500,
-.dark .custom-pwa-backoffice-content .bg-white .text-slate-400 {
-  color: #64748b !important;
-}
-
-.dark .pwa-screen .bg-white .text-slate-300,
-.dark .custom-pwa-backoffice-content .bg-white .text-slate-300 {
-  color: #94a3b8 !important;
-}
-
-.dark .pwa-screen .bg-white input::placeholder,
-.dark .pwa-screen .bg-white textarea::placeholder,
-.dark .custom-pwa-backoffice-content .bg-white input::placeholder,
-.dark .custom-pwa-backoffice-content .bg-white textarea::placeholder {
-  color: #94a3b8 !important;
-}
-
-/* Inputs in dark mode */
+/* Inputs em modo escuro — a regra mais específica logo acima
+   (.dark .custom-pwa-backoffice-content input, por ter mais classes)
+   já repõe o estilo original dentro da ilha clara do backoffice,
+   independentemente desta regra geral se aplicar aqui também. */
 .dark input:not([type="checkbox"]):not([type="radio"]):not(.bg-white),
 .dark select:not(.bg-white),
 .dark textarea:not(.bg-white) {
@@ -141,6 +117,10 @@ html:not(.dark) .bg-white label {
 .dark input::placeholder,
 .dark textarea::placeholder {
   color: #94a3b8 !important;
+}
+.dark .custom-pwa-backoffice-content input::placeholder,
+.dark .custom-pwa-backoffice-content textarea::placeholder {
+  color: #94a3b8;
 }
 
 h1, h2, h3, h4 {

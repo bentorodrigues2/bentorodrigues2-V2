@@ -82,7 +82,15 @@ export function PainelControlo({
   // Gráfico inicial dinâmico gerado conforme os saldos vs despesas reais do prédio (a zero se sem movimentos)
   const chartData = useMemo(() => {
     const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-    const baseMeses = meses.slice(0, 7).map((mesNome, index) => ({
+    // Antes ficava sempre fixo em Jan-Jul (7 meses), nunca avançava — em
+    // Outubro continuava a mostrar Julho como último mês, como se o
+    // gráfico estivesse parado no tempo. Mostra agora sempre o ano
+    // completo (Jan-Dez), já que o rótulo ao lado também diz sempre "Ano
+    // {ano atual}" — e passa a filtrar os movimentos também pelo ANO
+    // (antes um movimento de Março de um ano anterior era somado à mesma
+    // posição do gráfico que um de Março deste ano, por só olhar ao mês).
+    const anoAtual = new Date().getFullYear();
+    const baseMeses = meses.map((mesNome, index) => ({
       name: mesNome,
       mesIndex: index,
       Receitas: 0,
@@ -98,10 +106,10 @@ export function PainelControlo({
       const dataRaw = m.data || (m as any).data_movimento;
       if (!dataRaw) return;
       const dataObj = new Date(dataRaw);
-      if (isNaN(dataObj.getTime())) return;
+      if (isNaN(dataObj.getTime()) || dataObj.getFullYear() !== anoAtual) return;
 
       const mesIdx = dataObj.getMonth();
-      if (mesIdx >= 0 && mesIdx < 7) {
+      if (mesIdx >= 0 && mesIdx < 12) {
         const val = Number(m.valor) || 0;
         const tipoNorm = String(m.tipo || "").toUpperCase();
         if (tipoNorm === "RECEITA" || tipoNorm === "ENTRADA" || tipoNorm === "QUOTA") {
