@@ -94,18 +94,40 @@ html:not(.dark) .bg-white label {
   color: #0f172a;
 }
 
+/* A ilha clara está sempre dentro de .pwa-screen, e a regra acima
+   (.dark .custom-pwa-backoffice-content) tem especificidade 2 classes —
+   menor do que ".dark .pwa-screen .text-slate-800" etc. (linhas 62-75,
+   3 classes + !important), que por isso continuava a forçar texto
+   branco em qualquer elemento com estas classes Tailwind explícitas
+   mesmo dentro da ilha clara (texto invisível em cima de fundo claro).
+   Repõe aqui a cor real de cada classe (via as variáveis do tema do
+   Tailwind, para não copiar valores hex à mão) com a mesma
+   especificidade de 3 classes — ganha por vir depois no ficheiro. */
+.dark .custom-pwa-backoffice-content .text-slate-800 { color: var(--color-slate-800) !important; }
+.dark .custom-pwa-backoffice-content .text-slate-900 { color: var(--color-slate-900) !important; }
+.dark .custom-pwa-backoffice-content .text-slate-700 { color: var(--color-slate-700) !important; }
+.dark .custom-pwa-backoffice-content .text-slate-600 { color: var(--color-slate-600) !important; }
+.dark .custom-pwa-backoffice-content .text-slate-500 { color: var(--color-slate-500) !important; }
+.dark .custom-pwa-backoffice-content .text-slate-400 { color: var(--color-slate-400) !important; }
+.dark .custom-pwa-backoffice-content .text-black { color: var(--color-black) !important; }
+.dark .custom-pwa-backoffice-content .text-\[\#333\] { color: #333 !important; }
+.dark .custom-pwa-backoffice-content .text-\[\#555\] { color: #555 !important; }
+
+/* !important necessário aqui: ".custom-pwa-backoffice-content select" e
+   "select:not(.bg-white)" (regra geral abaixo) têm a MESMA especificidade
+   (2 classes + 1 tipo cada, o :not() conta a classe do seu argumento) —
+   sem !important o empate seria resolvido pela ordem no ficheiro, não
+   pela ilha clara, e qualquer select sem a classe literal "bg-white"
+   (ex.: bg-slate-50, bg-emerald-900, ou sem fundo nenhum) continuaria a
+   ficar com fundo escuro dentro do backoffice reaproveitado. */
 .dark .custom-pwa-backoffice-content input:not([type="checkbox"]):not([type="radio"]),
 .dark .custom-pwa-backoffice-content select,
 .dark .custom-pwa-backoffice-content textarea {
-  color: #0f172a;
-  background-color: #ffffff;
-  border-color: #cbd5e1;
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
 }
 
-/* Inputs em modo escuro — a regra mais específica logo acima
-   (.dark .custom-pwa-backoffice-content input, por ter mais classes)
-   já repõe o estilo original dentro da ilha clara do backoffice,
-   independentemente desta regra geral se aplicar aqui também. */
 .dark input:not([type="checkbox"]):not([type="radio"]):not(.bg-white),
 .dark select:not(.bg-white),
 .dark textarea:not(.bg-white) {
