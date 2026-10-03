@@ -59,59 +59,47 @@ html:not(.dark) .bg-white label {
   color: #ffffff;
 }
 
-.dark .pwa-screen .text-slate-800,
-.dark .pwa-screen .text-slate-900,
-.dark .pwa-screen .text-slate-700,
-.dark .pwa-screen .text-slate-600,
-.dark .pwa-screen .text-black,
-.dark .pwa-screen .text-\[\#333\],
-.dark .pwa-screen .text-\[\#555\] {
+/* O :not(...) abaixo exclui qualquer elemento que esteja dentro da
+   "ilha clara" (.custom-pwa-backoffice-content, ver bloco mais abaixo) —
+   :not() com um seletor composto ("X Y") verifica ascendência, suportado
+   nos browsers modernos (Selectors Level 4). Sem isto, tentámos durante
+   algum tempo "ganhar" este forçar-a-branco com uma regra ainda mais
+   específica dentro da ilha clara (ver histórico do ficheiro) — mas essa
+   abordagem também forçava a cor em modais que já têm o seu PRÓPRIO
+   suporte correto a modo escuro (ex.: o modal de confirmação de
+   pagamento em GestaoMovimentos.tsx, com "bg-white dark:bg-slate-900
+   text-slate-800 dark:text-slate-100"), produzindo texto escuro sobre
+   fundo escuro (ilegível) nesses modais. Excluir aqui na origem, em vez
+   de tentar contrariar depois, deixa esses modais usar as suas próprias
+   variantes dark: do Tailwind sem qualquer interferência. */
+.dark .pwa-screen .text-slate-800:not(.custom-pwa-backoffice-content, .custom-pwa-backoffice-content *),
+.dark .pwa-screen .text-slate-900:not(.custom-pwa-backoffice-content, .custom-pwa-backoffice-content *),
+.dark .pwa-screen .text-slate-700:not(.custom-pwa-backoffice-content, .custom-pwa-backoffice-content *),
+.dark .pwa-screen .text-slate-600:not(.custom-pwa-backoffice-content, .custom-pwa-backoffice-content *),
+.dark .pwa-screen .text-black:not(.custom-pwa-backoffice-content, .custom-pwa-backoffice-content *),
+.dark .pwa-screen .text-\[\#333\]:not(.custom-pwa-backoffice-content, .custom-pwa-backoffice-content *),
+.dark .pwa-screen .text-\[\#555\]:not(.custom-pwa-backoffice-content, .custom-pwa-backoffice-content *) {
   color: #ffffff !important;
 }
 
-.dark .pwa-screen .text-slate-500,
-.dark .pwa-screen .text-slate-400 {
+.dark .pwa-screen .text-slate-500:not(.custom-pwa-backoffice-content, .custom-pwa-backoffice-content *),
+.dark .pwa-screen .text-slate-400:not(.custom-pwa-backoffice-content, .custom-pwa-backoffice-content *) {
   color: #e2e8f0 !important;
 }
 
 /* ILHA CLARA — "Menu de Administração Adaptado para PWA" reutiliza
    diretamente os mesmos ecrãs do browser (GestaoMovimentos,
-   GestaoFracoes, GestaoDocumentos, etc.), nenhum desenhado com modo
-   escuro em mente. Cada cartão destes já vem com o seu próprio par
-   fundo+texto explícito e sempre legível por si só no browser
-   (bg-white/text-slate-800, bg-teal-50/text-teal-800,
-   bg-amber-50/text-amber-900, bg-sky-50/text-sky-800, etc. — dezenas de
-   combinações). Uma tentativa anterior de forçar tudo a branco "para
-   alto contraste" tornava texto escuro invisível em cima destes fundos
-   claros, e corrigir cartão a cartão (branco, depois cada tom pastel)
-   nunca acabava — sempre aparecia mais um cartão ilegível. Esta zona
-   fica agora isenta por completo da sobreposição de cor do tema escuro
-   da PWA: as classes Tailwind originais de cada componente voltam a
-   aplicar-se sem reescrita nenhuma, exatamente como já funcionam no
-   browser — nenhuma cor sua é hoje definida por herança, são sempre
-   explícitas por elemento, por isso não precisam de nenhuma ajuda. */
+   GestaoFracoes, GestaoDocumentos, etc.). A maioria dos cartões não tem
+   nenhuma variante dark: (fundo+texto claros fixos, sempre legíveis por
+   si só), mas ALGUMAS partes (ex.: modais de confirmação) têm o seu
+   próprio suporte correto a modo escuro. Como a regra acima já exclui
+   esta zona na origem, não é preciso aqui nenhuma lista de overrides por
+   classe — basta repor um valor por omissão (herdado, facilmente vencido
+   por qualquer classe de cor explícita, dark: ou não) para o texto que
+   não tiver cor própria nenhuma. */
 .dark .custom-pwa-backoffice-content {
   color: #0f172a;
 }
-
-/* A ilha clara está sempre dentro de .pwa-screen, e a regra acima
-   (.dark .custom-pwa-backoffice-content) tem especificidade 2 classes —
-   menor do que ".dark .pwa-screen .text-slate-800" etc. (linhas 62-75,
-   3 classes + !important), que por isso continuava a forçar texto
-   branco em qualquer elemento com estas classes Tailwind explícitas
-   mesmo dentro da ilha clara (texto invisível em cima de fundo claro).
-   Repõe aqui a cor real de cada classe (via as variáveis do tema do
-   Tailwind, para não copiar valores hex à mão) com a mesma
-   especificidade de 3 classes — ganha por vir depois no ficheiro. */
-.dark .custom-pwa-backoffice-content .text-slate-800 { color: var(--color-slate-800) !important; }
-.dark .custom-pwa-backoffice-content .text-slate-900 { color: var(--color-slate-900) !important; }
-.dark .custom-pwa-backoffice-content .text-slate-700 { color: var(--color-slate-700) !important; }
-.dark .custom-pwa-backoffice-content .text-slate-600 { color: var(--color-slate-600) !important; }
-.dark .custom-pwa-backoffice-content .text-slate-500 { color: var(--color-slate-500) !important; }
-.dark .custom-pwa-backoffice-content .text-slate-400 { color: var(--color-slate-400) !important; }
-.dark .custom-pwa-backoffice-content .text-black { color: var(--color-black) !important; }
-.dark .custom-pwa-backoffice-content .text-\[\#333\] { color: #333 !important; }
-.dark .custom-pwa-backoffice-content .text-\[\#555\] { color: #555 !important; }
 
 /* !important necessário aqui: ".custom-pwa-backoffice-content select" e
    "select:not(.bg-white)" (regra geral abaixo) têm a MESMA especificidade

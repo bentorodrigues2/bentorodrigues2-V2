@@ -236,9 +236,9 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
   return (
     <div className="space-y-6 animate-fadeIn" id="contabilidade-interna-module">
       {/* Description header */}
-      <div className="bg-gradient-to-r from-indigo-500/10 to-violet-500/10 p-6 rounded-2xl border border-indigo-500/15">
+      <div className="bg-gradient-to-r from-emerald-500/10 to-violet-500/10 p-6 rounded-2xl border border-emerald-500/15">
         <div className="flex items-start space-x-3.5">
-          <div className="p-3 bg-indigo-600 text-white rounded-xl shadow-md">
+          <div className="p-3 bg-emerald-600 text-white rounded-xl shadow-md">
             <i className="fa-solid fa-calculator text-xl"></i>
           </div>
           <div>
@@ -255,7 +255,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
         <button
           onClick={() => setActiveTabContab("plano")}
           className={`px-4 py-2 text-xs font-bold transition-all border-b-2 cursor-pointer ${
-            activeTabContab === "plano" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-600 hover:text-slate-600"
+            activeTabContab === "plano" ? "border-emerald-600 text-emerald-600" : "border-transparent text-slate-600 hover:text-slate-600"
           }`}
         >
           <i className="fa-solid fa-folder-open mr-1.5"></i> Plano de Contas
@@ -263,7 +263,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
         <button
           onClick={() => setActiveTabContab("reconciliacao")}
           className={`px-4 py-2 text-xs font-bold transition-all border-b-2 cursor-pointer ${
-            activeTabContab === "reconciliacao" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-600 hover:text-slate-600"
+            activeTabContab === "reconciliacao" ? "border-emerald-600 text-emerald-600" : "border-transparent text-slate-600 hover:text-slate-600"
           }`}
         >
           <i className="fa-solid fa-receipt mr-1.5"></i> Reconciliação com Comprovativos
@@ -271,7 +271,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
         <button
           onClick={() => setActiveTabContab("motor_regras")}
           className={`px-4 py-2 text-xs font-bold transition-all border-b-2 cursor-pointer ${
-            activeTabContab === "motor_regras" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-600 hover:text-slate-600"
+            activeTabContab === "motor_regras" ? "border-emerald-600 text-emerald-600" : "border-transparent text-slate-600 hover:text-slate-600"
           }`}
         >
           <i className="fa-solid fa-bolt mr-1.5"></i> Categorização Automática
@@ -293,7 +293,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                     placeholder="Ex: 66"
                     value={novoCodigo}
                     onChange={e => setNovoCodigo(e.target.value)}
-                    className="border border-slate-200 px-3 py-2 text-xs rounded-lg font-mono focus:outline-indigo-500 bg-slate-50/50"
+                    className="border border-slate-200 px-3 py-2 text-xs rounded-lg font-mono focus:outline-emerald-500 bg-slate-50/50"
                   />
                 </div>
                 <div className="col-span-2 flex flex-col">
@@ -303,7 +303,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                     placeholder="Ex: Telecomunicações"
                     value={novoNome}
                     onChange={e => setNovoNome(e.target.value)}
-                    className="border border-slate-200 px-3 py-2 text-xs rounded-lg focus:outline-indigo-500 bg-slate-50/50"
+                    className="border border-slate-200 px-3 py-2 text-xs rounded-lg focus:outline-emerald-500 bg-slate-50/50"
                   />
                 </div>
               </div>
@@ -313,7 +313,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                 <select
                   value={novoTipo}
                   onChange={e => setNovoTipo(e.target.value as any)}
-                  className="border border-slate-200 px-3 py-2 text-xs rounded-lg focus:outline-indigo-500 bg-slate-50/50 cursor-pointer"
+                  className="border border-slate-200 px-3 py-2 text-xs rounded-lg focus:outline-emerald-500 bg-slate-50/50 cursor-pointer"
                 >
                   <option value="GASTO">Classe 6 — Gastos (Custo)</option>
                   <option value="RENDIMENTO">Classe 7 — Rendimentos (Receita)</option>
@@ -329,13 +329,13 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                   rows={2}
                   value={novaDesc}
                   onChange={e => setNovaDesc(e.target.value)}
-                  className="border border-slate-200 p-2 text-xs rounded-lg focus:outline-indigo-500 bg-slate-50/50"
+                  className="border border-slate-200 p-2 text-xs rounded-lg focus:outline-emerald-500 bg-slate-50/50"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-xl text-xs transition-all shadow-sm cursor-pointer"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-xl text-xs transition-all shadow-sm cursor-pointer"
               >
                 <i className="fa-solid fa-plus mr-1.5"></i> Adicionar Conta SNC
               </button>
@@ -360,10 +360,10 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {planoContas.map(c => (
-                <div key={c.codigo} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-start justify-between hover:border-indigo-300 transition-colors">
+                <div key={c.codigo} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-start justify-between hover:border-emerald-300 transition-colors">
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
-                      <span className="font-mono text-xs font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                      <span className="font-mono text-xs font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
                         Conta {c.codigo}
                       </span>
                       <span className={`text-[8px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded border ${
@@ -469,7 +469,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
           <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
             <div className="space-y-1">
               <h4 className="text-xs font-bold text-slate-800 flex items-center">
-                <i className="fa-solid fa-wand-magic-sparkles text-indigo-600 mr-2"></i> Conciliação Bancária & Comprovativos Inteligente
+                <i className="fa-solid fa-wand-magic-sparkles text-emerald-600 mr-2"></i> Conciliação Bancária & Comprovativos Inteligente
               </h4>
               <p className="text-[11px] text-slate-500 leading-relaxed max-w-2xl">
                 O CondoManager AI lê os ficheiros de faturas digitadas e cruza-os com os movimentos bancários reais deste prédio ainda por justificar. Clique em "Iniciar Reconciliação" para emparelhar automaticamente por valor exato — datas diferentes têm de ser confirmadas manualmente.
@@ -477,7 +477,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
             </div>
             <button
               onClick={triggerReconciliacaoAutomatica}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm transition-all flex items-center cursor-pointer shrink-0"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm transition-all flex items-center cursor-pointer shrink-0"
             >
               <i className="fa-solid fa-wand-magic-sparkles mr-2 animate-bounce"></i> Executar Reconciliação Automática
             </button>
@@ -488,7 +488,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 border-b border-slate-100 pb-2 flex justify-between">
                 <span>Movimentos por Justificar</span>
-                <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-mono">{movimentosReconciliacao.length}</span>
+                <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-mono">{movimentosReconciliacao.length}</span>
               </h4>
               <div className="space-y-2">
                 {movimentosReconciliacao.map(m => (
@@ -564,11 +564,11 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                   placeholder="Ex: Pagamento da fatura EDP luz condomínio Junho"
                   value={inputRegraDesc}
                   onChange={e => setInputRegraDesc(e.target.value)}
-                  className="flex-grow border border-slate-200 px-3 py-2 text-xs rounded-lg focus:outline-indigo-500 bg-slate-50/50"
+                  className="flex-grow border border-slate-200 px-3 py-2 text-xs rounded-lg focus:outline-emerald-500 bg-slate-50/50"
                 />
                 <button
                   onClick={testarCategorizacaoAutomatica}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors cursor-pointer"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors cursor-pointer"
                 >
                   Categorizar
                 </button>
@@ -585,7 +585,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                   <p className="text-xs text-emerald-700 font-medium">
                     O CondoManager AI associou o termo à conta contábil:
                   </p>
-                  <div className="font-mono text-xs font-extrabold text-indigo-700 bg-white border border-indigo-100 px-3 py-1.5 rounded-lg inline-block mt-2">
+                  <div className="font-mono text-xs font-extrabold text-emerald-700 bg-white border border-emerald-100 px-3 py-1.5 rounded-lg inline-block mt-2">
                     Conta {sugestaoConta.codigo} — {sugestaoConta.nome} ({sugestaoConta.tipo})
                   </div>
                   <p className="text-[9px] text-slate-600 mt-1 leading-normal">
