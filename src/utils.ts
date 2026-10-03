@@ -3393,7 +3393,25 @@ export function gerarConvocatoriaOficialPDF(
     doc.text(`Expedido em ${predio.localidade || "Portugal"}, aos ${new Date().toLocaleDateString("pt-PT")}`, 15, y + 5);
 
     doc.text("A Administração do Condomínio:", 130, y + 5);
-    doc.line(125, y + 16, 190, y + 16);
+    // Assinatura digital real quando existir (guardada em
+    // predio.patrimonio.assinatura_admin_base64, já usada em recibos/notas
+    // de cobrança/correspondência) — só cai para o traço em branco se não
+    // houver assinatura ou a imagem falhar.
+    {
+      const assinaturaAdminConv = (predio.patrimonio as any)?.assinatura_admin_base64;
+      let assinaturaDesenhada = false;
+      if (assinaturaAdminConv && String(assinaturaAdminConv).startsWith("data:image")) {
+        try {
+          doc.addImage(assinaturaAdminConv, "PNG", 128, y + 5, 45, 11);
+          assinaturaDesenhada = true;
+        } catch (e) {
+          console.warn("Não foi possível incluir a assinatura digital na convocatória:", e);
+        }
+      }
+      if (!assinaturaDesenhada) {
+        doc.line(125, y + 16, 190, y + 16);
+      }
+    }
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.text(`(${administradorNome || "Administrador em Funções"})`, 130, y + 19.5);
@@ -3981,7 +3999,9 @@ export function gerarParticipacaoSinistroPDF(
   seguradoraNome: string = "Fidelidade - Companhia de Seguros, S.A.",
   predioNome: string = "Condomínio Edifício Estrela da Barra",
   predioNif: string = "900 123 456",
-  devolverDoc?: boolean
+  devolverDoc?: boolean,
+  administradorNomeSinistro?: string,
+  assinaturaAdminBase64?: string
 ) {
   try {
     const doc = new jsPDF({
@@ -4092,12 +4112,26 @@ export function gerarParticipacaoSinistroPDF(
     doc.setFontSize(8.5);
     doc.text("Pela Administração do Condomínio,", 14, y);
     y += 10;
-    doc.line(14, y, 85, y);
+    // Assinatura digital real quando fornecida (predio.patrimonio.assinatura_admin_base64),
+    // mesmo padrão já usado em recibos/notas de cobrança/correspondência —
+    // só cai para o traço em branco se não houver assinatura.
+    let assinaturaSinistroDesenhada = false;
+    if (assinaturaAdminBase64 && assinaturaAdminBase64.startsWith("data:image")) {
+      try {
+        doc.addImage(assinaturaAdminBase64, "PNG", 14, y - 9, 45, 11);
+        assinaturaSinistroDesenhada = true;
+      } catch (e) {
+        console.warn("Não foi possível incluir a assinatura digital na participação de sinistro:", e);
+      }
+    }
+    if (!assinaturaSinistroDesenhada) {
+      doc.line(14, y, 85, y);
+    }
     y += 4;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(100, 116, 139);
-    doc.text("José Carlos Guerra • Administrador do Condomínio", 14, y);
+    doc.text(administradorNomeSinistro || "Administrador do Condomínio", 14, y);
 
     // Rodapé
     doc.setFontSize(6.5);
@@ -4443,6 +4477,7 @@ export function gerarCartaRescisaoContratoPDF(params: {
   motivo: string;
   dataEfeito: string;
   administradorNome?: string;
+  assinaturaAdminBase64?: string;
 }, devolverDoc?: boolean) {
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -4507,7 +4542,20 @@ export function gerarCartaRescisaoContratoPDF(params: {
     y += 16;
 
     doc.setDrawColor(160, 172, 190);
-    doc.line(20, y, 120, y);
+    // Assinatura digital real quando fornecida — mesmo padrão já usado em
+    // recibos/notas de cobrança/correspondência/convocatórias.
+    let assinaturaRescisaoDesenhada = false;
+    if (params.assinaturaAdminBase64 && params.assinaturaAdminBase64.startsWith("data:image")) {
+      try {
+        doc.addImage(params.assinaturaAdminBase64, "PNG", 20, y - 9, 45, 11);
+        assinaturaRescisaoDesenhada = true;
+      } catch (e) {
+        console.warn("Não foi possível incluir a assinatura digital na carta de rescisão:", e);
+      }
+    }
+    if (!assinaturaRescisaoDesenhada) {
+      doc.line(20, y, 120, y);
+    }
     y += 4;
     doc.setFontSize(7.5);
     doc.setTextColor(100, 116, 139);

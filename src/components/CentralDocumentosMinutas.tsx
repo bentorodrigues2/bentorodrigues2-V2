@@ -998,7 +998,10 @@ export function CentralDocumentosMinutas({
           "847291039",
           "Fidelidade - Companhia de Seguros, S.A.",
           predio.nome || "Condomínio Edifício Estrela da Barra",
-          predio.nif || "900 123 456"
+          predio.nif || "900 123 456",
+          undefined,
+          loggedUser.nome,
+          predio.patrimonio?.assinatura_admin_base64
         );
         triggerSendReaction("email", "Participação Formal de Sinistro (PDF com Peritagem) descarregada com sucesso!");
       } else if (emailId === "ocorrencia_avaria") {

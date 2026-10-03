@@ -586,7 +586,9 @@ export function GestaoSinistrosSeguros({
           predioNif: predio.nif,
           email: formSinSeguradoraEmail.trim(),
           predio: predio.id_predio,
-          ano: new Date().getFullYear()
+          ano: new Date().getFullYear(),
+          administradorNome: loggedUser.nome,
+          assinaturaAdminBase64: predio.patrimonio?.assinatura_admin_base64
         })
       });
       const resultado = await resp.json();

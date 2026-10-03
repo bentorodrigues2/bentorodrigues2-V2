@@ -823,7 +823,8 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
             dataFimContratual: contrato.data_fim,
             motivo: motivoRescisao.trim(),
             dataEfeito: dataEfeitoRescisao,
-            administradorNome: loggedUser.nome
+            administradorNome: loggedUser.nome,
+            assinaturaAdminBase64: predio.patrimonio?.assinatura_admin_base64
           }
         })
       });

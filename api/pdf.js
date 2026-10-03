@@ -111,7 +111,7 @@ function gerarDocEspecial(tipo, body, logoWhiteLabel) {
 
   if (tipo === "participacao-sinistro") {
     return {
-      doc: gerarParticipacaoSinistroPDF(body.numeroSinistro, body.apoliceNumero, body.seguradoraNome, body.predioNome, body.predioNif, true),
+      doc: gerarParticipacaoSinistroPDF(body.numeroSinistro, body.apoliceNumero, body.seguradoraNome, body.predioNome, body.predioNif, true, body.administradorNome, body.assinaturaAdminBase64),
       nomeFicheiro: `Participacao_Sinistro_${body.numeroSinistro || ""}.pdf`,
       assunto: `Participação Urgente de Sinistro — Apólice n.º ${body.apoliceNumero || ""} — ${body.predioNome || ""}`,
       mensagem: `Vimos por este meio formalizar a participação de sinistro ocorrido nas partes comuns do condomínio. Segue em anexo o auto de vistoria com registo fotográfico para efeitos de marcação de peritagem técnica.`
@@ -138,7 +138,7 @@ function gerarDocEspecial(tipo, body, logoWhiteLabel) {
 
   if (tipo === "rescisao-contrato-fornecedor") {
     return {
-      doc: gerarCartaRescisaoContratoPDF(body.rescisao || {}, true),
+      doc: gerarCartaRescisaoContratoPDF({ ...(body.rescisao || {}), assinaturaAdminBase64: body.rescisao?.assinaturaAdminBase64 || body.assinaturaAdminBase64 }, true),
       nomeFicheiro: `Carta_Rescisao_${(body.rescisao?.fornecedorNome || "fornecedor").replace(/\s+/g, "_")}.pdf`,
       assunto: `Rescisão de Contrato — ${body.rescisao?.servico || "Prestação de Serviços"}`,
       mensagem: `Vimos por este meio comunicar formalmente a rescisão do contrato de prestação de serviços. Segue em anexo a carta com os detalhes e a data de efeito.`
