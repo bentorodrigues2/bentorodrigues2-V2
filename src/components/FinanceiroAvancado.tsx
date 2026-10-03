@@ -164,7 +164,7 @@ export function FinanceiroAvancado({
     });
   }, [predioAvisos, mapaAno, mapaTipo]);
 
-  interface CelulaMapa { valor: number; pago: boolean; idAviso: string }
+  interface CelulaMapa { valor: number; pendente: number; pago: boolean; idAviso: string }
   interface LinhaMapa { fracao: Fracao; meses: (CelulaMapa | null)[]; total: number; nomeExibido: string; periodoExibido?: string; quotaMensal: number | null; quotaMensalIdAviso?: string | null }
 
   // Quota mensal atual de cada fração — não é recalculada por fórmula (isso
@@ -284,24 +284,27 @@ export function FinanceiroAvancado({
       const meses: (CelulaMapa | null)[] = MESES_ABREV.map((_, mIdx) => {
         // Pode haver mais do que um aviso para a mesma fração/mês (ex: um
         // pagamento parcial que divide o aviso original em "Pendente" +
-        // "Pago", ou uma emissão regular a par de um pagamento dividido em
-        // meses). Escolher só UM aviso (como acontecia antes, com find())
-        // perdia por completo o valor do outro — ficava a faltar
-        // exatamente a parte não escolhida no total da linha (confirmado:
-        // explicava um total 91,48€ abaixo do valor real numa fração com
-        // Junho dividido 91,48€ Pendente + 11,36€ Pago). Soma-se agora o
-        // valor de TODOS os avisos do mês, e só se considera o mês "pago"
-        // quando NENHUM deles ainda estiver por liquidar — um mês
-        // parcialmente pago mostra-se como pendente (não paga a dívida
-        // toda), nunca como totalmente pago por engano.
+        // "Pago"). Escolher só UM aviso (como acontecia antes, com find())
+        // perdia por completo o valor do outro. Agora calcula-se sempre o
+        // valor AINDA EM DÍVIDA desse mês (soma só dos avisos não pagos) —
+        // é esse valor, não o valor total emitido, que a coluna "Total" no
+        // fim da linha deve somar (confirmado pelo administrador: a coluna
+        // "Total" representa o que falta pagar, não o que foi emitido).
+        // Um mês totalmente pago mostra o valor pago (a verde, informativo);
+        // um mês com dívida — total ou parcial — mostra sempre o valor que
+        // ainda falta liquidar (a vermelho), nunca escondido atrás de um
+        // simples traço.
         const avisosDoMes = avisosFracao.filter(a => mesReferenciaAviso(a).getMonth() === mIdx);
         if (avisosDoMes.length === 0) return null;
         const valorTotalMes = avisosDoMes.reduce((s, a) => s + (Number(a.valor) || 0), 0);
-        const todosPagos = avisosDoMes.every(a => a.estado === "Pago");
-        const avisoReferencia = avisosDoMes.find(a => a.estado === "Pago") || avisosDoMes[0];
-        return { valor: valorTotalMes, pago: todosPagos, idAviso: avisoReferencia.id_aviso };
+        const valorPendenteMes = avisosDoMes.filter(a => a.estado !== "Pago").reduce((s, a) => s + (Number(a.valor) || 0), 0);
+        const pago = valorPendenteMes <= 0.005;
+        const avisoReferencia = avisosDoMes.find(a => a.estado !== "Pago") || avisosDoMes[0];
+        return { valor: pago ? valorTotalMes : valorPendenteMes, pendente: valorPendenteMes, pago, idAviso: avisoReferencia.id_aviso };
       });
-      const total = meses.reduce((s, c) => s + (c?.valor || 0), 0);
+      // Total da linha = soma do que ainda falta pagar em cada mês (nunca o
+      // bruto emitido) — uma fração totalmente paga soma sempre 0€ aqui.
+      const total = meses.reduce((s, c) => s + (c?.pendente ?? 0), 0);
       const infoQuota = quotaMensalAtualPorFracao[f.id_fracao];
       const quotaMensal = infoQuota?.valor ?? null;
       const quotaMensalIdAviso = infoQuota?.idAviso ?? null;
@@ -365,7 +368,7 @@ export function FinanceiroAvancado({
       l.nomeExibido,
       l.periodoExibido || "—",
       l.quotaMensal !== null ? l.quotaMensal.toFixed(2) : "—",
-      ...l.meses.map(c => c&&c.pago ? `${c.valor.toFixed(2)} (Pago)` : "—"),
+      ...l.meses.map(c => c ? `${c.valor.toFixed(2)} ${c.pago ? "(Pago)" : "(Em dívida)"}` : "—"),
       l.total.toFixed(2)
     ]);
     const nomeTipo = mapaTipo === "extraordinaria" ? "Extraordinarias" : "Ordinarias";
@@ -385,7 +388,7 @@ export function FinanceiroAvancado({
       l.fracao.fracao_nome,
       l.periodoExibido ? `${l.nomeExibido} (${l.periodoExibido})` : l.nomeExibido,
       l.quotaMensal !== null ? l.quotaMensal.toFixed(2) : "—",
-      ...l.meses.map(c => c&&c.pago ? c.valor.toFixed(2) : "—"),
+      ...l.meses.map(c => c ? c.valor.toFixed(2) : "—"),
       l.total.toFixed(2)
     ]);
     const nomeTipo = mapaTipo === "extraordinaria" ? "Extraordinárias" : "Ordinárias";
@@ -2177,7 +2180,7 @@ export function FinanceiroAvancado({
                             </div>
                           ) : (
                             <span className="inline-flex items-center gap-1 justify-end">
-                              {c && c.pago ? `${c.valor.toFixed(2)}€` : "—"}
+                              {c ? `${c.valor.toFixed(2)}€` : "—"}
                               {ehAdminOuGestor && (
                                 <button
                                   type="button"
@@ -2228,7 +2231,7 @@ export function FinanceiroAvancado({
                                 ? "text-emerald-800 dark:text-emerald-300 font-bold bg-emerald-100/80 dark:bg-emerald-900/40"
                                 : "text-red-800 dark:text-red-300 font-bold bg-red-100/80 dark:bg-red-900/40"
                             }`}>
-                              {c&&c.pago ? `${c.valor.toFixed(2)}€` : "—"}
+                              {c ? `${c.valor.toFixed(2)}€` : "—"}
                             </td>
                           ))}
                           <td className="py-2 px-3 text-right font-black text-slate-600 dark:text-slate-300 whitespace-nowrap">{l.total.toFixed(2)}€</td>
