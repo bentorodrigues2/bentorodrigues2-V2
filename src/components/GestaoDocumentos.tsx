@@ -1602,6 +1602,7 @@ export function GestaoDocumentos({
     "Instruções PWA & Desktop",
     "Atas & Convocatórias",
     "Faturas & Recibos",
+    "Extratos Bancários",
     "Seguros & Apólices",
     "Relatórios & Auditorias",
     "Regulamentos & Legal",
@@ -1677,7 +1678,7 @@ export function GestaoDocumentos({
                ["Relatórios de contas"].includes(d.categoria || "");
       }
       if (loggedUser.role === "CONTABILISTA") {
-        return ["Faturas & Recibos", "Financeiro & Orçamental", "Seguros & Apólices"].includes(d.tema || "") ||
+        return ["Faturas & Recibos", "Extratos Bancários", "Financeiro & Orçamental", "Seguros & Apólices"].includes(d.tema || "") ||
                ["Orçamentos", "Reparações", "Relatórios de contas"].includes(d.categoria || "");
       }
 

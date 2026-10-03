@@ -26,6 +26,8 @@ Para CADA documento financeiro distinto encontrado, extrai:
 - iban_credor (IBAN da entidade credora, remove espaços — só em avisos de débito direto; null se não aplicável)
 - referencia_credor (o campo "Referência do credor" tal como aparece; null se não aplicável)
 - numero_adc (o campo "Número da ADC" — identifica o contrato/cliente específico deste débito direto, é o dado mais fiável para saber a que fornecedor/contrato pertence, já que o IBAN do credor costuma ser partilhado por todos os clientes dessa entidade; null se não aplicável)
+- iban_titular_conta (SÓ quando tipo_documento é "extrato": o IBAN da PRÓPRIA conta a que este extrato pertence — normalmente no cabeçalho do extrato, campo "IBAN"/"NIB", não o IBAN de nenhum movimento individual; remove espaços; null nos restantes tipos de documento)
+- nome_banco_titular (SÓ quando tipo_documento é "extrato": o nome do banco emissor do extrato, ex: "ActivoBank", "Banco Santander Totta"; null nos restantes tipos de documento)
 
 Responde em JSON estrito, sem texto à volta, com um ARRAY na base — um
 objeto por documento financeiro distinto encontrado (mesmo que só haja um,

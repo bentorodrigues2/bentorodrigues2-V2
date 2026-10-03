@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 import { supabase } from "./supabaseServer.js";
 import { gerarHtmlAutoresponder, gerarHtmlResposta } from "./htmlemail.js";
 import { classifyEmailCategory, generateCategoryResponse } from "../geminiService.js";
-import { extrairDadosDocumento, arquivarAnexoOriginal } from "./multimodalService.js";
+import { extrairDadosDocumento, arquivarAnexoOriginal, extrairMovimentosExtrato } from "./multimodalService.js";
 import { cruzarMovimentoComFornecedor } from "./fornecedorMatching.js";
 import { escolherContaPorTipo } from "./contaSaldo.js";
 
@@ -367,11 +367,19 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
     // desaparecia por completo, sem nenhum registo em lado nenhum. Se havia
     // mesmo um anexo real (fileHash presente), regista sempre na mesma,
     // para nunca perder silenciosamente um documento que chegou.
+    // "extrato" fica de fora propositadamente — tem o seu próprio fluxo
+    // dedicado (processarExtratoBancarioRecebido, chamado mais acima no
+    // loop de anexos, que já trata do arquivo + reconciliação), e nunca
+    // deve gerar aqui um "Movimento Cego / Por Justificar" fantasma com o
+    // valor_total do classificador genérico (que não é nenhum movimento
+    // real, é só um resumo do documento inteiro).
     const isComprovativo =
-      categoria === "quotas" ||
-      ["comprovativo", "fatura", "recibo", "extrato"].includes(tipoDocumento) ||
-      (dadosExtraidos?.valor_total > 0) ||
-      (!dadosExtraidos && !!fileHash);
+      tipoDocumento !== "extrato" && (
+        categoria === "quotas" ||
+        ["comprovativo", "fatura", "recibo"].includes(tipoDocumento) ||
+        (dadosExtraidos?.valor_total > 0) ||
+        (!dadosExtraidos && !!fileHash)
+      );
 
     if (!isComprovativo) {
       // A IA leu o anexo com sucesso (dadosExtraidos não é null) mas nada
@@ -914,6 +922,183 @@ function htmlParaTexto(html) {
 }
 
 /**
+ * Resolve a que conta/prédio registado pertence um extrato bancário
+ * recebido por email — um extrato não tem "ordenante" nem "fração" (não é
+ * um pagamento de ninguém, é o próprio movimento de conta do condomínio),
+ * por isso não se aplica nenhum dos mecanismos de contexto usados para
+ * comprovativos/faturas (obterContextoPorIban/Referencia/Nome). Cruza
+ * primeiro pelo IBAN do TITULAR da conta (campo novo extraído do
+ * cabeçalho do extrato, ver PROMPT_EXTRACAO em multimodalService.js) —
+ * único e inequívoco — e só recorre ao nome do banco como reserva, e
+ * mesmo assim só quando há exatamente UMA conta registada com esse banco
+ * (nunca escolhe "a sorte" entre várias).
+ */
+async function resolverContaExtrato(ibanTitular, nomeBanco) {
+  try {
+    const { data: todasContas, error } = await supabase
+      .from("contas")
+      .select("id_conta, id_predio, banco, iban");
+    if (error || !Array.isArray(todasContas)) return null;
+
+    const ibanLimpo = limparIban(ibanTitular);
+    if (ibanLimpo) {
+      const match = todasContas.find((c) => limparIban(c.iban) === ibanLimpo);
+      if (match) return { ...match, identificado_por: "iban" };
+    }
+
+    if (nomeBanco) {
+      const nomeBancoNorm = normalizarTexto(nomeBanco);
+      const candidatas = todasContas.filter((c) => {
+        const bancoNorm = normalizarTexto(c.banco);
+        return bancoNorm && nomeBancoNorm && (bancoNorm.includes(nomeBancoNorm) || nomeBancoNorm.includes(bancoNorm));
+      });
+      if (candidatas.length === 1) return { ...candidatas[0], identificado_por: "nome_banco" };
+    }
+
+    return null;
+  } catch (e) {
+    console.warn("[inboundProcessor] Aviso ao resolver conta do extrato:", e?.message || e);
+    return null;
+  }
+}
+
+/** Mesma janela de tolerância já usada do lado do cliente (GestaoMovimentos.tsx, jaLancadoAntes). */
+const JANELA_DUPLICADO_EXTRATO_MS = 10 * 24 * 60 * 60 * 1000;
+
+/**
+ * Verifica se um movimento extraído do extrato já existe lançado nesta
+ * conta — mesmo critério já usado e testado do lado do cliente (tipo +
+ * valor a ±0,05€ + dentro de 10 dias), mas aqui à escala do servidor,
+ * contra a lista de movimentos já lançados nesta conta específica
+ * (nunca cruza contra outras contas/frações — evita o falso positivo de
+ * coincidência de valor entre frações diferentes, já corrigido no
+ * cliente).
+ */
+function movimentoExtratoJaLancado(movExtraido, movimentosExistentes) {
+  const tData = new Date(movExtraido.data).getTime();
+  const valorMov = Number(movExtraido.valor) || 0;
+  return movimentosExistentes.some((mv) => {
+    if (mv.tipo !== movExtraido.tipo || Math.abs(Number(mv.valor) - valorMov) > 0.05) return false;
+    const dm = new Date(mv.data).getTime();
+    return !isNaN(dm) && !isNaN(tData) && Math.abs(dm - tData) <= JANELA_DUPLICADO_EXTRATO_MS;
+  });
+}
+
+/**
+ * Notifica a administração por email sobre um extrato bancário acabado de
+ * reconhecer e arquivar — resume quantos movimentos foram identificados e
+ * quais ainda não estão lançados no sistema, para nunca ficar só "arquivado
+ * em silêncio" sem o administrador saber que há trabalho por fazer.
+ */
+async function notificarAdminExtratoRecebido({ emailDestino, banco, caminhoArquivo, totalMovimentos, emFalta, erroLeitura }) {
+  if (!emailDestino) return;
+  let mensagem;
+  if (erroLeitura) {
+    mensagem = `Foi recebido e arquivado automaticamente um extrato bancário do <strong>${banco}</strong> em Arquivo → Extratos Bancários.<br><br>Não foi possível ler automaticamente os movimentos deste extrato — confirme manualmente se está tudo lançado.`;
+  } else if (emFalta.length === 0) {
+    mensagem = `Foi recebido e arquivado automaticamente um extrato bancário do <strong>${banco}</strong> em Arquivo → Extratos Bancários.<br><br>Foram identificados <strong>${totalMovimentos} movimento(s)</strong> neste extrato — todos já estão lançados no sistema. Nada a fazer.`;
+  } else {
+    const linhas = emFalta
+      .slice(0, 30)
+      .map((m) => `<li>${m.data} — ${m.descricao} — ${m.tipo === "Receita" ? "+" : "-"}${Number(m.valor).toFixed(2)}€</li>`)
+      .join("");
+    mensagem = `Foi recebido e arquivado automaticamente um extrato bancário do <strong>${banco}</strong> em Arquivo → Extratos Bancários.<br><br>Foram identificados <strong>${totalMovimentos} movimento(s)</strong> neste extrato, dos quais <strong>${emFalta.length} ainda não estão lançados</strong> no sistema:<br><ul>${linhas}</ul>${emFalta.length > 30 ? "<p>(lista limitada aos primeiros 30 — confirme os restantes em Finanças → Movimentos.)</p>" : ""}Aceda a Finanças → Movimentos para os validar e lançar.`;
+  }
+
+  try {
+    await enviarEmailResend({
+      to: emailDestino,
+      subject: `Extrato Bancário ${banco}${!erroLeitura && emFalta.length > 0 ? ` — ${emFalta.length} movimento(s) por lançar` : ""}`,
+      html: gerarHtmlResposta("Administração", mensagem)
+    });
+  } catch (e) {
+    console.warn("[inboundProcessor] Aviso ao notificar admin sobre extrato bancário:", e?.message || e);
+  }
+}
+
+/**
+ * Fluxo dedicado para um anexo classificado como "extrato" — nunca passa
+ * por registarComprovativoPendente (não é um pagamento de ninguém) nem por
+ * registarFaturaFornecedor. Resolve a conta/prédio a que pertence, arquiva
+ * o PDF em Extratos Bancários (organizado por ano e banco), extrai os
+ * movimentos reais e avisa a administração do que falta lançar.
+ */
+async function processarExtratoBancarioRecebido({ anexo, dadosExtraidosDoc }) {
+  try {
+    const contaResolvida = await resolverContaExtrato(dadosExtraidosDoc?.iban_titular_conta, dadosExtraidosDoc?.nome_banco_titular);
+    if (!contaResolvida) {
+      console.warn("[inboundProcessor] Extrato bancário recebido mas não foi possível identificar a conta/prédio (IBAN/banco não reconhecidos).");
+      try {
+        await supabase.from("ai_auditoria").insert({
+          origem: "extrato_bancario_sem_conta_identificada",
+          entidade: dadosExtraidosDoc?.nome_banco_titular || null,
+          referencia: dadosExtraidosDoc?.iban_titular_conta || null,
+          raw_json: dadosExtraidosDoc
+        });
+      } catch { /* diagnóstico best-effort */ }
+      return;
+    }
+
+    const { data: predioRow } = await supabase
+      .from("predios")
+      .select("id_predio, nome, email_condominio, email")
+      .eq("id_predio", contaResolvida.id_predio)
+      .maybeSingle();
+    const emailDestino = predioRow?.email_condominio || predioRow?.email;
+    const banco = contaResolvida.banco || dadosExtraidosDoc?.nome_banco_titular || "Banco";
+    const ano = new Date().getFullYear();
+
+    let caminhoArquivo = null;
+    try {
+      caminhoArquivo = await arquivarAnexoOriginal({
+        buffer: anexo.buffer,
+        filename: anexo.filename,
+        mimeType: anexo.mimeType,
+        ano,
+        tema: "Extratos Bancários",
+        tipo: "Extrato Bancário",
+        predio: contaResolvida.id_predio,
+        fracao: null,
+        subPasta: banco,
+        fluxo: "extrato_bancario_email_inbound"
+      });
+    } catch (errArquivo) {
+      console.warn("[inboundProcessor] Aviso ao arquivar extrato bancário:", errArquivo?.message || errArquivo);
+    }
+
+    let movimentosExtraidos = null;
+    try {
+      movimentosExtraidos = await extrairMovimentosExtrato({ anexos: [{ base64: anexo.base64, mimeType: anexo.mimeType }] });
+    } catch (errExtracao) {
+      console.warn("[inboundProcessor] Aviso ao extrair movimentos do extrato:", errExtracao?.message || errExtracao);
+    }
+
+    if (!Array.isArray(movimentosExtraidos) || movimentosExtraidos.length === 0) {
+      await notificarAdminExtratoRecebido({ emailDestino, banco, caminhoArquivo, totalMovimentos: 0, emFalta: [], erroLeitura: true });
+      return;
+    }
+
+    const { data: movimentosExistentes } = await supabase
+      .from("movimentos")
+      .select("tipo, valor, data")
+      .eq("id_predio", contaResolvida.id_predio)
+      .eq("id_conta", contaResolvida.id_conta);
+
+    const emFalta = movimentosExtraidos.filter((m) => !movimentoExtratoJaLancado(m, movimentosExistentes || []));
+
+    await notificarAdminExtratoRecebido({
+      emailDestino,
+      banco,
+      caminhoArquivo,
+      totalMovimentos: movimentosExtraidos.length,
+      emFalta
+    });
+  } catch (e) {
+    console.error("[inboundProcessor] Erro ao processar extrato bancário recebido:", e?.message || e);
+  }
+}
+
+/**
  * Processador Central Inbound de Emails (Resend Webhook & API)
  */
 export async function processInboundEmail(payload) {
@@ -1229,6 +1414,16 @@ export async function processInboundEmail(payload) {
           const isComprovativoDoc = tipoDocLower === "comprovativo";
           const mesDocumento = String(new Date(dadosExtraidosDoc?.data_documento || Date.now()).getMonth() + 1).padStart(2, "0");
 
+          // Um extrato bancário não é um pagamento de ninguém (não tem
+          // "ordenante" nem fração) — segue sempre o seu próprio fluxo
+          // dedicado (arquivo em Extratos Bancários + reconciliação contra
+          // os movimentos já lançados + aviso ao administrador do que
+          // falta), nunca o caminho de fatura/comprovativo abaixo.
+          if (tipoDocLower === "extrato") {
+            await processarExtratoBancarioRecebido({ anexo, dadosExtraidosDoc });
+            continue;
+          }
+
           // Para faturas, cruza já aqui com o fornecedor real (por IBAN → nº
           // ADC/referência de contrato → nome) — usado tanto para nomear a
           // pasta de arquivo como para lançar a dívida a pagar mais abaixo,
@@ -1255,7 +1450,9 @@ export async function processInboundEmail(payload) {
           // depois: Comprovativos de Transferências por ano/mês, Faturas de
           // Fornecedores pelo nome do fornecedor (não pela fração, que não se
           // aplica a uma fatura), Recibos/Extratos como antes.
-          const TIPOS_ARQUIVAVEIS = { fatura: "Fatura de Fornecedor", comprovativo: "Comprovativo de Pagamento", recibo: "Recibo", extrato: "Extrato Bancário" };
+          // "extrato" já saiu do loop mais acima (processarExtratoBancarioRecebido
+          // trata do seu próprio arquivo) — nunca chega aqui.
+          const TIPOS_ARQUIVAVEIS = { fatura: "Fatura de Fornecedor", comprovativo: "Comprovativo de Pagamento", recibo: "Recibo" };
           if (TIPOS_ARQUIVAVEIS[tipoDocLower]) {
             try {
               const caminhoArquivo = await arquivarAnexoOriginal({
