@@ -368,7 +368,7 @@ export function FinanceiroAvancado({
       l.nomeExibido,
       l.periodoExibido || "—",
       l.quotaMensal !== null ? l.quotaMensal.toFixed(2) : "—",
-      ...l.meses.map(c => c ? `${c.valor.toFixed(2)} ${c.pago ? "(Pago)" : "(Em dívida)"}` : "—"),
+      ...l.meses.map(c => c&&c.pago ? `${c.valor.toFixed(2)} (Pago)` : "—"),
       l.total.toFixed(2)
     ]);
     const nomeTipo = mapaTipo === "extraordinaria" ? "Extraordinarias" : "Ordinarias";
@@ -388,7 +388,7 @@ export function FinanceiroAvancado({
       l.fracao.fracao_nome,
       l.periodoExibido ? `${l.nomeExibido} (${l.periodoExibido})` : l.nomeExibido,
       l.quotaMensal !== null ? l.quotaMensal.toFixed(2) : "—",
-      ...l.meses.map(c => c ? c.valor.toFixed(2) : "—"),
+      ...l.meses.map(c => c&&c.pago ? c.valor.toFixed(2) : "—"),
       l.total.toFixed(2)
     ]);
     const nomeTipo = mapaTipo === "extraordinaria" ? "Extraordinárias" : "Ordinárias";
@@ -2180,7 +2180,7 @@ export function FinanceiroAvancado({
                             </div>
                           ) : (
                             <span className="inline-flex items-center gap-1 justify-end">
-                              {c ? `${c.valor.toFixed(2)}€` : "—"}
+                              {c && c.pago ? `${c.valor.toFixed(2)}€` : "—"}
                               {ehAdminOuGestor && (
                                 <button
                                   type="button"
@@ -2231,7 +2231,7 @@ export function FinanceiroAvancado({
                                 ? "text-emerald-800 dark:text-emerald-300 font-bold bg-emerald-100/80 dark:bg-emerald-900/40"
                                 : "text-red-800 dark:text-red-300 font-bold bg-red-100/80 dark:bg-red-900/40"
                             }`}>
-                              {c ? `${c.valor.toFixed(2)}€` : "—"}
+                              {c && c.pago ? `${c.valor.toFixed(2)}€` : "—"}
                             </td>
                           ))}
                           <td className="py-2 px-3 text-right font-black text-slate-600 dark:text-slate-300 whitespace-nowrap">{l.total.toFixed(2)}€</td>
