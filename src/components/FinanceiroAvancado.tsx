@@ -285,22 +285,21 @@ export function FinanceiroAvancado({
         // Pode haver mais do que um aviso para a mesma fração/mês (ex: um
         // pagamento parcial que divide o aviso original em "Pendente" +
         // "Pago"). Escolher só UM aviso (como acontecia antes, com find())
-        // perdia por completo o valor do outro. Agora calcula-se sempre o
-        // valor AINDA EM DÍVIDA desse mês (soma só dos avisos não pagos) —
-        // é esse valor, não o valor total emitido, que a coluna "Total" no
-        // fim da linha deve somar (confirmado pelo administrador: a coluna
-        // "Total" representa o que falta pagar, não o que foi emitido).
-        // Um mês totalmente pago mostra o valor pago (a verde, informativo);
-        // um mês com dívida — total ou parcial — mostra sempre o valor que
-        // ainda falta liquidar (a vermelho), nunca escondido atrás de um
-        // simples traço.
+        // perdia por completo o valor do outro. A célula mostra sempre o
+        // valor JÁ PAGO desse mês (mesmo que seja só uma parte — ex.: 11,36€
+        // de 102,84€), para nunca esconder um pagamento parcial atrás de um
+        // simples traço; um mês sem nenhum pagamento continua a mostrar "—".
+        // A cor (verde/vermelho) reflete se o mês está totalmente liquidado.
+        // A coluna "Total" no fim da linha soma antes o que AINDA FALTA
+        // pagar em cada mês (confirmado pelo administrador), nunca o bruto
+        // emitido nem o já pago.
         const avisosDoMes = avisosFracao.filter(a => mesReferenciaAviso(a).getMonth() === mIdx);
         if (avisosDoMes.length === 0) return null;
-        const valorTotalMes = avisosDoMes.reduce((s, a) => s + (Number(a.valor) || 0), 0);
+        const valorPagoMes = avisosDoMes.filter(a => a.estado === "Pago").reduce((s, a) => s + (Number(a.valor) || 0), 0);
         const valorPendenteMes = avisosDoMes.filter(a => a.estado !== "Pago").reduce((s, a) => s + (Number(a.valor) || 0), 0);
         const pago = valorPendenteMes <= 0.005;
         const avisoReferencia = avisosDoMes.find(a => a.estado !== "Pago") || avisosDoMes[0];
-        return { valor: pago ? valorTotalMes : valorPendenteMes, pendente: valorPendenteMes, pago, idAviso: avisoReferencia.id_aviso };
+        return { valor: valorPagoMes, pendente: valorPendenteMes, pago, idAviso: avisoReferencia.id_aviso };
       });
       // Total da linha = soma do que ainda falta pagar em cada mês (nunca o
       // bruto emitido) — uma fração totalmente paga soma sempre 0€ aqui.
@@ -368,7 +367,7 @@ export function FinanceiroAvancado({
       l.nomeExibido,
       l.periodoExibido || "—",
       l.quotaMensal !== null ? l.quotaMensal.toFixed(2) : "—",
-      ...l.meses.map(c => c&&c.pago ? `${c.valor.toFixed(2)} (Pago)` : "—"),
+      ...l.meses.map(c => c && c.valor > 0 ? `${c.valor.toFixed(2)} ${c.pago ? "(Pago)" : "(Pago parcial)"}` : "—"),
       l.total.toFixed(2)
     ]);
     const nomeTipo = mapaTipo === "extraordinaria" ? "Extraordinarias" : "Ordinarias";
@@ -388,7 +387,7 @@ export function FinanceiroAvancado({
       l.fracao.fracao_nome,
       l.periodoExibido ? `${l.nomeExibido} (${l.periodoExibido})` : l.nomeExibido,
       l.quotaMensal !== null ? l.quotaMensal.toFixed(2) : "—",
-      ...l.meses.map(c => c&&c.pago ? c.valor.toFixed(2) : "—"),
+      ...l.meses.map(c => c && c.valor > 0 ? c.valor.toFixed(2) : "—"),
       l.total.toFixed(2)
     ]);
     const nomeTipo = mapaTipo === "extraordinaria" ? "Extraordinárias" : "Ordinárias";
@@ -2180,7 +2179,7 @@ export function FinanceiroAvancado({
                             </div>
                           ) : (
                             <span className="inline-flex items-center gap-1 justify-end">
-                              {c && c.pago ? `${c.valor.toFixed(2)}€` : "—"}
+                              {c && c.valor > 0 ? `${c.valor.toFixed(2)}€` : "—"}
                               {ehAdminOuGestor && (
                                 <button
                                   type="button"
@@ -2231,7 +2230,7 @@ export function FinanceiroAvancado({
                                 ? "text-emerald-800 dark:text-emerald-300 font-bold bg-emerald-100/80 dark:bg-emerald-900/40"
                                 : "text-red-800 dark:text-red-300 font-bold bg-red-100/80 dark:bg-red-900/40"
                             }`}>
-                              {c && c.pago ? `${c.valor.toFixed(2)}€` : "—"}
+                              {c && c.valor > 0 ? `${c.valor.toFixed(2)}€` : "—"}
                             </td>
                           ))}
                           <td className="py-2 px-3 text-right font-black text-slate-600 dark:text-slate-300 whitespace-nowrap">{l.total.toFixed(2)}€</td>
