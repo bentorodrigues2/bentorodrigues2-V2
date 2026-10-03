@@ -242,7 +242,12 @@ export function DashboardKPIs({
 
   // 5. CHARTS DATA PREPARATION
   // Chart A: Monthly Cashflow (Gerado estritamente a partir dos movimentos reais do prédio, iniciando a zero)
-  const mesesCurto = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul"];
+  // Antes ficava sempre fixo em Jan-Jul (7 meses) e com "26" escrito à mão
+  // no rótulo, nunca avançava com o calendário nem filtrava por ano — um
+  // movimento de qualquer ano anterior no mesmo mês era somado aqui também.
+  // Mostra agora sempre o ano civil completo (Jan-Dez) do ano corrente.
+  const anoAtualCashflow = new Date().getFullYear();
+  const mesesCurto = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
   const monthlyCashflowData = mesesCurto.map((mes, idx) => {
     let rec = 0;
     let desp = 0;
@@ -250,14 +255,14 @@ export function DashboardKPIs({
       const dataRaw = m.data || (m as any).data_movimento;
       if (!dataRaw) return;
       const d = new Date(dataRaw);
-      if (!isNaN(d.getTime()) && d.getMonth() === idx) {
+      if (!isNaN(d.getTime()) && d.getMonth() === idx && d.getFullYear() === anoAtualCashflow) {
         const val = Number(m.valor) || 0;
         const tipo = String(m.tipo || "").toUpperCase();
         if (tipo === "RECEITA" || tipo === "ENTRADA" || tipo === "QUOTA") rec += val;
         else if (tipo === "DESPESA" || tipo === "SAIDA") desp += val;
       }
     });
-    return { name: `${mes} 26`, Receitas: rec, Despesas: desp };
+    return { name: `${mes} ${String(anoAtualCashflow).slice(-2)}`, Receitas: rec, Despesas: desp };
   });
 
   // Chart B: Expenses Breakdown by Category (aggregated dynamically from movements, zero when empty)
