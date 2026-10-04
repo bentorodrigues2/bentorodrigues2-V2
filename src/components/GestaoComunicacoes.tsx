@@ -199,9 +199,10 @@ export function GestaoComunicacoes({
       const resumoPush = await enviarPushComDiagnostico({
         id_predio: predio.id_predio,
         title: comunicadoUrgencia === "urgente" ? `🚨 ${novoComunicado.titulo}` : novoComunicado.titulo,
-        body: novoComunicado.mensagem,
-        // Comunicados urgentes saem sempre; os normais respeitam a preferência "Comunicados Gerais"
-        categoria: comunicadoUrgencia === "urgente" ? undefined : "optional_general"
+        body: novoComunicado.mensagem
+        // Comunicados são sempre enviados (categoria obrigatória, já não
+        // respeitam a antiga preferência "Comunicados Gerais, Sondagens e
+        // Questionários", removida do checklist de notificações).
       });
 
       alert(`Comunicado enviado com sucesso a ${data.total_enviados} de ${data.total_destinatarios} destinatário(s)!\n\n${resumoPush}`);
@@ -600,8 +601,8 @@ export function GestaoComunicacoes({
       const resumoPushSondagem = await enviarPushComDiagnostico({
         id_predio: predio.id_predio,
         title: "🗳️ Nova Sondagem",
-        body: sondagemPergunta,
-        categoria: "optional_general"
+        body: sondagemPergunta
+        // Sondagens são sempre enviadas (categoria obrigatória).
       });
 
       if (destinatariosPredio.length > 0) {
@@ -683,8 +684,8 @@ export function GestaoComunicacoes({
       const resumoPushQuest = await enviarPushComDiagnostico({
         id_predio: predio.id_predio,
         title: "📋 Novo Questionário",
-        body: questTitulo,
-        categoria: "optional_general"
+        body: questTitulo
+        // Questionários são sempre enviados (categoria obrigatória).
       });
 
       if (destinatariosPredio.length > 0) {

@@ -597,7 +597,7 @@ export default function PWACondominoView({
     loadUserPreferences(loggedUser.email).then(setNotifPrefs);
   }, [loggedUser?.email]);
 
-  const handleTogglePref = async (categoria: "optional_finances" | "optional_reservations" | "optional_cleaning" | "optional_general") => {
+  const handleTogglePref = async (categoria: "optional_finances" | "optional_reservations" | "optional_cleaning") => {
     if (!notifPrefs || guardandoPref) return;
     setGuardandoPref(categoria);
     const atualizado = { ...notifPrefs, [categoria]: !notifPrefs[categoria] };
@@ -3461,8 +3461,7 @@ export default function PWACondominoView({
                       {([
                         { key: "optional_finances", label: "Financeiro" },
                         { key: "optional_reservations", label: "Reservas" },
-                        { key: "optional_cleaning", label: "Limpezas" },
-                        { key: "optional_general", label: "Comunicados Gerais, Sondagens e Questionários" }
+                        { key: "optional_cleaning", label: "Limpezas" }
                       ] as const).map(cat => (
                         <label key={cat.key} className="flex items-center justify-between gap-2 cursor-pointer">
                           <span className="text-[11px] text-slate-700 dark:text-slate-300 font-medium">{cat.label}</span>
@@ -3475,7 +3474,7 @@ export default function PWACondominoView({
                           />
                         </label>
                       ))}
-                      <p className="text-[9px] text-slate-600 pt-1">As notificações de ocorrências, documentos e assembleias são sempre enviadas.</p>
+                      <p className="text-[9px] text-slate-600 pt-1">As notificações de ocorrências, documentos, assembleias, comunicados, sondagens e questionários são sempre enviadas.</p>
                     </div>
                   )}
                 </div>

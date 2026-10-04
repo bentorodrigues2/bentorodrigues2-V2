@@ -1129,7 +1129,7 @@ export function PWASimulator({
       const resp = await fetch("/api/admin?acao=enviar-push", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_predio: predio.id_predio, title: tituloEnviado, body: descEnviada, categoria: "optional_general" })
+        body: JSON.stringify({ id_predio: predio.id_predio, title: tituloEnviado, body: descEnviada })
       });
       const resultado = await resp.json();
       if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar a notificação push");

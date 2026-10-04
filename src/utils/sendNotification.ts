@@ -1,13 +1,12 @@
 import { loadUserPreferences } from './loadUserPreferences';
 
-export type NotificationCategory = 
+export type NotificationCategory =
   | 'critical_occurrences'
   | 'critical_documents'
   | 'critical_assemblies'
   | 'optional_finances'
   | 'optional_reservations'
-  | 'optional_cleaning'
-  | 'optional_general';
+  | 'optional_cleaning';
 
 export interface SendNotificationPayload {
   user_id: string;

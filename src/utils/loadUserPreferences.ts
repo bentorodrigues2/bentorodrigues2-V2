@@ -3,10 +3,12 @@ export interface NotificationPreferences {
   critical_occurrences: boolean;
   critical_documents: boolean;
   critical_assemblies: boolean;
+  // Comunicados, sondagens e questionários passaram de categoria opcional
+  // ("optional_general") a obrigatória — já não têm preferência própria,
+  // são sempre enviados tal como as críticas acima.
   optional_finances: boolean;
   optional_reservations: boolean;
   optional_cleaning: boolean;
-  optional_general: boolean;
   updated_at: string;
 }
 
@@ -19,7 +21,6 @@ export function getDefaultNotificationPreferences(userId: string = 'user-default
     optional_finances: false,
     optional_reservations: false,
     optional_cleaning: false,
-    optional_general: false,
     updated_at: new Date().toISOString()
   };
 }
