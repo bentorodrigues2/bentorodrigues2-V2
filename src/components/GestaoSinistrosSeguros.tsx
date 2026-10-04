@@ -305,39 +305,49 @@ export function GestaoSinistrosSeguros({
         throw new Error(resultado?.error || "A IA não conseguiu ler este documento.");
       }
       const dados = resultado.dados || {};
+      // A fatura raramente menciona o capital seguro (só a apólice tem
+      // isso) — devolver 0/vazio da IA e gravar esse 0 por cima do valor
+      // já existente apagava silenciosamente o capital sempre que se lia
+      // uma fatura nova. Cada campo só atualiza o formulário quando a IA
+      // encontrou mesmo alguma coisa; caso contrário mantém o que já lá
+      // estava.
       const resultadoIA = {
         seguradora: dados.seguradora || "",
         apolice_numero: dados.apolice_numero || "",
         apolice_validade: dados.apolice_validade || "",
-        tipo_cobertura: dados.tipo_cobertura || "Incêndio e Multirriscos",
+        tipo_cobertura: dados.tipo_cobertura || "",
         capital_seguro: Number(dados.capital_seguro) || 0,
         franquia: Number(dados.franquia) || 0,
         resumo: dados.resumo || ""
       };
 
       const documentoUrl = `data:${file.type || "application/pdf"};base64,${base64}`;
-      const novoAnexo: DocumentoSeguroAnexo = { nome: file.name, url: documentoUrl, tipo: "Apólice", data_upload: new Date().toISOString().slice(0, 10) };
+      // Pedido do administrador: é a FATURA que entra por leitura de IA
+      // (para atualizar seguradora/validade a cada renovação); a APÓLICE
+      // em si (com a discriminação das coberturas) é anexada à parte, sem
+      // OCR — ver handleAnexarDocumentoExtra.
+      const novoAnexo: DocumentoSeguroAnexo = { nome: file.name, url: documentoUrl, tipo: "Fatura de Renovação", data_upload: new Date().toISOString().slice(0, 10) };
 
       if (!isPartesComuns) {
-        setFormSeguradora(resultadoIA.seguradora);
-        setFormApoliceNum(resultadoIA.apolice_numero);
-        setFormValidade(resultadoIA.apolice_validade);
-        setFormTipoCobertura(resultadoIA.tipo_cobertura);
-        setFormCapitalSeguro(String(resultadoIA.capital_seguro));
+        if (resultadoIA.seguradora) setFormSeguradora(resultadoIA.seguradora);
+        if (resultadoIA.apolice_numero) setFormApoliceNum(resultadoIA.apolice_numero);
+        if (resultadoIA.apolice_validade) setFormValidade(resultadoIA.apolice_validade);
+        if (resultadoIA.tipo_cobertura) setFormTipoCobertura(resultadoIA.tipo_cobertura);
+        if (resultadoIA.capital_seguro > 0) setFormCapitalSeguro(String(resultadoIA.capital_seguro));
         setFormEstadoValidacao("Valido");
         setFormDocumentoNome(file.name);
         setFormDocumentoUrl(documentoUrl);
         setFormDocumentosAnexos(prev => [...prev, novoAnexo]);
         setIaExtractSuccess(`✓ IA extraiu com sucesso: ${resultadoIA.seguradora || "(seguradora não identificada)"} • Apólice ${resultadoIA.apolice_numero || "N/D"} (Validade: ${resultadoIA.apolice_validade || "N/D"}). Confirme os dados antes de gravar.`);
       } else {
-        setFormPCCompanhia(resultadoIA.seguradora);
-        setFormPCApoliceNum(resultadoIA.apolice_numero);
-        setFormPCValidade(resultadoIA.apolice_validade);
-        setFormPCCapitalEdificio(String(resultadoIA.capital_seguro));
-        setFormPCFranquia(String(resultadoIA.franquia));
+        if (resultadoIA.seguradora) setFormPCCompanhia(resultadoIA.seguradora);
+        if (resultadoIA.apolice_numero) setFormPCApoliceNum(resultadoIA.apolice_numero);
+        if (resultadoIA.apolice_validade) setFormPCValidade(resultadoIA.apolice_validade);
+        if (resultadoIA.capital_seguro > 0) setFormPCCapitalEdificio(String(resultadoIA.capital_seguro));
+        if (resultadoIA.franquia > 0) setFormPCFranquia(String(resultadoIA.franquia));
         setFormPCDocumentoNome(file.name);
         setFormPCDocumentosAnexos(prev => [...prev, novoAnexo]);
-        setIaExtractSuccess(`✓ IA extraiu dados da apólice do edifício: ${resultadoIA.seguradora || "(seguradora não identificada)"} • Apólice ${resultadoIA.apolice_numero || "N/D"}. Confirme os dados antes de gravar.`);
+        setIaExtractSuccess(`✓ IA extraiu dados da fatura do edifício: ${resultadoIA.seguradora || "(seguradora não identificada)"} • Apólice ${resultadoIA.apolice_numero || "N/D"}. Confirme os dados antes de gravar.`);
       }
     } catch (err: any) {
       console.error("Erro no processamento OCR com IA:", err);
@@ -1320,7 +1330,7 @@ export function GestaoSinistrosSeguros({
                 </div>
 
                 <p className="text-[11px] text-emerald-900/80 dark:text-emerald-300/80 leading-relaxed">
-                  Carregue a apólice ou recibo da fração (PDF, PNG ou JPG). A IA analisa o cabeçalho, deteta a seguradora, número de apólice e datas de validade para preenchimento imediato.
+                  Carregue a fatura/recibo de renovação da fração (PDF, PNG ou JPG). A IA analisa o cabeçalho, deteta a seguradora, número de apólice e datas de validade para preenchimento imediato — a apólice em si (com as coberturas) anexa-se em baixo, sem OCR.
                 </p>
 
                 <input
@@ -1350,7 +1360,7 @@ export function GestaoSinistrosSeguros({
                     ) : (
                       <>
                         <UploadCloud className="h-4 w-4" />
-                        <span>Selecionar PDF / Foto da Apólice</span>
+                        <span>Selecionar PDF / Foto da Fatura</span>
                       </>
                     )}
                   </button>
@@ -1405,7 +1415,7 @@ export function GestaoSinistrosSeguros({
                   ref={fileInputExtraRef}
                   onChange={(e) => {
                     if (e.target.files && e.target.files[0]) {
-                      handleAnexarDocumentoExtra(e.target.files[0], "Fatura de Renovação", false);
+                      handleAnexarDocumentoExtra(e.target.files[0], "Apólice", false);
                       e.target.value = "";
                     }
                   }}
@@ -1417,7 +1427,7 @@ export function GestaoSinistrosSeguros({
                   onClick={() => fileInputExtraRef.current?.click()}
                   className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer flex items-center gap-1"
                 >
-                  <Plus className="h-3 w-3" /> Anexar fatura de renovação (sem substituir a apólice)
+                  <Plus className="h-3 w-3" /> Anexar apólice (discriminação das coberturas, sem OCR)
                 </button>
               </div>
 
@@ -1624,7 +1634,7 @@ export function GestaoSinistrosSeguros({
                     onClick={() => fileInputPCRef.current?.click()}
                     className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl cursor-pointer flex items-center justify-center gap-2"
                   >
-                    {isExtractingIA ? "A extrair dados com IA..." : "Carregar Apólice do Edifício (PDF/Imagem)"}
+                    {isExtractingIA ? "A extrair dados com IA..." : "Carregar Fatura do Edifício (PDF/Imagem)"}
                   </button>
                   {formPCDocumentoNome && (
                     <span className="text-[11px] font-mono text-slate-500">📎 {formPCDocumentoNome}</span>
@@ -1672,7 +1682,7 @@ export function GestaoSinistrosSeguros({
                   ref={fileInputExtraPCRef}
                   onChange={(e) => {
                     if (e.target.files && e.target.files[0]) {
-                      handleAnexarDocumentoExtra(e.target.files[0], "Fatura de Renovação", true);
+                      handleAnexarDocumentoExtra(e.target.files[0], "Apólice", true);
                       e.target.value = "";
                     }
                   }}
@@ -1684,7 +1694,7 @@ export function GestaoSinistrosSeguros({
                   onClick={() => fileInputExtraPCRef.current?.click()}
                   className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer flex items-center gap-1"
                 >
-                  <Plus className="h-3 w-3" /> Anexar fatura de renovação (sem substituir a apólice)
+                  <Plus className="h-3 w-3" /> Anexar apólice (discriminação das coberturas, sem OCR)
                 </button>
               </div>
 
