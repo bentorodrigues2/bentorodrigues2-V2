@@ -25,6 +25,23 @@ import {
 import { triggerSendReaction } from "./SendingReactionModal";
 import { fetchPlanoManutencaoFromSupabase, savePlanoManutencaoItemToSupabase, deletePlanoManutencaoItemFromSupabase, registarLogAuditoria } from "../lib/supabaseService";
 
+// A base legal de cada tipo de inspeção obrigatória é fixa (legislação
+// nacional, não varia de prédio para prédio) — o administrador não tem de
+// saber de cor o diploma aplicável, o sistema preenche-o sozinho ao
+// escolher o tipo. Referências normalmente citadas em Portugal para cada
+// categoria; o campo mantém-se sempre editável para o administrador
+// confirmar/ajustar com o seu técnico/segurador se necessário.
+const BASE_LEGAL_POR_TIPO: Record<TipoInspecaoObrigatoria, string> = {
+  ELEVADORES_DGEG: "Decreto-Lei n.º 320/2002, de 28 de dezembro (alterado pelo DL n.º 50/2005)",
+  LIMPEZA_CHAMINES_CONDUTAS: "Decreto-Lei n.º 220/2008 (SCIE) e regulamento municipal aplicável",
+  RECARGA_EXTINTORES: "Portaria n.º 1532/2008 (Regulamento Técnico SCIE) e NP 4413",
+  INSPECAO_REDE_GAS: "Decreto-Lei n.º 97/2017, de 10 de agosto",
+  LIMPEZA_CISTERNA_BOMBAS: "Decreto-Lei n.º 306/2007 (qualidade da água para consumo humano)",
+  SISTEMA_SOLAR_TERMICO: "Decreto-Lei n.º 118/2013 (Sistema de Certificação Energética dos Edifícios)",
+  PORTAO_GARAGEM_AUTOMATICO: "Decreto-Lei n.º 50/2005 (segurança de máquinas e equipamentos automáticos)",
+  COLUNA_SECA_INCENDIO: "Decreto-Lei n.º 220/2008 e Portaria n.º 1532/2008 (SCIE)"
+};
+
 interface AgendaManutencaoProps {
   predio: Predio;
   loggedUser: LoggedUser;
@@ -71,7 +88,7 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
     setNovoItemTipo("ELEVADORES_DGEG");
     setNovoItemEntidade("");
     setNovoItemPeriodicidade("12");
-    setNovoItemBaseLegal("");
+    setNovoItemBaseLegal(BASE_LEGAL_POR_TIPO.ELEVADORES_DGEG);
     setNovoItemUltimaData(new Date().toISOString().split("T")[0]);
     setNovoItemProximaData("");
     setShowNovoItemModal(true);
@@ -83,7 +100,10 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
     setNovoItemTipo(item.tipo);
     setNovoItemEntidade(item.entidade_responsavel);
     setNovoItemPeriodicidade(String(item.periodicidade_meses));
-    setNovoItemBaseLegal(item.base_legal_dgeg);
+    // Itens criados antes deste preenchimento automático existir podem ter
+    // o campo vazio — preenche com a referência padrão do tipo em vez de
+    // deixar vazio, tal como aconteceria se o tipo fosse escolhido agora.
+    setNovoItemBaseLegal(item.base_legal_dgeg?.trim() || BASE_LEGAL_POR_TIPO[item.tipo] || "");
     setNovoItemUltimaData(item.ultima_inspecao_data);
     setNovoItemProximaData(item.proxima_inspecao_data);
     setShowNovoItemModal(true);
@@ -726,7 +746,16 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
                   <label className="font-bold text-slate-700 dark:text-slate-300">Tipo de Inspeção</label>
                   <select
                     value={novoItemTipo}
-                    onChange={e => setNovoItemTipo(e.target.value as TipoInspecaoObrigatoria)}
+                    onChange={e => {
+                      const novoTipo = e.target.value as TipoInspecaoObrigatoria;
+                      setNovoItemTipo(novoTipo);
+                      // Só preenche sozinho quando o campo está vazio — nunca
+                      // substitui um texto que o administrador já tenha
+                      // escrito/ajustado à mão.
+                      if (!novoItemBaseLegal.trim()) {
+                        setNovoItemBaseLegal(BASE_LEGAL_POR_TIPO[novoTipo]);
+                      }
+                    }}
                     className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:border-emerald-500"
                   >
                     <option value="ELEVADORES_DGEG">Elevadores (DGEG)</option>
