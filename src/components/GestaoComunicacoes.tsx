@@ -17,6 +17,7 @@ import {
   fetchQuestionariosFromSupabase,
   saveQuestionarioToSupabase
 } from "../lib/supabaseService";
+import { playNotificationTone } from "../lib/soundService";
 
 // Dispara uma notificação push real e devolve sempre um resumo legível do
 // que aconteceu (quantas chegaram, quantas falharam, ou o erro do
@@ -321,7 +322,13 @@ export function GestaoComunicacoes({
 
   useEffect(() => { carregarConversas(); }, [carregarConversas]);
 
-  // Realtime: novas conversas / atualizações à lista da inbox
+  // Realtime: novas conversas / atualizações à lista da inbox — antes só
+  // recarregava a lista em silêncio, sem nenhum som nem notificação local
+  // para o administrador (ao contrário do condómino, que já tinha isto do
+  // seu lado). "pendente" só é posto pelo lado do condómino (ver
+  // handleEnviarMensagemReal em PWACondominoView.tsx/PortalCondomino.tsx) —
+  // a própria administração passou a usar "arquivada" ao iniciar/responder
+  // — por isso é um sinal seguro de "o condómino acabou de escrever".
   useEffect(() => {
     if (!isSupabaseConfigured() || !predio?.id_predio) return;
     const canal = supabase
@@ -329,7 +336,20 @@ export function GestaoComunicacoes({
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "conversas", filter: `id_predio=eq.${predio.id_predio}` },
-        () => { carregarConversas(); }
+        (payload: any) => {
+          carregarConversas();
+          if (payload?.new?.estado === "pendente") {
+            playNotificationTone();
+            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+              try {
+                new Notification("Nova mensagem de um condómino", {
+                  body: payload.new.proprietario_nome ? `${payload.new.proprietario_nome} enviou uma mensagem.` : "Tem uma nova mensagem na caixa de entrada.",
+                  icon: "/marca/10-icone-negativo.png"
+                });
+              } catch {}
+            }
+          }
+        }
       )
       .subscribe();
     return () => { supabase.removeChannel(canal); };
