@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { supabase } from "./supabaseServer.js";
 import { gerarHtmlAutoresponder, gerarHtmlResposta } from "./htmlemail.js";
 import { classifyEmailCategory, generateCategoryResponse } from "../geminiService.js";
@@ -1265,6 +1265,88 @@ async function processarExtratoBancarioRecebido({ anexo, dadosExtraidosDoc }) {
 }
 
 /**
+ * Uma fatura/débito direto de uma seguradora (ex: Fidelidade) chegada por
+ * email de um condómino (comprovativo do seu seguro de incêndio obrigatório
+ * da fração, não uma despesa do condomínio) estava a cair no mesmo fluxo
+ * das faturas de fornecedores do condomínio — virava sempre "Movimento
+ * Cego / Por Justificar" do tipo Despesa, uma despesa fantasma do
+ * condomínio que o administrador eliminava manualmente e via reaparecer a
+ * cada nova fatura/renovação da seguradora. Confirmado em produção: 3
+ * documentos reais da Fidelidade (categoria_contabilistica "Seguros")
+ * entraram por este caminho errado.
+ *
+ * Distingue-se com um sinal fiável que a extração geral já devolve
+ * sempre: categoria_contabilistica a conter "seguro". Quando além disso o
+ * email tem um contexto de fração resolvido (chegou da conta registada de
+ * um condómino), arquiva o documento e anexa-o ao seguro de incêndio
+ * dessa fração em vez de o lançar como despesa — cria um registo de
+ * seguro "Pendente" se ainda não existir nenhum, para o administrador o
+ * completar/validar em Seguros & Sinistros, sem nunca o perder.
+ */
+async function processarSeguroFracaoRecebido({ anexo, dadosExtraidosDoc, contexto }) {
+  try {
+    const caminhoArquivo = await arquivarAnexoOriginal({
+      buffer: anexo.buffer,
+      filename: anexo.filename,
+      mimeType: anexo.mimeType,
+      ano: new Date().getFullYear(),
+      tema: "Seguros & Apólices",
+      tipo: "Seguro de Fração",
+      predio: contexto.id_predio,
+      fracao: contexto.fracao,
+      fluxo: "seguro_fracao_email_inbound"
+    });
+
+    const documentoUrl = `data:${anexo.mimeType || "application/pdf"};base64,${anexo.base64}`;
+    const novoAnexo = {
+      nome: anexo.filename,
+      url: documentoUrl,
+      tipo: "Fatura de Renovação",
+      data_upload: new Date().toISOString().slice(0, 10)
+    };
+
+    const { data: seguroExistente } = await supabase
+      .from("seguros_fracoes")
+      .select("id, documentos_anexos")
+      .eq("fracao_id", contexto.id_fracao)
+      .maybeSingle();
+
+    if (seguroExistente) {
+      const listaAtual = Array.isArray(seguroExistente.documentos_anexos) ? seguroExistente.documentos_anexos : [];
+      await supabase
+        .from("seguros_fracoes")
+        .update({ documentos_anexos: [...listaAtual, novoAnexo], documento_url: documentoUrl, atualizado_em: new Date().toISOString() })
+        .eq("id", seguroExistente.id);
+    } else {
+      await supabase.from("seguros_fracoes").insert({
+        id: randomUUID(),
+        fracao_id: contexto.id_fracao,
+        seguradora: dadosExtraidosDoc?.entidade || "A confirmar",
+        apolice_numero: dadosExtraidosDoc?.referencia || "",
+        apolice_validade: null,
+        documento_url: documentoUrl,
+        documentos_anexos: [novoAnexo],
+        estado_validacao: "Pendente"
+      });
+    }
+
+    console.log(`[inboundProcessor] Documento de seguro da fração ${contexto.fracao} arquivado e anexado (${dadosExtraidosDoc?.entidade || "seguradora não identificada"}).`);
+    try {
+      await supabase.from("ai_auditoria").insert({
+        origem: "seguro_fracao_email_inbound",
+        entidade: dadosExtraidosDoc?.entidade || null,
+        referencia: dadosExtraidosDoc?.referencia || null,
+        valor: dadosExtraidosDoc?.valor_total || null,
+        id_predio: contexto.id_predio,
+        raw_json: dadosExtraidosDoc
+      });
+    } catch { /* diagnóstico best-effort */ }
+  } catch (e) {
+    console.error("[inboundProcessor] Erro ao processar seguro de fração recebido:", e?.message || e);
+  }
+}
+
+/**
  * Processador Central Inbound de Emails (Resend Webhook & API)
  */
 export async function processInboundEmail(payload) {
@@ -1587,6 +1669,20 @@ export async function processInboundEmail(payload) {
           // falta), nunca o caminho de fatura/comprovativo abaixo.
           if (tipoDocLower === "extrato") {
             await processarExtratoBancarioRecebido({ anexo, dadosExtraidosDoc });
+            continue;
+          }
+
+          // Uma fatura/débito direto de seguradora (categoria_contabilistica
+          // "Seguros") chegada da conta de email de um condómino é o
+          // comprovativo do seguro de incêndio da PRÓPRIA fração, nunca uma
+          // despesa do condomínio — segue o seu próprio fluxo (anexa ao
+          // seguro da fração) em vez de cair no caminho de fatura/despesa
+          // abaixo, que a lançava sempre como "Movimento Cego" fantasma.
+          const isSeguroFracaoDoc = (isFaturaDoc || tipoDocLower === "debito_direto") &&
+            (dadosExtraidosDoc?.categoria_contabilistica || "").toLowerCase().includes("seguro") &&
+            contextoDocumento?.id_fracao;
+          if (isSeguroFracaoDoc) {
+            await processarSeguroFracaoRecebido({ anexo, dadosExtraidosDoc, contexto: contextoDocumento });
             continue;
           }
 
