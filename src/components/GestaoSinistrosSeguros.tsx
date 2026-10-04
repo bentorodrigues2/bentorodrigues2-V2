@@ -212,6 +212,13 @@ export function GestaoSinistrosSeguros({
     if (!validade || validade.trim() === "") {
       return "POR_RECEBER";
     }
+    // Um documento novo (fatura de renovação, etc.) chegado automaticamente
+    // por email marca sempre o seguro como "Pendente" de verificação pela
+    // administração, mesmo que os dados de apólice já estivessem válidos
+    // antes — pedido explícito do administrador, nunca confirma sozinho.
+    if (seguroDb?.estado_validacao === "Pendente") {
+      return "POR_RECEBER";
+    }
 
     const valDate = new Date(validade);
     const now = new Date();

@@ -501,16 +501,15 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
     const falhaLeituraTotal = !dadosExtraidos;
     const descricaoBase = `${entidadeExtraida || (isFatura ? "Fatura de fornecedor" : "Comprovativo")} via Email (${fracaoNome} - ${extrairEmailLimpo(remetenteEmail)})${pagamento?.id ? ` [pagamento:${pagamento.id}]` : ""}`;
 
-    // Uma fatura de fornecedor É o próprio documento justificativo da
-    // despesa — quando chega por email e a IA a leu com sucesso, o anexo já
-    // fica arquivado em comprovativo_url nesse mesmo momento. Antes o
-    // movimento nascia sempre "Movimento Cego / Por Justificar" mesmo assim,
-    // obrigando o administrador a voltar a anexar um documento que já lá
-    // estava. Só continua "por justificar" quando a leitura falhou por
-    // completo (nesse caso não há garantia de que o valor/documento estejam
-    // corretos) ou quando é um comprovativo de condómino, cujo fluxo próprio
-    // (Pagamentos por Confirmar) é que decide quando fica justificado.
-    const jaJustificadaPelaPropriaFatura = isFatura && !falhaLeituraTotal && Boolean(comprovativoUrl);
+    // Uma fatura de fornecedor recebida por email marcava-se logo
+    // "Justificado" (a própria fatura já era a sua prova documental) —
+    // pedido explícito do administrador: quer sempre ver e confirmar estes
+    // lançamentos em "Lançamentos por Confirmar" antes de contarem como
+    // confirmados, mesmo quando a IA leu tudo bem. Nasce sempre "Movimento
+    // Cego / Por Justificar" para faturas por email; só os comprovativos de
+    // condómino continuam a seguir o seu próprio fluxo (Pagamentos por
+    // Confirmar).
+    const jaJustificadaPelaPropriaFatura = false;
 
     // A conta bancária a debitar/creditar tem de ficar já ligada ao
     // movimento no momento em que ele nasce (mesmo que ainda "por
@@ -1312,10 +1311,16 @@ async function processarSeguroFracaoRecebido({ anexo, dadosExtraidosDoc, context
       .maybeSingle();
 
     if (seguroExistente) {
+      // Pedido explícito do administrador: mesmo sendo anexado diretamente
+      // ao seguro da fração (nunca como despesa do condomínio), continua a
+      // precisar de verificação/confirmação humana antes de contar como
+      // válido — um novo documento chegado sozinho por email nunca marca
+      // nada como automaticamente conforme, mesmo que o seguro já
+      // estivesse "Valido" antes.
       const listaAtual = Array.isArray(seguroExistente.documentos_anexos) ? seguroExistente.documentos_anexos : [];
       await supabase
         .from("seguros_fracoes")
-        .update({ documentos_anexos: [...listaAtual, novoAnexo], documento_url: documentoUrl, atualizado_em: new Date().toISOString() })
+        .update({ documentos_anexos: [...listaAtual, novoAnexo], documento_url: documentoUrl, estado_validacao: "Pendente", atualizado_em: new Date().toISOString() })
         .eq("id", seguroExistente.id);
     } else {
       await supabase.from("seguros_fracoes").insert({
