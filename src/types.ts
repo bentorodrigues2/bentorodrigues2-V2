@@ -765,7 +765,7 @@ export interface SeguroFracao {
   fracao_id: string;
   seguradora: string;
   apolice_numero: string;
-  apolice_validade: string; // YYYY-MM-DD
+  apolice_validade: string | null; // YYYY-MM-DD, ou null enquanto por confirmar
   tipo_cobertura?: string; // 'Incêndio e Multirriscos', 'Incêndio Simples', etc.
   capital_seguro?: number;
   documento_url?: string; // último documento carregado — mantido por compatibilidade com leituras antigas
@@ -780,14 +780,14 @@ export interface SeguroPartesComuns {
   condominio_id: string;
   seguradora: string;
   apolice_numero: string;
-  apolice_validade: string; // YYYY-MM-DD
+  apolice_validade: string | null; // YYYY-MM-DD, ou null enquanto por confirmar
   tomador_seguro?: string;
   capital_seguro_edificio?: number;
   franquia?: number;
   contacto_mediador?: string;
   documento_url?: string; // último documento carregado — mantido por compatibilidade com leituras antigas
   documentos_anexos?: DocumentoSeguroAnexo[];
-  estado: "Ativo" | "Expirado" | "Cancelado";
+  estado: "Pendente" | "Ativo" | "Expirado" | "Cancelado";
   criado_em?: string;
   atualizado_em?: string;
 }

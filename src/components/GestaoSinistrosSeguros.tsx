@@ -397,29 +397,42 @@ export function GestaoSinistrosSeguros({
     if (!modalSeguroFracao.fracao) return;
     const fracao = modalSeguroFracao.fracao;
 
-    if (!formSeguradora.trim() || !formApoliceNum.trim() || !formValidade.trim()) {
-      alert("Por favor preencha os campos obrigatórios: Seguradora, Nº de Apólice e Data de Validade.");
+    // Antes, exigir Seguradora + Nº de Apólice + Validade para guardar
+    // bloqueava TUDO, incluindo os documentos já anexados (fatura/apólice
+    // em formDocumentosAnexos) — um PDF anexado sem esses 3 campos ainda
+    // preenchidos ficava só em estado local e perdia-se ao fechar o modal,
+    // nunca chegando a seguros_fracoes. Agora só bloqueia se não há
+    // nenhuma informação útil para guardar (nem seguradora nem nenhum
+    // documento anexado); com dados incompletos, guarda mesmo assim e
+    // força "Pendente" para a administração confirmar depois.
+    if (!formSeguradora.trim() && formDocumentosAnexos.length === 0) {
+      alert("Preencha pelo menos a Seguradora ou anexe um documento (apólice/fatura) para guardar.");
       return;
     }
+    const dadosIncompletos = !formSeguradora.trim() || !formApoliceNum.trim() || !formValidade.trim();
 
     const seguroObj: SeguroFracao = {
       id: modalSeguroFracao.seguroExistente?.id || `seg-frac-${fracao.id_fracao}`,
       fracao_id: fracao.id_fracao,
-      seguradora: formSeguradora.trim(),
-      apolice_numero: formApoliceNum.trim(),
-      apolice_validade: formValidade.trim(),
+      seguradora: formSeguradora.trim() || "A confirmar",
+      apolice_numero: formApoliceNum.trim() || "A confirmar",
+      // Coluna "date" no Supabase — nunca enviar string vazia (rebenta o
+      // insert em silêncio do lado do dbUpsert, que o chamador nem vê).
+      apolice_validade: formValidade.trim() || null,
       tipo_cobertura: formTipoCobertura.trim() || "Incêndio e Multirriscos",
       capital_seguro: parseValorMonetario(formCapitalSeguro),
       documento_url: formDocumentoUrl || modalSeguroFracao.seguroExistente?.documento_url || undefined,
       documentos_anexos: formDocumentosAnexos,
-      estado_validacao: formEstadoValidacao,
+      estado_validacao: dadosIncompletos ? "Pendente" : formEstadoValidacao,
       atualizado_em: new Date().toISOString()
     };
 
     // 1. Gravar em seguros_fracoes
     const res = await saveSeguroFracaoToSupabase(seguroObj);
     if (!res.success) {
+      alert("Não foi possível guardar o seguro desta fração: " + (res.error || "erro desconhecido"));
       console.warn("[Seguros] Aviso ao gravar seguros_fracoes:", res.error);
+      return;
     }
 
     // 2. Atualizar tabela de fracoes no Supabase
@@ -452,7 +465,9 @@ export function GestaoSinistrosSeguros({
       onUpdateFracoes(novasFracoes);
     }
 
-    showToast(`✓ Apólice da Fração ${fracao.fracao_nome} atualizada e validada com sucesso!`);
+    showToast(dadosIncompletos
+      ? `⚠️ Guardado como Pendente — faltam dados da apólice da Fração ${fracao.fracao_nome} (seguradora/nº/validade).`
+      : `✓ Apólice da Fração ${fracao.fracao_nome} atualizada e validada com sucesso!`);
     setModalSeguroFracao({ isOpen: false, fracao: null });
   };
 
@@ -503,34 +518,41 @@ export function GestaoSinistrosSeguros({
 
   // Gravar Apólice de Partes Comuns
   const handleGuardarSeguroPartesComuns = async () => {
-    if (!formPCCompanhia.trim() || !formPCApoliceNum.trim() || !formPCValidade.trim()) {
-      alert("Por favor preencha os campos obrigatórios da apólice do edifício: Seguradora, Nº de Apólice e Validade.");
+    // Mesma correção de handleGuardarSeguroFracao: não bloquear o
+    // documento anexado por faltarem campos estruturados.
+    if (!formPCCompanhia.trim() && formPCDocumentosAnexos.length === 0) {
+      alert("Preencha pelo menos a Seguradora ou anexe um documento (apólice/fatura) para guardar.");
       return;
     }
+    const dadosPCIncompletos = !formPCCompanhia.trim() || !formPCApoliceNum.trim() || !formPCValidade.trim();
 
     const seguroPC: SeguroPartesComuns = {
       id: apoliceEdificio?.id || `seg-pc-${predio.id_predio}`,
       condominio_id: predio.id_predio,
-      seguradora: formPCCompanhia.trim(),
-      apolice_numero: formPCApoliceNum.trim(),
-      apolice_validade: formPCValidade.trim(),
+      seguradora: formPCCompanhia.trim() || "A confirmar",
+      apolice_numero: formPCApoliceNum.trim() || "A confirmar",
+      apolice_validade: formPCValidade.trim() || null,
       tomador_seguro: formPCTomador.trim() || `Condomínio ${predio.nome}`,
       capital_seguro_edificio: parseValorMonetario(formPCCapitalEdificio),
       franquia: parseValorMonetario(formPCFranquia),
       contacto_mediador: formPCMediador.trim() || undefined,
       documento_url: formPCDocumentosAnexos[formPCDocumentosAnexos.length - 1]?.url || apoliceEdificio?.documento_url || undefined,
       documentos_anexos: formPCDocumentosAnexos,
-      estado: "Ativo",
+      estado: dadosPCIncompletos ? "Pendente" : "Ativo",
       atualizado_em: new Date().toISOString()
     };
 
     const res = await saveSeguroPartesComunsToSupabase(seguroPC);
     if (!res.success) {
+      alert("Não foi possível guardar a apólice das partes comuns: " + (res.error || "erro desconhecido"));
       console.warn("[Seguros PC] Erro ao gravar:", res.error);
+      return;
     }
 
     setApoliceEdificio(seguroPC);
-    showToast("✓ Apólice de Partes Comuns registada e sincronizada com sucesso!");
+    showToast(dadosPCIncompletos
+      ? "⚠️ Guardado como Pendente — faltam dados da apólice das partes comuns (seguradora/nº/validade)."
+      : "✓ Apólice de Partes Comuns registada e sincronizada com sucesso!");
     setModalSeguroPartesComunsOpen(false);
   };
 
