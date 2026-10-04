@@ -1959,6 +1959,11 @@ export async function saveComunicadoToSupabase(comunicado: Comunicado): Promise<
   });
 }
 
+export async function deleteComunicadoFromSupabase(idComunicado: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbDelete("comunicados", [["id_comunicado", "eq", idComunicado]]);
+}
+
 export async function fetchConversasFromSupabase(idPredio?: string): Promise<ConversaCondomino[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {

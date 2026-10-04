@@ -5,6 +5,7 @@ import {
   isSupabaseConfigured,
   fetchComunicadosFromSupabase,
   saveComunicadoToSupabase,
+  deleteComunicadoFromSupabase,
   fetchConversasFromSupabase,
   saveConversaToSupabase,
   fetchMensagensConversaFromSupabase,
@@ -108,6 +109,48 @@ export function GestaoComunicacoes({
   }, [predio?.id_predio]);
 
   useEffect(() => { carregarComunicados(); }, [carregarComunicados]);
+
+  // Editar/eliminar um comunicado já enviado — corrige só o registo
+  // guardado (histórico/arquivo), não reenvia email nem notificação push.
+  const [editandoComunicadoId, setEditandoComunicadoId] = useState<string | null>(null);
+  const [editTitulo, setEditTitulo] = useState("");
+  const [editMensagem, setEditMensagem] = useState("");
+  const [aGuardarEdicaoComunicado, setAGuardarEdicaoComunicado] = useState(false);
+
+  const handleIniciarEdicaoComunicado = (item: Comunicado) => {
+    setEditandoComunicadoId(item.id_comunicado);
+    setEditTitulo(item.titulo);
+    setEditMensagem(item.mensagem);
+  };
+
+  const handleCancelarEdicaoComunicado = () => {
+    setEditandoComunicadoId(null);
+    setEditTitulo("");
+    setEditMensagem("");
+  };
+
+  const handleGuardarEdicaoComunicado = async (item: Comunicado) => {
+    if (!editTitulo.trim() || !editMensagem.trim() || aGuardarEdicaoComunicado) return;
+    setAGuardarEdicaoComunicado(true);
+    try {
+      const atualizado: Comunicado = { ...item, titulo: editTitulo.trim(), mensagem: editMensagem.trim() };
+      const ok = await saveComunicadoToSupabase(atualizado);
+      if (!ok) throw new Error("Falha ao guardar alterações");
+      setComunicadosList(prev => prev.map(c => c.id_comunicado === item.id_comunicado ? atualizado : c));
+      handleCancelarEdicaoComunicado();
+    } catch (err: any) {
+      alert("Erro ao guardar as alterações: " + (err?.message || "erro desconhecido"));
+    } finally {
+      setAGuardarEdicaoComunicado(false);
+    }
+  };
+
+  const handleEliminarComunicado = async (item: Comunicado) => {
+    if (!confirm(`Eliminar o comunicado "${item.titulo}" do histórico? Esta ação não pode ser desfeita (não afeta os emails já enviados).`)) return;
+    const ok = await deleteComunicadoFromSupabase(item.id_comunicado);
+    if (!ok) { alert("Não foi possível eliminar o comunicado."); return; }
+    setComunicadosList(prev => prev.filter(c => c.id_comunicado !== item.id_comunicado));
+  };
 
   const handleSendBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -431,7 +474,11 @@ export function GestaoComunicacoes({
       id_fracao: novaConversaFracaoId,
       proprietario_nome: fracaoEscolhida.proprietario?.nome || fracaoEscolhida.fracao_nome,
       assunto: "Mensagem da Administração",
-      estado: "pendente"
+      // "Pendente" significa "o condómino falou, falta a administração
+      // responder" — quem inicia a conversa aqui é a própria administração,
+      // por isso não fica nada por ler/arquivar do lado de quem a enviou.
+      // Volta a "pendente" sozinha quando o condómino responder.
+      estado: "arquivada"
     };
     await saveConversaToSupabase(novaConversa);
     setConversas(prev => [novaConversa, ...prev]);
@@ -461,15 +508,19 @@ export function GestaoComunicacoes({
       for (const f of fracoesPredio) {
         const idConversa = "conv-" + f.id_fracao;
         const existente = conversas.find(c => c.id_fracao === f.id_fracao);
+        // Mesma lógica de handleIniciarNovaConversa: quem está a falar agora
+        // é a administração, por isso a conversa fica "arquivada" (nada
+        // pendente do lado de quem enviou) — volta a "pendente" sozinha
+        // quando a fração responder.
         const conversaAtual: ConversaCondomino = existente
-          ? { ...existente, estado: "pendente" }
+          ? { ...existente, estado: "arquivada" }
           : {
               id_conversa: idConversa,
               id_predio: predio.id_predio,
               id_fracao: f.id_fracao,
               proprietario_nome: f.proprietario?.nome || f.fracao_nome,
               assunto: "Mensagem da Administração",
-              estado: "pendente"
+              estado: "arquivada"
             };
         await saveConversaToSupabase(conversaAtual);
         await saveMensagemConversaToSupabase({
@@ -808,17 +859,73 @@ export function GestaoComunicacoes({
                 ) : (
                   comunicadosList.map(item => (
                     <div key={item.id_comunicado} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                      <div className="flex justify-between items-start gap-2">
-                        <span className="font-bold text-xs text-slate-900">{item.titulo}</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.urgencia === "urgente" ? "bg-red-100 text-red-700 border border-red-200" : "bg-emerald-100 text-emerald-800 border border-emerald-200"}`}>
-                          {item.urgencia === "urgente" ? "🚨 Urgente" : "Informativo"}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-600 leading-relaxed">{item.mensagem}</p>
-                      <div className="flex justify-between items-center text-[10px] text-slate-600 pt-1 border-t border-slate-200/60">
-                        <span>Data: {item.created_at ? new Date(item.created_at).toLocaleDateString("pt-PT") : ""}</span>
-                        <span className="text-emerald-600 font-bold">✓ Enviado a {item.total_enviados}/{item.total_destinatarios} fração(ões)</span>
-                      </div>
+                      {editandoComunicadoId === item.id_comunicado ? (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={editTitulo}
+                            onChange={e => setEditTitulo(e.target.value)}
+                            className="w-full text-xs font-bold p-2 rounded-lg border border-emerald-300 focus:ring-2 focus:ring-emerald-500 bg-white"
+                            placeholder="Título"
+                          />
+                          <textarea
+                            rows={4}
+                            value={editMensagem}
+                            onChange={e => setEditMensagem(e.target.value)}
+                            className="w-full text-xs p-2 rounded-lg border border-emerald-300 focus:ring-2 focus:ring-emerald-500 bg-white"
+                            placeholder="Mensagem"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleGuardarEdicaoComunicado(item)}
+                              disabled={aGuardarEdicaoComunicado}
+                              className="text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg px-3 py-1.5 cursor-pointer"
+                            >
+                              {aGuardarEdicaoComunicado ? "A guardar..." : "Guardar"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCancelarEdicaoComunicado}
+                              className="text-[11px] font-bold text-slate-600 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg px-3 py-1.5 cursor-pointer"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-start gap-2">
+                            <span className="font-bold text-xs text-slate-900">{item.titulo}</span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.urgencia === "urgente" ? "bg-red-100 text-red-700 border border-red-200" : "bg-emerald-100 text-emerald-800 border border-emerald-200"}`}>
+                                {item.urgencia === "urgente" ? "🚨 Urgente" : "Informativo"}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleIniciarEdicaoComunicado(item)}
+                                title="Editar comunicado"
+                                className="text-slate-500 hover:text-emerald-700 cursor-pointer p-1"
+                              >
+                                <i className="fa-solid fa-pen text-[11px]"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleEliminarComunicado(item)}
+                                title="Eliminar comunicado"
+                                className="text-slate-500 hover:text-red-600 cursor-pointer p-1"
+                              >
+                                <i className="fa-solid fa-trash text-[11px]"></i>
+                              </button>
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-600 leading-relaxed">{item.mensagem}</p>
+                          <div className="flex justify-between items-center text-[10px] text-slate-600 pt-1 border-t border-slate-200/60">
+                            <span>Data: {item.created_at ? new Date(item.created_at).toLocaleDateString("pt-PT") : ""}</span>
+                            <span className="text-emerald-600 font-bold">✓ Enviado a {item.total_enviados}/{item.total_destinatarios} fração(ões)</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))
                 )}
