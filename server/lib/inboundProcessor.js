@@ -1595,7 +1595,40 @@ export async function processInboundEmail(payload) {
           // pasta de arquivo como para lançar a dívida a pagar mais abaixo,
           // em vez de correr o mesmo cruzamento duas vezes.
           let fornecedorCruzado = null;
-          if (isFaturaDoc && contextoDocumento?.id_predio) {
+
+          // Uma fatura de fornecedor (ex: NOWO, EDP) vem sempre de uma
+          // entidade externa, nunca de um condómino — nenhuma das
+          // obterContexto* acima (que só procuram em frações/proprietários)
+          // alguma vez a resolve, por isso contextoDocumento.id_predio ficava
+          // sempre nulo e o cruzamento abaixo nunca chegava a correr (estava
+          // condicionado a já existir um id_predio). Confirmado em produção:
+          // 2 faturas reais da NOWO lidas corretamente pela IA (entidade,
+          // valor) ficaram presas sem nenhum predio associado, nunca
+          // chegaram a virar divida a pagar. Quando é mesmo uma fatura e
+          // ainda não há nenhum predio identificado, procura agora o
+          // fornecedor em TODOS os predios (por IBAN → referência de
+          // contrato → nome) e usa o predio desse fornecedor como contexto.
+          if (isFaturaDoc && !contextoDocumento?.id_predio) {
+            const { data: todosFornecedores } = await supabase
+              .from("fornecedores")
+              .select("id_fornecedor, id_predio, nome, iban, referencias_contrato");
+            if (todosFornecedores) {
+              const cruzamentoGlobal = cruzarMovimentoComFornecedor(todosFornecedores, {
+                iban_credor: dadosExtraidosDoc.iban_credor,
+                numero_adc: dadosExtraidosDoc.numero_adc,
+                referencia_credor: dadosExtraidosDoc.referencia_credor,
+                entidade_credora: dadosExtraidosDoc.entidade_credora,
+                entidade: dadosExtraidosDoc.entidade
+              });
+              if (cruzamentoGlobal?.fornecedor?.id_predio) {
+                contextoDocumento = { id_predio: cruzamentoGlobal.fornecedor.id_predio, fracao: null };
+                fornecedorCruzado = cruzamentoGlobal;
+                console.log(`[inboundProcessor] Fatura sem contexto de condómino — prédio identificado pelo fornecedor "${cruzamentoGlobal.fornecedor.nome}" (cruzamento por ${cruzamentoGlobal.metodo}).`);
+              }
+            }
+          }
+
+          if (isFaturaDoc && contextoDocumento?.id_predio && !fornecedorCruzado) {
             const { data: fornecedoresPredio } = await supabase
               .from("fornecedores")
               .select("id_fornecedor, nome, iban, referencias_contrato")
