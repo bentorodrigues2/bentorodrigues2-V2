@@ -749,6 +749,17 @@ export interface SinistroSeguro {
 // ----------------------------------------------------------------------------
 // SEGURO OBRIGATÓRIO DE FRAÇÕES (seguros_fracoes) & PARTES COMUNS (seguros_partes_comuns)
 // ----------------------------------------------------------------------------
+// Um único "documento_url" só guardava a última apólice carregada,
+// substituindo sempre a anterior — não havia como manter a apólice (com as
+// coberturas) arquivada ao mesmo tempo que as faturas de renovação de anos
+// seguintes. Passa a ser uma lista, cada entrada com o seu próprio tipo.
+export interface DocumentoSeguroAnexo {
+  nome: string;
+  url: string; // data URI (base64) do PDF/imagem, mesmo padrão já usado em Movimento.fotos
+  tipo: "Apólice" | "Fatura de Renovação" | "Outro";
+  data_upload: string; // YYYY-MM-DD
+}
+
 export interface SeguroFracao {
   id: string; // UUID ou ID único
   fracao_id: string;
@@ -757,7 +768,8 @@ export interface SeguroFracao {
   apolice_validade: string; // YYYY-MM-DD
   tipo_cobertura?: string; // 'Incêndio e Multirriscos', 'Incêndio Simples', etc.
   capital_seguro?: number;
-  documento_url?: string;
+  documento_url?: string; // último documento carregado — mantido por compatibilidade com leituras antigas
+  documentos_anexos?: DocumentoSeguroAnexo[];
   estado_validacao: "Pendente" | "Valido" | "Expirado" | "Recusado";
   criado_em?: string;
   atualizado_em?: string;
@@ -773,7 +785,8 @@ export interface SeguroPartesComuns {
   capital_seguro_edificio?: number;
   franquia?: number;
   contacto_mediador?: string;
-  documento_url?: string;
+  documento_url?: string; // último documento carregado — mantido por compatibilidade com leituras antigas
+  documentos_anexos?: DocumentoSeguroAnexo[];
   estado: "Ativo" | "Expirado" | "Cancelado";
   criado_em?: string;
   atualizado_em?: string;

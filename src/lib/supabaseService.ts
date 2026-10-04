@@ -836,6 +836,7 @@ export async function fetchSegurosFracoesFromSupabase(fracaoIds?: string[]): Pro
       tipo_cobertura: row.tipo_cobertura || "Incêndio e Multirriscos",
       capital_seguro: Number(row.capital_seguro || 0),
       documento_url: row.documento_url || "",
+      documentos_anexos: Array.isArray(row.documentos_anexos) ? row.documentos_anexos : [],
       estado_validacao: row.estado_validacao || "Pendente",
       criado_em: row.criado_em,
       atualizado_em: row.atualizado_em
@@ -857,6 +858,7 @@ export async function saveSeguroFracaoToSupabase(seguro: SeguroFracao): Promise<
     tipo_cobertura: seguro.tipo_cobertura || "Incêndio e Multirriscos",
     capital_seguro: seguro.capital_seguro || 0,
     documento_url: seguro.documento_url || null,
+    documentos_anexos: seguro.documentos_anexos || [],
     estado_validacao: seguro.estado_validacao,
     atualizado_em: new Date().toISOString()
   };
@@ -889,6 +891,7 @@ export async function fetchSegurosPartesComunsFromSupabase(condominioId: string)
       franquia: Number(row.franquia || 0),
       contacto_mediador: row.contacto_mediador || "",
       documento_url: row.documento_url || "",
+      documentos_anexos: Array.isArray(row.documentos_anexos) ? row.documentos_anexos : [],
       estado: row.estado || "Ativo",
       criado_em: row.criado_em,
       atualizado_em: row.atualizado_em
@@ -912,6 +915,7 @@ export async function saveSeguroPartesComunsToSupabase(seguro: SeguroPartesComun
     franquia: seguro.franquia || 0,
     contacto_mediador: seguro.contacto_mediador,
     documento_url: seguro.documento_url || null,
+    documentos_anexos: seguro.documentos_anexos || [],
     estado: seguro.estado,
     atualizado_em: new Date().toISOString()
   };

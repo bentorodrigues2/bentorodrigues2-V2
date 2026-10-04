@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Predio, Fracao, LoggedUser, SinistroSeguro, SeguroFracao, SeguroPartesComuns } from "../types";
+import { Predio, Fracao, LoggedUser, SinistroSeguro, SeguroFracao, SeguroPartesComuns, DocumentoSeguroAnexo } from "../types";
 import { 
   ShieldCheck, 
   ShieldAlert, 
@@ -109,6 +109,11 @@ export function GestaoSinistrosSeguros({
   const [formEstadoValidacao, setFormEstadoValidacao] = useState<"Valido" | "Pendente" | "Expirado" | "Recusado">("Valido");
   const [formDocumentoNome, setFormDocumentoNome] = useState("");
   const [formDocumentoUrl, setFormDocumentoUrl] = useState("");
+  // Lista de documentos anexados (apólice + faturas de renovação de anos
+  // seguintes) — antes só havia "documento_url", um único ficheiro que o
+  // próximo upload substituía sempre, sem forma de manter o histórico.
+  const [formDocumentosAnexos, setFormDocumentosAnexos] = useState<DocumentoSeguroAnexo[]>([]);
+  const [formPCDocumentosAnexos, setFormPCDocumentosAnexos] = useState<DocumentoSeguroAnexo[]>([]);
 
   // Form states para Apólice Partes Comuns
   const [formPCCompanhia, setFormPCCompanhia] = useState("");
@@ -145,6 +150,8 @@ export function GestaoSinistrosSeguros({
   const [iaExtractSuccess, setIaExtractSuccess] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputPCRef = useRef<HTMLInputElement | null>(null);
+  const fileInputExtraRef = useRef<HTMLInputElement | null>(null);
+  const fileInputExtraPCRef = useRef<HTMLInputElement | null>(null);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -253,6 +260,17 @@ export function GestaoSinistrosSeguros({
     setFormEstadoValidacao(seguroDb?.estado_validacao || (checkSeguroStatus(fracao) === "VALIDO" ? "Valido" : "Pendente"));
     setFormDocumentoNome(seguroDb?.documento_url ? "Documento em Arquivo" : "");
     setFormDocumentoUrl(seguroDb?.documento_url || "");
+    // Migração suave: registos antigos só tinham "documento_url" — se a
+    // lista ainda não existir mas houver esse ficheiro único, mostra-o já
+    // como "Apólice" na lista, em vez de o utilizador achar que o perdeu.
+    const listaExistente = seguroDb?.documentos_anexos;
+    if (listaExistente && listaExistente.length > 0) {
+      setFormDocumentosAnexos(listaExistente);
+    } else if (seguroDb?.documento_url) {
+      setFormDocumentosAnexos([{ nome: "Apólice (documento original)", url: seguroDb.documento_url, tipo: "Apólice", data_upload: seguroDb.atualizado_em?.slice(0, 10) || new Date().toISOString().slice(0, 10) }]);
+    } else {
+      setFormDocumentosAnexos([]);
+    }
     setIaExtractSuccess(null);
   };
 
@@ -297,6 +315,9 @@ export function GestaoSinistrosSeguros({
         resumo: dados.resumo || ""
       };
 
+      const documentoUrl = `data:${file.type || "application/pdf"};base64,${base64}`;
+      const novoAnexo: DocumentoSeguroAnexo = { nome: file.name, url: documentoUrl, tipo: "Apólice", data_upload: new Date().toISOString().slice(0, 10) };
+
       if (!isPartesComuns) {
         setFormSeguradora(resultadoIA.seguradora);
         setFormApoliceNum(resultadoIA.apolice_numero);
@@ -305,7 +326,8 @@ export function GestaoSinistrosSeguros({
         setFormCapitalSeguro(String(resultadoIA.capital_seguro));
         setFormEstadoValidacao("Valido");
         setFormDocumentoNome(file.name);
-        setFormDocumentoUrl(`data:${file.type || "application/pdf"};base64,${base64}`);
+        setFormDocumentoUrl(documentoUrl);
+        setFormDocumentosAnexos(prev => [...prev, novoAnexo]);
         setIaExtractSuccess(`✓ IA extraiu com sucesso: ${resultadoIA.seguradora || "(seguradora não identificada)"} • Apólice ${resultadoIA.apolice_numero || "N/D"} (Validade: ${resultadoIA.apolice_validade || "N/D"}). Confirme os dados antes de gravar.`);
       } else {
         setFormPCCompanhia(resultadoIA.seguradora);
@@ -314,6 +336,7 @@ export function GestaoSinistrosSeguros({
         setFormPCCapitalEdificio(String(resultadoIA.capital_seguro));
         setFormPCFranquia(String(resultadoIA.franquia));
         setFormPCDocumentoNome(file.name);
+        setFormPCDocumentosAnexos(prev => [...prev, novoAnexo]);
         setIaExtractSuccess(`✓ IA extraiu dados da apólice do edifício: ${resultadoIA.seguradora || "(seguradora não identificada)"} • Apólice ${resultadoIA.apolice_numero || "N/D"}. Confirme os dados antes de gravar.`);
       }
     } catch (err: any) {
@@ -321,6 +344,34 @@ export function GestaoSinistrosSeguros({
       showToast(err?.message || "Não foi possível ler o documento via OCR. Por favor preencha manualmente.");
     } finally {
       setIsExtractingIA(false);
+    }
+  };
+
+  // Anexar um documento adicional (ex: fatura de renovação de um ano
+  // seguinte) sem passar pela leitura OCR — não substitui nada, só
+  // acrescenta à lista. Resolve o pedido do administrador: antes só era
+  // possível ter UM documento por seguro (a apólice OU a última fatura,
+  // nunca as duas), agora ficam todos arquivados.
+  const handleAnexarDocumentoExtra = async (file: File, tipo: DocumentoSeguroAnexo["tipo"], isPartesComuns: boolean = false) => {
+    const base64 = await lerFicheiroComoBase64(file);
+    const novoAnexo: DocumentoSeguroAnexo = {
+      nome: file.name,
+      url: `data:${file.type || "application/pdf"};base64,${base64}`,
+      tipo,
+      data_upload: new Date().toISOString().slice(0, 10)
+    };
+    if (isPartesComuns) {
+      setFormPCDocumentosAnexos(prev => [...prev, novoAnexo]);
+    } else {
+      setFormDocumentosAnexos(prev => [...prev, novoAnexo]);
+    }
+  };
+
+  const handleRemoverDocumentoAnexo = (index: number, isPartesComuns: boolean = false) => {
+    if (isPartesComuns) {
+      setFormPCDocumentosAnexos(prev => prev.filter((_, i) => i !== index));
+    } else {
+      setFormDocumentosAnexos(prev => prev.filter((_, i) => i !== index));
     }
   };
 
@@ -343,6 +394,7 @@ export function GestaoSinistrosSeguros({
       tipo_cobertura: formTipoCobertura.trim() || "Incêndio e Multirriscos",
       capital_seguro: parseValorMonetario(formCapitalSeguro),
       documento_url: formDocumentoUrl || modalSeguroFracao.seguroExistente?.documento_url || undefined,
+      documentos_anexos: formDocumentosAnexos,
       estado_validacao: formEstadoValidacao,
       atualizado_em: new Date().toISOString()
     };
@@ -449,6 +501,8 @@ export function GestaoSinistrosSeguros({
       capital_seguro_edificio: parseValorMonetario(formPCCapitalEdificio),
       franquia: parseValorMonetario(formPCFranquia),
       contacto_mediador: formPCMediador.trim() || undefined,
+      documento_url: formPCDocumentosAnexos[formPCDocumentosAnexos.length - 1]?.url || apoliceEdificio?.documento_url || undefined,
+      documentos_anexos: formPCDocumentosAnexos,
       estado: "Ativo",
       atualizado_em: new Date().toISOString()
     };
@@ -1118,6 +1172,7 @@ export function GestaoSinistrosSeguros({
                       setFormPCCapitalEdificio(apoliceEdificio.capital_seguro_edificio ? String(apoliceEdificio.capital_seguro_edificio) : "");
                       setFormPCFranquia(apoliceEdificio.franquia ? String(apoliceEdificio.franquia) : "");
                       setFormPCMediador(apoliceEdificio.contacto_mediador || "");
+                      setFormPCDocumentosAnexos(apoliceEdificio.documentos_anexos && apoliceEdificio.documentos_anexos.length > 0 ? apoliceEdificio.documentos_anexos : (apoliceEdificio.documento_url ? [{ nome: "Apólice (documento original)", url: apoliceEdificio.documento_url, tipo: "Apólice", data_upload: apoliceEdificio.atualizado_em?.slice(0, 10) || new Date().toISOString().slice(0, 10) }] : []));
                       setModalSeguroPartesComunsOpen(true);
                     }}
                     className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold px-3 py-1.5 rounded-xl cursor-pointer flex items-center gap-1.5"
@@ -1145,6 +1200,7 @@ export function GestaoSinistrosSeguros({
                     setFormPCCapitalEdificio("");
                     setFormPCFranquia("");
                     setFormPCMediador("");
+                    setFormPCDocumentosAnexos([]);
                     setModalSeguroPartesComunsOpen(true);
                   }}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-sm"
@@ -1173,6 +1229,7 @@ export function GestaoSinistrosSeguros({
                   setFormPCCapitalEdificio("");
                   setFormPCFranquia("");
                   setFormPCMediador("");
+                  setFormPCDocumentosAnexos([]);
                   setModalSeguroPartesComunsOpen(true);
                 }}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl cursor-pointer"
@@ -1310,6 +1367,58 @@ export function GestaoSinistrosSeguros({
                     {iaExtractSuccess}
                   </div>
                 )}
+              </div>
+
+              {/* DOCUMENTOS ANEXADOS — apólice + faturas de renovação de
+                  anos seguintes, cada uma guardada à parte (antes só havia
+                  um único documento, que cada novo upload substituía). */}
+              <div className="space-y-2 bg-slate-50 dark:bg-slate-950/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <h4 className="font-bold text-slate-800 dark:text-white uppercase tracking-wider text-[10px]">
+                  Documentos Anexados ({formDocumentosAnexos.length})
+                </h4>
+                {formDocumentosAnexos.length === 0 ? (
+                  <p className="text-[11px] text-slate-500">Nenhum documento anexado ainda.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {formDocumentosAnexos.map((doc, idx) => (
+                      <div key={idx} className="flex items-center justify-between gap-2 bg-white dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800">
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[11px] text-slate-700 dark:text-slate-200 hover:text-emerald-600 truncate min-w-0">
+                          <FileText className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                          <span className="truncate">{doc.nome}</span>
+                          <span className="shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">{doc.tipo}</span>
+                          <span className="shrink-0 text-[9px] text-slate-400">{doc.data_upload}</span>
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoverDocumentoAnexo(idx)}
+                          className="shrink-0 text-slate-400 hover:text-red-600 cursor-pointer"
+                          title="Remover este documento"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <input
+                  type="file"
+                  ref={fileInputExtraRef}
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      handleAnexarDocumentoExtra(e.target.files[0], "Fatura de Renovação", false);
+                      e.target.value = "";
+                    }
+                  }}
+                  accept=".pdf,.png,.jpg,.jpeg,.webp"
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputExtraRef.current?.click()}
+                  className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer flex items-center gap-1"
+                >
+                  <Plus className="h-3 w-3" /> Anexar fatura de renovação (sem substituir a apólice)
+                </button>
               </div>
 
               {/* FORMULÁRIO MANUAL / CAMPOS EXTRAÍDOS */}
@@ -1527,6 +1636,56 @@ export function GestaoSinistrosSeguros({
                     {iaExtractSuccess}
                   </div>
                 )}
+              </div>
+
+              {/* DOCUMENTOS ANEXADOS — apólice + faturas de renovação */}
+              <div className="space-y-2 bg-slate-50 dark:bg-slate-950/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <h4 className="font-bold text-slate-800 dark:text-white uppercase tracking-wider text-[10px]">
+                  Documentos Anexados ({formPCDocumentosAnexos.length})
+                </h4>
+                {formPCDocumentosAnexos.length === 0 ? (
+                  <p className="text-[11px] text-slate-500">Nenhum documento anexado ainda.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {formPCDocumentosAnexos.map((doc, idx) => (
+                      <div key={idx} className="flex items-center justify-between gap-2 bg-white dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800">
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[11px] text-slate-700 dark:text-slate-200 hover:text-emerald-600 truncate min-w-0">
+                          <FileText className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                          <span className="truncate">{doc.nome}</span>
+                          <span className="shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">{doc.tipo}</span>
+                          <span className="shrink-0 text-[9px] text-slate-400">{doc.data_upload}</span>
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoverDocumentoAnexo(idx, true)}
+                          className="shrink-0 text-slate-400 hover:text-red-600 cursor-pointer"
+                          title="Remover este documento"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <input
+                  type="file"
+                  ref={fileInputExtraPCRef}
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      handleAnexarDocumentoExtra(e.target.files[0], "Fatura de Renovação", true);
+                      e.target.value = "";
+                    }
+                  }}
+                  accept=".pdf,.png,.jpg,.jpeg,.webp"
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputExtraPCRef.current?.click()}
+                  className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer flex items-center gap-1"
+                >
+                  <Plus className="h-3 w-3" /> Anexar fatura de renovação (sem substituir a apólice)
+                </button>
               </div>
 
               {/* CAMPOS */}
