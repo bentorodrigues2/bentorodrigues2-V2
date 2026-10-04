@@ -2488,6 +2488,7 @@ export async function fetchPlanoManutencaoFromSupabase(idPredio: string): Promis
     estado_conformidade: row.estado_conformidade,
     num_certificado_relatorio: row.num_certificado_relatorio || undefined,
     custo_estimado: row.custo_estimado != null ? Number(row.custo_estimado) : undefined,
+    fotos: Array.isArray(row.fotos) ? row.fotos : [],
     historico_vistorias: row.historico_vistorias || []
   }));
 }
@@ -2509,6 +2510,7 @@ export async function savePlanoManutencaoItemToSupabase(item: ItemPlanoManutenca
     estado_conformidade: item.estado_conformidade,
     num_certificado_relatorio: item.num_certificado_relatorio || null,
     custo_estimado: item.custo_estimado ?? null,
+    fotos: item.fotos || [],
     historico_vistorias: item.historico_vistorias || []
   });
 }

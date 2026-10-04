@@ -820,6 +820,7 @@ export interface ItemPlanoManutencao {
   estado_conformidade: "CONFORME" | "A_EXPIRAR" | "EXPIRADO_ALERTA";
   num_certificado_relatorio?: string;
   custo_estimado?: number;
+  fotos?: string[]; // até 4 imagens do equipamento/local (data URI base64)
   historico_vistorias?: {
     id_vistoria: string;
     data: string;

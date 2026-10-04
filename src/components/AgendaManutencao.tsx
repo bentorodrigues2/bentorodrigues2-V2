@@ -81,9 +81,30 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
   const [novoItemBaseLegal, setNovoItemBaseLegal] = useState("");
   const [novoItemUltimaData, setNovoItemUltimaData] = useState(new Date().toISOString().split("T")[0]);
   const [novoItemProximaData, setNovoItemProximaData] = useState("");
+  const [novoItemFotos, setNovoItemFotos] = useState<string[]>([]);
+  const MAX_FOTOS_ITEM = 4;
+
+  const lerImagemComoDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const handleAdicionarFotoItem = async (file: File) => {
+    if (novoItemFotos.length >= MAX_FOTOS_ITEM) return;
+    const dataUrl = await lerImagemComoDataUrl(file);
+    setNovoItemFotos(prev => [...prev, dataUrl]);
+  };
+
+  const handleRemoverFotoItem = (index: number) => {
+    setNovoItemFotos(prev => prev.filter((_, i) => i !== index));
+  };
 
   const abrirModalNovoItem = () => {
     setEditingItem(null);
+    setNovoItemFotos([]);
     setNovoItemTitulo("");
     setNovoItemTipo("ELEVADORES_DGEG");
     setNovoItemEntidade("");
@@ -104,6 +125,7 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
     // o campo vazio — preenche com a referência padrão do tipo em vez de
     // deixar vazio, tal como aconteceria se o tipo fosse escolhido agora.
     setNovoItemBaseLegal(item.base_legal_dgeg?.trim() || BASE_LEGAL_POR_TIPO[item.tipo] || "");
+    setNovoItemFotos(item.fotos || []);
     setNovoItemUltimaData(item.ultima_inspecao_data);
     setNovoItemProximaData(item.proxima_inspecao_data);
     setShowNovoItemModal(true);
@@ -138,6 +160,7 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
       estado_conformidade: editingItem?.estado_conformidade || "CONFORME",
       num_certificado_relatorio: editingItem?.num_certificado_relatorio,
       custo_estimado: editingItem?.custo_estimado,
+      fotos: novoItemFotos,
       historico_vistorias: editingItem?.historico_vistorias || []
     };
 
@@ -516,6 +539,16 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
                           </div>
                         )}
                       </div>
+
+                      {item.fotos && item.fotos.length > 0 && (
+                        <div className="flex gap-1.5 pt-1">
+                          {item.fotos.map((foto, idx) => (
+                            <a key={idx} href={foto} target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 shrink-0">
+                              <img src={foto} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -828,6 +861,44 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl font-mono text-xs focus:border-emerald-500"
                 />
                 <p className="text-[10px] text-slate-500">Deixe em branco para calcular automaticamente (Última Inspeção + Periodicidade).</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                  <span>Fotos do Equipamento/Local</span>
+                  <span className="text-[10px] font-mono text-slate-500">{novoItemFotos.length}/{MAX_FOTOS_ITEM}</span>
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {novoItemFotos.map((foto, idx) => (
+                    <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 group">
+                      <img src={foto} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoverFotoItem(idx)}
+                        className="absolute top-0.5 right-0.5 bg-red-600 hover:bg-red-700 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Remover foto"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  {novoItemFotos.length < MAX_FOTOS_ITEM && (
+                    <label className="aspect-square rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center cursor-pointer hover:border-emerald-500 transition-colors text-slate-400 hover:text-emerald-600">
+                      <Upload className="h-5 w-5" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={e => {
+                          if (e.target.files && e.target.files[0]) {
+                            handleAdicionarFotoItem(e.target.files[0]);
+                            e.target.value = "";
+                          }
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-2 pt-2">
