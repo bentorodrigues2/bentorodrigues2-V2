@@ -1284,6 +1284,14 @@ async function processarExtratoBancarioRecebido({ anexo, dadosExtraidosDoc }) {
  */
 async function processarSeguroFracaoRecebido({ anexo, dadosExtraidosDoc, contexto }) {
   try {
+    // Propositadamente SEM subPasta/fornecedor: antes (pelo caminho antigo
+    // de fatura de fornecedor) cada seguradora criava a sua própria pasta
+    // no Arquivo ("Fidelidade", "Fidelidade - Companhia de Seguros, S.A.",
+    // etc. — 2 pastas diferentes só para a mesma seguradora, por pequenas
+    // variações no nome extraído). Todos os seguros de fração, de qualquer
+    // seguradora e de qualquer fração, devem cair sempre na MESMA pasta
+    // única "Seguros & Apólices" (grupos.ts usa sub_pasta || fornecedor ||
+    // tema como nome da pasta — sem os dois primeiros, cai sempre no tema).
     const caminhoArquivo = await arquivarAnexoOriginal({
       buffer: anexo.buffer,
       filename: anexo.filename,
