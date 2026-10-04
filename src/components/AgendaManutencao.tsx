@@ -749,10 +749,16 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
                     onChange={e => {
                       const novoTipo = e.target.value as TipoInspecaoObrigatoria;
                       setNovoItemTipo(novoTipo);
-                      // Só preenche sozinho quando o campo está vazio — nunca
-                      // substitui um texto que o administrador já tenha
-                      // escrito/ajustado à mão.
-                      if (!novoItemBaseLegal.trim()) {
+                      // O campo começa sempre pré-preenchido com a referência
+                      // do tipo inicial — "está vazio" nunca é verdade depois
+                      // disso, por isso a troca de tipo nunca atualizava nada.
+                      // A verificação certa é: o valor atual é só o
+                      // preenchimento automático de QUALQUER tipo (nunca foi
+                      // tocado à mão) ou está mesmo vazio — só nesse caso se
+                      // substitui; um texto escrito/ajustado manualmente
+                      // nunca é tocado.
+                      const eraPreenchimentoAutomatico = !novoItemBaseLegal.trim() || Object.values(BASE_LEGAL_POR_TIPO).includes(novoItemBaseLegal.trim());
+                      if (eraPreenchimentoAutomatico) {
                         setNovoItemBaseLegal(BASE_LEGAL_POR_TIPO[novoTipo]);
                       }
                     }}
