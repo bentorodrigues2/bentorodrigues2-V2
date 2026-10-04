@@ -1685,15 +1685,23 @@ export async function processInboundEmail(payload) {
             continue;
           }
 
-          // Uma fatura/débito direto de seguradora (categoria_contabilistica
-          // "Seguros") chegada da conta de email de um condómino é o
+          // Qualquer documento de seguradora (categoria_contabilistica
+          // "Seguros") chegado da conta de email de um condómino é o
           // comprovativo do seguro de incêndio da PRÓPRIA fração, nunca uma
-          // despesa do condomínio — segue o seu próprio fluxo (anexa ao
-          // seguro da fração) em vez de cair no caminho de fatura/despesa
-          // abaixo, que a lançava sempre como "Movimento Cego" fantasma.
-          const isSeguroFracaoDoc = (isFaturaDoc || tipoDocLower === "debito_direto") &&
-            (dadosExtraidosDoc?.categoria_contabilistica || "").toLowerCase().includes("seguro") &&
-            contextoDocumento?.id_fracao;
+          // despesa do condomínio nem uma quota — segue o seu próprio fluxo
+          // (anexa ao seguro da fração) em vez de cair no caminho de
+          // fatura/comprovativo/despesa abaixo. Já não distingue por
+          // tipo_documento (fatura/débito direto/comprovativo/recibo/...):
+          // a IA classifica o mesmo tipo de documento de forma diferente
+          // consoante a seguradora (confirmadas em produção pelo menos 3
+          // variantes — "fatura", "debito_direto" e "recibo" — todas
+          // passavam despercebidas por enumerar só algumas, e a Allianz
+          // "recibo" acabou lançada como Receita/Quotas da fração, a
+          // própria entrega do seguro a aparecer como se o condómino
+          // tivesse pago a quota). categoria_contabilistica + fração
+          // resolvida chega sozinho (extrato bancário já saiu mais acima).
+          const isSeguroFracaoDoc = (dadosExtraidosDoc?.categoria_contabilistica || "").toLowerCase().includes("seguro") &&
+            Boolean(contextoDocumento?.id_fracao);
           if (isSeguroFracaoDoc) {
             await processarSeguroFracaoRecebido({ anexo, dadosExtraidosDoc, contexto: contextoDocumento });
             continue;
