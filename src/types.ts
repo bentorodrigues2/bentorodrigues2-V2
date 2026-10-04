@@ -795,15 +795,17 @@ export interface SeguroPartesComuns {
 // ----------------------------------------------------------------------------
 // 7. PLANO PREVENTIVO DE MANUTENÇÃO & INSPEÇÕES OBRIGATÓRIAS (CALENDÁRIO & ALARMES)
 // ----------------------------------------------------------------------------
-export type TipoInspecaoObrigatoria = 
-  | "ELEVADORES_DGEG" 
-  | "LIMPEZA_CHAMINES_CONDUTAS" 
-  | "RECARGA_EXTINTORES" 
-  | "INSPECAO_REDE_GAS" 
-  | "LIMPEZA_CISTERNA_BOMBAS" 
-  | "SISTEMA_SOLAR_TERMICO" 
-  | "PORTAO_GARAGEM_AUTOMATICO" 
-  | "COLUNA_SECA_INCENDIO";
+export type TipoInspecaoObrigatoria =
+  | "ELEVADORES_DGEG"
+  | "LIMPEZA_CHAMINES_CONDUTAS"
+  | "RECARGA_EXTINTORES"
+  | "INSPECAO_REDE_GAS"
+  | "LIMPEZA_CISTERNA_BOMBAS"
+  | "SISTEMA_SOLAR_TERMICO"
+  | "PORTAO_GARAGEM_AUTOMATICO"
+  | "COLUNA_SECA_INCENDIO"
+  | "INSPECAO_TELHADO"
+  | "INSPECAO_ALGEROZES";
 
 export interface ItemPlanoManutencao {
   id_item: string;
@@ -811,7 +813,9 @@ export interface ItemPlanoManutencao {
   tipo: TipoInspecaoObrigatoria;
   titulo: string;
   entidade_responsavel: string;
+  id_fornecedor?: string; // liga a um fornecedor real (fornecedores.id_fornecedor) para "Pedir Proposta" poder enviar um email a sério
   contacto_entidade?: string;
+  quantidade?: number; // nº de unidades deste equipamento (ex: 2 elevadores, 1 extintor)
   periodicidade_meses: number; // ex: 12 (anual), 24 (2 anos), 1 (mensal)
   base_legal_dgeg: string;
   ultima_inspecao_data: string;

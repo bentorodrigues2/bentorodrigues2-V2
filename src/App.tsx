@@ -2974,9 +2974,10 @@ export default function App() {
           )}
 
           {activeSection === "agenda_manutencao" && (
-            <AgendaManutencao 
+            <AgendaManutencao
               predio={predioAtivo}
               loggedUser={loggedUser}
+              fornecedores={fornecedores}
             />
           )}
 

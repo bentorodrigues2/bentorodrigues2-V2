@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Predio, LoggedUser, ItemPlanoManutencao, TipoInspecaoObrigatoria } from "../types";
+import { Predio, LoggedUser, ItemPlanoManutencao, TipoInspecaoObrigatoria, Fornecedor } from "../types";
 import { 
   Wrench, 
   Calendar, 
@@ -39,15 +39,19 @@ const BASE_LEGAL_POR_TIPO: Record<TipoInspecaoObrigatoria, string> = {
   LIMPEZA_CISTERNA_BOMBAS: "Decreto-Lei n.º 306/2007 (qualidade da água para consumo humano)",
   SISTEMA_SOLAR_TERMICO: "Decreto-Lei n.º 118/2013 (Sistema de Certificação Energética dos Edifícios)",
   PORTAO_GARAGEM_AUTOMATICO: "Decreto-Lei n.º 50/2005 (segurança de máquinas e equipamentos automáticos)",
-  COLUNA_SECA_INCENDIO: "Decreto-Lei n.º 220/2008 e Portaria n.º 1532/2008 (SCIE)"
+  COLUNA_SECA_INCENDIO: "Decreto-Lei n.º 220/2008 e Portaria n.º 1532/2008 (SCIE)",
+  INSPECAO_TELHADO: "Código Civil, art.º 1421.º-1426.º (dever de conservação) e RGEU — Regulamento Geral das Edificações Urbanas",
+  INSPECAO_ALGEROZES: "Código Civil, art.º 1421.º-1426.º (dever de conservação) e RGEU — Regulamento Geral das Edificações Urbanas"
 };
 
 interface AgendaManutencaoProps {
   predio: Predio;
   loggedUser: LoggedUser;
+  fornecedores?: Fornecedor[];
 }
 
-export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) {
+export function AgendaManutencao({ predio, loggedUser, fornecedores = [] }: AgendaManutencaoProps) {
+  const fornecedoresPredio = fornecedores.filter(f => f.id_predio === predio.id_predio);
   const [activeTab, setActiveTab] = useState<"checklist" | "calendario" | "novo_registo">("checklist");
   const [filterStatus, setFilterStatus] = useState<"TODOS" | "CONFORME" | "A_EXPIRAR" | "EXPIRADO_ALERTA">("TODOS");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -82,6 +86,8 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
   const [novoItemUltimaData, setNovoItemUltimaData] = useState(new Date().toISOString().split("T")[0]);
   const [novoItemProximaData, setNovoItemProximaData] = useState("");
   const [novoItemFotos, setNovoItemFotos] = useState<string[]>([]);
+  const [novoItemIdFornecedor, setNovoItemIdFornecedor] = useState<string>("");
+  const [novoItemQuantidade, setNovoItemQuantidade] = useState<string>("1");
   const MAX_FOTOS_ITEM = 4;
 
   const lerImagemComoDataUrl = (file: File): Promise<string> =>
@@ -108,6 +114,8 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
     setNovoItemTitulo("");
     setNovoItemTipo("ELEVADORES_DGEG");
     setNovoItemEntidade("");
+    setNovoItemIdFornecedor("");
+    setNovoItemQuantidade("1");
     setNovoItemPeriodicidade("12");
     setNovoItemBaseLegal(BASE_LEGAL_POR_TIPO.ELEVADORES_DGEG);
     setNovoItemUltimaData(new Date().toISOString().split("T")[0]);
@@ -120,6 +128,8 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
     setNovoItemTitulo(item.titulo);
     setNovoItemTipo(item.tipo);
     setNovoItemEntidade(item.entidade_responsavel);
+    setNovoItemIdFornecedor(item.id_fornecedor || "");
+    setNovoItemQuantidade(String(item.quantidade || 1));
     setNovoItemPeriodicidade(String(item.periodicidade_meses));
     // Itens criados antes deste preenchimento automático existir podem ter
     // o campo vazio — preenche com a referência padrão do tipo em vez de
@@ -152,6 +162,8 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
       tipo: novoItemTipo,
       titulo: novoItemTitulo,
       entidade_responsavel: novoItemEntidade || "A definir",
+      id_fornecedor: novoItemIdFornecedor || undefined,
+      quantidade: parseInt(novoItemQuantidade) || 1,
       periodicidade_meses: periodicidade,
       base_legal_dgeg: novoItemBaseLegal || "",
       ultima_inspecao_data: novoItemUltimaData,
@@ -191,6 +203,55 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
     setTimeout(() => setToastMsg(null), 4000);
   };
 
+  // "Pedir Proposta" antes só disparava uma animação decorativa de 3
+  // segundos (triggerSendReaction sem nenhuma ação real a cumprir) — nunca
+  // contactava nenhum fornecedor a sério, porque o item nem sequer estava
+  // ligado a nenhum fornecedor real (entidade_responsavel era só texto
+  // livre). Liga agora ao fornecedor real escolhido no formulário
+  // (item.id_fornecedor) e envia um email verdadeiro, pelo mesmo endpoint
+  // já usado em todo o resto da app (/api/email?acao=notificar).
+  const [enviandoPropostaId, setEnviandoPropostaId] = useState<string | null>(null);
+  const handlePedirProposta = async (item: ItemPlanoManutencao) => {
+    const fornecedor = fornecedoresPredio.find(f => f.id_fornecedor === item.id_fornecedor);
+    if (!fornecedor) {
+      alert(`"${item.titulo}" ainda não está ligado a nenhum fornecedor registado. Edite o item e escolha um fornecedor em "Entidade Responsável" para poder pedir proposta por email.`);
+      return;
+    }
+    if (!fornecedor.email_contacto) {
+      alert(`O fornecedor "${fornecedor.nome}" não tem email registado. Adicione um email em Fornecedores antes de pedir proposta.`);
+      return;
+    }
+
+    setEnviandoPropostaId(item.id_item);
+    try {
+      const resp = await fetch("/api/email?acao=notificar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: fornecedor.email_contacto,
+          nomeDestinatario: fornecedor.pessoa_contacto || fornecedor.nome,
+          assunto: `Pedido de Proposta — ${item.titulo}`,
+          mensagem: `A administração do condomínio <strong>${predio.nome}</strong> solicita uma proposta/orçamento para a seguinte intervenção:<br><br>` +
+            `<ul>` +
+            `<li><strong>Equipamento/Serviço:</strong> ${item.titulo}</li>` +
+            `<li><strong>Quantidade:</strong> ${item.quantidade || 1}</li>` +
+            `<li><strong>Última inspeção:</strong> ${item.ultima_inspecao_data || "—"}</li>` +
+            `<li><strong>Próxima obrigatória:</strong> ${item.proxima_inspecao_data || "—"}</li>` +
+            `</ul>` +
+            `Agradecemos o envio da proposta/disponibilidade de agenda com a maior brevidade possível, respondendo diretamente a este email.`
+        })
+      });
+      const resultado = await resp.json();
+      if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar o pedido");
+      registarLogAuditoria("Manutenção", `Pediu proposta a "${fornecedor.nome}" para "${item.titulo}"`, predio.id_predio, loggedUser);
+      showToast(`📧 Pedido de proposta enviado com sucesso para ${fornecedor.nome} (${fornecedor.email_contacto})!`);
+    } catch (err: any) {
+      alert(`❌ Não foi possível enviar o pedido de proposta: ${err?.message || "erro desconhecido"}`);
+    } finally {
+      setEnviandoPropostaId(null);
+    }
+  };
+
   const getTipoIcon = (tipo: TipoInspecaoObrigatoria) => {
     switch (tipo) {
       case "ELEVADORES_DGEG":
@@ -207,6 +268,10 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
         return <Sun className="h-5 w-5 text-amber-300" />;
       case "PORTAO_GARAGEM_AUTOMATICO":
         return <Wrench className="h-5 w-5 text-indigo-400" />;
+      case "INSPECAO_TELHADO":
+        return <Layers className="h-5 w-5 text-orange-400" />;
+      case "INSPECAO_ALGEROZES":
+        return <Droplets className="h-5 w-5 text-blue-400" />;
       default:
         return <FileCheck className="h-5 w-5 text-emerald-400" />;
     }
@@ -521,6 +586,10 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
 
                       <div className="border-t border-slate-200/60 dark:border-slate-800/60 pt-2 flex flex-col gap-1 text-[11px]">
                         <div className="flex justify-between items-center">
+                          <span className="text-slate-500">Quantidade:</span>
+                          <strong className="text-slate-800 dark:text-slate-200 font-semibold">{item.quantidade || 1}</strong>
+                        </div>
+                        <div className="flex justify-between items-center">
                           <span className="text-slate-500">Entidade Responsável:</span>
                           <strong className="text-slate-800 dark:text-slate-200 font-semibold">{item.entidade_responsavel}</strong>
                         </div>
@@ -568,16 +637,13 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
 
                     <button
                       type="button"
-                      onClick={() => {
-                        triggerSendReaction("email", `A solicitar proposta técnica a ${item.entidade_responsavel}`, () => {
-                          showToast(`📧 Solicitação de proposta enviada com sucesso para ${item.entidade_responsavel}!`);
-                        });
-                      }}
-                      className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs flex items-center gap-1 transition-all cursor-pointer"
-                      title="Pedir Orçamento / Agendar Intervenção"
+                      disabled={enviandoPropostaId === item.id_item}
+                      onClick={() => handlePedirProposta(item)}
+                      className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50"
+                      title={item.id_fornecedor ? "Enviar pedido de proposta por email ao fornecedor" : "Ligue este item a um fornecedor registado (editar) para poder pedir proposta por email"}
                     >
                       <Send className="h-3.5 w-3.5 text-emerald-500" />
-                      <span>Pedir Proposta</span>
+                      <span>{enviandoPropostaId === item.id_item ? "A enviar..." : "Pedir Proposta"}</span>
                     </button>
                     <button
                       type="button"
@@ -805,6 +871,8 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
                     <option value="SISTEMA_SOLAR_TERMICO">Sistema Solar Térmico</option>
                     <option value="PORTAO_GARAGEM_AUTOMATICO">Portão de Garagem Automático</option>
                     <option value="COLUNA_SECA_INCENDIO">Coluna Seca de Incêndio</option>
+                    <option value="INSPECAO_TELHADO">Inspeção ao Telhado</option>
+                    <option value="INSPECAO_ALGEROZES">Inspeção de Algerozes</option>
                   </select>
                 </div>
                 <div className="space-y-1">
@@ -820,14 +888,42 @@ export function AgendaManutencao({ predio, loggedUser }: AgendaManutencaoProps) 
               </div>
 
               <div className="space-y-1">
+                <label className="font-bold text-slate-700 dark:text-slate-300">Quantidade</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={novoItemQuantidade}
+                  onChange={e => setNovoItemQuantidade(e.target.value)}
+                  placeholder="Ex: 2 (nº de elevadores, extintores, etc.)"
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl font-mono text-xs focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="space-y-1">
                 <label className="font-bold text-slate-700 dark:text-slate-300">Entidade Responsável</label>
+                <select
+                  value={novoItemIdFornecedor}
+                  onChange={e => {
+                    const id = e.target.value;
+                    setNovoItemIdFornecedor(id);
+                    const forn = fornecedoresPredio.find(f => f.id_fornecedor === id);
+                    if (forn) setNovoItemEntidade(forn.nome);
+                  }}
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:border-emerald-500 mb-1.5"
+                >
+                  <option value="">— Escrever manualmente / ainda não registado —</option>
+                  {fornecedoresPredio.map(f => (
+                    <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}{f.email_contacto ? "" : " (sem email)"}</option>
+                  ))}
+                </select>
                 <input
                   type="text"
                   placeholder="Ex: Empresa Certificada de Manutenção"
                   value={novoItemEntidade}
-                  onChange={e => setNovoItemEntidade(e.target.value)}
+                  onChange={e => { setNovoItemEntidade(e.target.value); setNovoItemIdFornecedor(""); }}
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:border-emerald-500"
                 />
+                <p className="text-[10px] text-slate-500">Escolha um fornecedor já registado para "Pedir Proposta" poder enviar um pedido por email a sério — caso contrário fica só como texto informativo.</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
