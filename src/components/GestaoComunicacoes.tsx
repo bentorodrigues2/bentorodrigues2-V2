@@ -17,6 +17,45 @@ import {
   saveQuestionarioToSupabase
 } from "../lib/supabaseService";
 
+// Dispara uma notificação push real e devolve sempre um resumo legível do
+// que aconteceu (quantas chegaram, quantas falharam, ou o erro do
+// servidor) — nunca engole o resultado em silêncio como acontecia antes
+// (fetch(...).catch(() => {})), que é exatamente o que fazia a
+// administração pensar "está tudo a funcionar" quando o envio podia estar
+// sempre a falhar sem ninguém notar.
+async function enviarPushComDiagnostico(payload: {
+  id_predio: string;
+  id_fracao?: string;
+  title: string;
+  body: string;
+  url?: string;
+  categoria?: string;
+}): Promise<string> {
+  try {
+    const resp = await fetch("/api/admin?acao=enviar-push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) {
+      return `⚠️ Notificação push NÃO enviada: ${data?.error || "erro desconhecido no servidor"}`;
+    }
+    if ((data.total_subscricoes || 0) === 0) {
+      return "⚠️ Notificação push: nenhum condómino tem o telemóvel subscrito ainda (peça para ativar em Perfil → Notificações Push).";
+    }
+    if ((data.enviados || 0) === 0) {
+      return `⚠️ Notificação push: 0 de ${data.total_subscricoes} subscrição(ões) receberam a notificação — subscrições podem estar inválidas.`;
+    }
+    let resumo = `🔔 Notificação push: enviada a ${data.enviados} de ${data.total_subscricoes} dispositivo(s) subscrito(s).`;
+    if (data.bloqueados_por_preferencia) resumo += ` (${data.bloqueados_por_preferencia} bloqueado(s) por preferência pessoal)`;
+    if (data.expirados_removidas) resumo += ` (${data.expirados_removidas} subscrição(ões) expirada(s) removida(s))`;
+    return resumo;
+  } catch (err: any) {
+    return `⚠️ Notificação push NÃO enviada: ${err?.message || "falha de rede ao contactar o servidor"}`;
+  }
+}
+
 interface GestaoComunicacoesProps {
   predio: Predio;
   fracoes: Fracao[];
@@ -109,21 +148,20 @@ export function GestaoComunicacoes({
       setComunicadoTitulo("");
       setComunicadoMensagem("");
 
-      // Notificação push real (além do email) — silenciosa se ninguém tiver
-      // subscrito ainda neste prédio.
-      fetch("/api/admin?acao=enviar-push", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id_predio: predio.id_predio,
-          title: comunicadoUrgencia === "urgente" ? `🚨 ${novoComunicado.titulo}` : novoComunicado.titulo,
-          body: novoComunicado.mensagem,
-          // Comunicados urgentes saem sempre; os normais respeitam a preferência "Comunicados Gerais"
-          categoria: comunicadoUrgencia === "urgente" ? undefined : "optional_general"
-        })
-      }).catch(() => {});
+      // Notificação push real (além do email). Antes o resultado era
+      // totalmente ignorado (.catch(() => {})) — se o envio falhasse (chave
+      // VAPID errada, sessão sem token, etc.) a administração nunca ficava a
+      // saber, parecia só que "ninguém recebeu". Agora o resultado real
+      // (enviados/total/erro) é sempre mostrado a seguir ao alerta do email.
+      const resumoPush = await enviarPushComDiagnostico({
+        id_predio: predio.id_predio,
+        title: comunicadoUrgencia === "urgente" ? `🚨 ${novoComunicado.titulo}` : novoComunicado.titulo,
+        body: novoComunicado.mensagem,
+        // Comunicados urgentes saem sempre; os normais respeitam a preferência "Comunicados Gerais"
+        categoria: comunicadoUrgencia === "urgente" ? undefined : "optional_general"
+      });
 
-      alert(`Comunicado enviado com sucesso a ${data.total_enviados} de ${data.total_destinatarios} destinatário(s)!`);
+      alert(`Comunicado enviado com sucesso a ${data.total_enviados} de ${data.total_destinatarios} destinatário(s)!\n\n${resumoPush}`);
     } catch (err: any) {
       alert("Erro ao enviar o comunicado: " + (err?.message || "erro desconhecido"));
     } finally {
@@ -342,17 +380,13 @@ export function GestaoComunicacoes({
 
       // Notificação push real no telemóvel/PWA do condómino — só push, nunca
       // email (pedido explícito: mensagens usam sempre notificação push).
-      fetch("/api/admin?acao=enviar-push", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id_predio: selectedC.id_predio,
-          id_fracao: selectedC.id_fracao,
-          title: "Nova mensagem da Administração",
-          body: novaMensagem.texto.length > 120 ? novaMensagem.texto.slice(0, 117) + "..." : novaMensagem.texto,
-          url: "/"
-        })
-      }).catch(() => {});
+      enviarPushComDiagnostico({
+        id_predio: selectedC.id_predio,
+        id_fracao: selectedC.id_fracao,
+        title: "Nova mensagem da Administração",
+        body: novaMensagem.texto.length > 120 ? novaMensagem.texto.slice(0, 117) + "..." : novaMensagem.texto,
+        url: "/"
+      }).then(resumo => { if (resumo.startsWith("⚠️")) console.warn(resumo); });
 
       setRespostaTexto("");
     } catch (err) {
@@ -454,18 +488,14 @@ export function GestaoComunicacoes({
 
       // Push real para todo o prédio de uma vez (sem id_fracao, chega a
       // todos os subscritos), tal como as sondagens/comunicados.
-      fetch("/api/admin?acao=enviar-push", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id_predio: predio.id_predio,
-          title: "Nova mensagem da Administração",
-          body: textoParaTodasFracoes.length > 120 ? textoParaTodasFracoes.slice(0, 117) + "..." : textoParaTodasFracoes,
-          url: "/"
-        })
-      }).catch(() => {});
+      const resumoPushTodos = await enviarPushComDiagnostico({
+        id_predio: predio.id_predio,
+        title: "Nova mensagem da Administração",
+        body: textoParaTodasFracoes.length > 120 ? textoParaTodasFracoes.slice(0, 117) + "..." : textoParaTodasFracoes,
+        url: "/"
+      });
 
-      alert(`✅ Mensagem enviada a ${fracoesPredio.length} frações.`);
+      alert(`✅ Mensagem enviada a ${fracoesPredio.length} frações.\n\n${resumoPushTodos}`);
       setTextoParaTodasFracoes("");
       setNovaConversaParaTodos(false);
       setShowNovaConversa(false);
@@ -516,16 +546,12 @@ export function GestaoComunicacoes({
       const ok = await saveSondagemToSupabase(nova);
       if (!ok) throw new Error("Falha ao gravar sondagem");
 
-      fetch("/api/admin?acao=enviar-push", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id_predio: predio.id_predio,
-          title: "🗳️ Nova Sondagem",
-          body: sondagemPergunta,
-          categoria: "optional_general"
-        })
-      }).catch(() => {});
+      const resumoPushSondagem = await enviarPushComDiagnostico({
+        id_predio: predio.id_predio,
+        title: "🗳️ Nova Sondagem",
+        body: sondagemPergunta,
+        categoria: "optional_general"
+      });
 
       if (destinatariosPredio.length > 0) {
         await fetch("/api/email?acao=broadcast", {
@@ -541,7 +567,7 @@ export function GestaoComunicacoes({
 
       setSondagensList(prev => [{ ...nova, votos: [] }, ...prev]);
       setSondagemPergunta("");
-      alert("Sondagem criada e notificação enviada aos condóminos!");
+      alert(`Sondagem criada!\n\n${resumoPushSondagem}`);
     } catch (err: any) {
       alert("Erro ao criar sondagem: " + (err?.message || "erro desconhecido"));
     } finally {
@@ -603,16 +629,12 @@ export function GestaoComunicacoes({
       const ok = await saveQuestionarioToSupabase(novo);
       if (!ok) throw new Error("Falha ao gravar questionário");
 
-      fetch("/api/admin?acao=enviar-push", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id_predio: predio.id_predio,
-          title: "📋 Novo Questionário",
-          body: questTitulo,
-          categoria: "optional_general"
-        })
-      }).catch(() => {});
+      const resumoPushQuest = await enviarPushComDiagnostico({
+        id_predio: predio.id_predio,
+        title: "📋 Novo Questionário",
+        body: questTitulo,
+        categoria: "optional_general"
+      });
 
       if (destinatariosPredio.length > 0) {
         await fetch("/api/email?acao=broadcast", {
@@ -629,7 +651,7 @@ export function GestaoComunicacoes({
       setQuestionariosList(prev => [{ ...novo, respostas: [] }, ...prev]);
       setQuestTitulo("");
       setQuestDesc("");
-      alert("Questionário publicado e notificação enviada aos condóminos!");
+      alert(`Questionário publicado!\n\n${resumoPushQuest}`);
     } catch (err: any) {
       alert("Erro ao criar questionário: " + (err?.message || "erro desconhecido"));
     } finally {

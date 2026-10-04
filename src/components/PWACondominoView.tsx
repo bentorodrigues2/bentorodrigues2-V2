@@ -3092,6 +3092,53 @@ export default function PWACondominoView({
                 </div>
               )}
 
+              {/* HIDDEN FILE INPUTS — únicos no documento, partilhados pelo
+                  separador "Mensagens" e pelo modal do botão flutuante
+                  (ambos chamam document.getElementById(...)?.click()).
+                  Tinham sido removidos por engano junto com o modal de chat
+                  fictício ("Boa tarde Sr. João..."), que por coincidência
+                  era o único sítio onde viviam — ficando o botão de clip
+                  sem efeito nenhum desde então. */}
+              <input
+                id="pwa-chat-doc-input"
+                type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) {
+                    limparAnexosChat();
+                    const sizeStr = file.size > 1024 * 1024 ? `${(file.size / (1024 * 1024)).toFixed(1)}MB` : `${Math.round(file.size / 1024)}KB`;
+                    setChatDocAttachment({ name: file.name, size: sizeStr });
+                    setChatDocFile(file);
+                  }
+                }}
+                className="hidden"
+              />
+              <input
+                id="pwa-chat-camera-input"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) processarFotoChatReal(file, `Camera_${file.name || "foto.webp"}`);
+                }}
+                className="hidden"
+              />
+              <input
+                id="pwa-chat-photo-input"
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) processarFotoChatReal(file, file.name || "imagem.webp");
+                }}
+                className="hidden"
+              />
+
               {/* Chat Input Form */}
               <form
                 onSubmit={(e) => {
@@ -4584,20 +4631,130 @@ export default function PWACondominoView({
               ))}
             </div>
 
+            {/* Pré-visualização do anexo escolhido (foto/documento/áudio) */}
+            {(chatPhotoWebp || chatAudioData || chatDocAttachment) && (
+              <div className="flex flex-wrap items-center gap-2 px-2.5 pt-2 shrink-0">
+                {chatPhotoWebp && (
+                  <div className="bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 px-2 py-1 rounded-xl text-[9px] flex items-center gap-1.5 text-emerald-700 dark:text-emerald-200 shadow-xs">
+                    <Camera className="h-3 w-3 text-emerald-500" />
+                    <span className="font-bold truncate max-w-[120px]">{chatPhotoName || "Foto_Camara.webp"}</span>
+                    <button type="button" onClick={() => { setChatPhotoWebp(null); setChatPhotoName(null); }} className="text-red-500 hover:text-red-700 font-bold ml-1 cursor-pointer">✕</button>
+                  </div>
+                )}
+                {chatDocAttachment && (
+                  <div className="bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-300 dark:border-indigo-700 px-2 py-1 rounded-xl text-[9px] flex items-center gap-1.5 text-indigo-700 dark:text-indigo-200 shadow-xs">
+                    <File className="h-3 w-3 text-indigo-500" />
+                    <span className="font-bold truncate max-w-[120px]">{chatDocAttachment.name} ({chatDocAttachment.size})</span>
+                    <button type="button" onClick={() => setChatDocAttachment(null)} className="text-red-500 hover:text-red-700 font-bold ml-1 cursor-pointer">✕</button>
+                  </div>
+                )}
+                {chatAudioData && (
+                  <div className="bg-amber-50 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 px-2 py-1 rounded-xl text-[9px] flex items-center gap-1.5 text-amber-700 dark:text-amber-200 shadow-xs">
+                    <Volume2 className="h-3 w-3 text-amber-500" />
+                    <span className="font-bold">Gravação de Voz ({chatAudioTimer || 4}s)</span>
+                    <button type="button" onClick={() => { setChatAudioData(null); setChatAudioTimer(0); }} className="text-red-500 hover:text-red-700 font-bold ml-1 cursor-pointer">✕</button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* EMOJI PICKER POPOVER (modal) */}
+            {isEmojiPickerOpen && (
+              <div className="px-2.5 pt-2 shrink-0 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex justify-between items-center pb-1.5 mb-1.5 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-white">Selecionar Emoji</span>
+                  <button type="button" onClick={() => setIsEmojiPickerOpen(false)} className="text-red-500 hover:text-red-600 text-xs cursor-pointer">✕</button>
+                </div>
+                <div className="grid grid-cols-6 gap-1.5 text-base pb-1.5">
+                  {["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => (
+                    <button key={emoji} type="button" onClick={() => { setNewMsgText(newMsgText + emoji); setIsEmojiPickerOpen(false); }} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-center cursor-pointer transition-transform hover:scale-125">
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ATTACHMENT MENU POPOVER (modal) */}
+            {isAttachmentMenuOpen && (
+              <div className="px-2.5 pt-2 shrink-0 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                <div className="flex justify-between items-center pb-1 mb-1 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-[8.5px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-white">Anexar Ficheiro</span>
+                  <button type="button" onClick={() => setIsAttachmentMenuOpen(false)} className="text-red-500 hover:text-red-600 text-xs cursor-pointer">✕</button>
+                </div>
+                <button type="button" onClick={() => { setIsAttachmentMenuOpen(false); document.getElementById("pwa-chat-doc-input")?.click(); }} className="w-full flex items-center space-x-2 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-left cursor-pointer transition-colors">
+                  <div className="p-1 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-lg"><File className="h-3.5 w-3.5" /></div>
+                  <div><span className="font-bold text-[9.5px] block">Documento / PDF</span><span className="text-[7.5px] text-slate-600">PDF, Word, Excel, TXT</span></div>
+                </button>
+                <button type="button" onClick={() => { setIsAttachmentMenuOpen(false); document.getElementById("pwa-chat-camera-input")?.click(); }} className="w-full flex items-center space-x-2 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-left cursor-pointer transition-colors">
+                  <div className="p-1 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-lg"><Camera className="h-3.5 w-3.5" /></div>
+                  <div><span className="font-bold text-[9.5px] block">Tirar Fotografia (Câmara)</span><span className="text-[7.5px] text-slate-600">Acesso à câmara móvel/PC</span></div>
+                </button>
+                <button type="button" onClick={() => { setIsAttachmentMenuOpen(false); document.getElementById("pwa-chat-photo-input")?.click(); }} className="w-full flex items-center space-x-2 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-left cursor-pointer transition-colors">
+                  <div className="p-1 bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 rounded-lg"><Image className="h-3.5 w-3.5" /></div>
+                  <div><span className="font-bold text-[9.5px] block">Galeria de Fotos</span><span className="text-[7.5px] text-slate-600">Compressão .WEBP imediata</span></div>
+                </button>
+              </div>
+            )}
+
             <form
-              onSubmit={(e) => { handleEnviarMensagemReal(e); }}
+              onSubmit={(e) => {
+                handleEnviarMensagemReal(e);
+                setIsEmojiPickerOpen(false);
+                setIsAttachmentMenuOpen(false);
+              }}
               className="flex items-end gap-1.5 p-2.5 border-t border-slate-100 dark:border-slate-800 shrink-0"
             >
+              <button
+                type="button"
+                onClick={() => { setIsAttachmentMenuOpen(v => !v); setIsEmojiPickerOpen(false); }}
+                className={`p-2 rounded-xl cursor-pointer transition-colors shrink-0 ${
+                  isAttachmentMenuOpen || chatPhotoWebp || chatDocAttachment
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
+                }`}
+                title="Anexar documento, fotografia ou aceder à câmara (Clip)"
+              >
+                <Paperclip className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => { setIsEmojiPickerOpen(v => !v); setIsAttachmentMenuOpen(false); }}
+                className={`p-2 rounded-xl cursor-pointer transition-colors shrink-0 ${
+                  isEmojiPickerOpen ? "bg-amber-500 text-white shadow-xs" : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-amber-500"
+                }`}
+                title="Inserir Emoji"
+              >
+                <Smile className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => { if (isRecordingChatAudio) pararGravacaoAudioChatReal(); else iniciarGravacaoAudioChatReal(); }}
+                className={`p-2 rounded-xl cursor-pointer transition-colors shrink-0 ${
+                  isRecordingChatAudio ? "bg-red-600 text-white animate-pulse" : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-emerald-600 dark:text-emerald-400"
+                }`}
+                title={isRecordingChatAudio ? "Parar gravação de voz" : "Gravar mensagem de áudio (Nota de Voz)"}
+              >
+                <Mic className="h-4 w-4" />
+              </button>
               <textarea
+                ref={msgTextareaModalRef}
                 value={newMsgText}
+                required={!chatAudioData && !chatPhotoWebp && !chatDocAttachment}
                 onChange={(e) => setNewMsgText(e.target.value)}
-                placeholder="Escreva a sua mensagem..."
+                onKeyDown={e => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    e.currentTarget.form?.requestSubmit();
+                  }
+                }}
+                placeholder={isRecordingChatAudio ? `🔴 A gravar áudio (${chatAudioTimer}s)...` : "Escreva a sua mensagem..."}
                 rows={1}
                 className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-[11px] text-slate-800 dark:text-white resize-none"
               />
               <button
                 type="submit"
-                disabled={!newMsgText.trim()}
+                disabled={!newMsgText.trim() && !chatPhotoWebp && !chatDocAttachment && !chatAudioData}
                 className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white p-2.5 rounded-xl cursor-pointer shrink-0"
                 title="Enviar"
               >
