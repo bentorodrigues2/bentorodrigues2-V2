@@ -815,8 +815,8 @@ export function AgendaManutencao({ predio, loggedUser, fornecedores = [] }: Agen
 
       {showNovoItemModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 animate-zoom-in">
-            <div className="bg-slate-900 p-5 text-white flex justify-between items-center border-b border-emerald-500/30">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full max-h-[90vh] shadow-2xl border border-slate-200 dark:border-slate-800 animate-zoom-in flex flex-col overflow-hidden">
+            <div className="bg-slate-900 p-5 text-white flex justify-between items-center border-b border-emerald-500/30 shrink-0">
               <h3 className="font-bold text-sm">{editingItem ? `Editar: ${editingItem.titulo}` : "Adicionar Item ao Plano de Manutenção Obrigatória"}</h3>
               <button
                 type="button"
@@ -827,7 +827,8 @@ export function AgendaManutencao({ predio, loggedUser, fornecedores = [] }: Agen
               </button>
             </div>
 
-            <form onSubmit={handleAdicionarItemPlano} className="p-6 space-y-4 text-xs">
+            <form onSubmit={handleAdicionarItemPlano} className="flex flex-col flex-1 min-h-0">
+            <div className="p-6 space-y-4 text-xs overflow-y-auto flex-1 min-h-0">
               <div className="space-y-1">
                 <label className="font-bold text-slate-700 dark:text-slate-300">Título *</label>
                 <input
@@ -996,8 +997,9 @@ export function AgendaManutencao({ predio, loggedUser, fornecedores = [] }: Agen
                   )}
                 </div>
               </div>
+            </div>
 
-              <div className="flex gap-2 pt-2">
+            <div className="flex gap-2 p-4 border-t border-slate-200 dark:border-slate-800 shrink-0">
                 <button
                   type="button"
                   onClick={() => { setShowNovoItemModal(false); setEditingItem(null); }}
@@ -1011,7 +1013,7 @@ export function AgendaManutencao({ predio, loggedUser, fornecedores = [] }: Agen
                 >
                   {editingItem ? "Guardar Alterações" : "Adicionar ao Plano"}
                 </button>
-              </div>
+            </div>
             </form>
           </div>
         </div>
