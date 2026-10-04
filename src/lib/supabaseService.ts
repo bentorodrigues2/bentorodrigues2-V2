@@ -906,6 +906,11 @@ export async function saveSeguroPartesComunsToSupabase(seguro: SeguroPartesComun
   if (!isSupabaseConfigured()) return { success: false, error: "Supabase não configurado" };
   const payload = {
     id: seguro.id,
+    // predio_id é a coluna real NOT NULL da tabela — condominio_id é só
+    // compatibilidade com leituras antigas. Faltava escrever em predio_id,
+    // por isso TODA a gravação de apólice de partes comuns falhava sempre
+    // (violação de NOT NULL), em silêncio do lado do utilizador.
+    predio_id: seguro.condominio_id,
     condominio_id: seguro.condominio_id,
     seguradora: seguro.seguradora,
     apolice_numero: seguro.apolice_numero,
