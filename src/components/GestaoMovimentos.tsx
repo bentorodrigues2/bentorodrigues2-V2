@@ -3115,10 +3115,46 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
               const expandida = linhaExtratoExpandida === m.id_mov;
               return (
                 <div key={m.id_mov} className={isCego ? "bg-amber-50/30" : ""}>
+                  {/* Cartão compacto — ecrãs estreitos (PWA/telemóvel). A
+                      linha original tem demasiados elementos lado a lado
+                      (chevron, data, conta, tipo, descrição, estado, clip,
+                      valor) para caberem numa só linha num telemóvel; sem
+                      espaço nem overflow-x, ficava tudo cortado/invisível.
+                      Mesmos dados, mesmo toggle de expandir, só empilhados. */}
                   <button
                     type="button"
                     onClick={() => setLinhaExtratoExpandida(expandida ? null : m.id_mov)}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50/70 transition-colors cursor-pointer text-xs"
+                    className="sm:hidden w-full text-left px-4 py-3 hover:bg-slate-50/70 transition-colors cursor-pointer text-xs space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`px-2 py-0.5 rounded font-bold text-[10px] shrink-0 ${m.tipo === 'Receita' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
+                        {m.tipo}
+                      </span>
+                      <span className={`font-bold font-mono-custom text-sm shrink-0 ${m.tipo === 'Receita' ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {m.tipo === 'Receita' ? '+' : '-'}{m.valor.toFixed(2)}€
+                      </span>
+                    </div>
+                    <p className="text-slate-700 font-medium truncate">{m.descricao}</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono-custom text-slate-600 text-[10.5px]">{formatDatePT(m.data)}</span>
+                      <span
+                        className="px-1.5 py-0.5 rounded font-bold text-[9.5px] shrink-0 bg-slate-200 text-slate-800 border border-slate-300 flex items-center gap-1 max-w-[140px]"
+                      >
+                        <i className="fa-solid fa-building-columns"></i>
+                        <span className="truncate">{cta?.banco || "Conta ?"}</span>
+                      </span>
+                    </div>
+                    {isCego && (
+                      <span className="text-[9px] bg-red-100 text-red-800 border border-red-200 px-1.5 py-0.5 rounded font-bold inline-block">
+                        {m.tipo === "Receita" ? "Por Confirmar" : "Falta Fatura!"}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setLinhaExtratoExpandida(expandida ? null : m.id_mov)}
+                    className="hidden sm:flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50/70 transition-colors cursor-pointer text-xs"
                   >
                     <i className={`fa-solid fa-chevron-right text-[9px] text-slate-700 transition-transform ${expandida ? "rotate-90" : ""}`}></i>
                     <span className="font-mono-custom text-slate-700 font-semibold whitespace-nowrap w-[72px] shrink-0">{formatDatePT(m.data)}</span>
