@@ -3000,11 +3000,12 @@ export function PWASimulator({
                         />
                       )}
                       {activePwaSubMenuDetails === "comunicar_cerebro" && (
-                        <IAAvancada 
+                        <IAAvancada
                           predio={predio}
                           fracoes={fracoes}
                           avisos={avisos}
                           movements={movements}
+                          contas={contas}
                           fornecedores={fornecedores}
                           loggedUser={loggedUser}
                           initialTab="cerebro_ia"

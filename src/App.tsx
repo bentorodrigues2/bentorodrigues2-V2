@@ -3062,11 +3062,12 @@ export default function App() {
           )}
 
           {activeSection === "ia_avancada" && (
-            <IAAvancada 
+            <IAAvancada
               predio={predioAtivo}
               fracoes={fracoes}
               avisos={avisos}
               movements={movements}
+              contas={contas}
               fornecedores={fornecedores}
               loggedUser={loggedUser}
               initialTab={iaInitialTab || "orcamento_anual_ia"}

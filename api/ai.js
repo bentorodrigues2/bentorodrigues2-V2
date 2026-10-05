@@ -235,15 +235,26 @@ Cada campo deve ter 1 a 3 frases. Se não houver obras pendentes, impacto_obras 
     }
 
     try {
-      const { movements, saldoAtual } = req.body || {};
-      const prompt = `Analisa a saúde financeira do Fundo Comum de Reserva do condomínio considerando:
-- Saldo Atual: ${saldoAtual || 0} €
-- Amostra de movimentos recentes: ${JSON.stringify(movements || [])}
+      const { contas, receitaAnualQuotasReal, numFracoes } = req.body || {};
+      const listaContas = Array.isArray(contas) ? contas : [];
+      const descritivoContas = listaContas.length > 0
+        ? listaContas.map(c => `- ${c.banco || "Conta"} (tipo: ${c.tipo || "não especificado"}): saldo atual €${(c.saldoAtual || 0).toFixed(2)}, receitas reais registadas €${(c.receitasReais || 0).toFixed(2)}, despesas reais registadas €${(c.despesasReais || 0).toFixed(2)}`).join("\n")
+        : "Nenhuma conta bancária registada.";
 
-Elabora uma análise técnica:
-1. Conformidade com o Decreto-Lei 268/94 (obrigação de pelo menos 10% do valor da quota para fundo de reserva).
-2. Projeção de solidez para eventuais despesas de conservação extraordinárias (fachadas, telhados, canalizações).
-3. Recomendações e percentagem ideal sugerida.`;
+      const prompt = `És um administrador experiente de condomínios em Portugal a analisar a saúde financeira real de um condomínio. Todos os números abaixo são reais e definitivos — nunca os alteres, nunca os projetes ou extrapoles a partir de um período curto, e nunca inventes outros.
+
+Receita anual real das quotas ordinárias (média mensal real dos avisos emitidos × 12, não uma estimativa a partir de uma amostra de movimentos): €${(receitaAnualQuotasReal || 0).toFixed(2)}
+Número de frações: ${numFracoes || "?"}
+
+Contas bancárias (analisa CADA UMA separadamente — nunca somes todas as contas numa única análise conjunta):
+${descritivoContas}
+
+Elabora uma análise técnica curta e clara, em português de Portugal, por conta e depois em conjunto:
+1. Conformidade de cada conta de Fundo de Reserva com o Decreto-Lei 268/94 (obrigação de pelo menos 10% do valor da quota).
+2. Solidez de cada conta para despesas de conservação extraordinárias, com base no respetivo saldo e histórico real de despesas — nunca numa projeção estatística de período curto.
+3. Recomendações concretas por conta.
+
+Nunca escrevas frases do tipo "num período de X dias arrecadou Y, projetando para o ano Z" — usa sempre os números reais e definitivos fornecidos acima.`;
 
       const responseText = await generateWithFallback({
         contents: [{ role: "user", parts: [{ text: prompt }] }]

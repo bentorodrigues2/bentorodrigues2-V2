@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Predio, Fracao, Aviso, Movimento, Fornecedor, LoggedUser } from "../types";
+import { Predio, Fracao, Aviso, Movimento, Conta, Fornecedor, LoggedUser } from "../types";
 import { generateAndDownloadPdf, formatDatePT } from "../utils";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar, LineChart, Line, ComposedChart } from "recharts";
 import { SendingReactionModal } from "./SendingReactionModal";
@@ -13,6 +13,7 @@ interface IAAvancadaProps {
   fracoes: Fracao[];
   avisos: Aviso[];
   movements: Movimento[];
+  contas: Conta[];
   fornecedores: Fornecedor[];
   loggedUser: LoggedUser;
   initialTab?: "juridico" | "orcamento_anual_ia" | "cerebro_ia";
@@ -731,7 +732,7 @@ const TABLES_DATA = {
   }
 };
 
-export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, loggedUser, initialTab }: IAAvancadaProps) {
+export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornecedores, loggedUser, initialTab }: IAAvancadaProps) {
   // Tabs for the IA Avançada Dashboard
   const [activeTab, setActiveTab] = useState<"juridico" | "orcamento_anual_ia" | "cerebro_ia">(initialTab || "orcamento_anual_ia");
 
@@ -1093,20 +1094,37 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
   const handleGerarSaudeFinanceira = async () => {
     setAGerarSaudeFinanceira(true);
     try {
-      // Saldo real aproximado a partir dos movimentos efetivamente
-      // confirmados (um Movimento Cego por justificar nunca conta para o
-      // saldo, à semelhança da regra usada em GestaoMovimentos.tsx).
+      // Pedido explícito do administrador: a IA não pode "estimar" a
+      // receita anual a partir de uma amostra curta de movimentos recentes
+      // (ex: "em 35 dias arrecadou 1.450€, projetando para o ano...") — tem
+      // de usar o valor REAL das quotas efetivamente emitidas. Calculado
+      // aqui como a média mensal real dos avisos de Quota Ordinária
+      // (total emitido ÷ nº de meses distintos com avisos) × 12, nunca uma
+      // extrapolação de um período curto de movimentos bancários.
+      const avisosQuotaOrdinaria = (avisos || []).filter(a => a.tipo === "Quota Ordinária");
+      const mesesComAvisos = new Set(avisosQuotaOrdinaria.map(a => (a.vencimento || a.data || "").slice(0, 7))).size || 1;
+      const totalQuotasEmitidas = avisosQuotaOrdinaria.reduce((s, a) => s + a.valor, 0);
+      const receitaAnualQuotasReal = Math.round((totalQuotasEmitidas / mesesComAvisos) * 12 * 100) / 100;
+
+      // Pedido explícito: nunca uma análise conjunta de todas as contas —
+      // cada conta bancária (corrente, fundo de reserva, etc.) é analisada
+      // separadamente, com o seu próprio saldo, receitas e despesas reais.
       const movimentosContados = (movements || []).filter(m => m.estado !== "Movimento Cego / Por Justificar");
-      const saldoAtualReal = Math.round(movimentosContados.reduce((s, m) => s + (m.tipo === "Receita" ? m.valor : -m.valor), 0) * 100) / 100;
-      const amostraMovimentos = [...movimentosContados]
-        .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
-        .slice(0, 40)
-        .map(m => ({ data: m.data, tipo: m.tipo, valor: m.valor, categoria: m.categoria }));
+      const contasReais = (contas || []).map(c => {
+        const movsConta = movimentosContados.filter(m => m.id_conta === c.id_conta);
+        return {
+          banco: c.banco,
+          tipo: c.tipo,
+          saldoAtual: c.saldo,
+          receitasReais: Math.round(movsConta.filter(m => m.tipo === "Receita").reduce((s, m) => s + m.valor, 0) * 100) / 100,
+          despesasReais: Math.round(movsConta.filter(m => m.tipo === "Despesa").reduce((s, m) => s + m.valor, 0) * 100) / 100
+        };
+      });
 
       const response = await fetch("/api/ai?acao=predict-reserve-fund", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ movements: amostraMovimentos, saldoAtual: saldoAtualReal })
+        body: JSON.stringify({ contas: contasReais, receitaAnualQuotasReal, numFracoes: fracoes?.length || 0 })
       });
       const data = await response.json();
       if (!response.ok || !data?.analysis) throw new Error(data?.error || "Erro ao gerar a análise de saúde financeira.");
