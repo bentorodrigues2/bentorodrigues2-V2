@@ -587,8 +587,8 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                       <span className="text-[9px] text-slate-600 block">Sugerido para: {m.categoria}</span>
                     </div>
                     <div className="text-right">
-                      <span className={`text-xs font-mono font-bold block ${m.tipo === "RECEITA" ? "text-emerald-600" : "text-rose-600"}`}>
-                        {m.tipo === "RECEITA" ? "+" : "-"}{m.valor.toFixed(2)}€
+                      <span className={`text-xs font-mono font-bold block ${m.tipo === "Receita" ? "text-emerald-600" : "text-rose-600"}`}>
+                        {m.tipo === "Receita" ? "+" : "-"}{m.valor.toFixed(2)}€
                       </span>
                       <span className={`text-[8px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded-full inline-block mt-1 ${
                         m.estado === "Reconciliado" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"

@@ -50,13 +50,13 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
         return true; // Anual
       });
 
-      const totalReceitas = filtered.filter(m => m.tipo === "RECEITA").reduce((acc, curr) => acc + curr.valor, 0);
-      const totalDespesas = filtered.filter(m => m.tipo === "DESPESA").reduce((acc, curr) => acc + curr.valor, 0);
+      const totalReceitas = filtered.filter(m => m.tipo === "Receita").reduce((acc, curr) => acc + curr.valor, 0);
+      const totalDespesas = filtered.filter(m => m.tipo === "Despesa").reduce((acc, curr) => acc + curr.valor, 0);
       const saldoPeriodo = totalReceitas - totalDespesas;
 
       // Group by category
       const despesasPorCategoria: { [cat: string]: number } = {};
-      filtered.filter(m => m.tipo === "DESPESA").forEach(m => {
+      filtered.filter(m => m.tipo === "Despesa").forEach(m => {
         despesasPorCategoria[m.categoria] = (despesasPorCategoria[m.categoria] || 0) + m.valor;
       });
 
@@ -417,8 +417,8 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                           <td className="p-3 text-slate-600">
                             <span className="px-2 py-0.5 rounded bg-slate-100 text-[10px]">{m.categoria}</span>
                           </td>
-                          <td className={`p-3 text-right font-mono font-bold ${m.tipo === "RECEITA" ? "text-emerald-600" : "text-rose-600"}`}>
-                            {m.tipo === "RECEITA" ? "+" : "-"}{formatCurrency(m.valor)}
+                          <td className={`p-3 text-right font-mono font-bold ${m.tipo === "Receita" ? "text-emerald-600" : "text-rose-600"}`}>
+                            {m.tipo === "Receita" ? "+" : "-"}{formatCurrency(m.valor)}
                           </td>
                         </tr>
                       ))}
