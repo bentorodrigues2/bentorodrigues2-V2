@@ -16,7 +16,9 @@ import {
   Sondagem,
   Questionario,
   Conta,
-  MensagemConversa
+  MensagemConversa,
+  SeguroFracao,
+  DocumentoSeguroAnexo
 } from "../types";
 import { generateAndDownloadPdf, downloadEmailDocument, exportToXLS, downloadBlob, ehContaFundoReserva, gerarReferenciaBR23EExtra, formatDatePT } from "../utils";
 import { usePwaBackButton } from "../utils/usePwaBackButton";
@@ -44,7 +46,9 @@ import {
   saveOcorrenciaToSupabase,
   fetchObrasExtraFromSupabase,
   fetchLimpezasFromSupabase,
-  LimpezaRow
+  LimpezaRow,
+  fetchSegurosFracoesFromSupabase,
+  saveSeguroFracaoToSupabase
 } from "../lib/supabaseService";
 import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { subscribeUserToPush } from "../utils/subscribeUser";
@@ -969,6 +973,103 @@ export default function PWACondominoView({
   // Quota Ordinária acima (fractionRef não é reconhecida para a quota extra).
   const fractionRefExtra = gerarReferenciaBR23EExtra(condominoFracao?.fracao_nome, condominoFracao?.id_fracao);
 
+  // --- SEGURO DE INCÊNDIO DA FRAÇÃO — consulta + envio de apólice/fatura ---
+  // Antes o condómino não tinha forma nenhuma de ver os dados do seu seguro
+  // obrigatório nem os documentos já carregados pela administração, nem de
+  // submeter a apólice/fatura em falta.
+  const [seguroFracao, setSeguroFracao] = useState<SeguroFracao | null>(null);
+  const [showSeguroModal, setShowSeguroModal] = useState(false);
+  const [aEnviarDocSeguro, setAEnviarDocSeguro] = useState<"Apólice" | "Fatura de Renovação" | null>(null);
+  const seguroApoliceInputRef = useRef<HTMLInputElement>(null);
+  const seguroFaturaInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!condominoFracao?.id_fracao) {
+      setSeguroFracao(null);
+      return;
+    }
+    let cancelado = false;
+    fetchSegurosFracoesFromSupabase([condominoFracao.id_fracao]).then((lista) => {
+      if (!cancelado) setSeguroFracao(lista && lista.length > 0 ? lista[0] : null);
+    });
+    return () => { cancelado = true; };
+  }, [condominoFracao?.id_fracao]);
+
+  // Mesma lógica de estado já usada no ecrã da administração
+  // (GestaoSinistrosSeguros.checkSeguroStatus): cruza os dados da fração
+  // com os da tabela seguros_fracoes, para o condómino ver exatamente o
+  // mesmo estado que a administração vê.
+  const seguroStatus: "EXPIRADO" | "POR_RECEBER" | "VALIDO" = (() => {
+    const seguradora = seguroFracao?.seguradora || condominoFracao?.seguradora;
+    const apoliceNum = seguroFracao?.apolice_numero || condominoFracao?.apolice_num;
+    const validade = seguroFracao?.apolice_validade || condominoFracao?.apolice_validade;
+    if (!apoliceNum || !String(apoliceNum).trim() || !seguradora || !String(seguradora).trim()) return "POR_RECEBER";
+    if (!validade || !String(validade).trim()) return "POR_RECEBER";
+    if (seguroFracao?.estado_validacao === "Pendente") return "POR_RECEBER";
+    const valDate = new Date(validade);
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    valDate.setHours(0, 0, 0, 0);
+    if (valDate < hoje) return "EXPIRADO";
+    return "VALIDO";
+  })();
+  // Falta mesmo a própria apólice ou a última fatura de renovação entre os
+  // documentos anexos — é o que dispara especificamente o aviso pedido
+  // ("quem ainda não tiver enviado a apólice e a última fatura").
+  const docsAnexosSeguro = seguroFracao?.documentos_anexos || [];
+  const faltaApoliceDoc = !docsAnexosSeguro.some(d => d.tipo === "Apólice");
+  const faltaFaturaDoc = !docsAnexosSeguro.some(d => d.tipo === "Fatura de Renovação");
+  const precisaAtencaoSeguro = seguroStatus !== "VALIDO" || faltaApoliceDoc || faltaFaturaDoc;
+
+  const lerFicheiroComoDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const handleEnviarDocumentoSeguro = async (file: File, tipo: "Apólice" | "Fatura de Renovação") => {
+    if (!condominoFracao?.id_fracao) return;
+    setAEnviarDocSeguro(tipo);
+    try {
+      const url = await lerFicheiroComoDataUrl(file);
+      const novoAnexo: DocumentoSeguroAnexo = {
+        nome: file.name,
+        url,
+        tipo,
+        data_upload: new Date().toISOString().slice(0, 10)
+      };
+      const base = seguroFracao || {
+        id: `seg-frac-${condominoFracao.id_fracao}`,
+        fracao_id: condominoFracao.id_fracao,
+        seguradora: condominoFracao?.seguradora || "",
+        apolice_numero: condominoFracao?.apolice_num || "",
+        apolice_validade: condominoFracao?.apolice_validade || null,
+        documentos_anexos: [],
+        estado_validacao: "Pendente" as const
+      };
+      const seguroAtualizado: SeguroFracao = {
+        ...base,
+        documentos_anexos: [...(base.documentos_anexos || []), novoAnexo],
+        // Um documento novo enviado pelo condómino marca sempre o seguro
+        // como "Pendente" de verificação pela administração, mesmo que os
+        // dados já estivessem válidos antes — nunca confirma sozinho,
+        // mesma regra já usada do lado da administração.
+        estado_validacao: "Pendente"
+      };
+      const res = await saveSeguroFracaoToSupabase(seguroAtualizado);
+      if (!res.success) {
+        alert("❌ Não foi possível enviar o documento. Tente novamente.");
+        return;
+      }
+      setSeguroFracao(seguroAtualizado);
+      alert(`✅ ${tipo} enviada com sucesso! A administração irá confirmar os dados em breve.`);
+    } finally {
+      setAEnviarDocSeguro(null);
+    }
+  };
+
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1342,6 +1443,40 @@ export default function PWACondominoView({
               </div>
             </div>
 
+            {/* CHAMADA DE ATENÇÃO — SEGURO DE INCÊNDIO EM FALTA/EXPIRADO.
+                Pedido explícito: avisar logo no ecrã inicial quem ainda não
+                enviou a apólice e/ou a última fatura do seguro obrigatório
+                da fração (Art. 1429.º do Código Civil). Não aparece para
+                inquilino/coproprietário (sem acesso a dados do seguro). */}
+            {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && precisaAtencaoSeguro && (
+              <button
+                type="button"
+                onClick={() => setShowSeguroModal(true)}
+                className="w-full border border-red-300 dark:border-red-800 rounded-xl p-3 shadow-sm flex items-center justify-between text-left cursor-pointer hover:brightness-95 transition-all bg-red-50 dark:bg-red-950/40"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="h-8 w-8 rounded-lg bg-white/70 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                    <i className="fa-solid fa-fire-extinguisher text-sm"></i>
+                  </span>
+                  <div>
+                    <span className="text-[10px] font-black text-red-800 dark:text-red-300 block">
+                      {seguroStatus === "EXPIRADO" ? "Seguro de Incêndio Expirado" : "Seguro de Incêndio Pendente"}
+                    </span>
+                    <span className="text-[8px] text-red-700 dark:text-red-400">
+                      {faltaApoliceDoc && faltaFaturaDoc
+                        ? "Envie a apólice e a última fatura do seguro"
+                        : faltaApoliceDoc
+                        ? "Envie a apólice do seguro"
+                        : faltaFaturaDoc
+                        ? "Envie a última fatura de renovação"
+                        : "Dados por confirmar pela administração"}
+                    </span>
+                  </div>
+                </div>
+                <i className="fa-solid fa-chevron-right text-red-600 dark:text-red-400 text-xs"></i>
+              </button>
+            )}
+
             {/* STATEFUL CLOSEABLE NOTIFICATIONS - Conforme as Regras Finais */}
             {activeNotifs.length > 0 && (
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-sm space-y-2">
@@ -1409,6 +1544,29 @@ export default function PWACondominoView({
                 </button>
               );
             })()}
+
+            {/* CARTÃO "SEGURO DE INCÊNDIO" — só aparece aqui (cor neutra)
+                quando tudo está em ordem; quando falta algo, o cartão de
+                alerta vermelho acima já cobre a mesma entrada, para não
+                duplicar o mesmo ponto de acesso. */}
+            {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && !precisaAtencaoSeguro && (
+              <button
+                type="button"
+                onClick={() => setShowSeguroModal(true)}
+                className="w-full border border-sky-200 dark:border-sky-900 rounded-xl p-3 shadow-sm flex items-center justify-between text-left cursor-pointer hover:brightness-95 transition-all bg-sky-50 dark:bg-sky-950/30"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="h-8 w-8 rounded-lg bg-white/70 dark:bg-sky-900/40 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                    <i className="fa-solid fa-shield-halved text-sm"></i>
+                  </span>
+                  <div>
+                    <span className="text-[10px] font-black text-sky-800 dark:text-sky-300 block">Seguro de Incêndio</span>
+                    <span className="text-[8px] text-sky-700 dark:text-sky-400">Apólice, validade e documentos da fração</span>
+                  </div>
+                </div>
+                <i className="fa-solid fa-chevron-right text-sky-600 dark:text-sky-400 text-xs"></i>
+              </button>
+            )}
 
             {/* Cartões de finanças do prédio (saldo em conta + fundo de
                 reserva) — mesma linguagem visual do Painel de Controlo do
@@ -1527,6 +1685,132 @@ export default function PWACondominoView({
                 </div>
               );
             })()}
+
+            {/* MODAL "SEGURO DE INCÊNDIO DA FRAÇÃO" — consulta dos dados e
+                documentos já carregados pela administração, mais envio da
+                apólice/última fatura em falta diretamente pelo condómino. */}
+            {showSeguroModal && (
+              <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" onClick={() => setShowSeguroModal(false)}>
+                <div
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm max-h-[80vh] overflow-y-auto p-4 pb-8 space-y-3"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-extrabold text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+                      <i className="fa-solid fa-shield-halved text-sky-600"></i> Seguro de Incêndio
+                    </span>
+                    <button onClick={() => setShowSeguroModal(false)} className="text-red-500 hover:text-red-600 cursor-pointer p-1" title="Fechar">
+                      <i className="fa-solid fa-xmark"></i>
+                    </button>
+                  </div>
+
+                  <div className={`rounded-xl p-2.5 text-[10px] font-bold flex items-center gap-2 border ${
+                    seguroStatus === "VALIDO" ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400" :
+                    seguroStatus === "EXPIRADO" ? "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400" :
+                    "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400"
+                  }`}>
+                    <i className={`fa-solid ${seguroStatus === "VALIDO" ? "fa-circle-check" : "fa-triangle-exclamation"}`}></i>
+                    <span>
+                      {seguroStatus === "VALIDO" ? "Seguro Válido" : seguroStatus === "EXPIRADO" ? "Apólice Expirada" : "Por Confirmar / Pendente"}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-[10px]">
+                    <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
+                      <span className="text-slate-600 dark:text-slate-400">Seguradora</span>
+                      <span className="font-bold text-slate-800 dark:text-white">{seguroFracao?.seguradora || condominoFracao?.seguradora || "—"}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
+                      <span className="text-slate-600 dark:text-slate-400">Nº Apólice</span>
+                      <span className="font-bold text-slate-800 dark:text-white font-mono">{seguroFracao?.apolice_numero || condominoFracao?.apolice_num || "—"}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
+                      <span className="text-slate-600 dark:text-slate-400">Validade</span>
+                      <span className="font-bold text-slate-800 dark:text-white">{formatDatePT(seguroFracao?.apolice_validade || condominoFracao?.apolice_validade) || "—"}</span>
+                    </div>
+                    {seguroFracao?.tipo_cobertura && (
+                      <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
+                        <span className="text-slate-600 dark:text-slate-400">Cobertura</span>
+                        <span className="font-bold text-slate-800 dark:text-white">{seguroFracao.tipo_cobertura}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <span className="text-[9px] font-extrabold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">Documentos</span>
+                    {docsAnexosSeguro.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {docsAnexosSeguro.map((doc, idx) => (
+                          <a
+                            key={idx}
+                            href={doc.url}
+                            download={doc.nome}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between bg-slate-50 dark:bg-slate-950 p-2 rounded-lg border border-slate-100 dark:border-slate-800 text-[10px]"
+                          >
+                            <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 truncate">
+                              <i className="fa-solid fa-file-lines text-sky-500 shrink-0"></i>
+                              <span className="truncate">{doc.tipo} — {doc.nome}</span>
+                            </span>
+                            <i className="fa-solid fa-download text-slate-500 dark:text-slate-400 shrink-0 ml-1.5"></i>
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[9px] text-slate-600 dark:text-slate-400 italic">Nenhum documento carregado ainda.</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+                    <span className="text-[9px] font-extrabold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">Enviar Documento</span>
+                    <div className="flex gap-2">
+                      <input
+                        ref={seguroApoliceInputRef}
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleEnviarDocumentoSeguro(file, "Apólice");
+                          e.target.value = "";
+                        }}
+                      />
+                      <button
+                        type="button"
+                        disabled={aEnviarDocSeguro !== null}
+                        onClick={() => seguroApoliceInputRef.current?.click()}
+                        className="flex-1 bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white font-bold py-2 rounded-xl text-[10px] transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <i className="fa-solid fa-file-arrow-up"></i>
+                        <span>{aEnviarDocSeguro === "Apólice" ? "A enviar..." : "Apólice"}</span>
+                      </button>
+                      <input
+                        ref={seguroFaturaInputRef}
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleEnviarDocumentoSeguro(file, "Fatura de Renovação");
+                          e.target.value = "";
+                        }}
+                      />
+                      <button
+                        type="button"
+                        disabled={aEnviarDocSeguro !== null}
+                        onClick={() => seguroFaturaInputRef.current?.click()}
+                        className="flex-1 bg-slate-700 hover:bg-slate-800 disabled:opacity-60 text-white font-bold py-2 rounded-xl text-[10px] transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <i className="fa-solid fa-file-arrow-up"></i>
+                        <span>{aEnviarDocSeguro === "Fatura de Renovação" ? "A enviar..." : "Fatura"}</span>
+                      </button>
+                    </div>
+                    <p className="text-[8px] text-slate-500 leading-snug">Após o envio, a administração confirma os dados — o estado passa a "Por Confirmar" até lá.</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* SQUARE CARDS BENTO GRID - UNIFORM DIMENSIONS AND DARKER GREEN DISPLAY */}
             <div className="space-y-2">

@@ -20,7 +20,7 @@ import {
   AlertTriangle,
   Upload
 } from "lucide-react";
-import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondagem, Questionario, MensagemConversa } from "../types";
+import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondagem, Questionario, MensagemConversa, SeguroFracao, DocumentoSeguroAnexo } from "../types";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
 import { generateCondominoPwaManualPDF, gerarReferenciaBR23EExtra, formatDatePT } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
@@ -43,7 +43,9 @@ import {
   saveAvisosToSupabase,
   saveMovimentoToSupabase,
   saveContaToSupabase,
-  registarLogAuditoria
+  registarLogAuditoria,
+  fetchSegurosFracoesFromSupabase,
+  saveSeguroFracaoToSupabase
 } from "../lib/supabaseService";
 
 // Inner Interfaces
@@ -956,6 +958,87 @@ export function PortalCondomino({
     (a) => a.id_fracao === activeUserFracao?.id_fracao && a.id_predio === predio.id_predio
   );
 
+  // --- SEGURO DE INCÊNDIO DA FRAÇÃO — mesma lógica de consulta/envio já
+  // usada na PWA (PWACondominoView), para o condómino ver exatamente o
+  // mesmo estado e documentos quer entre pelo telemóvel quer pelo browser.
+  const [seguroFracaoPortal, setSeguroFracaoPortal] = useState<SeguroFracao | null>(null);
+  const [aEnviarDocSeguroPortal, setAEnviarDocSeguroPortal] = useState<"Apólice" | "Fatura de Renovação" | null>(null);
+  const seguroApoliceInputPortalRef = useRef<HTMLInputElement>(null);
+  const seguroFaturaInputPortalRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!activeUserFracao?.id_fracao) {
+      setSeguroFracaoPortal(null);
+      return;
+    }
+    let cancelado = false;
+    fetchSegurosFracoesFromSupabase([activeUserFracao.id_fracao]).then((lista) => {
+      if (!cancelado) setSeguroFracaoPortal(lista && lista.length > 0 ? lista[0] : null);
+    });
+    return () => { cancelado = true; };
+  }, [activeUserFracao?.id_fracao]);
+
+  const seguroStatusPortal: "EXPIRADO" | "POR_RECEBER" | "VALIDO" = (() => {
+    const seguradora = seguroFracaoPortal?.seguradora || activeUserFracao?.seguradora;
+    const apoliceNum = seguroFracaoPortal?.apolice_numero || activeUserFracao?.apolice_num;
+    const validade = seguroFracaoPortal?.apolice_validade || activeUserFracao?.apolice_validade;
+    if (!apoliceNum || !String(apoliceNum).trim() || !seguradora || !String(seguradora).trim()) return "POR_RECEBER";
+    if (!validade || !String(validade).trim()) return "POR_RECEBER";
+    if (seguroFracaoPortal?.estado_validacao === "Pendente") return "POR_RECEBER";
+    const valDate = new Date(validade);
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    valDate.setHours(0, 0, 0, 0);
+    if (valDate < hoje) return "EXPIRADO";
+    return "VALIDO";
+  })();
+  const docsAnexosSeguroPortal = seguroFracaoPortal?.documentos_anexos || [];
+  const faltaApoliceDocPortal = !docsAnexosSeguroPortal.some(d => d.tipo === "Apólice");
+  const faltaFaturaDocPortal = !docsAnexosSeguroPortal.some(d => d.tipo === "Fatura de Renovação");
+  const precisaAtencaoSeguroPortal = seguroStatusPortal !== "VALIDO" || faltaApoliceDocPortal || faltaFaturaDocPortal;
+
+  const handleEnviarDocumentoSeguroPortal = async (file: File, tipo: "Apólice" | "Fatura de Renovação") => {
+    if (!activeUserFracao?.id_fracao) return;
+    setAEnviarDocSeguroPortal(tipo);
+    try {
+      const url: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const novoAnexo: DocumentoSeguroAnexo = {
+        nome: file.name,
+        url,
+        tipo,
+        data_upload: new Date().toISOString().slice(0, 10)
+      };
+      const base = seguroFracaoPortal || {
+        id: `seg-frac-${activeUserFracao.id_fracao}`,
+        fracao_id: activeUserFracao.id_fracao,
+        seguradora: activeUserFracao?.seguradora || "",
+        apolice_numero: activeUserFracao?.apolice_num || "",
+        apolice_validade: activeUserFracao?.apolice_validade || null,
+        documentos_anexos: [],
+        estado_validacao: "Pendente" as const
+      };
+      const seguroAtualizado: SeguroFracao = {
+        ...base,
+        documentos_anexos: [...(base.documentos_anexos || []), novoAnexo],
+        estado_validacao: "Pendente"
+      };
+      const res = await saveSeguroFracaoToSupabase(seguroAtualizado);
+      if (!res.success) {
+        alert("❌ Não foi possível enviar o documento. Tente novamente.");
+        return;
+      }
+      setSeguroFracaoPortal(seguroAtualizado);
+      alert(`✅ ${tipo} enviada com sucesso! A administração irá confirmar os dados em breve.`);
+    } finally {
+      setAEnviarDocSeguroPortal(null);
+    }
+  };
+
   // Carregar mensagens reais (Supabase) da fração do condómino autenticado.
   // Cada "ticket" (MensagemAdministracao) corresponde a uma conversa; a 1ª
   // mensagem é sempre do condómino e a 2ª (se existir) vira a resposta do admin.
@@ -1193,7 +1276,37 @@ export function PortalCondomino({
       {/* --- PORTAL DO CONDÓMINO (PWA SCREEN) --- */}
       {activeTab === "portal" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
+
+          {/* CHAMADA DE ATENÇÃO — SEGURO DE INCÊNDIO EM FALTA/EXPIRADO.
+              Mesma lógica da PWA: avisa logo no ecrã inicial quem ainda não
+              enviou a apólice e/ou a última fatura do seguro obrigatório. */}
+          {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && precisaAtencaoSeguroPortal && (
+            <div className="lg:col-span-3 bg-red-50 border border-red-200 rounded-xl p-4 shadow-sm flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="h-9 w-9 rounded-lg bg-white text-red-600 flex items-center justify-center shrink-0">
+                  <i className="fa-solid fa-fire-extinguisher"></i>
+                </span>
+                <div>
+                  <span className="text-xs font-black text-red-800 block">
+                    {seguroStatusPortal === "EXPIRADO" ? "Seguro de Incêndio Expirado" : "Seguro de Incêndio Pendente"}
+                  </span>
+                  <span className="text-[11px] text-red-700">
+                    {faltaApoliceDocPortal && faltaFaturaDocPortal
+                      ? "Envie a apólice e a última fatura do seguro desta fração."
+                      : faltaApoliceDocPortal
+                      ? "Envie a apólice do seguro desta fração."
+                      : faltaFaturaDocPortal
+                      ? "Envie a última fatura de renovação do seguro."
+                      : "Dados por confirmar pela administração."}
+                  </span>
+                </div>
+              </div>
+              <a href="#seguro-incendio-fracao" className="text-[11px] font-bold text-red-700 hover:text-red-900 shrink-0 flex items-center gap-1">
+                Ver <i className="fa-solid fa-arrow-down"></i>
+              </a>
+            </div>
+          )}
+
           {/* Col 1: Condómino Card & Profile */}
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -1303,6 +1416,109 @@ export function PortalCondomino({
                   );
                 })()}
               </div>
+
+              {/* SEGURO DE INCÊNDIO DA FRAÇÃO — consulta dos dados e
+                  documentos já carregados pela administração, mais envio da
+                  apólice/última fatura em falta diretamente pelo condómino.
+                  Não aparece para inquilino/coproprietário. */}
+              {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && (
+                <div id="seguro-incendio-fracao" className="px-6 pt-6">
+                  <div className="bg-sky-50 border border-sky-200 p-4 rounded-xl shadow-sm space-y-3 text-[10px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold text-sky-700 uppercase tracking-widest flex items-center gap-1.5">
+                        <i className="fa-solid fa-shield-halved"></i> Seguro de Incêndio
+                      </span>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                        seguroStatusPortal === "VALIDO" ? "bg-emerald-50 border-emerald-200 text-emerald-700" :
+                        seguroStatusPortal === "EXPIRADO" ? "bg-red-50 border-red-200 text-red-700" :
+                        "bg-amber-50 border-amber-200 text-amber-700"
+                      }`}>
+                        <i className={`fa-solid ${seguroStatusPortal === "VALIDO" ? "fa-circle-check" : "fa-triangle-exclamation"}`}></i>
+                        {seguroStatusPortal === "VALIDO" ? "Válido" : seguroStatusPortal === "EXPIRADO" ? "Expirado" : "Pendente"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Seguradora</span>
+                        <span className="font-bold text-slate-800">{seguroFracaoPortal?.seguradora || activeUserFracao?.seguradora || "—"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Nº Apólice</span>
+                        <span className="font-bold text-slate-800 font-mono">{seguroFracaoPortal?.apolice_numero || activeUserFracao?.apolice_num || "—"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Validade</span>
+                        <span className="font-bold text-slate-800">{formatDatePT(seguroFracaoPortal?.apolice_validade || activeUserFracao?.apolice_validade) || "—"}</span>
+                      </div>
+                    </div>
+
+                    {docsAnexosSeguroPortal.length > 0 && (
+                      <div className="space-y-1.5 pt-1 border-t border-sky-100">
+                        {docsAnexosSeguroPortal.map((doc, idx) => (
+                          <a
+                            key={idx}
+                            href={doc.url}
+                            download={doc.nome}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between bg-white p-2 rounded-lg border border-sky-100"
+                          >
+                            <span className="flex items-center gap-1.5 text-slate-700 truncate">
+                              <i className="fa-solid fa-file-lines text-sky-500 shrink-0"></i>
+                              <span className="truncate">{doc.tipo} — {doc.nome}</span>
+                            </span>
+                            <i className="fa-solid fa-download text-slate-500 shrink-0 ml-1.5"></i>
+                          </a>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 pt-1 border-t border-sky-100">
+                      <input
+                        ref={seguroApoliceInputPortalRef}
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleEnviarDocumentoSeguroPortal(file, "Apólice");
+                          e.target.value = "";
+                        }}
+                      />
+                      <button
+                        type="button"
+                        disabled={aEnviarDocSeguroPortal !== null}
+                        onClick={() => seguroApoliceInputPortalRef.current?.click()}
+                        className="flex-1 bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white font-bold py-2 rounded-lg text-[10px] transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <i className="fa-solid fa-file-arrow-up"></i>
+                        <span>{aEnviarDocSeguroPortal === "Apólice" ? "A enviar..." : "Enviar Apólice"}</span>
+                      </button>
+                      <input
+                        ref={seguroFaturaInputPortalRef}
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleEnviarDocumentoSeguroPortal(file, "Fatura de Renovação");
+                          e.target.value = "";
+                        }}
+                      />
+                      <button
+                        type="button"
+                        disabled={aEnviarDocSeguroPortal !== null}
+                        onClick={() => seguroFaturaInputPortalRef.current?.click()}
+                        className="flex-1 bg-slate-700 hover:bg-slate-800 disabled:opacity-60 text-white font-bold py-2 rounded-lg text-[10px] transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <i className="fa-solid fa-file-arrow-up"></i>
+                        <span>{aEnviarDocSeguroPortal === "Fatura de Renovação" ? "A enviar..." : "Enviar Fatura"}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Personal Data Form (Address is Read-only) */}
               <div className="p-6">
