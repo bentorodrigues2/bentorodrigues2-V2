@@ -2929,6 +2929,7 @@ export default function App() {
               movimentos={movements}
               fracoes={fracoes}
               avisos={avisos}
+              contas={contas}
               onAddDocumento={handleAddDocumento}
             />
           )}

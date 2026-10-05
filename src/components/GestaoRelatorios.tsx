@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Predio, LoggedUser, Movimento, Fracao, Documento, Aviso } from "../types";
+import { Predio, LoggedUser, Movimento, Fracao, Documento, Aviso, Conta } from "../types";
 import { generateAndDownloadPdf, exportarBalanceteMapaAnualXLS } from "../utils";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
 import { registarLogAuditoria } from "../lib/supabaseService";
@@ -10,10 +10,11 @@ interface GestaoRelatoriosProps {
   movimentos?: Movimento[];
   fracoes?: Fracao[];
   avisos?: Aviso[];
+  contas?: Conta[];
   onAddDocumento?: (doc: Documento) => void;
 }
 
-export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes = [], avisos = [], onAddDocumento }: GestaoRelatoriosProps) {
+export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes = [], avisos = [], contas = [], onAddDocumento }: GestaoRelatoriosProps) {
   const [isPublicando, setIsPublicando] = useState(false);
   const [tipoRelatorio, setTipoRelatorio] = useState<"mensal" | "trimestral" | "anual">("mensal");
   const [mesSelecionado, setMesSelecionado] = useState<string>("07");
@@ -60,6 +61,24 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
         despesasPorCategoria[m.categoria] = (despesasPorCategoria[m.categoria] || 0) + m.valor;
       });
 
+      // Pedido explícito: análise sempre por conta, nunca só um total
+      // conjunto — cada conta bancária (tipo) mostra as suas próprias
+      // receitas/despesas/saldo reais do período, não a soma de todas.
+      const porConta = contas.map(c => {
+        const movsConta = filtered.filter(m => m.id_conta === c.id_conta);
+        const receitasConta = movsConta.filter(m => m.tipo === "Receita").reduce((s, m) => s + m.valor, 0);
+        const despesasConta = movsConta.filter(m => m.tipo === "Despesa").reduce((s, m) => s + m.valor, 0);
+        return {
+          id_conta: c.id_conta,
+          banco: c.banco,
+          tipo: c.tipo,
+          saldoAtual: c.saldo,
+          receitas: Math.round(receitasConta * 100) / 100,
+          despesas: Math.round(despesasConta * 100) / 100,
+          saldoPeriodo: Math.round((receitasConta - despesasConta) * 100) / 100
+        };
+      });
+
       const periodo = tipoRelatorio === "mensal" ? `${getMonthName(mesSelecionado)} de ${anoSelecionado}` : tipoRelatorio === "trimestral" ? `${trimestreSelecionado} de ${anoSelecionado}` : `Ano de ${anoSelecionado}`;
 
       setCompiledReport({
@@ -73,6 +92,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
         saldoPeriodo,
         resultadoLiquido: saldoPeriodo,
         despesasPorCategoria,
+        porConta,
         totalFracoes: fracoes.length
       });
 
@@ -347,6 +367,44 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                   <h3 className="text-base font-black font-mono mt-1">{formatCurrency(compiledReport.saldoPeriodo)}</h3>
                   <p className="text-[9px] mt-1 leading-tight">{compiledReport.saldoPeriodo >= 0 ? "Resultado operacional líquido positivo." : "Balanço operacional deficitário."}</p>
                 </div>
+              </div>
+
+              {/* FINANCIAL SUMMARY BY ACCOUNT — pedido explícito: nunca só
+                  um total conjunto, sempre discriminado por conta. */}
+              <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3">
+                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block border-b border-slate-200 pb-2">
+                  <i className="fa-solid fa-building-columns mr-1 text-indigo-500"></i> Receitas e Despesas por Conta Bancária
+                </span>
+                {(!compiledReport.porConta || compiledReport.porConta.length === 0) ? (
+                  <p className="text-xs text-slate-600 py-2 text-center">Nenhuma conta bancária registada.</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                    {compiledReport.porConta.map((c: any) => (
+                      <div key={c.id_conta} className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs font-black text-slate-800 truncate">{c.banco}</p>
+                            <p className="text-[10px] text-slate-600 truncate">{c.tipo} • Saldo atual {formatCurrency(c.saldoAtual)}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div className="bg-emerald-50/60 p-1.5 rounded-lg">
+                            <p className="text-[8.5px] font-bold text-emerald-700 uppercase">Receitas</p>
+                            <p className="text-[11px] font-bold text-emerald-600">{formatCurrency(c.receitas)}</p>
+                          </div>
+                          <div className="bg-red-50/60 p-1.5 rounded-lg">
+                            <p className="text-[8.5px] font-bold text-red-700 uppercase">Despesas</p>
+                            <p className="text-[11px] font-bold text-red-600">{formatCurrency(c.despesas)}</p>
+                          </div>
+                          <div className={`p-1.5 rounded-lg ${c.saldoPeriodo >= 0 ? "bg-blue-50/60" : "bg-rose-50"}`}>
+                            <p className="text-[8.5px] font-bold uppercase text-slate-700">Saldo</p>
+                            <p className={`text-[11px] font-bold ${c.saldoPeriodo >= 0 ? "text-blue-600" : "text-rose-600"}`}>{formatCurrency(c.saldoPeriodo)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* AUTOMATIC GRAPHS SECTION */}

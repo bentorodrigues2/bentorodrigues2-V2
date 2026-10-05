@@ -1174,6 +1174,23 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
     { id: "obras", nome: "Fundo de Obras Futuras", valor: 12000, editable: true }
   ]);
 
+  // Mantém as rubricas de Contratos/Seguros/Serviços/Limpeza sempre
+  // sincronizadas com os 4 campos do topo — antes eram dois estados
+  // independentes, só ligados ao clicar em "Gerar Orçamento Inteligente",
+  // por isso "Despesas Previstas" podia mostrar um total que já não batia
+  // certo com os valores visíveis nos campos (parecia um número
+  // inventado). Manutenção/Inspeções/Obras continuam só editáveis na
+  // própria tabela, não têm campo equivalente no topo.
+  useEffect(() => {
+    setRubricas(prev => prev.map(r => {
+      if (r.id === "contratos") return { ...r, valor: contratos * 12 };
+      if (r.id === "seguros") return { ...r, valor: seguros };
+      if (r.id === "servicos") return { ...r, valor: servicos * 12 };
+      if (r.id === "limpeza") return { ...r, valor: limpeza * 12 };
+      return r;
+    }));
+  }, [contratos, seguros, servicos, limpeza]);
+
   // New rubric form state
   const [newRubricaNome, setNewRubricaNome] = useState<string>("");
   const [newRubricaValor, setNewRubricaValor] = useState<number>(150);
@@ -1429,6 +1446,15 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
       })
     }));
   };
+
+  // Recalcula o resumo (Despesas/Receitas Previstas, Fundos, Saldo) sempre
+  // que as rubricas ou a inadimplência mudam — antes só acontecia ao
+  // clicar "Gerar Orçamento Inteligente", por isso o resumo podia ficar
+  // visivelmente desencontrado dos valores reais já configurados.
+  useEffect(() => {
+    handleRecalculateBudget();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rubricas, inadimplenciaHistorica, aplicaPenalizacoes, tipoPenalizacao, valorPenalizacao, frequenciaPenalizacao]);
 
   // State for Legal Assistant
   const [selectedFracaoId, setSelectedFracaoId] = useState<string>("");
