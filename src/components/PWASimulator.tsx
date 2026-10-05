@@ -121,6 +121,12 @@ interface PWASimulatorProps {
   setCapacidades: React.Dispatch<React.SetStateAction<CapacidadeLimite[]>>;
   onLogout?: () => void;
   dividasPendentesValor?: number;
+  /** Mesma função usada pelo browser desktop para navegar a partir de um
+      cartão do Painel de Controlo (setActiveSection + viewMode BROWSER) —
+      reaproveitada aqui para o ADMIN sair do popup adaptado da PWA e ir
+      diretamente para a vista real do browser, em vez de duplicar cada
+      ecrã num layout de telemóvel à parte. */
+  selectSection?: (section: string) => void;
 }
 
 export function PWASimulator({
@@ -149,7 +155,8 @@ export function PWASimulator({
   capacidades,
   setCapacidades,
   onLogout,
-  dividasPendentesValor = 0
+  dividasPendentesValor = 0,
+  selectSection
 }: PWASimulatorProps) {
   // Mobile app navigation state
   const [activeTab, setActiveTab] = useState<string>("home");
@@ -238,6 +245,38 @@ export function PWASimulator({
     { id: "aprovacoes", label: "Aprovações & Agenda", desc: "Reservas & Recibos", image: "/modulos/82-automacao.png" },
     { id: "configuracoes", label: "Empresa Gestora", desc: "White-Label & Parâmetros", image: "/modulos/07-fracao.png" }
   ];
+
+  // Pedido explícito: em vez de abrir cada módulo admin dentro de um popup
+  // da PWA adaptado ao tamanho do telemóvel (trabalho redundante, ecrã a
+  // ecrã, sempre a ficar atrás do browser), o ADMIN passa a ser levado
+  // diretamente para a mesma vista do browser (sidebar colapsável com o
+  // botão de 3 linhas já existente aí) — mesmo código, sem duplicar nada.
+  const MODULO_ADMIN_PARA_SECCAO_BROWSER: Record<string, string> = {
+    painel_kpis: "dashboard_kpis",
+    predios: "predios_cadastro",
+    obras: "manutencao_ocorrencias",
+    limpeza: "vistorias_limpezas",
+    assembleias: "assembleias",
+    contabilidade: "contabilidade_interna",
+    inventario: "inventario_tecnico",
+    seguros: "gestao_sinistros",
+    correspondencia: "minutas_oficiais",
+    fornecedores: "fornecedores",
+    aprovacoes: "reservas",
+    configuracoes: "configuracoes_gerais"
+  };
+
+  const irParaModuloNoBrowser = (cardId: string) => {
+    const seccao = MODULO_ADMIN_PARA_SECCAO_BROWSER[cardId];
+    if (seccao && selectSection) {
+      selectSection(seccao);
+    } else {
+      // Resguardo: se por algum motivo faltar o mapeamento ou a função não
+      // tiver sido passada, mantém o comportamento anterior (popup
+      // adaptado da PWA) em vez de não fazer nada ao clicar.
+      setSelectedPwaSubmenu(cardId);
+    }
+  };
 
   const getPillTextForCard = (cardId: string) => {
     switch (cardId) {
@@ -1378,11 +1417,19 @@ export function PWASimulator({
                         reservasCount={reservas.filter(r => r.id_predio === predio.id_predio).length}
                         dividasPendentesValor={dividasPendentesValor}
                         onSelectSection={(secao) => {
-                          const destinoDireto = SECOES_COM_DESTINO_DIRETO[secao];
-                          if (destinoDireto) {
-                            setActivePwaSubMenuDetails(destinoDireto);
+                          // Mesma secção que o Painel de Controlo já usa no
+                          // browser desktop (ver App.tsx, selectSection) —
+                          // reaproveitada tal e qual, sem o mapeamento
+                          // antigo para o popup adaptado da PWA.
+                          if (selectSection) {
+                            selectSection(secao);
                           } else {
-                            setSelectedPwaSubmenu(mapSecaoPainelParaSubmenuPwa(secao));
+                            const destinoDireto = SECOES_COM_DESTINO_DIRETO[secao];
+                            if (destinoDireto) {
+                              setActivePwaSubMenuDetails(destinoDireto);
+                            } else {
+                              setSelectedPwaSubmenu(mapSecaoPainelParaSubmenuPwa(secao));
+                            }
                           }
                         }}
                         isAdmin={true}
@@ -2259,7 +2306,7 @@ export function PWASimulator({
                   {/* 2. Arquivos (Admin) or Módulos */}
                   {loggedUser.role === "ADMIN" || loggedUser.role === "EMPRESA_GESTORA" || loggedUser.role === "GESTOR" ? (
                     <button 
-                      onClick={() => setActiveTab("documents")} 
+                      onClick={() => selectSection ? selectSection("arquivo") : setActiveTab("documents")} 
                       className={`flex flex-col items-center space-y-0.5 cursor-pointer flex-1 transition-all ${activeTab === "documents" ? "text-emerald-500 font-extrabold scale-105" : "text-slate-600 dark:text-slate-400 hover:text-slate-200"}`}
                     >
                       <img src="/marca/16-documentos-relatorios.png" alt="Arquivos" className="h-4.5 w-4.5 object-contain" />
@@ -2335,7 +2382,7 @@ export function PWASimulator({
                           key={card.id}
                           onClick={() => {
                             setMostrarMaisModulosPopup(false);
-                            setSelectedPwaSubmenu(card.id);
+                            irParaModuloNoBrowser(card.id);
                           }}
                           className="w-full text-left flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
                         >

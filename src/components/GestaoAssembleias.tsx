@@ -2323,7 +2323,49 @@ Com os meus cumprimentos,
 
                       {/* Presence Checklist Table */}
                       <div className="border border-slate-200 rounded-xl overflow-x-auto bg-white">
-                        <table className="w-full text-xs text-left border-collapse">
+                        {/* Cartões — ecrãs estreitos (PWA/telemóvel) */}
+                        <div className="sm:hidden space-y-2.5">
+                          {predioFracoes.map(f => {
+                            const presence = activeMeeting.folha_presencas?.[f.id_fracao] || "Ausente";
+                            const representative = activeMeeting.representantes?.[f.id_fracao] || "";
+                            return (
+                              <div key={f.id_fracao} className="border border-slate-200 rounded-xl p-3 space-y-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="font-bold text-slate-800 text-xs">Fração {f.fracao_nome} <span className="text-[10px] text-slate-600 font-normal">({f.piso})</span></p>
+                                  <span className="font-mono-custom text-slate-600 font-bold text-[11px]">{f.permilagem}‰</span>
+                                </div>
+                                <p className="text-slate-700 text-[11px]">{f.proprietario.nome}</p>
+                                <div className="flex gap-1">
+                                  <button type="button" onClick={() => handleTogglePresence(f.id_fracao, "Presente")} className={`flex-1 px-2 py-1 rounded text-[10px] font-bold border cursor-pointer ${presence === "Presente" ? "bg-emerald-600 text-white border-emerald-600" : "bg-slate-50 text-slate-600 border-slate-200"}`}>Presente</button>
+                                  <button type="button" onClick={() => handleTogglePresence(f.id_fracao, "Representado")} className={`flex-1 px-2 py-1 rounded text-[10px] font-bold border cursor-pointer ${presence === "Representado" ? "bg-indigo-600 text-white border-indigo-600" : "bg-slate-50 text-slate-600 border-slate-200"}`}>Representado</button>
+                                  <button type="button" onClick={() => handleTogglePresence(f.id_fracao, "Ausente")} className={`flex-1 px-2 py-1 rounded text-[10px] font-bold border cursor-pointer ${presence === "Ausente" ? "bg-slate-600 text-white border-slate-600" : "bg-slate-50 text-slate-600 border-slate-200"}`}>Ausente</button>
+                                </div>
+                                {presence === "Representado" && (
+                                  <div className="flex items-center gap-1.5">
+                                    <input
+                                      type="text"
+                                      value={representative}
+                                      onChange={e => handleUpdateRepresentative(f.id_fracao, e.target.value)}
+                                      placeholder="Nome do Procurador"
+                                      className="border border-slate-200 px-2 py-1 rounded text-xs w-full focus:outline-indigo-500 font-medium"
+                                    />
+                                    <button
+                                      type="button"
+                                      disabled={uploadingDeclaracaoFracaoId === f.id_fracao}
+                                      onClick={() => { setFracaoAlvoDeclaracao(f.id_fracao); declaracaoInputRef.current?.click(); }}
+                                      title="Anexar declaração de representação"
+                                      className="shrink-0 px-2 py-1.5 rounded text-[10px] font-bold cursor-pointer border disabled:opacity-50 bg-indigo-50 text-indigo-700 border-indigo-200"
+                                    >
+                                      <i className={`fa-solid ${uploadingDeclaracaoFracaoId === f.id_fracao ? "fa-spinner fa-spin" : "fa-paperclip"}`}></i>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <table className="hidden sm:table w-full text-xs text-left border-collapse">
                           <thead>
                             <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                               <th className="p-3">Fração / Piso</th>
