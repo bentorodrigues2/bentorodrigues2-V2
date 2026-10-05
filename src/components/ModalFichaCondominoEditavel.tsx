@@ -247,14 +247,14 @@ export function ModalFichaCondominoEditavel({
               <h2 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">
                 Ficha de Registo do Condómino / Proprietário (Editável Interativa)
               </h2>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] text-slate-600 dark:text-slate-400">
                 Preencha ou edite os dados em tempo real. O PDF gerado conterá **campos interativos (AcroForm)** totalmente preenchíveis no leitor de PDF!
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-all cursor-pointer"
+            className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-all cursor-pointer"
           >
             <i className="fa-solid fa-xmark text-sm"></i>
           </button>
@@ -282,7 +282,7 @@ export function ModalFichaCondominoEditavel({
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
               <div className="md:col-span-2">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Morada do Edifício</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Morada do Edifício</label>
                 <input
                   type="text"
                   value={formData.morada_edificio}
@@ -291,7 +291,7 @@ export function ModalFichaCondominoEditavel({
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Piso</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Piso</label>
                 <input
                   type="text"
                   value={formData.piso}
@@ -300,7 +300,7 @@ export function ModalFichaCondominoEditavel({
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Letra / Nome</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Letra / Nome</label>
                 <input
                   type="text"
                   value={formData.letra}
@@ -309,7 +309,7 @@ export function ModalFichaCondominoEditavel({
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Permilagem (‰)</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Permilagem (‰)</label>
                 <input
                   type="text"
                   value={formData.permilagem}
@@ -328,7 +328,7 @@ export function ModalFichaCondominoEditavel({
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nome Completo *</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Nome Completo *</label>
                 <input
                   type="text"
                   value={formData.prop_nome}
@@ -337,7 +337,7 @@ export function ModalFichaCondominoEditavel({
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">NIF Fiscal *</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">NIF Fiscal *</label>
                 <input
                   type="text"
                   value={formData.prop_nif}
@@ -346,7 +346,7 @@ export function ModalFichaCondominoEditavel({
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Telemóvel *</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Telemóvel *</label>
                 <input
                   type="text"
                   value={formData.prop_tlm}
@@ -358,7 +358,7 @@ export function ModalFichaCondominoEditavel({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">E-mail Oficial *</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">E-mail Oficial *</label>
                 <input
                   type="text"
                   value={formData.prop_email}
@@ -368,7 +368,7 @@ export function ModalFichaCondominoEditavel({
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Data de Nascimento (Aniversário)</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Data de Nascimento (Aniversário)</label>
                 <input
                   type="date"
                   value={formData.prop_data_nascimento}
@@ -377,7 +377,7 @@ export function ModalFichaCondominoEditavel({
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">IBAN de Origem Pagamentos</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">IBAN de Origem Pagamentos</label>
                 <input
                   type="text"
                   value={formData.prop_iban}
@@ -396,7 +396,7 @@ export function ModalFichaCondominoEditavel({
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nome do Co-Proprietário</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Nome do Co-Proprietário</label>
                 <input
                   type="text"
                   value={formData.coprop_nome}
@@ -406,7 +406,7 @@ export function ModalFichaCondominoEditavel({
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">NIF</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">NIF</label>
                 <input
                   type="text"
                   value={formData.coprop_nif}
@@ -416,7 +416,7 @@ export function ModalFichaCondominoEditavel({
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">E-mail</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">E-mail</label>
                 <input
                   type="text"
                   value={formData.coprop_email}
@@ -426,7 +426,7 @@ export function ModalFichaCondominoEditavel({
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Telemóvel</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Telemóvel</label>
                 <input
                   type="text"
                   value={formData.coprop_tlm}
@@ -436,7 +436,7 @@ export function ModalFichaCondominoEditavel({
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Data de Nascimento</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Data de Nascimento</label>
                 <input
                   type="date"
                   value={formData.coprop_data_nascimento}
@@ -455,7 +455,7 @@ export function ModalFichaCondominoEditavel({
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Fração Arrendada?</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Fração Arrendada?</label>
                 <select
                   value={formData.is_arrendada}
                   onChange={e => handleChange("is_arrendada", e.target.value)}
@@ -466,7 +466,7 @@ export function ModalFichaCondominoEditavel({
                 </select>
               </div>
               <div className="md:col-span-2">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nome Completo do Inquilino / Arrendatário</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Nome Completo do Inquilino / Arrendatário</label>
                 <input
                   type="text"
                   value={formData.inq_nome}
@@ -480,7 +480,7 @@ export function ModalFichaCondominoEditavel({
             {formData.is_arrendada === "SIM" && (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">NIF do Inquilino</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">NIF do Inquilino</label>
                   <input
                     type="text"
                     value={formData.inq_nif}
@@ -489,7 +489,7 @@ export function ModalFichaCondominoEditavel({
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">E-mail do Inquilino</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">E-mail do Inquilino</label>
                   <input
                     type="text"
                     value={formData.inq_email}
@@ -499,7 +499,7 @@ export function ModalFichaCondominoEditavel({
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Telemóvel do Inquilino</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Telemóvel do Inquilino</label>
                   <input
                     type="text"
                     value={formData.inq_tlm}
@@ -508,7 +508,7 @@ export function ModalFichaCondominoEditavel({
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Data de Nascimento</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Data de Nascimento</label>
                   <input
                     type="date"
                     value={formData.inq_data_nascimento}
@@ -523,7 +523,7 @@ export function ModalFichaCondominoEditavel({
           {/* 5. Data & Signatures */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Data de Preenchimento</label>
+              <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Data de Preenchimento</label>
               <input
                 type="text"
                 value={formData.data_preenchimento}
@@ -532,7 +532,7 @@ export function ModalFichaCondominoEditavel({
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nome para Assinatura do Declarante</label>
+              <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Nome para Assinatura do Declarante</label>
               <input
                 type="text"
                 value={formData.assinatura_nome}

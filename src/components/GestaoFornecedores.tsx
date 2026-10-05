@@ -927,7 +927,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                   <button
                     type="button"
                     onClick={handleCancelarEdicaoFornecedor}
-                    className="text-xs font-semibold text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all cursor-pointer"
+                    className="text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
                     <span>Cancelar</span>
@@ -937,49 +937,49 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="flex flex-col col-span-2">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Nome do Parceiro / Empresa *</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Nome do Parceiro / Empresa *</label>
                   <input type="text" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: OTIS Elevadores" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">NIF Contribuinte *</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">NIF Contribuinte *</label>
                   <input type="text" value={nif} onChange={e => setNif(e.target.value)} placeholder="Ex: 500112233" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Categoria de Despesa *</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Categoria de Despesa *</label>
                   <input type="text" value={categoria} onChange={e => setCategoria(e.target.value)} placeholder="Ex: Manutenção Elevadores" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                 <div className="flex flex-col col-span-2">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">IBAN de Pagamento</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">IBAN de Pagamento</label>
                   <input type="text" value={iban} onChange={e => setIban(e.target.value)} placeholder="PT50..." className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Contacto Geral</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Contacto Geral</label>
                   <input type="text" value={contacto} onChange={e => setContacto(e.target.value)} placeholder="Ex: 214156000" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Pessoa de Contacto</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Pessoa de Contacto</label>
                   <input type="text" value={pessoaContacto} onChange={e => setPessoaContacto(e.target.value)} placeholder="Ex: Eng. João Costa" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">E-mail de Contacto</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">E-mail de Contacto</label>
                   <input type="email" value={emailContacto} onChange={e => setEmailContacto(e.target.value)} placeholder="Ex: joao.costa@empresa.com" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Data de Nascimento (Facultativa)</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Data de Nascimento (Facultativa)</label>
                   <input type="date" value={dataNascimento} onChange={e => setDataNascimento(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Telemóvel Direto</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Telemóvel Direto</label>
                   <input type="text" value={telemovelDireto} onChange={e => setTelemovelDireto(e.target.value)} placeholder="Ex: 912345678" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Morada de Operações / Sede</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Morada de Operações / Sede</label>
                   <input type="text" value={morada} onChange={e => setMorada(e.target.value)} placeholder="Morada física do fornecedor" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
                 </div>
               </div>
@@ -1108,7 +1108,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                     className={`px-3 py-2 rounded-lg border text-xs font-bold flex items-center justify-between cursor-pointer transition-all ${
                       perfisPwa.length === 0
                         ? "border-slate-400 bg-slate-100 text-slate-800 ring-2 ring-slate-400 shadow-xs"
-                        : "bg-white border-slate-200 text-slate-500 hover:bg-slate-100"
+                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-100"
                     }`}
                   >
                     <span className="flex items-center gap-1.5">
@@ -1133,7 +1133,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                         className={`px-3 py-2 rounded-lg border text-xs font-bold flex items-center justify-between cursor-pointer transition-all ${
                           active 
                             ? `${p.color} ring-2 ring-emerald-500 shadow-xs` 
-                            : "bg-white border-slate-200 text-slate-500 hover:bg-slate-100"
+                            : "bg-white border-slate-200 text-slate-600 hover:bg-slate-100"
                         }`}
                       >
                         <span className="flex items-center gap-1.5">
@@ -1189,7 +1189,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                           {f.perfis_pwa && f.perfis_pwa.length > 0 && (
                             <span className="text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full hidden sm:inline-block">PWA</span>
                           )}
-                          <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{f.categoria}</span>
+                          <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">{f.categoria}</span>
                         </div>
                       </button>
 
@@ -1197,16 +1197,16 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                         <div className="px-4 pb-4 pt-1 bg-slate-50/40 text-xs space-y-3">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div className="space-y-1 text-slate-600">
-                              <p className="font-mono"><span className="font-semibold text-slate-500">IBAN:</span> {f.iban || <span className="text-slate-600 italic">Não fornecido</span>}</p>
-                              {f.contacto && <p className="font-mono"><i className="fa-solid fa-phone mr-1.5 text-slate-600"></i><span className="font-semibold text-slate-500">Geral:</span> {f.contacto}</p>}
-                              {f.pessoa_contacto && <p><i className="fa-solid fa-user-tie mr-1.5 text-slate-600"></i><span className="font-semibold text-slate-500">Pessoa:</span> {f.pessoa_contacto}</p>}
-                              {f.email_contacto && <p className="font-mono"><i className="fa-solid fa-envelope mr-1.5 text-slate-600"></i><span className="font-semibold text-slate-500">E-mail:</span> {f.email_contacto}</p>}
-                              {f.telemovel_direto && <p className="font-mono"><i className="fa-solid fa-mobile-screen-button mr-1.5 text-slate-600"></i><span className="font-semibold text-slate-500">Telemóvel Direto:</span> {f.telemovel_direto}</p>}
+                              <p className="font-mono"><span className="font-semibold text-slate-600">IBAN:</span> {f.iban || <span className="text-slate-600 italic">Não fornecido</span>}</p>
+                              {f.contacto && <p className="font-mono"><i className="fa-solid fa-phone mr-1.5 text-slate-600"></i><span className="font-semibold text-slate-600">Geral:</span> {f.contacto}</p>}
+                              {f.pessoa_contacto && <p><i className="fa-solid fa-user-tie mr-1.5 text-slate-600"></i><span className="font-semibold text-slate-600">Pessoa:</span> {f.pessoa_contacto}</p>}
+                              {f.email_contacto && <p className="font-mono"><i className="fa-solid fa-envelope mr-1.5 text-slate-600"></i><span className="font-semibold text-slate-600">E-mail:</span> {f.email_contacto}</p>}
+                              {f.telemovel_direto && <p className="font-mono"><i className="fa-solid fa-mobile-screen-button mr-1.5 text-slate-600"></i><span className="font-semibold text-slate-600">Telemóvel Direto:</span> {f.telemovel_direto}</p>}
                               {f.morada && <p><i className="fa-solid fa-location-dot mr-1.5 text-slate-600"></i>{f.morada}</p>}
                               {f.data_nascimento && <p className="font-mono">🎂 Nasc: {f.data_nascimento}</p>}
                               {f.referencias_contrato && f.referencias_contrato.length > 0 && (
                                 <div className="pt-1">
-                                  <span className="font-semibold text-slate-500 block mb-0.5">Referências de Contrato / ADC:</span>
+                                  <span className="font-semibold text-slate-600 block mb-0.5">Referências de Contrato / ADC:</span>
                                   {f.referencias_contrato.map((rc, i) => (
                                     <p key={i} className="font-mono text-[10px]">{rc.referencia}{rc.descricao ? ` — ${rc.descricao}` : ""}</p>
                                   ))}
@@ -1214,7 +1214,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                               )}
                               {f.palavras_chave && f.palavras_chave.length > 0 && (
                                 <div className="pt-1">
-                                  <span className="font-semibold text-slate-500 block mb-0.5">Palavras-Chave:</span>
+                                  <span className="font-semibold text-slate-600 block mb-0.5">Palavras-Chave:</span>
                                   <div className="flex flex-wrap gap-1">
                                     {f.palavras_chave.map((pc, i) => (
                                       <span key={i} className="px-1.5 py-0.5 rounded-full text-[9px] bg-slate-100 border border-slate-200 text-slate-600">{pc}</span>
@@ -1249,7 +1249,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                             const proximoAVencer = [...ativos].sort((a, b) => a.data_fim < b.data_fim ? -1 : 1)[0];
                             const algumAExpirar = ativos.some(c => isExpiringSoon(c.data_fim, c.alerta_dias_antecedencia || 60));
                             return (
-                              <div className={`flex items-center justify-between gap-2 border-t border-slate-200 pt-2 text-[10px] ${algumAExpirar ? "text-amber-700" : "text-slate-500"}`}>
+                              <div className={`flex items-center justify-between gap-2 border-t border-slate-200 pt-2 text-[10px] ${algumAExpirar ? "text-amber-700" : "text-slate-600"}`}>
                                 <span>
                                   <i className="fa-solid fa-file-contract mr-1"></i>
                                   {ativos.length} contrato(s) ativo(s){contratosDoFornecedor.length > ativos.length ? `, ${contratosDoFornecedor.length - ativos.length} encerrado(s)` : ""}
@@ -1338,7 +1338,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                         alt="CondoManager AI" 
                         className="h-10 mx-auto object-contain drop-shadow-xs" 
                       />
-                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Comunicação Oficial a Fornecedores</p>
+                      <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-1">Comunicação Oficial a Fornecedores</p>
                     </div>
 
                     <div className="space-y-1 text-slate-700 font-sans">
@@ -1352,7 +1352,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                       <p>Confirmamos a conclusão do registo da vossa empresa no catálogo de fornecedores e prestadores homologados do <strong>Condomínio {predio.nome || "Edifício"}</strong>.</p>
 
                       <div className="bg-white/90 border border-slate-200 p-3 rounded-lg text-[11px] text-slate-800 space-y-1">
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Dados Fiscais para Faturação :</p>
+                        <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Dados Fiscais para Faturação :</p>
                         <p>• <strong>Designação:</strong> Condomínio {predio.nome || "Edifício"}</p>
                         <p>• <strong>NIF:</strong> {predio.nif || "—"}</p>
                         <p>• <strong>Morada de Faturação:</strong> {predio.morada_linha1 || "—"}{predio.num_porta ? `, ${predio.num_porta}` : ""}{predio.localidade ? `, ${predio.localidade}` : ""}</p>
@@ -1450,7 +1450,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                     <p><strong>De:</strong> {(predio as any).email_administracao || (predio as any).email || "administracao@estreladabarra.pt"}</p>
                     <p><strong>Para:</strong> {birthdayModalFornecedor.email_contacto || birthdayModalFornecedor.contacto || "fornecedor@empresa.pt"}</p>
                     <p><strong>Assunto:</strong> 🎉 Parabéns pelo seu Aniversário, {birthdayModalFornecedor.nome}! - Os votos do seu Condomínio</p>
-                    <p className="text-[10px] text-slate-500 font-sans mt-1">
+                    <p className="text-[10px] text-slate-600 font-sans mt-1">
                       <strong>Anexo:</strong> Cartao_Aniversario_Parceiro.pdf (Postal Oficial A5)
                     </p>
                   </div>
@@ -1513,7 +1513,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
 
                       {/* Despedida e Assinatura */}
                       <div className="pt-2 space-y-0.5 text-center">
-                        <p className="text-[11px] text-slate-500">Com as mais calorosas saudações,</p>
+                        <p className="text-[11px] text-slate-600">Com as mais calorosas saudações,</p>
                         <p className="text-xs font-bold text-slate-900">José Carlos Guerra</p>
                         <p className="text-[11px] text-slate-600">A Administração do {predio.nome || "Edifício Estrela da Barra"}</p>
                       </div>
@@ -1589,7 +1589,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                       onChange={e => setOrcamentoReferencia(e.target.value)}
                       className="w-16 border border-slate-200 text-center font-bold rounded py-0.5 text-[10px] bg-slate-50 focus:outline-indigo-500"
                     />
-                    <span className="text-[10px] text-slate-500">€</span>
+                    <span className="text-[10px] text-slate-600">€</span>
                   </div>
                 </div>
               </div>
@@ -1622,7 +1622,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Fornecedor Associado *</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Fornecedor Associado *</label>
                   <select
                     required
                     value={selectedFornecedorId}
@@ -1637,7 +1637,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                 </div>
 
                 <div className="flex flex-col col-span-1 md:col-span-2">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Descrição do Serviço Contratado *</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Descrição do Serviço Contratado *</label>
                   <input
                     type="text"
                     required
@@ -1651,7 +1651,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Tipo de Contrato *</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Tipo de Contrato *</label>
                   <select
                     required
                     value={tipoContrato}
@@ -1665,7 +1665,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                   </select>
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Data de Início *</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Data de Início *</label>
                   <input
                     type="date"
                     required
@@ -1678,7 +1678,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Custo Mensal (€) *</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Custo Mensal (€) *</label>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -1691,7 +1691,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Custo Anual (€)</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Custo Anual (€)</label>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -1704,7 +1704,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Fim de Vigência / Renovação</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Fim de Vigência / Renovação</label>
                   <input
                     type="date"
                     required
@@ -1727,7 +1727,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Alertar Fim de Contrato Com Antecedência</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Alertar Fim de Contrato Com Antecedência</label>
                   <select
                     value={alertaDiasAntecedencia}
                     onChange={e => setAlertaDiasAntecedencia(Number(e.target.value))}
@@ -1744,7 +1744,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">SLA de Resposta (Horas/Dias)</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">SLA de Resposta (Horas/Dias)</label>
                   <input
                     type="text"
                     value={slaResposta}
@@ -1754,7 +1754,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Cláusula de Penalização por Incumprimento</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Cláusula de Penalização por Incumprimento</label>
                   <input
                     type="text"
                     value={penalizacaoAtraso}
@@ -1764,7 +1764,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Regra de Indexação / Atualização de Preço</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Regra de Indexação / Atualização de Preço</label>
                   <input
                     type="text"
                     value={indexacaoPreco}
@@ -1777,7 +1777,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
 
               {/* PDF Contract Uploader */}
               <div className="flex flex-col pt-1">
-                <label className="text-xs font-semibold text-slate-500 mb-1">Anexo / Arquivo Digital do Contrato (Opcional)</label>
+                <label className="text-xs font-semibold text-slate-600 mb-1">Anexo / Arquivo Digital do Contrato (Opcional)</label>
                 <div className="flex items-center space-x-3">
                   <button
                     type="button"
@@ -1852,7 +1852,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                       <div className="space-y-2 flex-grow">
                         <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                           <span className="text-xs font-black text-slate-800">{partner?.nome || "Parceiro do Prédio"}</span>
-                          <span className="text-[10px] bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded">
+                          <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded">
                             {partner?.categoria || "Serviço Geral"}
                           </span>
                           {c.estado === "Rescindido" && (
@@ -1879,7 +1879,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                         </div>
                         <h4 className="text-xs font-bold text-slate-700">{c.servico}</h4>
 
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500 font-mono">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-600 font-mono">
                           <span>Data Fim: <strong className={isExpiring ? "text-amber-700 font-extrabold" : ""}>{c.data_fim}</strong></span>
                           <span>IBAN: <strong>{partner?.iban || "N/A"}</strong></span>
                           {c.sla_resposta && <span>SLA: <strong className="text-indigo-600">{c.sla_resposta}</strong></span>}
@@ -1914,7 +1914,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                         <div className="text-right">
                           <span className="text-[9px] text-slate-600 uppercase font-bold block">Encargo de Contrato</span>
                           <span className="text-sm font-black text-slate-800 font-mono block">{c.custo_mensal.toFixed(2)}€ <span className="text-[10px] text-slate-600 font-medium">/mês</span></span>
-                          <span className="text-[10px] text-slate-500 font-mono block">({c.custo_anual.toFixed(2)}€ /ano)</span>
+                          <span className="text-[10px] text-slate-600 font-mono block">({c.custo_anual.toFixed(2)}€ /ano)</span>
                         </div>
 
                         <div className="flex space-x-1.5">
@@ -1973,7 +1973,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                           <p className="text-[10px] text-red-700">A carta de rescisão é gerada em PDF e enviada por email real para <strong>{partner?.email_contacto || "— este fornecedor não tem e-mail registado —"}</strong>, com comprovativo de envio guardado no contrato e arquivado em Arquivo → Fornecedores.</p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="flex flex-col">
-                              <label className="text-[10px] font-bold text-slate-500 mb-1 uppercase">Motivo da Rescisão *</label>
+                              <label className="text-[10px] font-bold text-slate-600 mb-1 uppercase">Motivo da Rescisão *</label>
                               <input
                                 type="text"
                                 value={motivoRescisao}
@@ -1983,7 +1983,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                               />
                             </div>
                             <div className="flex flex-col">
-                              <label className="text-[10px] font-bold text-slate-500 mb-1 uppercase">Data de Efeito</label>
+                              <label className="text-[10px] font-bold text-slate-600 mb-1 uppercase">Data de Efeito</label>
                               <input
                                 type="date"
                                 value={dataEfeitoRescisao}
@@ -2029,11 +2029,11 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
               <span className="text-[10px] text-amber-600 mt-0.5 block">{dividasPendentes.length} fatura(s) por pagar</span>
             </div>
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">Total Já Pago</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide block">Total Já Pago</span>
               <span className="text-xl font-black text-slate-700 font-mono mt-0.5 block">
                 {dividasPredio.reduce((acc, d) => acc + (d.valor_pago || 0), 0).toFixed(2)} €
               </span>
-              <span className="text-[10px] text-slate-500 mt-0.5 block">
+              <span className="text-[10px] text-slate-600 mt-0.5 block">
                 {pagamentos.filter(p => dividasPredio.some(d => d.id_divida === p.id_divida)).length} tranche(s) paga(s) — {dividasPredio.filter(d => d.estado === "Paga").length} fatura(s) liquidada(s)
               </span>
             </div>
@@ -2047,18 +2047,18 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                   <button
                     type="button"
                     onClick={handleCancelarEdicaoDivida}
-                    className="text-xs font-semibold text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all cursor-pointer"
+                    className="text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
                     <span>Cancelar</span>
                   </button>
                 )}
               </div>
-              <p className="text-xs text-slate-500">Registe faturas recebidas de fornecedores ainda não pagas — entram logo no saldo líquido real do prédio, sem precisar de já ter saído dinheiro de nenhuma conta.</p>
+              <p className="text-xs text-slate-600">Registe faturas recebidas de fornecedores ainda não pagas — entram logo no saldo líquido real do prédio, sem precisar de já ter saído dinheiro de nenhuma conta.</p>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="flex flex-col col-span-2">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Fornecedor *</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Fornecedor *</label>
                   <select
                     value={dividaFornecedorId}
                     onChange={e => {
@@ -2083,7 +2083,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Valor (€) *</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Valor (€) *</label>
                   {/* Texto em vez de number: um <input type="number"> nativo
                       interpretava "10,458" como 10.458 (três casas
                       decimais) e rejeitava no submit sem explicar a
@@ -2094,28 +2094,28 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                   <input type="text" inputMode="decimal" value={dividaValor} onChange={e => setDividaValor(e.target.value)} placeholder="0,00" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Categoria</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Categoria</label>
                   <input type="text" value={dividaCategoria} onChange={e => setDividaCategoria(e.target.value)} placeholder="Ex: Manutenção, Limpeza..." className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex flex-col md:col-span-1">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Descrição da Fatura *</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Descrição da Fatura *</label>
                   <input type="text" value={dividaDescricao} onChange={e => setDividaDescricao(e.target.value)} placeholder="Ex: Fatura nº 123 — reparação elevador" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Data de Emissão</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Data de Emissão</label>
                   <input type="date" value={dividaDataEmissao} onChange={e => setDividaDataEmissao(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Data de Vencimento</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Data de Vencimento</label>
                   <input type="date" value={dividaDataVencimento} onChange={e => setDividaDataVencimento(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
                 </div>
               </div>
 
               <div className="flex flex-col">
-                <label className="text-xs font-semibold text-slate-500 mb-1">Anexar Fatura / Comprovativo (PDF ou imagem)</label>
+                <label className="text-xs font-semibold text-slate-600 mb-1">Anexar Fatura / Comprovativo (PDF ou imagem)</label>
                 <input
                   type="file"
                   accept=".pdf,image/*"
@@ -2142,7 +2142,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                <tr className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                   <th className="p-3">Fornecedor</th>
                   <th className="p-3">Descrição</th>
                   <th className="p-3">Vencimento</th>
@@ -2171,7 +2171,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                           </a>
                         )}
                       </td>
-                      <td className="p-3 text-slate-500 font-mono">{d.data_vencimento || "—"}</td>
+                      <td className="p-3 text-slate-600 font-mono">{d.data_vencimento || "—"}</td>
                       <td className="p-3 text-right font-mono">
                         <span className="font-bold text-slate-800">{d.valor.toFixed(2)} €</span>
                         {d.estado === "Paga Parcialmente" && (
@@ -2242,13 +2242,13 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                     {historicoAbertoDividaId === d.id_divida && historico.length > 0 && (
                       <tr className="bg-slate-50/60 border-b border-slate-100">
                         <td colSpan={6} className="p-3">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase block mb-1.5">Histórico de Tranches Pagas</span>
+                          <span className="text-[10px] font-bold text-slate-600 uppercase block mb-1.5">Histórico de Tranches Pagas</span>
                           <div className="space-y-1">
                             {historico.map(p => {
                               const contaPag = predioContas.find(c => c.id_conta === p.id_conta);
                               return (
                                 <div key={p.id_pagamento} className="flex items-center justify-between text-[11px] bg-white border border-slate-200 rounded-lg px-3 py-1.5">
-                                  <span className="text-slate-500 font-mono">{p.data}</span>
+                                  <span className="text-slate-600 font-mono">{p.data}</span>
                                   <span className="text-slate-600">{contaPag ? `${contaPag.banco} (${contaPag.tipo})` : "Conta removida"}</span>
                                   <span className="font-bold text-slate-800 font-mono">{p.valor.toFixed(2)} €</span>
                                   <button
@@ -2269,12 +2269,12 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                     {pagandoDividaId === d.id_divida && (
                       <tr className="bg-emerald-50/40 border-b border-emerald-100">
                         <td colSpan={6} className="p-3">
-                          <p className="text-[10px] text-slate-500 mb-2">
+                          <p className="text-[10px] text-slate-600 mb-2">
                             Saldo em dívida: <strong className="text-slate-700">{saldo.toFixed(2)} €</strong>. Podes pagar o valor todo agora ou só uma tranche — o resto fica pendente para pagares mais tarde, mesmo a partir de outra conta bancária.
                           </p>
                           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
                             <div className="flex flex-col">
-                              <label className="text-[10px] font-bold text-slate-500 mb-1 uppercase">Valor a Pagar Agora (€) *</label>
+                              <label className="text-[10px] font-bold text-slate-600 mb-1 uppercase">Valor a Pagar Agora (€) *</label>
                               <input
                                 type="text"
                                 inputMode="decimal"
@@ -2284,7 +2284,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                               />
                             </div>
                             <div className="flex flex-col">
-                              <label className="text-[10px] font-bold text-slate-500 mb-1 uppercase">Conta a Debitar *</label>
+                              <label className="text-[10px] font-bold text-slate-600 mb-1 uppercase">Conta a Debitar *</label>
                               <select
                                 value={pagamentoContaId}
                                 onChange={e => setPagamentoContaId(e.target.value)}
@@ -2297,7 +2297,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                               </select>
                             </div>
                             <div className="flex flex-col">
-                              <label className="text-[10px] font-bold text-slate-500 mb-1 uppercase">Data de Pagamento</label>
+                              <label className="text-[10px] font-bold text-slate-600 mb-1 uppercase">Data de Pagamento</label>
                               <input type="date" value={pagamentoData} onChange={e => setPagamentoData(e.target.value)} className="border border-slate-200 px-3 py-1.5 text-xs rounded-lg focus:outline-emerald-500" />
                             </div>
                             <button

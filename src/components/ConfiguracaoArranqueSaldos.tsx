@@ -1054,7 +1054,7 @@ export function ConfiguracaoArranqueSaldos({
                 <Building2 className="h-4 w-4 text-emerald-500" />
                 Passo 1: Data de Início & Saldos Iniciais das Contas
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                 Configure todas as contas bancárias (Conta à Ordem, Fundo de Reserva / Depósito a Prazo e Contas específicas de Intervenção/Obras). Pode adicionar tantas contas quantas as existentes no condomínio.
               </p>
             </div>
@@ -1087,7 +1087,7 @@ export function ConfiguracaoArranqueSaldos({
               <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">
                 Regras de Gestão Multi-Conta CondoManager
               </span>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                 As contas abertas para intervenções ou obras ficam segregadas no balancete e são debitadas exclusivamente para as respetivas despesas de reparação. Os contadores abaixo adaptam-se em tempo real a todas as contas adicionadas.
               </p>
             </div>
@@ -1102,7 +1102,7 @@ export function ConfiguracaoArranqueSaldos({
               <span className="text-base font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5 block">
                 {totalBancosCaixa.toFixed(2)} €
               </span>
-              <span className="text-[9.5px] text-slate-500 mt-0.5 block">{contasArranque.length} contas somadas</span>
+              <span className="text-[9.5px] text-slate-600 mt-0.5 block">{contasArranque.length} contas somadas</span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40">
@@ -1110,7 +1110,7 @@ export function ConfiguracaoArranqueSaldos({
               <span className="text-base font-black text-indigo-700 dark:text-indigo-300 font-mono mt-0.5 block">
                 {totalOrdem.toFixed(2)} €
               </span>
-              <span className="text-[9.5px] text-slate-500 mt-0.5 block">Gestão corrente</span>
+              <span className="text-[9.5px] text-slate-600 mt-0.5 block">Gestão corrente</span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40">
@@ -1118,7 +1118,7 @@ export function ConfiguracaoArranqueSaldos({
               <span className="text-base font-black text-emerald-700 dark:text-emerald-300 font-mono mt-0.5 block">
                 {totalReserva.toFixed(2)} €
               </span>
-              <span className="text-[9.5px] text-slate-500 mt-0.5 block">FCR legal (Art. 4º)</span>
+              <span className="text-[9.5px] text-slate-600 mt-0.5 block">FCR legal (Art. 4º)</span>
             </div>
 
             {contasArranque.some(c => c.categoriaConta === "INTERVENCOES") && (
@@ -1127,17 +1127,17 @@ export function ConfiguracaoArranqueSaldos({
                 <span className="text-base font-black text-amber-700 dark:text-amber-300 font-mono mt-0.5 block">
                   {totalIntervencoes.toFixed(2)} €
                 </span>
-                <span className="text-[9.5px] text-slate-500 mt-0.5 block">Contas de intervenção</span>
+                <span className="text-[9.5px] text-slate-600 mt-0.5 block">Contas de intervenção</span>
               </div>
             )}
 
             {contasArranque.some(c => c.categoriaConta === "CAIXA") && (
               <div className="p-3.5 rounded-xl bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block">Caixa de Numerário</span>
+                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase block">Caixa de Numerário</span>
                 <span className="text-base font-black text-slate-700 dark:text-slate-200 font-mono mt-0.5 block">
                   {totalCaixa.toFixed(2)} €
                 </span>
-                <span className="text-[9.5px] text-slate-500 mt-0.5 block">Dinheiro físico</span>
+                <span className="text-[9.5px] text-slate-600 mt-0.5 block">Dinheiro físico</span>
               </div>
             )}
           </div>
@@ -1188,7 +1188,7 @@ export function ConfiguracaoArranqueSaldos({
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Sem Contas Bancárias de Arranque Ativas</h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-1">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md mx-auto mt-1">
                       Adicione as contas oficiais do condomínio (Conta à Ordem, FCR, etc.) para definir os respetivos saldos de abertura.
                     </p>
                   </div>
@@ -1260,7 +1260,7 @@ export function ConfiguracaoArranqueSaldos({
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Banco / Entidade</label>
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Banco / Entidade</label>
                         <input
                           type="text"
                           value={conta.banco}
@@ -1270,7 +1270,7 @@ export function ConfiguracaoArranqueSaldos({
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Saldo de Abertura (€)</label>
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Saldo de Abertura (€)</label>
                         <div className="relative">
                           <MoneyInput
                             value={conta.saldo}
@@ -1283,7 +1283,7 @@ export function ConfiguracaoArranqueSaldos({
                       </div>
 
                       <div className="sm:col-span-2">
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">IBAN / Identificador de Conta</label>
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">IBAN / Identificador de Conta</label>
                         <input
                           type="text"
                           value={conta.iban}
@@ -1294,7 +1294,7 @@ export function ConfiguracaoArranqueSaldos({
 
                       {conta.finalidade !== undefined && (
                         <div className="sm:col-span-2">
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Finalidade / Obra Específica</label>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Finalidade / Obra Específica</label>
                           <input
                             type="text"
                             value={conta.finalidade}
@@ -1333,7 +1333,7 @@ export function ConfiguracaoArranqueSaldos({
               <h2 className="text-sm sm:text-base font-extrabold text-slate-800 dark:text-white uppercase tracking-wider">
                 Passo 2: Mapa de Saldos Iniciais por Fração
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                 Indique para cada condómino se tem dívidas transitadas, créditos adiantados ou situação regularizada.
               </p>
             </div>
@@ -1351,7 +1351,7 @@ export function ConfiguracaoArranqueSaldos({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-950/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 uppercase text-[10px] font-extrabold">
+                <tr className="bg-slate-50 dark:bg-slate-950/70 border-b border-slate-200 dark:border-slate-800 text-slate-600 uppercase text-[10px] font-extrabold">
                   <th className="p-3">Fração / Condómino</th>
                   <th className="p-3">Estado Inicial</th>
                   <th className="p-3">Valor do Saldo (€)</th>
@@ -1525,7 +1525,7 @@ export function ConfiguracaoArranqueSaldos({
                         return (
                           <div key={p.id} className="p-3 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40 grid grid-cols-2 sm:grid-cols-5 gap-2.5 items-end">
                             <div className="col-span-2 sm:col-span-1">
-                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Desde</label>
+                              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-0.5">Desde</label>
                               <input
                                 type="date"
                                 value={p.data_inicio}
@@ -1534,7 +1534,7 @@ export function ConfiguracaoArranqueSaldos({
                               />
                             </div>
                             <div>
-                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Quota Mensal Total</label>
+                              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-0.5">Quota Mensal Total</label>
                               <MoneyInput
                                 value={p.valor_quota_mensal}
                                 onChange={(valor) => handleUpdatePeriodoQuotaOrdinaria(sf.id_fracao, p.id, { valor_quota_mensal: valor })}
@@ -1543,7 +1543,7 @@ export function ConfiguracaoArranqueSaldos({
                               />
                             </div>
                             <div>
-                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Meses em Dívida</label>
+                              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-0.5">Meses em Dívida</label>
                               <input
                                 type="number"
                                 min="1"
@@ -1554,12 +1554,12 @@ export function ConfiguracaoArranqueSaldos({
                               />
                             </div>
                             <div>
-                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Ordinária / FCR</label>
+                              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-0.5">Ordinária / FCR</label>
                               <p className="text-[10px] font-mono text-slate-600 dark:text-slate-300 leading-tight">{valorOrdinaria.toFixed(2)}€ + {valorFCR.toFixed(2)}€</p>
                             </div>
                             <div className="flex items-center justify-between gap-1">
                               <div>
-                                <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Total</label>
+                                <label className="block text-[9px] font-bold text-slate-600 uppercase mb-0.5">Total</label>
                                 <p className="text-xs font-mono font-black text-red-600 dark:text-red-400">{totalPeriodo.toFixed(2)}€</p>
                               </div>
                               <button
@@ -1622,7 +1622,7 @@ export function ConfiguracaoArranqueSaldos({
                         <div key={it.id} className="p-3 rounded-xl bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 space-y-2.5">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             <div>
-                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Obra Adjudicada</label>
+                              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-0.5">Obra Adjudicada</label>
                               <select
                                 value={it.id_obra || ""}
                                 onChange={(e) => handleSelecionarObraDividaExtra(sf.id_fracao, it.id, e.target.value)}
@@ -1635,7 +1635,7 @@ export function ConfiguracaoArranqueSaldos({
                               </select>
                             </div>
                             <div>
-                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Descrição</label>
+                              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-0.5">Descrição</label>
                               <input
                                 type="text"
                                 value={it.descricao}
@@ -1647,7 +1647,7 @@ export function ConfiguracaoArranqueSaldos({
                           </div>
                           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 items-end">
                             <div>
-                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Início Pagamentos</label>
+                              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-0.5">Início Pagamentos</label>
                               <input
                                 type="date"
                                 value={it.data_inicio_pagamentos}
@@ -1656,7 +1656,7 @@ export function ConfiguracaoArranqueSaldos({
                               />
                             </div>
                             <div>
-                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Fim Pagamentos</label>
+                              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-0.5">Fim Pagamentos</label>
                               <input
                                 type="date"
                                 value={it.data_fim_pagamentos}
@@ -1665,7 +1665,7 @@ export function ConfiguracaoArranqueSaldos({
                               />
                             </div>
                             <div>
-                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Valor Mensal</label>
+                              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-0.5">Valor Mensal</label>
                               <MoneyInput
                                 value={it.valor_mensal}
                                 onChange={(valor) => handleUpdateDividaQuotaExtra(sf.id_fracao, it.id, { valor_mensal: valor })}
@@ -1674,7 +1674,7 @@ export function ConfiguracaoArranqueSaldos({
                               />
                             </div>
                             <div>
-                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Valor Total</label>
+                              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-0.5">Valor Total</label>
                               <MoneyInput
                                 value={it.valor_total}
                                 onChange={(valor) => handleUpdateDividaQuotaExtra(sf.id_fracao, it.id, { valor_total: valor })}
@@ -1719,7 +1719,7 @@ export function ConfiguracaoArranqueSaldos({
               </div>
 
               <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-950/60">
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-slate-600">
                   Total desta fração: <strong className="text-red-600 dark:text-red-400 font-mono">{sf.valor_saldo.toFixed(2)} €</strong>
                 </span>
                 <button
@@ -1748,7 +1748,7 @@ export function ConfiguracaoArranqueSaldos({
               <h2 className="text-sm sm:text-base font-extrabold text-slate-800 dark:text-white uppercase tracking-wider">
                 Passo 3: Movimentos Anteriores & Execução do Ano Corrente
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                 Adicione despesas ou receitas passadas e selecione a respetiva conta (Ordem, Reserva ou Conta de Intervenção) para que os balancetes fiquem 100% integrados.
               </p>
             </div>
@@ -1828,7 +1828,7 @@ export function ConfiguracaoArranqueSaldos({
           {/* FORMULÁRIO DE ADIÇÃO RÁPIDA (MANUAL) */}
           <form onSubmit={handleAddMovimentoHistorico} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-6 gap-3">
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Data</label>
+              <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Data</label>
               <input
                 type="date"
                 value={novoHistData}
@@ -1837,7 +1837,7 @@ export function ConfiguracaoArranqueSaldos({
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Descrição do Movimento</label>
+              <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Descrição do Movimento</label>
               <input
                 type="text"
                 placeholder="Ex: Seguro Multirriscos, Água SMAS, Obras Fachada"
@@ -1847,7 +1847,7 @@ export function ConfiguracaoArranqueSaldos({
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Conta Afetada</label>
+              <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Conta Afetada</label>
               <select
                 value={novoHistContaId}
                 onChange={(e) => setNovoHistContaId(e.target.value)}
@@ -1859,7 +1859,7 @@ export function ConfiguracaoArranqueSaldos({
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tipo</label>
+              <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Tipo</label>
               <select
                 value={novoHistTipo}
                 onChange={(e) => setNovoHistTipo(e.target.value as any)}
@@ -1871,7 +1871,7 @@ export function ConfiguracaoArranqueSaldos({
             </div>
             <div className="flex items-end space-x-2">
               <div className="flex-1">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Valor (€)</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Valor (€)</label>
                 <input
                   type="text"
                   inputMode="decimal"
@@ -1894,7 +1894,7 @@ export function ConfiguracaoArranqueSaldos({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-950/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 uppercase text-[10px] font-extrabold">
+                <tr className="bg-slate-50 dark:bg-slate-950/70 border-b border-slate-200 dark:border-slate-800 text-slate-600 uppercase text-[10px] font-extrabold">
                   <th className="p-2.5">Data</th>
                   <th className="p-2.5">Descrição</th>
                   <th className="p-2.5">Conta</th>
@@ -1912,13 +1912,13 @@ export function ConfiguracaoArranqueSaldos({
                     title="Clique para corrigir este movimento"
                     className="hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer"
                   >
-                    <td className="p-2.5 font-mono text-[11px] text-slate-500">{m.data}</td>
+                    <td className="p-2.5 font-mono text-[11px] text-slate-600">{m.data}</td>
                     <td className="p-2.5 font-bold text-slate-800 dark:text-white">
                       {m.descricao}
                       {m.origemIA && <span className="ml-1.5 text-[8.5px] font-black px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 align-middle">IA</span>}
                     </td>
                     <td className="p-2.5 text-slate-600 dark:text-slate-300 font-medium">{m.nome_conta || "Conta Geral"}</td>
-                    <td className="p-2.5 text-slate-500">{m.categoria}</td>
+                    <td className="p-2.5 text-slate-600">{m.categoria}</td>
                     <td className="p-2.5">
                       <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full ${
                         m.tipo === "RECEITA" ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
@@ -1976,7 +1976,7 @@ export function ConfiguracaoArranqueSaldos({
               <h2 className="text-sm sm:text-base font-extrabold text-slate-800 dark:text-white uppercase tracking-wider">
                 Passo 4: Resumo Consolidado do Balanço de Abertura
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                 Reveja todos os valores das {contasArranque.length} contas configuradas antes de ativar a gestão do condomínio no sistema.
               </p>
             </div>
@@ -1991,7 +1991,7 @@ export function ConfiguracaoArranqueSaldos({
               <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono mt-1 block">
                 {totalBancosCaixa.toFixed(2)} €
               </span>
-              <span className="text-[9.5px] text-slate-500 mt-1 block">{contasArranque.length} contas discriminadas</span>
+              <span className="text-[9.5px] text-slate-600 mt-1 block">{contasArranque.length} contas discriminadas</span>
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
@@ -1999,7 +1999,7 @@ export function ConfiguracaoArranqueSaldos({
               <span className="text-lg font-black text-red-600 dark:text-red-400 font-mono mt-1 block">
                 +{totalDividasReceber.toFixed(2)} €
               </span>
-              <span className="text-[9.5px] text-slate-500 mt-1 block">
+              <span className="text-[9.5px] text-slate-600 mt-1 block">
                 {saldosFracoes.filter(s => s.tipo_saldo === "DIVIDA").length} frações devedoras
               </span>
             </div>
@@ -2009,7 +2009,7 @@ export function ConfiguracaoArranqueSaldos({
               <span className="text-lg font-black text-amber-600 dark:text-amber-400 font-mono mt-1 block">
                 -{totalCreditosFracoes.toFixed(2)} €
               </span>
-              <span className="text-[9.5px] text-slate-500 mt-1 block">
+              <span className="text-[9.5px] text-slate-600 mt-1 block">
                 {saldosFracoes.filter(s => s.tipo_saldo === "CREDITO").length} frações com crédito
               </span>
             </div>
@@ -2095,7 +2095,7 @@ export function ConfiguracaoArranqueSaldos({
             <div className="p-5 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Data</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Data</label>
                   <input
                     type="date"
                     value={editMovData}
@@ -2104,7 +2104,7 @@ export function ConfiguracaoArranqueSaldos({
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tipo</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Tipo</label>
                   <select
                     value={editMovTipo}
                     onChange={(e) => setEditMovTipo(e.target.value as any)}
@@ -2116,7 +2116,7 @@ export function ConfiguracaoArranqueSaldos({
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Descrição</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Descrição</label>
                 <input
                   type="text"
                   value={editMovDescricao}
@@ -2126,7 +2126,7 @@ export function ConfiguracaoArranqueSaldos({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Conta Afetada</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Conta Afetada</label>
                   <select
                     value={editMovContaId}
                     onChange={(e) => setEditMovContaId(e.target.value)}
@@ -2138,7 +2138,7 @@ export function ConfiguracaoArranqueSaldos({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Categoria</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Categoria</label>
                   <input
                     type="text"
                     value={editMovCategoria}
@@ -2148,7 +2148,7 @@ export function ConfiguracaoArranqueSaldos({
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Valor (€)</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Valor (€)</label>
                 <input
                   type="text"
                   inputMode="decimal"

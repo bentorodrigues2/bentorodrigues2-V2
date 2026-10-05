@@ -80,7 +80,7 @@ export const UserSecurityModal: React.FC<UserSecurityModalProps> = ({
               <User className="h-4 w-4 text-emerald-500" />
               <div>
                 <span className="font-bold text-slate-800 dark:text-slate-200 block text-[10px]">E-mail Registado no Perfil</span>
-                <span className="text-[9px] font-mono text-slate-500">{loggedUser.email}</span>
+                <span className="text-[9px] font-mono text-slate-600">{loggedUser.email}</span>
               </div>
             </div>
             <span className="text-[9px] bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 font-extrabold px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">

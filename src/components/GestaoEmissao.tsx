@@ -570,7 +570,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
             </span>
             <div>
               <h3 className="text-sm font-bold text-slate-800">Adendas & Revisões ao Orçamento Anual</h3>
-              <p className="text-xs text-slate-500">Regista uma revisão aprovada em assembleia a meio do ano (mantém o histórico do valor anterior, entra em vigor sozinha na data indicada).</p>
+              <p className="text-xs text-slate-600">Regista uma revisão aprovada em assembleia a meio do ano (mantém o histórico do valor anterior, entra em vigor sozinha na data indicada).</p>
             </div>
           </div>
 
@@ -584,15 +584,15 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
 
           <form onSubmit={handleAddRevisaoOrcamento} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
             <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-500 mb-1">Novo Valor Anual (€) *</label>
+              <label className="text-xs font-semibold text-slate-600 mb-1">Novo Valor Anual (€) *</label>
               <input type="text" inputMode="decimal" value={novaRevisaoValor} onChange={e => setNovaRevisaoValor(e.target.value)} placeholder="Ex: 12000" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
             </div>
             <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-500 mb-1">Vigência a partir de *</label>
+              <label className="text-xs font-semibold text-slate-600 mb-1">Vigência a partir de *</label>
               <input type="date" value={novaRevisaoData} onChange={e => setNovaRevisaoData(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
             </div>
             <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-500 mb-1">Ata da Decisão</label>
+              <label className="text-xs font-semibold text-slate-600 mb-1">Ata da Decisão</label>
               <select
                 value={novaRevisaoAtaId}
                 onChange={e => setNovaRevisaoAtaId(e.target.value)}
@@ -631,7 +631,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
             <div className="overflow-x-auto border border-slate-100 rounded-xl">
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
                     <th className="p-2.5">Vigência</th>
                     <th className="p-2.5 text-right">Valor Anual</th>
                     <th className="p-2.5">Motivo</th>
@@ -645,7 +645,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                     <tr key={r.id_revisao} className={`border-b border-slate-100 hover:bg-slate-50/50 ${r.id_revisao === revisaoEmVigor?.id_revisao ? "bg-indigo-50/40" : ""}`}>
                       <td className="p-2.5 font-mono text-slate-600">{formatDatePT(r.data_vigencia)}</td>
                       <td className="p-2.5 text-right font-bold font-mono text-slate-800">{r.valor.toFixed(2)} €</td>
-                      <td className="p-2.5 text-slate-500">{r.motivo || "—"}</td>
+                      <td className="p-2.5 text-slate-600">{r.motivo || "—"}</td>
                       <td className="p-2.5 text-center">{r.aprovado_em_assembleia ? "✅" : "—"}</td>
                       <td className="p-2.5 text-center">
                         {r.id_revisao === revisaoEmVigor?.id_revisao ? (
@@ -653,7 +653,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                         ) : r.data_vigencia > new Date().toISOString().split("T")[0] ? (
                           <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[9px] font-bold">Agendada</span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[9px] font-bold">Histórico</span>
+                          <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[9px] font-bold">Histórico</span>
                         )}
                       </td>
                       <td className="p-2.5 text-right">
@@ -682,7 +682,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-500 mb-1">Orçamento Geral Anual (€) *</label>
+              <label className="text-xs font-semibold text-slate-600 mb-1">Orçamento Geral Anual (€) *</label>
               <input
                 type="text"
                 inputMode="decimal"
@@ -694,7 +694,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
               />
             </div>
             <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-500 mb-1">Mês de Emissão *</label>
+              <label className="text-xs font-semibold text-slate-600 mb-1">Mês de Emissão *</label>
               <select
                 value={mes}
                 onChange={e => setMes(e.target.value)}
@@ -715,7 +715,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
               </select>
             </div>
             <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-500 mb-1">Ano de Emissão *</label>
+              <label className="text-xs font-semibold text-slate-600 mb-1">Ano de Emissão *</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -745,7 +745,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+              <tr className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                 <th className="p-3">Doc ID</th>
                 <th className="p-3">Fração</th>
                 <th className="p-3">Data</th>
@@ -867,7 +867,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                       className={`py-1 text-[10px] font-bold rounded-md transition-all ${
                         docType === "NOTA_COBRANCA" 
                           ? "bg-indigo-600 text-white shadow" 
-                          : "text-slate-500 hover:text-slate-700"
+                          : "text-slate-600 hover:text-slate-700"
                       }`}
                     >
                       Nota Cobrança
@@ -878,7 +878,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                       className={`py-1 text-[10px] font-bold rounded-md transition-all ${
                         docType === "RECIBO" 
                           ? "bg-emerald-600 text-white shadow" 
-                          : "text-slate-500 hover:text-slate-700"
+                          : "text-slate-600 hover:text-slate-700"
                       }`}
                     >
                       Recibo Pago
@@ -1048,7 +1048,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                         <button
                           type="button"
                           onClick={() => { setARegistarPagamento(false); setPagamentoContaId(""); setPagamentoValorInput(""); }}
-                          className="flex-1 py-1 text-[9px] font-extrabold rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                          className="flex-1 py-1 text-[9px] font-extrabold rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                         >
                           Cancelar
                         </button>
@@ -1128,7 +1128,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                   <span className="font-mono font-black text-emerald-600 text-base">{selectedAviso.valor.toFixed(2)} €</span>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-lg p-3 text-[10px] text-slate-500 dark:text-slate-400 space-y-1">
+                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-lg p-3 text-[10px] text-slate-600 dark:text-slate-400 space-y-1">
                   <p><strong className="text-slate-700 dark:text-slate-300">Emissão:</strong> {formatDatePT(selectedAviso.data)}</p>
                   <p><strong className="text-slate-700 dark:text-slate-300">{docType === "RECIBO" ? "Data de Liquidação" : "Limite de Pagamento"}:</strong> {formatDatePT(docType === "RECIBO" ? customDataPagamento : customDataLimite)}</p>
                   <p><strong className="text-slate-700 dark:text-slate-300">IBAN:</strong> {customIban || escolherIbanContaPorTipo(contas, selectedAviso.tipo) || predio.iban || "—"}</p>
@@ -1200,7 +1200,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                 <button
                   type="button"
                   onClick={() => setEditingAviso(null)}
-                  className="flex-1 py-2 text-xs font-bold rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 cursor-pointer"
+                  className="flex-1 py-2 text-xs font-bold rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 cursor-pointer"
                 >
                   Cancelar
                 </button>

@@ -139,7 +139,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
               <Plus className="h-4 w-4 text-emerald-500" />
               Adicionar Equipamento Personalizado
             </h3>
-            <p className="text-[11px] text-slate-500">Novos equipamentos aparecem instantaneamente no mapeamento técnico da planta.</p>
+            <p className="text-[11px] text-slate-600">Novos equipamentos aparecem instantaneamente no mapeamento técnico da planta.</p>
           </div>
 
           <form onSubmit={handleAddCustom} className="space-y-3.5">
@@ -244,7 +244,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
                 <Building className="h-4 w-4 text-blue-500" />
                 Mapa Visual Técnico do Edifício
               </h3>
-              <p className="text-[11px] text-slate-500">Mapeamento dinâmico por andar. Os equipamentos customizados são plotados abaixo.</p>
+              <p className="text-[11px] text-slate-600">Mapeamento dinâmico por andar. Os equipamentos customizados são plotados abaixo.</p>
             </div>
 
             {/* Simulated Floors schematic */}
@@ -338,7 +338,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
                     </div>
 
                     <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">{e.nome}</h4>
-                    <p className="text-[11px] text-slate-500 font-medium leading-tight">{e.detalhes}</p>
+                    <p className="text-[11px] text-slate-600 font-medium leading-tight">{e.detalhes}</p>
                     
                     <div className="flex gap-3 text-[10px] text-slate-600 pt-1 font-semibold">
                       <span>Piso: <strong className="text-slate-600 dark:text-slate-300">{e.andar}</strong></span>

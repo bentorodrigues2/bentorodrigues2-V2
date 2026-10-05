@@ -234,7 +234,7 @@ export function GestaoContas({
                 <h3 className="text-base sm:text-lg font-bold text-slate-800">
                   {editingContaId ? `Editar Conta Bancária: ${banco || "Conta"}` : "Cadastrar Nova Conta Bancária do Condomínio"}
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-600">
                   {editingContaId 
                     ? "Altere os dados da conta bancária e clique em Guardar Alterações." 
                     : "Registe a conta oficial à ordem ou fundo de reserva para associação a quotas e cobranças."}
@@ -247,7 +247,7 @@ export function GestaoContas({
                 type="button"
                 onClick={handleCancelarEdicao}
                 id="btn-cancelar-edicao-topo"
-                className="text-xs font-semibold text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all cursor-pointer"
+                className="text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
                 <span>Cancelar</span>
@@ -425,7 +425,7 @@ export function GestaoContas({
           </div>
           {predioContas.length > 0 && (
             <div className="flex items-center gap-3">
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-slate-600">
                 Saldo Total Acumulado: <strong className="font-mono text-slate-800 font-bold text-sm">
                   {predioContas.reduce((acc, c) => acc + (Number(c.saldo) || 0), 0).toFixed(2)}€
                 </strong>
@@ -454,7 +454,7 @@ export function GestaoContas({
             </div>
             <div>
               <h4 className="text-sm font-bold text-slate-800">Nenhuma Conta Bancária Registada</h4>
-              <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+              <p className="text-xs text-slate-600 max-w-md mx-auto mt-1">
                 Não existem contas ativas de teste. Utilize o formulário acima para registar a conta bancária oficial do condomínio (ex: Caixa Geral de Depósitos, Millennium, Santander, etc.).
               </p>
             </div>
@@ -522,7 +522,7 @@ export function GestaoContas({
                             <span className="text-slate-700 font-medium">Gestor: {c.gestor_contas}</span>
                           </p>
                           {c.email_gestor && (
-                            <p className="flex items-center text-slate-500 pl-5 font-mono text-[11px]">
+                            <p className="flex items-center text-slate-600 pl-5 font-mono text-[11px]">
                               <Mail className="w-3 h-3 text-slate-600 mr-1 shrink-0" />
                               <span>{c.email_gestor}</span>
                             </p>
@@ -531,7 +531,7 @@ export function GestaoContas({
                       )}
                       
                       <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                        <span className="text-xs text-slate-500">Saldo Disponível:</span>
+                        <span className="text-xs text-slate-600">Saldo Disponível:</span>
                         <span className="text-xl font-bold font-mono text-slate-900">
                           {Number(c.saldo || 0).toFixed(2)}€
                         </span>

@@ -425,7 +425,7 @@ export function ClassificadorDocumentos({ predio, fracoes, contas, setContas, mo
                     <i className={LABELS_TIPO[tipoConfirmado].classesIcone}></i>
                     <div>
                       <p className="text-xs font-black uppercase tracking-wide text-slate-700 dark:text-slate-200">{LABELS_TIPO[tipoConfirmado].label}</p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{resultado.resumo}</p>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">{resultado.resumo}</p>
                     </div>
                   </div>
                   <span className="text-[10px] font-bold text-slate-600 shrink-0">Confiança: {Math.round((resultado.confianca || 0) * 100)}%</span>
@@ -493,7 +493,7 @@ export function ClassificadorDocumentos({ predio, fracoes, contas, setContas, mo
               {/* AÇÃO: APÓLICE DE SEGURO */}
               {tipoConfirmado === "apolice_seguro" && (
                 <div className="space-y-3">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
                     Arquiva o documento e abre depois Gestão de Sinistros & Seguros, onde pode associar a apólice à fração/parte comum correta com todos os dados extraídos automaticamente.
                   </p>
                   <div className="flex gap-2">
@@ -559,7 +559,7 @@ export function ClassificadorDocumentos({ predio, fracoes, contas, setContas, mo
                         {extraindo ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-check"></i>}
                         <span>Confirmar e Lançar Movimento</span>
                       </button>
-                      <p className="text-[10px] text-slate-500">O movimento entra como "Por Justificar" em Movimentos & Tesouraria para confirmação final.</p>
+                      <p className="text-[10px] text-slate-600">O movimento entra como "Por Justificar" em Movimentos & Tesouraria para confirmação final.</p>
                     </div>
                   )}
                 </div>

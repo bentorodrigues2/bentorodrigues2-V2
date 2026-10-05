@@ -409,7 +409,7 @@ export function PWASupplierCardsView({
                     <i className="fa-solid fa-upload mr-1"></i> Carregar & Converter em WebP
                     <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
                   </label>
-                  <p className="text-[9px] text-slate-500">A imagem é otimizada e convertida automaticamente para WebP.</p>
+                  <p className="text-[9px] text-slate-600">A imagem é otimizada e convertida automaticamente para WebP.</p>
                 </div>
               </div>
 
@@ -507,7 +507,7 @@ export function PWASupplierCardsView({
                     {pushAtivo ? "✓ Ativas" : ativandoPush ? "A ativar..." : "Ativar"}
                   </button>
                 </div>
-                <p className="text-[9px] text-slate-500">E-mail e SMS de emergência: em breve.</p>
+                <p className="text-[9px] text-slate-600">E-mail e SMS de emergência: em breve.</p>
               </div>
             </div>
 
@@ -577,7 +577,7 @@ export function PWASupplierCardsView({
                       <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={handleAiFileUpload} className="hidden" />
                     </label>
                   </div>
-                  <p className="text-[9px] text-slate-500">Ou arraste e largue o recibo de cobrança para esta área.</p>
+                  <p className="text-[9px] text-slate-600">Ou arraste e largue o recibo de cobrança para esta área.</p>
                 </div>
 
                 {uploadingAi && (

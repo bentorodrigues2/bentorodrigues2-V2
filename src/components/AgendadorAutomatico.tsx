@@ -335,7 +335,7 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
       {activeTab === "tarefas" ? (
         <div className="space-y-4">
           {/* Header Info Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 text-xs text-slate-500 dark:text-slate-400 font-medium">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 text-xs text-slate-600 dark:text-slate-400 font-medium">
             <div className="flex items-center gap-2">
               <Zap className="h-4 w-4 text-emerald-500" />
               <span>Clique em qualquer rotina da lista para expandir as opções de parametrização e canais de envio.</span>
@@ -382,13 +382,13 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
                               <CheckCircle2 className="h-3 w-3" /> Ativa
                             </span>
                           ) : (
-                            <span className="inline-flex items-center text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded-md">
+                            <span className="inline-flex items-center text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 px-2 py-0.5 rounded-md">
                               Em Pausa
                             </span>
                           )}
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                           <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                             <Clock className="h-3.5 w-3.5" />
                             {job.descricao_legivel}
@@ -488,7 +488,7 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
                             {job.tipo !== "FELICITACOES_ANIVERSARIO" ? (
                               <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                  <label className="text-[11px] font-semibold text-slate-500 block mb-1">Dia do Mês</label>
+                                  <label className="text-[11px] font-semibold text-slate-600 block mb-1">Dia do Mês</label>
                                   <input
                                     type="number"
                                     min={1}
@@ -496,34 +496,34 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
                                     value={job.dia_mes || 1}
                                     disabled
                                     title="Fixo no calendário real do servidor — ver nota abaixo"
-                                    className="w-full bg-slate-100 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-500 dark:text-slate-400 cursor-not-allowed"
+                                    className="w-full bg-slate-100 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 cursor-not-allowed"
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-[11px] font-semibold text-slate-500 block mb-1">Hora (HH:MM)</label>
+                                  <label className="text-[11px] font-semibold text-slate-600 block mb-1">Hora (HH:MM)</label>
                                   <input
                                     type="time"
                                     value={job.hora_execucao}
                                     disabled
                                     title="Fixo no calendário real do servidor — ver nota abaixo"
-                                    className="w-full bg-slate-100 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-500 dark:text-slate-400 cursor-not-allowed"
+                                    className="w-full bg-slate-100 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 cursor-not-allowed"
                                   />
                                 </div>
                               </div>
                             ) : (
                               <div>
-                                <label className="text-[11px] font-semibold text-slate-500 block mb-1">Hora Diária de Verificação</label>
+                                <label className="text-[11px] font-semibold text-slate-600 block mb-1">Hora Diária de Verificação</label>
                                 <input
                                   type="time"
                                   value={job.hora_execucao}
                                   disabled
                                   title="Fixo no calendário real do servidor — ver nota abaixo"
-                                  className="w-full bg-slate-100 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-500 dark:text-slate-400 cursor-not-allowed"
+                                  className="w-full bg-slate-100 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 cursor-not-allowed"
                                 />
                               </div>
                             )}
 
-                            <div className="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/70 p-2.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60 font-mono">
+                            <div className="text-[11px] text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/70 p-2.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60 font-mono">
                               Cron: <span className="font-bold text-emerald-600 dark:text-emerald-400">{job.frequencia_cron}</span> ({job.descricao_legivel})
                             </div>
                             <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold leading-relaxed">
@@ -603,7 +603,7 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
                       <div className="pt-2">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                            <History className="h-3.5 w-3.5 text-slate-500" />
+                            <History className="h-3.5 w-3.5 text-slate-600" />
                             <span>Últimos Registos de Execução desta Rotina</span>
                           </span>
                           <span className="text-[11px] text-slate-600 font-mono">
@@ -624,7 +624,7 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
                                   <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1">
                                     <CheckCircle2 className="h-3 w-3" /> Sucesso
                                   </span>
-                                  <span className="font-mono text-slate-500 text-[11px]">{exec.data_hora}</span>
+                                  <span className="font-mono text-slate-600 text-[11px]">{exec.data_hora}</span>
                                   <span className="text-slate-700 dark:text-slate-300 truncate max-w-md">{exec.detalhes}</span>
                                 </div>
                                 <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400 shrink-0">
@@ -638,7 +638,7 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
 
                       {/* Footer Actions */}
                       <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800">
-                        <span className="text-[11px] text-slate-500">
+                        <span className="text-[11px] text-slate-600">
                           As alterações são sincronizadas automaticamente com o agendador em segundo plano.
                         </span>
                         <div className="flex items-center gap-2">
@@ -669,7 +669,7 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
               <History className="h-4 w-4 text-emerald-600" />
               <span>Registo Cronológico de Execuções Automáticas</span>
             </h3>
-            <span className="text-xs text-slate-500 font-mono">Auditoria de Notificações & Cobranças</span>
+            <span className="text-xs text-slate-600 font-mono">Auditoria de Notificações & Cobranças</span>
           </div>
 
           <div className="space-y-2.5">

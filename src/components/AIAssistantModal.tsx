@@ -761,7 +761,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio }: AIAssi
                 }
               }}
               placeholder="Escreva uma mensagem, solicite um parecer, minuta ou relatório ao Gemini..."
-              className="flex-1 bg-transparent text-slate-100 text-sm focus:outline-none resize-none py-1.5 px-1 max-h-[160px] placeholder:text-slate-500"
+              className="flex-1 bg-transparent text-slate-100 text-sm focus:outline-none resize-none py-1.5 px-1 max-h-[160px] placeholder:text-slate-600"
             />
 
             {/* Send Button */}
@@ -780,7 +780,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio }: AIAssi
           </div>
 
           {/* Subtext info */}
-          <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-500 px-1">
+          <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-600 px-1">
             <span>O Gemini pode pesquisar na web em tempo real e emitir minutas oficiais em PDF.</span>
             <span>Shift + Enter para nova linha</span>
           </div>

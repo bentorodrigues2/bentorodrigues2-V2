@@ -974,7 +974,7 @@ export function GestaoSinistrosSeguros({
                             <h4 className="font-black text-sm text-slate-900 dark:text-white">
                               Fração {fracao.fracao_nome} ({fracao.piso})
                             </h4>
-                            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                            <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
                               • {fracao.proprietario?.nome || "Sem proprietário atribuído"}
                             </span>
                             {fracao.proprietario?.email && (
@@ -998,7 +998,7 @@ export function GestaoSinistrosSeguros({
                             </div>
                           )}
 
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400 font-mono">
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 dark:text-slate-400 font-mono">
                             <span>Seguradora: <strong className="text-slate-800 dark:text-slate-200">{seguradora || "Não Fornecida"}</strong></span>
                             <span>•</span>
                             <span>Nº Apólice: <strong className="text-slate-800 dark:text-slate-200">{apoliceNum || "Pendente"}</strong></span>
@@ -1108,7 +1108,7 @@ export function GestaoSinistrosSeguros({
                          sinistro.tipo_sinistro === "TEMPESTADE_INFILTRACAO" ? "🌪️ Tempestade / Infiltração" : "🛡️ Sinistro Geral"}
                       </h4>
                       {sinistro.fracao_nome && (
-                        <span className="text-xs text-slate-500 font-bold">• Fração {sinistro.fracao_nome}</span>
+                        <span className="text-xs text-slate-600 font-bold">• Fração {sinistro.fracao_nome}</span>
                       )}
                     </div>
 
@@ -1290,7 +1290,7 @@ export function GestaoSinistrosSeguros({
                   <h4 className="font-black text-base text-slate-900 dark:text-white font-mono">
                     {apoliceEdificio.capital_seguro_edificio ? `${apoliceEdificio.capital_seguro_edificio.toLocaleString("pt-PT")} €` : "Não especificado"}
                   </h4>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-slate-600">
                     Franquia: {apoliceEdificio.franquia ? `${apoliceEdificio.franquia} €` : "Sem franquia"}
                   </span>
                 </div>
@@ -1300,7 +1300,7 @@ export function GestaoSinistrosSeguros({
                   <h4 className="font-black text-base text-emerald-600 font-mono">
                     {apoliceEdificio.apolice_validade}
                   </h4>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-slate-600">
                     Tomador: {apoliceEdificio.tomador_seguro || `Condomínio ${predio.nome}`}
                   </span>
                 </div>
@@ -1309,7 +1309,7 @@ export function GestaoSinistrosSeguros({
               {apoliceEdificio.contacto_mediador && (
                 <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 text-xs flex items-center gap-2">
                   <Phone className="h-4 w-4 text-slate-600" />
-                  <span className="text-slate-500">Mediador / Contacto:</span>
+                  <span className="text-slate-600">Mediador / Contacto:</span>
                   <strong className="text-slate-800 dark:text-slate-200">{apoliceEdificio.contacto_mediador}</strong>
                 </div>
               )}
@@ -1395,7 +1395,7 @@ export function GestaoSinistrosSeguros({
                   </button>
 
                   {formDocumentoNome && (
-                    <span className="text-[11px] font-mono text-slate-500 truncate max-w-xs">
+                    <span className="text-[11px] font-mono text-slate-600 truncate max-w-xs">
                       📎 {formDocumentoNome}
                     </span>
                   )}
@@ -1416,7 +1416,7 @@ export function GestaoSinistrosSeguros({
                   Documentos Anexados ({formDocumentosAnexos.length})
                 </h4>
                 {formDocumentosAnexos.length === 0 ? (
-                  <p className="text-[11px] text-slate-500">Nenhum documento anexado ainda.</p>
+                  <p className="text-[11px] text-slate-600">Nenhum documento anexado ainda.</p>
                 ) : (
                   <div className="space-y-1.5">
                     {formDocumentosAnexos.map((doc, idx) => (
@@ -1424,7 +1424,7 @@ export function GestaoSinistrosSeguros({
                         <a href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[11px] text-slate-700 dark:text-slate-200 hover:text-emerald-600 truncate min-w-0">
                           <FileText className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
                           <span className="truncate">{doc.nome}</span>
-                          <span className="shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">{doc.tipo}</span>
+                          <span className="shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600">{doc.tipo}</span>
                           <span className="shrink-0 text-[9px] text-slate-400">{doc.data_upload}</span>
                         </a>
                         <button
@@ -1666,7 +1666,7 @@ export function GestaoSinistrosSeguros({
                     {isExtractingIA ? "A extrair dados com IA..." : "Carregar Fatura do Edifício (PDF/Imagem)"}
                   </button>
                   {formPCDocumentoNome && (
-                    <span className="text-[11px] font-mono text-slate-500">📎 {formPCDocumentoNome}</span>
+                    <span className="text-[11px] font-mono text-slate-600">📎 {formPCDocumentoNome}</span>
                   )}
                 </div>
 
@@ -1683,7 +1683,7 @@ export function GestaoSinistrosSeguros({
                   Documentos Anexados ({formPCDocumentosAnexos.length})
                 </h4>
                 {formPCDocumentosAnexos.length === 0 ? (
-                  <p className="text-[11px] text-slate-500">Nenhum documento anexado ainda.</p>
+                  <p className="text-[11px] text-slate-600">Nenhum documento anexado ainda.</p>
                 ) : (
                   <div className="space-y-1.5">
                     {formPCDocumentosAnexos.map((doc, idx) => (
@@ -1691,7 +1691,7 @@ export function GestaoSinistrosSeguros({
                         <a href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[11px] text-slate-700 dark:text-slate-200 hover:text-emerald-600 truncate min-w-0">
                           <FileText className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
                           <span className="truncate">{doc.nome}</span>
-                          <span className="shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">{doc.tipo}</span>
+                          <span className="shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600">{doc.tipo}</span>
                           <span className="shrink-0 text-[9px] text-slate-400">{doc.data_upload}</span>
                         </a>
                         <button
@@ -2180,7 +2180,7 @@ export function GestaoSinistrosSeguros({
               <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2 text-slate-700 dark:text-slate-300">
                 <div className="font-bold text-slate-900 dark:text-white">Destinatário:</div>
                 <div className="font-mono">{notifModalFracao.proprietario?.email || "email.condomino@exemplo.pt"}</div>
-                <div className="text-[11px] text-slate-500 leading-relaxed">
+                <div className="text-[11px] text-slate-600 leading-relaxed">
                   "Exmo.(a) Sr.(a) {notifModalFracao.proprietario?.nome || "Condómino"}, solicitamos a apresentação do comprovativo de renovação da apólice de seguro contra o risco de incêndio da Fração {notifModalFracao.fracao_nome}, para efeitos de atualização do arquivo legal do condomínio."
                 </div>
               </div>

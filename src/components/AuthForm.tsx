@@ -219,7 +219,7 @@ export default function AuthForm({
                     placeholder="utilizador@condomanager.pt"
                     className="w-full bg-slate-950 border border-slate-800 text-xs rounded-lg p-2 pl-8 font-medium text-white focus:outline-none focus:border-emerald-500"
                   />
-                  <span className="absolute left-2.5 top-2.5 text-slate-500 text-xs">✉</span>
+                  <span className="absolute left-2.5 top-2.5 text-slate-600 text-xs">✉</span>
                 </div>
               </div>
 
@@ -264,7 +264,7 @@ export default function AuthForm({
                 placeholder="o.seu.email@exemplo.com"
                 className="w-full bg-[#070b14] border border-slate-800 text-xs rounded-xl p-2.5 pl-8 font-medium text-white focus:outline-none focus:border-emerald-500 transition-all"
               />
-              <span className="absolute left-2.5 top-2.5 text-slate-500 text-xs">✉</span>
+              <span className="absolute left-2.5 top-2.5 text-slate-600 text-xs">✉</span>
             </div>
           </div>
 
@@ -296,7 +296,7 @@ export default function AuthForm({
                 placeholder="••••••••"
                 className="w-full bg-[#070b14] border border-slate-800 text-xs rounded-xl p-2.5 pl-8 font-mono text-white focus:outline-none focus:border-emerald-500 transition-all"
               />
-              <span className="absolute left-2.5 top-2.5 text-slate-500 text-xs">🔒</span>
+              <span className="absolute left-2.5 top-2.5 text-slate-600 text-xs">🔒</span>
             </div>
           </div>
 
@@ -337,7 +337,7 @@ export default function AuthForm({
         </form>
       )}
 
-      <div className="pt-3 border-t border-slate-800/80 flex justify-between items-center text-[9px] text-slate-500 font-mono">
+      <div className="pt-3 border-t border-slate-800/80 flex justify-between items-center text-[9px] text-slate-600 font-mono">
         <span>SECURE SUPABASE AUTH</span>
         <span>CondoManager AI © 2026</span>
       </div>

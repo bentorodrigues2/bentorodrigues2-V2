@@ -327,7 +327,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
           </div>
           <div>
             <h3 className="text-base font-bold text-slate-800">Contabilidade Interna Integrada</h3>
-            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
               Gerencie a contabilidade do condomínio com um Plano de Contas adaptado (SNC), regras inteligentes para classificação de extratos e um motor de reconciliação cruzada automática de despesas e faturas.
             </p>
           </div>
@@ -371,7 +371,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
             <form onSubmit={handleAdicionarConta} className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-1 flex flex-col">
-                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Código</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Código</label>
                   <input
                     type="text"
                     placeholder="Ex: 66"
@@ -381,7 +381,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                   />
                 </div>
                 <div className="col-span-2 flex flex-col">
-                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Nome da Conta</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Nome da Conta</label>
                   <input
                     type="text"
                     placeholder="Ex: Telecomunicações"
@@ -393,7 +393,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
               </div>
 
               <div className="flex flex-col">
-                <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Classe de Balanço</label>
+                <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Classe de Balanço</label>
                 <select
                   value={novoTipo}
                   onChange={e => setNovoTipo(e.target.value as any)}
@@ -407,7 +407,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
               </div>
 
               <div className="flex flex-col">
-                <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Descrição Adicional</label>
+                <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Descrição Adicional</label>
                 <textarea
                   placeholder="Explique o propósito contábil desta rubrica..."
                   rows={2}
@@ -443,7 +443,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
             </div>
 
             {carregandoContabilidade ? (
-              <div className="p-8 text-center text-xs text-slate-500">A carregar o Plano de Contas...</div>
+              <div className="p-8 text-center text-xs text-slate-600">A carregar o Plano de Contas...</div>
             ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {planoContas.map(c => (
@@ -559,7 +559,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
               <h4 className="text-xs font-bold text-slate-800 flex items-center">
                 <i className="fa-solid fa-wand-magic-sparkles text-emerald-600 mr-2"></i> Conciliação Bancária & Comprovativos Inteligente
               </h4>
-              <p className="text-[11px] text-slate-500 leading-relaxed max-w-2xl">
+              <p className="text-[11px] text-slate-600 leading-relaxed max-w-2xl">
                 O CondoManager AI lê os ficheiros de faturas digitadas e cruza-os com os movimentos bancários reais deste prédio ainda por justificar. Clique em "Iniciar Reconciliação" para emparelhar automaticamente por valor exato — datas diferentes têm de ser confirmadas manualmente.
               </p>
             </div>
@@ -584,7 +584,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                     <div>
                       <span className="text-[9px] text-slate-600 block font-mono">{m.data}</span>
                       <span className="text-[11px] font-black text-slate-700 block">{m.descricao}</span>
-                      <span className="text-[9px] text-slate-500 block">Sugerido para: {m.categoria}</span>
+                      <span className="text-[9px] text-slate-600 block">Sugerido para: {m.categoria}</span>
                     </div>
                     <div className="text-right">
                       <span className={`text-xs font-mono font-bold block ${m.tipo === "RECEITA" ? "text-emerald-600" : "text-rose-600"}`}>
@@ -605,7 +605,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 border-b border-slate-100 pb-2 flex justify-between">
                 <span>Comprovativos Carregados (Faturas/Recibos)</span>
-                <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono">Arquivo Digital</span>
+                <span className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">Arquivo Digital</span>
               </h4>
               <div className="space-y-2">
                 {comprovativosPendentes.map(doc => (
@@ -620,7 +620,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                     <div className="text-right">
                       <span className="text-xs font-mono font-bold text-slate-800 block">{doc.valor_sugerido.toFixed(2)}€</span>
                       <span className={`text-[8px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded-full inline-block mt-1 ${
-                        doc.estado === "Reconciliado" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500"
+                        doc.estado === "Reconciliado" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-600"
                       }`}>
                         {doc.estado}
                       </span>
@@ -638,14 +638,14 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4 max-w-3xl mx-auto animate-fadeIn">
           <div className="border-b border-slate-100 pb-2">
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-600">Demonstração: Motor de Regras e Categorização Automática</h4>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-600 mt-1">
               Introduza um descritivo livre (ex: do seu extrato bancário ou faturas OCR) e o algoritmo CondoManager AI associará automaticamente à rubrica correspondente do plano de contas nacional (SNC).
             </p>
           </div>
 
           <div className="space-y-4">
             <div className="flex flex-col">
-              <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Descritivo da Transação / Movimento</label>
+              <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Descritivo da Transação / Movimento</label>
               <div className="flex space-x-2">
                 <input
                   type="text"
@@ -709,7 +709,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
 
             <div className="border-t border-slate-100 pt-4 space-y-3">
               <h5 className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Regras de Categorização ({regras.length})</h5>
-              <p className="text-[10px] text-slate-500">Palavra-chave encontrada no descritivo → conta contábil associada automaticamente. A primeira regra que corresponder é usada; sem nenhuma correspondência, usa-se a Conta 68 (Obras de Conservação / Geral).</p>
+              <p className="text-[10px] text-slate-600">Palavra-chave encontrada no descritivo → conta contábil associada automaticamente. A primeira regra que corresponder é usada; sem nenhuma correspondência, usa-se a Conta 68 (Obras de Conservação / Geral).</p>
 
               <form onSubmit={handleAdicionarRegra} className="flex flex-col sm:flex-row gap-2">
                 <input

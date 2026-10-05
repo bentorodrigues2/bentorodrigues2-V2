@@ -360,7 +360,7 @@ export function FiltroRelatoriosPDFModal({
                   <i className="fa-solid fa-building text-emerald-600"></i>
                   <span>Por Prédio (Consolidado)</span>
                 </div>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                <span className="text-[10px] text-slate-600 dark:text-slate-400">
                   Relatório geral de todo o edifício {predio.nome}
                 </span>
               </button>
@@ -378,7 +378,7 @@ export function FiltroRelatoriosPDFModal({
                   <i className="fa-solid fa-house-user text-emerald-600"></i>
                   <span>Por Fração Específica</span>
                 </div>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                <span className="text-[10px] text-slate-600 dark:text-slate-400">
                   Relatório individual para uma única fração do prédio
                 </span>
               </button>
@@ -396,7 +396,7 @@ export function FiltroRelatoriosPDFModal({
                   <i className="fa-solid fa-list-check text-emerald-600"></i>
                   <span>Todas as Frações</span>
                 </div>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                <span className="text-[10px] text-slate-600 dark:text-slate-400">
                   Comparativo discriminado de todas as {predioFracoes.length} frações
                 </span>
               </button>
@@ -489,13 +489,13 @@ export function FiltroRelatoriosPDFModal({
                   }`}
                 >
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-                    tipoRelatorio === item.id ? "bg-emerald-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                    tipoRelatorio === item.id ? "bg-emerald-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-600"
                   }`}>
                     <i className={`fa-solid ${item.icon} text-xs`}></i>
                   </div>
                   <div>
                     <span className="block text-xs font-bold leading-snug">{item.label}</span>
-                    <span className="block text-[10px] text-slate-500 dark:text-slate-400 font-normal leading-tight mt-0.5">{item.desc}</span>
+                    <span className="block text-[10px] text-slate-600 dark:text-slate-400 font-normal leading-tight mt-0.5">{item.desc}</span>
                   </div>
                 </button>
               ))}
@@ -548,7 +548,7 @@ export function FiltroRelatoriosPDFModal({
 
         {/* Modal Footer Actions */}
         <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 rounded-b-2xl flex flex-wrap items-center justify-between gap-3">
-          <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+          <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
             * Filtro ativo: <strong className="text-emerald-600 dark:text-emerald-400 uppercase">{ambito}</strong> — <span className="capitalize">{tipoRelatorio.replace('_', ' ')}</span> ({exercicio})
           </div>
 
@@ -558,7 +558,7 @@ export function FiltroRelatoriosPDFModal({
               onClick={handlePrintHTML}
               className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <i className="fa-solid fa-print text-slate-500"></i>
+              <i className="fa-solid fa-print text-slate-600"></i>
               <span>Imprimir / Ver</span>
             </button>
 

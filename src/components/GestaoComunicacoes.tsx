@@ -796,7 +796,7 @@ export function GestaoComunicacoes({
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                 <i className="fa-solid fa-pen-nib text-emerald-600"></i> Redigir Novo Comunicado Geral
               </h4>
-              <p className="text-[10px] text-slate-500">
+              <p className="text-[10px] text-slate-600">
                 Será enviado por email a {destinatariosPredio.length} fração(ões) com email registado.
               </p>
 
@@ -926,7 +926,7 @@ export function GestaoComunicacoes({
                                 type="button"
                                 onClick={() => handleIniciarEdicaoComunicado(item)}
                                 title="Editar comunicado"
-                                className="text-slate-500 hover:text-emerald-700 cursor-pointer p-1"
+                                className="text-slate-600 hover:text-emerald-700 cursor-pointer p-1"
                               >
                                 <i className="fa-solid fa-pen text-[11px]"></i>
                               </button>
@@ -934,7 +934,7 @@ export function GestaoComunicacoes({
                                 type="button"
                                 onClick={() => handleEliminarComunicado(item)}
                                 title="Eliminar comunicado"
-                                className="text-slate-500 hover:text-red-600 cursor-pointer p-1"
+                                className="text-slate-600 hover:text-red-600 cursor-pointer p-1"
                               >
                                 <i className="fa-solid fa-trash text-[11px]"></i>
                               </button>
@@ -1046,7 +1046,7 @@ export function GestaoComunicacoes({
                       </span>
                     </div>
                     <div className="text-[11px] font-semibold text-emerald-800 truncate">{fracoes.find(f => f.id_fracao === c.id_fracao)?.fracao_nome || c.id_fracao}</div>
-                    <div className="text-[10px] text-slate-500 truncate">{c.assunto}</div>
+                    <div className="text-[10px] text-slate-600 truncate">{c.assunto}</div>
                   </button>
                 ))
               )}
@@ -1097,7 +1097,7 @@ export function GestaoComunicacoes({
 
                   {/* Corpo de mensagens (fundo estilo WhatsApp) */}
                   <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[#e5ddd5] bg-[radial-gradient(#d9d0c7_1px,transparent_1px)] bg-[length:14px_14px]">
-                    <div className="text-center text-[10px] text-slate-500 bg-white/70 rounded-lg px-2 py-1 inline-block mx-auto block w-fit">{selectedConversa.assunto}</div>
+                    <div className="text-center text-[10px] text-slate-600 bg-white/70 rounded-lg px-2 py-1 inline-block mx-auto block w-fit">{selectedConversa.assunto}</div>
                     {mensagensSelecionadas.map((m) => (
                       <div key={m.id_mensagem} className={`flex ${m.autor === "administracao" ? "justify-end" : "justify-start"}`}>
                         <div className={`max-w-[80%] p-2.5 rounded-xl text-xs space-y-1.5 shadow-xs ${m.autor === "administracao" ? "bg-emerald-100 text-slate-800" : "bg-white text-slate-800"}`}>
@@ -1293,7 +1293,7 @@ export function GestaoComunicacoes({
                             {s.estado === "ativa" ? `Ativa (fecha ${s.data_fecho ? new Date(s.data_fecho).toLocaleDateString("pt-PT") : ""})` : "Fechada"}
                           </span>
                           {s.estado === "ativa" && (
-                            <button onClick={() => handleFecharSondagem(s.id_sondagem)} className="text-[10px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer">
+                            <button onClick={() => handleFecharSondagem(s.id_sondagem)} className="text-[10px] font-bold text-slate-600 hover:text-slate-800 cursor-pointer">
                               Fechar
                             </button>
                           )}
@@ -1382,7 +1382,7 @@ export function GestaoComunicacoes({
                             {q.estado === "ativo" ? "Ativo" : "Encerrado"}
                           </span>
                           {q.estado === "ativo" && (
-                            <button onClick={() => handleEncerrarQuest(q.id_questionario)} className="text-[10px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer">
+                            <button onClick={() => handleEncerrarQuest(q.id_questionario)} className="text-[10px] font-bold text-slate-600 hover:text-slate-800 cursor-pointer">
                               Encerrar
                             </button>
                           )}

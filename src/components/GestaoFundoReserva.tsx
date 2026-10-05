@@ -83,7 +83,7 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
           </div>
           <div>
             <h3 className="text-base font-bold text-slate-800">Fundo de Reserva — Conformidade Legal & Projeção</h3>
-            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
               De acordo com o <strong>Artigo 4.º do Decreto-Lei n.º 268/94, de 25 de outubro</strong>, é obrigatória a constituição de um fundo comum de reserva para custear as despesas de conservação do edifício. O montante mínimo legal é de <strong>10% do orçamento anual aprovado</strong>.
             </p>
             <p className="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-2.5 py-1.5 mt-2 inline-block">
@@ -156,7 +156,7 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
           <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 border-b border-slate-100 pb-2">Parâmetros do Condomínio</h4>
           
           <div className="flex flex-col">
-            <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Orçamento Geral Anual aprovado (€) *</label>
+            <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Orçamento Geral Anual aprovado (€) *</label>
             <MoneyInput
               value={orcamentoAnual}
               onChange={valor => setOrcamentoAnual(Math.max(0, valor))}
@@ -165,7 +165,7 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
           </div>
 
           <div className="flex flex-col">
-            <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Saldo Atual do FCR (€) *</label>
+            <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Saldo Atual do FCR (€) *</label>
             <MoneyInput
               value={saldoAtualFCR}
               onChange={valor => setSaldoAtualFCR(Math.max(0, valor))}
@@ -174,7 +174,7 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
           </div>
 
           <div className="flex flex-col">
-            <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Idade/Estado do Edifício</label>
+            <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Idade/Estado do Edifício</label>
             <select
               value={idadePredio}
               onChange={e => setIdadePredio(e.target.value as any)}
@@ -188,7 +188,7 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
           </div>
 
           <div className="flex flex-col">
-            <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Poupança / Reforço Mensal (€)</label>
+            <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Poupança / Reforço Mensal (€)</label>
             <MoneyInput
               value={contribuicaoMensalExtra}
               onChange={valor => setContribuicaoMensalExtra(Math.max(0, valor))}
@@ -235,7 +235,7 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <div className="flex justify-between items-center text-xs">
               <span className="font-bold text-slate-700">Progresso Geral do FCR face ao Alvo</span>
-              <span className="font-mono text-slate-500 font-bold">{saldoAtualFCR.toFixed(0)}€ de {fundoRecomendado.toFixed(0)}€</span>
+              <span className="font-mono text-slate-600 font-bold">{saldoAtualFCR.toFixed(0)}€ de {fundoRecomendado.toFixed(0)}€</span>
             </div>
             <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden relative">
               <div 
@@ -259,7 +259,7 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
         <div>
           <h4 className="text-xs font-black uppercase tracking-wider text-slate-600">Projeção Multianual do Fundo de Reserva</h4>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-600 mt-1">
             Simulação da evolução do saldo nos próximos 5 anos, assumindo uma poupança regular de <strong className="font-mono">{(contribuicaoMensalExtra * 12).toFixed(2)}€/ano</strong> (sem considerar despesas imprevistas).
           </p>
         </div>
@@ -269,7 +269,7 @@ export function GestaoFundoReserva({ predio, loggedUser, contas }: GestaoFundoRe
           <div className="overflow-x-auto border border-slate-100 rounded-xl">
             <table className="w-full text-xs text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
                   <th className="p-3">Ano</th>
                   <th className="p-3 text-right">Saldo Estimado</th>
                   <th className="p-3 text-right">% do Limite Legal</th>

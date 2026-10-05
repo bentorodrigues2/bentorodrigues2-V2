@@ -888,7 +888,7 @@ export function PortalOrcamentos({
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 font-mono-custom text-[10px] text-slate-500">
+                  <div className="grid grid-cols-2 gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 font-mono-custom text-[10px] text-slate-600">
                     <div className="flex items-center space-x-1">
                       <Coins size={11} className="text-slate-600 shrink-0" />
                       <span>Estimativa: <strong>{r.estimativa.toLocaleString("pt-PT")} €</strong></span>
@@ -1072,7 +1072,7 @@ export function PortalOrcamentos({
                 {propFicheiros.length > 0 && (
                   <ul className="mt-1.5 space-y-0.5">
                     {propFicheiros.map((f, i) => (
-                      <li key={i} className="text-[10px] text-slate-500 flex items-center gap-1">
+                      <li key={i} className="text-[10px] text-slate-600 flex items-center gap-1">
                         <Paperclip size={9} className="shrink-0" />
                         <span className="truncate">{f.name}</span>
                         <button
@@ -1143,7 +1143,7 @@ export function PortalOrcamentos({
                   {activeRfp.descricao}
                 </p>
 
-                <div className="flex justify-between items-center text-[11px] text-slate-500 font-mono-custom bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded border border-slate-100 dark:border-slate-800">
+                <div className="flex justify-between items-center text-[11px] text-slate-600 font-mono-custom bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded border border-slate-100 dark:border-slate-800">
                   <span>Data Publicação: <strong>{activeRfp.data_publicacao}</strong></span>
                   <span>Propostas Recebidas: <strong className="text-emerald-600">{activeRfpProposals.length}</strong></span>
                 </div>
@@ -1220,7 +1220,7 @@ export function PortalOrcamentos({
                               <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
                                 estadoProp === "Aprovada" ? "bg-emerald-100 text-emerald-800 border border-emerald-200" :
                                 estadoProp === "Rejeitada" ? "bg-red-100 text-red-800 border border-red-200" :
-                                estadoProp === "Não Selecionada" ? "bg-slate-100 text-slate-500 border border-slate-200" :
+                                estadoProp === "Não Selecionada" ? "bg-slate-100 text-slate-600 border border-slate-200" :
                                 "bg-amber-100 text-amber-800 border border-amber-200"
                               }`}>
                                 {estadoProp}
@@ -1375,7 +1375,7 @@ export function PortalOrcamentos({
                                   className={`p-2.5 rounded-lg border text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
                                     destinoObraEscolhido === "obra_extraordinaria"
                                       ? "border-emerald-500 bg-emerald-100 text-emerald-800"
-                                      : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                                   }`}
                                 >
                                   <HardHat size={13} /> Obra Extraordinária (Grande)
@@ -1386,7 +1386,7 @@ export function PortalOrcamentos({
                                   className={`p-2.5 rounded-lg border text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
                                     destinoObraEscolhido === "intervencao"
                                       ? "border-emerald-500 bg-emerald-100 text-emerald-800"
-                                      : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                                   }`}
                                 >
                                   <Wrench size={13} /> Intervenção (Reparação)
@@ -1473,13 +1473,13 @@ export function PortalOrcamentos({
 
                   {/* Matriz Comparativa */}
                   <div className="space-y-2">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center">
                       <Table size={13} className="mr-1 text-slate-600" /> Matriz Comparativa de Critérios
                     </h4>
                     <div className="border border-slate-100 dark:border-slate-800 rounded-lg overflow-hidden text-xs">
                       <table className="w-full text-left border-collapse bg-white dark:bg-[#0f172a]">
                         <thead>
-                          <tr className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-100 dark:border-slate-800 text-slate-500">
+                          <tr className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-100 dark:border-slate-800 text-slate-600">
                             <th className="p-2.5">Critério Comparativo</th>
                             <th className="p-2.5">
                               {activeRfpProposals[0]?.nome_empresa || "Fornecedor A"}

@@ -266,7 +266,7 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
                   <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
                     {isProcessing ? "A processar via Gemini..." : "Arraste a folha ou fatura para aqui"}
                   </p>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug px-1">
+                  <p className="text-[10px] text-slate-600 dark:text-slate-400 leading-snug px-1">
                     Solte o ficheiro nesta folha para extrair dados fiscais automaticamente.
                   </p>
                 </div>
@@ -291,7 +291,7 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
 
               {/* Folha Footer Supported Formats */}
               <div className="border-t border-slate-200 dark:border-slate-800/80 pt-2 text-[10px] text-slate-600 space-y-1">
-                <div className="flex justify-center gap-1 font-mono font-bold text-[9px] text-slate-500 dark:text-slate-400">
+                <div className="flex justify-center gap-1 font-mono font-bold text-[9px] text-slate-600 dark:text-slate-400">
                   <span className="bg-white dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">PDF</span>
                   <span className="bg-white dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">JPG</span>
                   <span className="bg-white dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">PNG</span>
@@ -321,7 +321,7 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
                 type="button"
                 onClick={() => setFiltroTipo("TODOS")}
                 className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                  filtroTipo === "TODOS" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  filtroTipo === "TODOS" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
                 }`}
               >
                 Todos
@@ -330,7 +330,7 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
                 type="button"
                 onClick={() => setFiltroTipo("FATURA_DESPESA")}
                 className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                  filtroTipo === "FATURA_DESPESA" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  filtroTipo === "FATURA_DESPESA" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
                 }`}
               >
                 Faturas
@@ -339,7 +339,7 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
                 type="button"
                 onClick={() => setFiltroTipo("COMPROVATIVO_TRANSFERENCIA")}
                 className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                  filtroTipo === "COMPROVATIVO_TRANSFERENCIA" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  filtroTipo === "COMPROVATIVO_TRANSFERENCIA" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
                 }`}
               >
                 Comprovativos
@@ -416,7 +416,7 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
                     </div>
 
                     {/* Metadata strip */}
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+                    <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 pt-0.5">
                       <span className="truncate max-w-[200px]">
                         Rubrica: <strong className="text-slate-700 dark:text-slate-300">{doc.dadosExtraidos.categoriaRubrica}</strong>
                       </span>

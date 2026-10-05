@@ -1509,7 +1509,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
           <div className="lg:col-span-5 space-y-4">
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-600">Detetor de Contencioso (Faltosos em Quotas)</h4>
-              <p className="text-xs text-slate-500 leading-relaxed">
+              <p className="text-xs text-slate-600 leading-relaxed">
                 O assistente jurídico analisa em tempo real os avisos de pagamento de quotas com prazo de vencimento excedido (em atraso) para propor minutas legais extrajudiciais de aviso de cobrança.
               </p>
 
@@ -1535,7 +1535,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                           <span className="text-xs font-black text-slate-800">
                             Fração {d.fracao?.fracao_nome} • Piso {d.fracao?.piso}
                           </span>
-                          <p className="text-[10px] text-slate-500 font-medium mt-0.5">Proprietário: {d.fracao?.proprietario.nome}</p>
+                          <p className="text-[10px] text-slate-600 font-medium mt-0.5">Proprietário: {d.fracao?.proprietario.nome}</p>
                           <p className="text-[9px] text-slate-600">Email: {d.fracao?.proprietario.email}</p>
                         </div>
                         <div className="text-right">
@@ -1575,7 +1575,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
               )}
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs text-slate-500 leading-relaxed space-y-2">
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs text-slate-600 leading-relaxed space-y-2">
               <p className="font-bold text-slate-700 flex items-center">
                 <i className="fa-solid fa-circle-info text-violet-500 mr-2 text-sm"></i>
                 Enquadramento Legal (Código Civil)
@@ -1804,7 +1804,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 </div>
 
                 {linhasDividas.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic py-4 text-center">Nenhuma fração em dívida neste momento — todas as quotas estão regularizadas.</p>
+                  <p className="text-xs text-slate-600 italic py-4 text-center">Nenhuma fração em dívida neste momento — todas as quotas estão regularizadas.</p>
                 ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left border-collapse">
@@ -1867,9 +1867,9 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 </div>
 
                 {aCarregarPrevisoes ? (
-                  <p className="text-xs text-slate-500 italic py-4 text-center">A carregar equipamentos…</p>
+                  <p className="text-xs text-slate-600 italic py-4 text-center">A carregar equipamentos…</p>
                 ) : equipamentosReais.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic py-4 text-center">
+                  <p className="text-xs text-slate-600 italic py-4 text-center">
                     Nenhum equipamento registado. Adicione os equipamentos técnicos do prédio em "Inventário Técnico" para obter aqui uma previsão real de manutenção.
                   </p>
                 ) : (
@@ -1923,9 +1923,9 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 </div>
 
                 {aCarregarPrevisoes ? (
-                  <p className="text-xs text-slate-500 italic py-4 text-center">A carregar obras…</p>
+                  <p className="text-xs text-slate-600 italic py-4 text-center">A carregar obras…</p>
                 ) : obrasOrdenadas.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic py-4 text-center">
+                  <p className="text-xs text-slate-600 italic py-4 text-center">
                     Nenhuma obra extraordinária pendente registada. Registe obras em "Gestão de Manutenção & Intervenções" para obter aqui uma previsão real.
                   </p>
                 ) : (
@@ -2000,7 +2000,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
                 <h4 className="text-sm font-extrabold text-slate-800">Cálculo de Orçamento Anual Automático e Previsão de Quotas</h4>
-                <p className="text-xs text-slate-500 leading-relaxed mt-1">
+                <p className="text-xs text-slate-600 leading-relaxed mt-1">
                   Defina os custos operacionais estimados e a taxa de inadimplência histórica do condomínio para gerar um planeamento financeiro preventivo, prospecção de quotas ordinárias/extraordinárias e gráficos de projeções a 12 meses via Inteligência Artificial.
                 </p>
               </div>
@@ -2028,7 +2028,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60">
-                <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                <div className="flex justify-between text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1">
                   <span>Contratos Mensais</span>
                   <span className="text-slate-800">€{contratos}/mês</span>
                 </div>
@@ -2044,7 +2044,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
               </div>
 
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60">
-                <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                <div className="flex justify-between text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1">
                   <span>Seguros Anuais</span>
                   <span className="text-slate-800">€{seguros}/ano</span>
                 </div>
@@ -2060,7 +2060,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
               </div>
 
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60">
-                <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                <div className="flex justify-between text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1">
                   <span>Serviços & Limpeza</span>
                   <span className="text-slate-800">€{servicos + limpeza}/mês</span>
                 </div>
@@ -2080,7 +2080,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
               </div>
 
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60">
-                <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                <div className="flex justify-between text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1">
                   <span>Inadimplência Histórica</span>
                   <span className="text-slate-800">{inadimplenciaHistorica}%</span>
                 </div>
@@ -2186,7 +2186,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="border border-slate-200 rounded-xl p-3 text-center bg-slate-50 hover:bg-slate-100/70 transition-all">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 block">Mínima</span>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 block">Mínima</span>
                     <span className="text-sm font-black text-slate-800 block mt-1">€{budgetResult.quota_minima?.toFixed(2)}</span>
                     <span className="text-[8px] text-slate-600">/fração/mês</span>
                   </div>
@@ -2199,7 +2199,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                   </div>
 
                   <div className="border border-slate-200 rounded-xl p-3 text-center bg-slate-50 hover:bg-slate-100/70 transition-all">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 block">Ideal</span>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 block">Ideal</span>
                     <span className="text-sm font-black text-slate-800 block mt-1">€{budgetResult.quota_ideal?.toFixed(2)}</span>
                     <span className="text-[8px] text-slate-600">/fração/mês</span>
                   </div>
@@ -2211,7 +2211,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                   </div>
                 </div>
 
-                <p className="text-[11px] text-slate-500 leading-relaxed italic bg-slate-50 p-3 rounded-xl border border-slate-200/50">
+                <p className="text-[11px] text-slate-600 leading-relaxed italic bg-slate-50 p-3 rounded-xl border border-slate-200/50">
                   <i className="fa-solid fa-lightbulb text-violet-500 mr-1.5 text-xs"></i>
                   {budgetResult.explicacao_quotas}
                 </p>
@@ -2227,7 +2227,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                   <h5 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center">
                     <i className="fa-solid fa-circle-plus text-orange-500 mr-2"></i> Sugestão Automática de Quotas Extraordinárias (IA)
                   </h5>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Plano de comparticipação para execução de obras ou benfeitorias estruturais com fracionamento legal.</p>
+                  <p className="text-[11px] text-slate-600 mt-0.5">Plano de comparticipação para execução de obras ou benfeitorias estruturais com fracionamento legal.</p>
                 </div>
                 <div className="bg-slate-900 text-slate-100 text-xs font-mono font-bold px-3 py-1.5 rounded-lg border border-slate-800 shadow-sm shrink-0">
                   <span className="text-slate-600">Referência Obrigatória:</span> <span className="text-orange-400">BR23E</span>
@@ -2238,12 +2238,12 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 <div className="lg:col-span-4 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                      <span className="text-[9px] font-bold text-slate-500 uppercase block">Valor Total das Obras</span>
+                      <span className="text-[9px] font-bold text-slate-600 uppercase block">Valor Total das Obras</span>
                       <span className="text-lg font-black text-slate-900 mt-1 block">€{budgetResult.quota_extraordinaria_sugestao.valor_total?.toLocaleString()}</span>
                     </div>
 
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                      <span className="text-[9px] font-bold text-slate-500 uppercase block">Valor Médio por Fração</span>
+                      <span className="text-[9px] font-bold text-slate-600 uppercase block">Valor Médio por Fração</span>
                       <span className="text-lg font-black text-slate-900 mt-1 block">€{budgetResult.quota_extraordinaria_sugestao.valor_por_fracao_medio?.toFixed(2)}</span>
                     </div>
                   </div>
@@ -2280,7 +2280,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
             <h5 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center">
               <i className="fa-solid fa-chart-line text-violet-500 mr-2"></i> Painel de Projeções Financeiras Inteligente (IA)
             </h5>
-            <p className="text-[11px] text-slate-500 leading-relaxed">
+            <p className="text-[11px] text-slate-600 leading-relaxed">
               O gráfico abaixo apresenta a simulação cumulativa de saldo de tesouraria do condomínio cruzada com as despesas recorrentes estimadas, o custo programado de obras futuras e o impacto previsto da taxa de inadimplência histórica ao longo de 12 meses.
             </p>
 
@@ -2315,7 +2315,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
             </div>
 
 
-            <div className="flex justify-center items-center gap-6 text-[10px] font-bold text-slate-500 pt-3 border-t border-slate-100 flex-wrap">
+            <div className="flex justify-center items-center gap-6 text-[10px] font-bold text-slate-600 pt-3 border-t border-slate-100 flex-wrap">
               <span className="flex items-center"><span className="h-2.5 w-4 bg-violet-500 rounded mr-1.5 inline-block"></span>Saldo Futuro Acumulado</span>
               <span className="flex items-center"><span className="h-2.5 w-4 bg-red-500 rounded mr-1.5 inline-block"></span>Despesas Correntes</span>
               <span className="flex items-center"><span className="h-2.5 w-4 bg-orange-500 rounded mr-1.5 inline-block"></span>Investimento em Obras</span>
@@ -2330,7 +2330,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 <h5 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center">
                   <i className="fa-solid fa-pen-to-square text-violet-500 mr-2"></i> Edição Manual pela Administração
                 </h5>
-                <p className="text-[11px] text-slate-500 mt-0.5">
+                <p className="text-[11px] text-slate-600 mt-0.5">
                   Adicione, remova ou altere as rubricas de despesas. Recalcule o orçamento com IA ou bloqueie a versão final para aprovação formal.
                 </p>
               </div>
@@ -2366,7 +2366,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-slate-50/20">
                   <table className="w-full text-xs text-left border-collapse">
                     <thead>
-                      <tr className="bg-slate-100 text-slate-500 font-bold border-b border-slate-200 text-[10px] uppercase">
+                      <tr className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200 text-[10px] uppercase">
                         <th className="p-3 pl-4">Rubrica de Despesa</th>
                         <th className="p-3 w-40 text-right">Valor Estimado Anual</th>
                         <th className="p-3 w-20 text-center">Ações</th>
@@ -2408,7 +2408,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 {!isBudgetLocked && (
                   <form onSubmit={handleAddRubrica} className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 flex flex-col sm:flex-row gap-3 items-end">
                     <div className="flex-1 space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Nome da Nova Rubrica</label>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase">Nome da Nova Rubrica</label>
                       <input
                         type="text"
                         required
@@ -2419,7 +2419,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                       />
                     </div>
                     <div className="w-full sm:w-40 space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Valor Anual (€)</label>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase">Valor Anual (€)</label>
                       <MoneyInput
                         value={newRubricaValor}
                         onChange={setNewRubricaValor}
@@ -2440,17 +2440,17 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
               <div className="lg:col-span-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200 flex flex-col justify-between space-y-4">
                 <div className="space-y-2.5">
                   <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-600 block">Recálculo de Orçamento</span>
-                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
                     Clique abaixo para recalcular todas as projeções anuais de despesas, quotas recomendadas, saldo estimado e atualizar as curvas dos gráficos com base nos novos valores ajustados administrativamente.
                   </p>
 
                   <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-1.5 font-mono text-[11px]">
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Soma de Rubricas:</span>
+                      <span className="text-slate-600">Soma de Rubricas:</span>
                       <span className="font-bold text-slate-800">€{rubricas.reduce((sum, r) => sum + r.valor, 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Fundo Reserva (10%):</span>
+                      <span className="text-slate-600">Fundo Reserva (10%):</span>
                       <span className="font-bold text-slate-800">€{(rubricas.reduce((sum, r) => sum + r.valor, 0) * 0.1).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                     </div>
                   </div>
@@ -2475,7 +2475,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 <h5 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center">
                   <i className="fa-solid fa-gavel text-violet-500 mr-2"></i> Regulamento de Penalizações por Atraso (Facultativo)
                 </h5>
-                <p className="text-[11px] text-slate-500 mt-0.5">
+                <p className="text-[11px] text-slate-600 mt-0.5">
                   Defina taxas de atraso para proprietários com quotas pendentes. Os valores calculados impactam positivamente a receita prevista e o saldo de tesouraria do orçamento.
                 </p>
               </div>
@@ -2502,7 +2502,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fadeIn">
                 <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-1">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase block">Periodicidade de Cobrança</span>
+                    <span className="text-[9px] font-bold text-slate-600 uppercase block">Periodicidade de Cobrança</span>
                     <select
                       disabled={isBudgetLocked}
                       value={frequenciaPenalizacao}
@@ -2519,7 +2519,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                   </div>
 
                   <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-1">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase block">Tipo de Penalização</span>
+                    <span className="text-[9px] font-bold text-slate-600 uppercase block">Tipo de Penalização</span>
                     <div className="flex gap-4 pt-1">
                       <label className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold">
                         <input
@@ -2555,7 +2555,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                   </div>
 
                   <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-1">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase block">Valor da Penalização</span>
+                    <span className="text-[9px] font-bold text-slate-600 uppercase block">Valor da Penalização</span>
                     <div className="relative">
                       <MoneyInput
                         disabled={isBudgetLocked}
@@ -2573,7 +2573,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                   </div>
 
                   <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-1">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase block">Período de Tolerância / Carência</span>
+                    <span className="text-[9px] font-bold text-slate-600 uppercase block">Período de Tolerância / Carência</span>
                     <div className="relative">
                       <input
                         type="number"
@@ -2588,7 +2588,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                   </div>
 
                   <div className="sm:col-span-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 space-y-1">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase block">Regras Específicas & Exceções Autorizadas</span>
+                    <span className="text-[9px] font-bold text-slate-600 uppercase block">Regras Específicas & Exceções Autorizadas</span>
                     <textarea
                       disabled={isBudgetLocked}
                       rows={2}
@@ -2626,7 +2626,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 </div>
               </div>
             ) : (
-              <div className="bg-slate-50 border border-slate-200/60 p-5 rounded-2xl text-center text-xs text-slate-500 py-8 space-y-2">
+              <div className="bg-slate-50 border border-slate-200/60 p-5 rounded-2xl text-center text-xs text-slate-600 py-8 space-y-2">
                 <i className="fa-solid fa-gavel text-xl text-slate-600"></i>
                 <p className="font-medium">Nenhum regulamento de penalizações por atraso está ativo no condomínio atualmente.</p>
                 <p className="text-[10px] text-slate-600 max-w-md mx-auto">Ative as penalizações no seletor acima para simular e incluir receitas compensatórias de atrasos de quotas no saldo previsto anual.</p>
@@ -2640,7 +2640,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
               <h5 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center">
                 <i className="fa-solid fa-envelope-open-text text-violet-500 mr-2"></i> Agendamento & Envio Automático de Relatórios
               </h5>
-              <p className="text-[11px] text-slate-500 mt-0.5">
+              <p className="text-[11px] text-slate-600 mt-0.5">
                 Configure os gatilhos e destinatários para o envio periódico do Relatório Anual de Orçamento em PDF acompanhado dos resumos financeiros periódicos do CondoManager AI.
               </p>
             </div>
@@ -2665,7 +2665,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                     </div>
                     <div>
                       <span className="text-[8px] font-black uppercase tracking-wider text-violet-600 block">Gatilho AI</span>
-                      <span className="text-[10px] text-slate-500 font-semibold block">Assim que aprovado pela administração</span>
+                      <span className="text-[10px] text-slate-600 font-semibold block">Assim que aprovado pela administração</span>
                     </div>
                   </label>
 
@@ -2686,7 +2686,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                     </div>
                     <div>
                       <span className="text-[8px] font-black uppercase tracking-wider text-violet-600 block">Gatilho AI</span>
-                      <span className="text-[10px] text-slate-500 font-semibold block">No último dia de cada mês</span>
+                      <span className="text-[10px] text-slate-600 font-semibold block">No último dia de cada mês</span>
                     </div>
                   </label>
 
@@ -2707,14 +2707,14 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                     </div>
                     <div>
                       <span className="text-[8px] font-black uppercase tracking-wider text-violet-600 block">Gatilho AI</span>
-                      <span className="text-[10px] text-slate-500 font-semibold block">No encerramento de cada trimestre</span>
+                      <span className="text-[10px] text-slate-600 font-semibold block">No encerramento de cada trimestre</span>
                     </div>
                   </label>
                 </div>
 
                 {/* Recipient Picker */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block">Lista de Destinatários do Envio Automatizado</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase block">Lista de Destinatários do Envio Automatizado</label>
                   <select
                     value={destinatariosEnvio}
                     onChange={(e) => setDestinatariosEnvio(e.target.value)}
@@ -2731,7 +2731,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
               <div className="lg:col-span-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200 flex flex-col justify-between space-y-4">
                 <div className="space-y-2">
                   <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-600 block">Ações Imediatas</span>
-                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
                     Pode testar as configurações de email disparando uma simulação de envio imediata para os condóminos selecionados com o Relatório Anual IA em anexo.
                   </p>
                   
@@ -2857,7 +2857,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                         <span className="text-[10px] font-black text-violet-400 bg-violet-950/50 border border-violet-800/60 px-2 py-0.5 rounded-md uppercase tracking-wider">
                           Cap. {t.section}
                         </span>
-                        <span className="text-[9px] text-slate-500 font-bold">
+                        <span className="text-[9px] text-slate-600 font-bold">
                           {t.tables.length} tabelas afetadas
                         </span>
                       </div>
@@ -2936,9 +2936,9 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                                       ? "bg-slate-700/60 border-pink-500/40 text-white"
                                       : isStepPassed
                                         ? "bg-slate-800/40 border-violet-600/30 text-slate-600"
-                                        : "bg-slate-900/10 border-transparent text-slate-500"
+                                        : "bg-slate-900/10 border-transparent text-slate-600"
                                   }`}>
-                                    <span className="text-[10px] font-black block text-slate-500 mb-0.5">Passo {idx + 1}</span>
+                                    <span className="text-[10px] font-black block text-slate-600 mb-0.5">Passo {idx + 1}</span>
                                     <p className="text-xs font-semibold leading-relaxed">{step}</p>
                                   </div>
                                 </div>
@@ -2963,15 +2963,15 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                                   <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest bg-slate-950 px-2 py-0.5 rounded border border-slate-800">Email Oficial Gerado</span>
                                 </div>
                                 <div className="bg-slate-900/80 px-4 py-2 border-b border-slate-800/50 space-y-1">
-                                  <div><span className="text-slate-500">De:</span> <span className="text-violet-400">{(activeTrigger.previewContent as any).from}</span></div>
-                                  <div><span className="text-slate-500">Para:</span> <span className="text-slate-200">{(activeTrigger.previewContent as any).to}</span></div>
-                                  <div><span className="text-slate-500">Assunto:</span> <span className="text-emerald-400">{(activeTrigger.previewContent as any).subject}</span></div>
+                                  <div><span className="text-slate-600">De:</span> <span className="text-violet-400">{(activeTrigger.previewContent as any).from}</span></div>
+                                  <div><span className="text-slate-600">Para:</span> <span className="text-slate-200">{(activeTrigger.previewContent as any).to}</span></div>
+                                  <div><span className="text-slate-600">Assunto:</span> <span className="text-emerald-400">{(activeTrigger.previewContent as any).subject}</span></div>
                                 </div>
                                 <div className="p-4 text-slate-600 leading-relaxed whitespace-pre-wrap font-sans text-xs max-h-56 overflow-y-auto">
                                   {(activeTrigger.previewContent as any).body}
                                 </div>
                                 {/* Email Branding Footer */}
-                                <div className="bg-slate-900/60 border-t border-slate-800/60 px-4 py-2 text-center flex items-center justify-between text-[9px] text-slate-500">
+                                <div className="bg-slate-900/60 border-t border-slate-800/60 px-4 py-2 text-center flex items-center justify-between text-[9px] text-slate-600">
                                   <span>Mensagem enviada via CondoManager AI</span>
                                   <img src="/marca/20-Logotipo Horizontal com fundo.png" alt="" className="h-4 object-contain opacity-70" />
                                 </div>
@@ -3078,7 +3078,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                                   <span className="text-slate-600">Cobranças Ativas</span>
                                 </div>
                                 <div className="space-y-2">
-                                  <span className="text-[9px] text-slate-500 uppercase block font-bold">Avisos de Cobrança Emitidos:</span>
+                                  <span className="text-[9px] text-slate-600 uppercase block font-bold">Avisos de Cobrança Emitidos:</span>
                                   {((activeTrigger.previewContent as any).avisos_gerados as any[]).map((av, idx) => (
                                     <div key={idx} className="flex justify-between text-[11px] text-slate-600 bg-slate-900 p-1.5 rounded border border-slate-800">
                                       <span>{av.fracao} - {av.devedor}</span>
@@ -3105,7 +3105,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                                         <span className="font-bold text-white">{al.documento}</span>
                                         <span className="text-red-400 font-bold">Vence em {al.dias_restantes} dias</span>
                                       </div>
-                                      <div className="text-[10px] text-slate-500 mt-0.5">Ação recomendada: {al.acao}</div>
+                                      <div className="text-[10px] text-slate-600 mt-0.5">Ação recomendada: {al.acao}</div>
                                     </div>
                                   ))}
                                 </div>
@@ -3119,7 +3119,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                               <div className="bg-slate-950 rounded-xl p-4 border border-slate-800 text-xs space-y-3 font-mono">
                                 <div className="flex justify-between border-b border-slate-800 pb-2">
                                   <span className="font-bold text-emerald-400"><i className="fa-solid fa-file-excel mr-1.5 text-sm text-emerald-500"></i>{(activeTrigger.previewContent as any).ficheiro}</span>
-                                  <span className="text-slate-500">{(activeTrigger.previewContent as any).tamanho}</span>
+                                  <span className="text-slate-600">{(activeTrigger.previewContent as any).tamanho}</span>
                                 </div>
                                 <div className="space-y-1.5 text-[11px] text-slate-600">
                                   <div>Gerado por: <span className="text-white font-bold">{(activeTrigger.previewContent as any).gerado_por}</span></div>
@@ -3146,7 +3146,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                     </span>
                     <button
                       onClick={() => setRealtimeLogs([])}
-                      className="text-[10px] text-slate-500 hover:text-slate-600 underline font-bold cursor-pointer"
+                      className="text-[10px] text-slate-600 hover:text-slate-600 underline font-bold cursor-pointer"
                     >
                       Limpar logs
                     </button>
@@ -3158,7 +3158,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                     ) : (
                       realtimeLogs.map((log) => (
                         <div key={log.id} className="flex items-start gap-2.5 border-b border-slate-800/40 pb-2">
-                          <span className="text-slate-500 shrink-0">[{log.timestamp}]</span>
+                          <span className="text-slate-600 shrink-0">[{log.timestamp}]</span>
                           <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold shrink-0 uppercase tracking-wide ${
                             log.type === "success" 
                               ? "bg-emerald-950/50 text-emerald-400 border border-emerald-900" 
@@ -3447,7 +3447,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
-                      <span className="text-xs font-mono font-bold text-slate-500">Enviada</span>
+                      <span className="text-xs font-mono font-bold text-slate-600">Enviada</span>
                       <p className="text-[10px] text-slate-600 font-medium">Disparada por canais automáticos</p>
                     </div>
                     <div className="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
@@ -3577,8 +3577,8 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                   <div className="flex items-center gap-4">
                     <div className="text-right space-y-1 text-xs font-mono">
                       <div className="text-slate-900 font-extrabold text-[11px]">Ref: BR23E/ORC-26</div>
-                      <div className="text-[9px] text-slate-500">Emissão: 16 de Julho de 2026</div>
-                      <div className="text-[9px] text-slate-500">Edifício: {predio?.nome || "Condomínio Exemplo"}</div>
+                      <div className="text-[9px] text-slate-600">Emissão: 16 de Julho de 2026</div>
+                      <div className="text-[9px] text-slate-600">Edifício: {predio?.nome || "Condomínio Exemplo"}</div>
                       <div className="text-[8px] bg-slate-900 text-white font-black px-1.5 py-0.5 rounded uppercase mt-1 inline-block">Proposta Oficial</div>
                     </div>
                     {/* Mock QR Code purely in CSS Grid */}
@@ -3596,7 +3596,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 {/* 1. Orçamento Anual Geral */}
                 <div className="space-y-3">
                   <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider border-b border-slate-200 pb-1.5 flex items-center">
-                    <i className="fa-solid fa-calculator text-slate-500 mr-2 text-xs"></i> 1. Resumo do Orçamento Anual Preventivo (Exercício 2026/2027)
+                    <i className="fa-solid fa-calculator text-slate-600 mr-2 text-xs"></i> 1. Resumo do Orçamento Anual Preventivo (Exercício 2026/2027)
                   </h3>
                   <p className="text-[11px] text-slate-600 leading-relaxed">
                     Abaixo apresenta-se o plano financeiro consolidado calculado e otimizado através dos motores de Inteligência Artificial do CondoManager, integrando a totalidade de custos previstos e estimativa regulada de receitas correntes.
@@ -3633,12 +3633,12 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 {/* 2. Detalhe de Custos por Rubrica */}
                 <div className="space-y-3">
                   <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider border-b border-slate-200 pb-1.5 flex items-center">
-                    <i className="fa-solid fa-list-check text-slate-500 mr-2 text-xs"></i> 2. Detalhamento de Rubricas de Custos Previstos
+                    <i className="fa-solid fa-list-check text-slate-600 mr-2 text-xs"></i> 2. Detalhamento de Rubricas de Custos Previstos
                   </h3>
                   <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                     <table className="w-full text-xs border-collapse text-left">
                       <thead>
-                        <tr className="bg-slate-100 text-slate-500 font-bold border-b border-slate-200 text-[9px] uppercase tracking-wide">
+                        <tr className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200 text-[9px] uppercase tracking-wide">
                           <th className="p-3 pl-4">Rubrica / Rubricado Operacional</th>
                           <th className="p-3 w-44 text-right">Encargo Anual Previsto</th>
                           <th className="p-3 w-40 text-center">Referência de Distribuição</th>
@@ -3653,7 +3653,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                             <td className="p-3 text-right font-mono font-bold text-slate-950">
                               €{rub.valor.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </td>
-                            <td className="p-3 text-center text-slate-500 font-medium">
+                            <td className="p-3 text-center text-slate-600 font-medium">
                               {rub.id === "obras" ? "Quota Extraordinária" : "Permilagem Legal"}
                             </td>
                           </tr>
@@ -3675,7 +3675,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 {/* 3. Previsão de Quotas Recomendadas */}
                 <div className="space-y-3">
                   <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider border-b border-slate-200 pb-1.5 flex items-center">
-                    <i className="fa-solid fa-hand-holding-dollar text-slate-500 mr-2 text-xs"></i> 3. Plano de Quotas de Condomínio Recomendado (Mensal por Fração)
+                    <i className="fa-solid fa-hand-holding-dollar text-slate-600 mr-2 text-xs"></i> 3. Plano de Quotas de Condomínio Recomendado (Mensal por Fração)
                   </h3>
                   <p className="text-[11px] text-slate-600 leading-relaxed">
                     Com base no rateio equitativo do orçamento e provisões recomendadas de fundo de reserva, as quotas propostas são categorizadas em três cenários de robustez financeira e uma componente extraordinária temporal de obras.
@@ -3707,7 +3707,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                     </div>
                   </div>
 
-                  <p className="text-[10px] text-slate-500 italic bg-slate-50 p-3 rounded-lg border border-slate-100 leading-relaxed">
+                  <p className="text-[10px] text-slate-600 italic bg-slate-50 p-3 rounded-lg border border-slate-100 leading-relaxed">
                     <strong>Nota IA explicativa de quotas:</strong> {budgetResult.explicacao_quotas}
                   </p>
                 </div>
@@ -3715,7 +3715,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 {/* 4. Regulamento de Penalizações por Atraso */}
                 <div className="space-y-3">
                   <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider border-b border-slate-200 pb-1.5 flex items-center">
-                    <i className="fa-solid fa-gavel text-slate-500 mr-2 text-xs"></i> 4. Regulamento e Política de Penalizações por Atraso de Quotas
+                    <i className="fa-solid fa-gavel text-slate-600 mr-2 text-xs"></i> 4. Regulamento e Política de Penalizações por Atraso de Quotas
                   </h3>
                   {aplicaPenalizacoes ? (
                     <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-xl text-xs space-y-2">
@@ -3738,12 +3738,12 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                         </div>
                       </div>
                       <div className="pt-2 border-t border-slate-200">
-                        <span className="font-bold text-slate-500 text-[9px] uppercase block">Exceções e Regras de Isenção</span>
+                        <span className="font-bold text-slate-600 text-[9px] uppercase block">Exceções e Regras de Isenção</span>
                         <p className="text-slate-600 text-[10px] italic leading-relaxed mt-0.5">"{regrasExcecoes}"</p>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-[11px] text-slate-500 italic">Nenhum regulamento de penalizações ativas para este exercício orçamental.</p>
+                    <p className="text-[11px] text-slate-600 italic">Nenhum regulamento de penalizações ativas para este exercício orçamental.</p>
                   )}
                 </div>
 
@@ -3771,7 +3771,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                         <i className="fa-solid fa-shield-halved text-emerald-600 text-lg"></i>
                         <div className="text-left font-sans">
                           <div className="text-[9px] font-black uppercase text-emerald-800 tracking-wider">Assinatura Digital Certificada</div>
-                          <div className="text-[8px] text-slate-500 font-mono break-all">ID: CM-AUTH-9883-294A-B662-C841E</div>
+                          <div className="text-[8px] text-slate-600 font-mono break-all">ID: CM-AUTH-9883-294A-B662-C841E</div>
                           <div className="text-[7px] text-slate-600">Assinado digitalmente por CondoManager AI Auditor em 16/07/2026 às 11:34:52 UTC</div>
                         </div>
                       </div>

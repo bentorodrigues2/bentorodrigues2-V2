@@ -1732,7 +1732,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                 <div key={m.id_mov} className="flex justify-between items-center text-xs bg-white p-2.5 rounded-lg border border-amber-300">
                   <div className="space-y-0.5">
                     <p className="font-semibold text-slate-800 line-clamp-1">{m.descricao}</p>
-                    <p className="text-[10px] text-slate-500 font-mono-custom">Banco: {cta?.banco} | Valor: <span className="font-bold text-red-600">{m.tipo === "Receita" ? "+" : "-"}{m.valor.toFixed(2)}€</span></p>
+                    <p className="text-[10px] text-slate-600 font-mono-custom">Banco: {cta?.banco} | Valor: <span className="font-bold text-red-600">{m.tipo === "Receita" ? "+" : "-"}{m.valor.toFixed(2)}€</span></p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {justifyingMovId === m.id_mov ? (
@@ -2062,7 +2062,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                   <i className="fa-solid fa-trash-can"></i> Eliminar Movimento
                 </button>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setDetalheMovId(null)} className="px-3 py-1.5 text-xs font-bold text-slate-500 cursor-pointer">Cancelar</button>
+                  <button onClick={() => setDetalheMovId(null)} className="px-3 py-1.5 text-xs font-bold text-slate-600 cursor-pointer">Cancelar</button>
                   <button
                     onClick={handleGuardarDetalheMov}
                     disabled={aGuardarDetalheMov}
@@ -2099,7 +2099,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                 <div className="flex justify-between items-center">
                   <div className="space-y-0.5">
                     <p className="font-semibold text-slate-800 line-clamp-1">{m.descricao.replace(/\s*\[pagamento:[^\]]+\]/, "")}</p>
-                    <p className="text-[10px] text-slate-500 font-mono-custom">Valor: <span className="font-bold text-teal-700">{m.valor.toFixed(2)}€</span></p>
+                    <p className="text-[10px] text-slate-600 font-mono-custom">Valor: <span className="font-bold text-teal-700">{m.valor.toFixed(2)}€</span></p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button
@@ -2194,14 +2194,14 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
             <form onSubmit={lancarMovimento} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Tipo de Movimento *</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Tipo de Movimento *</label>
                   <select value={tipo} onChange={e => setTipo(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white">
                     <option value="Despesa">Despesa (Débito da Conta)</option>
                     <option value="Receita">Receita (Crédito na Conta)</option>
                   </select>
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Conta Bancária Afetada *</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Conta Bancária Afetada *</label>
                   <select required value={contaId} onChange={e => setContaId(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white">
                     <option value="">Selecione a conta bancária...</option>
                     {predioContas.map(c => (
@@ -2213,18 +2213,18 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex flex-col md:col-span-2">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Descrição / Histórico *</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Descrição / Histórico *</label>
                   <input type="text" value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Ex: Manutenção de Portão Garagem, Quota Julho..." className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Valor (€) *</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Valor (€) *</label>
                   <input type="text" inputMode="decimal" value={valor} onChange={e => setValor(e.target.value)} placeholder="0,00" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono-custom font-bold" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-500 mb-1">Categoria de Lançamento *</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Categoria de Lançamento *</label>
                   <select value={categoria} onChange={e => setCategoria(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white">
                     <optgroup label="Receitas / Quotas">
                       <option value="Quotas Ordinárias">Quotas Ordinárias (Exercício Corrente)</option>
@@ -2250,7 +2250,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
 
                 {categoria === "Outros" && (
                   <div className="flex flex-col md:col-span-2">
-                    <label className="text-xs font-semibold text-slate-500 mb-1">Justificação do Motivo "Outros" *</label>
+                    <label className="text-xs font-semibold text-slate-600 mb-1">Justificação do Motivo "Outros" *</label>
                     <input
                       type="text"
                       value={justificacaoOutros}
@@ -2295,13 +2295,13 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
 
               {/* Upload de até 4 comprovativos */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
                   <span>Anexos / Documentos Associados (Até 4 Ficheiros, WebP Silent Conversion)</span>
                   <span className={`${uploadedFotos.length === 4 ? "text-amber-600" : "text-slate-600"}`}>{uploadedFotos.length} de 4</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <label className="bg-slate-50 hover:bg-slate-100 text-slate-700 border border-dashed border-slate-300 px-4 py-2.5 rounded-lg text-xs font-bold flex items-center space-x-2 cursor-pointer transition-colors">
-                    <i className="fa-solid fa-file-circle-plus text-slate-500"></i>
+                    <i className="fa-solid fa-file-circle-plus text-slate-600"></i>
                     <span>Selecionar Ficheiros</span>
                     <input 
                       type="file" 
@@ -2341,7 +2341,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
               </div>
             </form>
           ) : (
-            <div className="text-center p-8 bg-slate-50 rounded-lg border text-slate-500 text-xs">
+            <div className="text-center p-8 bg-slate-50 rounded-lg border text-slate-600 text-xs">
               Apenas utilizadores com perfil de Administrador do Prédio podem lançar despesas ou receitas financeiras.
             </div>
           )}
@@ -2389,12 +2389,12 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
               ) : (
                 emails.map(e => (
                   <div key={e.id} className={`p-3 rounded-lg border transition-all ${e.imported ? "bg-slate-50 border-slate-200 opacity-60" : "bg-white border-slate-200 hover:border-emerald-500 shadow-xs"}`}>
-                    <div className="flex justify-between text-[10px] text-slate-500">
+                    <div className="flex justify-between text-[10px] text-slate-600">
                       <span className="font-semibold truncate max-w-[150px]">{e.sender}</span>
                       <span className="font-mono-custom">{e.date}</span>
                     </div>
                     <h4 className="text-xs font-bold text-slate-800 mt-1 line-clamp-1">{e.subject}</h4>
-                    <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">{e.body}</p>
+                    <p className="text-[10px] text-slate-600 mt-1 line-clamp-2">{e.body}</p>
                     
                     <div className="flex items-center space-x-1.5 mt-2 bg-slate-50 p-1.5 rounded text-[10px] border border-slate-200">
                       <i className="fa-solid fa-paperclip text-slate-600"></i>
@@ -2443,7 +2443,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
               )}
             </div>
           </div>
-          <div className="text-[10px] text-slate-500 font-mono-custom text-center pt-3 border-t border-slate-800">
+          <div className="text-[10px] text-slate-600 font-mono-custom text-center pt-3 border-t border-slate-800">
             * O lançamento das despesas só ocorre após validação humana explícita.
           </div>
         </div>
@@ -2580,7 +2580,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
             <div className={showMovimentosDetetadosModal ? "p-6 flex flex-col min-h-0 flex-1" : ""}>
               <div className="flex items-center justify-between mb-2">
                 <h4 className={`font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1.5 ${showMovimentosDetetadosModal ? "text-sm" : "text-xs"}`}>
-                  <i className="fa-solid fa-list-check text-slate-500"></i>
+                  <i className="fa-solid fa-list-check text-slate-600"></i>
                   <span>Movimentos Detetados pela IA{extractedItems.length > 0 ? ` (${extractedItems.length})` : ""}</span>
                 </h4>
                 {showMovimentosDetetadosModal ? (
@@ -2593,7 +2593,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                   </button>
                 )}
               </div>
-              <p className={showMovimentosDetetadosModal ? "text-xs text-slate-500 mb-3" : "text-[11px] text-slate-500 mb-3"}>Receitas tentam cruzar-se com um condómino/fração; despesas com um fornecedor já registado (IBAN, referência de contrato/ADC ou nome). Movimentos já lançados por outra via não pedem aprovação. Valide antes de lançar:</p>
+              <p className={showMovimentosDetetadosModal ? "text-xs text-slate-600 mb-3" : "text-[11px] text-slate-600 mb-3"}>Receitas tentam cruzar-se com um condómino/fração; despesas com um fornecedor já registado (IBAN, referência de contrato/ADC ou nome). Movimentos já lançados por outra via não pedem aprovação. Valide antes de lançar:</p>
 
               <div className={showMovimentosDetetadosModal ? "space-y-2.5 overflow-y-auto flex-1 pr-1 text-sm" : "space-y-2 overflow-y-auto max-h-[280px] pr-1"}>
                 {extractedItems.length === 0 ? (
@@ -2616,7 +2616,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                               </button>
                             </div>
                           </div>
-                          <p className="font-semibold text-slate-500 line-clamp-1">{item.descricao}</p>
+                          <p className="font-semibold text-slate-600 line-clamp-1">{item.descricao}</p>
                           <p className="text-slate-600 font-mono-custom">{item.tipo === "Receita" ? "+" : "-"}{item.valor.toFixed(2)}€ — não requer aprovação (já existe um lançamento/aviso equivalente).</p>
                         </div>
                       );
@@ -2626,7 +2626,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                       return (
                         <div key={index} className="bg-white p-3 rounded-lg border border-emerald-200 text-xs space-y-2">
                           <div className="flex justify-between items-center">
-                            <span className="font-mono-custom text-[10px] text-slate-500">{item.data}</span>
+                            <span className="font-mono-custom text-[10px] text-slate-600">{item.data}</span>
                             <div className="flex items-center gap-1.5">
                               <span className="text-[10px] font-bold px-1.5 rounded bg-emerald-50 text-emerald-800">Receita — Condómino</span>
                               <button onClick={() => descartarItemExtraido(index)} title="Remover da lista, sem lançar" className="text-slate-600 hover:text-red-500 cursor-pointer">
@@ -2645,7 +2645,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                             <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider block">Titular / Descritivo do Extrato</span>
                             <p className="font-semibold text-slate-800">{item.descricao}</p>
                             {(item.entidade_credora || item.iban_credor) && (
-                              <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                              <p className="text-[10px] text-slate-600 font-mono mt-0.5">
                                 {item.entidade_credora ? `${item.entidade_credora} ` : ""}{item.iban_credor ? `— IBAN ${item.iban_credor}` : ""}
                               </p>
                             )}
@@ -2655,7 +2655,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                             </p>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <label className="text-[10px] text-slate-500 font-semibold shrink-0">Fração errada? Corrige:</label>
+                            <label className="text-[10px] text-slate-600 font-semibold shrink-0">Fração errada? Corrige:</label>
                             <select
                               value={item.fracaoSugeridaId || ""}
                               onChange={(e) => {
@@ -2802,7 +2802,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                     return (
                     <div key={index} className="bg-white p-3 rounded-lg border border-slate-200 text-xs space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="font-mono-custom text-[10px] text-slate-500">{item.data}</span>
+                        <span className="font-mono-custom text-[10px] text-slate-600">{item.data}</span>
                         <div className="flex items-center gap-1.5">
                           <span className={`text-[10px] font-bold px-1.5 rounded ${item.tipo === "Receita" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>
                             {item.tipo === "Receita" ? "Receita" : "Despesa"}
@@ -2853,7 +2853,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                         <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider block">Titular / Descritivo do Extrato</span>
                         <p className="font-semibold text-slate-800">{item.descricao}</p>
                         {(item.entidade_credora || item.iban_credor) && (
-                          <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                          <p className="text-[10px] text-slate-600 font-mono mt-0.5">
                             {item.entidade_credora ? `${item.entidade_credora} ` : ""}{item.iban_credor ? `— IBAN ${item.iban_credor}` : ""}
                           </p>
                         )}
@@ -2913,7 +2913,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                             <button
                               type="button"
                               onClick={() => setExtractedItems(prev => prev.map((x, i) => i === index ? { ...x, id_fornecedor: undefined, fornecedor_nome_sugerido: undefined, metodo_cruzamento: undefined } : x))}
-                              className="text-[9px] text-slate-500 hover:text-red-600 underline cursor-pointer shrink-0"
+                              className="text-[9px] text-slate-600 hover:text-red-600 underline cursor-pointer shrink-0"
                             >
                               Errado? Corrigir
                             </button>
@@ -2965,7 +2965,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                       <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                         <span className="font-bold text-slate-800 font-mono-custom text-sm">{item.tipo === "Receita" ? "+" : "-"}{item.valor.toFixed(2)}€</span>
                         <div className="flex items-center space-x-1.5">
-                          <span className="text-[10px] text-slate-500 font-semibold">Lança em: <strong className="text-slate-700">{contas.find(c => c.id_conta === contaExtratoId)?.banco}</strong></span>
+                          <span className="text-[10px] text-slate-600 font-semibold">Lança em: <strong className="text-slate-700">{contas.find(c => c.id_conta === contaExtratoId)?.banco}</strong></span>
                           <button
                             onClick={() => {
                               const fornSel = document.getElementById(`extract-forn-select-${index}`) as HTMLSelectElement | null;
@@ -3006,7 +3006,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                 key={c.id_conta}
                 type="button"
                 onClick={() => setFiltroExtratoConta(c.id_conta)}
-                className={`px-3 py-2 rounded-t-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-2 border-b-2 ${ativo ? "bg-emerald-50 text-emerald-800 border-emerald-600" : "text-slate-500 border-transparent hover:bg-slate-50"}`}
+                className={`px-3 py-2 rounded-t-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-2 border-b-2 ${ativo ? "bg-emerald-50 text-emerald-800 border-emerald-600" : "text-slate-600 border-transparent hover:bg-slate-50"}`}
               >
                 <i className="fa-solid fa-building-columns"></i>
                 <span>{c.banco} — {c.tipo}</span>
@@ -3095,7 +3095,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
             <input type="date" value={filtroExtratoDataAte} onChange={e => setFiltroExtratoDataAte(e.target.value)} className="border border-slate-200 rounded-lg px-1 py-1.5 text-[10px] focus:outline-emerald-500 w-[118px]" title="Data até" />
           </div>
           {(filtroExtratoBusca || filtroExtratoTipo !== "TODOS" || filtroExtratoCategoria !== "TODAS" || filtroExtratoFracao !== "TODAS" || filtroExtratoFornecedor !== "TODOS" || filtroExtratoEstado !== "TODOS" || filtroExtratoDataDe || filtroExtratoDataAte) && (
-            <button type="button" onClick={limparFiltrosExtrato} className="text-[10px] text-slate-500 hover:text-red-600 underline cursor-pointer self-center shrink-0">
+            <button type="button" onClick={limparFiltrosExtrato} className="text-[10px] text-slate-600 hover:text-red-600 underline cursor-pointer self-center shrink-0">
               Limpar filtros
             </button>
           )}
@@ -3158,7 +3158,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
                         title={`${m.fotos.length} ficheiro(s) anexado(s) — ver fatura/comprovativo`}
-                        className="text-slate-500 hover:text-indigo-600 shrink-0"
+                        className="text-slate-600 hover:text-indigo-600 shrink-0"
                       >
                         <i className="fa-solid fa-paperclip"></i>
                       </a>

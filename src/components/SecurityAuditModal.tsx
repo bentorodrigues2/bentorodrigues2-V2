@@ -117,7 +117,7 @@ export function SecurityAuditModal({
             </div>
 
             {logs.length === 0 ? (
-              <div className="text-center py-8 text-slate-500 text-xs">
+              <div className="text-center py-8 text-slate-600 text-xs">
                 Sem registos de segurança gravados.
               </div>
             ) : (
@@ -140,7 +140,7 @@ export function SecurityAuditModal({
                   <div className="text-[11px] text-slate-600 font-medium pt-0.5">
                     {log.details}
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-800/40">
+                  <div className="flex items-center justify-between text-[10px] text-slate-600 font-mono pt-1 border-t border-slate-800/40">
                     <span>E-mail: {log.userEmail}</span>
                     <span>IP: {log.ip}</span>
                   </div>
@@ -211,10 +211,10 @@ export function SecurityAuditModal({
                       Role: {roleName}
                     </span>
                     <div className="flex items-center space-x-2 text-[10px]">
-                      <span className={rule.ocrAllowed ? "text-emerald-400 font-bold" : "text-slate-500"}>
+                      <span className={rule.ocrAllowed ? "text-emerald-400 font-bold" : "text-slate-600"}>
                         OCR: {rule.ocrAllowed ? "✅ Permitido" : "❌ Proibido"}
                       </span>
-                      <span className={rule.signatureVerifyAllowed ? "text-emerald-400 font-bold" : "text-slate-500"}>
+                      <span className={rule.signatureVerifyAllowed ? "text-emerald-400 font-bold" : "text-slate-600"}>
                         Assinaturas: {rule.signatureVerifyAllowed ? "✅ Valida" : "❌ Sem Acesso"}
                       </span>
                     </div>
@@ -245,7 +245,7 @@ export function SecurityAuditModal({
             </div>
 
             {docLogs.length === 0 ? (
-              <div className="text-center py-8 text-slate-500 text-xs">
+              <div className="text-center py-8 text-slate-600 text-xs">
                 Sem registos de acesso a documentos gravados.
               </div>
             ) : (
@@ -270,7 +270,7 @@ export function SecurityAuditModal({
                   <div className="text-[11px] text-slate-600 font-medium pt-0.5">
                     {log.reason}
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-800/40">
+                  <div className="flex items-center justify-between text-[10px] text-slate-600 font-mono pt-1 border-t border-slate-800/40">
                     <span>Utilizador: {log.userEmail} ({log.userRole})</span>
                     <span>Condomínio: {log.condominioId}</span>
                   </div>
@@ -282,7 +282,7 @@ export function SecurityAuditModal({
 
         {/* Footer */}
         <div className="pt-2 border-t border-slate-800 flex justify-between items-center">
-          <span className="text-[10px] text-slate-500">
+          <span className="text-[10px] text-slate-600">
             Engine de Proteção RGPD/GDPR, ACL & Row Level Security Supabase Ativo
           </span>
           <button

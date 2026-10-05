@@ -132,7 +132,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
           </div>
           <div>
             <h3 className="text-base font-bold text-slate-800">Emissão de Relatórios Financeiros Automáticos</h3>
-            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
               Compile relatórios de prestação de contas com gráficos agregados e fechos de saldos mensais, trimestrais ou anuais. O sistema consolida os movimentos reais do período e permite publicar o relatório no Arquivo Documental, visível aos condóminos.
             </p>
           </div>
@@ -175,7 +175,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                     type="button"
                     onClick={() => setTipoRelatorio(t)}
                     className={`py-1.5 text-[10px] font-bold rounded-lg border-none capitalize transition-all cursor-pointer ${
-                      tipoRelatorio === t ? "bg-blue-600 text-white shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-800"
+                      tipoRelatorio === t ? "bg-blue-600 text-white shadow-sm" : "bg-transparent text-slate-600 hover:text-slate-800"
                     }`}
                   >
                     {t}
@@ -186,7 +186,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
 
             {tipoRelatorio === "mensal" && (
               <div className="flex flex-col animate-slideDown">
-                <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Mês de Referência</label>
+                <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Mês de Referência</label>
                 <select
                   value={mesSelecionado}
                   onChange={e => setMesSelecionado(e.target.value)}
@@ -201,7 +201,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
 
             {tipoRelatorio === "trimestral" && (
               <div className="flex flex-col animate-slideDown">
-                <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Trimestre</label>
+                <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Trimestre</label>
                 <select
                   value={trimestreSelecionado}
                   onChange={e => setTrimestreSelecionado(e.target.value)}
@@ -216,7 +216,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
             )}
 
             <div className="flex flex-col">
-              <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1">Ano Económico</label>
+              <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Ano Económico</label>
               <select
                 value={anoSelecionado}
                 onChange={e => setAnoSelecionado(e.target.value)}
@@ -228,7 +228,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
               </select>
             </div>
 
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-[10px] text-slate-500 leading-relaxed space-y-1">
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-[10px] text-slate-600 leading-relaxed space-y-1">
               <div className="flex items-center text-slate-700 font-bold uppercase tracking-wide text-[9px] mb-1">
                 <i className="fa-solid fa-gears mr-1.5 text-blue-500"></i>Configurações de Automatização
               </div>
@@ -292,7 +292,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                     <span className="text-[9px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                       CÓDIGO: {compiledReport.id}
                     </span>
-                    <span className="text-[9px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-mono">
+                    <span className="text-[9px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-mono">
                       Oficial CondoManager
                     </span>
                   </div>
@@ -361,7 +361,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                     {/* Visual Progress bar bars */}
                     <div className="space-y-3">
-                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Despesas por Categoria</span>
+                      <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider">Despesas por Categoria</span>
                       {Object.entries(compiledReport.despesasPorCategoria).map(([cat, val]: any) => {
                         const pct = compiledReport.totalDespesas > 0 ? (val / compiledReport.totalDespesas) * 100 : 0;
                         return (
@@ -402,7 +402,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                 <div className="overflow-x-auto border border-slate-100 rounded-xl">
                   <table className="w-full text-xs text-left border-collapse">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
                         <th className="p-3">Data</th>
                         <th className="p-3">Descrição</th>
                         <th className="p-3">Categoria</th>
@@ -412,9 +412,9 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                     <tbody>
                       {compiledReport.movimentos.map((m: Movimento) => (
                         <tr key={m.id_mov} className="border-b border-slate-100 hover:bg-slate-50/50">
-                          <td className="p-3 font-mono text-slate-500">{m.data}</td>
+                          <td className="p-3 font-mono text-slate-600">{m.data}</td>
                           <td className="p-3 font-bold text-slate-700">{m.descricao}</td>
-                          <td className="p-3 text-slate-500">
+                          <td className="p-3 text-slate-600">
                             <span className="px-2 py-0.5 rounded bg-slate-100 text-[10px]">{m.categoria}</span>
                           </td>
                           <td className={`p-3 text-right font-mono font-bold ${m.tipo === "RECEITA" ? "text-emerald-600" : "text-rose-600"}`}>

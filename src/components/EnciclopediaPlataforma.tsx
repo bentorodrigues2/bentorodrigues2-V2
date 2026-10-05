@@ -424,7 +424,7 @@ export function EnciclopediaPlataforma({ documentos, onOpenManual }: Enciclopedi
               <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
                 Vídeos Demonstrativos Interativos
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
                 Simulações visuais passo a passo para aprendizagem imediata em computadores e telemóveis
               </p>
             </div>
@@ -581,14 +581,14 @@ export function EnciclopediaPlataforma({ documentos, onOpenManual }: Enciclopedi
               Tópicos e Manuais Ilustrados ({topicosFiltrados.length})
             </h3>
           </div>
-          <span className="text-xs text-slate-500">Clique em qualquer tópico para expandir o guia passo a passo</span>
+          <span className="text-xs text-slate-600">Clique em qualquer tópico para expandir o guia passo a passo</span>
         </div>
 
         {topicosFiltrados.length === 0 ? (
           <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 text-center space-y-3">
             <BookOpen className="w-10 h-10 text-slate-600 mx-auto" />
             <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Nenhum tópico encontrado para a pesquisa</h4>
-            <p className="text-xs text-slate-500 max-w-md mx-auto">
+            <p className="text-xs text-slate-600 max-w-md mx-auto">
               Tente pesquisar com outros termos como 'PWA', 'Quotas', 'MB WAY', 'Prédio' ou 'Manual'.
             </p>
             <button
@@ -619,7 +619,7 @@ export function EnciclopediaPlataforma({ documentos, onOpenManual }: Enciclopedi
                         <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded">
                           {topico.categoria.toUpperCase()}
                         </span>
-                        <span className="text-[10px] text-slate-500 font-medium">
+                        <span className="text-[10px] text-slate-600 font-medium">
                           Perfil: <strong>{topico.perfilRecomendado}</strong>
                         </span>
                       </div>

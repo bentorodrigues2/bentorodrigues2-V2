@@ -2308,7 +2308,7 @@ export function GestaoDocumentos({
                   <span className="text-xs font-bold text-slate-800 line-clamp-1 group-hover:text-emerald-900">
                     {folderName}
                   </span>
-                  <span className={`text-[10px] mt-0.5 font-medium ${isEmpty ? "text-slate-600" : "text-slate-500"}`}>
+                  <span className={`text-[10px] mt-0.5 font-medium ${isEmpty ? "text-slate-600" : "text-slate-600"}`}>
                     {isEmpty ? "0 ficheiros (Pronta)" : `${folderDocs.length} ficheiro${folderDocs.length !== 1 ? "s" : ""}`}
                   </span>
                 </button>
@@ -2540,7 +2540,7 @@ export function GestaoDocumentos({
                         <td className="p-3">
                           <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-slate-200">{doc.tema || doc.categoria || "Geral"}</span>
                           {(doc.sub_pasta || doc.fornecedor) && (
-                            <span className="text-[10px] text-slate-500 block mt-0.5 truncate max-w-[180px]">{doc.sub_pasta || doc.fornecedor}</span>
+                            <span className="text-[10px] text-slate-600 block mt-0.5 truncate max-w-[180px]">{doc.sub_pasta || doc.fornecedor}</span>
                           )}
                         </td>
                         <td className="p-3 text-center font-mono text-slate-600">{doc.ano || "2026"}</td>
@@ -2569,7 +2569,7 @@ export function GestaoDocumentos({
                             </button>
                             {["ADMIN", "EMPRESA_GESTORA"].includes(loggedUser.role) && (
                               <>
-                                <button onClick={() => alternarVisibilidade(doc)} title="Alternar Visibilidade" className="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-600 cursor-pointer transition-colors">
+                                <button onClick={() => alternarVisibilidade(doc)} title="Alternar Visibilidade" className="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-100 text-slate-600 hover:text-amber-600 cursor-pointer transition-colors">
                                   {doc.visibilidade === "Administração" ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
                                 </button>
                                 <button onClick={() => eliminarDocumento(doc.id_doc)} title="Eliminar do Arquivo" className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 cursor-pointer transition-colors">
@@ -2636,7 +2636,7 @@ export function GestaoDocumentos({
                     <h3 className="text-xs font-black text-slate-900 leading-tight group-hover:text-emerald-700 transition-colors line-clamp-2">
                       {doc.nome}
                     </h3>
-                    <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1 flex-wrap">
+                    <p className="text-[10px] text-slate-600 mt-1 flex items-center gap-1 flex-wrap">
                       <span>{doc.tamanho}</span>
                       <span>•</span>
                       <span>Carregado a {formatDatePT(doc.data_upload)}</span>
@@ -2650,7 +2650,7 @@ export function GestaoDocumentos({
                 </p>
 
                 {/* Autor */}
-                <div className="text-[10px] text-slate-500 flex items-center gap-1">
+                <div className="text-[10px] text-slate-600 flex items-center gap-1">
                   <User className="h-3 w-3 text-emerald-600" />
                   <span>Registado por: <strong className="text-slate-800">{doc.autor || "Administração"}</strong></span>
                 </div>
@@ -2710,7 +2710,7 @@ export function GestaoDocumentos({
                     <button
                       onClick={() => alternarVisibilidade(doc)}
                       title="Alternar Visibilidade"
-                      className="p-1.5 text-slate-500 hover:text-amber-600 bg-slate-50 border border-slate-200 rounded-lg transition-colors cursor-pointer"
+                      className="p-1.5 text-slate-600 hover:text-amber-600 bg-slate-50 border border-slate-200 rounded-lg transition-colors cursor-pointer"
                     >
                       {doc.visibilidade === "Administração" ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
                     </button>
@@ -3346,7 +3346,7 @@ export function GestaoDocumentos({
                       <div key={v.id_versao} className="bg-slate-800/70 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[10px] text-slate-600 flex justify-between items-center gap-2">
                         <span className="font-mono text-emerald-400 font-bold shrink-0">v{v.versao}</span>
                         <span className="flex-1 truncate">{v.descricao_alteracao}</span>
-                        <span className="text-slate-500 shrink-0">{v.carregado_por}</span>
+                        <span className="text-slate-600 shrink-0">{v.carregado_por}</span>
                       </div>
                     ))}
                   </div>

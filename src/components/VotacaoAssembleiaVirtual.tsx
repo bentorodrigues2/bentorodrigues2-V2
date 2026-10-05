@@ -297,7 +297,7 @@ export function VotacaoAssembleiaVirtual({ predio, fracoes, reuniao, loggedUser,
           </div>
           <div className="space-y-1">
             <h3 className="text-base font-bold text-slate-800 dark:text-white">Nenhum ponto de deliberação adicionado</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+            <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md mx-auto">
               Adicione os pontos da Ordem de Trabalhos da reunião para abrir votações eletrónicas aos condóminos e apurar automaticamente as maiorias legais (simples, 2/3 ou unanimidade).
             </p>
           </div>
@@ -355,7 +355,7 @@ export function VotacaoAssembleiaVirtual({ predio, fracoes, reuniao, loggedUser,
             </div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-white">{pontoAtivo.titulo}</h3>
             {pontoAtivo.descricao && (
-              <p className="text-xs text-slate-500 dark:text-slate-400">{pontoAtivo.descricao}</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">{pontoAtivo.descricao}</p>
             )}
           </div>
 
@@ -418,7 +418,7 @@ export function VotacaoAssembleiaVirtual({ predio, fracoes, reuniao, loggedUser,
             <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full mt-2 overflow-hidden">
               <div className="bg-slate-500 h-full transition-all duration-500" style={{ width: `${(abstencao / 1000) * 100}%` }} />
             </div>
-            <span className="text-[10px] text-slate-500 font-semibold block mt-1">
+            <span className="text-[10px] text-slate-600 font-semibold block mt-1">
               {((abstencao / totalPermilagemPredio) * 100).toFixed(1)}% do capital do prédio
             </span>
           </div>
@@ -431,7 +431,7 @@ export function VotacaoAssembleiaVirtual({ predio, fracoes, reuniao, loggedUser,
               <Users className="h-4 w-4 text-indigo-500" />
               <span>Votação Individual das Frações Autónomas</span>
             </h4>
-            <span className="text-xs font-mono text-slate-500">
+            <span className="text-xs font-mono text-slate-600">
               Total Votado: {totalVotado}‰ / 1000‰
             </span>
           </div>

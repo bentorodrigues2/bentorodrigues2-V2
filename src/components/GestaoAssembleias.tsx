@@ -1671,18 +1671,18 @@ Com os meus cumprimentos,
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex flex-col col-span-2">
-              <label className="text-xs font-semibold text-slate-500 mb-1">Tema Principal da Assembleia *</label>
+              <label className="text-xs font-semibold text-slate-600 mb-1">Tema Principal da Assembleia *</label>
               <input type="text" value={tema} onChange={e => setTema(e.target.value)} placeholder="Ex: Assembleia Geral Ordinária de Contas" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
             </div>
             <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-500 mb-1">Data da Assembleia *</label>
+              <label className="text-xs font-semibold text-slate-600 mb-1">Data da Assembleia *</label>
               <input type="date" value={data} onChange={e => setData(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex flex-col col-span-2">
-              <label className="text-xs font-semibold text-slate-500 mb-1">Local da Reunião (Definição Manual / Seleção Rápida) *</label>
+              <label className="text-xs font-semibold text-slate-600 mb-1">Local da Reunião (Definição Manual / Seleção Rápida) *</label>
               <input
                 type="text"
                 value={localReuniao}
@@ -1722,7 +1722,7 @@ Com os meus cumprimentos,
               </div>
             </div>
             <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-500 mb-1">Hora de Início *</label>
+              <label className="text-xs font-semibold text-slate-600 mb-1">Hora de Início *</label>
               <input type="time" value={hora} onChange={e => setHora(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
               {hora && (
                 <span className="text-[10px] text-amber-600 font-semibold mt-1">
@@ -1734,13 +1734,13 @@ Com os meus cumprimentos,
           </div>
 
           <div className="flex flex-col">
-            <label className="text-xs font-semibold text-slate-500 mb-1">Ordens de Trabalho *</label>
+            <label className="text-xs font-semibold text-slate-600 mb-1">Ordens de Trabalho *</label>
             <textarea value={ordensTrabalho} onChange={e => setOrdensTrabalho(e.target.value)} rows={3} placeholder="1. Aprovação de contas do exercício anterior;&#10;2. Discussão e votação do orçamento extraordinário de obras;&#10;3. Eleição dos órgãos da administração de condomínio." className="border border-slate-200 p-3 rounded-lg text-sm focus:outline-emerald-500 bg-slate-50/50" />
           </div>
 
           {obrasExtra.length > 0 && (
             <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-500 mb-1">Obra(s) Relacionada(s) (ponto de trabalho)</label>
+              <label className="text-xs font-semibold text-slate-600 mb-1">Obra(s) Relacionada(s) (ponto de trabalho)</label>
               <div className="border border-slate-200 rounded-lg bg-slate-50/50 p-2.5 space-y-1.5 max-h-32 overflow-y-auto">
                 {obrasExtra.map((o) => (
                   <label key={o.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
@@ -1789,7 +1789,7 @@ Com os meus cumprimentos,
             {isVideoconferencia && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-slate-200">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Aplicação de Vídeo-Conferência</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Aplicação de Vídeo-Conferência</label>
                   <select
                     value={plataformaVideo}
                     onChange={(e) => setPlataformaVideo(e.target.value)}
@@ -1802,7 +1802,7 @@ Com os meus cumprimentos,
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Link de Acesso Direto à Reunião</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Link de Acesso Direto à Reunião</label>
                   <input
                     type="url"
                     value={linkVideo}
@@ -1875,7 +1875,7 @@ Com os meus cumprimentos,
         </button>
         {showUploadAtaAntiga && (
           <div className="mt-3 space-y-3">
-            <p className="text-[11px] text-slate-500">Para atas de assembleias já realizadas antes de usar esta plataforma, ou redigidas fora dela — carrega o PDF real e fica arquivada no Arquivo Digital, com o histórico da assembleia registado.</p>
+            <p className="text-[11px] text-slate-600">Para atas de assembleias já realizadas antes de usar esta plataforma, ou redigidas fora dela — carrega o PDF real e fica arquivada no Arquivo Digital, com o histórico da assembleia registado.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <label className="block text-[10px] font-bold text-slate-600 mb-1">Assunto / Tema da Assembleia</label>
@@ -1910,7 +1910,7 @@ Com os meus cumprimentos,
                 <i className="fa-solid fa-envelope-open-text text-indigo-600"></i>
                 <span>Texto Oficial da Convocatória (100% Editável)</span>
               </h4>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-slate-600">
                 Pode rever e editar qualquer frase ou pormenor diretamente abaixo antes de enviar aos condóminos.
               </p>
             </div>
@@ -2038,7 +2038,7 @@ Com os meus cumprimentos,
               
               <div className="pr-24 space-y-2">
                 <h4 className="text-lg font-bold text-slate-800">{r.tema}</h4>
-                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
                   <span className="flex items-center"><i className="fa-solid fa-calendar mr-1.5 text-slate-600"></i>{r.data}</span>
                   <span className="flex items-center"><i className="fa-solid fa-clock mr-1.5 text-slate-600"></i>1ª Conv: {r.hora}</span>
                   <span className="flex items-center text-amber-600 font-semibold"><i className="fa-solid fa-scale-balanced mr-1.5"></i>2ª Conv: {somarMinutos(r.hora, 30)}</span>
@@ -2073,7 +2073,7 @@ Com os meus cumprimentos,
                     return (
                       <div key={idObra} className="text-xs text-slate-700 bg-white border border-sky-100 rounded-lg px-3 py-2">
                         <p className="font-bold">{obra.descricao}</p>
-                        <p className="text-slate-500">Fornecedor: {obra.fornecedorNome} • Custo: {obra.custoTotal.toFixed(2)} € • Estado: {obra.estado}</p>
+                        <p className="text-slate-600">Fornecedor: {obra.fornecedorNome} • Custo: {obra.custoTotal.toFixed(2)} € • Estado: {obra.estado}</p>
                       </div>
                     );
                   })}
@@ -2208,7 +2208,7 @@ Com os meus cumprimentos,
                 </div>
 
                 <div className="flex items-center space-x-3">
-                  <p className="text-xs text-slate-500 hidden md:block">
+                  <p className="text-xs text-slate-600 hidden md:block">
                     Quórum: <span className="font-bold text-slate-700 font-mono-custom">{r.id_reuniao === selectedMeetingId ? activeQuorum : (r.folha_presencas ? Object.entries(r.folha_presencas).reduce((acc, [fid, val]) => val !== "Ausente" ? acc + (fracoes.find(f => f.id_fracao === fid)?.permilagem || 0) : acc, 0) : 0)}‰</span>
                   </p>
                   <button
@@ -2265,7 +2265,7 @@ Com os meus cumprimentos,
                         <div className="text-amber-500 text-sm pt-0.5"><i className="fa-solid fa-scale-balanced"></i></div>
                         <div>
                           <p className="font-bold text-slate-700">Artigo 1432º do Código Civil (Regulamento de Quórum):</p>
-                          <p className="text-slate-500 mt-1">
+                          <p className="text-slate-600 mt-1">
                             A assembleia reúne-se em <strong>Primeira Convocatória</strong> se os condóminos presentes ou representados representarem, no mínimo, metade do valor total do prédio (<strong>500‰ - milésimas</strong>). Se não se atingir este quórum, reúne-se trinta minutos mais tarde em <strong>Segunda Convocatória</strong>, podendo deliberar legitimamente com qualquer permilagem de capital presente.
                           </p>
                         </div>
@@ -2285,7 +2285,7 @@ Com os meus cumprimentos,
                             style={{ width: `${activeQuorum / 10}%` }}
                           />
                         </div>
-                        <p className="text-[10px] font-semibold text-slate-500 flex items-center">
+                        <p className="text-[10px] font-semibold text-slate-600 flex items-center">
                           {hasFirstConvocatoriaQuorum ? (
                             <>
                               <i className="fa-solid fa-circle-check text-emerald-500 mr-1.5"></i>
@@ -2325,7 +2325,7 @@ Com os meus cumprimentos,
                       <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
                         <table className="w-full text-xs text-left border-collapse">
                           <thead>
-                            <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
+                            <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                               <th className="p-3">Fração / Piso</th>
                               <th className="p-3">Proprietário</th>
                               <th className="p-3">Permilagem</th>
@@ -2347,21 +2347,21 @@ Com os meus cumprimentos,
                                       <button
                                         type="button"
                                         onClick={() => handleTogglePresence(f.id_fracao, "Presente")}
-                                        className={`px-2 py-1 rounded text-[10px] font-bold border cursor-pointer ${presence === "Presente" ? "bg-emerald-600 text-white border-emerald-600" : "bg-slate-50 hover:bg-slate-100 text-slate-500 border-slate-200"}`}
+                                        className={`px-2 py-1 rounded text-[10px] font-bold border cursor-pointer ${presence === "Presente" ? "bg-emerald-600 text-white border-emerald-600" : "bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200"}`}
                                       >
                                         Presente
                                       </button>
                                       <button
                                         type="button"
                                         onClick={() => handleTogglePresence(f.id_fracao, "Representado")}
-                                        className={`px-2 py-1 rounded text-[10px] font-bold border cursor-pointer ${presence === "Representado" ? "bg-indigo-600 text-white border-indigo-600" : "bg-slate-50 hover:bg-slate-100 text-slate-500 border-slate-200"}`}
+                                        className={`px-2 py-1 rounded text-[10px] font-bold border cursor-pointer ${presence === "Representado" ? "bg-indigo-600 text-white border-indigo-600" : "bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200"}`}
                                       >
                                         Representado
                                       </button>
                                       <button
                                         type="button"
                                         onClick={() => handleTogglePresence(f.id_fracao, "Ausente")}
-                                        className={`px-2 py-1 rounded text-[10px] font-bold border cursor-pointer ${presence === "Ausente" ? "bg-slate-600 text-white border-slate-600" : "bg-slate-50 hover:bg-slate-100 text-slate-500 border-slate-200"}`}
+                                        className={`px-2 py-1 rounded text-[10px] font-bold border cursor-pointer ${presence === "Ausente" ? "bg-slate-600 text-white border-slate-600" : "bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200"}`}
                                       >
                                         Ausente
                                       </button>
@@ -2509,7 +2509,7 @@ Com os meus cumprimentos,
                           <i className="fa-solid fa-wand-magic-sparkles text-emerald-500 mr-1.5"></i>
                           Redação Automatizada de Ata Oficial (IA & Motor Jurídico)
                         </h5>
-                        <p className="text-[11px] text-slate-500 leading-relaxed">
+                        <p className="text-[11px] text-slate-600 leading-relaxed">
                           Escreva abaixo as notas, votações ou decisões tomadas resumidamente durante a assembleia. O motor redigirá a ata com todas as cláusulas regulamentares obrigatórias pela Lei n.º 8/2022, discriminando a lista de presentes e ausentes, permilagens, quórum, sentido de votos e o bloco formal de assinaturas e subscrição.
                         </p>
                         <textarea
@@ -2554,7 +2554,7 @@ Com os meus cumprimentos,
                         <div className="flex flex-col space-y-1.5">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                             <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
-                              <i className="fa-solid fa-file-lines text-slate-500"></i>
+                              <i className="fa-solid fa-file-lines text-slate-600"></i>
                               <span>Texto Integral da Ata de Assembleia de Condóminos</span>
                             </label>
                             <span className="text-[11px] text-slate-600 font-mono">
@@ -2661,7 +2661,7 @@ Com os meus cumprimentos,
                         </div>
 
                         <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Método de Recolha de Assinaturas</h5>
-                        <p className="text-[11px] text-slate-500">
+                        <p className="text-[11px] text-slate-600">
                           Escolha se prefere colher assinaturas manuscritas digitais diretamente na PWA (ideal para tablets e telemóveis em assembleia presencial) ou exportar a ata formal com linhas de campo pontilhadas para assinatura manuscrita física tradicional.
                         </p>
                         
@@ -2959,7 +2959,7 @@ Com os meus cumprimentos,
               </div>
               <div>
                 <span className="text-[10px] text-slate-600 font-bold uppercase block">Sem Leitura / Resposta</span>
-                <span className="font-mono font-bold text-slate-500 text-sm">
+                <span className="font-mono font-bold text-slate-600 text-sm">
                   {selectedPollModalReuniao.votosPresenca?.filter(v => !v.leuMensagem).length || 0}
                 </span>
               </div>
@@ -2978,7 +2978,7 @@ Com os meus cumprimentos,
                     <div key={voto.id_voto} className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
                       <div>
                         <span className="font-bold text-slate-800 block">{voto.nome}</span>
-                        <span className="text-[10px] text-slate-500 flex items-center gap-1 font-mono">
+                        <span className="text-[10px] text-slate-600 flex items-center gap-1 font-mono">
                           <i className="fa-solid fa-check-double text-emerald-600"></i>
                           Lido e Votado em: {voto.dataHoraLeituraVoto || `${selectedPollModalReuniao.data} 14:22:05`}
                         </span>

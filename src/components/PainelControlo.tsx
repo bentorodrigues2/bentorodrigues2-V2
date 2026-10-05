@@ -426,7 +426,7 @@ export function PainelControlo({
                 <h4 className="text-sm font-black text-slate-800 group-hover:text-amber-700 transition-colors">Arranque & Saldos Iniciais</h4>
                 <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-amber-200 text-amber-900 rounded-full">Transição</span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">Defina o balanço de abertura bancário, dívidas/créditos de frações e histórico.</p>
+              <p className="text-xs text-slate-600 mt-0.5">Defina o balanço de abertura bancário, dívidas/créditos de frações e histórico.</p>
             </div>
           </div>
           <i className="fa-solid fa-arrow-right text-slate-600 group-hover:text-amber-600 group-hover:translate-x-1 transition-all"></i>
@@ -445,7 +445,7 @@ export function PainelControlo({
                 <h4 className="text-sm font-black text-slate-800 group-hover:text-indigo-700 transition-colors">Minutas Oficiais & Simulador de E-mails</h4>
                 <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-indigo-200 text-indigo-900 rounded-full">5 PDFs Editáveis</span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">Descarregue exemplares em PDF ou simule os envios automáticos para o seu e-mail.</p>
+              <p className="text-xs text-slate-600 mt-0.5">Descarregue exemplares em PDF ou simule os envios automáticos para o seu e-mail.</p>
             </div>
           </div>
           <i className="fa-solid fa-arrow-right text-slate-600 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all"></i>
@@ -583,7 +583,7 @@ export function PainelControlo({
             <tbody>
               {predioMovements.slice(0, 5).map((m) => (
                 <tr key={m.id_mov} className="border-b border-slate-100 hover:bg-slate-50/50">
-                  <td className="py-2.5 font-mono text-slate-500">{m.data}</td>
+                  <td className="py-2.5 font-mono text-slate-600">{m.data}</td>
                   <td className="py-2.5">
                     <span className={`px-2 py-0.5 rounded-full font-bold text-[9px] ${
                       m.tipo === "Receita" || m.tipo === "RECEITA" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
@@ -592,7 +592,7 @@ export function PainelControlo({
                     </span>
                   </td>
                   <td className="py-2.5 font-medium text-slate-700">{m.descricao}</td>
-                  <td className="py-2.5 text-slate-500">{m.categoria}</td>
+                  <td className="py-2.5 text-slate-600">{m.categoria}</td>
                   <td className={`py-2.5 text-right font-bold ${
                     m.tipo === "Receita" || m.tipo === "RECEITA" ? "text-emerald-600" : "text-red-600"
                   }`}>

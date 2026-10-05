@@ -1712,7 +1712,7 @@ export function GestaoFracoes({
                 <button
                   type="button"
                   onClick={() => setJustCreatedFracao(null)}
-                  className="text-slate-500 hover:text-slate-700 px-2 py-1 text-xs cursor-pointer"
+                  className="text-slate-600 hover:text-slate-700 px-2 py-1 text-xs cursor-pointer"
                 >
                   Fechar
                 </button>
@@ -1737,7 +1737,7 @@ export function GestaoFracoes({
                   <button
                     type="button"
                     onClick={cancelarEdicaoFracao}
-                    className="text-xs text-slate-500 hover:text-slate-700 font-semibold underline cursor-pointer"
+                    className="text-xs text-slate-600 hover:text-slate-700 font-semibold underline cursor-pointer"
                   >
                     Cancelar
                   </button>
@@ -1868,7 +1868,7 @@ export function GestaoFracoes({
                   <i className="fa-solid fa-table-list text-emerald-600"></i>
                   <span>Frações Registadas no Edifício ({predioFracoes.length})</span>
                 </h3>
-                <p className="text-xs text-slate-500">Lista completa de frações autónomas e respetivas permilagens</p>
+                <p className="text-xs text-slate-600">Lista completa de frações autónomas e respetivas permilagens</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -1917,7 +1917,7 @@ export function GestaoFracoes({
                     </div>
                     <div className="text-xs text-slate-600">{f.piso}</div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-500">Permilagem</span>
+                      <span className="text-slate-600">Permilagem</span>
                       <span className="font-mono font-bold text-slate-700">{f.permilagem}‰</span>
                     </div>
                     <div className="pt-2 border-t border-slate-100">
@@ -2091,7 +2091,7 @@ export function GestaoFracoes({
                   <h3 className="text-sm font-bold text-slate-800">
                     {editingOwnerKey ? `Editar Proprietário: ${propNome || "..."}` : "Registar / Editar Proprietário"}
                   </h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-600">
                     O formulário de proprietário é independente. Pode registar livremente e associar a qualquer fração.
                   </p>
                 </div>
@@ -2106,7 +2106,7 @@ export function GestaoFracoes({
                     <button
                       type="button"
                       onClick={limparFormProprietario}
-                      className="text-xs text-slate-500 hover:text-slate-700 font-semibold underline cursor-pointer"
+                      className="text-xs text-slate-600 hover:text-slate-700 font-semibold underline cursor-pointer"
                     >
                       Limpar / Novo
                     </button>
@@ -2271,7 +2271,7 @@ export function GestaoFracoes({
                     <option value="Não">Não (Condómino Normal)</option>
                     <option value="Sim">Sim (Administrador Interno do Condomínio)</option>
                   </select>
-                  <p className="text-[10px] text-slate-500 mt-1">
+                  <p className="text-[10px] text-slate-600 mt-1">
                     Indica se este condómino exerce funções de administração interna no prédio.
                   </p>
                 </div>
@@ -2290,7 +2290,7 @@ export function GestaoFracoes({
                     <option value="Digital (E-mail e Mensagens Push)">Digital (E-mail e Mensagens Push)</option>
                     <option value="Correio Postal (Físico)">Correio Postal (Físico)</option>
                   </select>
-                  <p className="text-[10px] text-slate-500 mt-1">
+                  <p className="text-[10px] text-slate-600 mt-1">
                     Método legal para envio de convocatórias, atas e avisos de pagamento.
                   </p>
                 </div>
@@ -2306,7 +2306,7 @@ export function GestaoFracoes({
                         Recolha de Assinatura Digital do Administrador (para uso nos documentos oficiais)
                       </h4>
                     </div>
-                    <span className="text-[10px] text-slate-500 italic">
+                    <span className="text-[10px] text-slate-600 italic">
                       Desenho no ecrã ou carregamento de imagem/PDF
                     </span>
                   </div>
@@ -2531,11 +2531,11 @@ export function GestaoFracoes({
                           {co.foto ? (
                             <img src={co.foto} className="h-7 w-7 rounded-full object-cover border border-slate-300" referrerPolicy="no-referrer" />
                           ) : (
-                            <div className="h-7 w-7 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-xs font-bold">{co.nome.slice(0,2).toUpperCase()}</div>
+                            <div className="h-7 w-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold">{co.nome.slice(0,2).toUpperCase()}</div>
                           )}
                           <div>
                             <p className="text-xs font-bold text-slate-800">{co.nome}</p>
-                            <p className="text-[9px] text-slate-500 font-mono">
+                            <p className="text-[9px] text-slate-600 font-mono">
                               NIF: {co.nif} | {co.email}
                               {co.data_nascimento && ` • 🎂 ${co.data_nascimento}`}
                             </p>
@@ -2635,23 +2635,23 @@ export function GestaoFracoes({
                 <span className="text-[10px] font-bold text-indigo-800 uppercase block tracking-wider">{editingCoIndex !== null ? `A Editar: ${proprietariosAdicionais[editingCoIndex]?.nome || "Coproprietário"}` : "Novo Coproprietário"}</span>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   <div className="flex flex-col">
-                    <label className="text-xs font-semibold text-slate-500 mb-1">Nome Completo</label>
+                    <label className="text-xs font-semibold text-slate-600 mb-1">Nome Completo</label>
                     <input type="text" value={coNome} onChange={e => setCoNome(e.target.value)} placeholder="Ex: Ana Maria Guerra" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500" />
                   </div>
                   <div className="flex flex-col">
-                    <label className="text-xs font-semibold text-slate-500 mb-1">NIF Fiscal</label>
+                    <label className="text-xs font-semibold text-slate-600 mb-1">NIF Fiscal</label>
                     <input type="text" value={coNif} onChange={e => setCoNif(e.target.value)} placeholder="Ex: 234567890" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono" />
                   </div>
                   <div className="flex flex-col">
-                    <label className="text-xs font-semibold text-slate-500 mb-1">E-mail</label>
+                    <label className="text-xs font-semibold text-slate-600 mb-1">E-mail</label>
                     <input type="email" value={coEmail} onChange={e => setCoEmail(e.target.value)} placeholder="Ex: ana@email.com" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono" />
                   </div>
                   <div className="flex flex-col">
-                    <label className="text-xs font-semibold text-slate-500 mb-1">Telemóvel</label>
+                    <label className="text-xs font-semibold text-slate-600 mb-1">Telemóvel</label>
                     <input type="text" value={coTlm} onChange={e => setCoTlm(e.target.value)} placeholder="Ex: 919888777" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono" />
                   </div>
                   <div className="flex flex-col">
-                    <label className="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
+                    <label className="text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
                       <i className="fa-solid fa-cake-candles text-indigo-500 text-xs"></i>
                       <span>Data de Nascimento</span>
                     </label>
@@ -2661,7 +2661,7 @@ export function GestaoFracoes({
 
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
-                    <label className="text-xs font-semibold text-slate-500 mb-1">Fotografia do Coproprietário</label>
+                    <label className="text-xs font-semibold text-slate-600 mb-1">Fotografia do Coproprietário</label>
                     <div className="flex items-center space-x-2">
                       <button type="button" onClick={() => {
                         const numProprietariosComFoto = (propFoto ? 1 : 0) + proprietariosAdicionais.filter(p => p.foto).length;
@@ -2836,23 +2836,23 @@ export function GestaoFracoes({
 
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div className="flex flex-col">
-                      <label className="text-xs font-semibold text-slate-500 mb-1">Nome Completo do Inquilino</label>
+                      <label className="text-xs font-semibold text-slate-600 mb-1">Nome Completo do Inquilino</label>
                       <input type="text" value={inqNome} onChange={e => setInqNome(e.target.value)} placeholder="Ex: Ricardo Inquilino" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
                     </div>
                     <div className="flex flex-col">
-                      <label className="text-xs font-semibold text-slate-500 mb-1">NIF Fiscal Inquilino</label>
+                      <label className="text-xs font-semibold text-slate-600 mb-1">NIF Fiscal Inquilino</label>
                       <input type="text" value={inqNif} onChange={e => setInqNif(e.target.value)} placeholder="Contribuinte" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
                     </div>
                     <div className="flex flex-col">
-                      <label className="text-xs font-semibold text-slate-500 mb-1">E-mail</label>
+                      <label className="text-xs font-semibold text-slate-600 mb-1">E-mail</label>
                       <input type="email" value={inqEmail} onChange={e => setInqEmail(e.target.value)} placeholder="ricardo@email.com" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
                     </div>
                     <div className="flex flex-col">
-                      <label className="text-xs font-semibold text-slate-500 mb-1">Telemóvel</label>
+                      <label className="text-xs font-semibold text-slate-600 mb-1">Telemóvel</label>
                       <input type="text" value={inqTlm} onChange={e => setInqTlm(e.target.value)} placeholder="929887766" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
                     </div>
                     <div className="flex flex-col">
-                      <label className="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
+                      <label className="text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
                         <i className="fa-solid fa-cake-candles text-amber-500 text-xs"></i>
                         <span>Data de Nascimento</span>
                       </label>
@@ -2863,11 +2863,11 @@ export function GestaoFracoes({
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                     <div className="col-span-3 grid grid-cols-1 sm:grid-cols-4 gap-3">
                       <div className="flex flex-col sm:col-span-2">
-                        <label className="text-xs font-semibold text-slate-500 mb-1">Morada Alternativa do Proprietário (Obrigatório se Arrendado)</label>
+                        <label className="text-xs font-semibold text-slate-600 mb-1">Morada Alternativa do Proprietário (Obrigatório se Arrendado)</label>
                         <input type="text" value={propMoradaAlt} onChange={e => setPropMoradaAlt(e.target.value)} placeholder="Rua, nº, andar" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
                       </div>
                       <div className="flex flex-col">
-                        <label className="text-xs font-semibold text-slate-500 mb-1">Código-Postal</label>
+                        <label className="text-xs font-semibold text-slate-600 mb-1">Código-Postal</label>
                         <input
                           type="text"
                           value={propMoradaAltCP}
@@ -2884,12 +2884,12 @@ export function GestaoFracoes({
                         />
                       </div>
                       <div className="flex flex-col">
-                        <label className="text-xs font-semibold text-slate-500 mb-1">Localidade{aProcurarLocalidadeAlt ? " (a procurar...)" : ""}</label>
+                        <label className="text-xs font-semibold text-slate-600 mb-1">Localidade{aProcurarLocalidadeAlt ? " (a procurar...)" : ""}</label>
                         <input type="text" value={propMoradaAltLocalidade} onChange={e => setPropMoradaAltLocalidade(e.target.value)} placeholder="Reconhecida automaticamente pelo código-postal" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
                       </div>
                     </div>
                     <div className="flex flex-col">
-                      <label className="text-xs font-semibold text-slate-500 mb-1">Fotografia do Inquilino</label>
+                      <label className="text-xs font-semibold text-slate-600 mb-1">Fotografia do Inquilino</label>
                       <div className="flex items-center space-x-2">
                         <button type="button" onClick={() => inqFileRef.current?.click()} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 flex items-center space-x-1.5 cursor-pointer">
                           <i className="fa-solid fa-camera"></i>
@@ -2949,7 +2949,7 @@ export function GestaoFracoes({
                   <i className="fa-solid fa-users text-emerald-600"></i>
                   <span>Proprietários Registados ({proprietariosFiltrados.length}{proprietariosFiltrados.length !== todosProprietarios.length ? ` de ${todosProprietarios.length}` : ""})</span>
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-600">
                   Lista tabular completa de condóminos, administradores internos e contactos
                 </p>
               </div>
@@ -3018,7 +3018,7 @@ export function GestaoFracoes({
                 <button
                   type="button"
                   onClick={() => { setFiltroPropTexto(""); setFiltroPropFracao("TODAS"); setFiltroPropInquilino("TODOS"); }}
-                  className="text-xs font-bold text-slate-500 hover:text-slate-700 px-2 cursor-pointer whitespace-nowrap"
+                  className="text-xs font-bold text-slate-600 hover:text-slate-700 px-2 cursor-pointer whitespace-nowrap"
                 >
                   Limpar filtros
                 </button>
@@ -3159,7 +3159,7 @@ export function GestaoFracoes({
                                 className="bg-slate-50 hover:bg-slate-100 text-slate-600 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-slate-200 flex items-center gap-1 shadow-xs"
                                 title="Ver Histórico de Proprietários"
                               >
-                                <History className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                                <History className="w-3.5 h-3.5 text-slate-600 shrink-0" />
                               </button>
                             )}
                             <button
@@ -3196,7 +3196,7 @@ export function GestaoFracoes({
                 <span>Registo de Entradas/Saídas, Contratos de Arrendamento & Documentos</span>
               </h3>
             </div>
-            <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+            <span className="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
               {residentesHistorico.filter(r => r.data_saida === null).length} Residentes Ativos
             </span>
           </div>
@@ -3322,7 +3322,7 @@ export function GestaoFracoes({
                       </td>
                       <td className="p-3 font-mono">
                         <span className="block font-semibold">{res.nif}</span>
-                        <span className="block text-slate-500">{res.email}</span>
+                        <span className="block text-slate-600">{res.email}</span>
                         <span className="block text-slate-600">{res.telefone}</span>
                       </td>
                       <td className="p-3 font-mono text-[11px]">
@@ -3332,7 +3332,7 @@ export function GestaoFracoes({
                       </td>
                       <td className="p-3 font-mono text-right">
                         <span className="block font-bold text-slate-800">{res.valor_renda.toFixed(2)}€/mês</span>
-                        <span className="block text-[10px] text-slate-500">Caução: {res.caucao.toFixed(2)}€</span>
+                        <span className="block text-[10px] text-slate-600">Caução: {res.caucao.toFixed(2)}€</span>
                       </td>
                       <td className="p-3 text-center">
                         <span className={`px-2 py-1 rounded text-[10px] font-bold ${
@@ -3405,7 +3405,7 @@ export function GestaoFracoes({
           </div>
           <div>
             <h4 className="text-sm font-black uppercase tracking-tight">Soma das Permilagens do Edifício</h4>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-600 mt-0.5">
               {totalPermilagem === 1000 
                 ? "✓ CONFORMIDADE LEGAL ATIVA: A soma totaliza exatamente 1000‰ legais do edifício (Art. 1418.º do Código Civil)." 
                 : `🛑 ERRO DE INTEGRIDADE LEGAL: A soma total é de ${totalPermilagem}‰ (deve somar exatamente 1000‰ para validade jurídica de quotas).`
@@ -3563,7 +3563,7 @@ export function GestaoFracoes({
                               {co.foto ? (
                                 <img src={co.foto} className="h-9 w-9 rounded-full object-cover border border-slate-200" referrerPolicy="no-referrer" />
                               ) : (
-                                <div className="h-9 w-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center text-[10px] border border-slate-200 font-extrabold uppercase">{co.nome.slice(0, 2)}</div>
+                                <div className="h-9 w-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 flex items-center justify-center text-[10px] border border-slate-200 font-extrabold uppercase">{co.nome.slice(0, 2)}</div>
                               )}
                               <div className="flex-grow min-w-0">
                                 <h5 className="text-xs font-bold text-[#1A1A1A] dark:text-slate-200 truncate">{co.nome}</h5>
@@ -3596,7 +3596,7 @@ export function GestaoFracoes({
                       {selectedFracao.inquilino.foto ? (
                         <img src={selectedFracao.inquilino.foto} className="h-12 w-12 rounded-full object-cover border border-slate-300 shadow-xs" referrerPolicy="no-referrer" />
                       ) : (
-                        <div className="h-12 w-12 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-lg border border-slate-300 font-semibold uppercase">{selectedFracao.inquilino.nome.slice(0, 2)}</div>
+                        <div className="h-12 w-12 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-lg border border-slate-300 font-semibold uppercase">{selectedFracao.inquilino.nome.slice(0, 2)}</div>
                       )}
                       <div>
                         <h4 className="text-sm font-bold text-slate-800">{selectedFracao.inquilino.nome}</h4>
@@ -3625,7 +3625,7 @@ export function GestaoFracoes({
                 ) : (
                   <div className="h-full flex flex-col justify-center items-center text-center p-6 text-slate-600 space-y-2">
                     <i className="fa-solid fa-home-user text-2xl text-slate-600"></i>
-                    <p className="text-xs font-semibold text-slate-500">Proprietário Habita a Fração</p>
+                    <p className="text-xs font-semibold text-slate-600">Proprietário Habita a Fração</p>
                     <p className="text-[9px] max-w-xs">Não existe inquilino associado. Toda a correspondência legal e notificações são direcionadas para o proprietário.</p>
                   </div>
                 )}
@@ -3728,7 +3728,7 @@ export function GestaoFracoes({
                         <button
                           type="button"
                           onClick={() => setEditandoSeguroFracaoId(null)}
-                          className="text-[10px] font-bold text-slate-500 px-3 py-1.5 rounded-lg cursor-pointer"
+                          className="text-[10px] font-bold text-slate-600 px-3 py-1.5 rounded-lg cursor-pointer"
                         >
                           Cancelar
                         </button>
@@ -3777,7 +3777,7 @@ export function GestaoFracoes({
               <span>{activeSubSection === 'fracoes_perfis' ? 'Perfis de Acesso & Credenciais dos Condóminos' : 'Frações Registadas no Edifício'}</span>
             </h4>
             {activeSubSection === 'fracoes_perfis' && (
-              <p className="text-[11px] text-slate-500 mt-0.5">Gestão de acessos, códigos de validação bancária e preferências de notificação de cada condómino.</p>
+              <p className="text-[11px] text-slate-600 mt-0.5">Gestão de acessos, códigos de validação bancária e preferências de notificação de cada condómino.</p>
             )}
           </div>
           {loggedUser.role === 'ADMIN' && (
@@ -3812,7 +3812,7 @@ export function GestaoFracoes({
         </div>
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+            <tr className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
               <th className="p-3">Fração / Piso</th>
               <th className="p-3">Permilagem</th>
               <th className="p-3">Administração</th>
@@ -3895,7 +3895,7 @@ export function GestaoFracoes({
                       </div>
                     ) : <span className="text-slate-600">Proprietário Habita</span>}
                   </td>
-                  <td className="p-3 font-semibold text-slate-500">{f.notificacao_preferencial}</td>
+                  <td className="p-3 font-semibold text-slate-600">{f.notificacao_preferencial}</td>
                   <td className="p-3">
                     <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 flex flex-col space-y-1.5 w-fit">
                       <div className="flex items-center space-x-2">
@@ -3968,15 +3968,15 @@ export function GestaoFracoes({
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-bold text-slate-800">{h.proprietario.nome}</p>
-                          <p className="text-[10px] text-slate-500 font-mono">NIF: {h.proprietario.nif || "—"} {h.proprietario.email ? `· ${h.proprietario.email}` : ""}</p>
+                          <p className="text-[10px] text-slate-600 font-mono">NIF: {h.proprietario.nif || "—"} {h.proprietario.email ? `· ${h.proprietario.email}` : ""}</p>
                         </div>
                         <span className="text-[10px] bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
                           Até {h.data_fim}
                         </span>
                       </div>
-                      {h.motivo && <p className="text-[10px] text-slate-500 italic">{h.motivo}</p>}
+                      {h.motivo && <p className="text-[10px] text-slate-600 italic">{h.motivo}</p>}
                       <div className="pt-1.5 border-t border-slate-200">
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                        <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1">
                           Avisos / Recibos em nome deste proprietário ({avisosDoProprietario.length})
                         </p>
                         {avisosDoProprietario.length === 0 ? (
@@ -3994,7 +3994,7 @@ export function GestaoFracoes({
                       </div>
                       <div className="pt-1.5 border-t border-slate-200">
                         <div className="flex items-center justify-between mb-1">
-                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                          <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">
                             Registos Arquivados — Condóminos → Ex-Proprietários → {h.proprietario.nome}
                           </p>
                           <label className={`text-[9px] font-bold px-2 py-1 rounded cursor-pointer border ${aArquivarRegistoDe === h.proprietario.nome ? "bg-slate-100 text-slate-600 border-slate-200" : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"}`}>

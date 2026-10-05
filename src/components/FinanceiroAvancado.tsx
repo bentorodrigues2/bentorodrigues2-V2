@@ -843,7 +843,7 @@ export function FinanceiroAvancado({
             <div className="flex justify-end gap-2 pt-2">
               <button 
                 onClick={() => setEmailModal(prev => ({ ...prev, isOpen: false }))}
-                className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition-colors"
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition-colors"
               >
                 Cancelar
               </button>
@@ -897,7 +897,7 @@ export function FinanceiroAvancado({
                   </span>
                   <span>Emissão de Recibos Manuais de Condomínio</span>
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                   Emita e passe recibos manuais com PDF 100% editável, gravação direta na contabilidade e partilha por email com o condómino.
                 </p>
               </div>
@@ -947,7 +947,7 @@ export function FinanceiroAvancado({
                 </div>
 
                 <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
-                  <span className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider">Discriminação das Quotas (€)</span>
+                  <span className="block text-[10px] font-extrabold uppercase text-slate-600 tracking-wider">Discriminação das Quotas (€)</span>
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div>
                       <label className="block text-[9px] font-bold text-slate-600 mb-0.5">Quota Mensal (€)</label>
@@ -978,7 +978,7 @@ export function FinanceiroAvancado({
                     </div>
                   </div>
                   <div className="flex justify-between items-center pt-1 border-t border-slate-200 dark:border-slate-700 text-xs">
-                    <span className="font-bold text-slate-500 text-[10px] uppercase">Total Liquidado:</span>
+                    <span className="font-bold text-slate-600 text-[10px] uppercase">Total Liquidado:</span>
                     <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm">€ {reciboValorTotal}</span>
                   </div>
                 </div>
@@ -1241,7 +1241,7 @@ export function FinanceiroAvancado({
                   </div>
 
                   {/* Quittance Legal Note */}
-                  <div className="text-[8.5px] text-slate-500 relative z-10">
+                  <div className="text-[8.5px] text-slate-600 relative z-10">
                     O presente documento serve de comprovativo oficial de pagamento para todos os efeitos legais, comprovando a liquidação dos valores discriminados por movimento na conta do condomínio.
                   </div>
 
@@ -1347,7 +1347,7 @@ export function FinanceiroAvancado({
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2">
-                  <button onClick={() => { setSelectedCaucaoId(null); setActionType(null); }} className="px-3 py-1.5 text-xs text-slate-500 font-bold">
+                  <button onClick={() => { setSelectedCaucaoId(null); setActionType(null); }} className="px-3 py-1.5 text-xs text-slate-600 font-bold">
                     Cancelar
                   </button>
                   <button
@@ -1545,7 +1545,7 @@ export function FinanceiroAvancado({
                           {c.estado}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 font-medium">
+                      <p className="text-[11px] text-slate-600 font-medium">
                         Titular: <strong>{c.titular}</strong> • Depósito em: <strong>{c.data_deposito}</strong> ({c.metodo_pagamento})
                       </p>
                       {c.justificacao_retencao && (
@@ -1608,7 +1608,7 @@ export function FinanceiroAvancado({
                   </span>
                   <span>Relatórios de Dívidas (Visão Pro Condomínio & Por Condómino)</span>
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                   Visão global consolidada para o edifício e segmentação individual por cada fração, com exportação PDF editável e notificação por email.
                 </p>
               </div>
@@ -1684,7 +1684,7 @@ export function FinanceiroAvancado({
 
               {/* Segmented Table by Condómino */}
               <div className="space-y-3">
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-400">
                   Segmentação por Condómino / Fração Autónoma
                 </h3>
                 <div className="overflow-x-auto">
@@ -1713,7 +1713,7 @@ export function FinanceiroAvancado({
                             <td className="py-3 px-4 font-medium text-slate-700 dark:text-slate-300">
                               {frac.proprietario.nome}
                             </td>
-                            <td className="py-3 px-4 font-mono text-slate-500">
+                            <td className="py-3 px-4 font-mono text-slate-600">
                               {frac.proprietario.nif}
                             </td>
                             <td className="py-3 px-4">
@@ -1788,7 +1788,7 @@ export function FinanceiroAvancado({
                   </span>
                   <span>Extrato de Movimentos e Saldo do Condómino</span>
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                   {ehCondomino
                     ? "Histórico cronológico dos pagamentos e encargos da sua fração, com indicação visual de saldo a Verde (em dia) ou Vermelho (dívida)."
                     : "Listagem cronológica dos pagamentos e encargos de cada fração, com indicação visual de saldo a Verde (em dia) ou Vermelho (dívida)."}
@@ -1858,7 +1858,7 @@ export function FinanceiroAvancado({
                       <h3 className="text-sm font-black text-slate-800 dark:text-white">
                         Fração "{selectedFracao.fracao_nome}" ({selectedFracao.piso}) — {selectedFracao.proprietario.nome}
                       </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                      <p className="text-xs text-slate-600 dark:text-slate-400">
                         NIF: <span className="font-mono font-bold">{selectedFracao.proprietario.nif}</span> • Permilagem: {selectedFracao.permilagem}‰
                       </p>
                     </div>
@@ -1889,7 +1889,7 @@ export function FinanceiroAvancado({
                 {/* Individual Extract Table */}
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-400">
                       Histórico Cronológico de Quotas & Pagamentos
                     </h4>
                     <div className="flex items-center gap-2">
@@ -1934,7 +1934,7 @@ export function FinanceiroAvancado({
                           .filter(a => a.id_fracao === selectedFracao.id_fracao)
                           .map(aviso => (
                             <tr key={aviso.id_aviso} className="hover:bg-white dark:hover:bg-slate-800 transition-colors">
-                              <td className="py-2.5 px-3 font-mono text-slate-500">
+                              <td className="py-2.5 px-3 font-mono text-slate-600">
                                 {formatDatePT(aviso.data)}
                               </td>
                               <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-white">
@@ -1986,17 +1986,17 @@ export function FinanceiroAvancado({
                   </span>
                   <span>Mapa de Pagamentos — Quotas {mapaTipo === "extraordinaria" ? "Extraordinárias" : "Ordinárias"}</span>
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                   {ehCondomino
                     ? "Consulta os pagamentos da sua fração, mês a mês."
                     : "Grelha de todas as frações por mês. Atualiza sozinha assim que um pagamento for confirmado."}
                 </p>
                 <div className="flex items-center gap-3 mt-1.5">
-                  <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                  <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 dark:text-slate-400">
                     <span className="w-3 h-3 rounded bg-red-200 dark:bg-red-800/70 border border-red-300 dark:border-red-700"></span>
                     Por pagar
                   </span>
-                  <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                  <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 dark:text-slate-400">
                     <span className="w-3 h-3 rounded bg-emerald-200 dark:bg-emerald-800/70 border border-emerald-300 dark:border-emerald-700"></span>
                     Liquidado
                   </span>
@@ -2100,7 +2100,7 @@ export function FinanceiroAvancado({
                       {!ehCondomino && (
                         <td className={`sticky left-[90px] z-10 ${corLinha} py-2 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap min-w-[160px] shadow-[2px_0_4px_rgba(0,0,0,0.08)]`}>{l.nomeExibido}</td>
                       )}
-                      <td className="py-2 px-2 text-right whitespace-nowrap text-slate-500 dark:text-slate-400 font-bold border-r-2 border-slate-300 dark:border-slate-700">
+                      <td className="py-2 px-2 text-right whitespace-nowrap text-slate-600 dark:text-slate-400 font-bold border-r-2 border-slate-300 dark:border-slate-700">
                         {editandoQuotaFracaoId === l.fracao.id_fracao ? (
                           <div className="flex items-center justify-end gap-1">
                             <input
@@ -2173,7 +2173,7 @@ export function FinanceiroAvancado({
                               >
                                 <i className="fa-solid fa-check"></i>
                               </button>
-                              <button type="button" onClick={() => setEditandoCelulaChave(null)} className="text-slate-500 hover:text-red-600 cursor-pointer" title="Cancelar">
+                              <button type="button" onClick={() => setEditandoCelulaChave(null)} className="text-slate-600 hover:text-red-600 cursor-pointer" title="Cancelar">
                                 <i className="fa-solid fa-xmark"></i>
                               </button>
                             </div>
@@ -2209,16 +2209,16 @@ export function FinanceiroAvancado({
                   {!ehCondomino && mapaLinhasHistoricas.length > 0 && (
                     <>
                       <tr>
-                        <td colSpan={16} className="py-1.5 px-3 bg-slate-100 dark:bg-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        <td colSpan={16} className="py-1.5 px-3 bg-slate-100 dark:bg-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400">
                           <i className="fa-solid fa-clock-rotate-left mr-1.5"></i>Proprietários Anteriores em {mapaAno} (fração transferida a meio do ano)
                         </td>
                       </tr>
                       {mapaLinhasHistoricas.map((l, idx) => (
                         <tr key={`${l.fracao.id_fracao}-hist-${idx}`} className="bg-slate-50/70 dark:bg-slate-900/20 italic">
-                          <td className="sticky left-0 z-10 bg-slate-50 dark:bg-slate-900 py-2 px-3 font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap min-w-[90px]">
+                          <td className="sticky left-0 z-10 bg-slate-50 dark:bg-slate-900 py-2 px-3 font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap min-w-[90px]">
                             {l.fracao.fracao_nome} <span className="text-slate-600 font-normal">({l.fracao.piso})</span>
                           </td>
-                          <td className="sticky left-[90px] z-10 bg-slate-50 dark:bg-slate-900 py-2 px-3 text-slate-500 dark:text-slate-400 whitespace-nowrap min-w-[160px] shadow-[2px_0_4px_rgba(0,0,0,0.08)]">
+                          <td className="sticky left-[90px] z-10 bg-slate-50 dark:bg-slate-900 py-2 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap min-w-[160px] shadow-[2px_0_4px_rgba(0,0,0,0.08)]">
                             {l.nomeExibido} <span className="text-slate-600 font-normal">({l.periodoExibido})</span>
                           </td>
                           <td className="py-2 px-2 text-right whitespace-nowrap text-slate-600 font-bold border-r-2 border-slate-200 dark:border-slate-800">

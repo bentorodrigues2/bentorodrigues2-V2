@@ -1152,7 +1152,7 @@ export function ConstituicaoProcessosJuridicos({
                       <h5 className="text-xs font-bold text-slate-800 dark:text-white line-clamp-1">
                         Fração {nomeFracaoReal(proc)} • {proc.nome_reu}
                       </h5>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-1">
                         {proc.titulo_processo}
                       </p>
                     </div>
@@ -1261,7 +1261,7 @@ export function ConstituicaoProcessosJuridicos({
                   <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800">
                     <span className="text-[10px] text-slate-600 uppercase font-bold block">Réu / Executado</span>
                     <span className="font-bold text-slate-800 dark:text-white block mt-0.5">{currentProcesso.nome_reu}</span>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
+                    <span className="text-[10px] text-slate-600 dark:text-slate-400 block">
                       Fração {nomeFracaoReal(currentProcesso)} • NIF: {currentProcesso.nif_reu}
                     </span>
                   </div>
@@ -1269,7 +1269,7 @@ export function ConstituicaoProcessosJuridicos({
                   <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800">
                     <span className="text-[10px] text-slate-600 uppercase font-bold block">Tribunal & Mandatário</span>
                     <span className="font-bold text-slate-800 dark:text-white block mt-0.5">{currentProcesso.tribunal_competente}</span>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block line-clamp-1">
+                    <span className="text-[10px] text-slate-600 dark:text-slate-400 block line-clamp-1">
                       Resp: {currentProcesso.mandatario_responsavel}
                     </span>
                   </div>
@@ -1279,7 +1279,7 @@ export function ConstituicaoProcessosJuridicos({
                     <span className="text-base font-bold text-slate-900 dark:text-white font-mono block mt-0.5">
                       {currentProcesso.valor_total_pedido.toFixed(2)} €
                     </span>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
+                    <span className="text-[10px] text-slate-600 dark:text-slate-400 block">
                       Cap: {currentProcesso.valor_divida_capital.toFixed(2)} € | Jur: {currentProcesso.valor_juros_mora.toFixed(2)} € | Taxa: {currentProcesso.custas_processuais_estimadas.toFixed(2)} €
                       {(currentProcesso.despesas_extra || []).length > 0 && ` | Desp: ${(currentProcesso.despesas_extra || []).reduce((s, d) => s + d.valor, 0).toFixed(2)} €`}
                     </span>
@@ -1306,7 +1306,7 @@ export function ConstituicaoProcessosJuridicos({
                   <i className="fa-solid fa-receipt text-amber-500"></i>
                   Despesas Extra do Processo ({(currentProcesso.despesas_extra || []).length})
                 </h4>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                <p className="text-[11px] text-slate-600 dark:text-slate-400">
                   Declarações pedidas, cartas registadas CTT, custos de tribunal ou outras despesas reais além da taxa de justiça — somadas ao Valor Total do Pedido.
                 </p>
 
@@ -1364,7 +1364,7 @@ export function ConstituicaoProcessosJuridicos({
                       <i className="fa-solid fa-folder-open text-amber-500"></i>
                       Documentos Probatórios Juntos aos Autos ({currentProcesso.provas.length})
                     </h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400">
                       Recibos de receção de cartas CTT, prints de comunicações, atas e fotografias indexadas para tribunal.
                     </p>
                   </div>
@@ -1443,7 +1443,7 @@ export function ConstituicaoProcessosJuridicos({
                                 </div>
                               </div>
                             ) : (
-                              <div className="w-14 h-14 rounded-lg bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 flex items-center justify-center shrink-0 text-slate-500 dark:text-slate-400">
+                              <div className="w-14 h-14 rounded-lg bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 flex items-center justify-center shrink-0 text-slate-600 dark:text-slate-400">
                                 <i className={`fa-solid ${badge.icon} text-xl`}></i>
                               </div>
                             )}
@@ -1467,13 +1467,13 @@ export function ConstituicaoProcessosJuridicos({
                               </h5>
 
                               {prova.descricao && (
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed max-w-xl">
+                                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed max-w-xl">
                                   {prova.descricao}
                                 </p>
                               )}
 
                               {/* Special Meta: CTT Tracking or Observations */}
-                              <div className="flex items-center gap-3 text-[10px] text-slate-500 dark:text-slate-400 pt-0.5 flex-wrap">
+                              <div className="flex items-center gap-3 text-[10px] text-slate-600 dark:text-slate-400 pt-0.5 flex-wrap">
                                 {prova.codigo_rastreio_ctt && (
                                   <span className="flex items-center gap-1 font-mono text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
                                     <i className="fa-solid fa-truck-fast"></i>
@@ -1530,7 +1530,7 @@ export function ConstituicaoProcessosJuridicos({
                     </div>
                     <div className="space-y-1">
                       <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300">Nenhum Documento Probatório Encontrado</h5>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400 max-w-sm mx-auto">
                         Junte recibos de receção de cartas registadas CTT, capturas de ecrã ou fotografias ao processo para constituir a prova judicial.
                       </p>
                     </div>
@@ -1586,7 +1586,7 @@ export function ConstituicaoProcessosJuridicos({
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-800 dark:text-white">Nenhum Processo Selecionado</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm">
+                <p className="text-xs text-slate-600 dark:text-slate-400 max-w-sm">
                   Selecione um processo na lista lateral ou crie um novo para gerir o dossiê e os elementos de prova.
                 </p>
               </div>
@@ -1748,7 +1748,7 @@ export function ConstituicaoProcessosJuridicos({
               {novaProvaTipo === "OUTRO_COMPROVATIVO" && (
                 <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700 rounded-xl space-y-2">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <i className="fa-solid fa-tag text-slate-500"></i>
+                    <i className="fa-solid fa-tag text-slate-600"></i>
                     Identifique o Tipo de Documento *
                   </label>
                   <input
@@ -1759,7 +1759,7 @@ export function ConstituicaoProcessosJuridicos({
                     placeholder="Ex: Declaração de Não Dívida, Fatura de Custas de Tribunal, Carta de Resposta do Réu..."
                     className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-white font-medium"
                   />
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                  <p className="text-[10px] text-slate-600 dark:text-slate-400">
                     Use este campo para juntar qualquer documento necessário ao dossiê que não se enquadre nos modelos pré-definidos (declarações, certidões, custos de tribunal, correspondência do réu, etc.).
                   </p>
                 </div>
@@ -1811,7 +1811,7 @@ export function ConstituicaoProcessosJuridicos({
                           <i className="fa-solid fa-circle-check"></i> Ficheiro Selecionado
                         </span>
                         <p className="text-xs font-bold text-slate-800 dark:text-white">{novaProvaFileNome}</p>
-                        <p className="text-[10px] text-slate-500">Clique para substituir o ficheiro</p>
+                        <p className="text-[10px] text-slate-600">Clique para substituir o ficheiro</p>
                       </div>
                     </div>
                   ) : (
@@ -1914,7 +1914,7 @@ export function ConstituicaoProcessosJuridicos({
                   <i className="fa-solid fa-wand-magic-sparkles text-indigo-600"></i>
                   Carregar Vários Documentos de Uma Vez (IA)
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-600 mt-0.5">
                   Escolhe todos os documentos do processo de uma vez — a IA lê cada um e sugere o tipo de prova correspondente antes de juntar ao dossiê.
                 </p>
               </div>
@@ -1941,7 +1941,7 @@ export function ConstituicaoProcessosJuridicos({
               >
                 <i className="fa-solid fa-cloud-arrow-up text-2xl text-indigo-500 mb-2"></i>
                 <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Clica para escolher vários ficheiros (PNG, JPG, PDF)</p>
-                <p className="text-[10px] text-slate-500 mt-0.5">Podes selecionar os 20 documentos do caso de uma só vez (máx. {(LIMITE_FICHEIRO_IA_BYTES / (1024 * 1024)).toFixed(1)} MB por ficheiro)</p>
+                <p className="text-[10px] text-slate-600 mt-0.5">Podes selecionar os 20 documentos do caso de uma só vez (máx. {(LIMITE_FICHEIRO_IA_BYTES / (1024 * 1024)).toFixed(1)} MB por ficheiro)</p>
               </div>
 
               {itensLoteProva.length > 0 && (
@@ -1974,7 +1974,7 @@ export function ConstituicaoProcessosJuridicos({
                         </div>
                         <div className="flex-1 min-w-0">
                           {item.status === "pendente" && (
-                            <span className="text-[10px] text-slate-500 italic">Por analisar</span>
+                            <span className="text-[10px] text-slate-600 italic">Por analisar</span>
                           )}
                           {item.status === "a_analisar" && (
                             <span className="text-[10px] text-indigo-600 font-bold"><i className="fa-solid fa-spinner fa-spin mr-1"></i>A analisar...</span>
@@ -2009,7 +2009,7 @@ export function ConstituicaoProcessosJuridicos({
                                 placeholder="Título do documento"
                                 className="w-full text-[11px] border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg px-2 py-1"
                               />
-                              {item.resumo && <p className="text-[10px] text-slate-500 italic">{item.resumo}</p>}
+                              {item.resumo && <p className="text-[10px] text-slate-600 italic">{item.resumo}</p>}
                               {item.ehRequerimentoInicial && item.valorReclamadoDetetado !== undefined && (() => {
                                 const valorSistema = currentProcesso.valor_total_pedido;
                                 const diferenca = Math.round((item.valorReclamadoDetetado! - valorSistema) * 100) / 100;
@@ -2046,7 +2046,7 @@ export function ConstituicaoProcessosJuridicos({
             <div className="p-5 border-t border-slate-100 dark:border-slate-900 flex items-center justify-end gap-2">
               <button
                 onClick={() => { setShowLoteProvaModal(false); setItensLoteProva([]); }}
-                className="px-4 py-2 text-xs font-bold text-slate-500 cursor-pointer"
+                className="px-4 py-2 text-xs font-bold text-slate-600 cursor-pointer"
               >
                 Cancelar
               </button>
@@ -2367,7 +2367,7 @@ export function ConstituicaoProcessosJuridicos({
                 <div className="p-12 text-center space-y-3">
                   <i className="fa-solid fa-file-pdf text-5xl text-rose-500"></i>
                   <p className="text-sm font-bold text-slate-600">{lightboxProva.ficheiro_nome}</p>
-                  <p className="text-xs text-slate-500">Documento PDF certificado pronto para anexação judicial.</p>
+                  <p className="text-xs text-slate-600">Documento PDF certificado pronto para anexação judicial.</p>
                 </div>
               )}
 

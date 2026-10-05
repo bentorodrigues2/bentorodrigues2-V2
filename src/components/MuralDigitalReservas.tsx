@@ -219,7 +219,7 @@ export function MuralDigitalReservas({
                 <Bell className="h-6 w-6" />
               </div>
               <h4 className="text-sm font-bold text-slate-800 dark:text-white">Mural Digital Vazio</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md mx-auto">
                 Não existem comunicados afixados no mural deste condomínio. Clique em &quot;Publicar Novo Comunicado&quot; para partilhar avisos, regras ou intervenções com os condóminos.
               </p>
             </div>
@@ -266,7 +266,7 @@ export function MuralDigitalReservas({
                           setAvisosMural(prev => prev.map(a => a.id_aviso_mural === aviso.id_aviso_mural ? atualizado : a));
                           saveMuralAvisoToSupabase(atualizado).catch(console.error);
                         }}
-                        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-red-500 transition-colors cursor-pointer bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700"
+                        className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-red-500 transition-colors cursor-pointer bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700"
                       >
                         <Heart className="h-3.5 w-3.5 text-red-500" />
                         <span className="font-mono font-bold">{aviso.reacoes_gostos}</span>
@@ -321,7 +321,7 @@ export function MuralDigitalReservas({
                 <CalendarCheck className="h-6 w-6" />
               </div>
               <h4 className="text-sm font-bold text-slate-800 dark:text-white">Sem Reservas Agendadas</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md mx-auto">
                 Não existem reservas ativas de espaços comuns. Clique em &quot;Nova Reserva&quot; para registar um agendamento do Salão de Festas, Churrasqueira ou Terraço.
               </p>
             </div>

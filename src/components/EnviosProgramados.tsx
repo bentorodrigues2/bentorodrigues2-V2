@@ -227,7 +227,7 @@ export function EnviosProgramados({
           <div className="space-y-1">
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">Total em Fila</span>
             <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">{filaEnvios.length}</div>
-            <span className="text-[10px] text-slate-500">Notificações preparadas</span>
+            <span className="text-[10px] text-slate-600">Notificações preparadas</span>
           </div>
           <div className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl font-black">
             <Clock className="h-6 w-6" />
@@ -240,7 +240,7 @@ export function EnviosProgramados({
             <div className="text-2xl font-black text-emerald-600 font-mono">
               {filaEnvios.filter(i => i.tipo_envio === "NOTA_COBRANCA_DIA_25").length}
             </div>
-            <span className="text-[10px] text-slate-500">Notas de Cobrança c/ PDF</span>
+            <span className="text-[10px] text-slate-600">Notas de Cobrança c/ PDF</span>
           </div>
           <div className="p-3 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 rounded-2xl font-black">
             <Mail className="h-6 w-6" />
@@ -253,7 +253,7 @@ export function EnviosProgramados({
             <div className="text-2xl font-black text-amber-600 font-mono">
               {filaEnvios.filter(i => i.tipo_envio === "LEMBRETE_CORDIAL_DIA_05").length}
             </div>
-            <span className="text-[10px] text-slate-500">Aviso cordial antes do dia 8</span>
+            <span className="text-[10px] text-slate-600">Aviso cordial antes do dia 8</span>
           </div>
           <div className="p-3 bg-amber-100 dark:bg-amber-950 text-amber-600 rounded-2xl font-black">
             <BellRing className="h-6 w-6" />
@@ -264,7 +264,7 @@ export function EnviosProgramados({
           <div className="space-y-1">
             <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">Push PWA Ativo</span>
             <div className="text-2xl font-black text-blue-600 font-mono">100%</div>
-            <span className="text-[10px] text-slate-500">App Mobile + E-mail</span>
+            <span className="text-[10px] text-slate-600">App Mobile + E-mail</span>
           </div>
           <div className="p-3 bg-blue-100 dark:bg-blue-950 text-blue-600 rounded-2xl font-black">
             <Smartphone className="h-6 w-6" />
@@ -365,7 +365,7 @@ export function EnviosProgramados({
                       </span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400 font-mono">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 dark:text-slate-400 font-mono">
                       <span>Ref. IA: <strong className="text-indigo-600 dark:text-indigo-400 font-bold">{item.referencia_fracao}</strong></span>
                       <span>•</span>
                       <span>Valor: <strong className="text-slate-900 dark:text-white font-bold">{item.montante.toFixed(2)} €</strong></span>

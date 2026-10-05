@@ -91,10 +91,10 @@ export default function SetPasswordScreen({ email, onDone }: SetPasswordScreenPr
           </div>
 
           <div className="bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-[10px] space-y-1">
-            <span className={criterios.minLength ? "text-emerald-400 font-bold block" : "text-slate-500 block"}>{criterios.minLength ? "✓" : "○"} Mínimo 8 caracteres</span>
-            <span className={criterios.hasUppercase ? "text-emerald-400 font-bold block" : "text-slate-500 block"}>{criterios.hasUppercase ? "✓" : "○"} Uma letra maiúscula</span>
-            <span className={criterios.hasLowercase ? "text-emerald-400 font-bold block" : "text-slate-500 block"}>{criterios.hasLowercase ? "✓" : "○"} Uma letra minúscula</span>
-            <span className={criterios.hasNumber ? "text-emerald-400 font-bold block" : "text-slate-500 block"}>{criterios.hasNumber ? "✓" : "○"} Um número</span>
+            <span className={criterios.minLength ? "text-emerald-400 font-bold block" : "text-slate-600 block"}>{criterios.minLength ? "✓" : "○"} Mínimo 8 caracteres</span>
+            <span className={criterios.hasUppercase ? "text-emerald-400 font-bold block" : "text-slate-600 block"}>{criterios.hasUppercase ? "✓" : "○"} Uma letra maiúscula</span>
+            <span className={criterios.hasLowercase ? "text-emerald-400 font-bold block" : "text-slate-600 block"}>{criterios.hasLowercase ? "✓" : "○"} Uma letra minúscula</span>
+            <span className={criterios.hasNumber ? "text-emerald-400 font-bold block" : "text-slate-600 block"}>{criterios.hasNumber ? "✓" : "○"} Um número</span>
           </div>
 
           <button

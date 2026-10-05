@@ -407,9 +407,9 @@ export function ContenciosoJuridico({
     return (
       <div className="bg-[#fcfbf9] dark:bg-[#1a1f2c] text-slate-900 dark:text-slate-200 p-8 rounded-xl border border-slate-300 dark:border-slate-800 shadow-md font-serif max-w-4xl mx-auto space-y-6">
         <div className="text-center space-y-2 border-b-2 border-slate-300 dark:border-slate-700 pb-5">
-          <p className="text-xs uppercase tracking-widest font-sans font-bold text-slate-500">Regulamento Interno de Coabitação</p>
+          <p className="text-xs uppercase tracking-widest font-sans font-bold text-slate-600">Regulamento Interno de Coabitação</p>
           <h2 className="text-2xl font-bold tracking-tight font-serif text-slate-800 dark:text-white">CONDOMÍNIO DO EDIFÍCIO {predio.nome ? predio.nome.toUpperCase() : "SEM NOME"}</h2>
-          <p className="text-xs text-slate-500 font-sans">{predio.morada_linha1}, {predio.num_porta} - NIF: {predio.nif}</p>
+          <p className="text-xs text-slate-600 font-sans">{predio.morada_linha1}, {predio.num_porta} - NIF: {predio.nif}</p>
         </div>
 
         <div className="text-xs text-slate-600 dark:text-slate-400 font-sans text-justify leading-relaxed italic border-l-4 border-slate-300 p-3 bg-slate-50/50 dark:bg-slate-900/30 rounded">
@@ -485,7 +485,7 @@ export function ContenciosoJuridico({
           </div>
         </div>
 
-        <div className="pt-8 border-t border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500 font-sans space-y-1">
+        <div className="pt-8 border-t border-slate-200 dark:border-slate-800 text-center text-xs text-slate-600 font-sans space-y-1">
           <p>Aprovado por unanimidade jurídica em Assembleia Geral de Condóminos.</p>
           <p>Assinado digitalmente pela Administração: {loggedUser.nome}</p>
         </div>
@@ -637,7 +637,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
             <div className="flex justify-end gap-2 pt-2">
               <button 
                 onClick={() => setEmailModal(prev => ({ ...prev, isOpen: false }))}
-                className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer"
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
@@ -660,7 +660,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
             <i className="fa-solid fa-scale-balanced text-red-500 mr-2.5"></i>
             Gestão Contenciosa & Jurídica (Recuperação de Dívidas)
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
             Controlo automático do estado de cobrança de quotas, constituição de processos com acervo probatório (recibos AR, prints WhatsApp, fotografias), minutas de injunção civil e estatutos.
           </p>
         </div>
@@ -769,7 +769,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
             <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden mt-4">
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
+                  <tr className="bg-slate-50 dark:bg-slate-900/60 text-slate-600 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
                     <th className="p-3">Fração</th>
                     <th className="p-3">Proprietário / NIF</th>
                     <th className="p-3 text-center">Avisos em Falta</th>
@@ -887,7 +887,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   </span>
                   <span>Declaração de Não Dívida de Condomínio (Art. 54.º-A do DL 268/94)</span>
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                   Documento obrigatório para escritura pública de venda ou quitação, restrito a uma única folha formal com campos 100% editáveis e quotas em vigor.
                 </p>
               </div>
@@ -1054,14 +1054,14 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                     </p>
 
                     <div className="p-4 bg-slate-50 border border-slate-300 rounded-lg font-sans space-y-2">
-                      <span className="text-[10px] font-bold uppercase text-slate-500 block">Encargos Regulamentares em Vigor para a Fração</span>
+                      <span className="text-[10px] font-bold uppercase text-slate-600 block">Encargos Regulamentares em Vigor para a Fração</span>
                       <div className="grid grid-cols-2 gap-4 text-xs">
                         <div>
-                          <span className="text-slate-500 block">Quota Ordinária Mensal:</span>
+                          <span className="text-slate-600 block">Quota Ordinária Mensal:</span>
                           <span className="font-bold text-slate-900">€ {ndQuotaOrdinaria} / mês</span>
                         </div>
                         <div>
-                          <span className="text-slate-500 block">Fundo Comum de Reserva (FCR):</span>
+                          <span className="text-slate-600 block">Fundo Comum de Reserva (FCR):</span>
                           <span className="font-bold text-slate-900">€ {ndQuotaFundoReserva} / mês</span>
                         </div>
                       </div>
@@ -1074,7 +1074,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                           <p className="text-xs text-slate-800 font-medium mt-1">{ndDescricaoQuotaExtra}</p>
                         </div>
                       ) : (
-                        <div className="pt-2 border-t border-slate-200 mt-2 text-slate-500 text-xs">
+                        <div className="pt-2 border-t border-slate-200 mt-2 text-slate-600 text-xs">
                           <em>Não existem quaisquer quotas extraordinárias em vigor ou obras em curso com encargos por liquidar.</em>
                         </div>
                       )}
@@ -1087,12 +1087,12 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
 
                   <div className="pt-8 flex justify-between items-end border-t border-slate-300 font-sans text-xs">
                     <div>
-                      <p className="text-slate-500 text-[10px]">Emitida em: {new Date().toLocaleDateString("pt-PT")}</p>
+                      <p className="text-slate-600 text-[10px]">Emitida em: {new Date().toLocaleDateString("pt-PT")}</p>
                     </div>
                     <div className="text-center min-w-[220px]">
-                      <p className="text-[10px] uppercase font-bold text-slate-500 mb-8">A Administração do Condomínio</p>
+                      <p className="text-[10px] uppercase font-bold text-slate-600 mb-8">A Administração do Condomínio</p>
                       <div className="border-b border-slate-800 w-full mb-1"></div>
-                      <p className="text-[9px] text-slate-500 italic mb-1">(Assinatura Original)</p>
+                      <p className="text-[9px] text-slate-600 italic mb-1">(Assinatura Original)</p>
                       <p className="font-bold text-slate-900 text-xs">{ndAssinatura}</p>
                     </div>
                   </div>
@@ -1252,10 +1252,10 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
               <div className="bg-[#fcfbf9] text-slate-800 p-8 rounded-xl border border-slate-300 shadow-md font-serif text-justify text-xs leading-relaxed space-y-6">
                 <div className="flex justify-between items-start font-sans">
                   <div>
-                    <h4 className="font-extrabold uppercase text-[10px] text-slate-500 tracking-wider">CONDOMÍNIO DO EDIFÍCIO</h4>
+                    <h4 className="font-extrabold uppercase text-[10px] text-slate-600 tracking-wider">CONDOMÍNIO DO EDIFÍCIO</h4>
                     <p className="text-sm font-bold text-slate-950 font-sans">{predio.nome || "Sem Nome"}</p>
-                    <p className="text-[10px] text-slate-500 font-mono-custom">NIF: {predio.nif}</p>
-                    <p className="text-[10px] text-slate-500">{predio.morada_linha1}, {predio.localidade}</p>
+                    <p className="text-[10px] text-slate-600 font-mono-custom">NIF: {predio.nif}</p>
+                    <p className="text-[10px] text-slate-600">{predio.morada_linha1}, {predio.localidade}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] font-bold text-slate-600 uppercase">CARTA REGISTADA COM AR</p>
@@ -1318,7 +1318,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   <p>Com os melhores cumprimentos,</p>
                 </div>
 
-                <div className="pt-8 border-t border-slate-200 text-center font-sans text-[10px] text-slate-500">
+                <div className="pt-8 border-t border-slate-200 text-center font-sans text-[10px] text-slate-600">
                   <p>A Administração do Condomínio do Edifício {predio.nome || "Sem Nome"}</p>
                   <p className="font-bold text-slate-700 mt-2">{loggedUser.nome}</p>
                 </div>
@@ -1413,19 +1413,19 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
               <div className="bg-white text-slate-800 p-8 rounded-xl border border-slate-300 shadow-md font-sans text-[10px] leading-relaxed space-y-4">
                 <div className="text-center space-y-1 border-b-2 border-slate-200 pb-3">
                   <h3 className="text-sm font-extrabold text-slate-900 tracking-wider">BALCÃO NACIONAL DE INJUNÇÕES</h3>
-                  <p className="text-xs uppercase font-semibold text-slate-500">Requerimento de Injunção - Decreto-Lei n.º 269/98</p>
+                  <p className="text-xs uppercase font-semibold text-slate-600">Requerimento de Injunção - Decreto-Lei n.º 269/98</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 border border-slate-300 p-3 bg-slate-50 rounded">
                   <div>
-                    <h5 className="font-extrabold uppercase text-[9px] text-slate-500">1. Requerente (Credor)</h5>
+                    <h5 className="font-extrabold uppercase text-[9px] text-slate-600">1. Requerente (Credor)</h5>
                     <p className="font-bold text-slate-900">CONDOMÍNIO DO EDIFÍCIO {predio.nome ? predio.nome.toUpperCase() : "SEM NOME"}</p>
                     <p>Contribuinte NIF: <strong>{predio.nif}</strong></p>
                     <p>Morada: {predio.morada_linha1}, {predio.localidade}</p>
                     <p>Representante: {loggedUser.nome}</p>
                   </div>
                   <div>
-                    <h5 className="font-extrabold uppercase text-[9px] text-slate-500">2. Requerido (Devedor / Réu)</h5>
+                    <h5 className="font-extrabold uppercase text-[9px] text-slate-600">2. Requerido (Devedor / Réu)</h5>
                     <p className="font-bold text-slate-900">{selectedFracao.proprietario.nome}</p>
                     <p>Contribuinte NIF: <strong>{selectedFracao.proprietario.nif}</strong></p>
                     <p>Morada: {predio.morada_linha1}, Fração {selectedFracao.fracao_nome}, {predio.localidade}</p>
@@ -1460,7 +1460,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                     </div>
                   </div>
                   {(selectedFracaoInfo?.totalDebtPrescrito || 0) > 0 && (
-                    <p className="text-[10px] text-slate-500 flex items-start gap-1.5 bg-slate-50 border border-slate-200 rounded p-2">
+                    <p className="text-[10px] text-slate-600 flex items-start gap-1.5 bg-slate-50 border border-slate-200 rounded p-2">
                       <i className="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5"></i>
                       <span>Excluídos <strong>{(selectedFracaoInfo?.totalDebtPrescrito || 0).toFixed(2)} €</strong> de prestações vencidas há mais de 5 anos, já prescritas nos termos do Art. 310º do Código Civil — não reclamáveis judicialmente.</span>
                     </p>
@@ -1478,7 +1478,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-slate-200 flex justify-between items-center text-[9px] text-slate-500 font-sans">
+                <div className="pt-4 border-t border-slate-200 flex justify-between items-center text-[9px] text-slate-600 font-sans">
                   <span>Assinatura Eletrónica do Mandatário / Administrador</span>
                   <span className="font-bold text-slate-700">{loggedUser.nome}</span>
                 </div>
@@ -1492,7 +1492,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
       {activeTab === "regulamento" && (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-[#0f172a] p-4 rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm">
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-normal max-w-lg">
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-normal max-w-lg">
               Regulamento interno gerado dinamicamente com base nas características de património técnico cadastradas para o prédio ativo. Configurado para regular elevadores, piscina, ginásio, spa e garagens comunitárias.
             </p>
             <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -1546,7 +1546,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   </span>
                   <span>Estatutos Fundamentais do Edifício & Propriedade Horizontal</span>
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                   Proposta automática de estatutos adaptada à fisionomia do prédio com possibilidade de inclusão manual e exportação PDF autêntica.
                 </p>
               </div>
@@ -1608,7 +1608,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
 
             {/* Custom Statute Form */}
             <div className="bg-slate-50 dark:bg-slate-900/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
-              <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-2">
                 <i className="fa-solid fa-plus-circle text-red-500"></i>
                 <span>Adicionar Artigo / Norma Personalizada aos Estatutos do Prédio</span>
               </h3>
@@ -1713,7 +1713,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
 
               <div className="pt-8 flex justify-between items-end border-t border-slate-300 font-sans text-xs">
                 <div>
-                  <p className="text-slate-500 text-[10px]">Aprovados em Assembleia de Condóminos</p>
+                  <p className="text-slate-600 text-[10px]">Aprovados em Assembleia de Condóminos</p>
                   <p className="text-slate-600 text-[10px]">Estatutos gerados por CondoManager</p>
                 </div>
                 <div className="text-right">
@@ -1773,7 +1773,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                 </select>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-900/40 p-3 rounded-lg text-[10px] text-slate-500 leading-relaxed border border-slate-100 dark:border-slate-800/80">
+              <div className="bg-slate-50 dark:bg-slate-900/40 p-3 rounded-lg text-[10px] text-slate-600 leading-relaxed border border-slate-100 dark:border-slate-800/80">
                 <span className="font-extrabold text-slate-700 dark:text-slate-300 block mb-1">Enquadramento Legal:</span>
                 {docObrigatorioType === "Declaração de Dívida" && "Utilizada em ações executivas ou assembleias. Discrimina todas as parcelas e juros vencidos devidos pelo condómino em incumprimento."}
                 {docObrigatorioType === "Declaração de Não Dívida" && "Obrigatória para outorga de Escritura nos termos do DL 268/2022, libertando o condómino vendedor e atestando contas em dia."}
@@ -1853,11 +1853,11 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                       </div>
                       <div className="leading-tight">
                         <span className="font-extrabold text-[14px] uppercase tracking-wider block text-[#1A1A1A]">CONDOMANAGER AI</span>
-                        <span className="text-[8px] text-slate-500 font-bold block uppercase tracking-tight">Gestão Digital de Condomínios</span>
+                        <span className="text-[8px] text-slate-600 font-bold block uppercase tracking-tight">Gestão Digital de Condomínios</span>
                       </div>
                     </div>
                     
-                    <div className="text-right font-sans text-[9px] text-slate-500 space-y-0.5 leading-tight">
+                    <div className="text-right font-sans text-[9px] text-slate-600 space-y-0.5 leading-tight">
                       <p className="font-extrabold uppercase text-[#1A1A1A]">CONDOMANAGER AI — ADMINISTRAÇÃO LEGAL</p>
                       <p>Avenida da República, Nº 1000, 1050-191 Lisboa</p>
                       <p className="font-mono">NIF: 512 345 678 • Registo Comercial de Lisboa</p>
@@ -1879,11 +1879,11 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                       <span className="text-[8px] font-bold text-slate-600 uppercase tracking-wider block mb-1">Identificação do Condómino / Proprietário</span>
                       <p className="text-[10px] font-black uppercase text-[#1A1A1A]">Exmo(a) Sr(a):</p>
                       <p className="text-xs font-bold text-slate-800">{selectedFracao.proprietario.nome}</p>
-                      <p className="text-[9px] text-slate-500 mt-1">
+                      <p className="text-[9px] text-slate-600 mt-1">
                         Fração Autónoma: <strong className="text-[#1A1A1A]">{selectedFracao.fracao_nome}</strong> 
                         &nbsp;({selectedFracao.piso})
                       </p>
-                      <p className="text-[9px] text-slate-500">
+                      <p className="text-[9px] text-slate-600">
                         Morada do Edifício: {predio.morada_linha1}, {predio.localidade}
                       </p>
                     </div>
@@ -1893,7 +1893,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                       <p className="text-[9px] text-slate-600"><strong>Contribuinte NIF:</strong> {selectedFracao.proprietario.nif || "999999990"}</p>
                       <p className="text-[9px] text-slate-600"><strong>Data de Emissão:</strong> 18 de Julho de 2026</p>
                       <p className="text-[9px] text-slate-600"><strong>Estado da Fração:</strong> <span className={`font-bold uppercase ${selectedFracaoInfo?.status === "Contencioso" ? "text-red-600" : "text-emerald-600"}`}>{selectedFracaoInfo?.status || "Regularizada"}</span></p>
-                      <p className="text-[9px] text-slate-500"><strong>Permilagem Legal:</strong> {selectedFracao.permilagem || 0}‰ do edifício</p>
+                      <p className="text-[9px] text-slate-600"><strong>Permilagem Legal:</strong> {selectedFracao.permilagem || 0}‰ do edifício</p>
                     </div>
                   </div>
 
@@ -1982,7 +1982,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   </div>
 
                   {/* 6. Nota Legal (IVA) */}
-                  <div className="text-left py-1 text-[8px] text-slate-500 border-t border-dashed border-slate-200">
+                  <div className="text-left py-1 text-[8px] text-slate-600 border-t border-dashed border-slate-200">
                     <p className="font-semibold">Nota Legal: Isento de IVA nos termos do art.º 9.º, nº 21 do Código do Imposto sobre o Valor Acrescentado (CIVA).</p>
                   </div>
 
@@ -1995,9 +1995,9 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                       </div>
 
                       <div className="text-center min-w-[240px]">
-                        <p className="text-[10px] uppercase font-bold text-slate-500 mb-8">A Administração do Condomínio</p>
+                        <p className="text-[10px] uppercase font-bold text-slate-600 mb-8">A Administração do Condomínio</p>
                         <div className="border-b border-slate-800 w-full mb-1"></div>
-                        <p className="text-[8.5px] text-slate-500 italic mb-1">(Assinatura Original)</p>
+                        <p className="text-[8.5px] text-slate-600 italic mb-1">(Assinatura Original)</p>
                         <p className="font-bold text-slate-900 text-xs">{loggedUser?.nome || "José Carlos Guerra"}</p>
                       </div>
                     </div>
@@ -2006,7 +2006,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                       <div className="text-center md:text-left space-y-1">
                         <span className="text-[8px] font-bold text-slate-600 uppercase tracking-wider block">Assinatura Certificada</span>
                         <p className="text-[10px] font-extrabold text-[#1A1A1A] uppercase">A Administração do Condomínio</p>
-                        <p className="text-[8px] text-slate-500 font-medium">CondoManager AI, Lda. • Selo Tempus Eletrónico</p>
+                        <p className="text-[8px] text-slate-600 font-medium">CondoManager AI, Lda. • Selo Tempus Eletrónico</p>
                         <p className="text-[7.5px] text-emerald-600 uppercase font-black tracking-widest mt-1">✓ Assinatura Digital Ativa • Emissão Validada por IA</p>
                       </div>
 
@@ -2018,7 +2018,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                             ))}
                           </div>
                         </div>
-                        <div className="leading-tight text-[8px] text-slate-500 font-mono text-left">
+                        <div className="leading-tight text-[8px] text-slate-600 font-mono text-left">
                           <p className="font-bold text-[#1A1A1A]">SECURE VERIFY QR</p>
                           <p>LEG-HASH-SHA256-{selectedFracao.fracao_nome}</p>
                           <p className="text-[7px] text-indigo-600 font-bold">✓ Certidão Legal Autêntica</p>
@@ -2054,7 +2054,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-600">
                 Detetor de Contencioso & Mora (Faltosos em Quotas)
               </h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                 O assistente jurídico IA analisa em tempo real os avisos de pagamento excedidos para propor minutas extrajudiciais com constituição de mora nos termos do Código Civil.
               </p>
 
@@ -2085,7 +2085,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                               <span className="text-xs font-black text-slate-800 dark:text-white">
                                 Fração {frac.fracao_nome} • Piso {frac.piso}
                               </span>
-                              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                              <p className="text-[10px] text-slate-600 dark:text-slate-400 font-medium mt-0.5">
                                 Proprietário: {frac.proprietario.nome}
                               </p>
                               <p className="text-[9px] text-slate-600">NIF: {frac.proprietario.nif}</p>

@@ -207,7 +207,7 @@ export function MultiCondominio({
             <Building2 className="text-emerald-500 mr-2.5 h-6 w-6" />
             Portal Multi-Condomínio
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-600 dark:text-slate-400">
             Administração centralizada, equipas dedicadas, especificações patrimoniais e dashboards consolidados.
           </p>
         </div>
@@ -219,7 +219,7 @@ export function MultiCondominio({
             className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
               activeTab === "aggregated"
                 ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-white"
+                : "text-slate-600 hover:text-slate-800 dark:hover:text-white"
             }`}
           >
             <Activity className="h-3.5 w-3.5 inline mr-1" />
@@ -230,7 +230,7 @@ export function MultiCondominio({
             className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
               activeTab === "teams"
                 ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-white"
+                : "text-slate-600 hover:text-slate-800 dark:hover:text-white"
             }`}
           >
             <Users className="h-3.5 w-3.5 inline mr-1" />
@@ -241,7 +241,7 @@ export function MultiCondominio({
             className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
               activeTab === "profiles"
                 ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-white"
+                : "text-slate-600 hover:text-slate-800 dark:hover:text-white"
             }`}
           >
             <Settings className="h-3.5 w-3.5 inline mr-1" />
@@ -280,7 +280,7 @@ export function MultiCondominio({
                 <p className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
                   +{totalReceitas.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
                 </p>
-                <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full dark:bg-slate-800 dark:text-slate-400">
+                <span className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full dark:bg-slate-800 dark:text-slate-400">
                   Despesas: -{totalDespesas.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
                 </span>
               </div>
@@ -336,7 +336,7 @@ export function MultiCondominio({
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-800">
+                    <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-600 font-bold border-b border-slate-200 dark:border-slate-800">
                       <th className="p-3">Nome do Condomínio</th>
                       <th className="p-3 font-mono">NIF</th>
                       <th className="p-3">Saldos de Caixa</th>
@@ -362,7 +362,7 @@ export function MultiCondominio({
                           <td className="p-3 font-bold text-slate-700 dark:text-slate-300">
                             {p.nome || `${p.morada_linha1}, ${p.num_porta}`}
                           </td>
-                          <td className="p-3 font-mono text-slate-500">{p.nif}</td>
+                          <td className="p-3 font-mono text-slate-600">{p.nif}</td>
                           <td className="p-3 font-semibold font-mono text-slate-800 dark:text-white">
                             {buildingSaldo.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
                           </td>
@@ -374,7 +374,7 @@ export function MultiCondominio({
                               {buildingOcorr} ativas
                             </span>
                           </td>
-                          <td className="p-3 text-slate-500">
+                          <td className="p-3 text-slate-600">
                             {buildingTeam} membros
                           </td>
                         </tr>
@@ -438,7 +438,7 @@ export function MultiCondominio({
           {/* SELETOR DE PRÉDIO PARA EQUIPA */}
           <div className="bg-slate-100 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Filtrar Equipa por Condomínio</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Filtrar Equipa por Condomínio</label>
               <select
                 value={selectedPredioId}
                 onChange={(e) => setSelectedPredioId(e.target.value)}
@@ -471,7 +471,7 @@ export function MultiCondominio({
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold text-slate-500 mb-1">Nome Completo *</label>
+                  <label className="text-[10px] font-semibold text-slate-600 mb-1">Nome Completo *</label>
                   <input
                     type="text"
                     required
@@ -483,7 +483,7 @@ export function MultiCondominio({
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold text-slate-500 mb-1">Função / Cargo *</label>
+                  <label className="text-[10px] font-semibold text-slate-600 mb-1">Função / Cargo *</label>
                   <select
                     value={newMember.funcao}
                     onChange={(e) => setNewMember(prev => ({ ...prev, funcao: e.target.value }))}
@@ -499,7 +499,7 @@ export function MultiCondominio({
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold text-slate-500 mb-1">Empresa Prestadora (Opcional)</label>
+                  <label className="text-[10px] font-semibold text-slate-600 mb-1">Empresa Prestadora (Opcional)</label>
                   <input
                     type="text"
                     value={newMember.empresa}
@@ -512,7 +512,7 @@ export function MultiCondominio({
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold text-slate-500 mb-1">Contacto Telefónico</label>
+                  <label className="text-[10px] font-semibold text-slate-600 mb-1">Contacto Telefónico</label>
                   <input
                     type="text"
                     value={newMember.telefone}
@@ -523,7 +523,7 @@ export function MultiCondominio({
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold text-slate-500 mb-1">E-mail Oficial</label>
+                  <label className="text-[10px] font-semibold text-slate-600 mb-1">E-mail Oficial</label>
                   <input
                     type="email"
                     value={newMember.email}
@@ -534,7 +534,7 @@ export function MultiCondominio({
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-semibold text-slate-500 mb-1">Estado Operacional</label>
+                  <label className="text-[10px] font-semibold text-slate-600 mb-1">Estado Operacional</label>
                   <select
                     value={newMember.status}
                     onChange={(e) => setNewMember(prev => ({ ...prev, status: e.target.value as "Ativo" | "Inativo" }))}
@@ -569,7 +569,7 @@ export function MultiCondominio({
             {teams.filter(t => t.id_predio === selectedPredioId).length === 0 ? (
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center col-span-full space-y-2">
                 <Users className="h-8 w-8 text-slate-600 mx-auto" />
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Sem equipa registada neste condomínio</h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">Sem equipa registada neste condomínio</h4>
                 <p className="text-[10px] text-slate-600">Adicione prestadores de serviços, técnicos de manutenção ou equipas de limpeza.</p>
               </div>
             ) : (
@@ -586,7 +586,7 @@ export function MultiCondominio({
                         </span>
                         <h4 className="text-sm font-bold text-slate-800 dark:text-white pt-1">{t.nome}</h4>
                       </div>
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold font-mono uppercase ${t.status === "Ativo" ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"}`}>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold font-mono uppercase ${t.status === "Ativo" ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"}`}>
                         {t.status}
                       </span>
                     </div>
@@ -638,7 +638,7 @@ export function MultiCondominio({
           
           {/* SELETOR DE PRÉDIO PARA PERFIL */}
           <div className="bg-slate-100 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Selecionar Prédio para Configurar Perfil</label>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Selecionar Prédio para Configurar Perfil</label>
             <select
               value={selectedPredioId}
               onChange={(e) => setSelectedPredioId(e.target.value)}
@@ -668,7 +668,7 @@ export function MultiCondominio({
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                     <div>
-                      <label className="block text-[9px] font-semibold text-slate-500 mb-1">Companhia de Seguros</label>
+                      <label className="block text-[9px] font-semibold text-slate-600 mb-1">Companhia de Seguros</label>
                       <input
                         type="text"
                         disabled={loggedUser.role !== "ADMIN"}
@@ -678,7 +678,7 @@ export function MultiCondominio({
                       />
                     </div>
                     <div>
-                      <label className="block text-[9px] font-semibold text-slate-500 mb-1">Número de Apólice</label>
+                      <label className="block text-[9px] font-semibold text-slate-600 mb-1">Número de Apólice</label>
                       <input
                         type="text"
                         disabled={loggedUser.role !== "ADMIN"}
@@ -690,7 +690,7 @@ export function MultiCondominio({
                   </div>
 
                   <div>
-                    <label className="block text-[9px] font-semibold text-slate-500 mb-1">Capital Seguro (Edifício Inteiro)</label>
+                    <label className="block text-[9px] font-semibold text-slate-600 mb-1">Capital Seguro (Edifício Inteiro)</label>
                     <input
                       type="text"
                       disabled={loggedUser.role !== "ADMIN"}
@@ -707,7 +707,7 @@ export function MultiCondominio({
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                     <div>
-                      <label className="block text-[9px] font-semibold text-slate-500 mb-1">Empresa Certificada</label>
+                      <label className="block text-[9px] font-semibold text-slate-600 mb-1">Empresa Certificada</label>
                       <input
                         type="text"
                         disabled={loggedUser.role !== "ADMIN"}
@@ -717,7 +717,7 @@ export function MultiCondominio({
                       />
                     </div>
                     <div>
-                      <label className="block text-[9px] font-semibold text-slate-500 mb-1">ID / Código de Contrato</label>
+                      <label className="block text-[9px] font-semibold text-slate-600 mb-1">ID / Código de Contrato</label>
                       <input
                         type="text"
                         disabled={loggedUser.role !== "ADMIN"}
@@ -729,7 +729,7 @@ export function MultiCondominio({
                   </div>
 
                   <div>
-                    <label className="block text-[9px] font-semibold text-slate-500 mb-1">Contacto Telefónico de Piquete de Emergência (24h/7d)</label>
+                    <label className="block text-[9px] font-semibold text-slate-600 mb-1">Contacto Telefónico de Piquete de Emergência (24h/7d)</label>
                     <input
                       type="text"
                       disabled={loggedUser.role !== "ADMIN"}
@@ -754,7 +754,7 @@ export function MultiCondominio({
                 
                 {/* Horário de Ruído */}
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Regulamento Geral de Horário de Ruído *</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Regulamento Geral de Horário de Ruído *</label>
                   <input
                     type="text"
                     disabled={loggedUser.role !== "ADMIN"}
@@ -768,7 +768,7 @@ export function MultiCondominio({
 
                 {/* Gestão de Resíduos e Lixo */}
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Regras de Depósito de Lixo Comum / Recicláveis *</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Regras de Depósito de Lixo Comum / Recicláveis *</label>
                   <textarea
                     disabled={loggedUser.role !== "ADMIN"}
                     rows={2}
@@ -785,7 +785,7 @@ export function MultiCondominio({
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[9px] font-semibold text-slate-500 mb-1">Lotação Ginásio (Pessoas Máx.)</label>
+                      <label className="block text-[9px] font-semibold text-slate-600 mb-1">Lotação Ginásio (Pessoas Máx.)</label>
                       <input
                         type="number"
                         min="1"
@@ -796,7 +796,7 @@ export function MultiCondominio({
                       />
                     </div>
                     <div>
-                      <label className="block text-[9px] font-semibold text-slate-500 mb-1">Lotação Piscina / Spa (Pessoas Máx.)</label>
+                      <label className="block text-[9px] font-semibold text-slate-600 mb-1">Lotação Piscina / Spa (Pessoas Máx.)</label>
                       <input
                         type="number"
                         min="1"

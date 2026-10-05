@@ -702,7 +702,7 @@ export function FichaEmpresaGestora({
                 <span>Gestores de Carteira da Empresa Gestora</span>
               </h3>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
               Registo de gestores, atribuição de prédios, seleção de perfil (Gestor vs. Administrador) e emissão de e-mails de boas-vindas com PDF e password provisória.
             </p>
           </div>
@@ -733,7 +733,7 @@ export function FichaEmpresaGestora({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase font-black tracking-wider text-[10px]">
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 uppercase font-black tracking-wider text-[10px]">
                   <th className="py-3 px-4">Gestor / Colaborador</th>
                   <th className="py-3 px-4">Telemóvel Direto</th>
                   <th className="py-3 px-4">E-mail Direto</th>
@@ -1063,7 +1063,7 @@ export function FichaEmpresaGestora({
                   <h3 className="font-bold text-slate-900 dark:text-white text-base">
                     {editingGestorId ? "Editar Gestor de Carteira" : "Adicionar Novo Gestor à Empresa"}
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
                     Defina os dados, perfil e prédios atribuídos ao colaborador.
                   </p>
                 </div>
@@ -1150,7 +1150,7 @@ export function FichaEmpresaGestora({
                       <span className="font-bold text-xs block text-emerald-700 dark:text-emerald-300">
                         💼 Gestor de Portfólio
                       </span>
-                      <span className="text-[9.5px] text-slate-500 block leading-tight">
+                      <span className="text-[9.5px] text-slate-600 block leading-tight">
                         Gestão operacional, ocorrências, vistorias e atendimento aos residentes.
                       </span>
                     </div>
@@ -1175,7 +1175,7 @@ export function FichaEmpresaGestora({
                       <span className="font-bold text-xs block text-amber-700 dark:text-amber-300">
                         👑 Administrador
                       </span>
-                      <span className="text-[9.5px] text-slate-500 block leading-tight">
+                      <span className="text-[9.5px] text-slate-600 block leading-tight">
                         Acesso total financeiro, atas, contencioso e regras do prédio.
                       </span>
                     </div>

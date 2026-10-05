@@ -444,17 +444,17 @@ export function AssistenteImportacao({ onImportComplete, loggedUser }: Assistent
         <div className="flex items-center space-x-6">
           <div className="flex items-center space-x-2">
             <span className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === "upload" ? "bg-violet-600 text-white" : "bg-violet-100 dark:bg-violet-950 text-violet-600 dark:text-violet-400"}`}>1</span>
-            <span className="text-xs font-semibold text-slate-500">Extração</span>
+            <span className="text-xs font-semibold text-slate-600">Extração</span>
           </div>
           <i className="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
           <div className="flex items-center space-x-2">
             <span className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === "homologation" ? "bg-violet-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-600"}`}>2</span>
-            <span className="text-xs font-semibold text-slate-500">Homologação</span>
+            <span className="text-xs font-semibold text-slate-600">Homologação</span>
           </div>
           <i className="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
           <div className="flex items-center space-x-2">
             <span className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === "success" ? "bg-emerald-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-600"}`}>3</span>
-            <span className="text-xs font-semibold text-slate-500">Pronto</span>
+            <span className="text-xs font-semibold text-slate-600">Pronto</span>
           </div>
         </div>
       </div>
@@ -579,7 +579,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
                 ))}
               </div>
 
-              <div className="bg-violet-50/40 dark:bg-violet-950/10 p-3.5 rounded-lg border border-violet-100/50 dark:border-violet-900/20 text-[11px] text-slate-500 leading-relaxed space-y-2">
+              <div className="bg-violet-50/40 dark:bg-violet-950/10 p-3.5 rounded-lg border border-violet-100/50 dark:border-violet-900/20 text-[11px] text-slate-600 leading-relaxed space-y-2">
                 <span className="font-bold text-violet-700 dark:text-violet-400">Como funciona?</span>
                 <p>1. O motor extrai a estrutura física e as divisões do edifício.</p>
                 <p>2. Associa cada condómino ao seu lote ou fração.</p>
@@ -603,7 +603,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
               </div>
               <div>
                 <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Ecrã de Homologação de Dados (Confirmação Humana)</h4>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-600 mt-0.5">
                   Reveja e ajuste as informações extraídas pela IA antes de guardar na base de dados.
                   {gaps.length > 0 ? (
                     <span className="text-amber-600 dark:text-amber-400 font-bold block mt-1">
@@ -642,7 +642,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
 
               <div className="space-y-3 text-xs">
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">Nome do Prédio</label>
+                  <label className="block text-slate-600 font-bold mb-1">Nome do Prédio</label>
                   <input
                     type="text"
                     value={importedPredio.nome || ""}
@@ -652,7 +652,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
                 </div>
 
                 <div>
-                  <label className="block text-slate-500 font-bold mb-1">Morada Principal</label>
+                  <label className="block text-slate-600 font-bold mb-1">Morada Principal</label>
                   <input
                     type="text"
                     value={importedPredio.morada_linha1 || ""}
@@ -663,7 +663,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-slate-500 font-bold mb-1">Nº Porta/Lote</label>
+                    <label className="block text-slate-600 font-bold mb-1">Nº Porta/Lote</label>
                     <input
                       type="text"
                       value={importedPredio.num_porta || ""}
@@ -672,7 +672,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-500 font-bold mb-1">NIF do Prédio</label>
+                    <label className="block text-slate-600 font-bold mb-1">NIF do Prédio</label>
                     <input
                       type="text"
                       value={importedPredio.nif || ""}
@@ -684,7 +684,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-slate-500 font-bold mb-1">Código Postal</label>
+                    <label className="block text-slate-600 font-bold mb-1">Código Postal</label>
                     <input
                       type="text"
                       value={importedPredio.codigo_postal || ""}
@@ -693,7 +693,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-500 font-bold mb-1">Localidade</label>
+                    <label className="block text-slate-600 font-bold mb-1">Localidade</label>
                     <input
                       type="text"
                       value={importedPredio.localidade || ""}
@@ -705,7 +705,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
 
                 {/* Património */}
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                  <label className="block text-slate-500 font-bold mb-1">Caraterísticas extraídas</label>
+                  <label className="block text-slate-600 font-bold mb-1">Caraterísticas extraídas</label>
                   
                   <div className="flex items-center justify-between py-1 bg-slate-50 dark:bg-slate-950 px-2.5 rounded">
                     <span className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold flex items-center">
@@ -784,7 +784,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-950 text-slate-500 font-semibold border-b border-slate-100 dark:border-slate-800">
+                      <tr className="bg-slate-50 dark:bg-slate-950 text-slate-600 font-semibold border-b border-slate-100 dark:border-slate-800">
                         <th className="p-2 w-16">Fração</th>
                         <th className="p-2 w-20">Piso / Tip.</th>
                         <th className="p-2 w-16">Perm.</th>
@@ -928,7 +928,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
                                     updated[idx].saldo_inicial = valor;
                                     setImportedFracoes(updated);
                                   }}
-                                  className={`w-20 bg-transparent border-b border-transparent text-right focus:border-violet-500 focus:outline-none p-0.5 font-bold ${frac.saldo_inicial < 0 ? "text-rose-600" : frac.saldo_inicial > 0 ? "text-emerald-600" : "text-slate-500"}`}
+                                  className={`w-20 bg-transparent border-b border-transparent text-right focus:border-violet-500 focus:outline-none p-0.5 font-bold ${frac.saldo_inicial < 0 ? "text-rose-600" : frac.saldo_inicial > 0 ? "text-emerald-600" : "text-slate-600"}`}
                                 />
                                 <span className="text-[11px] font-bold text-slate-600 ml-0.5">€</span>
                               </div>
@@ -975,7 +975,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
 
           <div className="space-y-2">
             <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Prédio Importado com Sucesso!</h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-600">
               O condomínio <span className="font-bold text-slate-700 dark:text-slate-300">"{importedPredio?.nome}"</span> foi totalmente integrado na base de dados, incluindo todas as frações, proprietários e saldos iniciais devedores/credores.
             </p>
           </div>
@@ -1036,7 +1036,7 @@ Fração A - Maria Carmo Neto - NIF 231456789 - Quota em atraso: 120€..."
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1">Corpo do Relatório de Lacunas</label>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Corpo do Relatório de Lacunas</label>
                 <textarea
                   value={emailReport.body}
                   readOnly

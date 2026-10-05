@@ -1171,7 +1171,7 @@ export function PortalCondomino({
           {loggedUser.role === "ADMIN" && (
             <button
               onClick={() => setActiveTab(activeTab === "portal" ? "backoffice" : "portal")}
-              className="px-3 py-2 text-[10px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+              className="px-3 py-2 text-[10px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
               title="Alternar vista apenas para simulação do motor"
             >
               <i className="fa-solid fa-arrows-rotate mr-1"></i> Simular Outra Vista ({activeTab === "portal" ? "Backoffice" : "Portal"})
@@ -1317,7 +1317,7 @@ export function PortalCondomino({
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex flex-col col-span-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1">Nome Completo *</label>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase mb-1">Nome Completo *</label>
                       <input
                         type="text"
                         value={editedNome}
@@ -1326,7 +1326,7 @@ export function PortalCondomino({
                       />
                     </div>
                     <div className="flex flex-col">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1">E-mail de Login *</label>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase mb-1">E-mail de Login *</label>
                       <input
                         type="email"
                         value={editedEmail}
@@ -1335,7 +1335,7 @@ export function PortalCondomino({
                       />
                     </div>
                     <div className="flex flex-col">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1">Telemóvel</label>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase mb-1">Telemóvel</label>
                       <input
                         type="text"
                         value={editedTlm}
@@ -1344,7 +1344,7 @@ export function PortalCondomino({
                       />
                     </div>
                     <div className="flex flex-col">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1">NIF *</label>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase mb-1">NIF *</label>
                       <input
                         type="text"
                         value={editedNif}
@@ -1353,7 +1353,7 @@ export function PortalCondomino({
                       />
                     </div>
                     <div className="flex flex-col">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1">Aniversário</label>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase mb-1">Aniversário</label>
                       <input
                         type="date"
                         value={editedBirthday}
@@ -1363,7 +1363,7 @@ export function PortalCondomino({
                     </div>
 
                     <div className="flex flex-col col-span-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1">IBAN de Cobrança</label>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase mb-1">IBAN de Cobrança</label>
                       <input
                         type="text"
                         value={editedIban}
@@ -1374,7 +1374,7 @@ export function PortalCondomino({
                     </div>
 
                     <div className="flex flex-col">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1">Titular da Conta</label>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase mb-1">Titular da Conta</label>
                       <input
                         type="text"
                         value={editedTitular}
@@ -1383,7 +1383,7 @@ export function PortalCondomino({
                       />
                     </div>
                     <div className="flex flex-col">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1">Entidade Bancária</label>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase mb-1">Entidade Bancária</label>
                       <input
                         type="text"
                         value={editedBanco}
@@ -1440,7 +1440,7 @@ export function PortalCondomino({
               <h3 className="text-sm font-bold uppercase text-slate-800 mb-3 flex items-center">
                 <i className="fa-solid fa-key mr-2 text-emerald-600"></i> Recuperação de Password de Acesso
               </h3>
-              <p className="text-xs text-slate-500 mb-4">
+              <p className="text-xs text-slate-600 mb-4">
                 Caso se tenha esquecido da sua senha da PWA, insira o seu e-mail cadastrado para gerar uma senha provisória automática imediata.
               </p>
               <form onSubmit={handlePasswordRecovery} className="flex gap-2">
@@ -1516,7 +1516,7 @@ export function PortalCondomino({
                                 {aviso.estado}
                               </span>
                             </div>
-                            <div className="flex items-center space-x-4 text-[10px] text-slate-500">
+                            <div className="flex items-center space-x-4 text-[10px] text-slate-600">
                               <span>Emissão: {aviso.data}</span>
                               <span className="text-red-500 font-medium">Vencimento: {aviso.vencimento}</span>
                             </div>
@@ -1570,7 +1570,7 @@ export function PortalCondomino({
                               <td className="py-3 font-medium text-slate-800">{comp.dataSubmissao}</td>
                               <td className="py-3 font-bold text-slate-600">Fração {comp.nome_fracao}</td>
                               <td className="py-3 font-bold text-slate-900 font-mono-custom">{comp.valorExtraido.toFixed(2)} €</td>
-                              <td className="py-3 font-mono-custom text-slate-500 text-[10px]">{comp.ibanExtraido}</td>
+                              <td className="py-3 font-mono-custom text-slate-600 text-[10px]">{comp.ibanExtraido}</td>
                               <td className="py-3">
                                 <span
                                   className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
@@ -1726,7 +1726,7 @@ export function PortalCondomino({
                         {m.mensagem}
                       </p>
                       {m.anexoWebP && (
-                        <div className="mt-2 text-[10px] text-slate-500 font-semibold flex items-center">
+                        <div className="mt-2 text-[10px] text-slate-600 font-semibold flex items-center">
                           <i className="fa-solid fa-paperclip mr-1 text-emerald-500"></i> Ficheiro ou fotografia em anexo
                         </div>
                       )}
@@ -1804,7 +1804,7 @@ export function PortalCondomino({
                         {/* WebP Attachment simulation preview */}
                         <div className="h-28 w-28 bg-slate-200 rounded-lg flex flex-col items-center justify-center border border-slate-300 p-2 shrink-0 overflow-hidden text-center relative">
                           <i className="fa-solid fa-file-image text-slate-600 text-3xl mb-1"></i>
-                          <span className="text-[8px] font-bold text-slate-500 uppercase tracking-wider block">COMPROVATIVO</span>
+                          <span className="text-[8px] font-bold text-slate-600 uppercase tracking-wider block">COMPROVATIVO</span>
                           <span className="text-[7px] text-emerald-600 font-semibold block bg-emerald-50 border border-emerald-100 rounded px-1 mt-1">Documento Anexado</span>
                         </div>
 
@@ -1817,17 +1817,17 @@ export function PortalCondomino({
                           </div>
                           
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
-                            <div className="text-slate-500">
+                            <div className="text-slate-600">
                               Valor Extraído por IA:{" "}
                               <strong className="text-slate-800 font-mono-custom">{comp.valorExtraido.toFixed(2)} €</strong>
                             </div>
-                            <div className="text-slate-500">
+                            <div className="text-slate-600">
                               Data Extraída: <strong className="text-slate-800">{comp.dataExtraida}</strong>
                             </div>
-                            <div className="text-slate-500">
+                            <div className="text-slate-600">
                               IBAN Extraído: <strong className="text-slate-800 font-mono-custom text-[10px]">{comp.ibanExtraido}</strong>
                             </div>
-                            <div className="text-slate-500">
+                            <div className="text-slate-600">
                               Referência Detetada: <strong className="text-slate-800">{comp.referenciaExtraida || "N/A (Identificado por IBAN)"}</strong>
                             </div>
                           </div>
@@ -1882,7 +1882,7 @@ export function PortalCondomino({
                     .map((frac) => (
                       <tr key={frac.id_fracao} className="hover:bg-slate-50/50">
                         <td className="py-3 font-bold text-slate-900">Fração {frac.fracao_nome}</td>
-                        <td className="py-3 text-slate-500">{frac.piso}</td>
+                        <td className="py-3 text-slate-600">{frac.piso}</td>
                         <td className="py-3 font-medium text-slate-800">{frac.proprietario.nome}</td>
                         <td className="py-3 font-mono-custom text-slate-600">{frac.proprietario.email}</td>
                         <td className="py-3 font-mono-custom font-bold text-indigo-600">
@@ -1947,7 +1947,7 @@ export function PortalCondomino({
                   </p>
 
                   {msg.anexoWebP && (
-                    <div className="text-[10px] text-slate-500 font-bold flex items-center">
+                    <div className="text-[10px] text-slate-600 font-bold flex items-center">
                       <i className="fa-solid fa-image mr-1 text-emerald-500"></i> Anexo WebP Detetado
                     </div>
                   )}
@@ -2064,7 +2064,7 @@ export function PortalCondomino({
                 {/* WhatsApp Chat Body */}
                 <div className="flex-grow p-4 overflow-y-auto space-y-3 bg-[#EFEAE2] dark:bg-[#0b141a]">
                   <div className="text-center my-1">
-                    <span className="bg-white/80 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold px-3 py-1 rounded-full shadow-xs uppercase tracking-wider">
+                    <span className="bg-white/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-bold px-3 py-1 rounded-full shadow-xs uppercase tracking-wider">
                       Canal Oficial de Mensagens & Suporte
                     </span>
                   </div>
@@ -2075,7 +2075,7 @@ export function PortalCondomino({
                         <i className="fa-regular fa-comment-dots text-xl"></i>
                       </div>
                       <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Nenhuma mensagem trocada até ao momento</p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400 max-w-xs mx-auto">
                         Escreva abaixo uma mensagem ou grave uma nota de voz para contactar diretamente a administração do condomínio.
                       </p>
                     </div>
@@ -2103,7 +2103,7 @@ export function PortalCondomino({
                             </a>
                           )}
                           <p className="text-xs leading-relaxed whitespace-pre-wrap">{m.texto}</p>
-                          <div className={`flex items-center ${m.autor === "condomino" ? "justify-end" : "justify-between"} space-x-1 text-[9.5px] text-slate-500 dark:text-slate-400 font-mono-custom`}>
+                          <div className={`flex items-center ${m.autor === "condomino" ? "justify-end" : "justify-between"} space-x-1 text-[9.5px] text-slate-600 dark:text-slate-400 font-mono-custom`}>
                             <span>{m.created_at ? new Date(m.created_at).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}</span>
                             {m.autor === "condomino" && <CheckCheck className="h-3.5 w-3.5 text-blue-500 inline ml-1" />}
                           </div>
@@ -2154,7 +2154,7 @@ export function PortalCondomino({
                 {isEmojiPickerOpen && (
                   <div className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-2.5 shadow-2xl z-20 animate-fade-in">
                     <div className="flex justify-between items-center pb-1.5 mb-1.5 border-b border-slate-100 dark:border-slate-800">
-                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Selecionar Emoji</span>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400">Selecionar Emoji</span>
                       <button 
                         type="button" 
                         onClick={() => setIsEmojiPickerOpen(false)}
@@ -2185,7 +2185,7 @@ export function PortalCondomino({
                 {isAttachmentMenuOpen && (
                   <div className="absolute bottom-16 left-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-2xl shadow-2xl z-30 animate-fade-in space-y-1.5 min-w-[220px]">
                     <div className="flex justify-between items-center pb-1 mb-1 border-b border-slate-100 dark:border-slate-800 px-1">
-                      <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Anexar Ficheiro</span>
+                      <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400">Anexar Ficheiro</span>
                       <button 
                         type="button" 
                         onClick={() => setIsAttachmentMenuOpen(false)}
@@ -2284,7 +2284,7 @@ export function PortalCondomino({
                         <button
                           type="button"
                           onClick={handleCancelVoiceRecording}
-                          className="px-3 py-1 text-slate-500 hover:text-slate-700 text-xs font-semibold cursor-pointer"
+                          className="px-3 py-1 text-slate-600 hover:text-slate-700 text-xs font-semibold cursor-pointer"
                         >
                           Cancelar
                         </button>
@@ -2309,7 +2309,7 @@ export function PortalCondomino({
                         className={`p-2.5 rounded-full transition-colors cursor-pointer shrink-0 ${
                           isAttachmentMenuOpen || newMsgAnexo || msgDocAttachment
                             ? "bg-emerald-600 text-white"
-                            : "text-slate-500 hover:text-emerald-700 hover:bg-slate-200 dark:hover:bg-slate-700"
+                            : "text-slate-600 hover:text-emerald-700 hover:bg-slate-200 dark:hover:bg-slate-700"
                         }`}
                         title="Anexar documento, fotografia ou aceder à câmara (Clip)"
                       >
@@ -2346,7 +2346,7 @@ export function PortalCondomino({
                       <button
                         type="button"
                         onClick={handleToggleVoiceRecording}
-                        className="p-2.5 text-slate-500 hover:text-emerald-700 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer shrink-0"
+                        className="p-2.5 text-slate-600 hover:text-emerald-700 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer shrink-0"
                         title="Gravar Mensagem de Áudio (Nota de Voz)"
                       >
                         <Mic className="h-4 w-4" />
@@ -2398,7 +2398,7 @@ export function PortalCondomino({
 
             <form onSubmit={handleSendPaymentProof} className="p-6 space-y-4">
               <div className="flex flex-col">
-                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1">Selecionar Imagem do Comprovativo</label>
+                <label className="text-[10px] font-bold text-slate-600 uppercase mb-1">Selecionar Imagem do Comprovativo</label>
                 <div
                   className="border-2 border-dashed border-slate-200 rounded-xl p-5 text-center cursor-pointer hover:bg-slate-50 transition-colors"
                   onClick={() => payFileRef.current?.click()}
@@ -2461,7 +2461,7 @@ export function PortalCondomino({
                   </div>
 
                   <div className="flex flex-col">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1">
+                    <label className="text-[10px] font-bold text-slate-600 uppercase mb-1">
                       Corrigir ou Adicionar Descrição (Condómino)
                     </label>
                     <input
@@ -2539,7 +2539,7 @@ export function PortalCondomino({
                     alt="CondoManager AI" 
                     className="h-10 mx-auto object-contain drop-shadow-xs" 
                   />
-                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Comunicação Oficial de Boas-Vindas</p>
+                  <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-1">Comunicação Oficial de Boas-Vindas</p>
                 </div>
 
                 <div className="space-y-1 text-slate-700 font-sans">
@@ -2582,7 +2582,7 @@ export function PortalCondomino({
                     <p><strong>Link:</strong> <a href="https://bentorodrigues2.condomanagerai.com" target="_blank" rel="noreferrer" className="text-emerald-600 underline font-semibold">https://bentorodrigues2.condomanagerai.com</a></p>
                     <p><strong>Utilizador:</strong> {welcomeMailModal.fracao.proprietario.email}</p>
                     <p className="text-indigo-600 font-bold"><strong>Password Provisória:</strong> {welcomeMailModal.pass}</p>
-                    <p className="text-[10px] text-slate-500 font-sans italic pt-1">(Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no seu primeiro acesso.)</p>
+                    <p className="text-[10px] text-slate-600 font-sans italic pt-1">(Por razões de segurança, ser-lhe-á solicitado que altere esta palavra-passe no seu primeiro acesso.)</p>
                   </div>
 
                   <p>Qualquer dúvida adicional, estou ao dispor.</p>
@@ -2660,7 +2660,7 @@ export function PortalCondomino({
                 <i className="fa-solid fa-circle-check mr-1.5 text-base"></i> Biometria Reconhecida!
               </div>
             ) : (
-              <span className="text-slate-500 text-[10px]">Mantenha o dedo no leitor ou olhe para a câmara</span>
+              <span className="text-slate-600 text-[10px]">Mantenha o dedo no leitor ou olhe para a câmara</span>
             )}
           </div>
         </div>

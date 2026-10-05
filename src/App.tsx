@@ -927,7 +927,7 @@ export default function App() {
                 </div>
               </div>
               <p className="text-[10px] text-slate-600 mt-1 px-1 flex items-center">
-                <i className="fa-solid fa-location-dot text-slate-500 mr-1 shrink-0"></i>
+                <i className="fa-solid fa-location-dot text-slate-600 mr-1 shrink-0"></i>
                 <span className="truncate">
                   {predioAtivo?.id_predio !== "predio-temp" && predioAtivo?.morada_linha1
                     ? `${predioAtivo.morada_linha1} ${predioAtivo.num_porta || ""}, ${predioAtivo.localidade || ""}`
@@ -1381,7 +1381,7 @@ export default function App() {
             {openMenuFinanceiro && (
               <div className="pl-6 space-y-1 border-l-2 border-emerald-500/40 ml-3.5 my-1">
                 {/* --- CONFIGURAÇÃO --- */}
-                <span className="block px-3 pt-1.5 pb-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500">Configuração</span>
+                <span className="block px-3 pt-1.5 pb-0.5 text-[9px] font-black uppercase tracking-widest text-slate-600">Configuração</span>
                 {["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role) && (
                   <button
                     id="submenu-financeiro-arranque"
@@ -1507,7 +1507,7 @@ export default function App() {
                 </button>
 
                 {/* --- MOVIMENTOS --- */}
-                <span className="block px-3 pt-2.5 pb-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500">Movimentos</span>
+                <span className="block px-3 pt-2.5 pb-0.5 text-[9px] font-black uppercase tracking-widest text-slate-600">Movimentos</span>
                 <button
                   onClick={() => {
                     setActiveSection("movimentos");
@@ -1571,7 +1571,7 @@ export default function App() {
                 </button>
 
                 {/* --- FUNDO DE RESERVA --- */}
-                <span className="block px-3 pt-2.5 pb-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500">Fundo de Reserva</span>
+                <span className="block px-3 pt-2.5 pb-0.5 text-[9px] font-black uppercase tracking-widest text-slate-600">Fundo de Reserva</span>
                 {/* Antes só se chegava aqui por um separador de "IA Avançada"
                     que continha uma versão duplicada com dados inventados —
                     ver commit anterior. Esta é a ferramenta real, ligada ao
@@ -1593,7 +1593,7 @@ export default function App() {
                 </button>
 
                 {/* --- EXTRATOS --- */}
-                <span className="block px-3 pt-2.5 pb-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500">Extratos</span>
+                <span className="block px-3 pt-2.5 pb-0.5 text-[9px] font-black uppercase tracking-widest text-slate-600">Extratos</span>
                 <button
                   onClick={() => {
                     setActiveSection("financeiro_extratos");
@@ -2529,7 +2529,7 @@ export default function App() {
         <div className="p-3 border-t border-slate-800 bg-slate-950/40 space-y-2">
           {!sidebarCollapsed && (
             <div className="flex items-center justify-between">
-              <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Definições</span>
+              <span className="text-[9px] uppercase font-bold text-slate-600 tracking-wider">Definições</span>
               <div className="flex items-center space-x-1">
                 <button
                   onClick={() => setTheme(prev => prev === "light" ? "dark" : "light")}
@@ -2679,7 +2679,7 @@ export default function App() {
                 {activeSection === "manutencao_concluidas" && "Histórico de Manutenções Concluídas"}
                 {activeSection === "manutencao_arquivo" && "Arquivo Documental Registado"}
               </h2>
-              <p className={`text-[10px] sm:text-xs transition-colors duration-300 truncate ${theme === "dark" ? "text-slate-600" : "text-slate-500"}`}>
+              <p className={`text-[10px] sm:text-xs transition-colors duration-300 truncate ${theme === "dark" ? "text-slate-600" : "text-slate-600"}`}>
                 Isolamento Multi-Prédio: {predioAtivo?.id_predio !== "predio-temp" && (predioAtivo?.nome || predioAtivo?.morada_linha1) ? (predioAtivo.nome || `${predioAtivo.morada_linha1} ${predioAtivo.num_porta || ""}`) : "Base Limpa (Aguardando Dados)"}
               </p>
             </div>

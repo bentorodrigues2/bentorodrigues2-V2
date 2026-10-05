@@ -308,7 +308,7 @@ export function DashboardKPIs({
           <p className="text-xs text-slate-600">Análise financeira, jurídica e de operações do Edifício {predio.nome || "Exemplo"}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center space-x-2 font-mono-custom text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3.5 py-1.5 w-fit">
+          <div className="flex items-center space-x-2 font-mono-custom text-xs text-slate-600 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3.5 py-1.5 w-fit">
             <Clock size={13} className="text-slate-600" />
             <span>Data de Referência: <strong>{anchorDate.toLocaleDateString("pt-PT")}</strong></span>
           </div>
@@ -317,7 +317,7 @@ export function DashboardKPIs({
             onClick={recarregarTudo}
             disabled={aAtualizar}
             title="Atualizar agora"
-            className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-60 cursor-pointer"
+            className="flex items-center gap-1.5 text-xs text-slate-600 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-60 cursor-pointer"
           >
             <RefreshCw size={12} className={aAtualizar ? "animate-spin" : ""} />
             <span>{aAtualizar ? "A atualizar…" : `Atualizado às ${ultimaAtualizacao.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`}</span>
@@ -476,7 +476,7 @@ export function DashboardKPIs({
                   {cleaningEfficiencyScore === null ? "—" : `${cleaningEfficiencyScore}%`}
                 </span>
                 {cleaningEfficiencyScore === null ? (
-                  <span className="bg-slate-100 text-slate-500 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">Sem Dados</span>
+                  <span className="bg-slate-100 text-slate-600 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">Sem Dados</span>
                 ) : (
                   <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${cleaningEfficiencyScore >= 90 ? "bg-emerald-50 text-emerald-700" : cleaningEfficiencyScore >= 70 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>
                     {cleaningEfficiencyScore >= 90 ? "Excelente" : cleaningEfficiencyScore >= 70 ? "Aceitável" : "A Rever"}
@@ -493,7 +493,7 @@ export function DashboardKPIs({
                   {vistoriasConformidade === null ? "—" : `${vistoriasConformidade}%`}
                 </span>
                 {vistoriasConformidade === null ? (
-                  <span className="bg-slate-100 text-slate-500 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">Sem Equipamentos</span>
+                  <span className="bg-slate-100 text-slate-600 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">Sem Equipamentos</span>
                 ) : (
                   <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${vistoriasConformidade === 100 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
                     {vistoriasConformidade === 100 ? "Conforme" : "A Regularizar"}
@@ -577,7 +577,7 @@ export function DashboardKPIs({
                       className="w-2 h-2 rounded-full shrink-0"
                       style={{ backgroundColor: COLORS_PIE[idx % COLORS_PIE.length] }}
                     ></span>
-                    <span className="text-slate-500 font-medium truncate">{item.name}</span>
+                    <span className="text-slate-600 font-medium truncate">{item.name}</span>
                   </div>
                   <span className="font-bold font-mono-custom text-slate-700 dark:text-slate-300">
                     {item.value.toLocaleString("pt-PT")} €

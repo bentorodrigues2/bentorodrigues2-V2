@@ -515,7 +515,7 @@ export function AgendaManutencao({ predio, loggedUser, fornecedores = [] }: Agen
                 <ShieldCheck className="h-6 w-6" />
               </div>
               <h4 className="text-sm font-bold text-slate-800 dark:text-white">Sem Planos ou Vistorias Registadas</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md mx-auto">
                 Não existem itens de inspeção obrigatória registados para este filtro no edifício. Utilize o botão &quot;Adicionar Manutenção&quot; ou configure os equipamentos técnicos (elevadores, extintores, condutas).
               </p>
             </div>
@@ -586,22 +586,22 @@ export function AgendaManutencao({ predio, loggedUser, fornecedores = [] }: Agen
 
                       <div className="border-t border-slate-200/60 dark:border-slate-800/60 pt-2 flex flex-col gap-1 text-[11px]">
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-500">Quantidade:</span>
+                          <span className="text-slate-600">Quantidade:</span>
                           <strong className="text-slate-800 dark:text-slate-200 font-semibold">{item.quantidade || 1}</strong>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-500">Entidade Responsável:</span>
+                          <span className="text-slate-600">Entidade Responsável:</span>
                           <strong className="text-slate-800 dark:text-slate-200 font-semibold">{item.entidade_responsavel}</strong>
                         </div>
                         {item.contacto_entidade && (
                           <div className="flex justify-between items-center">
-                            <span className="text-slate-500">Contacto / Marcação:</span>
+                            <span className="text-slate-600">Contacto / Marcação:</span>
                             <span className="font-mono text-emerald-600 font-bold">{item.contacto_entidade}</span>
                           </div>
                         )}
                         {item.num_certificado_relatorio && (
                           <div className="flex justify-between items-center">
-                            <span className="text-slate-500">Nº Certificado / DGEG:</span>
+                            <span className="text-slate-600">Nº Certificado / DGEG:</span>
                             <span className="font-mono text-slate-700 dark:text-slate-300 font-bold bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-800">
                               {item.num_certificado_relatorio}
                             </span>
@@ -924,7 +924,7 @@ export function AgendaManutencao({ predio, loggedUser, fornecedores = [] }: Agen
                   onChange={e => { setNovoItemEntidade(e.target.value); setNovoItemIdFornecedor(""); }}
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:border-emerald-500"
                 />
-                <p className="text-[10px] text-slate-500">Escolha um fornecedor já registado para "Pedir Proposta" poder enviar um pedido por email a sério — caso contrário fica só como texto informativo.</p>
+                <p className="text-[10px] text-slate-600">Escolha um fornecedor já registado para "Pedir Proposta" poder enviar um pedido por email a sério — caso contrário fica só como texto informativo.</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -957,13 +957,13 @@ export function AgendaManutencao({ predio, loggedUser, fornecedores = [] }: Agen
                   onChange={e => setNovoItemProximaData(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl font-mono text-xs focus:border-emerald-500"
                 />
-                <p className="text-[10px] text-slate-500">Deixe em branco para calcular automaticamente (Última Inspeção + Periodicidade).</p>
+                <p className="text-[10px] text-slate-600">Deixe em branco para calcular automaticamente (Última Inspeção + Periodicidade).</p>
               </div>
 
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
                   <span>Fotos do Equipamento/Local</span>
-                  <span className="text-[10px] font-mono text-slate-500">{novoItemFotos.length}/{MAX_FOTOS_ITEM}</span>
+                  <span className="text-[10px] font-mono text-slate-600">{novoItemFotos.length}/{MAX_FOTOS_ITEM}</span>
                 </label>
                 <div className="grid grid-cols-4 gap-2">
                   {novoItemFotos.map((foto, idx) => (

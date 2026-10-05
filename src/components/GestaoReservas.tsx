@@ -360,7 +360,7 @@ export function GestaoReservas({
             <i className="fa-solid fa-hotel text-emerald-500 mr-2.5"></i>
             Gestão de Espaços Comuns & Reservas (Piscina, Ginásio, Spa, BBQ)
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
             Gestão inteligente de agendamentos, regras regulamentares de segurança, aprovação prévia de eventos e histórico do condomínio.
           </p>
         </div>
@@ -429,7 +429,7 @@ export function GestaoReservas({
                 <i className="fa-solid fa-sliders text-emerald-500 mr-2"></i>
                 Capacidades de Segurança
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                 Configure os limites máximos de lotação simultânea autorizada por razões sanitárias e de segurança.
               </p>
 
@@ -479,7 +479,7 @@ export function GestaoReservas({
                 <i className="fa-solid fa-scale-balanced text-emerald-500 mr-2"></i>
                 Regulamento Específico de Utilização
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                 Configure os parâmetros que as reservas devem obedecer para garantir uma coabitação saudável no edifício.
               </p>
 
@@ -571,7 +571,7 @@ export function GestaoReservas({
 
               <form onSubmit={submeterReserva} className="space-y-4">
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Espaço Comum Pretendido *</label>
+                  <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Espaço Comum Pretendido *</label>
                   <select 
                     value={areaComum} 
                     onChange={e => {
@@ -587,7 +587,7 @@ export function GestaoReservas({
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Fração Solicitante *</label>
+                  <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Fração Solicitante *</label>
                   <select 
                     value={idFracao} 
                     onChange={e => {
@@ -605,7 +605,7 @@ export function GestaoReservas({
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Data da Reserva *</label>
+                  <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Data da Reserva *</label>
                   <input 
                     type="date" 
                     value={data} 
@@ -616,7 +616,7 @@ export function GestaoReservas({
 
                 <div className="grid grid-cols-2 gap-2">
                   <div className="flex flex-col">
-                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Hora de Início *</label>
+                    <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Hora de Início *</label>
                     <input 
                       type="time" 
                       value={horaInicio} 
@@ -625,7 +625,7 @@ export function GestaoReservas({
                     />
                   </div>
                   <div className="flex flex-col">
-                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Hora de Fim *</label>
+                    <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Hora de Fim *</label>
                     <input 
                       type="time" 
                       value={horaFim} 
@@ -636,7 +636,7 @@ export function GestaoReservas({
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Número de Pessoas em simultâneo *</label>
+                  <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Número de Pessoas em simultâneo *</label>
                   <input 
                     type="number" 
                     min="1" 
@@ -648,7 +648,7 @@ export function GestaoReservas({
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Responsável / Condómino</label>
+                  <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Responsável / Condómino</label>
                   <input 
                     type="text" 
                     placeholder="Nome do utente"
@@ -660,7 +660,7 @@ export function GestaoReservas({
 
                 {/* SERVICES MULTI-CHOICE */}
                 <div className="flex flex-col space-y-2">
-                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Equipamentos / Serviços Extras (Escolha Múltipla)</label>
+                  <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">Equipamentos / Serviços Extras (Escolha Múltipla)</label>
                   <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-lg space-y-2">
                     {(AMENITIES_BY_AREA[areaComum] || []).map(item => {
                       const isChecked = servicosEscolhidos.includes(item);
@@ -687,7 +687,7 @@ export function GestaoReservas({
 
                 {/* RULES VISUAL DISPLAY CARD */}
                 <div className="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg space-y-2">
-                  <h4 className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Regras de Utilização ({areaComum}):</h4>
+                  <h4 className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">Regras de Utilização ({areaComum}):</h4>
                   <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-600 dark:text-slate-300">
                     <div className="flex items-center space-x-1">
                       <span className="font-bold text-slate-600">Lotação:</span>
@@ -757,7 +757,7 @@ export function GestaoReservas({
                 <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden">
                   <table className="w-full text-xs text-left border-collapse">
                     <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
+                      <tr className="bg-slate-50 dark:bg-slate-900/60 text-slate-600 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
                         <th className="p-3">Espaço Comum</th>
                         <th className="p-3">Data & Horário</th>
                         <th className="p-3">Fração / Responsável</th>
@@ -920,7 +920,7 @@ export function GestaoReservas({
         <div className="bg-white dark:bg-[#0f172a] p-6 rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider flex items-center">
-              <i className="fa-solid fa-history text-slate-500 mr-2"></i>
+              <i className="fa-solid fa-history text-slate-600 mr-2"></i>
               Histórico Geral de Utilizações Passadas & Canceladas
             </h3>
             <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-full font-mono-custom font-bold">
@@ -936,7 +936,7 @@ export function GestaoReservas({
             <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden">
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
+                  <tr className="bg-slate-50 dark:bg-slate-900/60 text-slate-600 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
                     <th className="p-3">Espaço Comum</th>
                     <th className="p-3">Data & Horário</th>
                     <th className="p-3">Fração / Responsável</th>

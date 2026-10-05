@@ -1285,7 +1285,7 @@ export function PWASimulator({
                   className={`p-1.5 rounded-lg border transition-colors cursor-pointer text-xs ${
                     pwaSoundEnabled 
                       ? "bg-emerald-950/40 border-emerald-800/80 text-emerald-400 hover:bg-emerald-950/60" 
-                      : "bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-600"
+                      : "bg-slate-900 border-slate-800 text-slate-600 hover:text-slate-600"
                   }`}
                   title={pwaSoundEnabled ? "Som Ativado" : "Modo Silencioso"}
                 >
@@ -1300,7 +1300,7 @@ export function PWASimulator({
                   className={`p-1.5 rounded-lg border transition-colors cursor-pointer text-xs ${
                     pwaVibrateEnabled 
                       ? "bg-indigo-950/40 border-indigo-800/80 text-indigo-400 hover:bg-indigo-950/60" 
-                      : "bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-600"
+                      : "bg-slate-900 border-slate-800 text-slate-600 hover:text-slate-600"
                   }`}
                   title={pwaVibrateEnabled ? "Vibração Ativada" : "Sem Vibração"}
                 >
@@ -1356,7 +1356,7 @@ export function PWASimulator({
                       <Brain className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                       {loggedUser.nome}
                     </h3>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Selecione qualquer painel para abrir o respetivo menu popup.</p>
+                    <p className="text-[10px] text-slate-600 dark:text-slate-400">Selecione qualquer painel para abrir o respetivo menu popup.</p>
                   </div>
 
                   {/* ADMIN / EMPRESA_GESTORA / GESTOR — mesmo Painel de Controlo do
@@ -1826,7 +1826,7 @@ export function PWASimulator({
                           <div key={o.id_ocorr} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-900 p-3 rounded-lg text-[11px] shadow-sm">
                             <span className="font-bold text-indigo-600 block">{o.id_ocorr}</span>
                             <p className="text-slate-600 text-[10px]">{o.descricao}</p>
-                            <span className="text-[9px] bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 rounded font-bold text-slate-500">{o.estado}</span>
+                            <span className="text-[9px] bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 rounded font-bold text-slate-600">{o.estado}</span>
                           </div>
                         ))}
                       </div>
@@ -2008,7 +2008,7 @@ export function PWASimulator({
                     <XCircle className="h-10 w-10" />
                   </div>
                   <h4 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider">PWA Não Aplicável</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed px-2">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed px-2">
                     Os Fornecedores e Prestadores de Serviços dispõem de acesso exclusivamente através do <strong>Portal Web de Orçamentos</strong> no computador.
                   </p>
                   <p className="text-[10px] text-slate-600">
@@ -2025,7 +2025,7 @@ export function PWASimulator({
                       <Scale className="h-3.5 w-3.5" /> Contencioso Jurídico Mobile
                     </span>
                     <h5 className="text-xs font-bold text-slate-800 dark:text-white">Estado das Cobranças Extrajudiciais</h5>
-                    <p className="text-[10px] text-slate-500 leading-normal">
+                    <p className="text-[10px] text-slate-600 leading-normal">
                       Acompanhamento em tempo real de notificações enviadas e prazos de resposta de condóminos em mora.
                     </p>
                   </div>
@@ -2039,7 +2039,7 @@ export function PWASimulator({
                           <span>Fração H (3º Direito)</span>
                           <span>Em Contencioso</span>
                         </div>
-                        <p className="text-slate-500 dark:text-slate-400 mt-1">Dívida acumulada de quotas: 1,420.00€</p>
+                        <p className="text-slate-600 dark:text-slate-400 mt-1">Dívida acumulada de quotas: 1,420.00€</p>
                         <p className="text-[9px] text-slate-600 mt-0.5">Última ação: Carta de Interpelação Registada AR enviada.</p>
                       </div>
 
@@ -2048,7 +2048,7 @@ export function PWASimulator({
                           <span>Fração F (2º Esquerdo)</span>
                           <span>Fase Extrajudicial</span>
                         </div>
-                        <p className="text-slate-500 dark:text-slate-400 mt-1">Dívida de Quotas Extraordinárias: 450.00€</p>
+                        <p className="text-slate-600 dark:text-slate-400 mt-1">Dívida de Quotas Extraordinárias: 450.00€</p>
                         <p className="text-[9px] text-slate-600 mt-0.5">Última ação: Acordo de pagamento proposto via e-mail.</p>
                       </div>
                     </div>
@@ -2074,7 +2074,7 @@ export function PWASimulator({
                       <Fingerprint className="h-3.5 w-3.5" /> Auditoria Geral Independente
                     </span>
                     <h5 className="text-xs font-bold text-slate-800 dark:text-white">Relatório de Rastreabilidade total</h5>
-                    <p className="text-[10px] text-slate-500 leading-normal">
+                    <p className="text-[10px] text-slate-600 leading-normal">
                       Acesso estritamente read-only a todas as transações, registos de conciliação bancária, despesas emitidas e uploads de documentos.
                     </p>
                   </div>
@@ -2106,14 +2106,14 @@ export function PWASimulator({
                       <CreditCard className="h-3.5 w-3.5" /> Contabilidade do Condomínio
                     </span>
                     <h5 className="text-xs font-bold text-slate-800 dark:text-white">Estado dos Lançamentos & Saldos</h5>
-                    <p className="text-[10px] text-slate-500 leading-normal">
+                    <p className="text-[10px] text-slate-600 leading-normal">
                       Supervisão de balancetes, extratos, faturas recebidas e classificação fiscal das contas de despesas e receitas.
                     </p>
                   </div>
 
                   {/* Bank snapshot */}
                   <div className="bg-slate-50 dark:bg-slate-950 border rounded-xl p-3 text-[10px] space-y-1.5">
-                    <span className="font-bold text-slate-500 uppercase tracking-wider block">Contas Bancárias Ativas</span>
+                    <span className="font-bold text-slate-600 uppercase tracking-wider block">Contas Bancárias Ativas</span>
                     <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-2 rounded border border-slate-100 dark:border-slate-805">
                       <div>
                         <span className="font-bold text-slate-700 dark:text-slate-300 block">Conta Geral Novo Banco</span>
@@ -2164,7 +2164,7 @@ export function PWASimulator({
                             <span className="font-bold text-slate-700 dark:text-slate-300">{m.sender}</span>
                             <span>{m.date}</span>
                           </div>
-                          <p className="text-slate-500 dark:text-slate-400 italic leading-tight">"{m.text}"</p>
+                          <p className="text-slate-600 dark:text-slate-400 italic leading-tight">"{m.text}"</p>
                         </div>
                       ))}
                     </div>
@@ -2205,7 +2205,7 @@ export function PWASimulator({
                                 <span className="text-slate-800 dark:text-slate-200">{n.title}</span>
                                 <span className="text-slate-600 text-[8px]">{n.date}</span>
                               </div>
-                              <p className="text-slate-500 dark:text-slate-400 font-medium mt-0.5">{n.desc}</p>
+                              <p className="text-slate-600 dark:text-slate-400 font-medium mt-0.5">{n.desc}</p>
                             </div>
 
                             <div className="flex justify-end items-center gap-1.5 pt-1.5 border-t border-slate-200/40 dark:border-slate-800/40">
@@ -2260,7 +2260,7 @@ export function PWASimulator({
                   {loggedUser.role === "ADMIN" || loggedUser.role === "EMPRESA_GESTORA" || loggedUser.role === "GESTOR" ? (
                     <button 
                       onClick={() => setActiveTab("documents")} 
-                      className={`flex flex-col items-center space-y-0.5 cursor-pointer flex-1 transition-all ${activeTab === "documents" ? "text-emerald-500 font-extrabold scale-105" : "text-slate-500 dark:text-slate-400 hover:text-slate-200"}`}
+                      className={`flex flex-col items-center space-y-0.5 cursor-pointer flex-1 transition-all ${activeTab === "documents" ? "text-emerald-500 font-extrabold scale-105" : "text-slate-600 dark:text-slate-400 hover:text-slate-200"}`}
                     >
                       <img src="/marca/16-documentos-relatorios.png" alt="Arquivos" className="h-4.5 w-4.5 object-contain" />
                       <span className="text-[8.5px]">Arquivos</span>
@@ -2270,7 +2270,7 @@ export function PWASimulator({
                   {/* 3. Módulos (Marca 10-icone-negativo.png) */}
                   <button 
                     onClick={() => setActiveTab("home")} 
-                    className={`flex flex-col items-center space-y-0.5 cursor-pointer flex-1 transition-all ${activeTab === "home" ? "text-emerald-500 font-extrabold scale-105" : "text-slate-500 dark:text-slate-400 hover:text-slate-200"}`}
+                    className={`flex flex-col items-center space-y-0.5 cursor-pointer flex-1 transition-all ${activeTab === "home" ? "text-emerald-500 font-extrabold scale-105" : "text-slate-600 dark:text-slate-400 hover:text-slate-200"}`}
                   >
                     <img src="/marca/10-icone-negativo.png" alt="Módulos" className="h-4.5 w-4.5 object-contain" />
                     <span className="text-[8.5px]">Módulos</span>
@@ -2279,7 +2279,7 @@ export function PWASimulator({
                   {/* 4. Avarias (Vermelho - 29-avaria.png) */}
                   <button 
                     onClick={() => setActiveTab("ocorrencias")} 
-                    className={`flex flex-col items-center space-y-0.5 cursor-pointer flex-1 transition-all ${activeTab === "ocorrencias" ? "text-red-500 font-extrabold scale-105" : "text-slate-500 dark:text-slate-400 hover:text-slate-200"}`}
+                    className={`flex flex-col items-center space-y-0.5 cursor-pointer flex-1 transition-all ${activeTab === "ocorrencias" ? "text-red-500 font-extrabold scale-105" : "text-slate-600 dark:text-slate-400 hover:text-slate-200"}`}
                   >
                     <img src="/modulos/29-avaria.png" alt="" className="h-4.5 w-4.5 object-contain" />
                     <span className="text-red-500 font-black text-[8.5px]">Avarias</span>
@@ -2288,7 +2288,7 @@ export function PWASimulator({
                   {/* 5. Obras (Laranja - 41-obra.png) */}
                   <button 
                     onClick={() => setActiveTab("obras")} 
-                    className={`flex flex-col items-center space-y-0.5 cursor-pointer flex-1 transition-all ${activeTab === "obras" ? "text-orange-500 font-extrabold scale-105" : "text-slate-500 dark:text-slate-400 hover:text-slate-200"}`}
+                    className={`flex flex-col items-center space-y-0.5 cursor-pointer flex-1 transition-all ${activeTab === "obras" ? "text-orange-500 font-extrabold scale-105" : "text-slate-600 dark:text-slate-400 hover:text-slate-200"}`}
                   >
                     <img src="/modulos/41-obra.png" alt="" className="h-4.5 w-4.5 object-contain" />
                     <span className="text-orange-500 font-black text-[8.5px]">Obras</span>
@@ -2322,7 +2322,7 @@ export function PWASimulator({
                     </span>
                     <button
                       onClick={() => setMostrarMaisModulosPopup(false)}
-                      className="text-slate-500 hover:text-slate-800 dark:text-white dark:hover:text-emerald-400 font-bold text-xs cursor-pointer px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 transition-colors"
+                      className="text-slate-600 hover:text-slate-800 dark:text-white dark:hover:text-emerald-400 font-bold text-xs cursor-pointer px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 transition-colors"
                     >
                       ✕
                     </button>
@@ -2342,7 +2342,7 @@ export function PWASimulator({
                           <img src={card.image} alt={card.label} className="h-7 w-7 object-contain shrink-0 rounded-lg" />
                           <span className="flex-1 min-w-0">
                             <span className="block text-sm font-black text-slate-800 dark:text-white truncate">{card.label}</span>
-                            <span className="block text-[11px] text-slate-500 dark:text-slate-400 truncate">{card.desc}</span>
+                            <span className="block text-[11px] text-slate-600 dark:text-slate-400 truncate">{card.desc}</span>
                           </span>
                           {notifCount > 0 && (
                             <span className="flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-black shrink-0">
@@ -2409,7 +2409,7 @@ export function PWASimulator({
                             setSelectedPwaSubmenu(null);
                             setActivePwaSubMenuDetails(null);
                           }}
-                          className="text-slate-500 hover:text-slate-800 dark:text-white dark:hover:text-emerald-400 font-bold text-xs cursor-pointer px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 transition-colors"
+                          className="text-slate-600 hover:text-slate-800 dark:text-white dark:hover:text-emerald-400 font-bold text-xs cursor-pointer px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 transition-colors"
                         >
                           ✕
                         </button>
@@ -2417,7 +2417,7 @@ export function PWASimulator({
 
                       {/* Content */}
                       <div className="p-4 overflow-y-auto space-y-3.5 text-xs text-slate-700 dark:text-white">
-                        <p className="text-[10px] text-slate-500 dark:text-white font-medium">
+                        <p className="text-[10px] text-slate-600 dark:text-white font-medium">
                           Selecione o sub-menu correspondente para abrir em janela pop-up:
                         </p>
 
@@ -2874,7 +2874,7 @@ export function PWASimulator({
                             setActivePwaSubMenuDetails(null);
                             setSelectedPwaSubmenu(null);
                           }}
-                          className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white font-bold text-xs cursor-pointer px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 transition-colors"
+                          className="text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white font-bold text-xs cursor-pointer px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 transition-colors"
                         >
                           ✕
                         </button>

@@ -1894,7 +1894,7 @@ export default function PWACondominoView({
                   className={`px-2.5 py-1 shrink-0 rounded-full border transition-all cursor-pointer ${
                     documentCategory === cat 
                       ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" 
-                      : "bg-white dark:bg-slate-900 text-slate-500 border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      : "bg-white dark:bg-slate-900 text-slate-600 border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800"
                   }`}
                 >
                   {cat}
@@ -2040,7 +2040,7 @@ export default function PWACondominoView({
                             setSelectedDocPreview(doc);
                             alert(`A abrir visualizador inteligente para: ${doc.nome}`);
                           }}
-                          className="p-1 text-slate-500 hover:text-emerald-600 dark:text-white dark:hover:text-emerald-400 cursor-pointer"
+                          className="p-1 text-slate-600 hover:text-emerald-600 dark:text-white dark:hover:text-emerald-400 cursor-pointer"
                           title="Visualização Online"
                         >
                           <Eye className="h-3.5 w-3.5" />
@@ -2053,7 +2053,7 @@ export default function PWACondominoView({
                             doc.nome,
                             [{ label: "Condomínio", value: predio.nome }, { label: "Data Upload", value: doc.data_upload }, { label: "Categoria", value: doc.categoria || doc.tipo || "Geral" }]
                           )}
-                          className="p-1 text-slate-500 hover:text-emerald-600 dark:text-white dark:hover:text-emerald-400 cursor-pointer"
+                          className="p-1 text-slate-600 hover:text-emerald-600 dark:text-white dark:hover:text-emerald-400 cursor-pointer"
                           title="Fazer Download PDF"
                         >
                           <Download className="h-3.5 w-3.5" />
@@ -2161,7 +2161,7 @@ export default function PWACondominoView({
                       </span>
                     </div>
 
-                    <p className="text-slate-500 leading-tight">"{interv.descricao}"</p>
+                    <p className="text-slate-600 leading-tight">"{interv.descricao}"</p>
 
                     <div className="flex justify-between items-center pt-1.5 border-t border-slate-100 dark:border-slate-800/60 text-[9px]">
                       <span className="text-slate-600">{interv.tecnico_atribuido ? <>Técnico: <strong className="text-slate-600 dark:text-slate-300">{interv.tecnico_atribuido}</strong></> : "Aguarda triagem da administração"}</span>
@@ -2186,7 +2186,7 @@ export default function PWACondominoView({
               </span>
               
               <div className="space-y-1">
-                <label className="font-bold text-slate-500 uppercase text-[8px]">Selecione o Equipamento / Área</label>
+                <label className="font-bold text-slate-600 uppercase text-[8px]">Selecione o Equipamento / Área</label>
                 <select
                   value={newIntervEquipamento}
                   onChange={e => setNewIntervEquipamento(e.target.value)}
@@ -2202,7 +2202,7 @@ export default function PWACondominoView({
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-slate-500 uppercase text-[8px]">Descrição Detalhada do Problema</label>
+                <label className="font-bold text-slate-600 uppercase text-[8px]">Descrição Detalhada do Problema</label>
                 <textarea
                   required
                   rows={2.5}
@@ -2215,7 +2215,7 @@ export default function PWACondominoView({
 
               {/* Photos capture simulation */}
               <div className="space-y-2">
-                <label className="font-bold text-slate-500 uppercase text-[8px] block">Anexar Fotografia (Opcional)</label>
+                <label className="font-bold text-slate-600 uppercase text-[8px] block">Anexar Fotografia (Opcional)</label>
                 <div className="flex items-center space-x-2">
                   <input id="pwa-avaria-foto-input" type="file" accept="image/*" className="hidden" onChange={handleEscolherFotoAvaria} />
                   <button
@@ -2275,7 +2275,7 @@ export default function PWACondominoView({
                       <span className="font-bold text-indigo-600 font-mono">{obra.custoTotal.toLocaleString("pt-PT")} €</span>
                     )}
                   </div>
-                  <p className="text-slate-500 leading-tight">
+                  <p className="text-slate-600 leading-tight">
                     {obra.dataInicio ? `Início: ${formatDatePT(obra.dataInicio)}` : ""}{obra.dataFim ? ` • Fim: ${formatDatePT(obra.dataFim)}` : ""}
                   </p>
                   <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex justify-between text-[9px] text-slate-600 font-bold">
@@ -2371,7 +2371,7 @@ export default function PWACondominoView({
               {/* IBAN do Prédio */}
               <div className="space-y-1 bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800/60">
                 <div className="flex justify-between items-center">
-                  <span className="text-[8px] text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-wider block">IBAN do Prédio</span>
+                  <span className="text-[8px] text-slate-600 dark:text-slate-400 font-extrabold uppercase tracking-wider block">IBAN do Prédio</span>
                   <button
                     onClick={() => handleCopyToClipboard(ibanPredio, "IBAN")}
                     className="flex items-center space-x-1 text-teal-600 hover:text-teal-700 font-bold text-[8px] cursor-pointer"
@@ -2381,13 +2381,13 @@ export default function PWACondominoView({
                   </button>
                 </div>
                 <strong className="text-slate-800 dark:text-slate-200 block font-mono text-[9px] tracking-tight break-all">{ibanPredio}</strong>
-                <p className="text-[8px] text-slate-500 dark:text-slate-400">Utilize este IBAN para pagamento das quotas ordinárias mensais por transferência.</p>
+                <p className="text-[8px] text-slate-600 dark:text-slate-400">Utilize este IBAN para pagamento das quotas ordinárias mensais por transferência.</p>
               </div>
 
               {/* Referência Individual */}
               <div className="space-y-1 bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800/60">
                 <div className="flex justify-between items-center">
-                  <span className="text-[8px] text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-wider block">Referência da Fração {condominoFracao?.fracao_nome ? `(${condominoFracao.piso ? `${condominoFracao.piso} · ` : ""}${condominoFracao.fracao_nome})` : ""}</span>
+                  <span className="text-[8px] text-slate-600 dark:text-slate-400 font-extrabold uppercase tracking-wider block">Referência da Fração {condominoFracao?.fracao_nome ? `(${condominoFracao.piso ? `${condominoFracao.piso} · ` : ""}${condominoFracao.fracao_nome})` : ""}</span>
                   <button
                     onClick={() => handleCopyToClipboard(fractionRef, "Referência")}
                     className="flex items-center space-x-1 text-teal-600 hover:text-teal-700 font-bold text-[8px] cursor-pointer"
@@ -2406,7 +2406,7 @@ export default function PWACondominoView({
                   <div className="grid grid-cols-2 gap-2 text-[8px] leading-relaxed">
                     {contaExtra?.iban && (
                       <div>
-                        <span className="text-slate-500 dark:text-slate-400 block font-bold">IBAN da Conta Extra</span>
+                        <span className="text-slate-600 dark:text-slate-400 block font-bold">IBAN da Conta Extra</span>
                         <div className="flex items-center space-x-1 font-mono font-bold text-slate-700 dark:text-slate-300">
                           <span className="truncate max-w-[100px]">{contaExtra.iban}</span>
                           <button
@@ -2419,7 +2419,7 @@ export default function PWACondominoView({
                       </div>
                     )}
                     <div>
-                      <span className="text-slate-500 dark:text-slate-400 block font-bold">Referência</span>
+                      <span className="text-slate-600 dark:text-slate-400 block font-bold">Referência</span>
                       <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{fractionRefExtra}</span>
                     </div>
                   </div>
@@ -2438,7 +2438,7 @@ export default function PWACondominoView({
                   {contas.map((c: any) => (
                     <div key={c.id_conta} className="bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800/60 flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <span className="text-[8px] text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-wider block truncate">{c.banco}{c.tipo ? ` — ${c.tipo}` : ""}</span>
+                        <span className="text-[8px] text-slate-600 dark:text-slate-400 font-extrabold uppercase tracking-wider block truncate">{c.banco}{c.tipo ? ` — ${c.tipo}` : ""}</span>
                       </div>
                       <strong className={`font-mono text-[11px] whitespace-nowrap ${Number(c.saldo || 0) >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
                         {Number(c.saldo || 0).toFixed(2)} €
@@ -2459,7 +2459,7 @@ export default function PWACondominoView({
                 );
                 if (avisosFiltrados.length === 0) {
                   return (
-                    <div className="text-center py-4 text-slate-500 dark:text-slate-400 text-[9px]">
+                    <div className="text-center py-4 text-slate-600 dark:text-slate-400 text-[9px]">
                       {avisosFracaoOrdenados.length === 0 ? "Ainda não há avisos de quota registados para esta fração." : "Sem avisos neste filtro."}
                     </div>
                   );
@@ -2470,7 +2470,7 @@ export default function PWACondominoView({
                       <div key={av.id_aviso} className="p-2.5 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-100 dark:border-slate-800/60 flex justify-between items-center">
                         <div>
                           <span className="font-bold text-slate-700 dark:text-slate-200 block">{av.descricao}</span>
-                          <span className="text-[8px] text-slate-500 dark:text-slate-400 font-mono">Emissão: {av.data}{av.vencimento ? ` • Venc.: ${av.vencimento}` : ""}</span>
+                          <span className="text-[8px] text-slate-600 dark:text-slate-400 font-mono">Emissão: {av.data}{av.vencimento ? ` • Venc.: ${av.vencimento}` : ""}</span>
                         </div>
                         <div className="text-right shrink-0">
                           <span className="font-mono font-black text-slate-800 dark:text-white block">{av.valor.toFixed(2)} €</span>
@@ -2575,7 +2575,7 @@ export default function PWACondominoView({
               {/* Regulamento Interno Accordion style */}
               <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3 rounded-xl shadow-xs space-y-2">
                 <span className="text-[9px] font-extrabold text-teal-600 uppercase tracking-widest block">Regulamento Interno Escrito</span>
-                <p className="text-slate-500 leading-relaxed font-medium">
+                <p className="text-slate-600 leading-relaxed font-medium">
                   De acordo com a Ata de Assembleia Geral, as normas de ruído estipulam silêncio obrigatório entre as <strong className="text-slate-700 dark:text-slate-200">22h00 e as 08h00</strong>. Quaisquer obras particulares de condóminos só podem decorrer em dias úteis das 09h00 às 18h00.
                 </p>
               </div>
@@ -2606,7 +2606,7 @@ export default function PWACondominoView({
               {/* Normas Legais */}
               <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3 rounded-xl shadow-xs space-y-2">
                 <span className="text-[9px] font-extrabold text-teal-600 uppercase tracking-widest block">Segurança & Convivência</span>
-                <ul className="list-disc pl-4 space-y-1 text-slate-500 font-medium">
+                <ul className="list-disc pl-4 space-y-1 text-slate-600 font-medium">
                   <li>Proibido depositar lixo doméstico ou entulho nas áreas comuns e patamares de escadas.</li>
                   <li>As chaves e códigos de entrada de garagem são de cariz estritamente confidencial.</li>
                   <li>Uso obrigatório de trela para animais domésticos no interior do átrio comum.</li>
@@ -2640,7 +2640,7 @@ export default function PWACondominoView({
                   >
                     <div className="flex items-center justify-between">
                       <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
-                        c.urgencia === "urgente" ? "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                        c.urgencia === "urgente" ? "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
                       }`}>
                         {c.urgencia === "urgente" ? "🚨 Urgente" : "Comunicado"}
                       </span>
@@ -2998,7 +2998,7 @@ export default function PWACondominoView({
               {isEmojiPickerOpen && (
                 <div className="absolute bottom-16 left-3 right-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-2xl shadow-2xl z-50 animate-fade-in">
                   <div className="flex justify-between items-center pb-1.5 mb-1.5 border-b border-slate-100 dark:border-slate-800">
-                    <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-white">Selecionar Emoji</span>
+                    <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-white">Selecionar Emoji</span>
                     <button 
                       type="button" 
                       onClick={() => setIsEmojiPickerOpen(false)}
@@ -3029,7 +3029,7 @@ export default function PWACondominoView({
               {isAttachmentMenuOpen && (
                 <div className="absolute bottom-16 left-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2 rounded-2xl shadow-2xl z-50 animate-fade-in space-y-1 min-w-[200px]">
                   <div className="flex justify-between items-center pb-1 mb-1 border-b border-slate-100 dark:border-slate-800 px-1">
-                    <span className="text-[8.5px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-white">Anexar Ficheiro</span>
+                    <span className="text-[8.5px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-white">Anexar Ficheiro</span>
                     <button 
                       type="button" 
                       onClick={() => setIsAttachmentMenuOpen(false)}
@@ -3371,7 +3371,7 @@ export default function PWACondominoView({
 
                 <div>
                   <span className="text-slate-600 block text-[8px] uppercase font-bold">Morada (Não Editável)</span>
-                  <div className="w-full bg-slate-100 dark:bg-slate-500/10 border border-slate-200 dark:border-slate-900 p-2 rounded-lg font-bold text-slate-500 dark:text-white cursor-not-allowed select-none">
+                  <div className="w-full bg-slate-100 dark:bg-slate-500/10 border border-slate-200 dark:border-slate-900 p-2 rounded-lg font-bold text-slate-600 dark:text-white cursor-not-allowed select-none">
                     {perfilMorada}
                   </div>
                 </div>
@@ -3457,7 +3457,7 @@ export default function PWACondominoView({
 
                   {notifPrefs && (
                     <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2">
-                      <span className="text-[9.5px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide block mb-1">Categorias Opcionais</span>
+                      <span className="text-[9.5px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide block mb-1">Categorias Opcionais</span>
                       {([
                         { key: "optional_finances", label: "Financeiro" },
                         { key: "optional_reservations", label: "Reservas" },
@@ -4203,7 +4203,7 @@ export default function PWACondominoView({
 
                     <div className="space-y-2.5">
                       {(atasPendentesReais as { id: string; nome: string; data: string; estado: string }[]).length === 0 && (
-                        <p className="text-slate-500 italic text-[10px] py-4 text-center">Não há nenhuma ata pendente de assinatura neste momento.</p>
+                        <p className="text-slate-600 italic text-[10px] py-4 text-center">Não há nenhuma ata pendente de assinatura neste momento.</p>
                       )}
                       {atasPendentesReais.map((ata, idx) => (
                         <div key={idx} className="bg-slate-800 border border-slate-800 p-3 rounded-xl space-y-2">
@@ -4604,7 +4604,7 @@ export default function PWACondominoView({
 
             <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[#e5ddd5] dark:bg-slate-950/70 bg-[radial-gradient(#d9d0c7_1px,transparent_1px)] dark:bg-none bg-[length:14px_14px] min-h-[200px]">
               {mensagensThreadPwa.length === 0 && (
-                <p className="text-slate-500 text-[10px] text-center py-6 bg-white/70 dark:bg-slate-900/70 rounded-lg px-2 mx-auto w-fit">Sem conversas ainda — escreva à administração abaixo.</p>
+                <p className="text-slate-600 text-[10px] text-center py-6 bg-white/70 dark:bg-slate-900/70 rounded-lg px-2 mx-auto w-fit">Sem conversas ainda — escreva à administração abaixo.</p>
               )}
               {mensagensThreadPwa.map((m) => (
                 <div key={m.id_mensagem} className={`flex ${m.autor === "condomino" ? "justify-end" : "justify-start"}`}>
@@ -4661,7 +4661,7 @@ export default function PWACondominoView({
             {isEmojiPickerOpen && (
               <div className="px-2.5 pt-2 shrink-0 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
                 <div className="flex justify-between items-center pb-1.5 mb-1.5 border-b border-slate-100 dark:border-slate-800">
-                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-white">Selecionar Emoji</span>
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-white">Selecionar Emoji</span>
                   <button type="button" onClick={() => setIsEmojiPickerOpen(false)} className="text-red-500 hover:text-red-600 text-xs cursor-pointer">✕</button>
                 </div>
                 <div className="grid grid-cols-6 gap-1.5 text-base pb-1.5">
@@ -4678,7 +4678,7 @@ export default function PWACondominoView({
             {isAttachmentMenuOpen && (
               <div className="px-2.5 pt-2 shrink-0 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 space-y-1">
                 <div className="flex justify-between items-center pb-1 mb-1 border-b border-slate-100 dark:border-slate-800">
-                  <span className="text-[8.5px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-white">Anexar Ficheiro</span>
+                  <span className="text-[8.5px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-white">Anexar Ficheiro</span>
                   <button type="button" onClick={() => setIsAttachmentMenuOpen(false)} className="text-red-500 hover:text-red-600 text-xs cursor-pointer">✕</button>
                 </div>
                 <button type="button" onClick={() => { setIsAttachmentMenuOpen(false); document.getElementById("pwa-chat-doc-input")?.click(); }} className="w-full flex items-center space-x-2 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-left cursor-pointer transition-colors">
@@ -4770,7 +4770,7 @@ export default function PWACondominoView({
           sem isto, ficava dependente da altura exata do ecrã ter sobrado
           espaço, e em ecrãs mais pequenos ou com teclado aberto (ex: a
           caixa de mensagem) ficava empurrada para fora da vista. */}
-      <div className="fixed bottom-0 inset-x-0 z-50 h-14 pb-[env(safe-area-inset-bottom)] bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800/80 px-2 flex items-center justify-around text-[9px] font-bold text-slate-500 dark:text-white">
+      <div className="fixed bottom-0 inset-x-0 z-50 h-14 pb-[env(safe-area-inset-bottom)] bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800/80 px-2 flex items-center justify-around text-[9px] font-bold text-slate-600 dark:text-white">
         
         {/* 1. Início (Verde condomanagerai) */}
         <button 
@@ -4789,7 +4789,7 @@ export default function PWACondominoView({
           id="pwa-bottom-nav-hub"
           onClick={() => setActiveTab("modules_hub")} 
           className={`flex flex-col items-center space-y-0.5 cursor-pointer flex-1 py-1 transition-all ${
-            activeTab === "modules_hub" ? "scale-105 text-emerald-500 font-extrabold" : "text-slate-500 dark:text-white hover:text-emerald-500"
+            activeTab === "modules_hub" ? "scale-105 text-emerald-500 font-extrabold" : "text-slate-600 dark:text-white hover:text-emerald-500"
           }`}
         >
           <img src="/marca/10-icone-negativo.png" alt="Módulos" className="h-5 w-5 object-contain" />
@@ -4803,7 +4803,7 @@ export default function PWACondominoView({
           className={`flex flex-col items-center space-y-0.5 cursor-pointer flex-1 py-1 transition-all ${
             activeTab === "intervencoes" 
               ? "text-red-500 font-extrabold scale-105" 
-              : "text-slate-500 dark:text-white hover:text-red-500"
+              : "text-slate-600 dark:text-white hover:text-red-500"
           }`}
         >
           <img src="/modulos/29-avaria.png" alt="" className="h-4.5 w-4.5 object-contain" />
@@ -4817,7 +4817,7 @@ export default function PWACondominoView({
           className={`flex flex-col items-center space-y-0.5 cursor-pointer flex-1 py-1 transition-all ${
             activeTab === "obras" 
               ? "text-orange-500 font-extrabold scale-105" 
-              : "text-slate-500 dark:text-white hover:text-orange-500"
+              : "text-slate-600 dark:text-white hover:text-orange-500"
           }`}
         >
           <img src="/modulos/41-obra.png" alt="" className="h-4.5 w-4.5 object-contain" />
@@ -4829,7 +4829,7 @@ export default function PWACondominoView({
           id="pwa-bottom-nav-profile"
           onClick={() => setActiveTab("perfil")} 
           className={`flex flex-col items-center space-y-0.5 cursor-pointer flex-1 py-1 transition-all ${
-            activeTab === "perfil" ? "text-emerald-500 font-extrabold scale-105" : "text-slate-500 dark:text-white hover:text-emerald-500"
+            activeTab === "perfil" ? "text-emerald-500 font-extrabold scale-105" : "text-slate-600 dark:text-white hover:text-emerald-500"
           }`}
         >
           <User className="h-4.5 w-4.5" />

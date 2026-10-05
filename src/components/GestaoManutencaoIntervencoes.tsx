@@ -1102,7 +1102,7 @@ export function GestaoManutencaoIntervencoes({
                         className={`py-1 rounded-md text-xs font-bold border cursor-pointer ${
                           ocPrioridade === p
                             ? p === "Alta" ? "bg-red-500 text-white border-red-500 bg-red-600" : p === "Média" ? "bg-amber-500 text-white border-amber-500" : "bg-blue-500 text-white border-blue-500"
-                            : "bg-slate-50 dark:bg-slate-950 text-slate-500 hover:bg-slate-100 border-slate-200 dark:border-slate-700"
+                            : "bg-slate-50 dark:bg-slate-950 text-slate-600 hover:bg-slate-100 border-slate-200 dark:border-slate-700"
                         }`}
                       >
                         {p}
@@ -1129,7 +1129,7 @@ export function GestaoManutencaoIntervencoes({
                     className="border border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-3 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-950"
                   >
                     <Upload className="h-4 w-4 mx-auto text-slate-600 mb-1" />
-                    <span className="text-[10px] text-slate-500 font-medium">Anexar ou tirar foto</span>
+                    <span className="text-[10px] text-slate-600 font-medium">Anexar ou tirar foto</span>
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -1203,7 +1203,7 @@ export function GestaoManutencaoIntervencoes({
                       <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{o.descricao}</p>
 
                       <div className="flex flex-wrap items-center justify-between pt-2 border-t border-slate-50 dark:border-slate-800 text-xs gap-2">
-                        <div className="flex items-center gap-1.5 text-slate-500">
+                        <div className="flex items-center gap-1.5 text-slate-600">
                           <User className="h-3.5 w-3.5" />
                           <span>Técnico Responsável: <strong className="text-slate-700 dark:text-slate-300">{o.tecnico_atribuido || "Não Atribuído"}</strong></span>
                         </div>
@@ -1257,7 +1257,7 @@ export function GestaoManutencaoIntervencoes({
                       {/* Admin Dispatch Panel */}
                       {dispatchOcorrId === o.id_ocorr && (
                         <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border mt-3 space-y-3">
-                          <h5 className="text-xs font-bold uppercase text-slate-500">Despacho de Ocorrência</h5>
+                          <h5 className="text-xs font-bold uppercase text-slate-600">Despacho de Ocorrência</h5>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                             <div>
                               <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Classificação Operacional</label>
@@ -1328,7 +1328,7 @@ export function GestaoManutencaoIntervencoes({
                       {/* Technician Workspace Panel */}
                       {techOcorrId === o.id_ocorr && (
                         <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border mt-3 space-y-3">
-                          <h5 className="text-xs font-bold uppercase text-slate-500">Workspace do Técnico</h5>
+                          <h5 className="text-xs font-bold uppercase text-slate-600">Workspace do Técnico</h5>
                           
                           <div className="text-xs space-y-2">
                             <div>
@@ -1386,7 +1386,7 @@ export function GestaoManutencaoIntervencoes({
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
               <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600">Inspeções & Manutenção Preventiva</h3>
-              <p className="text-xs text-slate-500">Agenda anual de vistorias técnicas regulamentares e verificações de equipamentos do edifício.</p>
+              <p className="text-xs text-slate-600">Agenda anual de vistorias técnicas regulamentares e verificações de equipamentos do edifício.</p>
             </div>
 
             <button
@@ -1458,7 +1458,7 @@ export function GestaoManutencaoIntervencoes({
                   {/* Checklist signoff overlay panel */}
                   {checkItemId === item.id && (
                     <div className="bg-slate-100 dark:bg-slate-950 p-4 rounded-xl border mt-3 space-y-3">
-                      <h5 className="text-xs font-bold uppercase text-slate-500">Checklist da Vistoria</h5>
+                      <h5 className="text-xs font-bold uppercase text-slate-600">Checklist da Vistoria</h5>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                         <div>
                           <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Estado de Verificação</label>
@@ -1526,7 +1526,7 @@ export function GestaoManutencaoIntervencoes({
                   {item.estado !== "Agendado" && (
                     <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg text-xs space-y-1">
                       <p className="font-bold text-slate-600 dark:text-slate-400">Verificação efetuada por {item.tecnico}:</p>
-                      <p className="italic text-slate-500 font-medium">{item.relatorio || "Em conformidade."}</p>
+                      <p className="italic text-slate-600 font-medium">{item.relatorio || "Em conformidade."}</p>
                       {item.avariasEncontradas && (
                         <p className="text-red-600 dark:text-red-400 font-bold">Avaria detetada: {item.avariasEncontradas}</p>
                       )}
@@ -1570,7 +1570,7 @@ export function GestaoManutencaoIntervencoes({
           <div className="flex justify-between items-center">
             <div>
               <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600">Registo de Pequenas Reparações</h3>
-              <p className="text-xs text-slate-500">Gestão e acompanhamento de intervenções de manutenção do edifício.</p>
+              <p className="text-xs text-slate-600">Gestão e acompanhamento de intervenções de manutenção do edifício.</p>
             </div>
 
             <button
@@ -1723,7 +1723,7 @@ export function GestaoManutencaoIntervencoes({
                 {/* Technician complete panel overlay */}
                 {execIntId === i.id && (
                   <div className="bg-slate-100 dark:bg-slate-950 p-4 rounded-xl border mt-3 space-y-3">
-                    <h5 className="text-xs font-bold uppercase text-slate-500">Concluir Ordem de Serviço</h5>
+                    <h5 className="text-xs font-bold uppercase text-slate-600">Concluir Ordem de Serviço</h5>
                     <div className="text-xs space-y-2">
                       <div>
                         <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Notas Técnicas e Descritivo</label>
@@ -1756,7 +1756,7 @@ export function GestaoManutencaoIntervencoes({
                 {/* Admin validating panel overlay */}
                 {valIntId === i.id && (
                   <div className="bg-slate-100 dark:bg-slate-950 p-4 rounded-xl border mt-3 space-y-3">
-                    <h5 className="text-xs font-bold uppercase text-slate-500">Validação Administrativa</h5>
+                    <h5 className="text-xs font-bold uppercase text-slate-600">Validação Administrativa</h5>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                       <div>
                         <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Custo Final do Trabalho (€)</label>
@@ -1810,7 +1810,7 @@ export function GestaoManutencaoIntervencoes({
           <div className="flex justify-between items-center flex-wrap gap-3">
             <div>
               <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600">Obras Extraordinárias (Grandes)</h3>
-              <p className="text-xs text-slate-500">Planeamento técnico e confirmação de obras grandes — cada obra que precise de quota extra fica disponível em "Cálculo & Emissão de Quotas".</p>
+              <p className="text-xs text-slate-600">Planeamento técnico e confirmação de obras grandes — cada obra que precise de quota extra fica disponível em "Cálculo & Emissão de Quotas".</p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -2193,7 +2193,7 @@ export function GestaoManutencaoIntervencoes({
           <div className="space-y-4 animate-fadeIn text-slate-800 dark:text-slate-100">
             <div>
               <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600">Histórico de Tarefas Concluídas</h3>
-              <p className="text-xs text-slate-500">Histórico de vistorias, pequenas reparações e intervenções extraordinárias homologadas.</p>
+              <p className="text-xs text-slate-600">Histórico de vistorias, pequenas reparações e intervenções extraordinárias homologadas.</p>
             </div>
 
             {allConcluidas.length === 0 ? (
@@ -2302,7 +2302,7 @@ export function GestaoManutencaoIntervencoes({
                       <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                         {selectedTaskToVerify === task.id ? (
                           <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
-                            <h5 className="text-xs font-extrabold uppercase text-slate-500">Painel de Homologação da Tarefa #{task.id}</h5>
+                            <h5 className="text-xs font-extrabold uppercase text-slate-600">Painel de Homologação da Tarefa #{task.id}</h5>
                             
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                               <div>
@@ -2386,7 +2386,7 @@ export function GestaoManutencaoIntervencoes({
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
               <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600">Arquivo Documental Registado</h3>
-              <p className="text-xs text-slate-500">Repositório estruturado de orçamentos, faturas, relatórios de vistorias e documentos legais do condomínio.</p>
+              <p className="text-xs text-slate-600">Repositório estruturado de orçamentos, faturas, relatórios de vistorias e documentos legais do condomínio.</p>
             </div>
             
             <div className="flex gap-2">
@@ -2427,7 +2427,7 @@ export function GestaoManutencaoIntervencoes({
                     className={`w-full text-left p-2.5 text-xs font-bold rounded-lg flex items-center justify-between transition-all cursor-pointer ${
                       selectedTheme === theme 
                         ? "bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-extrabold" 
-                        : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-950"
+                        : "text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-950"
                     }`}
                   >
                     <span className="flex items-center gap-2">
@@ -2484,7 +2484,7 @@ export function GestaoManutencaoIntervencoes({
                             <span className="text-[8px] bg-slate-100 dark:bg-slate-950 px-1.5 rounded font-bold font-mono">ID: {d.id_doc}</span>
                           </div>
 
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium line-clamp-2">{d.descricao || "Sem descrição registada..."}</p>
+                          <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium line-clamp-2">{d.descricao || "Sem descrição registada..."}</p>
 
                           {/* Metadata fields requested */}
                           <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[10px] text-slate-600 dark:text-slate-500 font-semibold pt-1 border-t border-dashed border-slate-100 dark:border-slate-800">
@@ -2513,7 +2513,7 @@ export function GestaoManutencaoIntervencoes({
                           <div className="flex items-center gap-2 text-[10px] text-slate-600">
                             <span>{d.tamanho}</span>
                             <span>•</span>
-                            <span className="font-bold text-slate-500">{d.visibilidade || "Público"}</span>
+                            <span className="font-bold text-slate-600">{d.visibilidade || "Público"}</span>
                           </div>
 
                           <button

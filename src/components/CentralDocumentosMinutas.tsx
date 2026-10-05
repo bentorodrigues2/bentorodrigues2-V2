@@ -1479,7 +1479,7 @@ A Administração do Condomínio`
           {/* SIDEBAR SELETOR DE MINUTAS */}
           <div className="lg:col-span-4 space-y-3">
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm">
-              <h3 className="text-xs font-extrabold uppercase text-slate-500 dark:text-slate-400 tracking-wider mb-3">
+              <h3 className="text-xs font-extrabold uppercase text-slate-600 dark:text-slate-400 tracking-wider mb-3">
                 Selecione o Documento Oficial
               </h3>
               <div className="space-y-2">
@@ -1512,7 +1512,7 @@ A Administração do Condomínio`
                             {doc.tag}
                           </span>
                         </div>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">{doc.desc}</p>
+                        <p className="text-[10px] text-slate-600 dark:text-slate-400 line-clamp-2 mt-0.5">{doc.desc}</p>
                       </div>
                     </button>
                   );
@@ -1943,7 +1943,7 @@ A Administração do Condomínio`
           <div className="lg:col-span-4 space-y-3">
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-extrabold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
+                <h3 className="text-xs font-extrabold uppercase text-slate-600 dark:text-slate-400 tracking-wider">
                   Templates de E-mail ({emailTemplates.length})
                 </h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
@@ -1990,7 +1990,7 @@ A Administração do Condomínio`
                               Mensagem na App
                             </span>
                           ) : (
-                            <span className="text-[9.5px] text-slate-500 dark:text-slate-400 truncate">
+                            <span className="text-[9.5px] text-slate-600 dark:text-slate-400 truncate">
                               {template.gatilho}
                             </span>
                           )}
@@ -2178,7 +2178,7 @@ A Administração do Condomínio`
                         Cartão Postal Visual Embebido no E-mail
                         <span className="text-[9px] bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded font-bold uppercase">Personalizado & Intimista</span>
                       </span>
-                      <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold">
+                      <span className="text-[9px] text-slate-600 dark:text-slate-400 font-semibold">
                         Sem texto burocrático de e-mail • Inclui anexo PDF A5 de alta resolução para guardar
                       </span>
                     </div>
@@ -2275,7 +2275,7 @@ A Administração do Condomínio`
 
                       {/* Despedida e Assinatura */}
                       <div className="pt-2 space-y-1 text-center">
-                        <p className="text-xs text-slate-500">Com as mais calorosas saudações,</p>
+                        <p className="text-xs text-slate-600">Com as mais calorosas saudações,</p>
                         <p className="text-xs sm:text-sm font-bold text-slate-900">José Carlos Guerra</p>
                         <p className="text-xs text-slate-600">A Administração do {predio.nome || "Edifício Estrela da Barra"}</p>
                       </div>
@@ -2303,7 +2303,7 @@ A Administração do Condomínio`
 
             {/* BOTÕES DE AÇÃO RÁPIDA */}
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-              <div className="flex items-center space-x-2 text-xs text-slate-500">
+              <div className="flex items-center space-x-2 text-xs text-slate-600">
                 <Clock className="h-3.5 w-3.5" />
                 <span>Gatilho: {activeEmailTemplate.gatilho}</span>
               </div>
@@ -2378,11 +2378,11 @@ A Administração do Condomínio`
 
           {/* LISTA */}
           {aCarregarCorrespondencia ? (
-            <div className="flex items-center justify-center py-16 text-slate-500">
+            <div className="flex items-center justify-center py-16 text-slate-600">
               <Loader2 className="h-6 w-6 animate-spin mr-2" /> A carregar correspondência...
             </div>
           ) : correspondenciasFiltradas.length === 0 ? (
-            <div className="bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-10 text-center text-slate-500">
+            <div className="bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-10 text-center text-slate-600">
               <Mail className="h-8 w-8 mx-auto mb-2 text-slate-400" />
               Ainda não há correspondência registada{filtroCorresp !== "Todas" ? ` (${filtroCorresp.toLowerCase()})` : ""}.
             </div>
@@ -2477,7 +2477,7 @@ A Administração do Condomínio`
                         )}
                         {corresp.resposta_texto && (
                           <div>
-                            <p className="text-[10px] font-black uppercase text-slate-500 mb-1">Resposta ({corresp.data_resposta && formatDatePT(corresp.data_resposta)}):</p>
+                            <p className="text-[10px] font-black uppercase text-slate-600 mb-1">Resposta ({corresp.data_resposta && formatDatePT(corresp.data_resposta)}):</p>
                             <div className="bg-purple-50 dark:bg-purple-900/10 rounded-xl p-3 text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
                               {corresp.resposta_texto}
                             </div>
@@ -2577,35 +2577,35 @@ A Administração do Condomínio`
                   </div>
 
                   <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 space-y-3">
-                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Morada de Envio (preenchida automaticamente ao escolher a fração)</p>
+                    <p className="text-[10px] font-black uppercase text-slate-600 tracking-wider">Morada de Envio (preenchida automaticamente ao escolher a fração)</p>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div className="sm:col-span-2">
-                        <label className="text-[11px] font-bold text-slate-500">Morada</label>
+                        <label className="text-[11px] font-bold text-slate-600">Morada</label>
                         <input value={cartaDestMoradaLinha1} onChange={e => setCartaDestMoradaLinha1(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="Rua / Avenida" />
                       </div>
                       <div>
-                        <label className="text-[11px] font-bold text-slate-500">Número</label>
+                        <label className="text-[11px] font-bold text-slate-600">Número</label>
                         <input value={cartaDestNumPorta} onChange={e => setCartaDestNumPorta(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="N.º" />
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label className="text-[11px] font-bold text-slate-500">Piso / Fração</label>
+                        <label className="text-[11px] font-bold text-slate-600">Piso / Fração</label>
                         <input value={cartaDestPiso} onChange={e => setCartaDestPiso(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="Ex: 2º Esq" />
                       </div>
                       <div>
-                        <label className="text-[11px] font-bold text-slate-500">Código Postal</label>
+                        <label className="text-[11px] font-bold text-slate-600">Código Postal</label>
                         <input value={cartaDestCodPostal} onChange={e => setCartaDestCodPostal(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="0000-000" />
                       </div>
                       <div>
-                        <label className="text-[11px] font-bold text-slate-500">Localidade</label>
+                        <label className="text-[11px] font-bold text-slate-600">Localidade</label>
                         <input value={cartaDestLocalidade} onChange={e => setCartaDestLocalidade(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="Localidade" />
                       </div>
                     </div>
                   </div>
 
                   <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 space-y-2">
-                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Tipo de Envio</p>
+                    <p className="text-[10px] font-black uppercase text-slate-600 tracking-wider">Tipo de Envio</p>
                     <div className="flex flex-wrap gap-2">
                       {(["Correio", "Email", "Em Mão"] as const).map(m => (
                         <button
@@ -2661,17 +2661,17 @@ A Administração do Condomínio`
                     {cartaLancarCusto && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                         <div>
-                          <label className="text-[11px] font-bold text-slate-500">Valor (€)</label>
+                          <label className="text-[11px] font-bold text-slate-600">Valor (€)</label>
                           <input value={cartaCustoValor} onChange={e => setCartaCustoValor(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg" placeholder="0.00" />
                         </div>
                         <div>
-                          <label className="text-[11px] font-bold text-slate-500">Conta a Debitar</label>
+                          <label className="text-[11px] font-bold text-slate-600">Conta a Debitar</label>
                           <select value={cartaCustoContaId} onChange={e => setCartaCustoContaId(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg">
                             {contas.map(c => <option key={c.id_conta} value={c.id_conta}>{c.banco}</option>)}
                           </select>
                         </div>
                         <div className="sm:col-span-2">
-                          <label className="text-[11px] font-bold text-slate-500">Anexar Fatura (opcional — ou reconcilie depois via extrato bancário em Movimentos)</label>
+                          <label className="text-[11px] font-bold text-slate-600">Anexar Fatura (opcional — ou reconcilie depois via extrato bancário em Movimentos)</label>
                           <input type="file" onChange={e => setCartaCustoFatura(e.target.files?.[0] || null)} className="w-full mt-1 text-xs" />
                         </div>
                       </div>

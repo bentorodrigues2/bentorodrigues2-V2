@@ -619,7 +619,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
             <h2 className="text-base font-extrabold tracking-tight text-slate-800">
               {mainTab === "chaves" ? "Gestão de Chaves" : mainTab === "regras" ? "Regras & Regulamento Automático (IA)" : "Registos & Património do Prédio"}
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-600">
               {mainTab === "chaves" 
                 ? "Controlo de chaveiro, numeração codificada (Iniciais + Nº do Prédio), atribuição de local e etiquetas em PDF (3x1.5cm)." 
                 : mainTab === "regras" 
@@ -637,7 +637,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
               <i className="fa-solid fa-lock"></i>
             </div>
             <h3 className="text-base font-extrabold text-slate-800">Acesso Restrito - Gestão de Chaves</h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto">
+            <p className="text-xs text-slate-600 max-w-md mx-auto">
               A gestão de chaves é de acesso exclusivo para os perfis de <strong>Administrador</strong> e <strong>Gestor de Condomínio</strong>.
             </p>
           </div>
@@ -655,7 +655,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                     <span className="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                       Chaveiro Principal (Etiqueta Verde)
                     </span>
-                    <span className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">
+                    <span className="text-xs font-mono font-bold text-slate-600 dark:text-slate-400">
                       Nº Chaveiro: {numChaveiroMaster || "1"}
                     </span>
                   </div>
@@ -707,7 +707,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
               <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1">
-                <label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 block">Código Master do Conjunto</label>
+                <label className="text-[10px] font-bold uppercase text-slate-600 dark:text-slate-400 block">Código Master do Conjunto</label>
                 <input
                   type="text"
                   value={codigoConjuntoCustom}
@@ -718,7 +718,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
               </div>
 
               <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1 md:col-span-2">
-                <label className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 block">Identificação do Conjunto de Chaves</label>
+                <label className="text-[10px] font-bold uppercase text-slate-600 dark:text-slate-400 block">Identificação do Conjunto de Chaves</label>
                 <input
                   type="text"
                   value={identificacaoConjuntoCustom}
@@ -731,14 +731,14 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
 
             {/* Resumo de Chaves Integradas no Conjunto */}
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mr-1">Resumo de Chaves no Conjunto ({chaves.length}):</span>
+              <span className="text-[10px] font-bold uppercase text-slate-600 dark:text-slate-400 mr-1">Resumo de Chaves no Conjunto ({chaves.length}):</span>
               {chaves.slice(0, 7).map(c => (
                 <span key={c.id_chave} className="text-[10px] bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md font-mono">
                   <strong className="text-emerald-700 dark:text-emerald-400">{c.codigo_chave}</strong>: {c.area_nome}
                 </span>
               ))}
               {chaves.length > 7 && (
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 italic font-semibold">
+                <span className="text-[10px] text-slate-600 dark:text-slate-400 italic font-semibold">
                   +{chaves.length - 7} mais...
                 </span>
               )}
@@ -753,7 +753,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                   <i className="fa-solid fa-key text-emerald-600"></i>
                   <span>Gestão de Chaves ({predioAtivo?.nome || "Edifício Principal"})</span>
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-600 mt-0.5">
                   Registo de chaveiro, numeração codificada por iniciais do prédio ({prefixoCodigoIniciais} XXX), atreladas ao local e prontas para impressão de etiquetas (3cm x 1.5cm).
                 </p>
               </div>
@@ -777,7 +777,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-6 gap-3">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Local / Prédio Sugerido</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Local / Prédio Sugerido</label>
                   <select
                     value={novoLocalSugerido || predioAtivo?.nome || ""}
                     onChange={e => setNovoLocalSugerido(e.target.value)}
@@ -793,7 +793,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Local / Porta / Aplicação *</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Local / Porta / Aplicação *</label>
                   <input
                     type="text"
                     value={novaAreaChave}
@@ -804,7 +804,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Responsável / Posse</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Responsável / Posse</label>
                   <input
                     type="text"
                     value={novoResponsavel}
@@ -815,7 +815,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Estado / Status</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Estado / Status</label>
                   <select
                     value={novoStatus}
                     onChange={e => setNovoStatus(e.target.value)}
@@ -829,7 +829,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Código / Numeração *</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Código / Numeração *</label>
                   <input
                     type="text"
                     value={novoCodigoChave}
@@ -840,7 +840,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Qtd. Chaves *</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Qtd. Chaves *</label>
                   <div className="flex gap-2">
                     <input
                       type="number"
@@ -1143,7 +1143,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                   <i className="fa-solid fa-gavel text-indigo-600"></i>
                   <span>Regulamento Automático do Condomínio ({nome || "Edifício Principal"})</span>
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-600 mt-0.5">
                   Defina as normas do condomínio por tema. A Inteligência Artificial utiliza estas regras para validar automaticamente os pedidos dos condóminos.
                 </p>
               </div>
@@ -1256,7 +1256,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                 </div>
                 <div>
                   <h4 className="text-sm font-extrabold text-slate-800">Validador Automático de Pedidos com IA</h4>
-                  <p className="text-xs text-slate-500">Submeta um pedido de condómino para a IA analisar a conformidade regulamentar em tempo real.</p>
+                  <p className="text-xs text-slate-600">Submeta um pedido de condómino para a IA analisar a conformidade regulamentar em tempo real.</p>
                 </div>
               </div>
 
@@ -1353,7 +1353,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
               <i className="fa-solid fa-building text-blue-600"></i>
               <span>Registo de Prédios</span>
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-600 mt-0.5">
               Lista de edifícios registados no sistema. Selecione um prédio para visualizar, editar ou remover.
             </p>
           </div>
@@ -1453,7 +1453,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                             <i className="fa-solid fa-location-dot text-slate-600 mr-1.5 text-[10px]"></i>
                             {p.morada_linha1} Nº{p.num_porta} {p.letra_porta ? `(${p.letra_porta})` : ""}
                           </p>
-                          <p className="text-[11px] text-slate-500 font-mono-custom pl-4">
+                          <p className="text-[11px] text-slate-600 font-mono-custom pl-4">
                             {p.codigo_postal} {p.localidade}
                           </p>
                         </td>
@@ -1571,7 +1571,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
               <i className={`fa-solid ${selectedPredioId ? "fa-pen-to-square text-blue-600" : "fa-plus-circle text-emerald-600"}`}></i>
               <span>{selectedPredioId ? `Editar Registo do Prédio: ${nome || "Sem Nome"}` : "Registar Novo Prédio Administrado"}</span>
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-600 mt-0.5">
               {selectedPredioId ? "Altere os dados gerais e patrimonio comum do edifício selecionado." : "Preencha as informações necessárias para registar um novo edifício."}
             </p>
           </div>
@@ -1603,42 +1603,42 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="flex flex-col">
-            <label className="text-xs font-semibold text-slate-500 mb-1">Nome do Edifício (Facultativo)</label>
+            <label className="text-xs font-semibold text-slate-600 mb-1">Nome do Edifício (Facultativo)</label>
             <input type="text" value={nome} onChange={e => setNome(e.target.value)} placeholder="Se vazio, usa a morada" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-blue-500" />
           </div>
           <div className="flex flex-col col-span-2">
-            <label className="text-xs font-semibold text-slate-500 mb-1">Morada Linha 1 *</label>
+            <label className="text-xs font-semibold text-slate-600 mb-1">Morada Linha 1 *</label>
             <input type="text" value={moradaLinha1} onChange={e => setMoradaLinha1(e.target.value)} placeholder="Rua Bento Rodrigues" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-blue-500" />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="flex flex-col">
-            <label className="text-xs font-semibold text-slate-500 mb-1">Morada Linha 2</label>
+            <label className="text-xs font-semibold text-slate-600 mb-1">Morada Linha 2</label>
             <input type="text" value={moradaLinha2} onChange={e => setMoradaLinha2(e.target.value)} placeholder="Ex: Apt 2B" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-blue-500" />
           </div>
           <div className="flex flex-col">
-            <label className="text-xs font-semibold text-slate-500 mb-1">Nº Porta *</label>
+            <label className="text-xs font-semibold text-slate-600 mb-1">Nº Porta *</label>
             <input type="text" value={numPorta} onChange={e => setNumPorta(e.target.value)} placeholder="Ex: 2" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-blue-500" />
           </div>
           <div className="flex flex-col">
-            <label className="text-xs font-semibold text-slate-500 mb-1">Letra (Facultativo)</label>
+            <label className="text-xs font-semibold text-slate-600 mb-1">Letra (Facultativo)</label>
             <input type="text" value={letraPorta} onChange={e => setLetraPorta(e.target.value)} placeholder="Ex: A" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-blue-500" />
           </div>
           <div className="flex flex-col">
-            <label className="text-xs font-semibold text-slate-500 mb-1">NIF do Condomínio *</label>
+            <label className="text-xs font-semibold text-slate-600 mb-1">NIF do Condomínio *</label>
             <input type="text" value={nif} onChange={e => setNif(e.target.value)} placeholder="Ex: 900123456" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-blue-500 font-mono-custom" />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col">
-            <label className="text-xs font-semibold text-slate-500 mb-1">Código Postal (Interativo) *</label>
+            <label className="text-xs font-semibold text-slate-600 mb-1">Código Postal (Interativo) *</label>
             <input type="text" value={codigoPostal} onChange={e => setCodigoPostal(e.target.value)} placeholder="Ex: 2840-124 (para teste)" className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-blue-500 font-mono-custom" />
             <p className="text-[10px] text-slate-600 mt-1">Insira '2840-124' ou '2775-245' para autocompletar.</p>
           </div>
           <div className="flex flex-col">
-            <label className="text-xs font-semibold text-slate-500 mb-1">Localidade *</label>
+            <label className="text-xs font-semibold text-slate-600 mb-1">Localidade *</label>
             <input type="text" value={localidade} readOnly className="border border-slate-200 bg-slate-100 px-3 py-2 text-sm rounded-lg focus:outline-none" placeholder="Preenchimento automático" />
           </div>
         </div>
@@ -1672,7 +1672,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
 
         {/* Upload de Fotografia do Prédio */}
         <div className="pt-2">
-          <label className="text-xs font-semibold text-slate-500 block mb-1">Fotografia do Prédio (Opcional)</label>
+          <label className="text-xs font-semibold text-slate-600 block mb-1">Fotografia do Prédio (Opcional)</label>
           <div className="flex items-center space-x-3">
             <button type="button" onClick={() => fileInputRef.current?.click()} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-semibold border border-slate-200 flex items-center space-x-2 cursor-pointer">
               <i className="fa-solid fa-camera"></i>
@@ -1682,7 +1682,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
             {foto && (
               <div className="flex items-center space-x-2">
                 <img src={foto} className="h-10 w-10 rounded object-cover border border-slate-300" referrerPolicy="no-referrer" />
-                <span className="text-xs text-slate-500 font-medium font-mono-custom">Carregada</span>
+                <span className="text-xs text-slate-600 font-medium font-mono-custom">Carregada</span>
                 <button type="button" onClick={() => setFoto(null)} className="text-red-500 text-xs hover:underline cursor-pointer"><i className="fa-solid fa-trash"></i></button>
               </div>
             )}
@@ -1699,7 +1699,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
             </label>
             {elevador && (
               <div className="flex items-center space-x-2">
-                <span className="text-xs text-slate-500 font-mono-custom">Qtd:</span>
+                <span className="text-xs text-slate-600 font-mono-custom">Qtd:</span>
                 <input type="number" min="1" value={numElevadores} onChange={e => setNumElevadores(Number(e.target.value))} className="border border-slate-200 px-2 py-1 text-xs rounded w-16 focus:outline-blue-500 font-mono-custom" />
               </div>
             )}
@@ -1753,7 +1753,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
             className="border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-xl text-xs transition-all cursor-pointer shadow-xs flex items-center gap-2 select-none"
             title="Cancelar edição e voltar à lista de prédios"
           >
-            <i className="fa-solid fa-xmark text-slate-500"></i>
+            <i className="fa-solid fa-xmark text-slate-600"></i>
             <span>Cancelar Edição</span>
           </button>
 

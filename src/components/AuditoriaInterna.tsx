@@ -266,7 +266,7 @@ export function AuditoriaInterna({
           <h2 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
             Auditoria Interna & Logs
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
             Histórico completo de alterações, quem alterou, quando alterou e relatórios de conformidade financeira e documental.
           </p>
         </div>
@@ -397,7 +397,7 @@ export function AuditoriaInterna({
               </h4>
               <ul className="space-y-3.5 text-xs">
                 <li className="flex items-start justify-between gap-2">
-                  <span className="text-slate-500">Conciliação Bancária:</span>
+                  <span className="text-slate-600">Conciliação Bancária:</span>
                   {scanReport.reconciliado ? (
                     <span className="text-emerald-500 font-bold flex items-center gap-0.5"><i className="fa-solid fa-circle-check"></i> Reconciliado</span>
                   ) : (
@@ -405,7 +405,7 @@ export function AuditoriaInterna({
                   )}
                 </li>
                 <li className="flex items-start justify-between gap-2">
-                  <span className="text-slate-500">FCR Obrigatório (DL 268/94):</span>
+                  <span className="text-slate-600">FCR Obrigatório (DL 268/94):</span>
                   {scanReport.fundo_reserva_compliant ? (
                     <span className="text-emerald-500 font-bold flex items-center gap-0.5"><i className="fa-solid fa-circle-check"></i> Conforme (10%+)</span>
                   ) : (
@@ -413,7 +413,7 @@ export function AuditoriaInterna({
                   )}
                 </li>
                 <li className="flex items-start justify-between gap-2">
-                  <span className="text-slate-500">Movimentos Duplicados:</span>
+                  <span className="text-slate-600">Movimentos Duplicados:</span>
                   {scanReport.duplicates_found.length === 0 ? (
                     <span className="text-emerald-500 font-semibold">Nenhum detetado</span>
                   ) : (
@@ -440,7 +440,7 @@ export function AuditoriaInterna({
               </h4>
               <ul className="space-y-3.5 text-xs">
                 <li className="flex items-center justify-between">
-                  <span className="text-slate-500">Regulamento Interno:</span>
+                  <span className="text-slate-600">Regulamento Interno:</span>
                   {scanReport.docs.hasRegulamento ? (
                     <span className="text-emerald-500 font-bold flex items-center gap-0.5"><i className="fa-solid fa-circle-check"></i> Presente</span>
                   ) : (
@@ -448,7 +448,7 @@ export function AuditoriaInterna({
                   )}
                 </li>
                 <li className="flex items-center justify-between">
-                  <span className="text-slate-500">Atas de Assembleia:</span>
+                  <span className="text-slate-600">Atas de Assembleia:</span>
                   {scanReport.docs.hasAtas ? (
                     <span className="text-emerald-500 font-bold flex items-center gap-0.5"><i className="fa-solid fa-circle-check"></i> Presente</span>
                   ) : (
@@ -456,7 +456,7 @@ export function AuditoriaInterna({
                   )}
                 </li>
                 <li className="flex items-center justify-between">
-                  <span className="text-slate-500">Contrato Elevador (OTIS):</span>
+                  <span className="text-slate-600">Contrato Elevador (OTIS):</span>
                   {scanReport.docs.hasContratoOTIS ? (
                     <span className="text-emerald-500 font-bold flex items-center gap-0.5"><i className="fa-solid fa-circle-check"></i> Presente</span>
                   ) : (
@@ -464,7 +464,7 @@ export function AuditoriaInterna({
                   )}
                 </li>
                 <li className="flex items-center justify-between">
-                  <span className="text-slate-500">Apólice Global de Prédio:</span>
+                  <span className="text-slate-600">Apólice Global de Prédio:</span>
                   {scanReport.docs.hasSeguroGlobal ? (
                     <span className="text-emerald-500 font-bold flex items-center gap-0.5"><i className="fa-solid fa-circle-check"></i> Presente</span>
                   ) : (
@@ -480,7 +480,7 @@ export function AuditoriaInterna({
                 <h4 className="font-extrabold text-sm text-purple-500 flex items-center gap-1 mb-3">
                   <i className="fa-solid fa-house-shield"></i> Seguros Multirrisco Frações
                 </h4>
-                <p className="text-xs text-slate-500 mb-3">
+                <p className="text-xs text-slate-600 mb-3">
                   Verificação de apólices individuais obrigatórias das frações autónomas:
                 </p>
                 {scanReport.expired_insurances.length === 0 ? (
@@ -619,7 +619,7 @@ export function AuditoriaInterna({
                   ) : (
                     decisoesIA.map((item) => (
                       <tr key={item.id_log} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                        <td className="p-3 font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        <td className="p-3 font-mono text-[11px] text-slate-600 dark:text-slate-400 whitespace-nowrap">
                           {new Date(item.criado_em).toLocaleString("pt-PT").replace(",", "")}
                         </td>
                         <td className="p-3 font-bold text-slate-800 dark:text-slate-200 font-mono text-[11px]">
@@ -729,7 +729,7 @@ export function AuditoriaInterna({
                             </div>
                           </div>
                         </td>
-                        <td className="p-4 font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                        <td className="p-4 font-mono text-[11px] text-slate-600 dark:text-slate-400">
                           {log.data_hora}
                         </td>
                         <td className="p-4">
@@ -785,7 +785,7 @@ export function AuditoriaInterna({
                   Monitorização Activa
                 </span>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-600">
                 Esta verificação compara o somatório dos saldos físicos das contas bancárias registadas com o saldo contabilístico teórico esperado obtido do histórico de receitas e despesas.
               </p>
 
@@ -839,7 +839,7 @@ export function AuditoriaInterna({
                   Verificação Legal
                 </span>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-600">
                 Nos termos da legislação portuguesa, cada condomínio deve constituir um fundo comum de reserva para custear despesas de conservação do edifício. A contribuição mínima obrigatória é de 10% da quota regular.
               </p>
 
@@ -875,7 +875,7 @@ export function AuditoriaInterna({
                     </div>
 
                     {orcamentoAnual === 0 ? (
-                      <div className="p-3 rounded-lg bg-slate-500/10 border border-slate-500/20 text-slate-500 dark:text-slate-400 text-xs">
+                      <div className="p-3 rounded-lg bg-slate-500/10 border border-slate-500/20 text-slate-600 dark:text-slate-400 text-xs">
                         <p className="font-bold flex items-center gap-1"><i className="fa-solid fa-circle-info"></i> Sem orçamento anual definido</p>
                         <p className="text-[11px] mt-0.5">Defina o orçamento anual em Emissão de Quotas para calcular o rácio de conformidade legal.</p>
                       </div>
@@ -948,7 +948,7 @@ export function AuditoriaInterna({
                   Conformidade Documental
                 </span>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-600">
                 Verificação automatizada da existência e validade de documentos exigidos por lei ou indispensáveis para a gestão do condomínio.
               </p>
 
@@ -1028,7 +1028,7 @@ export function AuditoriaInterna({
                 </h3>
                 <p className="text-[11px] text-slate-600 mt-1">Artigo 1429º do Código Civil</p>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-600">
                 O seguro contra o risco de incêndio da fração e áreas comuns é obrigatório por lei. O administrador tem o dever de exigir o comprovativo anual aos condóminos.
               </p>
 
@@ -1055,7 +1055,7 @@ export function AuditoriaInterna({
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-slate-500">Proprietário: {f.proprietario.nome}</p>
+                      <p className="text-[10px] text-slate-600">Proprietário: {f.proprietario.nome}</p>
                       {hasApolice && (
                         <p className="text-[10px] font-mono text-slate-600">
                           {f.seguradora} - {f.apolice_num} (Expira: {f.apolice_validade})
@@ -1101,7 +1101,7 @@ export function AuditoriaInterna({
                 <div>
                   <span className="text-slate-600 font-bold block text-[10px] uppercase">Utilizador / Autor</span>
                   <p className="font-extrabold text-slate-800 dark:text-white mt-0.5">{selectedLog.usuario}</p>
-                  <p className="text-slate-500 font-mono text-[10px]">{selectedLog.email}</p>
+                  <p className="text-slate-600 font-mono text-[10px]">{selectedLog.email}</p>
                 </div>
                 <div>
                   <span className="text-slate-600 font-bold block text-[10px] uppercase">Perfil de Acesso</span>
@@ -1134,7 +1134,7 @@ export function AuditoriaInterna({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 border-t border-slate-100 dark:border-slate-800/80 pt-3">
                 <div>
                   <span className="text-slate-600 font-bold block text-[10px] uppercase">Estado Anterior (Antes)</span>
-                  <div className="mt-1 font-mono text-[10px] text-slate-500 bg-slate-50 dark:bg-slate-800/40 p-2 rounded border border-slate-100 dark:border-slate-800/60 break-all h-20 overflow-y-auto">
+                  <div className="mt-1 font-mono text-[10px] text-slate-600 bg-slate-50 dark:bg-slate-800/40 p-2 rounded border border-slate-100 dark:border-slate-800/60 break-all h-20 overflow-y-auto">
                     {selectedLog.valores_anteriores || "-"}
                   </div>
                 </div>
