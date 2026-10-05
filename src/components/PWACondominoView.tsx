@@ -1322,7 +1322,7 @@ export default function PWACondominoView({
               <div className="space-y-0.5">
                 <span className="text-[8px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider block">Condomínio Activo PWA</span>
                 <h2 className="text-xs font-black tracking-tight">Olá, {perfilNome}</h2>
-                <span className="bg-slate-200 dark:bg-slate-800 text-[8px] px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 inline-block font-mono text-slate-700 dark:text-slate-300">Fração 3ºE</span>
+                <span className="bg-slate-200 dark:bg-slate-800 text-[8px] px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 inline-block font-mono text-slate-700 dark:text-slate-300">Fração {condominoFracao?.fracao_nome || "—"}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <button 
@@ -2881,7 +2881,7 @@ export default function PWACondominoView({
                   return (
                     <div key={idx} className="p-2.5 bg-emerald-600 text-white rounded-2xl space-y-1 ml-auto max-w-[88%] shadow-xs animate-fade-in">
                       <div className="flex justify-between font-bold text-emerald-100 text-[8px] flex-row-reverse">
-                        <span>Você (3ºE)</span>
+                        <span>Você ({condominoFracao?.fracao_nome || "—"})</span>
                         <span>Agora</span>
                       </div>
 
@@ -3313,7 +3313,7 @@ export default function PWACondominoView({
                 </div>
                 <div>
                   <h4 className="font-extrabold text-slate-800 dark:text-white text-xs">{perfilNome}</h4>
-                  <span className="text-[8px] text-slate-600 uppercase font-extrabold">3º Andar Esquerdo • Entrada: 12/07/2026</span>
+                  <span className="text-[8px] text-slate-600 uppercase font-extrabold">{condominoFracao?.piso || "—"} • Fração {condominoFracao?.fracao_nome || "—"}</span>
                 </div>
               </div>
 
