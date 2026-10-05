@@ -4,7 +4,7 @@ import { generateAndDownloadPdf, formatDatePT } from "../utils";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar, LineChart, Line, ComposedChart } from "recharts";
 import { SendingReactionModal } from "./SendingReactionModal";
 import { MoneyInput } from "./MoneyInput";
-import { fetchObrasExtraFromSupabase, fetchInventarioTecnicoFromSupabase } from "../lib/supabaseService";
+import { fetchObrasExtraFromSupabase, fetchInventarioTecnicoFromSupabase, fetchDividasFornecedoresFromSupabase } from "../lib/supabaseService";
 import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import type { EquipamentoTecnico } from "./InventarioTecnico";
 
@@ -1109,15 +1109,41 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
       // Pedido explícito: nunca uma análise conjunta de todas as contas —
       // cada conta bancária (corrente, fundo de reserva, etc.) é analisada
       // separadamente, com o seu próprio saldo, receitas e despesas reais.
+      // E a projeção tem de contar com o PASSIVO (dívidas a fornecedores
+      // ainda por pagar), não só receitas−despesas — cada dívida atribuída
+      // à conta certa: a dívida do fornecedor contratado especificamente
+      // para uma obra financiada por quota extraordinária vai para a conta
+      // de Intervenções/Obras; todas as outras dívidas (despesas correntes
+      // do condomínio) vão para a conta de gestão corrente.
       const movimentosContados = (movements || []).filter(m => m.estado !== "Movimento Cego / Por Justificar");
+      const [dividasReais, obrasReaisParaPassivo] = await Promise.all([
+        fetchDividasFornecedoresFromSupabase(predio.id_predio),
+        fetchObrasExtraFromSupabase(predio.id_predio)
+      ]);
+      const idsDividasDeObraComCotaExtra = new Set(
+        (obrasReaisParaPassivo || []).filter(o => o.necessitaCotaExtra && o.id_divida).map(o => o.id_divida)
+      );
+      const dividasPendentes = (dividasReais || []).filter(d => d.estado !== "Paga");
+      const contaIntervencoes = (contas || []).find(c => /interven|obra|extra/i.test(c.tipo || ""));
+      const contaGestaoCorrente = (contas || []).find(c => c.id_conta !== contaIntervencoes?.id_conta && c.is_principal)
+        || (contas || []).find(c => c.id_conta !== contaIntervencoes?.id_conta);
+
       const contasReais = (contas || []).map(c => {
         const movsConta = movimentosContados.filter(m => m.id_conta === c.id_conta);
+        const ehContaIntervencoes = contaIntervencoes?.id_conta === c.id_conta;
+        const passivoConta = dividasPendentes
+          .filter(d => (idsDividasDeObraComCotaExtra.has(d.id_divida) ? ehContaIntervencoes : c.id_conta === contaGestaoCorrente?.id_conta))
+          .reduce((s, d) => s + Math.max(0, (d.valor || 0) - (d.valor_pago || 0)), 0);
+        const receitasReais = Math.round(movsConta.filter(m => m.tipo === "Receita").reduce((s, m) => s + m.valor, 0) * 100) / 100;
+        const despesasReais = Math.round(movsConta.filter(m => m.tipo === "Despesa").reduce((s, m) => s + m.valor, 0) * 100) / 100;
         return {
           banco: c.banco,
           tipo: c.tipo,
           saldoAtual: c.saldo,
-          receitasReais: Math.round(movsConta.filter(m => m.tipo === "Receita").reduce((s, m) => s + m.valor, 0) * 100) / 100,
-          despesasReais: Math.round(movsConta.filter(m => m.tipo === "Despesa").reduce((s, m) => s + m.valor, 0) * 100) / 100
+          receitasReais,
+          despesasReais,
+          passivoPendente: Math.round(passivoConta * 100) / 100,
+          resultadoLiquidoProjetado: Math.round((receitasReais - despesasReais - passivoConta) * 100) / 100
         };
       });
 

@@ -238,7 +238,7 @@ Cada campo deve ter 1 a 3 frases. Se não houver obras pendentes, impacto_obras 
       const { contas, receitaAnualQuotasReal, numFracoes } = req.body || {};
       const listaContas = Array.isArray(contas) ? contas : [];
       const descritivoContas = listaContas.length > 0
-        ? listaContas.map(c => `- ${c.banco || "Conta"} (tipo: ${c.tipo || "não especificado"}): saldo atual €${(c.saldoAtual || 0).toFixed(2)}, receitas reais registadas €${(c.receitasReais || 0).toFixed(2)}, despesas reais registadas €${(c.despesasReais || 0).toFixed(2)}`).join("\n")
+        ? listaContas.map(c => `- ${c.banco || "Conta"} (tipo: ${c.tipo || "não especificado"}): saldo atual €${(c.saldoAtual || 0).toFixed(2)}, receitas reais registadas €${(c.receitasReais || 0).toFixed(2)}, despesas reais registadas €${(c.despesasReais || 0).toFixed(2)}, passivo pendente (dívidas a fornecedores já atribuídas a esta conta, ainda por pagar) €${(c.passivoPendente || 0).toFixed(2)}, resultado líquido projetado (receitas − despesas − passivo) €${(c.resultadoLiquidoProjetado || 0).toFixed(2)}`).join("\n")
         : "Nenhuma conta bancária registada.";
 
       const prompt = `És um administrador experiente de condomínios em Portugal a analisar a saúde financeira real de um condomínio. Todos os números abaixo são reais e definitivos — nunca os alteres, nunca os projetes ou extrapoles a partir de um período curto, e nunca inventes outros.
@@ -246,15 +246,15 @@ Cada campo deve ter 1 a 3 frases. Se não houver obras pendentes, impacto_obras 
 Receita anual real das quotas ordinárias (média mensal real dos avisos emitidos × 12, não uma estimativa a partir de uma amostra de movimentos): €${(receitaAnualQuotasReal || 0).toFixed(2)}
 Número de frações: ${numFracoes || "?"}
 
-Contas bancárias (analisa CADA UMA separadamente — nunca somes todas as contas numa única análise conjunta):
+Contas bancárias (analisa CADA UMA separadamente — nunca somes todas as contas numa única análise conjunta). O passivo (dívidas a fornecedores ainda por pagar) já vem atribuído à conta correta: a dívida do fornecedor contratado especificamente para uma obra financiada por quota extraordinária fica na conta de Intervenções/Obras; as restantes dívidas (despesas correntes) ficam na conta de gestão corrente.
 ${descritivoContas}
 
 Elabora uma análise técnica curta e clara, em português de Portugal, por conta e depois em conjunto:
 1. Conformidade de cada conta de Fundo de Reserva com o Decreto-Lei 268/94 (obrigação de pelo menos 10% do valor da quota).
-2. Solidez de cada conta para despesas de conservação extraordinárias, com base no respetivo saldo e histórico real de despesas — nunca numa projeção estatística de período curto.
+2. Projeção real de cada conta: o "resultado líquido projetado" já contabiliza receitas − despesas − passivo pendente — comenta se a conta fica sólida ou em risco depois de liquidar as dívidas já conhecidas, nunca a partir de uma projeção estatística de período curto.
 3. Recomendações concretas por conta.
 
-Nunca escrevas frases do tipo "num período de X dias arrecadou Y, projetando para o ano Z" — usa sempre os números reais e definitivos fornecidos acima.`;
+Nunca escrevas frases do tipo "num período de X dias arrecadou Y, projetando para o ano Z" — usa sempre os números reais e definitivos fornecidos acima, incluindo o passivo.`;
 
       const responseText = await generateWithFallback({
         contents: [{ role: "user", parts: [{ text: prompt }] }]
