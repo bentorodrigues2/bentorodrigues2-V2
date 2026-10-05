@@ -638,7 +638,7 @@ export function PortalCondomino({
       // (distinto de "enviar-push", que notificaria por engano todos os
       // condóminos do prédio) — só chega a quem ativou "Notificações Push
       // da Administração" no menu de Segurança.
-      const nomeRemetenteMsg = `${loggedUser.nome} (Fração ${userFracao?.fracao_nome || "A"})`;
+      const nomeRemetenteMsg = `${loggedUser.nome} (${userFracao?.piso || "Fração " + (userFracao?.fracao_nome || "A")})`;
       fetch("/api/admin?acao=enviar-push-admin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -652,7 +652,7 @@ export function PortalCondomino({
       const novaMsg: MensagemAdministracao = {
         id: idConversa,
         id_fracao: userFracao?.id_fracao || "frac-1",
-        nome_remetente: `${loggedUser.nome} (Fração ${userFracao?.fracao_nome || "A"})`,
+        nome_remetente: nomeRemetenteMsg,
         assunto: conversa.assunto,
         mensagem: textoFinal,
         data: new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }),
@@ -972,7 +972,7 @@ export function PortalCondomino({
       tickets.push({
         id: c.id_conversa,
         id_fracao: c.id_fracao,
-        nome_remetente: `${loggedUser.nome} (Fração ${activeUserFracao.fracao_nome})`,
+        nome_remetente: `${loggedUser.nome} (${activeUserFracao.piso || "Fração " + activeUserFracao.fracao_nome})`,
         assunto: c.assunto || "Mensagem Direta",
         mensagem: primeira.texto,
         data: primeira.created_at ? new Date(primeira.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : "",
@@ -1222,7 +1222,7 @@ export function PortalCondomino({
                   <div>
                     <h3 className="font-bold text-lg leading-tight">{loggedUser.nome}</h3>
                     <p className="text-emerald-200 text-xs font-semibold uppercase tracking-wider">
-                      Fração {activeUserFracao?.fracao_nome || "A"} • {activeUserFracao?.piso || "R/C Esq"}
+                      {activeUserFracao?.piso || `Fração ${activeUserFracao?.fracao_nome || "A"}`}
                     </p>
                     <p className="text-emerald-100 text-[10px] mt-1 font-mono-custom">
                       Permilagem: {activeUserFracao?.permilagem || 150}‰
@@ -1488,7 +1488,7 @@ export function PortalCondomino({
                       <i className="fa-solid fa-file-invoice-dollar mr-2 text-emerald-600"></i> Avisos & Quotas Pendentes
                     </h3>
                     <span className="text-[10px] bg-amber-50 text-amber-700 font-bold border border-amber-200 px-2 py-0.5 rounded-full">
-                      Fração {activeUserFracao?.fracao_nome || "A"}
+                      {activeUserFracao?.piso || `Fração ${activeUserFracao?.fracao_nome || "A"}`}
                     </span>
                   </div>
 

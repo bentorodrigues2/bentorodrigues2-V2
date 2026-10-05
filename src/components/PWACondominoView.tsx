@@ -733,7 +733,7 @@ export default function PWACondominoView({
     // mesma lógica que PortalCondomino.tsx (versão browser). Só chega a
     // quem ativou "Notificações Push da Administração" no menu de
     // Segurança.
-    const nomeRemetenteMsg = `${loggedUser.nome} (Fração ${condominoFracao?.fracao_nome || "A"})`;
+    const nomeRemetenteMsg = `${loggedUser.nome} (${condominoFracao?.piso || "Fração " + (condominoFracao?.fracao_nome || "A")})`;
     fetch("/api/admin?acao=enviar-push-admin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1062,7 +1062,7 @@ export default function PWACondominoView({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id_predio: predio.id_predio,
-          title: `🚨 Nova Avaria — Fração ${condominoFracao.fracao_nome || "?"}`,
+          title: `🚨 Nova Avaria — ${condominoFracao.piso || "Fração " + (condominoFracao.fracao_nome || "?")}`,
           body: `${newIntervEquipamento}: ${newIntervDesc}`
         })
       }).catch(() => {});
@@ -1322,7 +1322,7 @@ export default function PWACondominoView({
               <div className="space-y-0.5">
                 <span className="text-[8px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider block">Condomínio Activo PWA</span>
                 <h2 className="text-xs font-black tracking-tight">Olá, {perfilNome}</h2>
-                <span className="bg-slate-200 dark:bg-slate-800 text-[8px] px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 inline-block font-mono text-slate-700 dark:text-slate-300">Fração {condominoFracao?.fracao_nome || "—"}</span>
+                <span className="bg-slate-200 dark:bg-slate-800 text-[8px] px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 inline-block font-mono text-slate-700 dark:text-slate-300">{condominoFracao?.piso || `Fração ${condominoFracao?.fracao_nome || "—"}`}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <button 
@@ -2387,7 +2387,7 @@ export default function PWACondominoView({
               {/* Referência Individual */}
               <div className="space-y-1 bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800/60">
                 <div className="flex justify-between items-center">
-                  <span className="text-[8px] text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-wider block">Referência da Fração {condominoFracao?.fracao_nome ? `(${condominoFracao.fracao_nome})` : ""}</span>
+                  <span className="text-[8px] text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-wider block">Referência da Fração {condominoFracao?.fracao_nome ? `(${condominoFracao.piso ? `${condominoFracao.piso} · ` : ""}${condominoFracao.fracao_nome})` : ""}</span>
                   <button
                     onClick={() => handleCopyToClipboard(fractionRef, "Referência")}
                     className="flex items-center space-x-1 text-teal-600 hover:text-teal-700 font-bold text-[8px] cursor-pointer"
@@ -2881,7 +2881,7 @@ export default function PWACondominoView({
                   return (
                     <div key={idx} className="p-2.5 bg-emerald-600 text-white rounded-2xl space-y-1 ml-auto max-w-[88%] shadow-xs animate-fade-in">
                       <div className="flex justify-between font-bold text-emerald-100 text-[8px] flex-row-reverse">
-                        <span>Você ({condominoFracao?.fracao_nome || "—"})</span>
+                        <span>Você ({condominoFracao?.piso || condominoFracao?.fracao_nome || "—"})</span>
                         <span>Agora</span>
                       </div>
 
@@ -3313,7 +3313,7 @@ export default function PWACondominoView({
                 </div>
                 <div>
                   <h4 className="font-extrabold text-slate-800 dark:text-white text-xs">{perfilNome}</h4>
-                  <span className="text-[8px] text-slate-600 uppercase font-extrabold">{condominoFracao?.piso || "—"} • Fração {condominoFracao?.fracao_nome || "—"}</span>
+                  <span className="text-[8px] text-slate-600 uppercase font-extrabold">{condominoFracao?.piso || `Fração ${condominoFracao?.fracao_nome || "—"}`}</span>
                 </div>
               </div>
 
@@ -4066,7 +4066,7 @@ export default function PWACondominoView({
                         </button>
                       </div>
                       <strong className="text-emerald-400 font-mono text-xs block tracking-widest">{fractionRef}</strong>
-                      <span className="text-[8px] text-slate-600 block">Identificador individual da Fração {condominoFracao?.fracao_nome || "—"}.</span>
+                      <span className="text-[8px] text-slate-600 block">Identificador individual da Fração {condominoFracao?.piso ? `${condominoFracao.piso} (${condominoFracao.fracao_nome || "—"})` : (condominoFracao?.fracao_nome || "—")}.</span>
                     </div>
 
                     {/* Quota Extraordinária — só aparece se existir mesmo um aviso extraordinário pendente para esta fração */}
@@ -4897,7 +4897,7 @@ export default function PWACondominoView({
             </div>
 
             <p className="text-[9.5px] text-slate-600 leading-normal">
-              Utilize o dedo ou caneta stylus para desenhar a sua assinatura no quadro abaixo. A assinatura será autenticada e vinculada à fração <strong>{condominoFracao?.fracao_nome || "3º Esq."}</strong>.
+              Utilize o dedo ou caneta stylus para desenhar a sua assinatura no quadro abaixo. A assinatura será autenticada e vinculada à fração <strong>{condominoFracao?.piso || condominoFracao?.fracao_nome || "—"}</strong>.
             </p>
 
             {/* Interactive Touch Canvas */}
