@@ -168,19 +168,33 @@ export function AuditoriaInterna({
   };
 
   const generateAuditResults = () => {
-    // 1. Bank Reconciliation Check
+    // 1. Bank Reconciliation Check — por conta, não um único somatório
+    // global com um desvio inventado ("+12000 // Simulated offset check").
+    // Cada conta está conciliada quando o saldo atual bate certo com o
+    // saldo teórico (receitas − despesas dos movimentos dessa conta).
     const totalSaldoBancos = contas.reduce((sum, c) => sum + c.saldo, 0);
-    // Calculated expected balance from standard movements
-    const totalReceitas = movimentos.filter(m => m.tipo === "Receita").reduce((sum, m) => sum + m.valor, 0);
-    const totalDespesas = movimentos.filter(m => m.tipo === "Despesa").reduce((sum, m) => sum + m.valor, 0);
-    const expectedFromMovs = totalReceitas - totalDespesas;
-    const reconciliado = Math.abs(totalSaldoBancos - (expectedFromMovs + 12000)) < 1500; // Simulated offset check
+    const reconciliado = contas.every(c => {
+      const movsConta = movimentos.filter(m => m.id_conta === c.id_conta);
+      const saldoTeorico = movsConta.filter(m => m.tipo === "Receita").reduce((s, m) => s + m.valor, 0)
+        - movsConta.filter(m => m.tipo === "Despesa").reduce((s, m) => s + m.valor, 0);
+      return Math.abs(c.saldo - saldoTeorico) < 0.01;
+    });
 
-    // 2. Reserve Fund Contribution Compliance (DL 268/94 requires >= 10% of standard budget)
-    // Checking standard values or simple ratio
-    const hasSufficientFCR = totalSaldoBancos > 5000;
+    // 2. Reserve Fund Contribution Compliance (DL 268/94: >= 10% do
+    // orçamento anual) — mesma fórmula real já usada no cartão "Fundo
+    // Comum de Reserva" abaixo, em vez do limiar fixo "totalSaldoBancos >
+    // 5000" (sem nenhuma relação com a lei nem com o orçamento real deste
+    // prédio).
+    const contaFCRReal = contas.find(c => c.tipo.includes("FCR") || c.tipo.includes("Reserva"));
+    const orcamentoAnualReal = (predio.patrimonio as any)?.orcamento_anual || 0;
+    const hasSufficientFCR = orcamentoAnualReal > 0 && ((contaFCRReal?.saldo || 0) / orcamentoAnualReal) * 100 >= 10;
 
-    // 3. Duplicated Transactions Detector
+    // 3. Duplicated Transactions Detector — exigir também a MESMA fração
+    // (id_fracao). Sem isto, dois condóminos diferentes a pagar a mesma
+    // quota no mesmo dia (perfeitamente normal — ex: toda a gente paga
+    // 134,21€ a 1 de setembro) era sinalizado como "duplicado suspeito",
+    // mesmo sendo pessoas e pagamentos completamente distintos. Confirmado
+    // em produção: 20 pares assim, nenhum deles duplicado a sério.
     const duplicates: any[] = [];
     for (let i = 0; i < movimentos.length; i++) {
       for (let j = i + 1; j < movimentos.length; j++) {
@@ -190,6 +204,7 @@ export function AuditoriaInterna({
           m1.valor === m2.valor &&
           m1.tipo === m2.tipo &&
           m1.categoria === m2.categoria &&
+          m1.id_fracao && m1.id_fracao === m2.id_fracao &&
           Math.abs(new Date(m1.data).getTime() - new Date(m2.data).getTime()) < 3 * 24 * 60 * 60 * 1000
         ) {
           duplicates.push({ m1, m2 });
@@ -774,58 +789,86 @@ export function AuditoriaInterna({
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            {/* CONCILIAÇÃO BANCÁRIA */}
+            {/* AUDITORIA FINANCEIRA POR CONTA BANCÁRIA */}
             <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <h3 className="font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
                   <i className="fa-solid fa-landmark text-emerald-500"></i>
-                  Conciliação de Contas e Saldos
+                  Auditoria Financeira por Conta Bancária
                 </h3>
                 <span className="text-[10px] bg-emerald-500/10 text-emerald-400 font-bold px-2 py-0.5 rounded">
-                  Monitorização Activa
+                  {contas.length} Conta{contas.length !== 1 ? "s" : ""}
                 </span>
               </div>
               <p className="text-xs text-slate-600">
-                Esta verificação compara o somatório dos saldos físicos das contas bancárias registadas com o saldo contabilístico teórico esperado obtido do histórico de receitas e despesas.
+                Auditoria individual por conta: despesas e receitas reais associadas a cada conta bancária, confrontadas com o respetivo saldo atual — em vez de um único somatório global.
               </p>
 
-              <div className="space-y-3.5">
-                <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-600 uppercase">Soma dos Saldos Bancários</p>
-                    <p className="text-lg font-black text-slate-800 dark:text-white">
-                      {contas.reduce((sum, c) => sum + c.saldo, 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] text-slate-600 block font-bold">CONTAS EXAMINADAS</span>
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{contas.length} Contas ativas</span>
-                  </div>
+              {contas.length === 0 ? (
+                <p className="text-xs text-slate-600 bg-slate-50 dark:bg-slate-800/40 rounded-lg p-3 text-center">
+                  Nenhuma conta bancária registada para este prédio.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {contas.map(conta => {
+                    const movsConta = movimentos.filter(m => m.id_conta === conta.id_conta);
+                    const receitasConta = movsConta.filter(m => m.tipo === "Receita").reduce((s, m) => s + m.valor, 0);
+                    const despesasConta = movsConta.filter(m => m.tipo === "Despesa").reduce((s, m) => s + m.valor, 0);
+                    const saldoTeorico = Math.round((receitasConta - despesasConta) * 100) / 100;
+                    const diferenca = Math.round((conta.saldo - saldoTeorico) * 100) / 100;
+                    const conciliado = Math.abs(diferenca) < 0.01;
+                    return (
+                      <div key={conta.id_conta} className="bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-200/70 dark:border-slate-800 overflow-hidden">
+                        <div className="p-3 flex items-center justify-between gap-2 border-b border-slate-200/70 dark:border-slate-800">
+                          <div className="min-w-0">
+                            <p className="text-xs font-black text-slate-800 dark:text-white truncate">
+                              {conta.banco} {conta.is_principal && <span className="text-[9px] font-bold text-emerald-600 ml-1">★ PRINCIPAL</span>}
+                            </p>
+                            <p className="text-[10px] text-slate-600 truncate">{conta.tipo} • IBAN ···{(conta.iban || "").slice(-4)}</p>
+                          </div>
+                          <p className="text-sm font-black text-slate-800 dark:text-white shrink-0">
+                            {conta.saldo.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 p-3">
+                          <div className="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-emerald-200/60 dark:border-emerald-900/40">
+                            <p className="text-[9px] font-bold text-emerald-700 dark:text-emerald-400 uppercase">
+                              Receitas ({movsConta.filter(m => m.tipo === "Receita").length})
+                            </p>
+                            <p className="text-sm font-bold text-emerald-600">
+                              +{receitasConta.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
+                            </p>
+                          </div>
+                          <div className="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-rose-200/60 dark:border-rose-900/40">
+                            <p className="text-[9px] font-bold text-rose-700 dark:text-rose-400 uppercase">
+                              Despesas ({movsConta.filter(m => m.tipo === "Despesa").length})
+                            </p>
+                            <p className="text-sm font-bold text-rose-600">
+                              -{despesasConta.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
+                            </p>
+                          </div>
+                        </div>
+                        <div className={`mx-3 mb-3 p-2.5 rounded-lg border flex items-center gap-2.5 text-[11px] ${
+                          conciliado
+                            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                            : "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400"
+                        }`}>
+                          <i className={`fa-solid ${conciliado ? "fa-circle-check" : "fa-triangle-exclamation"}`}></i>
+                          <div>
+                            <p className="font-bold">
+                              {conciliado ? "Conta Conciliada" : `Diferença de ${diferenca > 0 ? "+" : ""}${diferenca.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}`}
+                            </p>
+                            <p className="opacity-90">
+                              Saldo teórico (receitas − despesas): {saldoTeorico.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
+                              {!conciliado && " — revise os movimentos desta conta ou o saldo registado."}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-
-                <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-lg flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-600 uppercase">Soma das Receitas no Período</p>
-                    <p className="text-base font-bold text-emerald-500">
-                      +{movimentos.filter(m => m.tipo === "Receita").reduce((sum, m) => sum + m.valor, 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-bold text-slate-600 uppercase">Soma das Despesas</p>
-                    <p className="text-base font-bold text-rose-500">
-                      -{movimentos.filter(m => m.tipo === "Despesa").reduce((sum, m) => sum + m.valor, 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-lg border flex items-center gap-3.5 bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs">
-                  <i className="fa-solid fa-circle-check text-xl"></i>
-                  <div>
-                    <p className="font-bold">Reconciliação Efetuada com Sucesso</p>
-                    <p className="text-[11px] opacity-90">Não existem transações em trânsito sem registo no extrato bancário. Conciliado e livre de alertas.</p>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* CONTROLO COMPLIANCE FUNDO DE RESERVA (DL 268/94) */}
