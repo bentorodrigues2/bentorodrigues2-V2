@@ -628,7 +628,31 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
           </form>
 
           {revisoesOrcamento.length > 0 && (
-            <div className="overflow-x-auto border border-slate-100 rounded-xl">
+            <>
+              <div className="sm:hidden space-y-2">
+                {revisoesOrcamento.map(r => (
+                  <div key={r.id_revisao} className={`p-3 rounded-xl border border-slate-100 space-y-1.5 text-xs ${r.id_revisao === revisaoEmVigor?.id_revisao ? "bg-indigo-50/40" : ""}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-slate-600">{formatDatePT(r.data_vigencia)}</span>
+                      {r.id_revisao === revisaoEmVigor?.id_revisao ? (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-bold">Em Vigor</span>
+                      ) : r.data_vigencia > new Date().toISOString().split("T")[0] ? (
+                        <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[9px] font-bold">Agendada</span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[9px] font-bold">Histórico</span>
+                      )}
+                    </div>
+                    <p className="font-bold font-mono text-slate-800">{r.valor.toFixed(2)} €/ano</p>
+                    <p className="text-slate-600">{r.motivo || "—"} {r.aprovado_em_assembleia && "· ✅ Aprovado em assembleia"}</p>
+                    {loggedUser.role === "ADMIN" && (
+                      <button onClick={() => handleRemoverRevisaoOrcamento(r)} className="text-red-500 hover:text-red-700 cursor-pointer text-[10px] font-bold flex items-center gap-1">
+                        <i className="fa-solid fa-trash-can"></i> Eliminar
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="hidden sm:block overflow-x-auto border border-slate-100 rounded-xl">
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
@@ -667,7 +691,8 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                   ))}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -742,7 +767,63 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
             Total: {predioAvisos.length} docs
           </span>
         </div>
-        <div className="overflow-x-auto">
+        {/* Cartões — ecrãs estreitos (PWA/telemóvel) */}
+        <div className="sm:hidden divide-y divide-slate-100">
+          {predioAvisos.length === 0 ? (
+            <p className="p-6 text-center text-slate-600 italic text-xs">Nenhum aviso emitido para este condomínio.</p>
+          ) : (
+            predioAvisos.map(a => {
+              const frac = fracoes.find(f => f.id_fracao === a.id_fracao);
+              return (
+                <div key={a.id_aviso} className="p-3 space-y-2 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-indigo-600 font-bold text-[11px]">{a.id_aviso.toUpperCase()}</span>
+                    <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
+                      a.estado === 'Pago'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                        : (a.valor_pago || 0) > 0
+                        ? 'bg-sky-50 text-sky-700 border border-sky-100'
+                        : 'bg-amber-50 text-amber-700 border border-amber-100'
+                    }`}>
+                      {a.estado === 'Pago' ? 'Pago' : (a.valor_pago || 0) > 0 ? 'Paga Parcialmente' : a.estado}
+                    </span>
+                  </div>
+                  <p className="font-bold text-slate-800">Fração {frac?.fracao_nome || "?"} ({frac?.piso || "N/A"})</p>
+                  <p className="text-slate-600">{a.descricao}</p>
+                  <div className="flex items-center justify-between font-mono text-[11px]">
+                    <span>{formatDatePT(a.data)} → {formatDatePT(a.vencimento)}</span>
+                    <span className="font-bold text-slate-800">{a.valor.toFixed(2)}€</span>
+                  </div>
+                  <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded border ${
+                    a.tipo === 'Cota Ordinária'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                      : a.tipo.includes('Extra')
+                      ? 'bg-amber-50 text-amber-700 border-amber-100'
+                      : 'bg-indigo-50 text-indigo-700 border-indigo-100'
+                  }`}>
+                    {a.tipo}
+                  </span>
+                  <div className="flex items-center gap-1.5 pt-1">
+                    <button onClick={() => abrirDocumento(a, "NOTA_COBRANCA")} title="Nota de Cobrança" className="flex-1 p-1.5 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 text-slate-600 rounded text-[10px] font-bold cursor-pointer">
+                      <i className="fa-solid fa-file-invoice"></i> Nota
+                    </button>
+                    <button onClick={() => abrirDocumento(a, "RECIBO")} title="Emitir Recibo Oficial" className="flex-1 p-1.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 border border-slate-200 text-slate-600 rounded text-[10px] font-bold cursor-pointer">
+                      <i className="fa-solid fa-receipt"></i> Recibo
+                    </button>
+                    <button onClick={() => abrirEdicaoAviso(a)} title="Editar Aviso" className="p-1.5 px-2.5 bg-slate-100 hover:bg-amber-50 hover:text-amber-600 border border-slate-200 text-slate-600 rounded text-[10px] cursor-pointer">
+                      <i className="fa-solid fa-pen"></i>
+                    </button>
+                    <button onClick={() => eliminarAviso(a)} title="Eliminar Aviso" className="p-1.5 px-2.5 bg-slate-100 hover:bg-red-50 hover:text-red-600 border border-slate-200 text-slate-600 rounded text-[10px] cursor-pointer">
+                      <i className="fa-solid fa-trash-can"></i>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
