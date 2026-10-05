@@ -211,12 +211,31 @@ h1, h2, h3, h4 {
   flex-wrap: wrap !important;
 }
 
-/* Ensure horizontal scrolling for tables inside mobile views */
+/* Ensure horizontal scrolling for tables inside mobile views.
+   "display: block !important" aqui era o bug real por trás de quase
+   todas as tabelas partidas/em branco dentro da PWA (Frações,
+   Movimentos, etc.): tira o <table> do seu contexto de layout de
+   tabela, e as linhas/células deixam de se desenhar corretamente
+   (colapsam, ficam invisíveis ou sobrepostas) — não é um problema
+   ficheiro a ficheiro, era esta regra global a partir TODAS as tabelas
+   de uma vez. Mantém-se a tabela como "table" a sério, só com scroll
+   horizontal próprio quando o conteúdo não cabe. */
 .custom-pwa-backoffice-content table {
-  display: block !important;
-  width: 100% !important;
+  display: table !important;
+  width: max-content !important;
+  min-width: 100% !important;
+}
+.custom-pwa-backoffice-content table td,
+.custom-pwa-backoffice-content table th {
+  white-space: nowrap;
+}
+/* O scroll tem de acontecer no elemento à volta da tabela, não na
+   própria tabela (uma tabela com width:max-content nunca "transborda"
+   de si mesma, por isso overflow-x no próprio <table> nunca chega a
+   fazer scroll nenhum). Aplica-se ao pai direto de qualquer <table>,
+   sem depender de cada ecrã já ter esse wrapper escrito à mão. */
+.custom-pwa-backoffice-content *:has(> table) {
   overflow-x: auto !important;
-  white-space: nowrap !important;
 }
 
 /* Horizontal scrollbar for tab navigation bars */

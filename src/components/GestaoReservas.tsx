@@ -754,7 +754,50 @@ export function GestaoReservas({
                   <p className="text-xs">Não existem reservas agendadas pendentes de realização.</p>
                 </div>
               ) : (
-                <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-x-auto">
+                <>
+                  {/* Cartões — ecrãs estreitos (PWA/telemóvel) */}
+                  <div className="sm:hidden space-y-2.5">
+                    {getFilteredReservas().map(r => {
+                      const area = COMMON_AREAS.find(a => a.key === r.area_comum);
+                      const matchingFrac = fracoes.find(f => f.id_fracao === r.id_fracao);
+                      const rule = getRegraForArea(r.area_comum);
+                      return (
+                        <div key={r.id_reserva} className="border border-slate-100 dark:border-slate-800 rounded-xl p-3 space-y-2 bg-white dark:bg-slate-900">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
+                              <i className={`fa-solid ${area?.icon || "fa-calendar"} text-emerald-600`}></i>
+                              {r.area_comum}
+                            </span>
+                            <button
+                              onClick={() => eliminarReserva(r.id_reserva)}
+                              className="text-red-500 hover:text-red-700 p-1 rounded cursor-pointer shrink-0"
+                              title="Cancelar Reserva"
+                            >
+                              <i className="fa-solid fa-trash-can"></i>
+                            </button>
+                          </div>
+                          <div className="text-[11px] font-mono-custom">
+                            <p className="font-semibold text-slate-900 dark:text-slate-100">{r.data}</p>
+                            <p className="text-slate-600">{r.hora_inicio}h às {r.hora_fim}h</p>
+                          </div>
+                          <div className="text-[11px]">
+                            <p className="font-semibold text-slate-800 dark:text-slate-200">Fração {matchingFrac?.fracao_nome || "N/A"}</p>
+                            <p className="text-slate-600">{r.responsavel}</p>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-slate-900 dark:text-slate-100 font-mono-custom bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[11px]">
+                              {r.num_pessoas} pax
+                            </span>
+                            {rule.caucao > 0 && (
+                              <span className="text-[10px] text-amber-600 font-semibold">Caução: {rule.caucao}€</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="hidden sm:block border border-slate-100 dark:border-slate-800 rounded-xl overflow-x-auto">
                   <table className="w-full text-xs text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 dark:bg-slate-900/60 text-slate-600 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
@@ -804,7 +847,7 @@ export function GestaoReservas({
                               )}
                             </td>
                             <td className="p-3 text-right">
-                              <button 
+                              <button
                                 onClick={() => eliminarReserva(r.id_reserva)}
                                 className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 p-1.5 rounded transition-colors cursor-pointer"
                                 title="Cancelar Reserva"
@@ -817,7 +860,8 @@ export function GestaoReservas({
                       })}
                     </tbody>
                   </table>
-                </div>
+                  </div>
+                </>
               )}
             </div>
           </div>
