@@ -1516,12 +1516,16 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   <p className="text-xs uppercase font-semibold text-slate-600">
                     {viaEfetiva === "JULGADO_PAZ" ? "Requerimento Inicial - Lei n.º 78/2001" : "Requerimento de Injunção - Decreto-Lei n.º 269/98"}
                   </p>
-                  {processoSelecionado && (
-                    <p className="text-[9px] text-slate-500 font-mono">
-                      Processo: {processoSelecionado.id_processo}
-                      {processoSelecionado.numero_processo_tribunal ? ` • Nº Tribunal: ${processoSelecionado.numero_processo_tribunal}` : ""}
-                    </p>
-                  )}
+                </div>
+
+                {/* Espaço em branco para preenchimento manual, a posteriori —
+                    o nº de processo e a data de entrada só existem DEPOIS de
+                    o tribunal/balcão aceitar este requerimento, nunca podem
+                    vir preenchidos automaticamente num documento que ainda
+                    vai ser submetido. Pedido explícito do administrador. */}
+                <div className="flex justify-between gap-4 text-[9px] text-slate-600 font-sans pb-1">
+                  <span>Nº de Processo (Tribunal): <span className="inline-block border-b border-slate-400 w-28">&nbsp;</span></span>
+                  <span>Data de Entrada: <span className="inline-block border-b border-slate-400 w-20">&nbsp;</span></span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 border border-slate-300 p-3 bg-slate-50 rounded">
@@ -1625,9 +1629,15 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   </p>
                 )}
 
-                <div className="pt-4 border-t border-slate-200 flex justify-between items-center text-[9px] text-slate-600 font-sans">
-                  <span>Assinatura Eletrónica do Mandatário / Administrador</span>
-                  <span className="font-bold text-slate-700">{loggedUser.nome}</span>
+                <div className="pt-4 border-t border-slate-200 space-y-5 text-[10px] text-slate-700 font-sans">
+                  <p>Nestes termos e nos melhores de Direito, requer-se a V. Exa. se digne admitir o presente requerimento e ordenar os demais termos até final.</p>
+                  <p className="font-semibold">Pede deferimento.</p>
+                  <p className="text-right">{predio.localidade || "—"}, {new Date().toLocaleDateString("pt-PT")}</p>
+                  <div className="pt-10 text-center space-y-1 mx-auto w-64">
+                    <div className="border-t border-slate-500"></div>
+                    <p className="font-bold text-slate-800">{loggedUser.nome}</p>
+                    <p className="text-[9px] text-slate-600">Administrador do Condomínio</p>
+                  </div>
                 </div>
               </div>
             )}
