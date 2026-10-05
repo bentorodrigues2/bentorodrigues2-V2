@@ -1652,18 +1652,18 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
       {activeTab === "orcamento_anual_ia" && budgetResult && (
         <div className="space-y-6 animate-fadeIn">
           {/* PAINEL DEDICADO: 🔥 10. IA AVANÇADA – PREVISÕES */}
-          <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-xl space-y-6 border border-slate-800">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4">
+          <div className="bg-emerald-50 text-slate-800 p-6 rounded-2xl shadow-xs space-y-6 border border-emerald-200">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-emerald-200 pb-4">
               <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-violet-400 bg-violet-950/80 border border-violet-800/60 px-3 py-1 rounded-full">
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-800 bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-full">
                   🔥 10. MOTOR DE IA AVANÇADA — PREVISÕES PREDITIVAS
                 </span>
-                <h3 className="text-lg font-black text-white mt-1 flex items-center gap-2">
-                  <i className="fa-solid fa-brain text-violet-400"></i>
+                <h3 className="text-lg font-black text-slate-800 mt-1 flex items-center gap-2">
+                  <i className="fa-solid fa-brain text-emerald-600"></i>
                   <span>Previsão de Dívidas, Manutenção, Obras e Saúde Financeira</span>
                 </h3>
               </div>
-              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-3 py-1 rounded-full font-bold">
+              <span className="text-[10px] font-mono text-emerald-700 bg-white border border-emerald-300 px-3 py-1 rounded-full font-bold">
                 ● Algoritmos Ativos & Atualizados
               </span>
             </div>
@@ -1675,13 +1675,13 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 onClick={() => setSelectedPrevisaoTab("dividas")}
                 className={`p-3.5 rounded-xl border transition-all text-left cursor-pointer flex flex-col justify-between ${
                   selectedPrevisaoTab === "dividas"
-                    ? "bg-violet-600 border-violet-400 text-white shadow-lg"
-                    : "bg-slate-800/80 border-slate-700 text-slate-600 hover:bg-slate-800"
+                    ? "bg-emerald-600 border-emerald-500 text-white shadow-md"
+                    : "bg-white border-emerald-200 text-slate-600 hover:bg-emerald-50 hover:border-emerald-300"
                 }`}
               >
                 <div className="flex justify-between items-center">
                   <i className="fa-solid fa-file-invoice-dollar text-base"></i>
-                  <span className="text-[9px] font-black uppercase tracking-wide bg-black/20 px-1.5 py-0.5 rounded">
+                  <span className="text-[9px] font-black uppercase tracking-wide bg-slate-900/10 px-1.5 py-0.5 rounded">
                     Risco
                   </span>
                 </div>
@@ -1696,13 +1696,13 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 onClick={() => setSelectedPrevisaoTab("manutencao")}
                 className={`p-3.5 rounded-xl border transition-all text-left cursor-pointer flex flex-col justify-between ${
                   selectedPrevisaoTab === "manutencao"
-                    ? "bg-violet-600 border-violet-400 text-white shadow-lg"
-                    : "bg-slate-800/80 border-slate-700 text-slate-600 hover:bg-slate-800"
+                    ? "bg-emerald-600 border-emerald-500 text-white shadow-md"
+                    : "bg-white border-emerald-200 text-slate-600 hover:bg-emerald-50 hover:border-emerald-300"
                 }`}
               >
                 <div className="flex justify-between items-center">
                   <i className="fa-solid fa-screwdriver-wrench text-base"></i>
-                  <span className="text-[9px] font-black uppercase tracking-wide bg-black/20 px-1.5 py-0.5 rounded">
+                  <span className="text-[9px] font-black uppercase tracking-wide bg-slate-900/10 px-1.5 py-0.5 rounded">
                     Técnico
                   </span>
                 </div>
@@ -1717,13 +1717,13 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 onClick={() => setSelectedPrevisaoTab("obras")}
                 className={`p-3.5 rounded-xl border transition-all text-left cursor-pointer flex flex-col justify-between ${
                   selectedPrevisaoTab === "obras"
-                    ? "bg-violet-600 border-violet-400 text-white shadow-lg"
-                    : "bg-slate-800/80 border-slate-700 text-slate-600 hover:bg-slate-800"
+                    ? "bg-emerald-600 border-emerald-500 text-white shadow-md"
+                    : "bg-white border-emerald-200 text-slate-600 hover:bg-emerald-50 hover:border-emerald-300"
                 }`}
               >
                 <div className="flex justify-between items-center">
                   <i className="fa-solid fa-building-circle-check text-base"></i>
-                  <span className="text-[9px] font-black uppercase tracking-wide bg-black/20 px-1.5 py-0.5 rounded">
+                  <span className="text-[9px] font-black uppercase tracking-wide bg-slate-900/10 px-1.5 py-0.5 rounded">
                     12-36 Meses
                   </span>
                 </div>
@@ -1738,13 +1738,13 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 onClick={() => setSelectedPrevisaoTab("financeira")}
                 className={`p-3.5 rounded-xl border transition-all text-left cursor-pointer flex flex-col justify-between ${
                   selectedPrevisaoTab === "financeira"
-                    ? "bg-violet-600 border-violet-400 text-white shadow-lg"
-                    : "bg-slate-800/80 border-slate-700 text-slate-600 hover:bg-slate-800"
+                    ? "bg-emerald-600 border-emerald-500 text-white shadow-md"
+                    : "bg-white border-emerald-200 text-slate-600 hover:bg-emerald-50 hover:border-emerald-300"
                 }`}
               >
                 <div className="flex justify-between items-center">
                   <i className="fa-solid fa-chart-line text-base"></i>
-                  <span className="text-[9px] font-black uppercase tracking-wide bg-black/20 px-1.5 py-0.5 rounded">
+                  <span className="text-[9px] font-black uppercase tracking-wide bg-slate-900/10 px-1.5 py-0.5 rounded">
                     Cash Flow
                   </span>
                 </div>
@@ -1781,24 +1781,24 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 ? Math.round(linhasDividas.reduce((s, l) => s + l.score, 0) / linhasDividas.length)
                 : 0;
               const classesPorNivel: Record<string, { badge: string; valor: string }> = {
-                "ALTO": { badge: "bg-red-950 text-red-400 border border-red-800", valor: "text-red-400" },
-                "MÉDIO": { badge: "bg-amber-950 text-amber-400 border border-amber-800", valor: "text-amber-400" },
-                "BAIXO": { badge: "bg-emerald-950 text-emerald-400 border border-emerald-800", valor: "text-emerald-400" }
+                "ALTO": { badge: "bg-red-100 text-red-700 border border-red-200", valor: "text-red-600" },
+                "MÉDIO": { badge: "bg-amber-100 text-amber-700 border border-amber-200", valor: "text-amber-600" },
+                "BAIXO": { badge: "bg-emerald-100 text-emerald-700 border border-emerald-200", valor: "text-emerald-600" }
               };
 
               return (
-              <div className="bg-slate-800/90 p-5 rounded-xl border border-slate-700 space-y-4 animate-fadeIn">
-                <div className="flex justify-between items-center border-b border-slate-700 pb-3">
+              <div className="bg-white p-5 rounded-xl border border-slate-200 space-y-4 animate-fadeIn shadow-xs">
+                <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                   <div>
-                    <h4 className="text-sm font-black text-white flex items-center gap-2">
-                      <i className="fa-solid fa-triangle-exclamation text-amber-400"></i>
+                    <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                      <i className="fa-solid fa-triangle-exclamation text-amber-500"></i>
                       <span>Previsão de Dívidas & Risco de Inadimplência por Fração</span>
                     </h4>
                     <p className="text-xs text-slate-600 mt-0.5">
                       Calculado em tempo real a partir das notas de cobrança (avisos) pendentes e dos dias de atraso reais de cada fração.
                     </p>
                   </div>
-                  <span className="text-xs font-mono font-bold text-amber-300 bg-amber-950/60 border border-amber-800 px-3 py-1 rounded-lg">
+                  <span className="text-xs font-mono font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-lg">
                     Risco Médio do Prédio: {riscoMedio}%
                   </span>
                 </div>
@@ -1809,7 +1809,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-slate-700 text-slate-600 font-mono text-[10px] uppercase">
+                      <tr className="border-b border-slate-200 text-slate-500 font-mono text-[10px] uppercase">
                         <th className="p-2.5">Fração / Condómino</th>
                         <th className="p-2.5 text-center">Nível de Risco</th>
                         <th className="p-2.5 text-right">Dívida Atual</th>
@@ -1817,12 +1817,12 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                         <th className="p-2.5">Ação Recomendada</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-700/60 font-mono">
+                    <tbody className="divide-y divide-slate-100 font-mono">
                       {linhasDividas.map(l => {
                         const cls = classesPorNivel[l.nivel] || classesPorNivel["BAIXO"];
                         return (
                         <tr key={l.fracao.id_fracao}>
-                          <td className="p-2.5 font-bold text-white">Fração {l.fracao.fracao_nome} — {l.fracao.proprietario?.nome || "sem proprietário"}</td>
+                          <td className="p-2.5 font-bold text-slate-800">Fração {l.fracao.fracao_nome} — {l.fracao.proprietario?.nome || "sem proprietário"}</td>
                           <td className="p-2.5 text-center">
                             <span className={`${cls.badge} px-2 py-0.5 rounded text-[10px] font-bold`}>{l.nivel} ({l.score}%)</span>
                           </td>
@@ -1843,25 +1843,25 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
             {/* CONTENT OF PREDICTION 2: MANUTENÇÃO */}
             {selectedPrevisaoTab === "manutencao" && (() => {
               const estadoInfo: Record<string, { pct: number; cor: string; barra: string }> = {
-                "Crítico": { pct: 90, cor: "bg-red-950 text-red-400 border border-red-800", barra: "bg-red-500" },
-                "Necessita Manutenção": { pct: 65, cor: "bg-amber-950 text-amber-400 border border-amber-800", barra: "bg-amber-500" },
-                "Operacional": { pct: 30, cor: "bg-emerald-950 text-emerald-400 border border-emerald-800", barra: "bg-emerald-500" },
-                "Excelente": { pct: 10, cor: "bg-emerald-950 text-emerald-400 border border-emerald-800", barra: "bg-emerald-500" }
+                "Crítico": { pct: 90, cor: "bg-red-100 text-red-700 border border-red-200", barra: "bg-red-500" },
+                "Necessita Manutenção": { pct: 65, cor: "bg-amber-100 text-amber-700 border border-amber-200", barra: "bg-amber-500" },
+                "Operacional": { pct: 30, cor: "bg-emerald-100 text-emerald-700 border border-emerald-200", barra: "bg-emerald-500" },
+                "Excelente": { pct: 10, cor: "bg-emerald-100 text-emerald-700 border border-emerald-200", barra: "bg-emerald-500" }
               };
               const criticos = equipamentosReais.filter(e => e.estado === "Crítico" || e.estado === "Necessita Manutenção").length;
               return (
-              <div className="bg-slate-800/90 p-5 rounded-xl border border-slate-700 space-y-4 animate-fadeIn">
-                <div className="flex justify-between items-center border-b border-slate-700 pb-3">
+              <div className="bg-white p-5 rounded-xl border border-slate-200 space-y-4 animate-fadeIn shadow-xs">
+                <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                   <div>
-                    <h4 className="text-sm font-black text-white flex items-center gap-2">
-                      <i className="fa-solid fa-gears text-cyan-400"></i>
+                    <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                      <i className="fa-solid fa-gears text-cyan-600"></i>
                       <span>Previsão de Manutenção Preventiva & Estado dos Equipamentos</span>
                     </h4>
                     <p className="text-xs text-slate-600 mt-0.5">
                       Baseado no estado e inspeções reais registados em Inventário Técnico para este prédio.
                     </p>
                   </div>
-                  <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-800 px-3 py-1 rounded-lg">
+                  <span className="text-xs font-mono font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-3 py-1 rounded-lg">
                     {equipamentosReais.length} Equipamento(s) Registado(s){criticos > 0 ? ` — ${criticos} a precisar de atenção` : ""}
                   </span>
                 </div>
@@ -1877,20 +1877,20 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                   {equipamentosReais.map(eq => {
                     const info = estadoInfo[eq.estado] || estadoInfo["Operacional"];
                     return (
-                    <div key={eq.id} className="p-3.5 bg-slate-900/90 rounded-xl border border-slate-700 space-y-2">
+                    <div key={eq.id} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs font-black text-white">{eq.nome}{eq.andar ? ` (${eq.andar})` : ""}</span>
+                        <span className="text-xs font-black text-slate-800">{eq.nome}{eq.andar ? ` (${eq.andar})` : ""}</span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${info.cor}`}>
                           {eq.estado}
                         </span>
                       </div>
-                      <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
                         <div className={`${info.barra} h-full`} style={{ width: `${info.pct}%` }}></div>
                       </div>
                       <p className="text-[11px] text-slate-600">
                         <strong>Última Inspeção:</strong> {eq.ultimaInspecao || "não registada"} ({eq.frequenciaInspecao || "frequência não definida"})
                       </p>
-                      {eq.fabricante && <span className="text-[10px] text-cyan-400 font-mono block">Fabricante: {eq.fabricante}</span>}
+                      {eq.fabricante && <span className="text-[10px] text-cyan-700 font-mono block">Fabricante: {eq.fabricante}</span>}
                     </div>
                     );
                   })}
@@ -1906,18 +1906,18 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
               const totalObras = Math.round(obrasOrdenadas.reduce((s, o) => s + (o.custoTotal || 0), 0) * 100) / 100;
               const numFracoesObras = fracoes?.length || 1;
               return (
-              <div className="bg-slate-800/90 p-5 rounded-xl border border-slate-700 space-y-4 animate-fadeIn">
-                <div className="flex justify-between items-center border-b border-slate-700 pb-3">
+              <div className="bg-white p-5 rounded-xl border border-slate-200 space-y-4 animate-fadeIn shadow-xs">
+                <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                   <div>
-                    <h4 className="text-sm font-black text-white flex items-center gap-2">
-                      <i className="fa-solid fa-helmet-safety text-amber-400"></i>
+                    <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                      <i className="fa-solid fa-helmet-safety text-amber-500"></i>
                       <span>Previsão de Obras Extraordinárias Pendentes</span>
                     </h4>
                     <p className="text-xs text-slate-600 mt-0.5">
                       Obras extraordinárias reais registadas para este prédio, ainda não concluídas.
                     </p>
                   </div>
-                  <span className="text-xs font-mono font-bold text-amber-300 bg-amber-950/60 border border-amber-800 px-3 py-1 rounded-lg">
+                  <span className="text-xs font-mono font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-lg">
                     Total Pendente: €{totalObras.toFixed(2)}
                   </span>
                 </div>
@@ -1931,17 +1931,17 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                 ) : (
                 <div className="space-y-3 font-sans">
                   {obrasOrdenadas.map(obra => (
-                    <div key={obra.id} className="p-4 bg-slate-900/90 rounded-xl border border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div key={obra.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                       <div>
-                        <span className="text-[9px] font-mono font-bold text-amber-400 uppercase tracking-widest bg-amber-950 px-2 py-0.5 rounded border border-amber-800">
+                        <span className="text-[9px] font-mono font-bold text-amber-700 uppercase tracking-widest bg-amber-100 px-2 py-0.5 rounded border border-amber-200">
                           {obra.estado} {obra.dataInicio ? `— Início ${formatDatePT(obra.dataInicio)}` : ""}
                         </span>
-                        <h5 className="text-xs font-black text-white mt-1">{obra.descricao}</h5>
+                        <h5 className="text-xs font-black text-slate-800 mt-1">{obra.descricao}</h5>
                         {obra.fornecedorNome && <p className="text-[11px] text-slate-600 mt-0.5">Fornecedor: {obra.fornecedorNome}</p>}
                       </div>
                       <div className="text-right shrink-0 font-mono">
-                        <span className="text-sm font-extrabold text-amber-400 block">€{(obra.custoTotal || 0).toFixed(2)}</span>
-                        <span className="text-[10px] text-emerald-400 block">
+                        <span className="text-sm font-extrabold text-amber-600 block">€{(obra.custoTotal || 0).toFixed(2)}</span>
+                        <span className="text-[10px] text-emerald-600 block">
                           {numFracoesObras > 0 ? `€${Math.round((obra.custoTotal / numFracoesObras) * 100) / 100} por fração` : ""}
                           {obra.mesesFracionamento ? ` em ${obra.mesesFracionamento}x` : ""}
                         </span>
@@ -1959,18 +1959,18 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
               const movimentosContados = (movements || []).filter(m => m.estado !== "Movimento Cego / Por Justificar");
               const saldoAtualReal = Math.round(movimentosContados.reduce((s, m) => s + (m.tipo === "Receita" ? m.valor : -m.valor), 0) * 100) / 100;
               return (
-              <div className="bg-slate-800/90 p-5 rounded-xl border border-slate-700 space-y-4 animate-fadeIn">
-                <div className="flex justify-between items-center border-b border-slate-700 pb-3">
+              <div className="bg-white p-5 rounded-xl border border-slate-200 space-y-4 animate-fadeIn shadow-xs">
+                <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                   <div>
-                    <h4 className="text-sm font-black text-white flex items-center gap-2">
-                      <i className="fa-solid fa-chart-line text-emerald-400"></i>
+                    <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                      <i className="fa-solid fa-chart-line text-emerald-600"></i>
                       <span>Previsão Financeira & Saúde do Fundo de Reserva</span>
                     </h4>
                     <p className="text-xs text-slate-600 mt-0.5">
                       Análise gerada por IA com base no saldo real e nos movimentos financeiros efetivos deste prédio (não dados de exemplo).
                     </p>
                   </div>
-                  <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-3 py-1 rounded-lg">
+                  <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg">
                     Saldo Atual Real: €{saldoAtualReal.toFixed(2)}
                   </span>
                 </div>
@@ -1979,14 +1979,14 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
                   type="button"
                   onClick={handleGerarSaudeFinanceira}
                   disabled={aGerarSaudeFinanceira}
-                  className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer flex items-center gap-2"
+                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer flex items-center gap-2"
                 >
                   <i className="fa-solid fa-wand-magic-sparkles"></i>
                   {aGerarSaudeFinanceira ? "A analisar com IA…" : saudeFinanceiraAnalise ? "Atualizar Análise" : "Gerar Análise de Saúde Financeira com IA"}
                 </button>
 
-                <div className="p-4 bg-slate-900/90 rounded-xl border border-slate-700">
-                  <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed">
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
                     {saudeFinanceiraAnalise || "Gere a análise para obter um diagnóstico real da saúde financeira e do fundo de reserva, com base nos movimentos reais deste prédio."}
                   </p>
                 </div>
