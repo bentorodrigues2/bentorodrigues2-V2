@@ -909,7 +909,12 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
     { id: "log-init-3", timestamp: "09:12:05", trigger: "Compliance", message: "Rotinas automáticas integradas (Decreto-Lei nº 268/94).", type: "info" }
   ]);
 
-  // States for Orçamento & Projeções IA
+  // States for Orçamento & Projeções IA — arrancavam sempre com os mesmos
+  // valores genéricos (250€, 800€, 12%...), iguais em qualquer prédio,
+  // nunca ligados aos movimentos/avisos reais já disponíveis neste
+  // componente. Corrigido abaixo (seedOrcamentoComDadosReais) para
+  // pré-preencher com médias e taxas reais sempre que existir histórico
+  // suficiente para as calcular.
   const [contratos, setContratos] = useState<number>(250);
   const [seguros, setSeguros] = useState<number>(800);
   const [servicos, setServicos] = useState<number>(150);
@@ -918,6 +923,54 @@ export function IAAvancada({ predio, fracoes, avisos, movements, fornecedores, l
   const [inspecoes, setInspecoes] = useState<number>(450);
   const [inadimplenciaHistorica, setInadimplenciaHistorica] = useState<number>(12);
   const [isGeneratingBudget, setIsGeneratingBudget] = useState<boolean>(false);
+
+  // Médias mensais reais por categoria de despesa deste prédio (categoria
+  // guardada em texto livre nos movimentos, por isso procura por
+  // substring) — só "Manutenção" e "Limpeza" têm correspondência direta
+  // nas categorias usadas neste prédio; "Contratos" e "Seguros" nunca
+  // apareceram ainda como despesa lançada, por isso não há histórico real
+  // para os pré-preencher (o slider mantém-se como ponto de partida
+  // manual, não um número inventado apresentado como se fosse real).
+  const mediaMensalDespesasReais = React.useMemo(() => {
+    const despesas = (movements || []).filter(m => m.tipo === "Despesa" && m.data);
+    const mesesDistintos = new Set(despesas.map(m => String(m.data).slice(0, 7))).size || 1;
+    const somaPorCategoria = (match: (cat: string) => boolean) =>
+      despesas.filter(m => match((m.categoria || "").toLowerCase())).reduce((s, m) => s + (Number(m.valor) || 0), 0);
+    return {
+      manutencao: Math.round((somaPorCategoria(c => c.includes("manuten")) / mesesDistintos) * 100) / 100,
+      limpeza: Math.round((somaPorCategoria(c => c.includes("limp")) / mesesDistintos) * 100) / 100
+    };
+  }, [movements]);
+
+  // Taxa de inadimplência REAL deste prédio: % do valor de avisos já
+  // vencidos que continua por pagar (Pendente/Paga Parcialmente), em vez
+  // do valor fixo de 12% apresentado antes para qualquer prédio.
+  const inadimplenciaHistoricaReal = React.useMemo(() => {
+    const hoje = new Date();
+    const vencidos = (avisos || []).filter(a => a.vencimento && new Date(a.vencimento) <= hoje);
+    if (vencidos.length === 0) return null;
+    const totalVencido = vencidos.reduce((s, a) => s + (Number(a.valor) || 0), 0);
+    const totalPorPagar = vencidos
+      .filter(a => a.estado === "Pendente" || a.estado === "Paga Parcialmente")
+      .reduce((s, a) => s + (Number(a.valor) || 0), 0);
+    return totalVencido > 0 ? Math.round((totalPorPagar / totalVencido) * 100) : 0;
+  }, [avisos]);
+
+  const sliderOrcamentoJaPreenchido = React.useRef(false);
+  useEffect(() => {
+    if (sliderOrcamentoJaPreenchido.current) return;
+    if ((movements || []).length === 0 && (avisos || []).length === 0) return;
+    sliderOrcamentoJaPreenchido.current = true;
+    if (mediaMensalDespesasReais.manutencao > 0) setManutencao(mediaMensalDespesasReais.manutencao);
+    if (mediaMensalDespesasReais.limpeza > 0) {
+      // Reparte o par Serviços+Limpeza mantendo a proporção 45/55 já usada
+      // no slider combinado, mas a partir do valor real de limpeza em vez
+      // de inventado.
+      setLimpeza(mediaMensalDespesasReais.limpeza);
+      setServicos(Math.round((mediaMensalDespesasReais.limpeza / 0.55) * 0.45 * 100) / 100);
+    }
+    if (inadimplenciaHistoricaReal !== null) setInadimplenciaHistorica(inadimplenciaHistoricaReal);
+  }, [movements, avisos, mediaMensalDespesasReais, inadimplenciaHistoricaReal]);
 
   // Antes deste ecrã sequer ser usado, já mostrava um "Orçamento Anual
   // Automático (IA)" completo com números e datas inventados (despesas de
