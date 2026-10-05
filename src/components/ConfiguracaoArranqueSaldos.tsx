@@ -934,7 +934,11 @@ export function ConfiguracaoArranqueSaldos({
       id_predio: predio.id_predio,
       id_conta: ca.id_conta,
       data: dataAbertura,
-      tipo: "RECEITA",
+      // "Receita" (Title Case) — convenção real usada em todo o resto da
+      // app (GestaoMovimentos.tsx). Em maiúsculas ("RECEITA") o movimento
+      // de abertura ficava invisível para qualquer soma de receitas feita
+      // noutro ecrã (Relatórios, Painel, Auditoria...).
+      tipo: "Receita",
       valor: Number(ca.saldo) || 0,
       descricao: `Saldo Inicial de Abertura / Transição - ${ca.nome}`,
       categoria: ca.categoriaConta === "POUPANCA" 
@@ -951,7 +955,11 @@ export function ConfiguracaoArranqueSaldos({
         id_predio: predio.id_predio,
         id_conta: mh.id_conta || contasArranque[0]?.id_conta,
         data: mh.data,
-        tipo: mh.tipo,
+        // mh.tipo vem do formulário local desta tela ("RECEITA"/"DESPESA",
+        // maiúsculas) — convertido aqui para "Receita"/"Despesa" (Title
+        // Case), a convenção real usada em todo o resto da app, no ponto
+        // exato em que passa a ser um movimento real persistido.
+        tipo: mh.tipo === "RECEITA" ? "Receita" : "Despesa",
         valor: mh.valor,
         descricao: mh.descricao,
         categoria: mh.categoria
