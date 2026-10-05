@@ -1895,7 +1895,87 @@ export function GestaoFracoes({
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Lista em cartões — ecrãs estreitos (PWA/telemóvel), onde a
+                tabela de 6 colunas ao lado ficava com o botão "Editar"
+                fora de alcance mesmo com scroll lateral. Mesmos dados e
+                ações da tabela, só o layout muda. */}
+            <div className="sm:hidden space-y-2.5">
+              {predioFracoes.length === 0 ? (
+                <div className="py-8 text-center text-slate-600 text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                  Nenhuma fração registada ainda neste condomínio. Utilize o formulário acima para registar a primeira fração.
+                </div>
+              ) : (
+                predioFracoes.map((f) => (
+                  <div key={f.id_fracao} className="bg-white border border-slate-200 rounded-xl p-3 space-y-2.5 shadow-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="bg-slate-100 px-2 py-1 rounded text-slate-800 font-mono font-bold text-xs">
+                        Fração {f.fracao_nome}
+                      </span>
+                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-semibold text-[11px]">
+                        {f.tipologia || "T2"}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-600">{f.piso}</div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-500">Permilagem</span>
+                      <span className="font-mono font-bold text-slate-700">{f.permilagem}‰</span>
+                    </div>
+                    <div className="pt-2 border-t border-slate-100">
+                      {f.proprietario ? (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-slate-800 text-xs truncate">{f.proprietario.nome}</span>
+                          <button
+                            type="button"
+                            onClick={() => carregarProprietarioParaEdicao(f.proprietario!, f.id_fracao)}
+                            className="text-[11px] text-emerald-600 hover:text-emerald-800 font-bold underline cursor-pointer shrink-0"
+                          >
+                            Ver/Editar
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold">
+                            Sem Proprietário
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedFracaoId(f.id_fracao);
+                              limparFormProprietario();
+                              setCurrentSubTab("fracoes_proprietario");
+                            }}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 rounded text-[10px] cursor-pointer transition-all shadow-xs flex items-center gap-1 shrink-0"
+                          >
+                            <i className="fa-solid fa-user-plus text-[9px]"></i>
+                            <span>Associar</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleEditarFracao(f)}
+                        className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-2 rounded-lg text-xs transition-colors cursor-pointer border border-emerald-200 flex items-center justify-center gap-1.5 shadow-xs font-bold"
+                      >
+                        <Pencil className="w-3.5 h-3.5 shrink-0" />
+                        <span>Editar</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleEliminarFracao(f.id_fracao, f.fracao_nome)}
+                        className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 py-2 rounded-lg text-xs transition-colors cursor-pointer border border-red-200 flex items-center justify-center gap-1.5 shadow-xs font-bold"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Eliminar</span>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
