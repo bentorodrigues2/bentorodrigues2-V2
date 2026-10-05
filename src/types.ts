@@ -669,6 +669,14 @@ export interface ProcessoJuridico {
   valor_total_pedido: number;
   tribunal_competente: string; // Ex: "Julgado de Paz de Lisboa" | "Balcão Nacional de Injunções (BNI)" | "Tribunal Judicial da Comarca"
   fase_processual: "PRE_CONTENCIOSO_NOTIFICACAO" | "INJUNCAO_BNI" | "ACAO_EXECUTIVA" | "JULGADO_PAZ" | "ACORDO_PAGAMENTO" | "CONCLUIDO_EXTINTO";
+  // Número atribuído pelo tribunal/balcão depois de o processo dar entrada
+  // (diferente do id_processo interno, que é só a numeração própria da
+  // administração) — só costuma existir a partir do momento em que o
+  // processo é efetivamente submetido.
+  numero_processo_tribunal?: string;
+  // Resultado/decisão final do tribunal (sentença, despacho de arquivamento,
+  // acordo homologado, etc.), preenchido quando o processo é concluído.
+  decisao_tribunal?: string;
   data_abertura: string;
   data_ultima_atualizacao: string;
   mandatario_responsavel: string; // Advogado / Solicitador / Administrador

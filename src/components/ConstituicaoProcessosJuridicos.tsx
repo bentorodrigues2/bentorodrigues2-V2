@@ -154,6 +154,10 @@ export function ConstituicaoProcessosJuridicos({
   // sugestão inicial consoante o tribunal escolhido (ver sugerirCustasPorTribunal).
   const [novoCustas, setNovoCustas] = useState<string>("25.50");
   const [novoMandatario, setNovoMandatario] = useState<string>(`${loggedUser.nome} (Administrador do Condomínio)`);
+  // Nº atribuído pelo tribunal/balcão (só existe depois de o processo dar
+  // entrada) e decisão/resultado final — antes não havia onde os registar.
+  const [novoNumeroProcessoTribunal, setNovoNumeroProcessoTribunal] = useState<string>("");
+  const [novoDecisaoTribunal, setNovoDecisaoTribunal] = useState<string>("");
 
   // Sugestão de custas por tribunal — nunca impõe o valor, só pré-preenche
   // quando o tribunal muda (continua 100% editável a seguir). O valor do
@@ -471,6 +475,8 @@ export function ConstituicaoProcessosJuridicos({
     setNovoFase("INJUNCAO_BNI");
     setNovoCustas(sugerirCustasPorTribunal("Balcão Nacional de Injunções (BNI)", 0).toFixed(2));
     setNovoMandatario(`${loggedUser.nome} (Administrador do Condomínio)`);
+    setNovoNumeroProcessoTribunal("");
+    setNovoDecisaoTribunal("");
   };
 
   // Carrega um processo já existente para o formulário, em modo edição —
@@ -488,7 +494,41 @@ export function ConstituicaoProcessosJuridicos({
     setNovoFase(proc.fase_processual);
     setNovoCustas(proc.custas_processuais_estimadas.toFixed(2));
     setNovoMandatario(proc.mandatario_responsavel);
+    setNovoNumeroProcessoTribunal(proc.numero_processo_tribunal || "");
+    setNovoDecisaoTribunal(proc.decisao_tribunal || "");
     setShowNovoProcessoModal(true);
+  };
+
+  // Marca o processo como Concluído/Extinto sem o eliminar — preserva o
+  // dossier (provas, histórico, nº de processo e decisão) em modo só-leitura
+  // em vez de o apagar, pedido explícito para distinguir de "Eliminar".
+  const handleArquivarProcesso = async (proc: ProcessoJuridico) => {
+    const decisaoFinal = window.prompt(
+      `Arquivar o processo ${proc.id_processo}. Pode registar aqui a decisão/resultado final do tribunal (opcional — pode deixar em branco e preencher depois em Editar):`,
+      proc.decisao_tribunal || ""
+    );
+    if (decisaoFinal === null) return; // cancelado
+    const processoArquivado: ProcessoJuridico = {
+      ...proc,
+      fase_processual: "CONCLUIDO_EXTINTO",
+      decisao_tribunal: decisaoFinal.trim() || proc.decisao_tribunal,
+      data_ultima_atualizacao: new Date().toISOString().split("T")[0],
+      historico_tramitacao: [
+        ...proc.historico_tramitacao,
+        {
+          id_fase: `tram-${Date.now()}`,
+          data_hora: new Date().toISOString().replace("T", " ").substring(0, 16),
+          fase: "Processo Arquivado",
+          descricao: decisaoFinal.trim()
+            ? `Processo concluído e arquivado pela Administração. Decisão/resultado: ${decisaoFinal.trim()}`
+            : "Processo concluído e arquivado pela Administração.",
+          responsavel: loggedUser.nome
+        }
+      ]
+    };
+    setProcessos(prev => prev.map(p => p.id_processo === proc.id_processo ? processoArquivado : p));
+    saveProcessoJuridicoToSupabase(processoArquivado).catch(console.error);
+    showToast(`Processo ${proc.id_processo} arquivado como Concluído/Extinto.`);
   };
 
   const handleEliminarProcesso = async (proc: ProcessoJuridico) => {
@@ -585,6 +625,8 @@ export function ConstituicaoProcessosJuridicos({
         valor_total_pedido: total,
         tribunal_competente: novoTribunal,
         fase_processual: novoFase,
+        numero_processo_tribunal: novoNumeroProcessoTribunal.trim() || undefined,
+        decisao_tribunal: novoDecisaoTribunal.trim() || undefined,
         data_ultima_atualizacao: new Date().toISOString().split("T")[0],
         mandatario_responsavel: novoMandatario,
         historico_tramitacao: [
@@ -638,6 +680,8 @@ export function ConstituicaoProcessosJuridicos({
       valor_total_pedido: total,
       tribunal_competente: novoTribunal,
       fase_processual: novoFase,
+      numero_processo_tribunal: novoNumeroProcessoTribunal.trim() || undefined,
+      decisao_tribunal: novoDecisaoTribunal.trim() || undefined,
       data_abertura: new Date().toISOString().split("T")[0],
       data_ultima_atualizacao: new Date().toISOString().split("T")[0],
       mandatario_responsavel: novoMandatario,
@@ -1246,6 +1290,16 @@ export function ConstituicaoProcessosJuridicos({
                     >
                       <i className="fa-solid fa-pen"></i>
                     </button>
+                    {currentProcesso.fase_processual !== "CONCLUIDO_EXTINTO" && (
+                      <button
+                        onClick={() => handleArquivarProcesso(currentProcesso)}
+                        className="bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border border-emerald-200 dark:border-emerald-900"
+                        title="Marcar como Concluído/Extinto e arquivar (mantém o dossier, não elimina)"
+                      >
+                        <i className="fa-solid fa-box-archive"></i>
+                        <span>Arquivar</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => handleEliminarProcesso(currentProcesso)}
                       className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer border border-rose-200 dark:border-rose-900"
@@ -1272,6 +1326,15 @@ export function ConstituicaoProcessosJuridicos({
                     <span className="text-[10px] text-slate-600 dark:text-slate-400 block line-clamp-1">
                       Resp: {currentProcesso.mandatario_responsavel}
                     </span>
+                    {currentProcesso.numero_processo_tribunal ? (
+                      <span className="text-[10px] text-slate-600 dark:text-slate-400 block font-mono mt-0.5">
+                        Nº Processo: {currentProcesso.numero_processo_tribunal}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-amber-600 dark:text-amber-400 block mt-0.5">
+                        Nº de processo ainda não atribuído
+                      </span>
+                    )}
                   </div>
 
                   <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200 dark:border-emerald-800/60">
@@ -1296,6 +1359,15 @@ export function ConstituicaoProcessosJuridicos({
                   <strong className="text-slate-800 dark:text-white">Resumo dos Factos: </strong>
                   {currentProcesso.descricao_resumo}
                 </div>
+
+                {currentProcesso.decisao_tribunal && (
+                  <div className={`p-3 rounded-xl border text-xs leading-relaxed ${currentProcesso.fase_processual === "CONCLUIDO_EXTINTO" ? "bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300" : "bg-slate-50/70 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300"}`}>
+                    <strong className="block uppercase text-[10px] tracking-wide mb-0.5">
+                      {currentProcesso.fase_processual === "CONCLUIDO_EXTINTO" ? "Decisão / Resultado Final (Processo Arquivado)" : "Decisão / Resultado Registado"}
+                    </strong>
+                    {currentProcesso.decisao_tribunal}
+                  </div>
+                )}
               </div>
 
               {/* SECTION: DESPESAS EXTRA (CTT, declarações, custos de tribunal
@@ -2213,6 +2285,34 @@ export function ConstituicaoProcessosJuridicos({
                     <option value="ACORDO_PAGAMENTO">Acordo de Pagamento</option>
                     <option value="CONCLUIDO_EXTINTO">Concluído / Extinto</option>
                   </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Nº de Processo em Tribunal
+                  </label>
+                  <input
+                    type="text"
+                    value={novoNumeroProcessoTribunal}
+                    onChange={(e) => setNovoNumeroProcessoTribunal(e.target.value)}
+                    placeholder="Ex: 1234/26.5YYLSB (preencher após dar entrada)"
+                    className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl font-mono text-slate-800 dark:text-white"
+                  />
+                  <p className="text-[9px] text-slate-600">Número atribuído pelo tribunal/balcão depois de o processo dar entrada — diferente do número interno do processo (ex: PROC-2026/001-JUR).</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Decisão / Resultado Final
+                  </label>
+                  <input
+                    type="text"
+                    value={novoDecisaoTribunal}
+                    onChange={(e) => setNovoDecisaoTribunal(e.target.value)}
+                    placeholder="Ex: Sentença favorável, injunção transitada em título executivo"
+                    className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white"
+                  />
                 </div>
               </div>
 

@@ -47,6 +47,15 @@ export function ContenciosoJuridico({
   const [interestRate, setInterestRate] = useState<number>(4.0); // Default 4% annual interest
   const [incluirJurosMoraNotificacao, setIncluirJurosMoraNotificacao] = useState<boolean>(true);
 
+  // --- VIA PROCESSUAL DO REQUERIMENTO (BNI vs. Julgado de Paz) ---
+  // Antes só existia a via do Balcão Nacional de Injunções (DL 269/98,
+  // taxa de justiça escalonada 25,50€/51,00€). Os Julgados de Paz (Lei
+  // n.º 78/2001) são uma via alternativa, competente até 15.000€, com
+  // taxa de justiça única e fixa de 70,00€ (Portaria n.º 1456/2001) —
+  // pedido explícito para passar a contemplar esta via.
+  const [viaProcessual, setViaProcessual] = useState<"BNI" | "JULGADO_PAZ">("BNI");
+  const [outrasDespesasProcesso, setOutrasDespesasProcesso] = useState<string>("0.00");
+
   // --- ENVIO REAL DE NOTIFICAÇÕES (Interpelação em Mora / Obras Irregulares / Acordo de Pagamento) ---
   const [tipoCartaEnvio, setTipoCartaEnvio] = useState<"mora" | "obras" | "acordo">("mora");
   const [descricaoInfracaoObras, setDescricaoInfracaoObras] = useState<string>("");
@@ -181,8 +190,12 @@ export function ContenciosoJuridico({
   const predioFracoes = fracoes.filter(f => f.id_predio === predio.id_predio);
   const predioAvisos = avisos.filter(a => a.id_predio === predio.id_predio);
 
-  // Anchor date of the system is 2026-07-15
-  const anchorDate = new Date("2026-07-15");
+  // Data real de hoje — antes estava fixa em "2026-07-15" (resíduo de
+  // simulação), o que subavaliava sistematicamente os dias de mora e,
+  // logo, os juros de mora calculados em todo este ecrã (estados
+  // Alerta/Pré-Contencioso/Contencioso, prescrição e requerimento de
+  // injunção), sempre que a data real avançava para além desse valor fixo.
+  const anchorDate = new Date();
 
   // Calculate days overdue
   const getDaysOverdue = (dueDateStr: string): number => {
@@ -283,6 +296,41 @@ export function ContenciosoJuridico({
 
   const selectedFracao = predioFracoes.find(f => f.id_fracao === selectedFracaoId) || predioFracoes[0];
   const selectedFracaoInfo = selectedFracao ? getLegalInfoForFracao(selectedFracao.id_fracao) : null;
+
+  // Processo judicial já constituído para esta fração em "Processos &
+  // Provas Judiciais" (ConstituicaoProcessosJuridicos) — o requerimento
+  // deve basear-se nesse dossier real (via processual escolhida, custas
+  // efetivamente suportadas, outras despesas do processo e acervo
+  // probatório já reunido), em vez de recalcular tudo de forma isolada e
+  // ignorar esse trabalho já feito. Escolhe o processo em aberto mais
+  // recentemente atualizado; se não houver nenhum, cai para o cálculo
+  // manual abaixo (via/despesas selecionadas nesta própria aba).
+  const getProcessoParaFracao = (fracId: string): ProcessoJuridico | undefined => {
+    return processosState
+      .filter(p => p.id_fracao === fracId && p.fase_processual !== "CONCLUIDO_EXTINTO")
+      .sort((a, b) => (b.data_ultima_atualizacao || "").localeCompare(a.data_ultima_atualizacao || ""))[0];
+  };
+  const processoSelecionado = selectedFracao ? getProcessoParaFracao(selectedFracao.id_fracao) : undefined;
+  const ehJulgadoDePaz = (tribunal?: string) => /julgado de paz/i.test(tribunal || "");
+  const viaEfetiva: "BNI" | "JULGADO_PAZ" = processoSelecionado
+    ? (ehJulgadoDePaz(processoSelecionado.tribunal_competente) ? "JULGADO_PAZ" : "BNI")
+    : viaProcessual;
+  // Taxa de justiça: Julgado de Paz tem taxa única e fixa de 70,00€
+  // (Portaria n.º 1456/2001); o BNI (DL 269/98) mantém o escalonamento já
+  // existente (25,50€ até 2.000€, 51,00€ acima disso). Se já houver um
+  // processo constituído, usa as custas reais aí registadas (podem ter
+  // sido ajustadas manualmente pelo administrador) em vez de as recalcular.
+  const calcularTaxaJusticaVia = (via: "BNI" | "JULGADO_PAZ", capital: number): number =>
+    via === "JULGADO_PAZ" ? 70.0 : (capital <= 2000 ? 25.5 : 51.0);
+  const taxaJusticaEfetiva = processoSelecionado
+    ? processoSelecionado.custas_processuais_estimadas
+    : calcularTaxaJusticaVia(viaProcessual, selectedFracaoInfo?.totalDebtCobravel || 0);
+  // Outras despesas do processo (CTT registada, declarações pedidas, etc.)
+  // — vindas do dossier real quando existe; caso contrário, o valor
+  // manualmente indicado nesta aba.
+  const outrasDespesasEfetivas = processoSelecionado
+    ? (processoSelecionado.despesas_extra || []).reduce((s, d) => s + d.valor, 0)
+    : (parseFloat(outrasDespesasProcesso.replace(",", ".")) || 0);
 
   // Count metrics for building summary cards
   const litigationFracoes = predioFracoes.map(f => ({
@@ -1360,6 +1408,44 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                   </select>
                 </div>
 
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-600">Via Processual</label>
+                  {processoSelecionado ? (
+                    <div className="mt-1 w-full border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-2 text-xs rounded text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1.5">
+                      <i className="fa-solid fa-folder-open"></i>
+                      <span>{processoSelecionado.id_processo} — {processoSelecionado.tribunal_competente}</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={viaProcessual}
+                      onChange={e => setViaProcessual(e.target.value as "BNI" | "JULGADO_PAZ")}
+                      className="mt-1 w-full border border-slate-200 dark:border-slate-800 p-2 text-xs rounded bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
+                    >
+                      <option value="BNI">Balcão Nacional de Injunções (BNI)</option>
+                      <option value="JULGADO_PAZ">Julgado de Paz</option>
+                    </select>
+                  )}
+                  {!processoSelecionado && (
+                    <p className="text-[9px] text-amber-600 dark:text-amber-400 leading-snug">
+                      Sem processo constituído em "Processos &amp; Provas Judiciais" para esta fração — valores calculados de forma independente. Crie o processo aí para basear este requerimento no dossier real e no acervo probatório.
+                    </p>
+                  )}
+                </div>
+
+                {!processoSelecionado && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-600">Outras Despesas do Processo (€)</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={outrasDespesasProcesso}
+                      onChange={e => setOutrasDespesasProcesso(e.target.value)}
+                      placeholder="Ex: portes CTT, certidões, honorários"
+                      className="mt-1 w-full border border-slate-200 dark:border-slate-800 p-2 text-xs rounded bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-mono-custom"
+                    />
+                  </div>
+                )}
+
                 <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-100 dark:border-slate-800/60 space-y-2">
                   <div className="flex justify-between">
                     <span>Capital da Dívida:</span>
@@ -1372,26 +1458,36 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Taxa de Justiça BNI:</span>
-                    {/* Legal simulation fee: under €2000 is €25.50, above is €51.00 */}
+                    <span>Taxa de Justiça {viaEfetiva === "JULGADO_PAZ" ? "(Julgado de Paz)" : "(BNI)"}:</span>
                     <span className="font-bold text-red-500 font-mono-custom">
-                      {selectedFracaoInfo.totalDebt <= 2000 ? "25.50" : "51.00"} €
+                      {taxaJusticaEfetiva.toFixed(2)} €
                     </span>
                   </div>
+                  {outrasDespesasEfetivas > 0 && (
+                    <div className="flex justify-between">
+                      <span>Outras Despesas do Processo:</span>
+                      <span className="font-bold text-red-500 font-mono-custom">
+                        {outrasDespesasEfetivas.toFixed(2)} €
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between border-t border-slate-200 dark:border-slate-800 pt-2 font-bold text-sm text-slate-800 dark:text-white">
                     <span>Valor Total Reclamado:</span>
                     <span className="font-mono-custom">
                       {(
-                        selectedFracaoInfo.totalDebt + 
-                        getCalculatedTotalInterest(selectedFracaoInfo.unpaidAvisos) + 
-                        (selectedFracaoInfo.totalDebt <= 2000 ? 25.50 : 51.00)
+                        selectedFracaoInfo.totalDebt +
+                        getCalculatedTotalInterest(selectedFracaoInfo.unpaidAvisos) +
+                        taxaJusticaEfetiva +
+                        outrasDespesasEfetivas
                       ).toFixed(2)} €
                     </span>
                   </div>
                 </div>
 
                 <p className="text-[10px] text-slate-600 leading-normal italic">
-                  * O requerimento de injunção é um processo célere que confere força executiva de tribunal (título executivo judicial) para penhora imediata de contas bancárias ou bens móveis do devedor caso este não se oponha no prazo de 15 dias.
+                  {viaEfetiva === "JULGADO_PAZ"
+                    ? "* O Julgado de Paz é competente até 15.000 € (Lei n.º 78/2001), com processo simplificado e sem necessidade de mandatário judicial para valores até 5.000 €."
+                    : "* O requerimento de injunção é um processo célere que confere força executiva de tribunal (título executivo judicial) para penhora imediata de contas bancárias ou bens móveis do devedor caso este não se oponha no prazo de 15 dias."}
                 </p>
 
                 <button
@@ -1414,8 +1510,18 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
             ) : (
               <div className="bg-white text-slate-800 p-8 rounded-xl border border-slate-300 shadow-md font-sans text-[10px] leading-relaxed space-y-4">
                 <div className="text-center space-y-1 border-b-2 border-slate-200 pb-3">
-                  <h3 className="text-sm font-extrabold text-slate-900 tracking-wider">BALCÃO NACIONAL DE INJUNÇÕES</h3>
-                  <p className="text-xs uppercase font-semibold text-slate-600">Requerimento de Injunção - Decreto-Lei n.º 269/98</p>
+                  <h3 className="text-sm font-extrabold text-slate-900 tracking-wider">
+                    {viaEfetiva === "JULGADO_PAZ" ? "JULGADO DE PAZ" : "BALCÃO NACIONAL DE INJUNÇÕES"}
+                  </h3>
+                  <p className="text-xs uppercase font-semibold text-slate-600">
+                    {viaEfetiva === "JULGADO_PAZ" ? "Requerimento Inicial - Lei n.º 78/2001" : "Requerimento de Injunção - Decreto-Lei n.º 269/98"}
+                  </p>
+                  {processoSelecionado && (
+                    <p className="text-[9px] text-slate-500 font-mono">
+                      Processo: {processoSelecionado.id_processo}
+                      {processoSelecionado.numero_processo_tribunal ? ` • Nº Tribunal: ${processoSelecionado.numero_processo_tribunal}` : ""}
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 border border-slate-300 p-3 bg-slate-50 rounded">
@@ -1437,7 +1543,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
 
                 <div className="space-y-2">
                   <h5 className="font-bold uppercase tracking-wide border-b border-slate-200 pb-0.5 text-slate-700 text-[11px]">3. Pedido Líquido Discriminado</h5>
-                  <div className="grid grid-cols-4 gap-2 text-center p-2 bg-slate-50 border rounded font-mono-custom text-xs font-bold">
+                  <div className={`grid ${outrasDespesasEfetivas > 0 ? "grid-cols-5" : "grid-cols-4"} gap-2 text-center p-2 bg-slate-50 border rounded font-mono-custom text-xs font-bold`}>
                     <div className="border-r">
                       <p className="text-[9px] font-sans text-slate-600 uppercase">Capital Inicial</p>
                       <p className="text-slate-800">{(selectedFracaoInfo?.totalDebtCobravel ?? 0).toFixed(2)} €</p>
@@ -1448,15 +1554,22 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                     </div>
                     <div className="border-r">
                       <p className="text-[9px] font-sans text-slate-600 uppercase">Taxa de Justiça</p>
-                      <p className="text-red-600">{(selectedFracaoInfo?.totalDebtCobravel || 0) <= 2000 ? "25.50" : "51.00"} €</p>
+                      <p className="text-red-600">{taxaJusticaEfetiva.toFixed(2)} €</p>
                     </div>
+                    {outrasDespesasEfetivas > 0 && (
+                      <div className="border-r">
+                        <p className="text-[9px] font-sans text-slate-600 uppercase">Outras Despesas</p>
+                        <p className="text-red-600">{outrasDespesasEfetivas.toFixed(2)} €</p>
+                      </div>
+                    )}
                     <div>
                       <p className="text-[9px] font-sans text-slate-600 uppercase">Valor do Pedido</p>
                       <p className="text-slate-950 font-extrabold">
                         {(
                           (selectedFracaoInfo?.totalDebtCobravel || 0) +
                           getCalculatedTotalInterest(selectedFracaoInfo?.unpaidAvisosCobraveis || []) +
-                          ((selectedFracaoInfo?.totalDebtCobravel || 0) <= 2000 ? 25.50 : 51.00)
+                          taxaJusticaEfetiva +
+                          outrasDespesasEfetivas
                         ).toFixed(2)} €
                       </p>
                     </div>
@@ -1476,9 +1589,41 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                     <p>2. O Requerido é proprietário da fração autónoma designada pela letra "{selectedFracao.fracao_nome}" correspondente ao {selectedFracao.piso} do referido edifício, estando legalmente obrigado a concorrer para o pagamento das despesas comuns aprovadas em Assembleia Geral.</p>
                     <p>3. O Requerido encontra-se em mora relativamente ao pagamento de {selectedFracaoInfo?.unpaidCount} aviso(s) e cota(s) de condomínio devidamente emitidos, com prazos de vencimento já largamente ultrapassados, totalizando uma dívida líquida de capital em mora de {selectedFracaoInfo?.totalDebt.toFixed(2)} €.</p>
                     <p>4. Em conformidade com o Artigo 1431º e seguintes do Código Civil, os devedores foram regularmente interpelados pela Administração através de correio registado, mantendo-se a situação de incumprimento e omissão de pagamento voluntário até à presente data.</p>
-                    <p>5. O Requerente reclama juros legais calculados à taxa de {interestRate}% ao ano sobre o capital vencido, computando presentemente {getCalculatedTotalInterest(selectedFracaoInfo?.unpaidAvisos || []).toFixed(2)} € de juros, e a taxa de justiça de injunção correspondente ao valor da ação.</p>
+                    <p>5. O Requerente reclama juros legais calculados à taxa de {interestRate}% ao ano sobre o capital vencido, computando presentemente {getCalculatedTotalInterest(selectedFracaoInfo?.unpaidAvisos || []).toFixed(2)} € de juros{outrasDespesasEfetivas > 0 ? `, acrescidos de ${outrasDespesasEfetivas.toFixed(2)} € de outras despesas do processo` : ""}, e a taxa de justiça correspondente ao valor da ação.</p>
+                    {processoSelecionado && processoSelecionado.provas.length > 0 && (
+                      <p>6. O presente pedido funda-se no acervo probatório junto no processo {processoSelecionado.id_processo}, conforme Doc. 1 a Doc. {processoSelecionado.provas.length} discriminados abaixo.</p>
+                    )}
                   </div>
                 </div>
+
+                {/* 6. Prova Documental Anexa — lista o acervo probatório já
+                    reunido em "Processos & Provas Judiciais" para esta
+                    fração (recibos AR, prints de conversas, fotografias,
+                    etc.), numerado "Doc. N" conforme o tribunal espera. O
+                    requerimento deixa de ser gerado isoladamente, ignorando
+                    esse trabalho já feito. */}
+                {processoSelecionado && processoSelecionado.provas.length > 0 ? (
+                  <div className="space-y-2">
+                    <h5 className="font-bold uppercase tracking-wide border-b border-slate-200 pb-0.5 text-slate-700 text-[11px]">
+                      7. Prova Documental Anexa
+                    </h5>
+                    <div className="bg-slate-50 p-3 rounded border font-mono-custom text-[9px] leading-relaxed space-y-1">
+                      {processoSelecionado.provas
+                        .slice()
+                        .sort((a, b) => a.numero_documento_ordem - b.numero_documento_ordem)
+                        .map(prova => (
+                          <p key={prova.id_prova}>
+                            <strong>Doc. {prova.numero_documento_ordem}</strong> — {prova.titulo} ({formatDatePT(prova.data_documento)})
+                          </p>
+                        ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[9px] text-amber-600 flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded p-2">
+                    <i className="fa-solid fa-triangle-exclamation mt-0.5"></i>
+                    <span>Sem prova documental anexada — junte o acervo probatório (recibos AR, prints, fotografias, etc.) em "Processos &amp; Provas Judiciais" antes de submeter este requerimento.</span>
+                  </p>
+                )}
 
                 <div className="pt-4 border-t border-slate-200 flex justify-between items-center text-[9px] text-slate-600 font-sans">
                   <span>Assinatura Eletrónica do Mandatário / Administrador</span>
