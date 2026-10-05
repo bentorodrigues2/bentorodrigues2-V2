@@ -2125,71 +2125,71 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60">
-                <div className="flex justify-between text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1">
-                  <span>Contratos Mensais</span>
-                  <span className="text-slate-800">€{contratos}/mês</span>
+                <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1 block">Contratos Mensais</label>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500 text-xs">€</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={contratos}
+                    onChange={e => setContratos(Number(e.target.value) || 0)}
+                    className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm font-bold text-slate-800 bg-white"
+                  />
+                  <span className="text-slate-500 text-[10px] shrink-0">/mês</span>
                 </div>
-                <input
-                  type="range"
-                  min="50"
-                  max="1000"
-                  step="10"
-                  value={contratos}
-                  onChange={e => setContratos(Number(e.target.value))}
-                  className="w-full accent-violet-600 h-1 bg-slate-200 rounded"
-                />
               </div>
 
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60">
-                <div className="flex justify-between text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1">
-                  <span>Seguros Anuais</span>
-                  <span className="text-slate-800">€{seguros}/ano</span>
+                <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1 block">Seguros Anuais</label>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500 text-xs">€</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={seguros}
+                    onChange={e => setSeguros(Number(e.target.value) || 0)}
+                    className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm font-bold text-slate-800 bg-white"
+                  />
+                  <span className="text-slate-500 text-[10px] shrink-0">/ano</span>
                 </div>
-                <input
-                  type="range"
-                  min="100"
-                  max="3000"
-                  step="50"
-                  value={seguros}
-                  onChange={e => setSeguros(Number(e.target.value))}
-                  className="w-full accent-violet-600 h-1 bg-slate-200 rounded"
-                />
               </div>
 
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60">
-                <div className="flex justify-between text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1">
-                  <span>Serviços & Limpeza</span>
-                  <span className="text-slate-800">€{servicos + limpeza}/mês</span>
+                <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1 block">Serviços & Limpeza</label>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500 text-xs">€</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={servicos + limpeza}
+                    onChange={e => {
+                      const total = Number(e.target.value) || 0;
+                      setServicos(Math.round(total * 0.45));
+                      setLimpeza(Math.round(total * 0.55));
+                    }}
+                    className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm font-bold text-slate-800 bg-white"
+                  />
+                  <span className="text-slate-500 text-[10px] shrink-0">/mês</span>
                 </div>
-                <input
-                  type="range"
-                  min="50"
-                  max="1500"
-                  step="25"
-                  value={servicos + limpeza}
-                  onChange={e => {
-                    const total = Number(e.target.value);
-                    setServicos(Math.round(total * 0.45));
-                    setLimpeza(Math.round(total * 0.55));
-                  }}
-                  className="w-full accent-violet-600 h-1 bg-slate-200 rounded"
-                />
               </div>
 
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/60">
-                <div className="flex justify-between text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1">
-                  <span>Inadimplência Histórica</span>
-                  <span className="text-slate-800">{inadimplenciaHistorica}%</span>
+                <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1 block">Inadimplência Histórica</label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={inadimplenciaHistorica}
+                    onChange={e => setInadimplenciaHistorica(Number(e.target.value) || 0)}
+                    className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm font-bold text-slate-800 bg-white"
+                  />
+                  <span className="text-slate-500 text-xs shrink-0">%</span>
                 </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="50"
-                  step="1"
-                  value={inadimplenciaHistorica}
-                  onChange={e => setInadimplenciaHistorica(Number(e.target.value))}
-                  className="w-full accent-violet-600 h-1 bg-slate-200 rounded"
-                />
               </div>
             </div>
           </div>
