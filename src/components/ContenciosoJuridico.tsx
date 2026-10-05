@@ -766,7 +766,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
               O sistema monitoriza os prazos de vencimento dos avisos emitidos. Frações com atrasos superiores a 30 dias entram em pré-contencioso e superiores a 60 dias entram automaticamente em contencioso judicial com perda imediata de direitos de voto.
             </p>
 
-            <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden mt-4">
+            <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-x-auto mt-4">
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-900/60 text-slate-600 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
@@ -1280,6 +1280,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
 
                   <p>De acordo com os nossos registos contabilísticos e financeiros atualizados à presente data (15-07-2026), encontram-se por liquidar os seguintes avisos e quotas do condomínio:</p>
 
+                  <div className="overflow-x-auto">
                   <table className="w-full text-left font-sans text-[10px] border border-slate-300 rounded overflow-hidden">
                     <thead>
                       <tr className="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
@@ -1306,6 +1307,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                       </tr>
                     </tbody>
                   </table>
+                  </div>
 
                   <p>Mais se informa que ao abrigo do regulamento interno em vigor, e do Código Civil, os valores em mora vencem juros de mora legais de <strong>{interestRate}% ao ano</strong> a contar do respetivo vencimento de cada prestação.</p>
 

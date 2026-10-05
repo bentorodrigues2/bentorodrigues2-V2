@@ -2322,7 +2322,7 @@ Com os meus cumprimentos,
                       </div>
 
                       {/* Presence Checklist Table */}
-                      <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+                      <div className="border border-slate-200 rounded-xl overflow-x-auto bg-white">
                         <table className="w-full text-xs text-left border-collapse">
                           <thead>
                             <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">

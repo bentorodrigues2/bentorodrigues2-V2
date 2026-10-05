@@ -3222,7 +3222,7 @@ export function ConfiguracoesAdministracao({
           </div>
 
           {/* Logs Output Table */}
-          <div className="border rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-950">
+          <div className="border rounded-xl overflow-x-auto bg-slate-50 dark:bg-slate-950">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-100 dark:bg-slate-900 text-slate-600 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200 dark:border-slate-800">

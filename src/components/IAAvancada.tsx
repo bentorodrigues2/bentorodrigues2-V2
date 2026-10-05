@@ -2486,7 +2486,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
               {/* Rubric List Table */}
               <div className="lg:col-span-8 space-y-3">
                 <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-600 block">Rubricas de Despesas Ativas</span>
-                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-slate-50/20">
+                <div className="border border-slate-200 rounded-xl overflow-x-auto shadow-sm bg-slate-50/20">
                   <table className="w-full text-xs text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200 text-[10px] uppercase">
@@ -3758,7 +3758,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                   <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider border-b border-slate-200 pb-1.5 flex items-center">
                     <i className="fa-solid fa-list-check text-slate-600 mr-2 text-xs"></i> 2. Detalhamento de Rubricas de Custos Previstos
                   </h3>
-                  <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                  <div className="border border-slate-200 rounded-xl overflow-x-auto shadow-sm">
                     <table className="w-full text-xs border-collapse text-left">
                       <thead>
                         <tr className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200 text-[9px] uppercase tracking-wide">

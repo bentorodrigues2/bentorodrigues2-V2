@@ -1676,6 +1676,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                   </button>
                 </div>
               ) : (
+                <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800">
@@ -1762,6 +1763,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                       })}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           </div>
@@ -2102,7 +2104,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
               </div>
             </div>
 
-            <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+            <div className="border border-slate-200 rounded-2xl overflow-x-auto bg-white shadow-sm">
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">

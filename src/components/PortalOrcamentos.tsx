@@ -1476,7 +1476,7 @@ export function PortalOrcamentos({
                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center">
                       <Table size={13} className="mr-1 text-slate-600" /> Matriz Comparativa de Critérios
                     </h4>
-                    <div className="border border-slate-100 dark:border-slate-800 rounded-lg overflow-hidden text-xs">
+                    <div className="border border-slate-100 dark:border-slate-800 rounded-lg overflow-x-auto text-xs">
                       <table className="w-full text-left border-collapse bg-white dark:bg-[#0f172a]">
                         <thead>
                           <tr className="bg-slate-50 dark:bg-slate-900 font-bold border-b border-slate-100 dark:border-slate-800 text-slate-600">

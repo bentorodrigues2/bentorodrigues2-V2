@@ -754,7 +754,7 @@ export function GestaoReservas({
                   <p className="text-xs">Não existem reservas agendadas pendentes de realização.</p>
                 </div>
               ) : (
-                <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden">
+                <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-x-auto">
                   <table className="w-full text-xs text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 dark:bg-slate-900/60 text-slate-600 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
@@ -933,7 +933,7 @@ export function GestaoReservas({
               Não existem registos arquivados no histórico deste prédio.
             </p>
           ) : (
-            <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden">
+            <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-x-auto">
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-900/60 text-slate-600 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
