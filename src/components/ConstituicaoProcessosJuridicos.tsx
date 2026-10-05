@@ -155,8 +155,10 @@ export function ConstituicaoProcessosJuridicos({
   const [novoCustas, setNovoCustas] = useState<string>("25.50");
   const [novoMandatario, setNovoMandatario] = useState<string>(`${loggedUser.nome} (Administrador do Condomínio)`);
   // Nº atribuído pelo tribunal/balcão (só existe depois de o processo dar
-  // entrada) e decisão/resultado final — antes não havia onde os registar.
+  // entrada), data de entrada e decisão/resultado final — antes não havia
+  // onde os registar.
   const [novoNumeroProcessoTribunal, setNovoNumeroProcessoTribunal] = useState<string>("");
+  const [novoDataEntradaTribunal, setNovoDataEntradaTribunal] = useState<string>("");
   const [novoDecisaoTribunal, setNovoDecisaoTribunal] = useState<string>("");
 
   // Sugestão de custas por tribunal — nunca impõe o valor, só pré-preenche
@@ -476,6 +478,7 @@ export function ConstituicaoProcessosJuridicos({
     setNovoCustas(sugerirCustasPorTribunal("Balcão Nacional de Injunções (BNI)", 0).toFixed(2));
     setNovoMandatario(`${loggedUser.nome} (Administrador do Condomínio)`);
     setNovoNumeroProcessoTribunal("");
+    setNovoDataEntradaTribunal("");
     setNovoDecisaoTribunal("");
   };
 
@@ -495,6 +498,7 @@ export function ConstituicaoProcessosJuridicos({
     setNovoCustas(proc.custas_processuais_estimadas.toFixed(2));
     setNovoMandatario(proc.mandatario_responsavel);
     setNovoNumeroProcessoTribunal(proc.numero_processo_tribunal || "");
+    setNovoDataEntradaTribunal(proc.data_entrada_tribunal || "");
     setNovoDecisaoTribunal(proc.decisao_tribunal || "");
     setShowNovoProcessoModal(true);
   };
@@ -626,6 +630,7 @@ export function ConstituicaoProcessosJuridicos({
         tribunal_competente: novoTribunal,
         fase_processual: novoFase,
         numero_processo_tribunal: novoNumeroProcessoTribunal.trim() || undefined,
+        data_entrada_tribunal: novoDataEntradaTribunal || undefined,
         decisao_tribunal: novoDecisaoTribunal.trim() || undefined,
         data_ultima_atualizacao: new Date().toISOString().split("T")[0],
         mandatario_responsavel: novoMandatario,
@@ -681,6 +686,7 @@ export function ConstituicaoProcessosJuridicos({
       tribunal_competente: novoTribunal,
       fase_processual: novoFase,
       numero_processo_tribunal: novoNumeroProcessoTribunal.trim() || undefined,
+      data_entrada_tribunal: novoDataEntradaTribunal || undefined,
       decisao_tribunal: novoDecisaoTribunal.trim() || undefined,
       data_abertura: new Date().toISOString().split("T")[0],
       data_ultima_atualizacao: new Date().toISOString().split("T")[0],
@@ -1176,7 +1182,7 @@ export function ConstituicaoProcessosJuridicos({
                   >
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-                        {proc.id_processo}
+                        {proc.numero_processo_tribunal || proc.id_processo}
                       </span>
                       {/* Descritivo do cálculo (capital + juros + custas +
                           despesas extra) na própria dica do valor — pedido
@@ -1248,13 +1254,23 @@ export function ConstituicaoProcessosJuridicos({
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
                   <div>
                     <div className="flex items-center gap-2">
+                      {/* Mostra o nº atribuído pelo tribunal assim que
+                          existir (é o que passa a identificar o processo na
+                          prática) — a referência interna PROC-.../JUR nunca
+                          desaparece, só passa a aparecer em segundo plano,
+                          por baixo. */}
                       <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-0.5 rounded-lg border border-emerald-500/30">
-                        {currentProcesso.id_processo}
+                        {currentProcesso.numero_processo_tribunal || currentProcesso.id_processo}
                       </span>
                       <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                         {currentProcesso.fase_processual.replace(/_/g, " ")}
                       </span>
                     </div>
+                    {currentProcesso.numero_processo_tribunal && (
+                      <span className="text-[9px] text-slate-500 dark:text-slate-500 font-mono block mt-0.5">
+                        Ref. interna: {currentProcesso.id_processo}
+                      </span>
+                    )}
                     <h3 className="text-base font-bold text-slate-800 dark:text-white mt-1.5">
                       {currentProcesso.titulo_processo}
                     </h3>
@@ -1329,6 +1345,7 @@ export function ConstituicaoProcessosJuridicos({
                     {currentProcesso.numero_processo_tribunal ? (
                       <span className="text-[10px] text-slate-600 dark:text-slate-400 block font-mono mt-0.5">
                         Nº Processo: {currentProcesso.numero_processo_tribunal}
+                        {currentProcesso.data_entrada_tribunal && ` • Entrada: ${formatDatePT(currentProcesso.data_entrada_tribunal)}`}
                       </span>
                     ) : (
                       <span className="text-[10px] text-amber-600 dark:text-amber-400 block mt-0.5">
@@ -2304,16 +2321,29 @@ export function ConstituicaoProcessosJuridicos({
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Decisão / Resultado Final
+                    Data de Entrada no Tribunal
                   </label>
                   <input
-                    type="text"
-                    value={novoDecisaoTribunal}
-                    onChange={(e) => setNovoDecisaoTribunal(e.target.value)}
-                    placeholder="Ex: Sentença favorável, injunção transitada em título executivo"
+                    type="date"
+                    value={novoDataEntradaTribunal}
+                    onChange={(e) => setNovoDataEntradaTribunal(e.target.value)}
                     className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white"
                   />
+                  <p className="text-[9px] text-slate-600">Data em que o requerimento deu entrada — diferente da data de abertura do processo no sistema.</p>
                 </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Decisão / Resultado Final
+                </label>
+                <input
+                  type="text"
+                  value={novoDecisaoTribunal}
+                  onChange={(e) => setNovoDecisaoTribunal(e.target.value)}
+                  placeholder="Ex: Sentença favorável, injunção transitada em título executivo"
+                  className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-800 dark:text-white"
+                />
               </div>
 
               <div className="space-y-1">

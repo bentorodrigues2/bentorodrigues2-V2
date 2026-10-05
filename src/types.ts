@@ -674,6 +674,10 @@ export interface ProcessoJuridico {
   // administração) — só costuma existir a partir do momento em que o
   // processo é efetivamente submetido.
   numero_processo_tribunal?: string;
+  // Data em que o processo deu entrada no tribunal/balcão (YYYY-MM-DD) —
+  // diferente de data_abertura, que é quando o processo foi criado no
+  // sistema pela administração (pode ser bem antes da entrada formal).
+  data_entrada_tribunal?: string;
   // Resultado/decisão final do tribunal (sentença, despacho de arquivamento,
   // acordo homologado, etc.), preenchido quando o processo é concluído.
   decisao_tribunal?: string;
