@@ -2309,9 +2309,6 @@ export default function App() {
               <img src="/modulos/27-arquivo-automatico.png" alt="Arquivo" className="w-5 h-5 object-contain shrink-0" />
               <span>Arquivo</span>
             </div>
-            <span className="bg-emerald-600/80 text-white text-[10px] font-black rounded-full px-1.5 py-0.5 border border-emerald-400/30 shadow-md flex items-center justify-center min-w-[20px] h-5">
-              3
-            </span>
           </button>
 
           {/* 13. Registo Empresa Gestora */}
