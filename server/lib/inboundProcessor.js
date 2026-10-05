@@ -1845,13 +1845,24 @@ export async function processInboundEmail(payload) {
   // confirmação da administração (comprovativoRegisto.pagamento) — nunca
   // para um simples pedido de texto (ex: "enviem-me o recibo"), que sai
   // sempre de imediato com o recibo já emitido (se existir).
+  //
+  // Exceção à exceção: categoria "quotas" nunca entra na fila, mesmo com
+  // pagamento pendente. Pedido explícito do administrador — esta resposta
+  // é sempre só o acknowledgement ("recebemos, aguarda confirmação" ou o
+  // recibo já emitido, ver bloco 7.1 acima), nunca uma confirmação real do
+  // pagamento em si (essa é feita à parte, em Movimentos, e já dispara o
+  // seu próprio recibo oficial automaticamente ao confirmar). Exigir
+  // aprovação manual aqui só duplicava trabalho administrativo sem
+  // acrescentar nenhuma verificação real — 16 respostas em fila só com
+  // "Envio de recibo / informação de quotas" sem nenhum conteúdo que
+  // precisasse de revisão humana.
   let respostaEnviada = false;
   let respostaPendenteConfirmacao = false;
   const aguardaConfirmacaoPagamento = Boolean(comprovativoRegisto?.pagamento);
   if (aiData?.subject && aiData?.message && !semRespostaAutomatica) {
     const htmlInstitucional = gerarHtmlResposta(nomeRemetente, aiData.message);
 
-    if (modoAutoresponder === "confirmacao_previa" && aguardaConfirmacaoPagamento) {
+    if (modoAutoresponder === "confirmacao_previa" && aguardaConfirmacaoPagamento && categoria !== "quotas") {
       try {
         await supabase.from("respostas_ia_pendentes").insert({
           id: `RESP-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
