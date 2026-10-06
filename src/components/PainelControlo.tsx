@@ -581,7 +581,19 @@ export function PainelControlo({
               </tr>
             </thead>
             <tbody>
-              {predioMovements.slice(0, 5).map((m) => (
+              {/* Antes mostrava sempre os primeiros 5 elementos do array tal
+                  como chegam do Supabase (ordem de inserção/leitura, não por
+                  data) — por isso parecia "estático": mesmo com dados novos
+                  a chegar (os movimentos atualizam-se sozinhos a cada 60s em
+                  App.tsx), os 5 mostrados podiam continuar a ser sempre os
+                  mesmos, mais antigos. Ordena por data decrescente (mesmo
+                  critério já usado em GestaoMovimentos) antes de cortar aos
+                  5 mais recentes. */}
+              {predioMovements
+                .slice()
+                .sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0))
+                .slice(0, 5)
+                .map((m) => (
                 <tr key={m.id_mov} className="border-b border-slate-100 hover:bg-slate-50/50">
                   <td className="py-2.5 font-mono text-slate-600">{m.data}</td>
                   <td className="py-2.5">
