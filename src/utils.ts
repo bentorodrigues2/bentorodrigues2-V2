@@ -1,5 +1,5 @@
 import { jsPDF } from "jspdf";
-import { Predio, GestorCarteira, Fracao, Reuniao, Fornecedor, Aviso, Proprietario } from "./types";
+import { Predio, GestorCarteira, Fracao, Reuniao, Fornecedor, Aviso, Proprietario, Conta } from "./types";
 import { 
   LOGO_HORIZONTAL_BASE64, 
   WATERMARK_BASE64, 
@@ -126,6 +126,50 @@ export function parseValorMonetario(raw: string): number {
  */
 export function ehContaFundoReserva(tipo: string | undefined | null): boolean {
   return tipo === "Fundo Comum de Reserva (FCR)" || tipo === "Depósito a Prazo";
+}
+
+// Resumo compacto de dados financeiros REAIS para dar a um assistente de IA
+// genérico (ex: Assistente Gemini IA Ativa, DraggableAIFloatingButton) como
+// contexto — sem isto, o assistente só conhecia o nome/morada/NIF do
+// prédio e, perante uma pergunta como "calcula o total do FCR por mês de
+// todas as frações", só conseguia explicar a fórmula legal (Art. 1429.º-A)
+// em vez de calcular o valor real, por não ter nenhum dado para calcular.
+// Usa sempre a quota do aviso "Quota Ordinária" mais recente de cada
+// fração (o mesmo critério usado no Mapa de Pagamentos), nunca um valor
+// inventado.
+export function resumoFinanceiroRealParaIA(fracoes: Fracao[], avisos: Aviso[], contas: Conta[]): string {
+  if (fracoes.length === 0) return "Sem frações cadastradas neste prédio.";
+
+  let totalFcrMensal = 0;
+  let totalOrdinariaMensal = 0;
+  const linhasFracoes: string[] = [];
+
+  fracoes.forEach((f) => {
+    const avisosOrdinarios = avisos
+      .filter((a) => a.id_fracao === f.id_fracao && a.tipo === "Quota Ordinária")
+      .slice()
+      .sort((a, b) => (a.vencimento || a.data).localeCompare(b.vencimento || b.data));
+    const maisRecente = avisosOrdinarios[avisosOrdinarios.length - 1];
+    const fcr = Number(maisRecente?.valor_fundo_reserva || 0);
+    const ordinaria = Number(maisRecente?.valor || 0) - fcr;
+    totalFcrMensal += fcr;
+    totalOrdinariaMensal += ordinaria;
+    linhasFracoes.push(
+      `Fração ${f.fracao_nome} (${f.permilagem || 0}‰): Quota Ordinária ${ordinaria.toFixed(2)}€ + FCR ${fcr.toFixed(2)}€ = ${(ordinaria + fcr).toFixed(2)}€/mês`
+    );
+  });
+
+  const saldoFcrContas = contas.filter((c) => ehContaFundoReserva(c.tipo)).reduce((s, c) => s + (Number(c.saldo) || 0), 0);
+  const saldoGestaoCorrente = contas.filter((c) => !ehContaFundoReserva(c.tipo)).reduce((s, c) => s + (Number(c.saldo) || 0), 0);
+
+  return [
+    `Quotas mensais atuais por fração (${fracoes.length} frações):`,
+    ...linhasFracoes,
+    `TOTAL mensal de Fundo Comum de Reserva (FCR) de todas as frações: ${totalFcrMensal.toFixed(2)}€`,
+    `TOTAL mensal de Quota Ordinária (sem FCR) de todas as frações: ${totalOrdinariaMensal.toFixed(2)}€`,
+    `Saldo atual acumulado em conta(s) de Fundo Comum de Reserva: ${saldoFcrContas.toFixed(2)}€`,
+    `Saldo atual acumulado em conta(s) de gestão corrente: ${saldoGestaoCorrente.toFixed(2)}€`
+  ].join("\n");
 }
 
 export const formatDatePT = (dateStr: string | undefined): string => {

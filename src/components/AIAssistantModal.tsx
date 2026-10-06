@@ -16,14 +16,18 @@ import {
   Minimize2,
   Zap
 } from "lucide-react";
-import { LoggedUser, Predio } from "../types";
+import { LoggedUser, Predio, Fracao, Aviso, Conta } from "../types";
 import { jsPDF } from "jspdf";
+import { resumoFinanceiroRealParaIA } from "../utils";
 
 interface AIAssistantModalProps {
   isOpen: boolean;
   onClose: () => void;
   loggedUser: LoggedUser;
   predio: Predio;
+  fracoes?: Fracao[];
+  avisos?: Aviso[];
+  contas?: Conta[];
 }
 
 interface AttachedImage {
@@ -57,7 +61,7 @@ interface ChatMessage {
   timestamp: string;
 }
 
-export function AIAssistantModal({ isOpen, onClose, loggedUser, predio }: AIAssistantModalProps) {
+export function AIAssistantModal({ isOpen, onClose, loggedUser, predio, fracoes = [], avisos = [], contas = [] }: AIAssistantModalProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     return [
       {
@@ -225,7 +229,20 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio }: AIAssi
           predioInfo: {
             nome: predio?.nome || "Condomínio",
             morada: `${predio?.morada_linha1 || ""}, Nº ${predio?.num_porta || ""}, ${predio?.localidade || ""}`,
-            nif: predio?.nif || ""
+            nif: predio?.nif || "",
+            // Dados financeiros reais do condomínio ativo — sem isto, o
+            // assistente só conhecia nome/morada/NIF e, perante uma
+            // pergunta como "calcula o total do FCR de todas as frações",
+            // só conseguia explicar a lei em vez de calcular o valor real.
+            // fracoes/avisos/contas chegam sem filtro de prédio (o mesmo
+            // array global de App.tsx) — filtra aqui pelo prédio ativo.
+            dadosReais: (() => {
+              const fracoesPredio = fracoes.filter((f) => f.id_predio === predio.id_predio);
+              if (fracoesPredio.length === 0) return undefined;
+              const avisosPredio = avisos.filter((a) => a.id_predio === predio.id_predio);
+              const contasPredio = contas.filter((c) => c.id_predio === predio.id_predio);
+              return resumoFinanceiroRealParaIA(fracoesPredio, avisosPredio, contasPredio);
+            })()
           }
         })
       });

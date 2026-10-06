@@ -1,11 +1,14 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
-import { LoggedUser, Predio } from "../types";
+import { LoggedUser, Predio, Fracao, Aviso, Conta } from "../types";
 import { AIAssistantModal } from "./AIAssistantModal";
 
 interface DraggableAIFloatingButtonProps {
   loggedUser: LoggedUser;
   predio: Predio;
+  fracoes?: Fracao[];
+  avisos?: Aviso[];
+  contas?: Conta[];
   /** Optional container constraint ref or custom class */
   className?: string;
   /** Flag to indicate if rendering inside PWA viewport */
@@ -15,6 +18,9 @@ interface DraggableAIFloatingButtonProps {
 export function DraggableAIFloatingButton({
   loggedUser,
   predio,
+  fracoes = [],
+  avisos = [],
+  contas = [],
   className = "",
   isPWA = false
 }: DraggableAIFloatingButtonProps) {
@@ -92,6 +98,9 @@ export function DraggableAIFloatingButton({
         onClose={() => setIsOpen(false)}
         loggedUser={loggedUser}
         predio={predio}
+        fracoes={fracoes}
+        avisos={avisos}
+        contas={contas}
       />
     </>
   );

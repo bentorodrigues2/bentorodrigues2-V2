@@ -3361,6 +3361,9 @@ export function PWASimulator({
               <DraggableAIFloatingButton
                 loggedUser={loggedUser}
                 predio={predio}
+                fracoes={fracoes}
+                avisos={avisos}
+                contas={contas}
                 isPWA={true}
                 className="!absolute !bottom-16 !right-3"
               />

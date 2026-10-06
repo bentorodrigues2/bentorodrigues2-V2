@@ -92,6 +92,7 @@ export interface AIChatPayload {
     nome?: string;
     morada?: string;
     nif?: string;
+    dadosReais?: string;
   };
   userRole?: string;
   userEmail?: string;
@@ -104,9 +105,18 @@ export async function processAIChat(payload: AIChatPayload): Promise<{ reply: st
     ? `Condomínio Ativo: ${predioInfo.nome || "Não especificado"} | Morada: ${predioInfo.morada || "Não especificada"} | NIF: ${predioInfo.nif || "Não especificado"}`
     : "Condomínio não selecionado.";
 
+  // Dados financeiros reais (quotas/FCR/saldos por fração) — quando vêm
+  // preenchidos, o assistente deve usá-los diretamente em qualquer cálculo
+  // pedido, nunca recalcular do zero nem inventar valores a partir da lei
+  // geral. Sem isto, perguntas como "calcula o FCR total de todas as
+  // frações" só recebiam uma explicação da fórmula legal, nunca o número.
+  const dadosReaisBloco = predioInfo?.dadosReais
+    ? `\n\nDADOS FINANCEIROS REAIS DESTE CONDOMÍNIO (usa estes números DIRETAMENTE em qualquer cálculo pedido — são reais e já estão corretos, nunca os recalcules a partir da lei nem inventes outros; se faltar algum dado para responder, diz exatamente o que falta):\n${predioInfo.dadosReais}`
+    : "";
+
   const systemInstruction = `És o Assistente de Inteligência Artificial Oficial do sistema Bento Rodrigues (Gestão de Condomínios em Portugal).
 O teu utilizador tem a função: ${userRole || "Administrador / Gestor"}.
-Contexto Atual: ${predioContext}.
+Contexto Atual: ${predioContext}.${dadosReaisBloco}
 
 Diretrizes de Atuação:
 1. Especialista em Legislação de Propriedade Horizontal Portuguesa (Código Civil Português, Artigos 1414.º a 1438.º-A, Decreto-Lei n.º 268/94 e alterações do Decreto-Lei n.º 268/2022).

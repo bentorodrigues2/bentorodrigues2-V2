@@ -3288,6 +3288,9 @@ export default function App() {
         <DraggableAIFloatingButton
           loggedUser={loggedUser}
           predio={predioAtivo}
+          fracoes={fracoes}
+          avisos={avisos}
+          contas={contas}
           isPWA={false}
         />
       )}
