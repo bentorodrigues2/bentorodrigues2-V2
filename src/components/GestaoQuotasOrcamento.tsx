@@ -584,7 +584,11 @@ export function GestaoQuotasOrcamento({
     predioAvisos.forEach(a => {
       if (String(a.tipo || "").includes("Extraordinária")) return;
       const desc = String(a.descricao || "");
-      if (/administra[cç][aã]o anterior/i.test(desc) && !/liquidad/i.test(desc)) return;
+      // Usa o campo "estado" em vez de procurar "liquidad" na descrição —
+      // ver nota em FinanceiroAvancado.tsx (mesma regra): uma dívida de
+      // arranque ainda Pendente cuja nota refere que OUTROS meses já foram
+      // liquidados escapava a este filtro e entrava na soma do mês errado.
+      if (/administra[cç][aã]o anterior/i.test(desc) && a.estado !== "Pago") return;
       const d = new Date(a.vencimento || a.data);
       if (isNaN(d.getTime())) return;
       const chave = `${a.id_fracao}|${d.getFullYear()}-${d.getMonth()}`;

@@ -3036,9 +3036,14 @@ export function exportarBalanceteMapaAnualXLS(
     // por pagar (excluir da grelha mensal, não são de 1 só mês) e os
     // lançamentos históricos de jan-maio já "liquidados junto da
     // administração anterior" (mostrar como qualquer outro mês pago) —
-    // exclui só quando NÃO é um registo liquidado.
+    // exclui só quando o próprio aviso ainda está Pendente. Usar o campo
+    // "estado" em vez de procurar a palavra "liquidad" na descrição: uma
+    // dívida de arranque Pendente cuja nota refere que OUTROS meses já
+    // foram liquidados (ex: "4 meses já liquidados... restam agosto e
+    // setembro") continha a palavra "liquidad" e escapava à exclusão,
+    // ficando a colidir com o mês do seu vencimento mesmo sem estar paga.
     const ehDividaAnteriorAvulsa = (a: any): boolean =>
-      /administra[cç][aã]o anterior/i.test(a.descricao || "") && !/liquidad/i.test(a.descricao || "");
+      /administra[cç][aã]o anterior/i.test(a.descricao || "") && a.estado !== "Pago";
 
     const avisosOrdinariosAno = avisos.filter(a => {
       if (!a?.data && !a?.vencimento) return false;
