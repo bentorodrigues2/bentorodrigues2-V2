@@ -171,7 +171,7 @@ export function FinanceiroAvancado({
   }, [predioAvisos, mapaAno, mapaTipo]);
 
   interface CelulaMapa { valor: number; pendente: number; pago: boolean; idAviso: string }
-  interface LinhaMapa { fracao: Fracao; meses: (CelulaMapa | null)[]; total: number; nomeExibido: string; periodoExibido?: string; quotaMensal: number | null; quotaMensalIdAviso?: string | null }
+  interface LinhaMapa { fracao: Fracao; meses: (CelulaMapa | null)[]; total: number; totalAvulsoPendente?: number; nomeExibido: string; periodoExibido?: string; quotaMensal: number | null; quotaMensalIdAviso?: string | null }
 
   // Quota mensal atual de cada fração — não é recalculada por fórmula (isso
   // já está duplicado em vários sítios do código e facilmente desalinha);
@@ -307,15 +307,30 @@ export function FinanceiroAvancado({
         const avisoReferencia = avisosDoMes.find(a => a.estado !== "Pago") || avisosDoMes[0];
         return { valor: valorPagoMes, pendente: valorPendenteMes, pago, idAviso: avisoReferencia.id_aviso };
       });
+      // Dívidas de arranque "administração anterior" ainda Pendentes — ficam
+      // de fora da grelha mensal (ehDividaAvulsaAnterior, não são de 1 só
+      // mês certo) mas continuam a ser dívida real da fração; sem as somar
+      // aqui também, o "Total" da linha ficava a mostrar bem menos do que a
+      // fração deve mesmo (ex.: Fração C apareceu com 66,30€ quando devia
+      // 142,86€, por faltar somar os 76,56€ de dívida transitada).
+      const totalAvulsoPendente = predioAvisos
+        .filter(a => {
+          if (a.id_fracao !== f.id_fracao || !ehDividaAvulsaAnterior(a)) return false;
+          if (a.estado !== "Pendente" && a.estado !== "Paga Parcialmente") return false;
+          const ehExtra = String(a.tipo || "").includes("Extraordinária");
+          return mapaTipo === "extraordinaria" ? ehExtra : !ehExtra;
+        })
+        .reduce((s, a) => s + ((Number(a.valor) || 0) - (Number(a.valor_pago) || 0)), 0);
       // Total da linha = soma do que ainda falta pagar em cada mês (nunca o
-      // bruto emitido) — uma fração totalmente paga soma sempre 0€ aqui.
-      const total = meses.reduce((s, c) => s + (c?.pendente ?? 0), 0);
+      // bruto emitido) + eventuais dívidas de arranque avulsas — uma fração
+      // totalmente paga (sem nenhuma dívida transitada) soma sempre 0€ aqui.
+      const total = meses.reduce((s, c) => s + (c?.pendente ?? 0), 0) + totalAvulsoPendente;
       const infoQuota = quotaMensalAtualPorFracao[f.id_fracao];
       const quotaMensal = infoQuota?.valor ?? null;
       const quotaMensalIdAviso = infoQuota?.idAviso ?? null;
-      return { fracao: f, meses, total, quotaMensal, quotaMensalIdAviso };
+      return { fracao: f, meses, total, totalAvulsoPendente, quotaMensal, quotaMensalIdAviso };
     });
-  }, [mapaFracoesVisiveis, mapaAvisosDoTipoAno, quotaMensalAtualPorFracao]);
+  }, [mapaFracoesVisiveis, mapaAvisosDoTipoAno, predioAvisos, mapaTipo, quotaMensalAtualPorFracao]);
 
   // Se o proprietário de uma fração mudou a meio do ano selecionado, os
   // meses pagos antes da transferência não podem continuar atribuídos ao
@@ -2201,7 +2216,21 @@ export function FinanceiroAvancado({
                         </td>
                         );
                       })}
-                      <td className="py-2 px-3 text-right font-black text-slate-800 dark:text-white whitespace-nowrap">{l.total.toFixed(2)}€</td>
+                      <td className="py-2 px-3 text-right font-black text-slate-800 dark:text-white whitespace-nowrap">
+                        <span
+                          className="inline-flex items-center gap-1 justify-end"
+                          title={
+                            (l.totalAvulsoPendente || 0) > 0.005
+                              ? `Inclui ${l.totalAvulsoPendente!.toFixed(2)}€ de dívida de arranque (administração anterior), sem mês específico — por isso não aparece em nenhuma célula acima.`
+                              : undefined
+                          }
+                        >
+                          {(l.totalAvulsoPendente || 0) > 0.005 && (
+                            <i className="fa-solid fa-circle-info text-amber-500 text-[10px]"></i>
+                          )}
+                          <span>{l.total.toFixed(2)}€</span>
+                        </span>
+                      </td>
                     </tr>
                     );
                   })}
