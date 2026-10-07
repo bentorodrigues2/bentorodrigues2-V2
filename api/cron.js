@@ -92,6 +92,13 @@ export default async function handler(req, res) {
       resultados.push(await processarAgendamentosAvisos());
     }
 
+    // Também disparado pontualmente às 09h00 de Lisboa de 2026-10-08 (ver
+    // vercel.json — "0 8 8 10 *") a pedido do administrador: o job do dia 5
+    // nunca tinha enviado nada (bug de filtro por "data" de emissão em vez
+    // de "vencimento", só corrigido agora) — este disparo único apanha
+    // outubro/2026 com a lógica já corrigida. Idempotente (jaExecutadoHoje
+    // em enviarLembretesQuotas), seguro manter este cron agendado mesmo que
+    // a app já esteja a correr quando a hora chegar.
     if (forcar === "lembrete" || (!forcar && dia === 5)) {
       resultados.push(await enviarLembretesQuotas());
     }
