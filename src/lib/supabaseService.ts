@@ -425,6 +425,15 @@ export async function fetchMovimentosFromSupabase(idPredio?: string): Promise<Mo
 
 export async function saveMovimentoToSupabase(mov: Movimento): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
+  // Faltavam aqui "fotos", "estado", "is_movimento_cego",
+  // "estado_conciliacao", "comprovativo_url" e "origem" — qualquer chamada
+  // a esta função (ex: anexar uma fatura a uma despesa, ou "Regularizar"
+  // um Movimento Cego) atualizava o objeto completo em memória, mas o
+  // upsert só enviava ao Supabase os campos abaixo, por isso essas
+  // alterações pareciam guardar (o ecrã atualizava-se) mas nunca chegavam
+  // mesmo à base de dados — desapareciam ao recarregar a página. Era isto
+  // que fazia uma fatura anexada (ex: à despesa da Iberdrola) "não
+  // guardar".
   return dbUpsert("movimentos", {
     id_movimento: mov.id_mov,
     id_predio: mov.id_predio,
@@ -436,7 +445,12 @@ export async function saveMovimentoToSupabase(mov: Movimento): Promise<boolean> 
     valor: mov.valor,
     fracao_id: mov.id_fracao || null,
     forma_pagamento: mov.metodo_pagamento || "Transferência",
-    id_fornecedor: mov.id_fornecedor || null
+    id_fornecedor: mov.id_fornecedor || null,
+    fotos: mov.fotos || [],
+    estado: mov.estado || null,
+    is_movimento_cego: mov.is_movimento_cego ?? false,
+    comprovativo_url: mov.comprovativo_url || null,
+    origem: mov.origem || null
   });
 }
 

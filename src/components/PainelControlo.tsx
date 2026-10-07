@@ -55,9 +55,20 @@ export function PainelControlo({
   // Global list references derived from props
   const predioFracoes = fracoes.filter(f => f.id_predio === predio?.id_predio);
   const predioMovements = movements.filter(m => m.id_predio === predio?.id_predio);
-  const lancamentosPorConfirmarCount = predioMovements.filter(
-    (m: any) => m.is_movimento_cego || m.estado === "Movimento Cego / Por Justificar"
-  ).length;
+  // Mesmo critério usado em GestaoMovimentos.tsx ("cegosPendentes"): uma
+  // despesa cega que já tem fatura anexada (reconhecida por email) não
+  // está "por justificar" — já tem a fatura, só falta é o pagamento real
+  // (fica como Dívida Pendente em Fornecedores, não aparece mais aqui).
+  // Sem esta mesma exclusão, o número deste cartão não batia certo com o
+  // que aparecia mesmo ao abrir Movimentos (dizia "6 por justificar" e não
+  // mostrava nada, porque esses 6 já tinham fatura e tinham sido retirados
+  // da lista visível).
+  const lancamentosPorConfirmarCount = predioMovements.filter((m: any) => {
+    const ehCego = m.is_movimento_cego || m.estado === "Movimento Cego / Por Justificar";
+    if (!ehCego) return false;
+    if (m.tipo === "Despesa" && m.comprovativo_url) return false;
+    return true;
+  }).length;
   const predioAvisos = avisos.filter(a => a.id_predio === predio?.id_predio);
   const predioContas = contas.filter(c => c.id_predio === predio?.id_predio);
 
