@@ -587,6 +587,51 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
 }
 
 /**
+ * Antes de criar uma nova dívida/lançamento cego a partir de uma fatura
+ * chegada por email, verifica se o extrato bancário já reconciliou este
+ * pagamento primeiro (ordem inversa à mais comum: banco confirma a saída,
+ * só depois chega a fatura a justificá-la — caso da Iberdrola nesta sessão).
+ * Nesse caso já existe um movimento real (origem "extrato_bancario_email_
+ * inbound" ou já "Justificado"), sem fatura anexada ainda — sem esta
+ * verificação, cada fatura a chegar depois do banco gerava sempre uma
+ * dívida "Pendente" + um "Movimento Cego" duplicados do que já estava pago.
+ * Cruza por valor (tolerância a arredondamentos) + janela de data à volta
+ * do documento, e por nome do fornecedor na descrição quando conhecido
+ * (a mesma descrição montada em lancarMovimentosEmFaltaDoExtrato).
+ */
+async function encontrarMovimentoJaConfirmadoParaFatura({ idPredio, valor, dataDocumento, nomeFornecedor }) {
+  if (!idPredio || !valor || valor <= 0) return null;
+  try {
+    const dataRef = dataDocumento ? new Date(dataDocumento) : new Date();
+    if (Number.isNaN(dataRef.getTime())) return null;
+    const desde = new Date(dataRef); desde.setDate(desde.getDate() - 45);
+    const ate = new Date(dataRef); ate.setDate(ate.getDate() + 45);
+    const { data: candidatos, error } = await supabase
+      .from("movimentos")
+      .select("id_movimento, valor, data, comprovativo_url, is_movimento_cego, estado, descricao")
+      .eq("id_predio", idPredio)
+      .eq("tipo", "Despesa")
+      .is("comprovativo_url", null)
+      .gte("data", desde.toISOString().split("T")[0])
+      .lte("data", ate.toISOString().split("T")[0]);
+    if (error || !candidatos) return null;
+
+    const margem = Math.max(0.5, Number(valor) * 0.02);
+    const nomeNormalizado = nomeFornecedor ? nomeFornecedor.trim().toLowerCase() : null;
+    return candidatos.find((m) => {
+      const aindaPorJustificar = m.is_movimento_cego && m.estado === "Movimento Cego / Por Justificar";
+      if (aindaPorJustificar) return false;
+      if (Math.abs(Number(m.valor) - Number(valor)) > margem) return false;
+      if (nomeNormalizado && !(m.descricao || "").toLowerCase().includes(nomeNormalizado)) return false;
+      return true;
+    }) || null;
+  } catch (err) {
+    console.warn("[inboundProcessor] Aviso ao procurar movimento já confirmado para a fatura:", err?.message || err);
+    return null;
+  }
+}
+
+/**
  * Fatura de fornecedor reconhecida por email: regista-a como uma dívida a
  * pagar (dividas_fornecedores, estado "Pendente"), NUNCA mexendo no saldo
  * de nenhuma conta bancária diretamente — o dinheiro só sai mesmo quando
@@ -628,6 +673,18 @@ async function registarFaturaFornecedor({ dadosExtraidos, comprovativoUrl, idPre
 
     const valor = dadosExtraidos.valor_total || 0;
     if (valor <= 0) return null;
+
+    const movimentoJaConfirmado = await encontrarMovimentoJaConfirmadoParaFatura({
+      idPredio,
+      valor,
+      dataDocumento: dadosExtraidos.data_documento,
+      nomeFornecedor: cruzamento.fornecedor.nome
+    });
+    if (movimentoJaConfirmado) {
+      await supabase.from("movimentos").update({ comprovativo_url: comprovativoUrl || null }).eq("id_movimento", movimentoJaConfirmado.id_movimento);
+      console.log(`[inboundProcessor] Fatura de ${cruzamento.fornecedor.nome} (${valor.toFixed(2)}€) já tinha um movimento confirmado pelo extrato bancário para o mesmo valor/data — a fatura foi anexada a esse movimento em vez de criar uma dívida/lançamento duplicado.`);
+      return { jaReconciliado: true, id_movimento: movimentoJaConfirmado.id_movimento, fornecedor: cruzamento.fornecedor, metodo: cruzamento.metodo };
+    }
 
     const idDivida = `div-email-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const { error: errDivida } = await supabase.from("dividas_fornecedores").insert({
@@ -1791,16 +1848,24 @@ export async function processInboundEmail(payload) {
           }
           comprovativoUrl = comprovativoUrlDoc;
 
+          let faturaJaReconciliadaPeloExtrato = false;
           if (isFaturaDoc) {
-            await registarFaturaFornecedor({
+            const resultadoFatura = await registarFaturaFornecedor({
               dadosExtraidos: dadosExtraidosDoc,
               comprovativoUrl: comprovativoUrlDoc,
               idPredio: contextoDocumento?.id_predio,
               fornecedorJaCruzado: fornecedorCruzado
             });
+            faturaJaReconciliadaPeloExtrato = Boolean(resultadoFatura?.jaReconciliado);
           }
 
-          const registo = await registarComprovativoPendente({
+          // Se o extrato bancário já tinha reconciliado este pagamento antes
+          // de a fatura chegar (registarFaturaFornecedor já anexou o
+          // documento ao movimento real), não se cria aqui por cima um
+          // "Movimento Cego / Por Justificar" + dívida pendente duplicados
+          // do que já está pago — era exatamente isto que duplicava as
+          // faturas da Iberdrola.
+          const registo = faturaJaReconciliadaPeloExtrato ? null : await registarComprovativoPendente({
             categoria,
             dadosExtraidos: dadosExtraidosDoc,
             contexto: contextoDocumento,

@@ -1667,6 +1667,28 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
       setAGuardarDetalheMov(false);
       return alert("❌ Não foi possível gravar a correção no Supabase.");
     }
+    // "contas.saldo" não é recalculado a partir dos movimentos — é um valor
+    // à parte, só ajustado nos momentos certos (ver ajustarSaldoConta no
+    // backend e os pontos equivalentes aqui no frontend). Um movimento
+    // ainda "Por Justificar" nunca chegou a entrar no saldo, por isso
+    // corrigir o seu valor aqui não lhe toca. Mas um movimento já real
+    // (confirmado/justificado/extrato) já está refletido no saldo — se o
+    // valor for corrigido sem ajustar o saldo na mesma proporção, o saldo
+    // da conta fica errado outra vez, tal como aconteceu nas reconciliações
+    // manuais desta sessão.
+    const aindaNaoContavaParaSaldo = mov.is_movimento_cego && mov.estado === "Movimento Cego / Por Justificar";
+    if (!aindaNaoContavaParaSaldo) {
+      const deltaValor = (Math.abs(atualizado.valor) - Math.abs(mov.valor)) * (mov.tipo === "Receita" ? 1 : -1);
+      if (deltaValor !== 0) {
+        const contaAlvo = contasRef.current.find(c => c.id_conta === mov.id_conta);
+        if (contaAlvo) {
+          const contaAtualizada: Conta = { ...contaAlvo, saldo: Math.round(((contaAlvo.saldo || 0) + deltaValor) * 100) / 100 };
+          contasRef.current = contasRef.current.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c);
+          if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
+          saveContaToSupabase(contaAtualizada).catch(console.error);
+        }
+      }
+    }
     // O pagamento ligado (se existir) tem de acompanhar a correção de
     // fração — é ele que decide para quem sai o recibo ao confirmar.
     const idPagamentoLigado = mov.descricao?.match(/\[pagamento:([^\]]+)\]/)?.[1];
@@ -1695,9 +1717,27 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
   };
 
   const handleEliminarMov = async (idMov: string) => {
+    const mov = predioMovements.find(m => m.id_mov === idMov);
     if (!window.confirm("Eliminar este movimento? Esta ação não pode ser desfeita.")) return;
     const ok = await deleteMovimentoFromSupabase(idMov);
     if (!ok) return alert("❌ Não foi possível eliminar o movimento no Supabase.");
+    // Tal como na correção de valor acima: um movimento já real (não um
+    // "Por Justificar" ainda pendente) já está refletido no saldo da conta
+    // — eliminá-lo sem reverter essa entrada/saída deixava o saldo
+    // desactualizado (dinheiro "fantasma" a mais ou a menos).
+    if (mov) {
+      const aindaNaoContavaParaSaldo = mov.is_movimento_cego && mov.estado === "Movimento Cego / Por Justificar";
+      if (!aindaNaoContavaParaSaldo) {
+        const reversao = Math.abs(mov.valor) * (mov.tipo === "Receita" ? -1 : 1);
+        const contaAlvo = contasRef.current.find(c => c.id_conta === mov.id_conta);
+        if (contaAlvo) {
+          const contaAtualizada: Conta = { ...contaAlvo, saldo: Math.round(((contaAlvo.saldo || 0) + reversao) * 100) / 100 };
+          contasRef.current = contasRef.current.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c);
+          if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
+          saveContaToSupabase(contaAtualizada).catch(console.error);
+        }
+      }
+    }
     setMovements(prev => prev.filter(m => m.id_mov !== idMov));
     setDetalheMovId(null);
   };
