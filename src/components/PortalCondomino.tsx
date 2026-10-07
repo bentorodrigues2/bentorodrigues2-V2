@@ -25,10 +25,8 @@ import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
 import { generateCondominoPwaManualPDF, gerarReferenciaBR23EExtra, formatDatePT } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { playVoiceNoteSimulation, playNotificationTone } from "../lib/soundService";
-import { supabase } from "../lib/supabaseClient";
 import { encontrarFracaoDoCondomino } from "../lib/condominoUtils";
 import {
-  isSupabaseConfigured,
   fetchConversasFromSupabase,
   saveConversaToSupabase,
   fetchMensagensConversaFromSupabase,
@@ -1076,80 +1074,61 @@ export function PortalCondomino({
 
   useEffect(() => { carregarMensagensReais(); }, [carregarMensagensReais]);
 
-  // Tempo real: refrescar sempre que houver uma conversa nova/atualizada desta fração
-  // (ex.: a administração respondeu a um pedido).
-  useEffect(() => {
-    if (!isSupabaseConfigured() || !activeUserFracao?.id_fracao) return;
-    const idConversaFracao = "conv-" + activeUserFracao.id_fracao;
-    const canal = supabase
-      .channel(`portal_conversas_${activeUserFracao.id_fracao}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "conversas", filter: `id_fracao=eq.${activeUserFracao.id_fracao}` },
-        () => { carregarMensagensReais(); }
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "mensagens_conversa", filter: `id_conversa=eq.${idConversaFracao}` },
-        (payload: any) => {
-          carregarMensagensReais();
-          // Som + notificação local quando chega mesmo uma resposta da
-          // administração (não quando é o próprio condómino a enviar).
-          if (payload?.new?.autor === "administracao") {
-            playNotificationTone();
-            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-              try {
-                new Notification("Nova mensagem da Administração", {
-                  body: payload.new.texto,
-                  icon: "/marca/10-icone-negativo.png"
-                });
-              } catch { /* ignora silenciosamente se o browser exigir Service Worker */ }
-            }
-          }
-        }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(canal); };
-  }, [activeUserFracao?.id_fracao, carregarMensagensReais]);
-
   // Conversa completa (estilo WhatsApp) com a administração — substitui o
   // "bilhete" (1ª mensagem + 1ª resposta) por todas as mensagens reais da
   // conversa, em ordem, incluindo anexos e contagem real de por-ler.
   const idConversaPortal = activeUserFracao?.id_fracao ? "conv-" + activeUserFracao.id_fracao : "";
   const [mensagensThreadPortal, setMensagensThreadPortal] = useState<MensagemConversa[]>([]);
+
+  // Atualização por consulta periódica (substitui o Realtime do Supabase) —
+  // a subscrição "postgres_changes" exigia que "mensagens_conversa" e
+  // "conversas" ficassem acessíveis pela chave pública (anon), o que o
+  // Supabase sinalizou como vulnerabilidade crítica "Table publicly
+  // accessible" (RLS desativado): qualquer pessoa com essa chave — pública
+  // por natureza, vem embutida no código do site — conseguia ler, editar ou
+  // apagar as conversas de todos os condóminos. Com RLS ativo e sem
+  // política de leitura pública, o Realtime deixa de poder entregar
+  // eventos; passa a verificar sozinho a cada 5s pela mesma rota /api/data
+  // já usada em todo o resto da app (exige sessão válida, nunca a chave
+  // pública).
+  const idsMensagensVistasPortalRef = useRef<Set<string>>(new Set());
+  const primeiraVerificacaoThreadPortalRef = useRef(true);
   const carregarThreadPortal = React.useCallback(async () => {
     if (!idConversaPortal) return;
     const dados = await fetchMensagensConversaFromSupabase(idConversaPortal);
-    setMensagensThreadPortal(dados || []);
-  }, [idConversaPortal]);
-  useEffect(() => { carregarThreadPortal(); }, [carregarThreadPortal]);
-  const naoLidasThreadPortal = mensagensThreadPortal.filter(m => m.autor === "administracao" && !m.lida).length;
+    if (!dados) return;
+    const novasDoAdmin = primeiraVerificacaoThreadPortalRef.current
+      ? []
+      : dados.filter(m => m.autor === "administracao" && !idsMensagensVistasPortalRef.current.has(m.id_mensagem));
+    dados.forEach(m => idsMensagensVistasPortalRef.current.add(m.id_mensagem));
+    primeiraVerificacaoThreadPortalRef.current = false;
+    setMensagensThreadPortal(dados);
+    if (novasDoAdmin.length > 0) {
+      playNotificationTone();
+      const ultima = novasDoAdmin[novasDoAdmin.length - 1];
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        try { new Notification("Nova mensagem da Administração", { body: ultima.texto, icon: "/marca/10-icone-negativo.png" }); } catch {}
+      }
+      carregarMensagensReais();
+    }
+  }, [idConversaPortal, carregarMensagensReais]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured() || !idConversaPortal) return;
-    const canal = supabase
-      .channel(`portal_thread_${idConversaPortal}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "mensagens_conversa", filter: `id_conversa=eq.${idConversaPortal}` },
-        (payload: any) => {
-          const nova = payload.new;
-          setMensagensThreadPortal(prev => prev.some(m => m.id_mensagem === nova.id_mensagem) ? prev : [...prev, {
-            id_mensagem: nova.id_mensagem,
-            id_conversa: nova.id_conversa,
-            autor: nova.autor,
-            texto: nova.texto,
-            created_at: nova.created_at,
-            anexo_url: nova.anexo_url || undefined,
-            anexo_tipo: nova.anexo_tipo || undefined,
-            anexo_nome: nova.anexo_nome || undefined,
-            lida: !!nova.lida
-          }]);
-        }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(canal); };
-  }, [idConversaPortal]);
+    if (!idConversaPortal) return;
+    carregarThreadPortal();
+    const interval = setInterval(carregarThreadPortal, 5000);
+    return () => clearInterval(interval);
+  }, [idConversaPortal, carregarThreadPortal]);
+
+  const naoLidasThreadPortal = mensagensThreadPortal.filter(m => m.autor === "administracao" && !m.lida).length;
+
+  // Mantém a lista de "bilhetes" (conversas) em sincronia — o som/notificação
+  // de nova resposta já fica a cargo do polling do thread acima.
+  useEffect(() => {
+    if (!activeUserFracao?.id_fracao) return;
+    const interval = setInterval(carregarMensagensReais, 5000);
+    return () => clearInterval(interval);
+  }, [activeUserFracao?.id_fracao, carregarMensagensReais]);
 
   useEffect(() => {
     if (!msgDrawerOpen || !idConversaPortal || naoLidasThreadPortal === 0) return;

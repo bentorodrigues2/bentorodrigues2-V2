@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Predio, Fracao, LoggedUser, Aviso, Comunicado, ConversaCondomino, MensagemConversa, Sondagem, Questionario } from "../types";
-import { supabase } from "../lib/supabaseClient";
 import {
-  isSupabaseConfigured,
   fetchComunicadosFromSupabase,
   saveComunicadoToSupabase,
   deleteComunicadoFromSupabase,
@@ -312,47 +310,57 @@ export function GestaoComunicacoes({
     if (audioTimerRef.current) { clearInterval(audioTimerRef.current); audioTimerRef.current = null; }
   };
 
+  // Atualização por consulta periódica (substitui o Realtime do Supabase) —
+  // a subscrição "postgres_changes" exigia que "conversas" e
+  // "mensagens_conversa" ficassem acessíveis pela chave pública (anon), o
+  // que o Supabase sinalizou como vulnerabilidade crítica "Table publicly
+  // accessible" (RLS desativado): qualquer pessoa com essa chave — pública
+  // por natureza, vem embutida no código do site — conseguia ler, editar ou
+  // apagar as conversas de todos os condóminos. Com RLS ativo e sem
+  // política de leitura pública, o Realtime deixa de poder entregar
+  // eventos; passa a verificar sozinho a cada 5s pela mesma rota /api/data
+  // já usada em todo o resto da app (exige sessão válida, nunca a chave
+  // pública). "pendente" só é posto pelo lado do condómino (ver
+  // handleEnviarMensagemReal em PWACondominoView.tsx/PortalCondomino.tsx) —
+  // a própria administração passou a usar "arquivada" ao iniciar/responder
+  // — por isso a TRANSIÇÃO para "pendente" é um sinal seguro de "o
+  // condómino acabou de escrever" (compara contra o estado anterior de
+  // cada conversa, para não tocar outra vez em cada verificação).
+  const estadosConversasAnterioresRef = React.useRef<Map<string, string>>(new Map());
+  const primeiraCargaConversasRef = React.useRef(true);
   const carregarConversas = useCallback(async () => {
     if (!predio?.id_predio) return;
     setLoadingConversas(true);
     const dados = await fetchConversasFromSupabase(predio.id_predio);
-    setConversas(dados || []);
-    setLoadingConversas(false);
-  }, [predio?.id_predio]);
-
-  useEffect(() => { carregarConversas(); }, [carregarConversas]);
-
-  // Realtime: novas conversas / atualizações à lista da inbox — antes só
-  // recarregava a lista em silêncio, sem nenhum som nem notificação local
-  // para o administrador (ao contrário do condómino, que já tinha isto do
-  // seu lado). "pendente" só é posto pelo lado do condómino (ver
-  // handleEnviarMensagemReal em PWACondominoView.tsx/PortalCondomino.tsx) —
-  // a própria administração passou a usar "arquivada" ao iniciar/responder
-  // — por isso é um sinal seguro de "o condómino acabou de escrever".
-  useEffect(() => {
-    if (!isSupabaseConfigured() || !predio?.id_predio) return;
-    const canal = supabase
-      .channel(`conversas_${predio.id_predio}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "conversas", filter: `id_predio=eq.${predio.id_predio}` },
-        (payload: any) => {
-          carregarConversas();
-          if (payload?.new?.estado === "pendente") {
+    if (dados) {
+      if (!primeiraCargaConversasRef.current) {
+        dados.forEach((c: any) => {
+          const estadoAnterior = estadosConversasAnterioresRef.current.get(c.id_conversa);
+          if (c.estado === "pendente" && estadoAnterior !== "pendente") {
             playNotificationTone();
             if (typeof Notification !== "undefined" && Notification.permission === "granted") {
               try {
                 new Notification("Nova mensagem de um condómino", {
-                  body: payload.new.proprietario_nome ? `${payload.new.proprietario_nome} enviou uma mensagem.` : "Tem uma nova mensagem na caixa de entrada.",
+                  body: c.proprietario_nome ? `${c.proprietario_nome} enviou uma mensagem.` : "Tem uma nova mensagem na caixa de entrada.",
                   icon: "/marca/10-icone-negativo.png"
                 });
               } catch {}
             }
           }
-        }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(canal); };
+        });
+      }
+      estadosConversasAnterioresRef.current = new Map(dados.map((c: any) => [c.id_conversa, c.estado]));
+      primeiraCargaConversasRef.current = false;
+      setConversas(dados);
+    }
+    setLoadingConversas(false);
+  }, [predio?.id_predio]);
+
+  useEffect(() => {
+    if (!predio?.id_predio) return;
+    carregarConversas();
+    const interval = setInterval(carregarConversas, 5000);
+    return () => clearInterval(interval);
   }, [predio?.id_predio, carregarConversas]);
 
   const carregarMensagens = useCallback(async (idConversa: string) => {
@@ -372,31 +380,13 @@ export function GestaoComunicacoes({
     else setMensagensSelecionadas([]);
   }, [selectedConversaId, carregarMensagens]);
 
-  // Realtime: mensagens novas na conversa aberta
+  // Consulta periódica das mensagens da conversa aberta (substitui o
+  // Realtime — ver nota junto de carregarConversas acima).
   useEffect(() => {
-    if (!isSupabaseConfigured() || !selectedConversaId) return;
-    const canal = supabase
-      .channel(`mensagens_${selectedConversaId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "mensagens_conversa", filter: `id_conversa=eq.${selectedConversaId}` },
-        (payload: any) => {
-          const nova = payload.new;
-          setMensagensSelecionadas(prev => prev.some(m => m.id_mensagem === nova.id_mensagem) ? prev : [...prev, {
-            id_mensagem: nova.id_mensagem,
-            id_conversa: nova.id_conversa,
-            autor: nova.autor,
-            texto: nova.texto,
-            created_at: nova.created_at,
-            anexo_url: nova.anexo_url || undefined,
-            anexo_tipo: nova.anexo_tipo || undefined,
-            anexo_nome: nova.anexo_nome || undefined
-          }]);
-        }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(canal); };
-  }, [selectedConversaId]);
+    if (!selectedConversaId) return;
+    const interval = setInterval(() => carregarMensagens(selectedConversaId), 5000);
+    return () => clearInterval(interval);
+  }, [selectedConversaId, carregarMensagens]);
 
   const handleSendResposta = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -429,11 +419,11 @@ export function GestaoComunicacoes({
 
       await saveMensagemConversaToSupabase(novaMensagem);
       limparAnexosResposta();
-      // Não junta a mensagem localmente aqui — a subscrição em tempo real
-      // (useEffect acima, já com verificação de duplicados por id_mensagem)
-      // é a única responsável por isso. Como este await dá tempo à mensagem
-      // de chegar primeiro pela subscrição, um acrescento local sem essa
-      // verificação estava a fazer a mesma mensagem aparecer duas vezes.
+      // Não junta a mensagem localmente aqui — volta sempre a carregar a
+      // lista real a seguir (evita o mesmo risco de duplicação que havia
+      // antes com o acrescento local). O polling periódico (useEffect
+      // acima) só apanharia isto no máximo 5s depois.
+      await carregarMensagens(selectedConversaId);
 
       // Responder já é a própria ação de resolver o pendente — antes a
       // conversa ficava "pendente" para sempre, mesmo depois de respondida,

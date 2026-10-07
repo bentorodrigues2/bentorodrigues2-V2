@@ -26,9 +26,7 @@ import { GestaoDocumentos } from "./GestaoDocumentos";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
 import { DraggableAIFloatingButton } from "./DraggableAIFloatingButton";
 import { playVoiceNoteSimulation, playNotificationTone } from "../lib/soundService";
-import { supabase } from "../lib/supabaseClient";
 import {
-  isSupabaseConfigured,
   fetchConversasFromSupabase,
   saveConversaToSupabase,
   fetchMensagensConversaFromSupabase,
@@ -427,50 +425,49 @@ export default function PWACondominoView({
   // conversa, em ordem, incluindo anexos e contagem real de por-ler.
   const idConversaPwa = condominoFracao?.id_fracao ? "conv-" + condominoFracao.id_fracao : "";
   const [mensagensThreadPwa, setMensagensThreadPwa] = useState<MensagemConversa[]>([]);
+
+  // Atualização por consulta periódica (substitui o Realtime do Supabase) —
+  // a subscrição "postgres_changes" exigia que "mensagens_conversa" e
+  // "conversas" ficassem acessíveis pela chave pública (anon), o que o
+  // Supabase sinalizou como vulnerabilidade crítica "Table publicly
+  // accessible" (RLS desativado): qualquer pessoa com essa chave — pública
+  // por natureza, vem embutida no código do site — conseguia ler, editar
+  // ou apagar as conversas de todos os condóminos. Com RLS ativo e sem
+  // política de leitura pública, o Realtime deixa de poder entregar
+  // eventos; passa a verificar sozinho a cada 5s pela mesma rota /api/data
+  // já usada em todo o resto da app (exige sessão válida, nunca a chave
+  // pública). Continua a NÃO fazer acrescento local otimista (só o que
+  // vem do servidor) — foi mudado para isso no passado por ter causado
+  // mensagens duplicadas do lado do admin.
+  const idsMensagensVistasPwaRef = useRef<Set<string>>(new Set());
+  const primeiraVerificacaoThreadPwaRef = useRef(true);
   const carregarThreadPwa = React.useCallback(async () => {
     if (!idConversaPwa) return;
     const dados = await fetchMensagensConversaFromSupabase(idConversaPwa);
-    setMensagensThreadPwa(dados || []);
+    if (!dados) return;
+    const novasDoAdmin = primeiraVerificacaoThreadPwaRef.current
+      ? []
+      : dados.filter(m => m.autor === "administracao" && !idsMensagensVistasPwaRef.current.has(m.id_mensagem));
+    dados.forEach(m => idsMensagensVistasPwaRef.current.add(m.id_mensagem));
+    primeiraVerificacaoThreadPwaRef.current = false;
+    setMensagensThreadPwa(dados);
+    if (novasDoAdmin.length > 0) {
+      playNotificationTone();
+      const ultima = novasDoAdmin[novasDoAdmin.length - 1];
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        try { new Notification("Nova mensagem da Administração", { body: ultima.texto, icon: "/marca/10-icone-negativo.png" }); } catch {}
+      }
+    }
   }, [idConversaPwa]);
-  useEffect(() => { carregarThreadPwa(); }, [carregarThreadPwa]);
+
+  useEffect(() => {
+    if (!idConversaPwa) return;
+    carregarThreadPwa();
+    const interval = setInterval(carregarThreadPwa, 5000);
+    return () => clearInterval(interval);
+  }, [idConversaPwa, carregarThreadPwa]);
 
   const naoLidasThreadPwa = mensagensThreadPwa.filter(m => m.autor === "administracao" && !m.lida).length;
-
-  // Realtime: novas mensagens (dos dois lados) chegam sozinhas à conversa
-  // aberta — única responsável por acrescentar ao thread (nunca um
-  // acrescento local otimista em paralelo, que já causou mensagens
-  // duplicadas do lado do admin por esta mesma razão).
-  useEffect(() => {
-    if (!isSupabaseConfigured() || !idConversaPwa) return;
-    const canal = supabase
-      .channel(`pwa_thread_${idConversaPwa}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "mensagens_conversa", filter: `id_conversa=eq.${idConversaPwa}` },
-        (payload: any) => {
-          const nova = payload.new;
-          setMensagensThreadPwa(prev => prev.some(m => m.id_mensagem === nova.id_mensagem) ? prev : [...prev, {
-            id_mensagem: nova.id_mensagem,
-            id_conversa: nova.id_conversa,
-            autor: nova.autor,
-            texto: nova.texto,
-            created_at: nova.created_at,
-            anexo_url: nova.anexo_url || undefined,
-            anexo_tipo: nova.anexo_tipo || undefined,
-            anexo_nome: nova.anexo_nome || undefined,
-            lida: !!nova.lida
-          }]);
-          if (nova.autor === "administracao") {
-            playNotificationTone();
-            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-              try { new Notification("Nova mensagem da Administração", { body: nova.texto, icon: "/marca/10-icone-negativo.png" }); } catch {}
-            }
-          }
-        }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(canal); };
-  }, [idConversaPwa]);
 
   // Marca como lidas as mensagens do admin assim que o condómino abre a
   // conversa (cartão "Mensagens" ou botão flutuante).
@@ -520,35 +517,14 @@ export default function PWACondominoView({
 
   useEffect(() => { carregarMensagensReais(); }, [carregarMensagensReais]);
 
+  // Atualização por consulta periódica (substitui o Realtime — ver nota
+  // junto de carregarThreadPwa acima). O som/notificação de nova resposta
+  // já fica a cargo do polling do thread acima; esta só mantém a lista de
+  // "bilhetes" (separador Mensagens) em sincronia.
   useEffect(() => {
-    if (!isSupabaseConfigured() || !condominoFracao?.id_fracao) return;
-    const idConversaFracao = "conv-" + condominoFracao.id_fracao;
-    const canal = supabase
-      .channel(`pwa_conversas_${condominoFracao.id_fracao}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "conversas", filter: `id_fracao=eq.${condominoFracao.id_fracao}` }, () => carregarMensagensReais())
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "mensagens_conversa", filter: `id_conversa=eq.${idConversaFracao}` },
-        (payload: any) => {
-          carregarMensagensReais();
-          // Toca um som e mostra uma notificação local quando chega uma
-          // resposta real da administração (não quando é o próprio
-          // condómino a enviar, para não tocar ao escrever a sua mensagem).
-          if (payload?.new?.autor === "administracao") {
-            playNotificationTone();
-            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-              try {
-                new Notification("Nova mensagem da Administração", {
-                  body: payload.new.texto,
-                  icon: "/marca/10-icone-negativo.png"
-                });
-              } catch { /* alguns browsers exigem Service Worker para notificações — ignora silenciosamente */ }
-            }
-          }
-        }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(canal); };
+    if (!condominoFracao?.id_fracao) return;
+    const interval = setInterval(carregarMensagensReais, 5000);
+    return () => clearInterval(interval);
   }, [condominoFracao?.id_fracao, carregarMensagensReais]);
 
   const carregarFeedComunicacao = React.useCallback(async () => {
@@ -748,7 +724,7 @@ export default function PWACondominoView({
       })
     }).catch(console.error);
 
-    await carregarMensagensReais();
+    await Promise.all([carregarMensagensReais(), carregarThreadPwa()]);
   };
 
   // Filtro real do Mapa de Pagamentos — antes só mudava uma frase fixa
