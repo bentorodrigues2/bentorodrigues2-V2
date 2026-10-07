@@ -64,6 +64,29 @@ export function AgendaManutencao({ predio, loggedUser, fornecedores = [] }: Agen
     fetchPlanoManutencaoFromSupabase(predio.id_predio).then(dados => { if (dados) setItensManutencao(dados); });
   }, [predio.id_predio]);
 
+  // "estado_conformidade" é gravado uma única vez, no momento em que a
+  // vistoria é registada ("CONFORME", com a próxima data calculada a
+  // partir daí) — mas nunca mais era reavaliado depois disso. Um item
+  // registado como "CONFORME" ficava assim PARA SEMPRE com esse estado,
+  // mesmo meses depois de a "Próxima Obrigatória" já ter passado (caso
+  // real: Extintor junto às elevadores, próxima obrigatória 30-06-2026,
+  // ainda a mostrar "✓ Conforme" em outubro). Recalcula sempre o estado
+  // real a partir da data atual vs. proxima_inspecao_data, em vez de usar
+  // cegamente o valor gravado — o campo gravado só serve de ponto de
+  // partida/fallback se a data for inválida.
+  const calcularEstadoReal = (item: ItemPlanoManutencao): "CONFORME" | "A_EXPIRAR" | "EXPIRADO_ALERTA" => {
+    if (!item.proxima_inspecao_data) return item.estado_conformidade;
+    const proxima = new Date(item.proxima_inspecao_data);
+    if (isNaN(proxima.getTime())) return item.estado_conformidade;
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    proxima.setHours(0, 0, 0, 0);
+    const diasRestantes = Math.round((proxima.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+    if (diasRestantes < 0) return "EXPIRADO_ALERTA";
+    if (diasRestantes <= (item.dias_alerta_antecedencia || 30)) return "A_EXPIRAR";
+    return "CONFORME";
+  };
+
   // Modal / Form states for new inspection registration
   const [selectedItemForAction, setSelectedItemForAction] = useState<ItemPlanoManutencao | null>(null);
   const [actionModalType, setActionModalType] = useState<"registar_vistoria" | "solicitar_proposta" | null>(null);
@@ -279,12 +302,12 @@ export function AgendaManutencao({ predio, loggedUser, fornecedores = [] }: Agen
 
   const filteredItems = itensManutencao.filter(item => {
     if (filterStatus === "TODOS") return true;
-    return item.estado_conformidade === filterStatus;
+    return calcularEstadoReal(item) === filterStatus;
   });
 
-  const countAlertas = itensManutencao.filter(i => i.estado_conformidade === "EXPIRADO_ALERTA").length;
-  const countAExpirar = itensManutencao.filter(i => i.estado_conformidade === "A_EXPIRAR").length;
-  const countConformes = itensManutencao.filter(i => i.estado_conformidade === "CONFORME").length;
+  const countAlertas = itensManutencao.filter(i => calcularEstadoReal(i) === "EXPIRADO_ALERTA").length;
+  const countAExpirar = itensManutencao.filter(i => calcularEstadoReal(i) === "A_EXPIRAR").length;
+  const countConformes = itensManutencao.filter(i => calcularEstadoReal(i) === "CONFORME").length;
 
   const handleSalvarVistoria = (e: React.FormEvent) => {
     e.preventDefault();
@@ -522,8 +545,9 @@ export function AgendaManutencao({ predio, loggedUser, fornecedores = [] }: Agen
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredItems.map(item => {
-              const isExpirado = item.estado_conformidade === "EXPIRADO_ALERTA";
-              const isAExpirar = item.estado_conformidade === "A_EXPIRAR";
+              const estadoReal = calcularEstadoReal(item);
+              const isExpirado = estadoReal === "EXPIRADO_ALERTA";
+              const isAExpirar = estadoReal === "A_EXPIRAR";
 
               return (
                 <div 
