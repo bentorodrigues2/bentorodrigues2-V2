@@ -205,11 +205,29 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
 
   const [historicoAbertoDividaId, setHistoricoAbertoDividaId] = useState<string | null>(null);
 
+  // Lista fechada de categorias — antes era um campo de texto livre sem
+  // nenhuma lista visível, o que levava a categorias inventadas/ambíguas
+  // (ex: "adiantamento de Jose Guerra") que nunca batiam certo com as
+  // categorias reais usadas nos Movimentos (Limpeza, Manutenção, etc.),
+  // fazendo o valor desaparecer dos relatórios por categoria assim que a
+  // dívida fosse paga. Construída a partir das categorias já usadas de
+  // facto neste prédio, tanto em Movimentos como em dívidas anteriores.
+  const CATEGORIAS_DIVIDA_FORNECEDOR = [
+    "Limpeza", "Manutenção", "Manutenção de Elevadores", "Eletricidade", "Água",
+    "Seguros", "Honorários", "Telecomunicações", "Comunicações",
+    "Despesas Bancárias", "Obras", "Gestão de Condomínio"
+  ];
+
   // Novo lançamento de dívida (ou edição de uma já lançada)
   const [dividaFornecedorId, setDividaFornecedorId] = useState("");
   const [dividaFornecedorNome, setDividaFornecedorNome] = useState("");
   const [dividaDescricao, setDividaDescricao] = useState("");
   const [dividaCategoria, setDividaCategoria] = useState("");
+  // true quando "Outro" está selecionado — guardado à parte de
+  // dividaCategoria (que nesse caso fica com o texto livre introduzido)
+  // para o <select> não "perder" a opção "Outro" assim que o campo de
+  // texto ainda estiver vazio.
+  const [dividaCategoriaEhOutro, setDividaCategoriaEhOutro] = useState(false);
   const [dividaValor, setDividaValor] = useState("");
   const [dividaDataEmissao, setDividaDataEmissao] = useState(() => new Date().toISOString().split("T")[0]);
   const [dividaDataVencimento, setDividaDataVencimento] = useState("");
@@ -224,6 +242,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     setDividaFornecedorNome(d.fornecedor_nome);
     setDividaDescricao(d.descricao);
     setDividaCategoria(d.categoria || "");
+    setDividaCategoriaEhOutro(!!d.categoria && !CATEGORIAS_DIVIDA_FORNECEDOR.includes(d.categoria));
     setDividaValor(String(d.valor));
     setDividaDataEmissao(d.data_emissao || "");
     setDividaDataVencimento(d.data_vencimento || "");
@@ -234,7 +253,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
 
   const handleCancelarEdicaoDivida = () => {
     setEditingDividaId(null);
-    setDividaFornecedorId(""); setDividaFornecedorNome(""); setDividaDescricao(""); setDividaCategoria(""); setDividaValor(""); setDividaDataVencimento(""); setDividaDataEmissao(new Date().toISOString().split("T")[0]);
+    setDividaFornecedorId(""); setDividaFornecedorNome(""); setDividaDescricao(""); setDividaCategoria(""); setDividaCategoriaEhOutro(false); setDividaValor(""); setDividaDataVencimento(""); setDividaDataEmissao(new Date().toISOString().split("T")[0]);
     setDividaDocumentoFile(null); setDividaDocumentoAnexoExistente(undefined);
   };
 
@@ -344,7 +363,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
 
     setDividas(prev => [dividaAtualizada, ...prev]);
     registarLogAuditoria("Financeira", "Lançou uma dívida a fornecedor", predio.id_predio, loggedUser, `${dividaAtualizada.fornecedor_nome} — ${dividaAtualizada.descricao} (${dividaAtualizada.valor.toFixed(2)} €)`);
-    setDividaFornecedorId(""); setDividaFornecedorNome(""); setDividaDescricao(""); setDividaCategoria(""); setDividaValor(""); setDividaDataVencimento("");
+    setDividaFornecedorId(""); setDividaFornecedorNome(""); setDividaDescricao(""); setDividaCategoria(""); setDividaCategoriaEhOutro(false); setDividaValor(""); setDividaDataVencimento("");
     setDividaDocumentoFile(null); setDividaDocumentoAnexoExistente(undefined);
     alert("Dívida lançada com sucesso! Já entra no cálculo do saldo líquido do prédio.");
   };
@@ -2095,7 +2114,36 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                 </div>
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-slate-600 mb-1">Categoria</label>
-                  <input type="text" value={dividaCategoria} onChange={e => setDividaCategoria(e.target.value)} placeholder="Ex: Manutenção, Limpeza..." className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+                  <select
+                    value={dividaCategoriaEhOutro ? "Outro" : dividaCategoria}
+                    onChange={e => {
+                      const v = e.target.value;
+                      if (v === "Outro") {
+                        setDividaCategoriaEhOutro(true);
+                        setDividaCategoria("");
+                      } else {
+                        setDividaCategoriaEhOutro(false);
+                        setDividaCategoria(v);
+                      }
+                    }}
+                    className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white"
+                  >
+                    <option value="">— Selecionar categoria —</option>
+                    {CATEGORIAS_DIVIDA_FORNECEDOR.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                    <option value="Outro">Outro (especificar)</option>
+                  </select>
+                  {dividaCategoriaEhOutro && (
+                    <input
+                      type="text"
+                      required
+                      value={dividaCategoria}
+                      onChange={e => setDividaCategoria(e.target.value)}
+                      placeholder="Descreva a categoria..."
+                      className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 mt-2"
+                    />
+                  )}
                 </div>
               </div>
 
