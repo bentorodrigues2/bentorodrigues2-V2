@@ -3150,9 +3150,10 @@ export default function App() {
           )}
 
           {activeSection === "inventario_tecnico" && (
-            <InventarioTecnico 
+            <InventarioTecnico
               predio={predioAtivo}
               loggedUser={loggedUser}
+              fracoes={fracoes}
             />
           )}
 

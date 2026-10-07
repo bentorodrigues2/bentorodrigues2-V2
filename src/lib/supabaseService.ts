@@ -2626,7 +2626,8 @@ export async function fetchInventarioTecnicoFromSupabase(idPredio: string): Prom
     ultimaInspecao: row.ultima_inspecao,
     frequenciaInspecao: row.frequencia_inspecao || "",
     fabricante: row.fabricante || undefined,
-    detalhes: row.detalhes || undefined
+    detalhes: row.detalhes || undefined,
+    fotos: Array.isArray(row.fotos) ? row.fotos : []
   }));
 }
 
@@ -2642,7 +2643,8 @@ export async function saveEquipamentoTecnicoToSupabase(idPredio: string, eq: Equ
     ultima_inspecao: eq.ultimaInspecao || null,
     frequencia_inspecao: eq.frequenciaInspecao || null,
     fabricante: eq.fabricante || null,
-    detalhes: eq.detalhes || null
+    detalhes: eq.detalhes || null,
+    fotos: eq.fotos || []
   });
 }
 

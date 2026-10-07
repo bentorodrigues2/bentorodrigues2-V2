@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { Predio, LoggedUser } from "../types";
-import { Wrench, Plus, Check, MapPin, Sparkles, Building, Landmark, Trash2, ShieldAlert } from "lucide-react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Predio, LoggedUser, Fracao } from "../types";
+import { Wrench, Plus, Check, MapPin, Sparkles, Building, Landmark, Trash2, ShieldAlert, Camera, X } from "lucide-react";
 import { fetchInventarioTecnicoFromSupabase, saveEquipamentoTecnicoToSupabase, deleteEquipamentoTecnicoFromSupabase, registarLogAuditoria } from "../lib/supabaseService";
 
 export interface EquipamentoTecnico {
@@ -13,14 +13,16 @@ export interface EquipamentoTecnico {
   frequenciaInspecao: string;
   fabricante?: string;
   detalhes?: string;
+  fotos?: string[];
 }
 
 interface InventarioTecnicoProps {
   predio: Predio;
   loggedUser: LoggedUser;
+  fracoes?: Fracao[];
 }
 
-export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps) {
+export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: InventarioTecnicoProps) {
   // Carregado do Supabase (tabela real inventario_tecnico)
   const [equipamentos, setEquipamentos] = useState<EquipamentoTecnico[]>([]);
 
@@ -32,10 +34,65 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
   // Form states to add custom equipment
   const [nome, setNome] = useState("");
   const [categoria, setCategoria] = useState("Elevadores");
-  const [andar, setAndar] = useState("Piso 0");
+  const [andar, setAndar] = useState("");
   const [estado, setEstado] = useState<EquipamentoTecnico["estado"]>("Operacional");
   const [fabricante, setFabricante] = useState("");
   const [detalhes, setDetalhes] = useState("");
+  const [fotos, setFotos] = useState<string[]>([]);
+  const fotoInputRef = useRef<HTMLInputElement>(null);
+
+  // Pisos reais deste prédio (a partir das frações reais) — antes era uma
+  // lista fixa "Piso -2" a "Piso 3", que não correspondia a este edifício
+  // (tem lojas no rés-do-chão e frações até ao 5º andar; "Piso 3" era o
+  // topo da lista, deixando o 4º e o 5º andar impossíveis de selecionar).
+  const pisosReais = useMemo(() => {
+    const predioFracoes = fracoes.filter(f => f.id_predio === predio.id_predio);
+    const numeros = new Set<number>();
+    predioFracoes.forEach(f => {
+      const match = (f.piso || "").match(/^(\d+)º/);
+      if (match) numeros.add(Number(match[1]));
+    });
+    const pisosNumerados = Array.from(numeros).sort((a, b) => a - b).map(n => `${n}º Piso`);
+    const temLojas = predioFracoes.some(f => (f.piso || "").toLowerCase().includes("loja"));
+    return [
+      "Cave / Garagem",
+      ...(temLojas ? ["Rés-do-Chão (Lojas)"] : []),
+      ...pisosNumerados,
+      "Cobertura",
+      "Exterior"
+    ];
+  }, [fracoes, predio.id_predio]);
+
+  useEffect(() => {
+    if (!andar && pisosReais.length > 0) setAndar(pisosReais[0]);
+  }, [pisosReais, andar]);
+
+  // Converte cada fotografia escolhida para base64 comprimido (mesmo
+  // padrão já usado noutros ecrãs, ex: avatar do perfil) — várias fotos
+  // de uma vez, anexadas à lista já existente.
+  const handleFotosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files: File[] = Array.from(e.target.files || []);
+    e.target.value = "";
+    files.forEach((file: File) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 700;
+          let width = img.width;
+          let height = img.height;
+          if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+          canvas.width = width;
+          canvas.height = height;
+          canvas.getContext("2d")?.drawImage(img, 0, 0, width, height);
+          setFotos(prev => [...prev, canvas.toDataURL("image/webp", 0.8)]);
+        };
+        img.src = ev.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
 
   const handleAddCustom = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +107,8 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
       ultimaInspecao: new Date().toISOString().substring(0, 10),
       frequenciaInspecao: "Anual",
       fabricante: fabricante || "Personalizado",
-      detalhes: detalhes || "Adicionado via painel técnico."
+      detalhes: detalhes || "Adicionado via painel técnico.",
+      fotos
     };
 
     setEquipamentos([...equipamentos, newEquipment]);
@@ -59,6 +117,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
     setNome("");
     setFabricante("");
     setDetalhes("");
+    setFotos([]);
     alert(`Equipamento "${nome}" adicionado com sucesso! Aparece automaticamente mapeado na planta técnica do edifício.`);
   };
 
@@ -176,14 +235,9 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
                   onChange={e => setAndar(e.target.value)}
                   className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-semibold cursor-pointer"
                 >
-                  <option value="Piso -2">Piso -2</option>
-                  <option value="Piso -1">Piso -1 (Garagem)</option>
-                  <option value="Piso 0">Piso 0 (Átrio)</option>
-                  <option value="Piso 1">Piso 1</option>
-                  <option value="Piso 2">Piso 2</option>
-                  <option value="Piso 3">Piso 3</option>
-                  <option value="Cobertura">Cobertura</option>
-                  <option value="Exterior">Exterior</option>
+                  {pisosReais.map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
                 </select>
               </div>
 
@@ -224,6 +278,36 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
               />
             </div>
 
+            <div>
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Fotografias</label>
+              <input ref={fotoInputRef} type="file" accept="image/*" multiple capture="environment" onChange={handleFotosChange} className="hidden" />
+              <button
+                type="button"
+                onClick={() => fotoInputRef.current?.click()}
+                className="w-full border border-dashed p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300 text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:border-emerald-400 hover:text-emerald-600"
+              >
+                <Camera className="h-4 w-4" />
+                <span>{fotos.length > 0 ? `${fotos.length} fotografia(s) anexada(s) — adicionar mais` : "Adicionar Fotografias"}</span>
+              </button>
+              {fotos.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {fotos.map((f, i) => (
+                    <div key={i} className="relative h-14 w-14 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 group">
+                      <img src={f} className="h-full w-full object-cover" alt="" />
+                      <button
+                        type="button"
+                        onClick={() => setFotos(prev => prev.filter((_, idx) => idx !== i))}
+                        className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white cursor-pointer transition-opacity"
+                        title="Remover fotografia"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <button
               type="submit"
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-xs cursor-pointer shadow flex items-center justify-center gap-1"
@@ -247,72 +331,30 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
               <p className="text-[11px] text-slate-600">Mapeamento dinâmico por andar. Os equipamentos customizados são plotados abaixo.</p>
             </div>
 
-            {/* Simulated Floors schematic */}
+            {/* Simulated Floors schematic — uma linha por piso real deste
+                prédio (pisosReais), de cima para baixo, em vez de grupos
+                fixos ("1º ao 3º") que já não cobriam os pisos 4º/5º reais
+                desta morada. */}
             <div className="border rounded-xl overflow-hidden bg-slate-950 text-white p-4 space-y-3 font-mono text-xs">
-              
-              {/* Cobertura */}
-              <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg flex justify-between items-center hover:border-slate-700 transition-colors">
-                <span className="font-bold text-slate-600">🏢 COBERTURA / TELHADO:</span>
-                <div className="flex gap-1.5 flex-wrap">
-                  {equipamentos.filter(e => e.andar.toLowerCase().includes("cobertura") || e.andar.toLowerCase().includes("telhado")).map(e => (
-                    <span key={e.id} className="bg-blue-500/10 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold" title={e.detalhes}>
-                      ⚙️ {e.nome.split(" ")[0]}
-                    </span>
-                  ))}
-                  {equipamentos.filter(e => e.andar.toLowerCase().includes("cobertura") || e.andar.toLowerCase().includes("telhado")).length === 0 && (
-                    <span className="text-[9px] text-slate-600">Nenhum equipamento</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Pisos intermédios */}
-              <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg flex justify-between items-center hover:border-slate-700 transition-colors">
-                <span className="font-bold text-slate-600">🏢 PISOS SUPERIORES (1º ao 3º):</span>
-                <div className="flex gap-1.5 flex-wrap">
-                  {equipamentos.filter(e => e.andar.includes("Piso 1") || e.andar.includes("Piso 2") || e.andar.includes("Piso 3") || e.andar.includes("Todos")).map(e => (
-                    <span key={e.id} className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold" title={e.detalhes}>
-                      ⚡ {e.nome.split(" ")[0]}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Piso 0 */}
-              <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg flex justify-between items-center hover:border-slate-700 transition-colors">
-                <span className="font-bold text-slate-600">🏢 PISO 0 / ÁTRIO & LAZER:</span>
-                <div className="flex gap-1.5 flex-wrap">
-                  {equipamentos.filter(e => e.andar.includes("Piso 0") || e.andar.toLowerCase().includes("átrio")).map(e => (
-                    <span key={e.id} className="bg-purple-500/10 text-purple-400 border border-purple-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold" title={e.detalhes}>
-                      💧 {e.nome.split(" ")[0]}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Garagem & Subterrâneos */}
-              <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg flex justify-between items-center hover:border-slate-700 transition-colors">
-                <span className="font-bold text-slate-600">🚗 SUBTERRÂNEOS (Piso -1 ao -2):</span>
-                <div className="flex gap-1.5 flex-wrap">
-                  {equipamentos.filter(e => e.andar.includes("-1") || e.andar.includes("-2") || e.andar.toLowerCase().includes("garagem")).map(e => (
-                    <span key={e.id} className="bg-amber-500/10 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold" title={e.detalhes}>
-                      🔥 {e.nome.split(" ")[0]}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Exterior */}
-              <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg flex justify-between items-center hover:border-slate-700 transition-colors">
-                <span className="font-bold text-slate-600">🌳 ÁREAS EXTERIORES & PISCINA:</span>
-                <div className="flex gap-1.5 flex-wrap">
-                  {equipamentos.filter(e => e.andar.toLowerCase().includes("exterior") || e.andar.toLowerCase().includes("jardim")).map(e => (
-                    <span key={e.id} className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold" title={e.detalhes}>
-                      🏊 {e.nome.split(" ")[0]}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
+              {[...pisosReais].reverse().map(piso => {
+                const equipamentosDoPiso = equipamentos.filter(e => e.andar === piso);
+                const emoji = piso === "Cobertura" ? "🏢" : piso === "Exterior" ? "🌳" : piso.includes("Cave") || piso.includes("Garagem") ? "🚗" : piso.includes("Loja") ? "🏪" : "🏢";
+                return (
+                  <div key={piso} className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg flex justify-between items-center hover:border-slate-700 transition-colors">
+                    <span className="font-bold text-slate-600">{emoji} {piso.toUpperCase()}:</span>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {equipamentosDoPiso.map(e => (
+                        <span key={e.id} className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold" title={e.detalhes}>
+                          ⚙️ {e.nome.split(" ")[0]}
+                        </span>
+                      ))}
+                      {equipamentosDoPiso.length === 0 && (
+                        <span className="text-[9px] text-slate-600">Nenhum equipamento</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -339,7 +381,7 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
 
                     <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">{e.nome}</h4>
                     <p className="text-[11px] text-slate-600 font-medium leading-tight">{e.detalhes}</p>
-                    
+
                     <div className="flex gap-3 text-[10px] text-slate-600 pt-1 font-semibold">
                       <span>Piso: <strong className="text-slate-600 dark:text-slate-300">{e.andar}</strong></span>
                       <span>•</span>
@@ -347,6 +389,16 @@ export function InventarioTecnico({ predio, loggedUser }: InventarioTecnicoProps
                       <span>•</span>
                       <span>Inspecção: <strong className="text-slate-600 dark:text-slate-300">{e.ultimaInspecao} ({e.frequenciaInspecao})</strong></span>
                     </div>
+
+                    {e.fotos && e.fotos.length > 0 && (
+                      <div className="flex gap-1.5 pt-1">
+                        {e.fotos.map((f, i) => (
+                          <a key={i} href={f} target="_blank" rel="noopener noreferrer" className="h-10 w-10 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0 hover:scale-110 transition-transform">
+                            <img src={f} className="h-full w-full object-cover" alt="" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <button
