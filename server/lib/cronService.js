@@ -1087,13 +1087,20 @@ export async function enviarLembretesQuotas() {
   const hoje = new Date();
   const [inicioMes, fimMes] = limitesMesAtualUTC(hoje);
 
+  // Filtra por "vencimento" (sempre dia 8 do mês a que a quota respeita),
+  // não por "data" (data de emissão do aviso) — a emissão mensal normal
+  // (emitirQuotasMensais) corre no dia 25 do mês ANTERIOR, por isso um
+  // filtro por "data" nunca apanhava as quotas normais no dia 5: a "data"
+  // delas é sempre do mês passado. Isto fazia este job nunca encontrar
+  // nada a enviar (só por coincidência um aviso retroativo/gap emitido a
+  // meio do próprio mês corrente), sem nunca dar erro nenhum — silencioso.
   const { data: avisosPendentes, error } = await supabase
     .from("avisos")
     .select("*")
     .eq("tipo", "Quota Ordinária")
     .eq("estado", "Pendente")
-    .gte("data", inicioMes)
-    .lte("data", fimMes);
+    .gte("vencimento", inicioMes)
+    .lte("vencimento", fimMes);
 
   if (error || !avisosPendentes) {
     if (error) console.error("[cronService] Erro ao obter avisos pendentes:", error.message);
@@ -1159,13 +1166,16 @@ export async function avisarQuotasEmMora() {
   const hoje = new Date();
   const [inicioMes, fimMes] = limitesMesAtualUTC(hoje);
 
+  // Mesmo motivo do fix em enviarLembretesQuotas: filtrar por "vencimento",
+  // não por "data" de emissão (que é sempre do mês anterior para a emissão
+  // mensal normal do dia 25).
   const { data: avisosPendentes, error } = await supabase
     .from("avisos")
     .select("*")
     .eq("tipo", "Quota Ordinária")
     .eq("estado", "Pendente")
-    .gte("data", inicioMes)
-    .lte("data", fimMes);
+    .gte("vencimento", inicioMes)
+    .lte("vencimento", fimMes);
 
   if (error || !avisosPendentes) {
     if (error) console.error("[cronService] Erro ao obter avisos em mora:", error.message);
