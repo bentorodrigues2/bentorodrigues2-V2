@@ -965,21 +965,35 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
       // tipo, valor a ±0,05€, dentro de 10 dias da data) já existente, ou —
       // para receitas — quando já existe um aviso PAGO com o mesmo valor.
       const JANELA_DUPLICADO_MS = 10 * 24 * 60 * 60 * 1000;
-      const jaLancadoAntes = (dataMov: string, valorMov: number, tipoMov: "Receita" | "Despesa", idFracaoMatch?: string): boolean => {
+      // confiancaFracaoMatch: quando a fração sugerida para ESTE movimento
+      // vem só da coincidência de valor (confiança baixa, ex: 45 — "pode ser
+      // coincidência"), não há motivo nenhum para confiar nela ao restringir
+      // a procura de duplicados a essa fração. Foi exatamente isto que
+      // deixou passar duplicados reais: um pagamento de André Filipe S.
+      // Fradinho (Fração L) truncado pelo banco ("...FRADINHO MA-09600130")
+      // já não batia com o nome do proprietário, caía no ramo de "valor
+      // coincide" e sugeria uma fração errada (O, depois I) só por aquele
+      // valor bater com a quota pendente dessas frações — e a verificação de
+      // duplicado, restrita a essa fração errada, nunca encontrava o
+      // movimento real já lançado (esse sim da Fração L).
+      const jaLancadoAntes = (dataMov: string, valorMov: number, tipoMov: "Receita" | "Despesa", idFracaoMatch?: string, confiancaFracaoMatch?: number): boolean => {
         const tData = new Date(dataMov).getTime();
+        const restringirPorFracao = tipoMov === "Receita" && !!idFracaoMatch && (confiancaFracaoMatch ?? 0) >= 65;
         const movDuplicado = predioMovements.some(mv => {
           if (mv.tipo !== tipoMov || Math.abs(mv.valor - valorMov) > 0.05) return false;
-          // Para receitas com fração identificada, o movimento só conta como
-          // o MESMO pagamento se for da MESMA fração — sem isto, duas quotas
-          // de frações diferentes com o valor arredondado igual por
-          // coincidência (ex: 51.13€ da Fração E e 51.13€ da Fração K, muito
-          // comum depois de uma revisão de orçamento uniforme) davam-se por
-          // "já lançadas" uma à outra, mesmo sendo pessoas e pagamentos
-          // completamente diferentes. Bug confirmado em produção: a
-          // transferência real do administrador (Fração K) foi descartada
-          // como duplicada só por já existir um pagamento da Fração E com o
-          // valor igual.
-          if (tipoMov === "Receita" && idFracaoMatch && mv.id_fracao && mv.id_fracao !== idFracaoMatch) return false;
+          // Para receitas com fração identificada com confiança suficiente, o
+          // movimento só conta como o MESMO pagamento se for da MESMA fração
+          // — sem isto, duas quotas de frações diferentes com o valor
+          // arredondado igual por coincidência (ex: 51.13€ da Fração E e
+          // 51.13€ da Fração K, muito comum depois de uma revisão de
+          // orçamento uniforme) davam-se por "já lançadas" uma à outra, mesmo
+          // sendo pessoas e pagamentos completamente diferentes. Bug
+          // confirmado em produção: a transferência real do administrador
+          // (Fração K) foi descartada como duplicada só por já existir um
+          // pagamento da Fração E com o valor igual. Quando a fração sugerida
+          // é só um palpite fraco (ver nota acima), não se restringe —
+          // procura-se o duplicado em qualquer fração.
+          if (restringirPorFracao && mv.id_fracao && mv.id_fracao !== idFracaoMatch) return false;
           const dm = new Date(mv.data).getTime();
           return !isNaN(dm) && !isNaN(tData) && Math.abs(dm - tData) <= JANELA_DUPLICADO_MS;
         });
@@ -1010,7 +1024,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
         const ehReceita = String(m.tipo || "").toLowerCase().startsWith("rec");
         const valorAbs = Math.abs(Number(m.valor) || 0);
         const matchFracao = ehReceita ? matchesFracao[idxReceita++] : undefined;
-        const jaLancado = jaLancadoAntes(m.data, valorAbs, ehReceita ? "Receita" : "Despesa", matchFracao?.fracao_sugerida_id);
+        const jaLancado = jaLancadoAntes(m.data, valorAbs, ehReceita ? "Receita" : "Despesa", matchFracao?.fracao_sugerida_id, matchFracao?.confianca_percent);
         const ehPagamentoCondomino = !!matchFracao && matchFracao.confianca_percent >= 65 && !!matchFracao.fracao_sugerida_id;
 
         const resultado = ehPagamentoCondomino ? null : cruzarMovimentoComFornecedor(predioFornecedores, {
