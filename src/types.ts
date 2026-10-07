@@ -306,6 +306,10 @@ export interface Movimento {
   metodo_pagamento?: string;
   referencia_recibo?: string;
   id_fornecedor?: string;
+  // Fatura/comprovativo anexado automaticamente pelo reconhecimento de
+  // email (ver server/lib/inboundProcessor.js) — distinto de "fotos"
+  // (anexos adicionados manualmente pelo administrador).
+  comprovativo_url?: string;
 }
 
 export interface ReuniaoAssinatura {

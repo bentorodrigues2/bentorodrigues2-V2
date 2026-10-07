@@ -414,7 +414,8 @@ export async function fetchMovimentosFromSupabase(idPredio?: string): Promise<Mo
       is_movimento_cego: Boolean(row.is_movimento_cego),
       id_fracao: row.fracao_id,
       metodo_pagamento: row.forma_pagamento,
-      id_fornecedor: row.id_fornecedor || undefined
+      id_fornecedor: row.id_fornecedor || undefined,
+      comprovativo_url: row.comprovativo_url || undefined
     }));
   } catch (err) {
     return null;

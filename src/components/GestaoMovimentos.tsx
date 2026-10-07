@@ -3146,7 +3146,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                     </div>
                     {isCego && (
                       <span className="text-[9px] bg-red-100 text-red-800 border border-red-200 px-1.5 py-0.5 rounded font-bold inline-block">
-                        {m.tipo === "Receita" ? "Por Confirmar" : "Falta Fatura!"}
+                        {m.tipo === "Receita" ? "Por Confirmar" : m.comprovativo_url ? "Aguarda Pagamento" : "Falta Fatura!"}
                       </span>
                     )}
                   </button>
@@ -3175,7 +3175,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                     <span className="flex-1 text-slate-700 font-medium truncate">{m.descricao}</span>
                     {isCego ? (
                       <span className="text-[9px] bg-red-100 text-red-800 border border-red-200 px-1.5 py-0.5 rounded font-bold shrink-0">
-                        {m.tipo === "Receita" ? "Por Confirmar" : "Falta Fatura!"}
+                        {m.tipo === "Receita" ? "Por Confirmar" : m.comprovativo_url ? "Aguarda Pagamento" : "Falta Fatura!"}
                       </span>
                     ) : m.tipo === "Despesa" && (
                       <span className="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded font-bold shrink-0 flex items-center gap-1">
@@ -3186,14 +3186,19 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                         expandir) quando há mesmo um comprovativo/fatura real
                         anexado — pedido explícito do administrador, para
                         identificar de relance quais movimentos já têm prova
-                        documental consultável. */}
-                    {m.fotos && m.fotos.length > 0 && (
+                        documental consultável. Verifica também
+                        "comprovativo_url" (fatura anexada automaticamente
+                        pelo reconhecimento de email), não só "fotos"
+                        (anexos manuais) — sem isto, uma fatura já
+                        reconhecida e anexada pelo email parecia sempre em
+                        falta. */}
+                    {((m.fotos && m.fotos.length > 0) || m.comprovativo_url) && (
                       <a
-                        href={m.fotos[0]}
+                        href={(m.fotos && m.fotos[0]) || m.comprovativo_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        title={`${m.fotos.length} ficheiro(s) anexado(s) — ver fatura/comprovativo`}
+                        title="Ver fatura/comprovativo anexado"
                         className="text-slate-600 hover:text-indigo-600 shrink-0"
                       >
                         <i className="fa-solid fa-paperclip"></i>
@@ -3225,16 +3230,19 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                       <div>
                         <span className="block text-slate-600 font-bold uppercase text-[9px]">Estado</span>
                         {isCego ? (
-                          <span className="text-amber-600 font-bold flex items-center gap-1"><i className="fa-solid fa-triangle-exclamation"></i> Por Justificar</span>
+                          <span className="text-amber-600 font-bold flex items-center gap-1">
+                            <i className="fa-solid fa-triangle-exclamation"></i>
+                            {m.comprovativo_url ? "Fatura Recebida, Aguarda Pagamento" : "Por Justificar"}
+                          </span>
                         ) : (
                           <span className="text-emerald-600 font-bold flex items-center gap-1"><i className="fa-solid fa-circle-check"></i> Justificado</span>
                         )}
                       </div>
-                      {m.fotos && m.fotos.length > 0 && (
+                      {((m.fotos && m.fotos.length > 0) || m.comprovativo_url) && (
                         <div>
                           <span className="block text-slate-600 font-bold uppercase text-[9px] mb-1">Anexos</span>
                           <div className="flex space-x-1">
-                            {m.fotos.map((f, i) => (
+                            {(m.fotos || []).map((f, i) => (
                               <a key={i} href={f} target="_blank" rel="noopener noreferrer" className="h-7 w-7 rounded border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center hover:scale-110 transition-transform bg-white">
                                 {f.startsWith("data:application/pdf") ? (
                                   <i className="fa-solid fa-file-pdf text-red-500"></i>
@@ -3243,6 +3251,11 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                                 )}
                               </a>
                             ))}
+                            {m.comprovativo_url && (
+                              <a href={m.comprovativo_url} target="_blank" rel="noopener noreferrer" title="Fatura reconhecida por email" className="h-7 w-7 rounded border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center hover:scale-110 transition-transform bg-white">
+                                <i className="fa-solid fa-file-pdf text-red-500"></i>
+                              </a>
+                            )}
                           </div>
                         </div>
                       )}
