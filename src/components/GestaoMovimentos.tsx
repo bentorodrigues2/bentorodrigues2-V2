@@ -3315,15 +3315,26 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                         <div>
                           <span className="block text-slate-600 font-bold uppercase text-[9px] mb-1">Anexos</span>
                           <div className="flex space-x-1">
-                            {(m.fotos || []).map((f, i) => (
-                              <a key={i} href={f} target="_blank" rel="noopener noreferrer" className="h-7 w-7 rounded border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center hover:scale-110 transition-transform bg-white">
-                                {f.startsWith("data:application/pdf") ? (
-                                  <i className="fa-solid fa-file-pdf text-red-500"></i>
-                                ) : (
-                                  <img src={f} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-                                )}
-                              </a>
-                            ))}
+                            {(m.fotos || []).map((f, i) => {
+                              // Um PDF real carregado para o Storage vem como
+                              // URL assinado (https://..., não um data URI) —
+                              // "data:application/pdf" só apanhava PDFs em
+                              // base64. Sem checar a extensão .pdf na própria
+                              // URL (ignorando a query string do token),
+                              // qualquer fatura anexada via "Anexar Fatura"
+                              // tentava renderizar-se como <img>, mostrando o
+                              // ícone de imagem partida em vez do PDF.
+                              const ehPdf = f.startsWith("data:application/pdf") || /\.pdf(\?|$)/i.test(f);
+                              return (
+                                <a key={i} href={f} target="_blank" rel="noopener noreferrer" className="h-7 w-7 rounded border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center hover:scale-110 transition-transform bg-white">
+                                  {ehPdf ? (
+                                    <i className="fa-solid fa-file-pdf text-red-500"></i>
+                                  ) : (
+                                    <img src={f} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                                  )}
+                                </a>
+                              );
+                            })}
                             {m.comprovativo_url && (
                               <a href={m.comprovativo_url} target="_blank" rel="noopener noreferrer" title="Fatura reconhecida por email" className="h-7 w-7 rounded border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center hover:scale-110 transition-transform bg-white">
                                 <i className="fa-solid fa-file-pdf text-red-500"></i>
