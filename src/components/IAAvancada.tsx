@@ -930,16 +930,30 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
   // substring) — só "Manutenção" e "Limpeza" têm correspondência direta
   // nas categorias usadas neste prédio; "Contratos" e "Seguros" nunca
   // apareceram ainda como despesa lançada, por isso não há histórico real
-  // para os pré-preencher (o slider mantém-se como ponto de partida
-  // manual, não um número inventado apresentado como se fosse real).
+  // para os pré-preencher (o campo mantém-se como ponto de partida manual,
+  // não um número inventado apresentado como se fosse real).
+  //
+  // Antes dividia o total de CADA categoria pelo nº de meses com QUALQUER
+  // despesa lançada no prédio (não só daquela categoria) — isto diluía
+  // artificialmente a média sempre que havia meses com outras despesas mas
+  // sem essa categoria específica, dando um valor que não batia certo com
+  // nenhuma conta que se conseguisse verificar à mão a partir dos
+  // Movimentos. Divide agora cada categoria só pelos meses em que ELA
+  // PRÓPRIA teve pelo menos um lançamento — a média fica diretamente
+  // verificável: total real dessa categoria ÷ nº de meses em que houve
+  // mesmo essa despesa.
   const mediaMensalDespesasReais = React.useMemo(() => {
     const despesas = (movements || []).filter(m => m.tipo === "Despesa" && m.data);
-    const mesesDistintos = new Set(despesas.map(m => String(m.data).slice(0, 7))).size || 1;
-    const somaPorCategoria = (match: (cat: string) => boolean) =>
-      despesas.filter(m => match((m.categoria || "").toLowerCase())).reduce((s, m) => s + (Number(m.valor) || 0), 0);
+    const mediaPorCategoria = (match: (cat: string) => boolean) => {
+      const doCategoria = despesas.filter(m => match((m.categoria || "").toLowerCase()));
+      if (doCategoria.length === 0) return 0;
+      const meses = new Set(doCategoria.map(m => String(m.data).slice(0, 7))).size || 1;
+      const total = doCategoria.reduce((s, m) => s + (Number(m.valor) || 0), 0);
+      return Math.round((total / meses) * 100) / 100;
+    };
     return {
-      manutencao: Math.round((somaPorCategoria(c => c.includes("manuten")) / mesesDistintos) * 100) / 100,
-      limpeza: Math.round((somaPorCategoria(c => c.includes("limp")) / mesesDistintos) * 100) / 100
+      manutencao: mediaPorCategoria(c => c.includes("manuten")),
+      limpeza: mediaPorCategoria(c => c.includes("limp"))
     };
   }, [movements]);
 
@@ -964,11 +978,14 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
     sliderOrcamentoJaPreenchido.current = true;
     if (mediaMensalDespesasReais.manutencao > 0) setManutencao(mediaMensalDespesasReais.manutencao);
     if (mediaMensalDespesasReais.limpeza > 0) {
-      // Reparte o par Serviços+Limpeza mantendo a proporção 45/55 já usada
-      // no slider combinado, mas a partir do valor real de limpeza em vez
-      // de inventado.
+      // "Serviços" nunca teve nenhuma despesa lançada com essa categoria
+      // neste prédio (tal como "Contratos"/"Seguros") — fica a 0 (ponto de
+      // partida manual) em vez de inventado por uma proporção arbitrária.
+      // O campo "Serviços & Limpeza" (soma dos dois) passa assim a mostrar
+      // diretamente a média real de Limpeza, sem nenhuma repartição
+      // fabricada a meio.
       setLimpeza(mediaMensalDespesasReais.limpeza);
-      setServicos(Math.round((mediaMensalDespesasReais.limpeza / 0.55) * 0.45 * 100) / 100);
+      setServicos(0);
     }
     if (inadimplenciaHistoricaReal !== null) setInadimplenciaHistorica(inadimplenciaHistoricaReal);
   }, [movements, avisos, mediaMensalDespesasReais, inadimplenciaHistoricaReal]);
@@ -2131,7 +2148,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                 type="button"
                 onClick={handleRunBudgetPredictionAI}
                 disabled={isGeneratingBudget}
-                className="bg-violet-600 hover:bg-violet-700 text-white font-bold py-2.5 px-5 rounded-xl text-xs transition-colors shadow flex items-center justify-center cursor-pointer shrink-0"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl text-xs transition-colors shadow flex items-center justify-center cursor-pointer shrink-0"
               >
                 {isGeneratingBudget ? (
                   <>
@@ -2192,9 +2209,12 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                     step="1"
                     value={servicos + limpeza}
                     onChange={e => {
-                      const total = Number(e.target.value) || 0;
-                      setServicos(Math.round(total * 0.45));
-                      setLimpeza(Math.round(total * 0.55));
+                      // Edição manual: fica tudo em "limpeza" (a única das
+                      // duas rubricas com correspondência real nas despesas
+                      // deste prédio) — "serviços" mantém-se a 0 em vez de
+                      // repartir por uma proporção sem correspondência real.
+                      setServicos(0);
+                      setLimpeza(Number(e.target.value) || 0);
                     }}
                     className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm font-bold text-slate-800 bg-white"
                   />
@@ -2895,7 +2915,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                   <button
                     type="button"
                     onClick={() => setShowPdfModal(true)}
-                    className="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-colors shadow-sm flex items-center justify-center cursor-pointer"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-colors shadow-sm flex items-center justify-center cursor-pointer"
                   >
                     <i className="fa-solid fa-file-pdf mr-2"></i>Ver Relatório Anual (PDF IA)
                   </button>
