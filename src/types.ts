@@ -310,6 +310,14 @@ export interface Movimento {
   // email (ver server/lib/inboundProcessor.js) — distinto de "fotos"
   // (anexos adicionados manualmente pelo administrador).
   comprovativo_url?: string;
+  // De onde este movimento nasceu — "extrato_bancario_email_inbound" já
+  // teve o saldo da conta ajustado no momento da criação (é um extrato
+  // bancário real); "email_inbound" é só uma fatura reconhecida, nunca
+  // ajustou nenhum saldo (o dinheiro só sai mesmo quando a dívida
+  // associada for paga). Sem distinguir os dois, "Regularizar" um
+  // Movimento Cego arriscava ajustar o saldo a dobrar (extrato) ou
+  // prematuramente (fatura só por email, sem confirmação bancária real).
+  origem?: string;
 }
 
 export interface ReuniaoAssinatura {

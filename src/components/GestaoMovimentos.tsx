@@ -565,10 +565,22 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
       if (movimentoAtualizado) {
         saveMovimentoToSupabase(movimentoAtualizado).catch(console.error);
         registarLogAuditoria("Financeira", "Justificou um movimento cego com comprovativo", predio.id_predio, loggedUser, movimentoAtualizado.descricao);
-        // Um Movimento Cego nunca tinha o seu valor refletido no saldo da
-        // conta enquanto esperava justificação — só ao ser justificado é que
-        // passa a contar como entrada/saída real confirmada.
-        const contaAlvo = contasRef.current.find(c => c.id_conta === movimentoAtualizado!.id_conta);
+        // Um Movimento Cego lançado à mão (sem "origem" automática) nunca
+        // tinha o seu valor refletido no saldo da conta enquanto esperava
+        // justificação — só ao ser justificado é que passa a contar como
+        // entrada/saída real confirmada. MAS um movimento com "origem"
+        // automática já teve o saldo tratado no momento em que nasceu:
+        // "extrato_bancario_email_inbound" já ajustou o saldo logo na
+        // criação (é um extrato bancário real, o dinheiro já saiu) — ajustar
+        // outra vez aqui duplicava a saída. "email_inbound" (fatura
+        // reconhecida por email, sem confirmação bancária nenhuma) nunca
+        // deveria ajustar o saldo só por se anexar mais um documento — o
+        // dinheiro só sai mesmo quando a dívida associada for paga de facto
+        // em Fornecedores. Foi isto que causou a fatura da TK Elevadores a
+        // ficar marcada como paga sem o ter sido.
+        const origemAutomaticaJaAjustouSaldo =
+          movimentoAtualizado.origem === "extrato_bancario_email_inbound" || movimentoAtualizado.origem === "email_inbound";
+        const contaAlvo = origemAutomaticaJaAjustouSaldo ? null : contasRef.current.find(c => c.id_conta === movimentoAtualizado!.id_conta);
         if (contaAlvo) {
           const contaAtualizada: Conta = {
             ...contaAlvo,
@@ -1519,7 +1531,14 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
   // mesmo de fatura anexada. A marca continua a ser usada, quando existe,
   // para ligar ao pagamento certo ao confirmar (ver confirmarPagamentoEEnviarRecibo).
   const cegosPendentesPagamento = todosCegosPendentes.filter(m => m.tipo === "Receita");
-  const cegosPendentes = todosCegosPendentes.filter(m => m.tipo !== "Receita");
+  // Uma fatura já reconhecida e anexada automaticamente por email
+  // (comprovativo_url preenchido) não está "sem fatura justificativa" —
+  // já tem a fatura, só falta é o pagamento real acontecer (fica como
+  // Dívida Pendente em Fornecedores). Mostrá-la aqui, com o botão
+  // "Regularizar" a oferecer anexar OUTRO documento e a marcar logo como
+  // paga, levava a confirmar como pago algo que ainda não foi — foi
+  // exatamente isto que aconteceu com a fatura da TK Elevadores.
+  const cegosPendentes = todosCegosPendentes.filter(m => m.tipo !== "Receita" && !m.comprovativo_url);
 
   // Ver detalhe / corrigir valor / eliminar um movimento cego reconhecido
   // automaticamente por email — antes só era possível anexar um comprovativo
