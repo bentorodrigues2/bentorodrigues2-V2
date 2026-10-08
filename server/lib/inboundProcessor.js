@@ -1841,7 +1841,21 @@ export async function processInboundEmail(payload) {
                 fornecedor: isFaturaDoc ? (fornecedorCruzado?.fornecedor?.nome || dadosExtraidosDoc?.entidade || "Não Identificado") : undefined,
                 fluxo: `${tipoDocLower}_email_inbound`
               });
-              comprovativoUrlDoc = caminhoArquivo;
+              // "arquivarAnexoOriginal" devolve o caminho relativo dentro do
+              // bucket (ex.: "2026/Faturas_de_Fornecedores/.../fatura.pdf"),
+              // não um URL — é o que a tabela "documentos" precisa (resolvido
+              // on-demand pelo visualizador do Arquivo Digital). Mas aqui o
+              // resultado vai direto para "movimentos.comprovativo_url" /
+              // "dividas_fornecedores.documento_anexo", que o frontend abre
+              // como <a href> direto — sem assinar a URL aqui, o clique no
+              // anexo nunca abria nada (caminho relativo, bucket privado).
+              const { data: assinado, error: errAssinar } = await supabase.storage
+                .from("documentos")
+                .createSignedUrl(caminhoArquivo, 60 * 60 * 24 * 365 * 10);
+              if (errAssinar) {
+                console.warn("[inboundProcessor] Aviso ao assinar URL do anexo:", errAssinar.message);
+              }
+              comprovativoUrlDoc = assinado?.signedUrl || caminhoArquivo;
             } catch (errArquivo) {
               console.warn("[inboundProcessor] Aviso ao arquivar documento:", errArquivo?.message || errArquivo);
             }
