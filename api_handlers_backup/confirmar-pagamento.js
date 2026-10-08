@@ -33,7 +33,16 @@ export default async function handler(req, res) {
     // "Quota Ordinária + 10% Fundo de Reserva", e o passo 2.1 abaixo (que
     // tentava adivinhar o aviso a marcar) fica desligado, para não criar um
     // aviso-fantasma duplicado a repetir o que o chamador já fez.
-    const { id_pagamento, avisos_ids: avisosIdsFechados } = req.body || {};
+    // vencimento_alvo (opcional): quando o chamador sabe que este pagamento é
+    // um ADIANTAMENTO (ex: mês seguinte, cuja nota de cobrança ainda nem foi
+    // emitida — só sai no dia 25 do mês anterior) e já perguntou ao
+    // administrador a que mês se refere, em vez de a "2.1" abaixo assumir
+    // sempre a data real da transferência bancária (que cai no mês ATUAL, não
+    // no mês a que o pagamento se destina — confirmado em produção: um
+    // adiantamento de Novembro ficava registado como se fosse a quota de
+    // Outubro, duplicando essa coluna no Mapa de Pagamentos e deixando
+    // Novembro por registar).
+    const { id_pagamento, avisos_ids: avisosIdsFechados, vencimento_alvo: vencimentoAlvo } = req.body || {};
     if (!id_pagamento) {
       return res.status(400).json({ error: "id_pagamento em falta" });
     }
@@ -162,7 +171,8 @@ export default async function handler(req, res) {
         if (avisoAlvo) {
           await supabase.from("avisos").update({ estado: "Pago" }).eq("id_aviso", avisoAlvo.id_aviso);
         } else if (!jaDivididoEm?.length) {
-          const dataRef = pagamento.data_pagamento || new Date().toISOString().split("T")[0];
+          const dataRef = vencimentoAlvo || pagamento.data_pagamento || new Date().toISOString().split("T")[0];
+          const sufixoAdiantamento = vencimentoAlvo ? ` — adiantamento de ${new Date(`${vencimentoAlvo}T00:00:00`).toLocaleDateString("pt-PT", { month: "long", year: "numeric" })}.` : "";
           await supabase.from("avisos").insert({
             id_aviso: `aviso-confirmado-${pagamento.id}`,
             id_predio: fracao?.id_predio || null,
@@ -170,7 +180,7 @@ export default async function handler(req, res) {
             tipo: "Quota Ordinária",
             data: dataRef,
             vencimento: dataRef,
-            descricao: `Quota Ordinária — pagamento confirmado (${pagamento.entidade || "Transferência Bancária"}).`,
+            descricao: `Quota Ordinária — pagamento confirmado (${pagamento.entidade || "Transferência Bancária"}).${sufixoAdiantamento}`,
             valor: valorPago,
             valor_fundo_reserva: Math.round(valorPago * 0.10 * 100) / 100,
             estado: "Pago",

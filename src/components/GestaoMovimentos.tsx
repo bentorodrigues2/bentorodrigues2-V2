@@ -1267,7 +1267,8 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
   // (PDF + email ao condómino) através do mesmo pipeline real já usado em
   // toda a app (/api/pagamento?acao=confirmar) — antes só existia esta
   // capacidade no ecrã "Conciliação Bancária", à parte deste assistente.
-  const aprovarPagamentoCondomino = async (item: any, index: number, mostrarAlerta: boolean = true, semAvisoCorrespondente: boolean = false) => {
+  const aprovarPagamentoCondomino = async (item: any, index: number, mostrarAlerta: boolean = true, vencimentoAdiantamento?: string) => {
+    const semAvisoCorrespondente = Boolean(vencimentoAdiantamento);
     if (!setAvisos) {
       alert("Sistema de avisos não disponível de momento.");
       return;
@@ -1370,7 +1371,11 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
         const resp = await fetch("/api/pagamento?acao=confirmar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id_pagamento: idPagamento, avisos_ids: item.avisosPendentesIds || [] })
+          body: JSON.stringify({
+            id_pagamento: idPagamento,
+            avisos_ids: item.avisosPendentesIds || [],
+            ...(vencimentoAdiantamento ? { vencimento_alvo: vencimentoAdiantamento } : {})
+          })
         });
         const resultado = await resp.json();
         if (resp.ok && resultado?.status === "ok") {
@@ -2863,22 +2868,44 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                                   </div>
                                 )}
 
-                                {avisosFracaoPendentes.length === 0 && (
-                                  <div className="border border-sky-200 bg-sky-50 rounded-lg p-2 space-y-1.5">
-                                    <p className="text-[10px] text-sky-800">
-                                      💡 Sem nenhum aviso em aberto para comparar, não há "mês a fechar" para escolher — confirma na mesma como adiantamento: cria-se automaticamente uma nota de cobrança já paga, com a data deste pagamento.
-                                    </p>
-                                    <button
-                                      onClick={() => aprovarPagamentoCondomino(item, index, true, true)}
-                                      disabled={aprovandoCondominoIndex === index || aprovandoTodosCondominos || !item.fracaoSugeridaId}
-                                      title={!item.fracaoSugeridaId ? "Escolhe primeiro a fração correta" : undefined}
-                                      className="w-full bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                                    >
-                                      <i className={`fa-solid ${aprovandoCondominoIndex === index ? "fa-spinner animate-spin" : "fa-forward"}`}></i>
-                                      <span>{aprovandoCondominoIndex === index ? "A aprovar..." : "Aprovar como Adiantamento & Emitir Recibo"}</span>
-                                    </button>
-                                  </div>
-                                )}
+                                {avisosFracaoPendentes.length === 0 && (() => {
+                                  // Opções de mês a que este adiantamento se destina — dia 8,
+                                  // mesmo dia de vencimento usado em todas as notas de cobrança
+                                  // deste prédio. Por omissão sugere o mês seguinte ao atual (o
+                                  // caso mais comum: paga o mês a seguir antes da nota sair no
+                                  // dia 25), mas fica sempre editável para qualquer outro mês.
+                                  const hoje = new Date();
+                                  const opcoesMes = Array.from({ length: 4 }, (_, i) => {
+                                    const d = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() + 1 + i, 8));
+                                    const valorOpcao = d.toISOString().split("T")[0];
+                                    const label = d.toLocaleDateString("pt-PT", { month: "long", year: "numeric", timeZone: "UTC" });
+                                    return { valor: valorOpcao, label: label.charAt(0).toUpperCase() + label.slice(1) };
+                                  });
+                                  const mesEscolhido = item.vencimentoAdiantamento || opcoesMes[0].valor;
+                                  return (
+                                    <div className="border border-sky-200 bg-sky-50 rounded-lg p-2 space-y-1.5">
+                                      <p className="text-[10px] text-sky-800">
+                                        💡 Sem nenhum aviso em aberto para comparar, não há "mês a fechar" para escolher automaticamente — indica a que mês este adiantamento se refere:
+                                      </p>
+                                      <select
+                                        value={mesEscolhido}
+                                        onChange={(e) => setExtractedItems(prev => prev.map((x, i) => i === index ? { ...x, vencimentoAdiantamento: e.target.value } : x))}
+                                        className="w-full border border-sky-300 rounded-lg px-2 py-1.5 text-[10px] bg-white"
+                                      >
+                                        {opcoesMes.map(o => <option key={o.valor} value={o.valor}>{o.label}</option>)}
+                                      </select>
+                                      <button
+                                        onClick={() => aprovarPagamentoCondomino(item, index, true, mesEscolhido)}
+                                        disabled={aprovandoCondominoIndex === index || aprovandoTodosCondominos || !item.fracaoSugeridaId}
+                                        title={!item.fracaoSugeridaId ? "Escolhe primeiro a fração correta" : undefined}
+                                        className="w-full bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                                      >
+                                        <i className={`fa-solid ${aprovandoCondominoIndex === index ? "fa-spinner animate-spin" : "fa-forward"}`}></i>
+                                        <span>{aprovandoCondominoIndex === index ? "A aprovar..." : "Aprovar como Adiantamento & Emitir Recibo"}</span>
+                                      </button>
+                                    </div>
+                                  );
+                                })()}
 
                                 <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                                   <span className="font-bold text-emerald-700 font-mono-custom text-sm">+{item.valor.toFixed(2)}€</span>
