@@ -1267,7 +1267,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
   // (PDF + email ao condómino) através do mesmo pipeline real já usado em
   // toda a app (/api/pagamento?acao=confirmar) — antes só existia esta
   // capacidade no ecrã "Conciliação Bancária", à parte deste assistente.
-  const aprovarPagamentoCondomino = async (item: any, index: number, mostrarAlerta: boolean = true) => {
+  const aprovarPagamentoCondomino = async (item: any, index: number, mostrarAlerta: boolean = true, semAvisoCorrespondente: boolean = false) => {
     if (!setAvisos) {
       alert("Sistema de avisos não disponível de momento.");
       return;
@@ -1297,10 +1297,19 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
 
       // 2. Atualizar saldo da conta — síncrono via contasRef (ver nota em
       // lancarItemExtraido) para aprovações em lote acumularem certo.
-      const contaAtualizada: Conta = { ...contaAlvo, saldo: (contaAlvo.saldo || 0) + item.valor };
-      contasRef.current = contasRef.current.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c);
-      if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
-      saveContaToSupabase(contaAtualizada).catch(console.error);
+      //
+      // Exceção: pagamento SEM nenhum aviso correspondente (ex: adiantamento
+      // de um mês cuja nota de cobrança ainda nem foi emitida — só sai no dia
+      // 25 do mês anterior). Nesse caso /api/pagamento?acao=confirmar, mais
+      // abaixo, já credita o saldo sozinho (ver "2.2" nesse ficheiro) — é o
+      // mesmo fallback já construído para quando nenhum aviso pendente bate
+      // certo. Creditar aqui também duplicava o valor no saldo.
+      if (!semAvisoCorrespondente) {
+        const contaAtualizada: Conta = { ...contaAlvo, saldo: (contaAlvo.saldo || 0) + item.valor };
+        contasRef.current = contasRef.current.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c);
+        if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
+        saveContaToSupabase(contaAtualizada).catch(console.error);
+      }
 
       // 3. Lançar o movimento
       const novoMov: Movimento = {
@@ -1382,9 +1391,10 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
         if (erroRecibo) {
           alert(`⚠️ O aviso foi marcado como pago e o movimento lançado, mas houve um erro ao emitir o recibo oficial: ${erroRecibo}. Verifica em Documentos/Recibos se é preciso reemitir manualmente.`);
         } else {
+          const sufixoAdiantamento = semAvisoCorrespondente ? " Como ainda não havia nota de cobrança emitida para este mês, foi criada automaticamente já como paga." : "";
           alert(emailEnviado
-            ? `✅ Pagamento de ${item.valor.toFixed(2)}€ confirmado (Fração ${item.fracaoSugeridaNome || fracao?.fracao_nome || "?"}) e recibo oficial enviado por email.`
-            : `✅ Pagamento de ${item.valor.toFixed(2)}€ confirmado e recibo gerado. (Sem email enviado — condómino sem email registado ou associado.)`);
+            ? `✅ Pagamento de ${item.valor.toFixed(2)}€ confirmado (Fração ${item.fracaoSugeridaNome || fracao?.fracao_nome || "?"}) e recibo oficial enviado por email.${sufixoAdiantamento}`
+            : `✅ Pagamento de ${item.valor.toFixed(2)}€ confirmado e recibo gerado. (Sem email enviado — condómino sem email registado ou associado.)${sufixoAdiantamento}`);
         }
       }
     } catch (err: any) {
@@ -2812,7 +2822,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                                 <div className="border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50">
                                   <p className="text-[10px] font-bold text-slate-600">Este pagamento fecha os meses:</p>
                                   {avisosFracaoPendentes.length === 0 ? (
-                                    <p className="text-[10px] text-slate-600">Esta fração não tem avisos pendentes.</p>
+                                    <p className="text-[10px] text-slate-600">Esta fração não tem avisos pendentes — pode ser um adiantamento (ex: paga o mês seguinte antes de a nota de cobrança ser emitida, o que só acontece dia 25).</p>
                                   ) : avisosFracaoPendentes.map(a => (
                                     <label key={a.id_aviso} className="flex items-center gap-1.5 text-[10px] text-slate-700 cursor-pointer">
                                       <input
@@ -2849,6 +2859,23 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                                     >
                                       <i className={`fa-solid ${aprovandoCondominoIndex === index ? "fa-spinner animate-spin" : "fa-coins"}`}></i>
                                       <span>{aprovandoCondominoIndex === index ? "A aprovar..." : "Aceitar como Pagamento Parcial & Emitir Recibo"}</span>
+                                    </button>
+                                  </div>
+                                )}
+
+                                {avisosFracaoPendentes.length === 0 && (
+                                  <div className="border border-sky-200 bg-sky-50 rounded-lg p-2 space-y-1.5">
+                                    <p className="text-[10px] text-sky-800">
+                                      💡 Sem nenhum aviso em aberto para comparar, não há "mês a fechar" para escolher — confirma na mesma como adiantamento: cria-se automaticamente uma nota de cobrança já paga, com a data deste pagamento.
+                                    </p>
+                                    <button
+                                      onClick={() => aprovarPagamentoCondomino(item, index, true, true)}
+                                      disabled={aprovandoCondominoIndex === index || aprovandoTodosCondominos || !item.fracaoSugeridaId}
+                                      title={!item.fracaoSugeridaId ? "Escolhe primeiro a fração correta" : undefined}
+                                      className="w-full bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                                    >
+                                      <i className={`fa-solid ${aprovandoCondominoIndex === index ? "fa-spinner animate-spin" : "fa-forward"}`}></i>
+                                      <span>{aprovandoCondominoIndex === index ? "A aprovar..." : "Aprovar como Adiantamento & Emitir Recibo"}</span>
                                     </button>
                                   </div>
                                 )}
