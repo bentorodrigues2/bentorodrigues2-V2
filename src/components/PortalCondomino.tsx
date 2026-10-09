@@ -43,7 +43,8 @@ import {
   saveContaToSupabase,
   registarLogAuditoria,
   fetchSegurosFracoesFromSupabase,
-  saveSeguroFracaoToSupabase
+  saveSeguroFracaoToSupabase,
+  uploadDocumentoToStorage
 } from "../lib/supabaseService";
 
 // Inner Interfaces
@@ -999,12 +1000,18 @@ export function PortalCondomino({
     if (!activeUserFracao?.id_fracao) return;
     setAEnviarDocSeguroPortal(tipo);
     try {
-      const url: string = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      // Uma fotografia de telemóvel real facilmente passa dos 4-5MB — em
+      // base64 isso são milhões de caracteres gravados diretamente na linha
+      // da base de dados, o que fazia a gravação falhar em silêncio e o
+      // anexo nem sempre abrir depois. Carrega-se para o Storage e guarda-se
+      // só a URL assinada (mesmo padrão já usado para faturas/documentos
+      // em toda a app).
+      const caminho = `seguros/${predio?.id_predio || "geral"}/${activeUserFracao.id_fracao}/${Date.now()}-${file.name}`;
+      const url = await uploadDocumentoToStorage(file, caminho);
+      if (!url) {
+        alert("❌ Não foi possível carregar o documento. Tente novamente.");
+        return;
+      }
       const novoAnexo: DocumentoSeguroAnexo = {
         nome: file.name,
         url,

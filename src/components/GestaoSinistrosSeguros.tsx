@@ -41,7 +41,8 @@ import {
   fetchSinistrosFromSupabase,
   saveSinistroToSupabase,
   deleteSinistroFromSupabase,
-  dbUpdate
+  dbUpdate,
+  uploadDocumentoToStorage
 } from "../lib/supabaseService";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 import { parseValorMonetario } from "../utils";
@@ -328,7 +329,15 @@ export function GestaoSinistrosSeguros({
         resumo: dados.resumo || ""
       };
 
-      const documentoUrl = `data:${file.type || "application/pdf"};base64,${base64}`;
+      // O base64 só é preciso para a chamada à IA acima — guardar o anexo
+      // em si com essa mesma string gigante é o que fazia a gravação
+      // falhar com fotos reais de telemóvel (ver handleAnexarDocumentoExtra,
+      // mesma causa). Carrega-se para o Storage e guarda-se só a URL.
+      const caminho = `seguros/${predio.id_predio}/${isPartesComuns ? "partes-comuns" : modalSeguroFracao.fracao?.id_fracao || "geral"}/${Date.now()}-${file.name}`;
+      const documentoUrl = await uploadDocumentoToStorage(file, caminho);
+      if (!documentoUrl) {
+        throw new Error("Não foi possível carregar o documento para o Storage.");
+      }
       // Pedido do administrador: é a FATURA que entra por leitura de IA
       // (para atualizar seguradora/validade a cada renovação); a APÓLICE
       // em si (com a discriminação das coberturas) é anexada à parte, sem
@@ -370,10 +379,23 @@ export function GestaoSinistrosSeguros({
   // possível ter UM documento por seguro (a apólice OU a última fatura,
   // nunca as duas), agora ficam todos arquivados.
   const handleAnexarDocumentoExtra = async (file: File, tipo: DocumentoSeguroAnexo["tipo"], isPartesComuns: boolean = false) => {
-    const base64 = await lerFicheiroComoBase64(file);
+    // Uma fotografia real de telemóvel facilmente ultrapassa os 4-5MB — em
+    // base64 isso são 6-7 milhões de caracteres GRAVADOS DIRETAMENTE na
+    // linha da base de dados (documentos_anexos). Com 2 fotos destas num
+    // só "Guardar", o pedido ultrapassava o limite de tamanho aceite pelo
+    // endpoint e a gravação falhava sempre ("Falha ao gravar seguro de
+    // fração"), e o anexo gigante já gravado antes nem sempre abria no
+    // telemóvel. Carrega-se agora para o Storage (mesmo bucket/padrão já
+    // usado para faturas de fornecedor) e guarda-se só a URL assinada.
+    const caminho = `seguros/${predio.id_predio}/${isPartesComuns ? "partes-comuns" : modalSeguroFracao.fracao?.id_fracao || "geral"}/${Date.now()}-${file.name}`;
+    const url = await uploadDocumentoToStorage(file, caminho);
+    if (!url) {
+      showToast("Não foi possível carregar o documento. Tente novamente.");
+      return;
+    }
     const novoAnexo: DocumentoSeguroAnexo = {
       nome: file.name,
-      url: `data:${file.type || "application/pdf"};base64,${base64}`,
+      url,
       tipo,
       data_upload: new Date().toISOString().slice(0, 10)
     };
