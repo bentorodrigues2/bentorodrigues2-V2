@@ -348,14 +348,25 @@ export default function App() {
   const [iaInitialTab, setIaInitialTab] = useState<"juridico" | "orcamento_anual_ia" | "cerebro_ia" | undefined>(undefined);
   const [viewMode, setViewMode] = useState<"BROWSER" | "PWA">("BROWSER");
   // Routing por dispositivo: telemóvel -> PWA, PC -> Painel de
-  // Administração (decisão confirmada pelo utilizador, não depende do
-  // papel de quem entra). Só a largura da janela (matchMedia max-width)
-  // não chega — no Android, "Pedir site para computador" no Chrome faz o
+  // Administração — EXCETO para quem gere o condomínio (ADMIN/GESTOR/
+  // EMPRESA_GESTORA), que passa a ver sempre a mesma vista do Painel de
+  // Administração (barra lateral colapsável + botão de 3 linhas), também
+  // no telemóvel, em vez de cair primeiro na grelha da PWA — pedido
+  // explícito repetido do administrador para ter sempre "a mesma
+  // visualização que tenho no Browser", sem ter de clicar num cartão
+  // primeiro (ver também 220268bb, que só resolvia isto depois de já
+  // estar dentro da PWA). Condóminos continuam só por dispositivo. Só a
+  // largura da janela (matchMedia max-width) não chega para detetar
+  // telemóvel — no Android, "Pedir site para computador" no Chrome faz o
   // browser reportar uma janela larga (normalmente 980px) mesmo num
-  // telemóvel real, o que fazia cair sempre no Painel de Administração.
-  // Cruza por isso com o user-agent do próprio dispositivo, que o modo
-  // "site para computador" não altera.
+  // telemóvel real. Cruza por isso com o user-agent do próprio
+  // dispositivo, que o modo "site para computador" não altera.
   useEffect(() => {
+    const ehAdministracao = ["ADMIN", "GESTOR", "EMPRESA_GESTORA"].includes(loggedUser?.role || "");
+    if (ehAdministracao) {
+      setViewMode("BROWSER");
+      return;
+    }
     const ehJanelaEstreita = typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches;
     const ehUserAgentMovel = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
     setViewMode(ehJanelaEstreita || ehUserAgentMovel ? "PWA" : "BROWSER");
