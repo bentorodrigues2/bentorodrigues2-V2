@@ -1940,8 +1940,8 @@ export default function App() {
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <img src="/modulos/41-obra.png" alt="Obras & Contratação" className="w-5 h-5 object-contain shrink-0" />
-                <span>Obras & Contratação</span>
+                <img src="/modulos/41-obra.png" alt="Concursos & Adjudicação" className="w-5 h-5 object-contain shrink-0" />
+                <span>Concursos & Adjudicação</span>
               </div>
               <i className={`fa-solid fa-chevron-down text-[10px] transition-transform ${openMenuObras ? "rotate-180" : ""}`}></i>
             </button>

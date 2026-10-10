@@ -18,6 +18,11 @@ import {
 import type { ObraExtraordinaria, Intervencao } from "./GestaoManutencaoIntervencoes";
 import { parseValorMonetario } from "../utils";
 
+// Categorias fechadas para o tipo de concurso — "Novo Fornecedor" e "Outro"
+// ganham um campo de texto extra (tipo de fornecedor / descrição livre),
+// mesmo padrão já usado na Categoria de Dívida a Fornecedor.
+const CATEGORIAS_RFP = ["Obras", "Manutenção", "Novo Fornecedor", "Seguros", "Limpeza", "Jardinagem", "Segurança", "Consultoria / Jurídico", "Outro"];
+
 interface RequestForProposal {
   id_rfp: string;
   id_predio: string;
@@ -119,6 +124,10 @@ export function PortalOrcamentos({
   const [editingRfpId, setEditingRfpId] = useState<string | null>(null);
   const [rfpTitulo, setRfpTitulo] = useState("");
   const [rfpCategoria, setRfpCategoria] = useState("");
+  // Preenchido só quando rfpCategoria é "Novo Fornecedor" (tipo de
+  // fornecedor: eletricidade, comunicações, elevadores, etc.) ou "Outro"
+  // (descrição livre) — nos restantes casos a categoria fechada já basta.
+  const [rfpCategoriaDetalhe, setRfpCategoriaDetalhe] = useState("");
   const [rfpEstimativa, setRfpEstimativa] = useState("");
   const [rfpLimite, setRfpLimite] = useState("");
   const [rfpDescricao, setRfpDescricao] = useState("");
@@ -174,20 +183,26 @@ export function PortalOrcamentos({
   const handleLancarRfp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loggedUser.role !== "ADMIN") return alert("Apenas administradores podem lançar pedidos de orçamento.");
-    if (!rfpTitulo || !rfpCategoria || !rfpEstimativa || !rfpLimite || !rfpDescricao) {
-      return alert("Por favor preencha todos os campos obrigatórios (*)");
+    const precisaDetalhe = rfpCategoria === "Novo Fornecedor" || rfpCategoria === "Outro";
+    if (!rfpTitulo || !rfpCategoria || !rfpEstimativa || !rfpLimite || !rfpDescricao || (precisaDetalhe && !rfpCategoriaDetalhe.trim())) {
+      return alert(precisaDetalhe && !rfpCategoriaDetalhe.trim()
+        ? `Indique ${rfpCategoria === "Novo Fornecedor" ? "o tipo de fornecedor" : "a descrição"} da categoria.`
+        : "Por favor preencha todos os campos obrigatórios (*)");
     }
     const estimativaNum = parseValorMonetario(rfpEstimativa);
     if (estimativaNum <= 0) {
       return alert("Indique uma estimativa máxima válida.");
     }
+    const categoriaFinal = rfpCategoria === "Novo Fornecedor"
+      ? `Novo Fornecedor — ${rfpCategoriaDetalhe.trim()}`
+      : rfpCategoria === "Outro" ? rfpCategoriaDetalhe.trim() : rfpCategoria;
 
     const rfpOriginal = editingRfpId ? predioRfps.find(r => r.id_rfp === editingRfpId) : null;
     const novoRfp: RequestForProposal = {
       id_rfp: editingRfpId || "rfp-" + Date.now() + "-" + Math.floor(Math.random() * 100),
       id_predio: predio.id_predio,
       titulo: rfpTitulo,
-      categoria: rfpCategoria,
+      categoria: categoriaFinal,
       estimativa: estimativaNum,
       data_publicacao: rfpOriginal?.data_publicacao || new Date().toISOString().split("T")[0],
       data_limite: rfpLimite,
@@ -218,6 +233,7 @@ export function PortalOrcamentos({
     setEditingRfpId(null);
     setRfpTitulo("");
     setRfpCategoria("");
+    setRfpCategoriaDetalhe("");
     setRfpEstimativa("");
     setRfpLimite("");
     setRfpDescricao("");
@@ -227,7 +243,20 @@ export function PortalOrcamentos({
   const handleIniciarEdicaoRfp = (r: RequestForProposal) => {
     setEditingRfpId(r.id_rfp);
     setRfpTitulo(r.titulo);
-    setRfpCategoria(r.categoria);
+    // Categorias antigas (texto livre, de antes desta lista fechada) e o
+    // "Novo Fornecedor — <tipo>" composto não batem com nenhuma opção fixa
+    // — reconstrói a categoria + o detalhe tal como ficariam se tivessem
+    // sido criados já com este formulário.
+    if (r.categoria.startsWith("Novo Fornecedor — ")) {
+      setRfpCategoria("Novo Fornecedor");
+      setRfpCategoriaDetalhe(r.categoria.slice("Novo Fornecedor — ".length));
+    } else if (CATEGORIAS_RFP.includes(r.categoria)) {
+      setRfpCategoria(r.categoria);
+      setRfpCategoriaDetalhe("");
+    } else {
+      setRfpCategoria("Outro");
+      setRfpCategoriaDetalhe(r.categoria);
+    }
     setRfpEstimativa(String(r.estimativa));
     setRfpLimite(r.data_limite);
     setRfpDescricao(r.descricao);
@@ -237,6 +266,7 @@ export function PortalOrcamentos({
   const handleCancelarEdicaoRfp = () => {
     setEditingRfpId(null);
     setRfpTitulo("");
+    setRfpCategoriaDetalhe("");
     setRfpCategoria("");
     setRfpEstimativa("");
     setRfpLimite("");
@@ -785,14 +815,25 @@ export function PortalOrcamentos({
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-[10px] font-bold text-slate-600 block mb-1">Categoria *</label>
-                    <input
-                      type="text"
+                    <select
                       required
-                      placeholder="Ex: Infraestrutura"
                       value={rfpCategoria}
-                      onChange={e => setRfpCategoria(e.target.value)}
+                      onChange={e => { setRfpCategoria(e.target.value); setRfpCategoriaDetalhe(""); }}
                       className="w-full border border-slate-200 dark:border-slate-800 p-2 rounded bg-white dark:bg-slate-900 focus:outline-emerald-500 text-slate-700 dark:text-slate-200"
-                    />
+                    >
+                      <option value="" disabled>Escolher categoria...</option>
+                      {CATEGORIAS_RFP.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    {(rfpCategoria === "Novo Fornecedor" || rfpCategoria === "Outro") && (
+                      <input
+                        type="text"
+                        required
+                        placeholder={rfpCategoria === "Novo Fornecedor" ? "Tipo de fornecedor: eletricidade, comunicações, elevadores..." : "Descreva a categoria"}
+                        value={rfpCategoriaDetalhe}
+                        onChange={e => setRfpCategoriaDetalhe(e.target.value)}
+                        className="w-full border border-slate-200 dark:border-slate-800 p-2 rounded bg-white dark:bg-slate-900 focus:outline-emerald-500 text-slate-700 dark:text-slate-200 mt-1.5"
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-slate-600 block mb-1">Estimativa Máx (€) *</label>

@@ -1931,7 +1931,7 @@ export function GestaoQuotasOrcamento({
                 ))}
               </select>
               {obrasAdjudicadasParaQuota.length === 0 && (
-                <p className="text-[10px] text-slate-600 mt-1">Nenhuma obra adjudicada a pedir quota extra de momento (Obras & Contratação → Concursos & Orçamentos → adjudicar uma proposta).</p>
+                <p className="text-[10px] text-slate-600 mt-1">Nenhuma obra adjudicada a pedir quota extra de momento (Concursos & Adjudicação → Concursos & Orçamentos → adjudicar uma proposta).</p>
               )}
               {/* Aviso de segurança: reemitir uma obra que já tenha prestações
                   lançadas cria avisos duplicados (soma-se, não substitui) — não
