@@ -314,9 +314,22 @@ export default async function handler(req, res) {
       query = aplicarFiltros(query, filtros);
       if (isolamento) query = query.eq(isolamento.coluna, isolamento.valor);
       if (orFiltro) query = query.or(orFiltro);
-      const { error } = await query;
+      // Sem ".select()" aqui, um filtro que não corresponda a nenhuma linha
+      // (ex: id já mudou, isolamento de prédio/fração a bloquear em
+      // silêncio, condição de corrida com outra escrita) devolvia sempre
+      // {ok:true} na mesma — a UI mostrava "eliminado com sucesso" e tirava
+      // a linha da lista local, mas a linha continuava na base de dados.
+      // Confirmado em produção: 2 movimentos "eliminados" no ecrã
+      // continuavam intactos no Supabase, e o saldo da conta nunca foi
+      // corrigido porque o código a seguir ao "sucesso" nunca devia ter
+      // corrido. Devolve explicitamente erro quando zero linhas foram
+      // mesmo eliminadas, para a UI parar de mentir sobre o que aconteceu.
+      const { data, error } = await query.select();
       if (error) return res.status(200).json({ ok: false, error: error.message });
-      return res.status(200).json({ ok: true });
+      if (!data || data.length === 0) {
+        return res.status(200).json({ ok: false, error: "Nenhum registo correspondeu ao pedido — nada foi eliminado." });
+      }
+      return res.status(200).json({ ok: true, eliminados: data.length });
     }
 
     return res.status(400).json({ error: "Ação inválida. Use select|insert|upsert|update|delete" });
