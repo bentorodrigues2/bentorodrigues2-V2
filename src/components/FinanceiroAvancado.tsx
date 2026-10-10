@@ -885,7 +885,7 @@ export function FinanceiroAvancado({
         <button
           type="button"
           onClick={() => {
-            exportarBalanceteMapaAnualXLS(predio, predioFracoes, 2026, predioAvisos, movList);
+            exportarBalanceteMapaAnualXLS(predio, predioFracoes, new Date().getFullYear(), predioAvisos, movList);
             showToast("📊 Balancete / Mapa Anual de 12 Quotas Mensais exportado em Excel (.CSV) com sucesso!");
           }}
           className="px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-xs"

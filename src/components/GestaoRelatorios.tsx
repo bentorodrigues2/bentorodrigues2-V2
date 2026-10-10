@@ -16,10 +16,11 @@ interface GestaoRelatoriosProps {
 
 export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes = [], avisos = [], contas = [], onAddDocumento }: GestaoRelatoriosProps) {
   const [isPublicando, setIsPublicando] = useState(false);
-  const [tipoRelatorio, setTipoRelatorio] = useState<"mensal" | "trimestral" | "anual">("mensal");
-  const [mesSelecionado, setMesSelecionado] = useState<string>("07");
-  const [trimestreSelecionado, setTrimestreSelecionado] = useState<string>("T2");
-  const [anoSelecionado, setAnoSelecionado] = useState<string>("2026");
+  const [tipoRelatorio, setTipoRelatorio] = useState<"mensal" | "trimestral" | "anual" | "acumulado">("acumulado");
+  const hoje = new Date();
+  const [mesSelecionado, setMesSelecionado] = useState<string>(String(hoje.getMonth() + 1).padStart(2, "0"));
+  const [trimestreSelecionado, setTrimestreSelecionado] = useState<string>(`T${Math.ceil((hoje.getMonth() + 1) / 3)}`);
+  const [anoSelecionado, setAnoSelecionado] = useState<string>(String(hoje.getFullYear()));
   const [isCompiling, setIsCompiling] = useState(false);
   const [compiledReport, setCompiledReport] = useState<any | null>(null);
   const [isFiltroModalOpen, setIsFiltroModalOpen] = useState(false);
@@ -31,12 +32,19 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
     setTimeout(() => {
       // Compile data
       const filterYear = parseInt(anoSelecionado);
+      // "movimentos" chega aqui sem filtro de prédio (App.tsx passa a lista
+      // global) — sem isto, um administrador com mais do que um condomínio
+      // via "Isolamento Multi-Prédio" via receitas/despesas de OUTRO prédio
+      // misturadas no mesmo relatório.
+      const movimentosPredio = movimentos.filter(m => m.id_predio === predio.id_predio);
+      const anoRealAtual = new Date().getFullYear();
+      const mesRealAtual = new Date().getMonth() + 1;
 
-      const filtered = movimentos.filter(m => {
+      const filtered = movimentosPredio.filter(m => {
         const parts = m.data.split("-");
         const movYear = parts[0].length === 4 ? parseInt(parts[0]) : parseInt(parts[2]);
         const movMonth = parts[0].length === 4 ? parts[1] : parts[1];
-        
+
         if (movYear !== filterYear) return false;
 
         if (tipoRelatorio === "mensal") {
@@ -47,6 +55,13 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
           if (trimestreSelecionado === "T2") return mInt >= 4 && mInt <= 6;
           if (trimestreSelecionado === "T3") return mInt >= 7 && mInt <= 9;
           if (trimestreSelecionado === "T4") return mInt >= 10 && mInt <= 12;
+        } else if (tipoRelatorio === "acumulado") {
+          // Desde 1 de Janeiro até ao último mês corrente — pedido explícito
+          // ("informações reais desde o dia 1 de Janeiro até ao ultimo mês
+          // corrente"). Só limita ao mês atual quando o ano escolhido é o
+          // ano corrente; um ano já fechado no passado mostra-se por inteiro.
+          if (filterYear === anoRealAtual) return parseInt(movMonth) <= mesRealAtual;
+          return true;
         }
         return true; // Anual
       });
@@ -64,7 +79,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
       // Pedido explícito: análise sempre por conta, nunca só um total
       // conjunto — cada conta bancária (tipo) mostra as suas próprias
       // receitas/despesas/saldo reais do período, não a soma de todas.
-      const porConta = contas.map(c => {
+      const porConta = contas.filter(c => c.id_predio === predio.id_predio).map(c => {
         const movsConta = filtered.filter(m => m.id_conta === c.id_conta);
         const receitasConta = movsConta.filter(m => m.tipo === "Receita").reduce((s, m) => s + m.valor, 0);
         const despesasConta = movsConta.filter(m => m.tipo === "Despesa").reduce((s, m) => s + m.valor, 0);
@@ -79,11 +94,14 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
         };
       });
 
-      const periodo = tipoRelatorio === "mensal" ? `${getMonthName(mesSelecionado)} de ${anoSelecionado}` : tipoRelatorio === "trimestral" ? `${trimestreSelecionado} de ${anoSelecionado}` : `Ano de ${anoSelecionado}`;
+      const periodo = tipoRelatorio === "mensal" ? `${getMonthName(mesSelecionado)} de ${anoSelecionado}`
+        : tipoRelatorio === "trimestral" ? `${trimestreSelecionado} de ${anoSelecionado}`
+        : tipoRelatorio === "acumulado" ? `1 de Janeiro a ${filterYear === anoRealAtual ? getMonthName(String(mesRealAtual).padStart(2, "0")) : "Dezembro"} de ${anoSelecionado}`
+        : `Ano de ${anoSelecionado}`;
 
       setCompiledReport({
         id: `REP-${anoSelecionado}-${tipoRelatorio.slice(0,1).toUpperCase()}-${tipoRelatorio === "mensal" ? mesSelecionado : tipoRelatorio === "trimestral" ? trimestreSelecionado : "CONSOL"}`,
-        titulo: `Relatório de Gestão ${tipoRelatorio === "mensal" ? `Mensal - Mes ${mesSelecionado}` : tipoRelatorio === "trimestral" ? `Trimestral - ${trimestreSelecionado}` : "Anual Consolidado"}`,
+        titulo: `Relatório de Gestão ${tipoRelatorio === "mensal" ? `Mensal - Mes ${mesSelecionado}` : tipoRelatorio === "trimestral" ? `Trimestral - ${trimestreSelecionado}` : tipoRelatorio === "acumulado" ? "Acumulado no Ano" : "Anual Consolidado"}`,
         periodo,
         dataEmissao: new Date().toLocaleDateString("pt-PT"),
         movimentos: filtered,
@@ -133,6 +151,55 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
   };
 
   const formatCurrency = (val: number) => `${val.toFixed(2)}€`;
+
+  // Recomendações reais, derivadas só do que o relatório já calculou (saldo,
+  // despesas por categoria) e dos avisos reais em dívida — nunca texto
+  // genérico nem conselhos inventados sem números concretos a sustentá-los.
+  const gerarRecomendacoes = (report: any): { tipo: "alerta" | "info" | "positivo"; texto: string }[] => {
+    const recomendacoes: { tipo: "alerta" | "info" | "positivo"; texto: string }[] = [];
+
+    if (report.saldoPeriodo < 0) {
+      const categorias = Object.entries(report.despesasPorCategoria) as [string, number][];
+      const maiorCategoria = categorias.sort((a, b) => b[1] - a[1])[0];
+      recomendacoes.push({
+        tipo: "alerta",
+        texto: `Défice operacional de ${formatCurrency(Math.abs(report.saldoPeriodo))} no período — as despesas excederam as receitas.${maiorCategoria ? ` A categoria com maior peso foi "${maiorCategoria[0]}" (${formatCurrency(maiorCategoria[1])}, ${((maiorCategoria[1] / report.totalDespesas) * 100).toFixed(0)}% do total de despesas).` : ""} Recomenda-se rever o orçamento anual ou considerar uma quota extraordinária se o défice persistir nos próximos períodos.`
+      });
+    } else if (report.totalReceitas > 0) {
+      recomendacoes.push({
+        tipo: "positivo",
+        texto: `Saldo operacional positivo de ${formatCurrency(report.saldoPeriodo)} no período — as receitas cobriram as despesas com uma margem de ${((report.saldoPeriodo / report.totalReceitas) * 100).toFixed(0)}%.`
+      });
+    }
+
+    const categoriasOrdenadas = (Object.entries(report.despesasPorCategoria) as [string, number][]).sort((a, b) => b[1] - a[1]);
+    if (categoriasOrdenadas.length > 0 && report.totalDespesas > 0) {
+      const [catTop, valTop] = categoriasOrdenadas[0];
+      const pctTop = (valTop / report.totalDespesas) * 100;
+      if (pctTop >= 40) {
+        recomendacoes.push({
+          tipo: "info",
+          texto: `A categoria "${catTop}" concentra ${pctTop.toFixed(0)}% de todas as despesas do período (${formatCurrency(valTop)}). Avalie se este peso é esperado (ex: obra pontual) ou se vale a pena pedir orçamentos alternativos para reduzir este custo recorrente.`
+        });
+      }
+    }
+
+    const avisosPredio = avisos.filter(a => a.id_predio === predio.id_predio);
+    const avisosEmDivida = avisosPredio.filter(a => a.estado === "Pendente" || a.estado === "Paga Parcialmente");
+    const valorEmDivida = avisosEmDivida.reduce((s, a) => s + ((Number(a.valor) || 0) - (Number(a.valor_pago) || 0)), 0);
+    if (valorEmDivida > 0.01) {
+      recomendacoes.push({
+        tipo: "alerta",
+        texto: `${avisosEmDivida.length} aviso(s) de quota em dívida (todo o histórico, não só este período), no total de ${formatCurrency(valorEmDivida)}. Recomenda-se rever o Mapa de Pagamentos e, se aplicável, enviar os avisos de mora às frações em atraso.`
+      });
+    }
+
+    if (recomendacoes.length === 0) {
+      recomendacoes.push({ tipo: "positivo", texto: "Sem anomalias financeiras a assinalar neste período: receitas e despesas equilibradas, sem concentração excessiva numa categoria e sem avisos de quota em dívida." });
+    }
+
+    return recomendacoes;
+  };
 
   const getMonthName = (mStr: string) => {
     const months: { [k: string]: string } = {
@@ -188,17 +255,18 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
           <div className="space-y-3">
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Tipo de Prestação de Contas</label>
-              <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-100">
-                {(["mensal", "trimestral", "anual"] as const).map(t => (
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-100">
+                {(["acumulado", "mensal", "trimestral", "anual"] as const).map(t => (
                   <button
                     key={t}
                     type="button"
                     onClick={() => setTipoRelatorio(t)}
+                    title={t === "acumulado" ? "Desde 1 de Janeiro até ao último mês corrente" : undefined}
                     className={`py-1.5 text-[10px] font-bold rounded-lg border-none capitalize transition-all cursor-pointer ${
                       tipoRelatorio === t ? "bg-blue-600 text-white shadow-sm" : "bg-transparent text-slate-600 hover:text-slate-800"
                     }`}
                   >
-                    {t}
+                    {t === "acumulado" ? "Acumulado (Jan → atual)" : t}
                   </button>
                 ))}
               </div>
@@ -328,7 +396,8 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                         compiledReport.titulo,
                         [
                           { heading: "Resumo Executivo Financeiro", content: `Total de Receitas: ${formatCurrency(compiledReport.totalReceitas)}\nTotal de Despesas: ${formatCurrency(compiledReport.totalDespesas)}\nResultado Líquido do Período: ${formatCurrency(compiledReport.resultadoLiquido)}` },
-                          { heading: "Despesas por Categoria", content: Object.entries(compiledReport.despesasPorCategoria).map(([cat, val]: any) => `${cat}: ${formatCurrency(val)}`).join("\n") || "Sem despesas registadas neste período." }
+                          { heading: "Despesas por Categoria", content: Object.entries(compiledReport.despesasPorCategoria).map(([cat, val]: any) => `${cat}: ${formatCurrency(val)}`).join("\n") || "Sem despesas registadas neste período." },
+                          { heading: "Recomendações", content: gerarRecomendacoes(compiledReport).map(r => `• ${r.texto}`).join("\n\n") }
                         ],
                         `Relatorio_Financeiro_${predio.nome.replace(/\s+/g, '_')}.pdf`,
                         [{ label: "Edifício", value: predio.nome }, { label: "Período", value: compiledReport.periodo }]
@@ -452,6 +521,29 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* RECOMENDAÇÕES — derivadas em tempo real dos números acima
+                  (nunca texto genérico), ver gerarRecomendacoes. */}
+              <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3">
+                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block border-b border-slate-200 pb-2">
+                  <i className="fa-solid fa-lightbulb mr-1 text-amber-500"></i> Recomendações
+                </span>
+                <div className="space-y-2 pt-1">
+                  {gerarRecomendacoes(compiledReport).map((r, i) => (
+                    <div
+                      key={i}
+                      className={`p-3 rounded-lg text-[11px] leading-relaxed border flex items-start gap-2 ${
+                        r.tipo === "alerta" ? "bg-red-50/60 border-red-200 text-red-800" :
+                        r.tipo === "positivo" ? "bg-emerald-50/60 border-emerald-200 text-emerald-800" :
+                        "bg-blue-50/60 border-blue-200 text-blue-800"
+                      }`}
+                    >
+                      <i className={`fa-solid ${r.tipo === "alerta" ? "fa-triangle-exclamation" : r.tipo === "positivo" ? "fa-circle-check" : "fa-circle-info"} mt-0.5 shrink-0`}></i>
+                      <span>{r.texto}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Transactions list in report */}
