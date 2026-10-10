@@ -73,7 +73,8 @@ const REGRAS_DEFAULT: Array<{ palavra_chave: string; codigo_conta: string }> = [
 const CODIGO_CONTA_FALLBACK = "68"; // Obras de Conservação / Geral — quando nenhuma regra bate certo
 
 export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: ContabilidadeInternaProps) {
-  const [activeTabContab, setActiveTabContab] = useState<"plano" | "reconciliacao" | "motor_regras">("plano");
+  const [activeTabContab, setActiveTabContab] = useState<"plano" | "reconciliacao" | "motor_regras" | "razao">("razao");
+  const [anoRazaoSelecionado, setAnoRazaoSelecionado] = useState<string>("todos");
 
   // 1. Plano de Contas Oficial de Condomínios (SNC Simplificado) — carregado
   // da tabela real plano_contas; semeia os valores por omissão na primeira
@@ -337,6 +338,14 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
       {/* Sub tabs inside Contabilidade */}
       <div className="flex space-x-2 border-b border-slate-200 pb-px">
         <button
+          onClick={() => setActiveTabContab("razao")}
+          className={`px-4 py-2 text-xs font-bold transition-all border-b-2 cursor-pointer ${
+            activeTabContab === "razao" ? "border-emerald-600 text-emerald-600" : "border-transparent text-slate-600 hover:text-slate-600"
+          }`}
+        >
+          <i className="fa-solid fa-scale-balanced mr-1.5"></i> Razão Geral (SNC)
+        </button>
+        <button
           onClick={() => setActiveTabContab("plano")}
           className={`px-4 py-2 text-xs font-bold transition-all border-b-2 cursor-pointer ${
             activeTabContab === "plano" ? "border-emerald-600 text-emerald-600" : "border-transparent text-slate-600 hover:text-slate-600"
@@ -361,6 +370,99 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
           <i className="fa-solid fa-bolt mr-1.5"></i> Categorização Automática
         </button>
       </div>
+
+      {/* 0. RAZÃO GERAL (SNC) — o Plano de Contas e as Regras de
+          Categorização definiam a classificação, mas nunca eram aplicados a
+          nenhum movimento real: o módulo só guardava configuração, sem
+          produzir nenhuma contabilidade de facto. Esta aba classifica agora
+          TODOS os movimentos reais do prédio pelas regras reais (mesma
+          função classificarPorRegras já usada no testador manual) e soma-os
+          por conta SNC — é o "livro razão" real, não uma demonstração. */}
+      {activeTabContab === "razao" && (() => {
+        const movimentosPredio = movimentos.filter(m => m.id_predio === predio.id_predio);
+        const anosDisponiveis = Array.from(new Set(movimentosPredio.map(m => m.data?.slice(0, 4)).filter(Boolean))).sort().reverse();
+        const movimentosAno = anoRazaoSelecionado === "todos" ? movimentosPredio : movimentosPredio.filter(m => m.data?.startsWith(anoRazaoSelecionado));
+
+        const porConta = planoContas.map(conta => {
+          const movsConta = movimentosAno.filter(m => classificarPorRegras(m.descricao)?.codigo === conta.codigo);
+          const total = movsConta.reduce((s, m) => s + (m.tipo === "Despesa" ? -Math.abs(m.valor) : Math.abs(m.valor)), 0);
+          return { conta, movimentos: movsConta, total };
+        }).filter(linha => linha.movimentos.length > 0);
+
+        const semClassificacao = movimentosAno.length - porConta.reduce((s, l) => s + l.movimentos.length, 0);
+        const totalGastos = porConta.filter(l => l.conta.tipo === "GASTO").reduce((s, l) => s + Math.abs(l.total), 0);
+        const totalRendimentos = porConta.filter(l => l.conta.tipo === "RENDIMENTO").reduce((s, l) => s + Math.abs(l.total), 0);
+
+        return (
+          <div className="space-y-4 animate-fadeIn">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-600">Livro Razão — Movimentos Reais Classificados por Conta SNC</h4>
+                <p className="text-[10px] text-slate-600 mt-0.5">{movimentosAno.length} movimento(s) no período · {porConta.reduce((s, l) => s + l.movimentos.length, 0)} classificado(s) por regra · {semClassificacao} sem regra correspondente (ver nota abaixo)</p>
+              </div>
+              <select
+                value={anoRazaoSelecionado}
+                onChange={e => setAnoRazaoSelecionado(e.target.value)}
+                className="border border-slate-200 px-3 py-1.5 text-xs rounded-lg bg-slate-50/50 cursor-pointer"
+              >
+                <option value="todos">Todos os anos</option>
+                {anosDisponiveis.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-emerald-50/50 border border-emerald-100 p-4 rounded-xl">
+                <span className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider">Total Rendimentos Classificados</span>
+                <h3 className="text-base font-black text-emerald-950 font-mono mt-1">{totalRendimentos.toFixed(2)}€</h3>
+              </div>
+              <div className="bg-red-50/50 border border-red-100 p-4 rounded-xl">
+                <span className="text-[9px] font-bold text-red-800 uppercase tracking-wider">Total Gastos Classificados</span>
+                <h3 className="text-base font-black text-red-950 font-mono mt-1">{totalGastos.toFixed(2)}€</h3>
+              </div>
+            </div>
+
+            {porConta.length === 0 ? (
+              <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-center text-xs text-slate-600">
+                Nenhum movimento real classificado neste período. Verifique se há movimentos lançados e se as regras de categorização cobrem as descrições reais (aba "Categorização Automática").
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {porConta.sort((a, b) => a.conta.codigo.localeCompare(b.conta.codigo)).map(linha => (
+                  <details key={linha.conta.codigo} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group">
+                    <summary className="p-3.5 flex items-center justify-between gap-2 cursor-pointer list-none">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <i className="fa-solid fa-chevron-right text-[9px] text-slate-600 group-open:rotate-90 transition-transform shrink-0"></i>
+                        <span className="font-mono text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">{linha.conta.codigo}</span>
+                        <span className="text-xs font-bold text-slate-800 truncate">{linha.conta.nome}</span>
+                        <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded shrink-0 ${
+                          linha.conta.tipo === "GASTO" ? "bg-red-100 text-red-700" : linha.conta.tipo === "RENDIMENTO" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
+                        }`}>{linha.conta.tipo}</span>
+                        <span className="text-[10px] text-slate-600 shrink-0">({linha.movimentos.length})</span>
+                      </div>
+                      <span className={`text-xs font-mono font-black shrink-0 ${linha.total < 0 ? "text-red-600" : "text-emerald-600"}`}>{linha.total.toFixed(2)}€</span>
+                    </summary>
+                    <div className="border-t border-slate-100 divide-y divide-slate-50">
+                      {linha.movimentos.sort((a, b) => (b.data || "").localeCompare(a.data || "")).map(m => (
+                        <div key={m.id_mov} className="px-3.5 py-2 flex items-center justify-between gap-2 text-[11px]">
+                          <span className="text-slate-600 font-mono shrink-0">{m.data}</span>
+                          <span className="text-slate-700 truncate flex-1 px-2">{m.descricao}</span>
+                          <span className={`font-mono font-bold shrink-0 ${m.tipo === "Despesa" ? "text-red-600" : "text-emerald-600"}`}>{m.tipo === "Despesa" ? "-" : "+"}{Math.abs(m.valor).toFixed(2)}€</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                ))}
+              </div>
+            )}
+
+            {semClassificacao > 0 && (
+              <p className="text-[10px] text-slate-600 text-center">
+                {semClassificacao} movimento(s) não tiveram nenhuma conta classificada porque o Plano de Contas não tem nenhuma conta com o código de fallback "{CODIGO_CONTA_FALLBACK}" configurada — confirme em "Plano de Contas".
+              </p>
+            )}
+          </div>
+        );
+      })()}
 
       {/* 1. PLANO DE CONTAS */}
       {activeTabContab === "plano" && (
@@ -677,7 +779,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                     Conta {sugestaoConta.codigo} — {sugestaoConta.nome} ({sugestaoConta.tipo})
                   </div>
                   <p className="text-[9px] text-slate-600 mt-1 leading-normal">
-                    * Baseado em regras semânticas de relevância linguística (Regra SNB para faturas de serviços recorrentes).
+                    * Primeira regra de palavra-chave que corresponder, por ordem da lista abaixo; sem nenhuma correspondência, usa a Conta {CODIGO_CONTA_FALLBACK}.
                   </p>
                 </div>
               </div>
