@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Predio, Fracao, Fornecedor, LoggedUser, Conta, DividaFornecedor } from "../types";
-import { Loader2, ShieldCheck, BadgeAlert, Sparkles, Building, Coins, Calendar, Plus, ExternalLink, ThumbsUp, Table, FileText, CheckCircle2, XCircle, Paperclip, HardHat, Wrench, PiggyBank, Pencil, Trash2, X } from "lucide-react";
+import { Loader2, ShieldCheck, BadgeAlert, Sparkles, Building, Coins, Calendar, Plus, ExternalLink, ThumbsUp, Table, FileText, CheckCircle2, XCircle, Paperclip, HardHat, Wrench, PiggyBank, Pencil, Trash2, X, Archive, FlagTriangleRight } from "lucide-react";
 import {
   fetchRfpsFromSupabase,
   saveRfpToSupabase,
@@ -32,8 +32,14 @@ interface RequestForProposal {
   data_publicacao: string;
   data_limite: string;
   descricao: string;
-  estado: "Aberto" | "Adjudicado" | "Cancelado";
+  estado: "Aberto" | "Adjudicado" | "Terminado" | "Cancelado";
   fornecedor_adjudicado?: string;
+  // Um concurso adjudicado passa logo a arquivado (o próprio ato de
+  // adjudicar já é o fecho definitivo); "Terminado" é o fecho manual sem
+  // adjudicação (ex: nenhuma proposta serviu) e pode ser arquivado à parte
+  // com o botão "Arquivar". Arquivado = sai da lista principal, mas
+  // continua consultável em "Ver Arquivados".
+  arquivado?: boolean;
 }
 
 interface Proposal {
@@ -151,7 +157,10 @@ export function PortalOrcamentos({
   const [selectedRfpForAnalysis, setSelectedRfpForAnalysis] = useState<string>("");
   const [aiResult, setAiResult] = useState<ComparativeResponse | null>(null);
 
-  const predioRfps = rfps.filter(r => r.id_predio === predio.id_predio);
+  const [mostrarArquivadosRfp, setMostrarArquivadosRfp] = useState(false);
+  const predioRfpsTodos = rfps.filter(r => r.id_predio === predio.id_predio);
+  const predioRfps = predioRfpsTodos.filter(r => mostrarArquivadosRfp ? r.arquivado : !r.arquivado);
+  const totalRfpsArquivados = predioRfpsTodos.filter(r => r.arquivado).length;
   const activeRfp = rfps.find(r => r.id_rfp === selectedRfpForAnalysis);
   const activeRfpProposals = proposals.filter(p => p.id_rfp === selectedRfpForAnalysis);
 
@@ -302,6 +311,40 @@ export function PortalOrcamentos({
     } finally {
       setEliminandoRfpId(null);
     }
+  };
+
+  // Fecho manual sem adjudicação (ex: nenhuma proposta serviu, ou o
+  // concurso deixou de fazer sentido) — distinto de "Cancelado": um
+  // concurso Terminado chegou mesmo a correr o seu curso, só não teve
+  // vencedor. A adjudicação (handleAdjudicarProposta) já faz o seu próprio
+  // fecho automático ao "Adjudicado" + arquivado, não passa por aqui.
+  const [aTerminarRfpId, setATerminarRfpId] = useState<string | null>(null);
+  const handleTerminarRfp = async (r: RequestForProposal) => {
+    if (loggedUser.role !== "ADMIN") return alert("Apenas administradores podem terminar concursos.");
+    if (!window.confirm(`Terminar o concurso "${r.titulo}" sem adjudicação? Deixa de aceitar novas propostas.`)) return;
+    setATerminarRfpId(r.id_rfp);
+    const rfpAtualizado: RequestForProposal = { ...r, estado: "Terminado" };
+    const ok = await saveRfpToSupabase({ ...rfpAtualizado, criado_por: loggedUser.nome });
+    setATerminarRfpId(null);
+    if (!ok) return alert("❌ Não foi possível terminar o concurso no Supabase. Tente novamente.");
+    setRfps(prev => prev.map(x => x.id_rfp === r.id_rfp ? rfpAtualizado : x));
+    registarLogAuditoria("Fornecedores", "Terminou um concurso sem adjudicação", predio.id_predio, loggedUser, r.titulo);
+  };
+
+  // Arquiva um concurso já decidido (Adjudicado/Terminado/Cancelado) — sai
+  // da lista principal mas fica consultável em "Ver Arquivados", junto com
+  // as propostas que recebeu. Um concurso ainda "Aberto" não se arquiva
+  // (teria de ser Terminado ou Cancelado primeiro).
+  const [aArquivarRfpId, setAArquivarRfpId] = useState<string | null>(null);
+  const handleArquivarRfp = async (r: RequestForProposal) => {
+    if (loggedUser.role !== "ADMIN") return alert("Apenas administradores podem arquivar concursos.");
+    setAArquivarRfpId(r.id_rfp);
+    const rfpAtualizado: RequestForProposal = { ...r, arquivado: true };
+    const ok = await saveRfpToSupabase({ ...rfpAtualizado, criado_por: loggedUser.nome });
+    setAArquivarRfpId(null);
+    if (!ok) return alert("❌ Não foi possível arquivar o concurso no Supabase. Tente novamente.");
+    setRfps(prev => prev.map(x => x.id_rfp === r.id_rfp ? rfpAtualizado : x));
+    registarLogAuditoria("Fornecedores", "Arquivou um concurso", predio.id_predio, loggedUser, r.titulo);
   };
 
   // Leitura por IA do PDF/imagem de orçamento anexado — antes o
@@ -584,8 +627,11 @@ export function PortalOrcamentos({
 
     setAdjudicando(true);
 
-    // 1. Mark RFP as Adjudicated (Supabase real, não só estado local)
-    const rfpAtualizado: RequestForProposal = { ...rfpAlvo, estado: "Adjudicado", fornecedor_adjudicado: proposal.nome_empresa };
+    // 1. Mark RFP as Adjudicated (Supabase real, não só estado local) — já
+    // arquivado automaticamente: pedido explícito do administrador, a
+    // adjudicação é o próprio fecho do concurso, não precisa de um passo
+    // manual extra para sair da lista de concursos ativos.
+    const rfpAtualizado: RequestForProposal = { ...rfpAlvo, estado: "Adjudicado", fornecedor_adjudicado: proposal.nome_empresa, arquivado: true };
     const okRfp = await saveRfpToSupabase({ ...rfpAtualizado, criado_por: loggedUser.nome });
     if (!okRfp) {
       setAdjudicando(false);
@@ -786,16 +832,27 @@ export function PortalOrcamentos({
           
           {/* LANÇAR NOVO CONCURSO (ADMIN) */}
           <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-5 space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center gap-2">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">Concursos de Obras (RFP)</h3>
-              {loggedUser.role === "ADMIN" && (
+              <div className="flex items-center gap-1.5">
                 <button
-                  onClick={() => (showRfpForm ? handleCancelarEdicaoRfp() : setShowRfpForm(true))}
-                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1 text-[11px] rounded transition-colors cursor-pointer flex items-center"
+                  onClick={() => setMostrarArquivadosRfp(v => !v)}
+                  title={mostrarArquivadosRfp ? "Ver concursos ativos" : "Ver concursos arquivados"}
+                  className={`font-bold px-2.5 py-1 text-[11px] rounded transition-colors cursor-pointer flex items-center shrink-0 ${
+                    mostrarArquivadosRfp ? "bg-slate-700 text-white hover:bg-slate-800" : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+                  }`}
                 >
-                  {showRfpForm ? <><X size={12} className="mr-1" /> Fechar</> : <><Plus size={12} className="mr-1" /> Novo Concurso</>}
+                  <Archive size={12} className="mr-1" /> {mostrarArquivadosRfp ? "Ativos" : `Arquivados (${totalRfpsArquivados})`}
                 </button>
-              )}
+                {loggedUser.role === "ADMIN" && !mostrarArquivadosRfp && (
+                  <button
+                    onClick={() => (showRfpForm ? handleCancelarEdicaoRfp() : setShowRfpForm(true))}
+                    className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1 text-[11px] rounded transition-colors cursor-pointer flex items-center shrink-0"
+                  >
+                    {showRfpForm ? <><X size={12} className="mr-1" /> Fechar</> : <><Plus size={12} className="mr-1" /> Novo Concurso</>}
+                  </button>
+                )}
+              </div>
             </div>
 
             {showRfpForm && (
@@ -920,9 +977,10 @@ export function PortalOrcamentos({
                     </div>
                     <span
                       className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase shrink-0 ${
-                        r.estado === "Adjudicado"
-                          ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                          : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                        r.estado === "Adjudicado" ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                        : r.estado === "Terminado" ? "bg-slate-200 text-slate-700 border border-slate-300"
+                        : r.estado === "Cancelado" ? "bg-red-100 text-red-700 border border-red-200"
+                        : "bg-sky-100 text-sky-800 border border-sky-200"
                       }`}
                     >
                       {r.estado}
@@ -941,23 +999,49 @@ export function PortalOrcamentos({
                   </div>
 
                   {loggedUser.role === "ADMIN" && (
-                    <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    mostrarArquivadosRfp ? (
+                      <p className="text-[10px] text-slate-600 mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1">
+                        <Archive size={11} /> Arquivado — consulta só de leitura.
+                      </p>
+                    ) : (
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); handleIniciarEdicaoRfp(r); }}
-                        className="flex-1 flex items-center justify-center gap-1 text-[10px] font-bold text-blue-700 hover:text-blue-900 hover:bg-blue-50 border border-blue-200 rounded px-2 py-1 cursor-pointer"
+                        className="flex items-center justify-center gap-1 text-[10px] font-bold text-blue-700 hover:text-blue-900 hover:bg-blue-50 border border-blue-200 rounded px-2 py-1 cursor-pointer"
                       >
                         <Pencil size={11} /> Editar
                       </button>
+                      {r.estado === "Aberto" && (
+                        <button
+                          type="button"
+                          disabled={aTerminarRfpId === r.id_rfp}
+                          onClick={(e) => { e.stopPropagation(); handleTerminarRfp(r); }}
+                          className="flex items-center justify-center gap-1 text-[10px] font-bold text-amber-700 hover:text-amber-900 hover:bg-amber-50 border border-amber-200 rounded px-2 py-1 cursor-pointer disabled:opacity-50"
+                        >
+                          <FlagTriangleRight size={11} /> {aTerminarRfpId === r.id_rfp ? "A terminar..." : "Terminar"}
+                        </button>
+                      )}
+                      {r.estado !== "Aberto" && !r.arquivado && (
+                        <button
+                          type="button"
+                          disabled={aArquivarRfpId === r.id_rfp}
+                          onClick={(e) => { e.stopPropagation(); handleArquivarRfp(r); }}
+                          className="flex items-center justify-center gap-1 text-[10px] font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-100 border border-slate-300 rounded px-2 py-1 cursor-pointer disabled:opacity-50"
+                        >
+                          <Archive size={11} /> {aArquivarRfpId === r.id_rfp ? "A arquivar..." : "Arquivar"}
+                        </button>
+                      )}
                       <button
                         type="button"
                         disabled={eliminandoRfpId === r.id_rfp}
                         onClick={(e) => { e.stopPropagation(); handleEliminarRfp(r); }}
-                        className="flex-1 flex items-center justify-center gap-1 text-[10px] font-bold text-red-600 hover:text-red-800 hover:bg-red-50 border border-red-200 rounded px-2 py-1 cursor-pointer disabled:opacity-50"
+                        className="flex items-center justify-center gap-1 text-[10px] font-bold text-red-600 hover:text-red-800 hover:bg-red-50 border border-red-200 rounded px-2 py-1 cursor-pointer disabled:opacity-50"
                       >
                         <Trash2 size={11} /> {eliminandoRfpId === r.id_rfp ? "A eliminar..." : "Eliminar"}
                       </button>
                     </div>
+                    )
                   )}
                 </div>
               ))}

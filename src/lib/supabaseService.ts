@@ -2822,14 +2822,15 @@ export async function fetchRfpsFromSupabase(idPredio?: string): Promise<any[] | 
     data_limite: row.data_limite || "",
     descricao: row.descricao || "",
     estado: row.estado || "Aberto",
-    fornecedor_adjudicado: row.fornecedor_adjudicado || undefined
+    fornecedor_adjudicado: row.fornecedor_adjudicado || undefined,
+    arquivado: Boolean(row.arquivado)
   }));
 }
 
 export async function saveRfpToSupabase(rfp: {
   id_rfp: string; id_predio: string; titulo: string; categoria: string; estimativa: number;
   data_publicacao: string; data_limite: string; descricao: string; estado: string;
-  fornecedor_adjudicado?: string; criado_por?: string;
+  fornecedor_adjudicado?: string; criado_por?: string; arquivado?: boolean;
 }): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
   return dbUpsert("rfps", {
@@ -2844,6 +2845,7 @@ export async function saveRfpToSupabase(rfp: {
     estado: rfp.estado,
     fornecedor_adjudicado: rfp.fornecedor_adjudicado || null,
     criado_por: rfp.criado_por || null,
+    arquivado: Boolean(rfp.arquivado),
     updated_at: new Date().toISOString()
   });
 }
