@@ -1414,7 +1414,13 @@ export function PortalOrcamentos({
                           </div>
                         )}
 
-                        {(podeDecidir || (loggedUser.role === "ADMIN" && estadoProp !== "Aprovada")) && (
+                        {activeRfp.arquivado && (
+                          <div className="pt-1.5 text-[10px] text-slate-600 flex items-center gap-1.5">
+                            <Archive size={11} /> Concurso arquivado — proposta preservada só para consulta.
+                          </div>
+                        )}
+
+                        {!activeRfp.arquivado && (podeDecidir || (loggedUser.role === "ADMIN" && estadoProp !== "Aprovada")) && (
                           <div className="flex justify-end flex-wrap gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                             {loggedUser.role === "ADMIN" && estadoProp !== "Aprovada" && (
                               <>
