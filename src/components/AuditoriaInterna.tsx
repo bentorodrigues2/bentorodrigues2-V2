@@ -196,10 +196,11 @@ export function AuditoriaInterna({
     // mesmo sendo pessoas e pagamentos completamente distintos. Confirmado
     // em produção: 20 pares assim, nenhum deles duplicado a sério.
     const duplicates: any[] = [];
-    for (let i = 0; i < movimentos.length; i++) {
-      for (let j = i + 1; j < movimentos.length; j++) {
-        const m1 = movimentos[i];
-        const m2 = movimentos[j];
+    const movimentosPredioScan = movimentos.filter(m => m.id_predio === predio.id_predio);
+    for (let i = 0; i < movimentosPredioScan.length; i++) {
+      for (let j = i + 1; j < movimentosPredioScan.length; j++) {
+        const m1 = movimentosPredioScan[i];
+        const m2 = movimentosPredioScan[j];
         if (
           m1.valor === m2.valor &&
           m1.tipo === m2.tipo &&
@@ -213,7 +214,7 @@ export function AuditoriaInterna({
     }
 
     // 4. Fractions Multirrisco Insurance Coverage
-    const currentDate = new Date("2026-07-16");
+    const currentDate = new Date();
     const uninsuredFractions = fracoes.filter(f => {
       if (!f.apolice_num || !f.apolice_validade) return true;
       const valDate = new Date(f.apolice_validade);
@@ -946,31 +947,86 @@ export function AuditoriaInterna({
               Detetor de Anomalias e Risco Financeiro
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/30 space-y-2">
-                <p className="font-bold text-xs text-slate-700 dark:text-slate-200">Alertas de Duplicidade (Extrato)</p>
-                <p className="text-xs text-slate-600">
-                  O algoritmo procura transações de despesas ou receitas com valores e descrições idênticas executadas no mesmo dia ou com um desvio máximo de 48 horas.
-                </p>
-                <div className="p-3 bg-emerald-500/10 text-emerald-500 text-xs rounded-lg font-semibold flex items-center gap-1.5 mt-2">
-                  <i className="fa-solid fa-circle-check text-base"></i> Nenhuma transação duplicada suspeita detetada no exercício de 2026.
-                </div>
-              </div>
+            {(() => {
+              const anoAtual = new Date().getFullYear();
+              const movimentosPredio = movimentos.filter(m => m.id_predio === predio.id_predio);
 
-              <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/30 space-y-2">
-                <p className="font-bold text-xs text-slate-700 dark:text-slate-200">Limites de Autorização Conjunta (Threshold)</p>
-                <p className="text-xs text-slate-600">
-                  Segundo os estatutos, despesas superiores a 1.000€ exigem dupla assinatura ou ata de aprovação anexada para fins de auditoria documental.
-                </p>
-                <div className="p-3 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs rounded-lg space-y-1 mt-2 border border-amber-500/20">
-                  <p className="font-bold flex items-center gap-1"><i className="fa-solid fa-circle-exclamation"></i> 1 Movimento Requer Anexação de Ata:</p>
-                  <div className="flex items-center justify-between text-[11px] border-t border-amber-500/10 pt-1.5 mt-1">
-                    <span>Pinturas de Portões Exteriomente (1.250,00€)</span>
-                    <span className="font-bold text-rose-500">Ata em Falta</span>
+              // Mesmo critério real já usado no scan completo (generateAuditResults
+              // mais abaixo): mesmo valor, tipo, categoria e fração, dentro de 3
+              // dias — nunca só "mesmo valor no mesmo dia" (isso apanhava quotas
+              // de frações diferentes por coincidência, ver nota aí).
+              const duplicadosReais: { m1: Movimento; m2: Movimento }[] = [];
+              for (let i = 0; i < movimentosPredio.length; i++) {
+                for (let j = i + 1; j < movimentosPredio.length; j++) {
+                  const m1 = movimentosPredio[i];
+                  const m2 = movimentosPredio[j];
+                  if (
+                    m1.valor === m2.valor &&
+                    m1.tipo === m2.tipo &&
+                    m1.categoria === m2.categoria &&
+                    m1.id_fracao && m1.id_fracao === m2.id_fracao &&
+                    Math.abs(new Date(m1.data).getTime() - new Date(m2.data).getTime()) < 3 * 24 * 60 * 60 * 1000
+                  ) {
+                    duplicadosReais.push({ m1, m2 });
+                  }
+                }
+              }
+
+              // Despesas reais acima de 1.000€ sem nenhum documento anexado
+              // (fotos ou fatura reconhecida por email) — antes mostrava sempre
+              // um movimento de teste fixo ("Pinturas de Portões..."), que nunca
+              // existiu em nenhum prédio real.
+              const despesasAcimaLimite = movimentosPredio.filter(m => m.tipo === "Despesa" && Math.abs(m.valor) > 1000);
+              const despesasSemAta = despesasAcimaLimite.filter(m => !((m.fotos && m.fotos.length > 0) || m.comprovativo_url));
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/30 space-y-2">
+                    <p className="font-bold text-xs text-slate-700 dark:text-slate-200">Alertas de Duplicidade (Extrato)</p>
+                    <p className="text-xs text-slate-600">
+                      O algoritmo procura despesas ou receitas com o mesmo valor, categoria e fração, lançadas com um desvio máximo de 3 dias.
+                    </p>
+                    {duplicadosReais.length === 0 ? (
+                      <div className="p-3 bg-emerald-500/10 text-emerald-500 text-xs rounded-lg font-semibold flex items-center gap-1.5 mt-2">
+                        <i className="fa-solid fa-circle-check text-base"></i> Nenhuma transação duplicada suspeita detetada no exercício de {anoAtual}.
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs rounded-lg space-y-1 mt-2 border border-amber-500/20">
+                        <p className="font-bold flex items-center gap-1"><i className="fa-solid fa-circle-exclamation"></i> {duplicadosReais.length} par(es) suspeito(s):</p>
+                        {duplicadosReais.slice(0, 5).map((d, i) => (
+                          <div key={i} className="flex items-center justify-between text-[11px] border-t border-amber-500/10 pt-1.5 mt-1">
+                            <span>{d.m1.descricao} ({Math.abs(d.m1.valor).toLocaleString("pt-PT", { style: "currency", currency: "EUR" })})</span>
+                            <span className="font-bold text-rose-500">{d.m1.data} / {d.m2.data}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/30 space-y-2">
+                    <p className="font-bold text-xs text-slate-700 dark:text-slate-200">Limites de Autorização Conjunta (Threshold)</p>
+                    <p className="text-xs text-slate-600">
+                      Segundo os estatutos, despesas superiores a 1.000€ exigem dupla assinatura ou ata de aprovação anexada para fins de auditoria documental.
+                    </p>
+                    {despesasSemAta.length === 0 ? (
+                      <div className="p-3 bg-emerald-500/10 text-emerald-500 text-xs rounded-lg font-semibold flex items-center gap-1.5 mt-2">
+                        <i className="fa-solid fa-circle-check text-base"></i> {despesasAcimaLimite.length === 0 ? "Nenhuma despesa acima do limite" : "Todas as despesas acima do limite têm documento anexado"} no exercício de {anoAtual}.
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs rounded-lg space-y-1 mt-2 border border-amber-500/20">
+                        <p className="font-bold flex items-center gap-1"><i className="fa-solid fa-circle-exclamation"></i> {despesasSemAta.length} Movimento(s) Requer(em) Anexação de Ata:</p>
+                        {despesasSemAta.map(m => (
+                          <div key={m.id_mov} className="flex items-center justify-between text-[11px] border-t border-amber-500/10 pt-1.5 mt-1">
+                            <span>{m.descricao} ({Math.abs(m.valor).toLocaleString("pt-PT", { style: "currency", currency: "EUR" })})</span>
+                            <span className="font-bold text-rose-500">Ata em Falta</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         </div>
       )}
