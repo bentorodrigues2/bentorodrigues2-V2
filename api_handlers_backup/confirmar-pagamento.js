@@ -117,6 +117,26 @@ export default async function handler(req, res) {
       ? await supabase.from("contas").select("id_conta, iban, is_principal").eq("id_predio", fracao.id_predio)
       : { data: [] };
 
+    // Rede de segurança: se o movimento ligado a este pagamento nunca tinha
+    // ficado com "id_conta" atribuído (ex: a lista de contas do prédio
+    // falhou no momento em que o email chegou), preenche-o agora que se tem
+    // a certeza da conta certa — sem isto o movimento nunca aparecia em
+    // nenhuma análise financeira por conta (Relatórios, Auditoria Interna),
+    // só no total geral. Confirmado em produção: 19 movimentos reais assim,
+    // 1.054,73€ de receitas "invisíveis" por conta.
+    try {
+      const contaAlvoBackfill = escolherContaPorTipo(contasPredio, "Quota Ordinária");
+      if (contaAlvoBackfill?.id_conta) {
+        await supabase
+          .from("movimentos")
+          .update({ id_conta: contaAlvoBackfill.id_conta })
+          .ilike("descricao", `%[pagamento:${id_pagamento}]%`)
+          .is("id_conta", null);
+      }
+    } catch (errContaBackfill) {
+      console.warn("[confirmar-pagamento] Aviso ao preencher id_conta em falta:", errContaBackfill?.message || errContaBackfill);
+    }
+
     // "NA" é o valor usado em toda a app para um condómino que recusou
     // fornecer o email (ver GestaoFracoes.tsx) — não é um endereço válido
     // para tentar enviar, conta como "sem email" tal como null/vazio.
