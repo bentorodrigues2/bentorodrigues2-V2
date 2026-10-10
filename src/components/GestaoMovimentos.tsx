@@ -976,11 +976,26 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
       // valor bater com a quota pendente dessas frações — e a verificação de
       // duplicado, restrita a essa fração errada, nunca encontrava o
       // movimento real já lançado (esse sim da Fração L).
-      const jaLancadoAntes = (dataMov: string, valorMov: number, tipoMov: "Receita" | "Despesa", idFracaoMatch?: string, confiancaFracaoMatch?: number): boolean => {
+      const jaLancadoAntes = (dataMov: string, valorMov: number, tipoMov: "Receita" | "Despesa", idFracaoMatch?: string, confiancaFracaoMatch?: number, descricaoMov?: string): boolean => {
         const tData = new Date(dataMov).getTime();
         const restringirPorFracao = tipoMov === "Receita" && !!idFracaoMatch && (confiancaFracaoMatch ?? 0) >= 65;
+        // Normaliza para comparar descrições sem distinguir maiúsculas/
+        // espaços a mais — usado só nas despesas (ver nota abaixo).
+        const normalizarDescricao = (s?: string) => (s || "").toLowerCase().trim().replace(/\s+/g, " ");
+        const descricaoMovNormalizada = normalizarDescricao(descricaoMov);
         const movDuplicado = predioMovements.some(mv => {
           if (mv.tipo !== tipoMov || Math.abs(mv.valor - valorMov) > 0.05) return false;
+          // Despesas fixas recorrentes (imposto de selo, comissão bancária)
+          // têm sempre o MESMO valor em TODAS as transferências — "mesmo
+          // valor + data próxima" nunca chega para as distinguir, porque
+          // isso acontece de propósito a cada transferência real, não só ao
+          // reimportar o mesmo extrato por engano. Cada uma tem a sua
+          // própria referência na descrição (ex: "...-E18394042" vs.
+          // "...-E18394041"), por isso para despesas exige-se também que a
+          // descrição seja igual — um duplicado genuíno (reimportar o mesmo
+          // extrato) continua com a descrição toda igual; uma taxa nova de
+          // uma transferência diferente já não bate.
+          if (tipoMov === "Despesa" && descricaoMovNormalizada && normalizarDescricao(mv.descricao) !== descricaoMovNormalizada) return false;
           // Para receitas com fração identificada com confiança suficiente, o
           // movimento só conta como o MESMO pagamento se for da MESMA fração
           // — sem isto, duas quotas de frações diferentes com o valor
@@ -1024,7 +1039,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
         const ehReceita = String(m.tipo || "").toLowerCase().startsWith("rec");
         const valorAbs = Math.abs(Number(m.valor) || 0);
         const matchFracao = ehReceita ? matchesFracao[idxReceita++] : undefined;
-        const jaLancado = jaLancadoAntes(m.data, valorAbs, ehReceita ? "Receita" : "Despesa", matchFracao?.fracao_sugerida_id, matchFracao?.confianca_percent);
+        const jaLancado = jaLancadoAntes(m.data, valorAbs, ehReceita ? "Receita" : "Despesa", matchFracao?.fracao_sugerida_id, matchFracao?.confianca_percent, m.descricao);
         const ehPagamentoCondomino = !!matchFracao && matchFracao.confianca_percent >= 65 && !!matchFracao.fracao_sugerida_id;
 
         const resultado = ehPagamentoCondomino ? null : cruzarMovimentoComFornecedor(predioFornecedores, {
