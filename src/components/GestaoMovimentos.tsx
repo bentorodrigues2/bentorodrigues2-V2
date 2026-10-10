@@ -976,7 +976,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
       // valor bater com a quota pendente dessas frações — e a verificação de
       // duplicado, restrita a essa fração errada, nunca encontrava o
       // movimento real já lançado (esse sim da Fração L).
-      const jaLancadoAntes = (dataMov: string, valorMov: number, tipoMov: "Receita" | "Despesa", idFracaoMatch?: string, confiancaFracaoMatch?: number, descricaoMov?: string): boolean => {
+      const jaLancadoAntes = (dataMov: string, valorMov: number, tipoMov: "Receita" | "Despesa", idFracaoMatch?: string, confiancaFracaoMatch?: number, descricaoMov?: string, idFornecedorMatch?: string): boolean => {
         const tData = new Date(dataMov).getTime();
         const restringirPorFracao = tipoMov === "Receita" && !!idFracaoMatch && (confiancaFracaoMatch ?? 0) >= 65;
         // Normaliza para comparar descrições sem distinguir maiúsculas/
@@ -995,7 +995,19 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
           // descrição seja igual — um duplicado genuíno (reimportar o mesmo
           // extrato) continua com a descrição toda igual; uma taxa nova de
           // uma transferência diferente já não bate.
-          if (tipoMov === "Despesa" && descricaoMovNormalizada && normalizarDescricao(mv.descricao) !== descricaoMovNormalizada) return false;
+          //
+          // Mas uma despesa já paga a um fornecedor por "Pagar Dívida"
+          // (GestaoFornecedores) nunca tem a mesma descrição do extrato —
+          // "Pagamento a Carlos Madureira — agua p/obras" vs. "Pag. Agua das
+          // Obras-E18394042" são o MESMO pagamento real, só com texto
+          // diferente consoante a via. Por isso aceita-se também como
+          // duplicado quando o fornecedor cruzado para este item do extrato
+          // é o mesmo do movimento já lançado — confirmado em produção: sem
+          // isto, pagar primeiro pelo Fornecedores e trazer depois o
+          // extrato duplicava sempre a despesa.
+          const mesmaDescricao = Boolean(descricaoMovNormalizada) && normalizarDescricao(mv.descricao) === descricaoMovNormalizada;
+          const mesmoFornecedor = Boolean(idFornecedorMatch) && mv.id_fornecedor === idFornecedorMatch;
+          if (tipoMov === "Despesa" && descricaoMovNormalizada && !mesmaDescricao && !mesmoFornecedor) return false;
           // Para receitas com fração identificada com confiança suficiente, o
           // movimento só conta como o MESMO pagamento se for da MESMA fração
           // — sem isto, duas quotas de frações diferentes com o valor
@@ -1039,15 +1051,18 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
         const ehReceita = String(m.tipo || "").toLowerCase().startsWith("rec");
         const valorAbs = Math.abs(Number(m.valor) || 0);
         const matchFracao = ehReceita ? matchesFracao[idxReceita++] : undefined;
-        const jaLancado = jaLancadoAntes(m.data, valorAbs, ehReceita ? "Receita" : "Despesa", matchFracao?.fracao_sugerida_id, matchFracao?.confianca_percent, m.descricao);
         const ehPagamentoCondomino = !!matchFracao && matchFracao.confianca_percent >= 65 && !!matchFracao.fracao_sugerida_id;
 
+        // Calculado antes de jaLancadoAntes (ver nota aí) — para despesas, o
+        // fornecedor cruzado permite reconhecer como duplicado um pagamento
+        // já lançado por "Pagar Dívida" com descrição totalmente diferente.
         const resultado = ehPagamentoCondomino ? null : cruzarMovimentoComFornecedor(predioFornecedores, {
           iban_credor: m.iban_credor,
           numero_adc: m.numero_adc,
           entidade_credora: m.entidade_credora,
           descricao: m.descricao
         });
+        const jaLancado = jaLancadoAntes(m.data, valorAbs, ehReceita ? "Receita" : "Despesa", matchFracao?.fracao_sugerida_id, matchFracao?.confianca_percent, m.descricao, resultado?.fornecedor.id_fornecedor);
         return {
           data: m.data,
           descricao: m.descricao,
