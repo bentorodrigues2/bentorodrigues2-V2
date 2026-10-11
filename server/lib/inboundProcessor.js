@@ -52,7 +52,25 @@ async function obterCodigoSNC(idPredio, descricao, tipo) {
 // contactos genuínos — geravam resposta automática ("Recebemos o seu
 // contacto...") a um sistema, sem nenhuma utilidade e a gastar quota de
 // email à toa. Nunca trazem faturas/comprovativos, descartam-se por completo.
-const DESCARTE_TOTAL = ["mailer-daemon", "postmaster", "notifications@vercel.com", "notifications.resend.com"];
+//
+// CRÍTICO: o próprio endereço de envio da app (EMAIL_FROM_ADDRESS,
+// administracao@condomanagerai.com) tem de estar aqui sempre. Confirmado em
+// produção: um email ("Resumo Executivo IA") chegou de volta a esta caixa
+// vindo deste mesmo endereço, foi tratado como um contacto normal e gerou
+// uma resposta automática "Recebemos o seu contacto..." — que, sendo
+// enviada do mesmo endereço, voltou a chegar à mesma caixa, gerou outra
+// resposta, e assim por diante, num ciclo que se auto-alimentava a cada
+// poucos segundos (146 emails só hoje, assunto já com quase 2000
+// caracteres de "Recebemos o seu contacto -" repetido) até esgotar a quota
+// diária do Resend.
+const DESCARTE_TOTAL = [
+  "mailer-daemon",
+  "postmaster",
+  "notifications@vercel.com",
+  "notifications.resend.com",
+  (process.env.EMAIL_FROM_ADDRESS || "administracao@condomanagerai.com").toLowerCase(),
+  "administracao@condomanagerai.com"
+];
 
 /**
  * Remetentes automáticos de envio unidirecional (não conseguem receber
