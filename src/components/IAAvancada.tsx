@@ -948,7 +948,16 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
   // verificável: total real dessa categoria ÷ nº de meses em que houve
   // mesmo essa despesa.
   const mediaMensalDespesasReais = React.useMemo(() => {
-    const despesas = (movements || []).filter(m => m.tipo === "Despesa" && m.data);
+    // "Movimento Cego / Por Justificar" é só uma deteção de fatura por
+    // email ainda por confirmar contra o extrato bancário — nunca uma
+    // despesa real validada. Confirmado em produção: um email do mesmo
+    // fornecedor processado 2x criou 2 lançamentos "Movimento Cego"
+    // idênticos (mesma data/valor/descrição) de Eletricidade pendentes,
+    // que ainda não tinham sido apanhados por nenhuma deteção de
+    // duplicados (essa só corre quando o extrato bancário é importado,
+    // não na deteção inicial por email) — inflacionava a média real desta
+    // categoria. Só contam despesas já confirmadas/justificadas.
+    const despesas = (movements || []).filter(m => m.tipo === "Despesa" && m.data && m.estado !== "Movimento Cego / Por Justificar");
     // Previsão anual = taxa mensal real × 12 — regra confirmada pelo
     // administrador ("se por mês pagas 90€ de limpeza, 115€ de
     // eletricidade, 8€ de comunicações, tens de multiplicar por 12"). A
@@ -1372,8 +1381,12 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
       // ordinária com uma despesa que não vai voltar a existir. Confirmado
       // e pedido explicitamente pelo administrador.
       const ehDividaAntiga = (descricao: string) => /d[ií]vida.{0,20}antiga/i.test(descricao || "");
+      // Mesmo critério de mediaMensalDespesasReais: "Movimento Cego / Por
+      // Justificar" é uma deteção por email ainda não confirmada contra o
+      // extrato bancário (pode ser duplicada ou nem chegar a confirmar-se).
       const despesasPeriodoBase = (movements || []).filter(m => {
         if (m.tipo !== "Despesa" || !m.data) return false;
+        if (m.estado === "Movimento Cego / Por Justificar") return false;
         if (contaObrasExtra && m.id_conta === contaObrasExtra.id_conta) return false;
         if (ehDividaAntiga(m.descricao)) return false;
         const d = new Date(m.data);
