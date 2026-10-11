@@ -916,12 +916,17 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
   // componente. Corrigido abaixo (seedOrcamentoComDadosReais) para
   // pré-preencher com médias e taxas reais sempre que existir histórico
   // suficiente para as calcular.
-  const [contratos, setContratos] = useState<number>(250);
-  const [seguros, setSeguros] = useState<number>(800);
-  const [servicos, setServicos] = useState<number>(150);
-  const [manutencao, setManutencao] = useState<number>(120);
-  const [limpeza, setLimpeza] = useState<number>(180);
-  const [inspecoes, setInspecoes] = useState<number>(450);
+  // Pontos de partida honestos (0€) em vez de valores de exemplo genéricos
+  // do protótipo — o efeito logo abaixo (sliderOrcamentoJaPreenchido)
+  // preenche estes campos com a média real deste prédio assim que os
+  // movimentos/avisos reais chegam; sem despesa real de alguma categoria,
+  // fica mesmo a 0€ em vez de inventado.
+  const [contratos, setContratos] = useState<number>(0);
+  const [seguros, setSeguros] = useState<number>(0);
+  const [servicos, setServicos] = useState<number>(0);
+  const [manutencao, setManutencao] = useState<number>(0);
+  const [limpeza, setLimpeza] = useState<number>(0);
+  const [inspecoes, setInspecoes] = useState<number>(0);
   const [inadimplenciaHistorica, setInadimplenciaHistorica] = useState<number>(12);
   const [isGeneratingBudget, setIsGeneratingBudget] = useState<boolean>(false);
 
@@ -951,9 +956,29 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
       const total = doCategoria.reduce((s, m) => s + (Number(m.valor) || 0), 0);
       return Math.round((total / meses) * 100) / 100;
     };
+    // "Seguros" e "Inspeções" entram na rubrica como valor já ANUAL (nunca
+    // multiplicados por 12, ao contrário de contratos/manutenção/limpeza)
+    // — por serem despesas tipicamente pontuais/anuais. Uma média mensal
+    // aqui subestimava 12x o custo real quando a despesa real é fracionada
+    // mensalmente (ex: apólice de seguro paga em prestações mensais).
+    const totalUltimos12MesesPorCategoria = (match: (cat: string) => boolean) => {
+      const doCategoria = despesas.filter(m => match((m.categoria || "").toLowerCase()));
+      if (doCategoria.length === 0) return 0;
+      const total = doCategoria.reduce((s, m) => s + (Number(m.valor) || 0), 0);
+      return Math.round(total * 100) / 100;
+    };
     return {
-      manutencao: mediaPorCategoria(c => c.includes("manuten")),
-      limpeza: mediaPorCategoria(c => c.includes("limp"))
+      manutencao: mediaPorCategoria(c => c.includes("manuten") && !c.includes("elevador")),
+      limpeza: mediaPorCategoria(c => c.includes("limp")),
+      // "Contratos"/"Seguros"/"Inspeções" tinham exatamente o mesmo problema
+      // já corrigido para "Limpeza": nunca ligados a nenhum dado real,
+      // ficavam sempre nos valores de exemplo do protótipo (250€, 800€,
+      // 450€) mesmo que este prédio nunca tivesse tido essa despesa.
+      // Confirmado pelo administrador: "este orçamento não se baseia na
+      // realidade do prédio".
+      contratos: mediaPorCategoria(c => c.includes("elevador")),
+      seguros: totalUltimos12MesesPorCategoria(c => c.includes("seguro")),
+      inspecoes: totalUltimos12MesesPorCategoria(c => c.includes("inspe") || c.includes("scie"))
     };
   }, [movements]);
 
@@ -976,17 +1001,20 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
     if (sliderOrcamentoJaPreenchido.current) return;
     if ((movements || []).length === 0 && (avisos || []).length === 0) return;
     sliderOrcamentoJaPreenchido.current = true;
-    if (mediaMensalDespesasReais.manutencao > 0) setManutencao(mediaMensalDespesasReais.manutencao);
-    if (mediaMensalDespesasReais.limpeza > 0) {
-      // "Serviços" nunca teve nenhuma despesa lançada com essa categoria
-      // neste prédio (tal como "Contratos"/"Seguros") — fica a 0 (ponto de
-      // partida manual) em vez de inventado por uma proporção arbitrária.
-      // O campo "Serviços & Limpeza" (soma dos dois) passa assim a mostrar
-      // diretamente a média real de Limpeza, sem nenhuma repartição
-      // fabricada a meio.
-      setLimpeza(mediaMensalDespesasReais.limpeza);
-      setServicos(0);
-    }
+    setManutencao(mediaMensalDespesasReais.manutencao);
+    // "Serviços" nunca teve nenhuma despesa lançada com essa categoria
+    // neste prédio — fica a 0 (ponto de partida manual) em vez de
+    // inventado por uma proporção arbitrária. O campo "Serviços & Limpeza"
+    // (soma dos dois) passa assim a mostrar diretamente a média real de
+    // Limpeza, sem nenhuma repartição fabricada a meio.
+    setLimpeza(mediaMensalDespesasReais.limpeza);
+    setServicos(0);
+    // Mesmo princípio para Contratos (Manutenção de Elevadores), Seguros e
+    // Inspeções — sem nenhuma despesa real dessa categoria, ficam a 0 em
+    // vez dos valores de exemplo do protótipo (250€/800€/450€).
+    setContratos(mediaMensalDespesasReais.contratos);
+    setSeguros(mediaMensalDespesasReais.seguros);
+    setInspecoes(mediaMensalDespesasReais.inspecoes);
     if (inadimplenciaHistoricaReal !== null) setInadimplenciaHistorica(inadimplenciaHistoricaReal);
   }, [movements, avisos, mediaMensalDespesasReais, inadimplenciaHistoricaReal]);
 
