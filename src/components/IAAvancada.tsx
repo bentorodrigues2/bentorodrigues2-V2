@@ -1551,9 +1551,9 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
       // pagas e o momento em que as quotas são cobradas — distinto do FCR
       // (Fundo Comum de Reserva, para obras/reparações futuras). Pedido
       // explícito do administrador: "tens de ter fundo de maneio para além
-      // do FCR". Sem norma legal fixa; convenção comum é 1 mês de despesas
-      // correntes.
-      const fundoManeioReal = Math.round((totalDespesasReal / 12) * 100) / 100;
+      // do FCR". Sem norma legal fixa; 1 mês inteiro de despesas (confirmado
+      // pelo administrador que era exagerado) dá lugar a 25% de um mês.
+      const fundoManeioReal = Math.round((totalDespesasReal / 12) * 0.25 * 100) / 100;
       const numFracoesReal = fracoes?.length || 1;
       const quotaRecomendadaReal = Math.round(((totalDespesasReal + fundoRecomendadoReal + fundoManeioReal) / (12 * numFracoesReal)) * 100) / 100;
       const quotaMinimaReal = Math.round(((totalDespesasReal + fundoMinimoLegalReal + fundoManeioReal) / (12 * numFracoesReal)) * 100) / 100;
@@ -1682,9 +1682,9 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
     const fundoRec = Math.round(totalDespesas * 0.20 * 100) / 100;
 
     // Fundo de Maneio (tesouraria corrente, distinto do FCR) — pedido
-    // explícito do administrador. Sem norma legal fixa; convenção comum é
-    // 1 mês de despesas correntes.
-    const fundoManeio = Math.round((totalDespesas / 12) * 100) / 100;
+    // explícito do administrador: 25% de um mês de despesas correntes (1
+    // mês inteiro era exagerado).
+    const fundoManeio = Math.round((totalDespesas / 12) * 0.25 * 100) / 100;
 
     const numFracoes = fracoes?.length || 8;
     const qRecomendada = Math.round(((totalDespesas + fundoRec + fundoManeio) / (12 * numFracoes)) * 100) / 100;
@@ -2614,7 +2614,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                   <div className="flex justify-between items-center p-3 bg-slate-50 hover:bg-slate-100/70 rounded-xl transition-colors">
                     <div>
                       <span className="text-xs font-semibold text-slate-600 block">Fundo de Maneio</span>
-                      <span className="text-[10px] text-slate-600">Tesouraria corrente (1 mês de despesas), distinto do FCR</span>
+                      <span className="text-[10px] text-slate-600">Tesouraria corrente (25% de um mês de despesas), distinto do FCR</span>
                     </div>
                     <span className="text-sm font-bold text-sky-600">€{budgetResult.fundo_maneio?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
