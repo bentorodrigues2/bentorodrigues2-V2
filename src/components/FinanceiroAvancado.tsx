@@ -380,7 +380,12 @@ export function FinanceiroAvancado({
   }, [mapaLinhasBase, mapaAno]);
 
   const exportarMapaXLS = () => {
-    const headers = ["Fração", "Piso", "Proprietário", "Período", "Quota Mensal (€)", ...MESES_ABREV.map(m => `${m}/${mapaAno}`), "Total (€)"];
+    // "Dívida Transitada" (dívida de arranque/administração anterior, sem
+    // mês certo) entra sempre no Total mas nunca aparece na grelha mensal —
+    // uma fração sem nenhum aviso de nenhum mês podia mostrar "—" em todos
+    // os 12 meses e ainda assim um Total grande, sem nenhuma explicação
+    // visível no ficheiro exportado. Mostra-a agora na sua própria coluna.
+    const headers = ["Fração", "Piso", "Proprietário", "Período", "Quota Mensal (€)", ...MESES_ABREV.map(m => `${m}/${mapaAno}`), "Dívida Transitada (€)", "Total (€)"];
     const todasAsLinhas = [...mapaLinhas, ...mapaLinhasHistoricas];
     const rows = todasAsLinhas.map(l => [
       l.fracao.fracao_nome,
@@ -389,6 +394,7 @@ export function FinanceiroAvancado({
       l.periodoExibido || "—",
       l.quotaMensal !== null ? l.quotaMensal.toFixed(2) : "—",
       ...l.meses.map(c => c && c.valor > 0 ? `${c.valor.toFixed(2)} ${c.pago ? "(Pago)" : "(Pago parcial)"}` : "—"),
+      (l.totalAvulsoPendente || 0).toFixed(2),
       l.total.toFixed(2)
     ]);
     const nomeTipo = mapaTipo === "extraordinaria" ? "Extraordinarias" : "Ordinarias";

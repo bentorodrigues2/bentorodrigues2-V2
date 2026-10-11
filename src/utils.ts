@@ -310,8 +310,26 @@ export function exportarTabelaParaPDF(
 // mesma assinatura (filename, headers, rows) para n\u00E3o obrigar a mexer em
 // nenhum dos ecr\u00E3s que j\u00E1 a chamam.
 export async function exportToXLS(filename: string, headers: string[], rows: string[][]) {
+  // "await import('exceljs')" busca um ficheiro JS com um hash próprio
+  // (gerado a cada build) — se, entretanto, foi publicada uma versão nova
+  // da app (este prédio publicou mais de 10 vezes num único dia nesta
+  // sessão), esse hash deixa de existir no servidor e o pedido falha com
+  // "Failed to fetch dynamically imported module", mesmo sem nenhum erro
+  // nos dados. Sem distinguir isto do resto, qualquer exportação caía
+  // sempre no CSV simples sem explicação nenhuma — exatamente como
+  // aconteceu com o Mapa de Pagamentos, confirmado pelo administrador.
+  let ExcelJS: any;
   try {
-    const ExcelJS = (await import("exceljs")).default;
+    ExcelJS = (await import("exceljs")).default;
+  } catch (errImport: any) {
+    const ehFalhaDeChunk = /dynamically imported module|loading chunk|failed to fetch/i.test(errImport?.message || "");
+    if (ehFalhaDeChunk) {
+      alert("Foi publicada uma nova versão da aplicação depois desta página ter aberto. Atualiza a página (F5) e tenta exportar outra vez — vai sair o ficheiro Excel formatado, não um CSV simples.");
+      return;
+    }
+    throw errImport;
+  }
+  try {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = "CondoManager AI";
     workbook.created = new Date();

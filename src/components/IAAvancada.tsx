@@ -2796,95 +2796,126 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
             </div>
           </div>
 
-          {/* Section 3: Sugestão Automática de Quotas Extraordinárias — só
-              quando há mesmo uma obra extraordinária real pendente; sem
-              isso mostrava 6 cartões a "€0,00" sem nenhum significado,
-              confirmado pelo administrador como mais uma fonte de confusão. */}
-          {budgetResult.quota_extraordinaria_sugestao && budgetResult.quota_extraordinaria_sugestao.valor_total > 0 ? (
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-100 pb-3 gap-2">
-                <div>
-                  <h5 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center">
-                    <i className="fa-solid fa-circle-plus text-orange-500 mr-2"></i> Sugestão Automática de Quotas Extraordinárias (IA)
-                  </h5>
-                  <p className="text-[11px] text-slate-600 mt-0.5">Plano de comparticipação para execução de obras ou benfeitorias estruturais com fracionamento legal.</p>
-                </div>
-              </div>
+          {/* Section 3: Quotas Extraordinárias — pedido explícito do
+              administrador: "estou a fazer uma análise financeira à
+              realidade do prédio e não simulações de nada". Confirmado em
+              produção: a obra do telhado já TEM um plano de Quota
+              Extraordinária real, decidido e em cobrança (103 avisos reais,
+              85 já pagos) — mostrar aqui uma "sugestão automática" de
+              fracionamento, como se fosse uma decisão ainda por tomar, não
+              fazia sentido nenhum. Quando já há avisos reais de Quota
+              Extraordinária, mostra o ESTADO REAL da cobrança (já pago/por
+              pagar), nunca uma simulação nova. Só mostra a ferramenta de
+              simulação quando há mesmo uma obra pendente sem NENHUM aviso
+              de Quota Extraordinária ainda emitido — aí sim ainda é uma
+              decisão por tomar. */}
+          {(() => {
+            const avisosExtraordinariosReais = (avisos || []).filter(a => a.tipo === "Quota Extraordinária");
+            const temObraReal = !!budgetResult.quota_extraordinaria_sugestao && budgetResult.quota_extraordinaria_sugestao.valor_total > 0;
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div className="lg:col-span-4 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                      <span className="text-[9px] font-bold text-slate-600 uppercase block">Valor Total das Obras</span>
-                      <span className="text-lg font-black text-slate-900 mt-1 block">€{budgetResult.quota_extraordinaria_sugestao.valor_total?.toLocaleString()}</span>
+            if (avisosExtraordinariosReais.length > 0) {
+              const totalEmitido = Math.round(avisosExtraordinariosReais.reduce((s, a) => s + (Number(a.valor) || 0), 0) * 100) / 100;
+              const totalPago = Math.round(avisosExtraordinariosReais.filter(a => a.estado === "Pago").reduce((s, a) => s + (Number(a.valor) || 0), 0) * 100) / 100;
+              const totalPendente = Math.round(avisosExtraordinariosReais.reduce((s, a) => s + ((Number(a.valor) || 0) - (Number(a.valor_pago) || 0)), 0) * 100) / 100;
+              const percentualPago = totalEmitido > 0 ? Math.round((totalPago / totalEmitido) * 1000) / 10 : 0;
+              return (
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 block">Quota Extraordinária — Estado Real da Cobrança</span>
+                  <p className="text-[11px] text-slate-600">Já existe um plano real em cobrança (avisos reais já emitidos) — não é uma simulação nova.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="border border-slate-200 rounded-xl p-3 text-center bg-slate-50">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 block">Total Emitido</span>
+                      <span className="text-sm font-black text-slate-800 block mt-1">€{totalEmitido.toFixed(2)}</span>
+                      <span className="text-[8px] text-slate-600">{avisosExtraordinariosReais.length} aviso(s) reais</span>
                     </div>
-
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                      <span className="text-[9px] font-bold text-slate-600 uppercase block">Valor Médio por Fração</span>
-                      <span className="text-lg font-black text-slate-900 mt-1 block">€{budgetResult.quota_extraordinaria_sugestao.valor_por_fracao_medio?.toFixed(2)}</span>
+                    <div className="border border-emerald-200 bg-emerald-50/40 rounded-xl p-3 text-center">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-700 block">Já Cobrado</span>
+                      <span className="text-sm font-black text-emerald-700 block mt-1">€{totalPago.toFixed(2)} ({percentualPago}%)</span>
+                    </div>
+                    <div className={`border rounded-xl p-3 text-center ${totalPendente > 0 ? "border-orange-200 bg-orange-50/40" : "border-emerald-200 bg-emerald-50/40"}`}>
+                      <span className={`text-[9px] font-bold uppercase tracking-wider block ${totalPendente > 0 ? "text-orange-700" : "text-emerald-700"}`}>Por Cobrar</span>
+                      <span className={`text-sm font-black block mt-1 ${totalPendente > 0 ? "text-orange-700" : "text-emerald-700"}`}>€{totalPendente.toFixed(2)}</span>
                     </div>
                   </div>
-
-                  <div className="bg-orange-50/30 p-4 rounded-xl border border-orange-100 space-y-2 text-xs text-slate-600 leading-relaxed">
-                    <p className="font-bold text-orange-800 flex items-center">
-                      <i className="fa-solid fa-circle-info mr-1.5"></i>Impacto Orçamental Previsível
-                    </p>
-                    <p><strong>Fundo de Reserva:</strong> {budgetResult.quota_extraordinaria_sugestao.impacto_fundo}</p>
-                    <p className="pt-1.5 border-t border-orange-200/50"><strong>Saldo Geral:</strong> {budgetResult.quota_extraordinaria_sugestao.impacto_saldo}</p>
-                  </div>
                 </div>
+              );
+            }
 
-                <div className="lg:col-span-8 space-y-3">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-600 block">Opções de Fracionamento Obrigatório (Sugestão IA)</span>
-                  <p className="text-[9px] text-slate-600">Valores médios por fração — a repartição real de cada fração (pela sua permilagem) está na tabela abaixo.</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                    {budgetResult.quota_extraordinaria_sugestao.fracionamentos?.map((frac: any, i: number) => (
-                      <div key={i} className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300 transition-all text-center">
-                        <span className="text-[10px] bg-slate-900 text-white font-extrabold px-2 py-0.5 rounded-full inline-block mb-1.5">
-                          {frac.meses} Meses
-                        </span>
-                        <span className="text-xs font-black text-slate-800 dark:text-slate-100 block">€{frac.valor_mensal_medio?.toFixed(2)}</span>
-                        <span className="text-[8px] text-slate-600 dark:text-slate-400">média/fração/mês</span>
+            if (temObraReal) {
+              return (
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                  <div>
+                    <h5 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center">
+                      <i className="fa-solid fa-circle-plus text-orange-500 mr-2"></i> Simulação de Quota Extraordinária (ainda por decidir)
+                    </h5>
+                    <p className="text-[11px] text-slate-600 mt-0.5">Há uma obra real pendente sem nenhum aviso de Quota Extraordinária ainda emitido — plano de comparticipação sugerido, por decidir em assembleia.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div className="lg:col-span-4 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                          <span className="text-[9px] font-bold text-slate-600 uppercase block">Valor Total das Obras</span>
+                          <span className="text-lg font-black text-slate-900 mt-1 block">€{budgetResult.quota_extraordinaria_sugestao.valor_total?.toLocaleString()}</span>
+                        </div>
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                          <span className="text-[9px] font-bold text-slate-600 uppercase block">Valor Médio por Fração</span>
+                          <span className="text-lg font-black text-slate-900 mt-1 block">€{budgetResult.quota_extraordinaria_sugestao.valor_por_fracao_medio?.toFixed(2)}</span>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {budgetResult.quota_extraordinaria_sugestao.porFracao?.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-slate-100">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-600 block">Repartição Real por Fração (pela Permilagem)</span>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="border-b border-slate-200 text-[9px] font-bold uppercase text-slate-600 bg-slate-50">
-                          <th className="py-2 px-3">Fração</th>
-                          <th className="py-2 px-3">Permilagem</th>
-                          <th className="py-2 px-3 text-right">Valor Total Devido</th>
-                          <th className="py-2 px-3 text-right">Prestação Mensal (6x)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {budgetResult.quota_extraordinaria_sugestao.porFracao.map((f: any) => (
-                          <tr key={f.fracao_nome}>
-                            <td className="py-2 px-3 font-bold text-slate-800">Fração {f.fracao_nome}</td>
-                            <td className="py-2 px-3 font-mono text-slate-600">{f.permilagem}‰</td>
-                            <td className="py-2 px-3 font-mono font-bold text-right">€{f.valor_total.toFixed(2)}</td>
-                            <td className="py-2 px-3 font-mono font-bold text-right text-orange-600">€{f.valor_mensal_6x.toFixed(2)}</td>
-                          </tr>
+                    </div>
+                    <div className="lg:col-span-8 space-y-3">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-600 block">Opções de Fracionamento (meses de prestação)</span>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                        {budgetResult.quota_extraordinaria_sugestao.fracionamentos?.map((frac: any, i: number) => (
+                          <div key={i} className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-slate-50 dark:bg-slate-800 text-center">
+                            <span className="text-[10px] font-black text-slate-700 dark:text-slate-200 block mb-1">{frac.meses} meses</span>
+                            <span className="text-xs font-black text-slate-800 dark:text-slate-100 block">€{frac.valor_mensal_medio?.toFixed(2)}</span>
+                            <span className="text-[8px] text-slate-600 dark:text-slate-400">média/fração/mês</span>
+                          </div>
                         ))}
-                      </tbody>
-                    </table>
+                      </div>
+                    </div>
                   </div>
+
+                  {budgetResult.quota_extraordinaria_sugestao.porFracao?.length > 0 && (
+                    <div className="space-y-2 pt-2 border-t border-slate-100">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-600 block">Repartição Real por Fração (pela Permilagem)</span>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="border-b border-slate-200 text-[9px] font-bold uppercase text-slate-600 bg-slate-50">
+                              <th className="py-2 px-3">Fração</th>
+                              <th className="py-2 px-3">Permilagem</th>
+                              <th className="py-2 px-3 text-right">Valor Total Devido</th>
+                              <th className="py-2 px-3 text-right">Prestação Mensal (6x)</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {budgetResult.quota_extraordinaria_sugestao.porFracao.map((f: any) => (
+                              <tr key={f.fracao_nome}>
+                                <td className="py-2 px-3 font-bold text-slate-800">Fração {f.fracao_nome}</td>
+                                <td className="py-2 px-3 font-mono text-slate-600">{f.permilagem}‰</td>
+                                <td className="py-2 px-3 font-mono font-bold text-right">€{f.valor_total.toFixed(2)}</td>
+                                <td className="py-2 px-3 font-mono font-bold text-right text-orange-600">€{f.valor_mensal_6x.toFixed(2)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
-              <i className="fa-solid fa-circle-check text-emerald-500"></i>
-              <span className="text-[11px] text-slate-600">Sem obras extraordinárias pendentes neste momento — não há nenhuma Quota Extraordinária a sugerir.</span>
-            </div>
-          )}
+              );
+            }
+
+            return (
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+                <i className="fa-solid fa-circle-check text-emerald-500"></i>
+                <span className="text-[11px] text-slate-600">Sem obras extraordinárias pendentes neste momento — não há nenhuma Quota Extraordinária a sugerir.</span>
+              </div>
+            );
+          })()}
 
           {/* Section 4: Painel de Projeções Financeiras (IA) */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
