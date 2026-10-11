@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
+import { classificarPorRegrasSNC, PLANO_CONTAS_SNC_DEFAULT, REGRAS_SNC_DEFAULT } from './classificacaoSNC';
 import type { Caucao } from '../components/FinanceiroAvancado';
 import type { AgendaItem, Intervencao, ObraExtraordinaria } from '../components/GestaoManutencaoIntervencoes';
 import type { EquipamentoTecnico } from '../components/InventarioTecnico';
@@ -416,15 +417,55 @@ export async function fetchMovimentosFromSupabase(idPredio?: string): Promise<Mo
       metodo_pagamento: row.forma_pagamento,
       id_fornecedor: row.id_fornecedor || undefined,
       comprovativo_url: row.comprovativo_url || undefined,
-      origem: row.origem || undefined
+      origem: row.origem || undefined,
+      codigo_conta_snc: row.codigo_conta_snc || undefined
     }));
   } catch (err) {
     return null;
   }
 }
 
+// Cache em memória (por id_predio) do Plano de Contas SNC e das regras de
+// categorização, só para não repetir 2 pedidos ao Supabase em cada
+// gravação de movimento — este prédio não muda o seu plano de contas a
+// cada segundo, por isso uma classificação com alguns minutos de atraso
+// face a uma regra nova não tem impacto real (o administrador pode sempre
+// substituir manualmente o código SNC de um movimento já gravado).
+const _cachePlanoContasSNC: Record<string, { planoContas: PlanoContaRow[]; regras: RegraCategorizacaoRow[]; expiraEm: number }> = {};
+async function obterPlanoContasERegrasComCache(idPredio: string): Promise<{ planoContas: PlanoContaRow[]; regras: RegraCategorizacaoRow[] }> {
+  const agora = Date.now();
+  const emCache = _cachePlanoContasSNC[idPredio];
+  if (emCache && emCache.expiraEm > agora) return emCache;
+  const [planoContas, regras] = await Promise.all([
+    fetchPlanoContasFromSupabase(idPredio),
+    fetchRegrasCategorizacaoFromSupabase(idPredio)
+  ]);
+  const resultado = {
+    planoContas: planoContas && planoContas.length > 0 ? planoContas : PLANO_CONTAS_SNC_DEFAULT.map(c => ({ ...c, descricao: c.descricao || "", id: `pc-${idPredio}-${c.codigo}`, id_predio: idPredio })),
+    regras: regras && regras.length > 0 ? regras : REGRAS_SNC_DEFAULT.map((r, i) => ({ ...r, id: `rc-${idPredio}-${i}`, id_predio: idPredio })),
+    expiraEm: agora + 5 * 60 * 1000
+  };
+  _cachePlanoContasSNC[idPredio] = resultado;
+  return resultado;
+}
+
 export async function saveMovimentoToSupabase(mov: Movimento): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
+  // Classificação SNC aplicada aqui, no momento do lançamento — pedido
+  // explícito do administrador: "na contabilidade tem de ser aplicado o
+  // POC oficial português no lançamento dos movimentos", não só numa vista
+  // de leitura à parte (Razão Geral, em ContabilidadeInterna.tsx). Só
+  // calcula automaticamente quando o chamador ainda não trouxe um código
+  // (ex: o administrador reclassificou manualmente).
+  let codigoContaSnc = mov.codigo_conta_snc || null;
+  if (!codigoContaSnc && mov.id_predio) {
+    try {
+      const { planoContas, regras } = await obterPlanoContasERegrasComCache(mov.id_predio);
+      codigoContaSnc = classificarPorRegrasSNC(mov.descricao, mov.tipo, planoContas, regras);
+    } catch {
+      codigoContaSnc = null;
+    }
+  }
   // Faltavam aqui "fotos", "estado", "is_movimento_cego",
   // "estado_conciliacao", "comprovativo_url" e "origem" — qualquer chamada
   // a esta função (ex: anexar uma fatura a uma despesa, ou "Regularizar"
@@ -450,7 +491,8 @@ export async function saveMovimentoToSupabase(mov: Movimento): Promise<boolean> 
     estado: mov.estado || null,
     is_movimento_cego: mov.is_movimento_cego ?? false,
     comprovativo_url: mov.comprovativo_url || null,
-    origem: mov.origem || null
+    origem: mov.origem || null,
+    codigo_conta_snc: codigoContaSnc
   });
 }
 

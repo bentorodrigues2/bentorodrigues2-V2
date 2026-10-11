@@ -318,6 +318,11 @@ export interface Movimento {
   // Movimento Cego arriscava ajustar o saldo a dobrar (extrato) ou
   // prematuramente (fatura só por email, sem confirmação bancária real).
   origem?: string;
+  // Código da conta do Plano de Contas SNC (ver src/lib/classificacaoSNC.ts)
+  // atribuído automaticamente no momento do lançamento (saveMovimentoToSupabase
+  // e server/lib/inboundProcessor.js), não só calculado depois numa vista de
+  // leitura. Pode ser substituído manualmente pelo administrador.
+  codigo_conta_snc?: string;
 }
 
 export interface ReuniaoAssinatura {

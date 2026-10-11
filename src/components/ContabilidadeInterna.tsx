@@ -5,6 +5,7 @@ import {
   fetchPlanoContasFromSupabase, savePlanoContaToSupabase, PlanoContaRow,
   fetchRegrasCategorizacaoFromSupabase, saveRegraCategorizacaoToSupabase, deleteRegraCategorizacaoFromSupabase, RegraCategorizacaoRow
 } from "../lib/supabaseService";
+import { PLANO_CONTAS_SNC_DEFAULT, REGRAS_SNC_DEFAULT, classificarPorRegrasSNC, CODIGO_CONTA_SNC_FALLBACK_DESPESA } from "../lib/classificacaoSNC";
 
 interface ContabilidadeInternaProps {
   predio: Predio;
@@ -23,54 +24,16 @@ interface ComprovativoPendente {
   estado: "Não Reconciliado" | "Sugerido" | "Reconciliado";
 }
 
-// Plano de Contas Oficial de Condomínios (SNC Simplificado) — usado para
-// semear a tabela real plano_contas na primeira vez que um prédio abre este
-// módulo (antes disto ficava só em useState local, perdido a cada refresh).
-const PLANO_CONTAS_DEFAULT: Array<Omit<PlanoConta, "id" | "id_predio">> = [
-  { codigo: "11", nome: "Caixa Geral de Condomínio", tipo: "ATIVO", descricao: "Fundo físico de maneio em numerário" },
-  { codigo: "12", nome: "Depósitos à Ordem", tipo: "ATIVO", descricao: "Contas bancárias correntes do condomínio" },
-  { codigo: "13", nome: "Fundo Comum de Reserva", tipo: "ATIVO", descricao: "Conta bancária específica para o FCR" },
-  { codigo: "61", nome: "Consumos de Água", tipo: "GASTO", descricao: "Faturas de água das partes comuns" },
-  { codigo: "62", nome: "Consumos de Eletricidade", tipo: "GASTO", descricao: "Faturas de eletricidade/luz comum" },
-  { codigo: "63", nome: "Manutenção Elevadores", tipo: "GASTO", descricao: "Contratos e assistência técnica de elevadores" },
-  { codigo: "64", nome: "Serviços de Limpeza", tipo: "GASTO", descricao: "Salários de limpezas ou faturas de empresas" },
-  { codigo: "65", nome: "Seguros de Edifício", tipo: "GASTO", descricao: "Apólices multirrisco comuns" },
-  { codigo: "68", nome: "Obras de Conservação", tipo: "GASTO", descricao: "Gastos com pinturas, telhado e reparos" },
-  { codigo: "71", nome: "Rendimentos de Quotas", tipo: "RENDIMENTO", descricao: "Contribuições de quotas ordinárias das frações" },
-  { codigo: "72", nome: "Rendimentos FCR", tipo: "RENDIMENTO", descricao: "Reforços das frações consignados ao FCR" },
-  { codigo: "78", nome: "Rendimentos Extraordinários", tipo: "RENDIMENTO", descricao: "Quotas extra para obras ou indemnizações" }
-];
-
-// Regras de categorização automática por omissão — as mesmas palavras-chave
-// que antes estavam escritas diretamente no código (hardcoded), agora
-// semeadas como registos editáveis na tabela regras_categorizacao.
-const REGRAS_DEFAULT: Array<{ palavra_chave: string; codigo_conta: string }> = [
-  { palavra_chave: "epal", codigo_conta: "61" },
-  { palavra_chave: "água", codigo_conta: "61" },
-  { palavra_chave: "agua", codigo_conta: "61" },
-  { palavra_chave: "edp", codigo_conta: "62" },
-  { palavra_chave: "luz", codigo_conta: "62" },
-  { palavra_chave: "eletricidade", codigo_conta: "62" },
-  { palavra_chave: "gás", codigo_conta: "62" },
-  { palavra_chave: "elevador", codigo_conta: "63" },
-  { palavra_chave: "otis", codigo_conta: "63" },
-  { palavra_chave: "schindler", codigo_conta: "63" },
-  { palavra_chave: "kone", codigo_conta: "63" },
-  { palavra_chave: "limp", codigo_conta: "64" },
-  { palavra_chave: "estrela", codigo_conta: "64" },
-  { palavra_chave: "higienizacao", codigo_conta: "64" },
-  { palavra_chave: "seguro", codigo_conta: "65" },
-  { palavra_chave: "fidelidade", codigo_conta: "65" },
-  { palavra_chave: "apolice", codigo_conta: "65" },
-  { palavra_chave: "allianz", codigo_conta: "65" },
-  { palavra_chave: "quota", codigo_conta: "71" },
-  { palavra_chave: "fração", codigo_conta: "71" },
-  { palavra_chave: "fracao", codigo_conta: "71" },
-  { palavra_chave: "condómino", codigo_conta: "71" },
-  { palavra_chave: "fcr", codigo_conta: "72" },
-  { palavra_chave: "reserva", codigo_conta: "72" }
-];
-const CODIGO_CONTA_FALLBACK = "68"; // Obras de Conservação / Geral — quando nenhuma regra bate certo
+// Plano de Contas Oficial de Condomínios (SNC Simplificado) e regras de
+// categorização por omissão — definidos uma única vez em
+// src/lib/classificacaoSNC.ts (partilhado com saveMovimentoToSupabase, que
+// aplica a mesma classificação no momento do lançamento de cada movimento,
+// e com server/lib/inboundProcessor.js, para o lançamento automático por
+// email), usados aqui só para semear a tabela real plano_contas na
+// primeira vez que um prédio abre este módulo.
+const PLANO_CONTAS_DEFAULT: Array<Omit<PlanoConta, "id" | "id_predio">> = PLANO_CONTAS_SNC_DEFAULT.map(c => ({ ...c, descricao: c.descricao || "" }));
+const REGRAS_DEFAULT: Array<{ palavra_chave: string; codigo_conta: string }> = REGRAS_SNC_DEFAULT;
+const CODIGO_CONTA_FALLBACK = CODIGO_CONTA_SNC_FALLBACK_DESPESA; // Obras de Conservação / Geral — quando nenhuma regra bate certo
 
 export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: ContabilidadeInternaProps) {
   const [activeTabContab, setActiveTabContab] = useState<"plano" | "reconciliacao" | "motor_regras" | "razao">("razao");
@@ -293,16 +256,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
   // Conservação — um GASTO), misturando entradas de dinheiro em rubricas de
   // despesa. Confirmado em produção pelo administrador.
   const classificarPorRegras = (descricaoLivre: string, tipo?: string): PlanoConta | null => {
-    const desc = descricaoLivre.toLowerCase();
-    const tipoContaCompativel = tipo === "Receita" ? "RENDIMENTO" : tipo === "Despesa" ? "GASTO" : null;
-    const regraEncontrada = regras.find(r => {
-      if (!desc.includes(r.palavra_chave.toLowerCase())) return false;
-      if (!tipoContaCompativel) return true;
-      const contaDaRegra = planoContas.find(c => c.codigo === r.codigo_conta);
-      return contaDaRegra?.tipo === tipoContaCompativel;
-    });
-    const codigoFallback = tipo === "Receita" ? "71" : CODIGO_CONTA_FALLBACK;
-    const codigo = regraEncontrada?.codigo_conta || codigoFallback;
+    const codigo = classificarPorRegrasSNC(descricaoLivre, tipo, planoContas, regras);
     return planoContas.find(c => c.codigo === codigo) || null;
   };
 
@@ -403,8 +357,13 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
         const anosDisponiveis = Array.from(new Set(movimentosPredio.map(m => m.data?.slice(0, 4)).filter(Boolean))).sort().reverse();
         const movimentosAno = anoRazaoSelecionado === "todos" ? movimentosPredio : movimentosPredio.filter(m => m.data?.startsWith(anoRazaoSelecionado));
 
+        // Movimentos lançados depois desta sessão já trazem o código SNC
+        // gravado no próprio lançamento (saveMovimentoToSupabase /
+        // inboundProcessor.js) — usa-se esse, real, em vez de o recalcular;
+        // só cai na classificação por regras aqui para movimentos antigos
+        // lançados antes desta funcionalidade existir.
         const porConta = planoContas.map(conta => {
-          const movsConta = movimentosAno.filter(m => classificarPorRegras(m.descricao, m.tipo)?.codigo === conta.codigo);
+          const movsConta = movimentosAno.filter(m => (m.codigo_conta_snc || classificarPorRegras(m.descricao, m.tipo)?.codigo) === conta.codigo);
           const total = movsConta.reduce((s, m) => s + (m.tipo === "Despesa" ? -Math.abs(m.valor) : Math.abs(m.valor)), 0);
           return { conta, movimentos: movsConta, total };
         }).filter(linha => linha.movimentos.length > 0);

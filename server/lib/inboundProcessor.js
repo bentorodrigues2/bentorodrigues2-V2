@@ -5,6 +5,41 @@ import { classifyEmailCategory, generateCategoryResponse } from "../geminiServic
 import { extrairDadosDocumento, arquivarAnexoOriginal, extrairMovimentosExtrato } from "./multimodalService.js";
 import { cruzarMovimentoComFornecedor } from "./fornecedorMatching.js";
 import { escolherContaPorTipo, ajustarSaldoConta } from "./contaSaldo.js";
+import { classificarPorRegrasSNC, PLANO_CONTAS_SNC_DEFAULT, REGRAS_SNC_DEFAULT } from "./classificacaoSNC.js";
+
+/**
+ * Classificação SNC aplicada também no lançamento automático de movimentos
+ * a partir de email (faturas de fornecedor "Movimento Cego" e movimentos
+ * de extrato bancário) — pedido explícito do administrador: "na
+ * contabilidade tem de ser aplicado o POC oficial português no lançamento
+ * dos movimentos", não só numa vista de leitura à parte. Cache em memória
+ * por id_predio (5 min) para não repetir 2 pedidos ao Supabase por cada
+ * email recebido.
+ */
+const _cachePlanoContasSNC = {};
+async function obterCodigoSNC(idPredio, descricao, tipo) {
+  if (!idPredio) return null;
+  try {
+    const agora = Date.now();
+    let emCache = _cachePlanoContasSNC[idPredio];
+    if (!emCache || emCache.expiraEm <= agora) {
+      const [{ data: planoContas }, { data: regras }] = await Promise.all([
+        supabase.from("plano_contas").select("codigo, tipo").eq("id_predio", idPredio),
+        supabase.from("regras_categorizacao").select("palavra_chave, codigo_conta").eq("id_predio", idPredio)
+      ]);
+      emCache = {
+        planoContas: planoContas && planoContas.length > 0 ? planoContas : PLANO_CONTAS_SNC_DEFAULT,
+        regras: regras && regras.length > 0 ? regras : REGRAS_SNC_DEFAULT,
+        expiraEm: agora + 5 * 60 * 1000
+      };
+      _cachePlanoContasSNC[idPredio] = emCache;
+    }
+    return classificarPorRegrasSNC(descricao, tipo, emCache.planoContas, emCache.regras);
+  } catch (e) {
+    console.warn("[inboundProcessor] Aviso ao classificar SNC:", e?.message || e);
+    return null;
+  }
+}
 
 /**
  * Remetentes cujo email é 100% técnico/automático e nunca traz conteúdo
@@ -526,6 +561,11 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
       contaAlvo = escolherContaPorTipo(contasPredio, isFatura ? categoriaMovimento : "Quota Ordinária");
     }
 
+    const descricaoFinalMov = falhaLeituraTotal
+      ? `⚠️ FALHA NA LEITURA AUTOMÁTICA — ${descricaoBase} (abrir o anexo e corrigir o valor manualmente)`
+      : descricaoBase;
+    const codigoContaSnc = await obterCodigoSNC(contexto?.id_predio, descricaoFinalMov, tipoMovimento);
+
     const { data: movimento, error: errMov } = await supabase
       .from("movimentos")
       .insert({
@@ -533,9 +573,7 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
         id_predio: contexto?.id_predio || null,
         id_conta: contaAlvo?.id_conta || null,
         fracao_id: contexto?.id_fracao || null,
-        descricao: falhaLeituraTotal
-          ? `⚠️ FALHA NA LEITURA AUTOMÁTICA — ${descricaoBase} (abrir o anexo e corrigir o valor manualmente)`
-          : descricaoBase,
+        descricao: descricaoFinalMov,
         valor: valorExtraido || 0,
         tipo: tipoMovimento,
         categoria: categoriaMovimento,
@@ -544,7 +582,8 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
         is_movimento_cego: !jaJustificadaPelaPropriaFatura,
         estado_conciliacao: jaJustificadaPelaPropriaFatura ? "CONCILIADO" : "PENDENTE",
         comprovativo_url: comprovativoUrl || null,
-        origem: "email_inbound"
+        origem: "email_inbound",
+        codigo_conta_snc: codigoContaSnc
       })
       .select()
       .maybeSingle();
@@ -1153,6 +1192,7 @@ async function lancarMovimentosEmFaltaDoExtrato({ emFalta, contaResolvida, predi
     const idMovimentoGerado = `MOV-EXT-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const justificadoPelaDivida = Boolean(dividaCorrespondente);
     const descricaoBase = fornecedor ? `${m.descricao} [${fornecedor.nome}]` : m.descricao;
+    const codigoContaSnc = await obterCodigoSNC(contaResolvida.id_predio, descricaoBase, m.tipo);
 
     const { data: movimentoInserido, error: errMov } = await supabase
       .from("movimentos")
@@ -1169,7 +1209,8 @@ async function lancarMovimentosEmFaltaDoExtrato({ emFalta, contaResolvida, predi
         is_movimento_cego: !justificadoPelaDivida,
         estado_conciliacao: justificadoPelaDivida ? "CONCILIADO" : "PENDENTE",
         comprovativo_url: dividaCorrespondente?.documento_anexo || null,
-        origem: "extrato_bancario_email_inbound"
+        origem: "extrato_bancario_email_inbound",
+        codigo_conta_snc: codigoContaSnc
       })
       .select()
       .maybeSingle();
