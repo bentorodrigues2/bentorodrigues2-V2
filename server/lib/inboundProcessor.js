@@ -1538,6 +1538,20 @@ export async function processInboundEmail(payload) {
     return { ok: true, status: 200, autoresponder: false, motivo: "newsletter_marketing_ou_bounce" };
   }
 
+  // 1c. Travão geral contra ciclos de respostas automáticas — não chega
+  // bloquear só o nosso próprio endereço (ver DESCARTE_TOTAL): confirmado
+  // em produção, um email de marketing genuíno de um remetente externo
+  // (apoio@manie.pt) cujo próprio servidor TAMBÉM auto-responde criou o
+  // mesmo ciclo ("a nossa resposta automática" ⇄ "a resposta automática
+  // deles"), repetindo "Re: Recebemos o seu contacto -" no assunto até
+  // ficar com quase 2000 caracteres. Qualquer assunto que já comece pelo
+  // texto da NOSSA própria resposta automática nunca pode gerar outra
+  // resposta — independentemente de quem é o remetente.
+  if (/^(re:\s*)*recebemos o seu contacto/i.test((subject || "").trim())) {
+    console.log("[inboundProcessor] Email descartado (assunto já é uma resposta automática nossa — travão de ciclo):", from, subject);
+    return { ok: true, status: 200, autoresponder: false, motivo: "ciclo_de_resposta_automatica" };
+  }
+
   const semRespostaAutomatica = isSemRespostaAutomatica(from);
   const cleanFrom = extrairEmailLimpo(from);
   const textoEmail = (body && String(body).trim()) || "(Email recebido sem texto no corpo)";
