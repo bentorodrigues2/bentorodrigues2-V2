@@ -1331,8 +1331,24 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
         ? new Date(`${anoAnteriorCompleto}-01-01`)
         : new Date(hojeRef.getFullYear(), hojeRef.getMonth() - 11, 1);
       const fimPeriodoBase = temAnoAnteriorCompleto ? new Date(`${anoAnteriorCompleto}-12-31`) : hojeRef;
+
+      // A quota ORDINÁRIA nunca pode incluir nem receitas nem despesas da
+      // conta de Quota Extraordinária/Obras — confirmado hoje em produção:
+      // os 2 pagamentos ao empreiteiro da obra do telhado (Luís Ventura,
+      // 7.319,60€) estavam a entrar como despesa "Outro", inflacionando a
+      // quota ordinária com uma obra já paga à parte pela quota
+      // extraordinária. Instrução explícita e taxativa do administrador:
+      // "para este valor só entram receitas de quotas ordinárias e
+      // despesas do prédio" — nunca movimentos da conta de obras, seja
+      // dinheiro a entrar (prestações extraordinárias) ou a sair
+      // (pagamentos ao empreiteiro). Mesma conta já identificada noutro
+      // ponto deste ficheiro (contaIntervencoes) pelo tipo "Intervenções/
+      // Obras/Extra" — nunca pelo nome do fornecedor, que mudaria a cada
+      // obra nova.
+      const contaObrasExtra = (contas || []).find(c => /interven|obra|extra/i.test(c.tipo || ""));
       const despesasPeriodoBase = (movements || []).filter(m => {
         if (m.tipo !== "Despesa" || !m.data) return false;
+        if (contaObrasExtra && m.id_conta === contaObrasExtra.id_conta) return false;
         const d = new Date(m.data);
         return d >= inicioPeriodoBase && d <= fimPeriodoBase;
       });
@@ -1360,9 +1376,13 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
 
       // Receitas previstas deixam de ser um cálculo circular (quota
       // recomendada × 12 × frações, que só reflete a própria sugestão) e
-      // passam a basear-se nas receitas REAIS do mesmo período anterior.
+      // passam a basear-se nas receitas REAIS do mesmo período anterior —
+      // excluindo também aqui a conta de Quota Extraordinária/Obras (as
+      // prestações extraordinárias dos condóminos não são receita
+      // ordinária).
       const receitasPeriodoBase = (movements || []).filter(m => {
         if (m.tipo !== "Receita" || !m.data) return false;
+        if (contaObrasExtra && m.id_conta === contaObrasExtra.id_conta) return false;
         const d = new Date(m.data);
         return d >= inicioPeriodoBase && d <= fimPeriodoBase;
       });
