@@ -2669,7 +2669,11 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                   receita real que isso gera é que faz sentido concluir se é
                   preciso aumentar e por quanto. */}
               {(() => {
-                const necessidadeAnualReal = Math.round(((budgetResult.despesas_previstas || 0) + (budgetResult.fundo_recomendado || 0) + (budgetResult.fundo_maneio || 0)) * 100) / 100;
+                // FCR (Fundo Comum de Reserva) é o mínimo legal de 10% (Art.
+                // 4º DL 268/94) — "fundo_recomendado" (20%) é só uma
+                // almofada extra sugerida pela IA, acima do FCR, nunca o
+                // próprio FCR. Confirmado pelo administrador.
+                const necessidadeAnualReal = Math.round(((budgetResult.despesas_previstas || 0) + (budgetResult.fundo_minimo_legal || 0) + (budgetResult.fundo_maneio || 0)) * 100) / 100;
                 const receitaEstipulada = diagnosticoQuotasEstipuladas.receitaAnualEstipuladaTotal;
                 const diferenca = Math.round((necessidadeAnualReal - receitaEstipulada) * 100) / 100;
                 const percentualAjuste = receitaEstipulada > 0 ? Math.round((diferenca / receitaEstipulada) * 1000) / 10 : null;
@@ -2687,7 +2691,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                       <div className="border border-slate-200 rounded-xl p-3 text-center bg-slate-50">
                         <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 block">Necessidade Anual Real</span>
                         <span className="text-sm font-black text-slate-800 block mt-1">€{necessidadeAnualReal.toFixed(2)}</span>
-                        <span className="text-[8px] text-slate-600">despesas reais + FCR + fundo de maneio</span>
+                        <span className="text-[8px] text-slate-600">despesas reais + FCR (10% legal) + fundo de maneio</span>
                       </div>
                       <div className={`border rounded-xl p-3 text-center ${diferenca > 0 ? "border-red-200 bg-red-50/40" : "border-emerald-200 bg-emerald-50/40"}`}>
                         <span className={`text-[9px] font-bold uppercase tracking-wider block ${diferenca > 0 ? "text-red-700" : "text-emerald-700"}`}>{diferenca > 0 ? "Défice — Falta Cobrar" : "Superávit"}</span>
