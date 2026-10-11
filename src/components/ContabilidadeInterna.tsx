@@ -280,19 +280,39 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
   const [novaRegraPalavra, setNovaRegraPalavra] = useState("");
   const [novaRegraConta, setNovaRegraConta] = useState("");
 
-  const classificarPorRegras = (descricaoLivre: string): PlanoConta | null => {
+  // "tipo" (Receita/Despesa) do movimento, quando conhecido, restringe as
+  // regras candidatas ao tipo de conta compatível — uma Despesa nunca pode
+  // cair numa conta RENDIMENTO e vice-versa. Sem isto, a palavra-chave
+  // "fração" (regra "quota"/"fração"/"condómino" → Conta 71) apanhava o
+  // texto genérico "(Fração Não Identificada - ...)" que aparece em
+  // QUALQUER movimento reconhecido por email sem fração associada — mesmo
+  // faturas de fornecedor (ex: Iberdrola, uma Despesa) ficavam classificadas
+  // como "Rendimentos de Quotas". E, no sentido inverso, uma receita real
+  // sem nenhuma palavra-chave a bater certo (ex: "TRF.IMED. DE Maria Irene
+  // Pereira Bilreiro") caía sempre no fallback fixo (Conta 68, Obras de
+  // Conservação — um GASTO), misturando entradas de dinheiro em rubricas de
+  // despesa. Confirmado em produção pelo administrador.
+  const classificarPorRegras = (descricaoLivre: string, tipo?: string): PlanoConta | null => {
     const desc = descricaoLivre.toLowerCase();
-    const regraEncontrada = regras.find(r => desc.includes(r.palavra_chave.toLowerCase()));
-    const codigo = regraEncontrada?.codigo_conta || CODIGO_CONTA_FALLBACK;
+    const tipoContaCompativel = tipo === "Receita" ? "RENDIMENTO" : tipo === "Despesa" ? "GASTO" : null;
+    const regraEncontrada = regras.find(r => {
+      if (!desc.includes(r.palavra_chave.toLowerCase())) return false;
+      if (!tipoContaCompativel) return true;
+      const contaDaRegra = planoContas.find(c => c.codigo === r.codigo_conta);
+      return contaDaRegra?.tipo === tipoContaCompativel;
+    });
+    const codigoFallback = tipo === "Receita" ? "71" : CODIGO_CONTA_FALLBACK;
+    const codigo = regraEncontrada?.codigo_conta || codigoFallback;
     return planoContas.find(c => c.codigo === codigo) || null;
   };
 
+  const [inputRegraTipo, setInputRegraTipo] = useState<"Receita" | "Despesa">("Despesa");
   const testarCategorizacaoAutomatica = () => {
     if (!inputRegraDesc) {
       alert("Introduza um descritivo de transação (Ex: 'Fatura Eletricidade EDP de Junho').");
       return;
     }
-    setSugestaoConta(classificarPorRegras(inputRegraDesc));
+    setSugestaoConta(classificarPorRegras(inputRegraDesc, inputRegraTipo));
   };
 
   const handleAdicionarRegra = (e: React.FormEvent) => {
@@ -384,7 +404,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
         const movimentosAno = anoRazaoSelecionado === "todos" ? movimentosPredio : movimentosPredio.filter(m => m.data?.startsWith(anoRazaoSelecionado));
 
         const porConta = planoContas.map(conta => {
-          const movsConta = movimentosAno.filter(m => classificarPorRegras(m.descricao)?.codigo === conta.codigo);
+          const movsConta = movimentosAno.filter(m => classificarPorRegras(m.descricao, m.tipo)?.codigo === conta.codigo);
           const total = movsConta.reduce((s, m) => s + (m.tipo === "Despesa" ? -Math.abs(m.valor) : Math.abs(m.valor)), 0);
           return { conta, movimentos: movsConta, total };
         }).filter(linha => linha.movimentos.length > 0);
@@ -748,6 +768,20 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
           <div className="space-y-4">
             <div className="flex flex-col">
               <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mb-1">Descritivo da Transação / Movimento</label>
+              <div className="flex gap-2 mb-2">
+                {(["Despesa", "Receita"] as const).map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setInputRegraTipo(t)}
+                    className={`px-3 py-1 text-[10px] font-bold rounded-lg border transition-colors cursor-pointer ${
+                      inputRegraTipo === t ? (t === "Despesa" ? "bg-red-600 text-white border-red-600" : "bg-emerald-600 text-white border-emerald-600") : "bg-white text-slate-600 border-slate-200"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
               <div className="flex space-x-2">
                 <input
                   type="text"
