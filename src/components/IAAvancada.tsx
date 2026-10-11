@@ -1311,13 +1311,67 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
       const obrasPendentesReais = obrasReais.filter(o => o.estado !== "Concluída");
       const totalObrasReal = Math.round(obrasPendentesReais.reduce((acc, o) => acc + (o.custoTotal || 0), 0) * 100) / 100;
 
+      // O orçamento do exercício seguinte parte sempre de TODAS as despesas
+      // reais do exercício anterior, rubrica a rubrica — não só das 6
+      // categorias fixas (Contratos/Seguros/Serviços/Manutenção/Limpeza/
+      // Inspeções). Pedido explícito do administrador: "para efetuar o
+      // orçamento anual será sempre o orçamento anual do exercício seguinte
+      // tem de complementar todas as receitas do ano anterior e despesas do
+      // ano anterior... gerar um orçamento real". Usa o exercício anterior
+      // completo quando existe; sem um ano completo de histórico (prédio
+      // ainda recente nesta app), usa os últimos 12 meses reais disponíveis.
+      const hojeRef = new Date();
+      const anoAnteriorCompleto = `${hojeRef.getFullYear() - 1}`;
+      const temAnoAnteriorCompleto = (movements || []).some(m => m.tipo === "Despesa" && String(m.data).startsWith(anoAnteriorCompleto));
+      const inicioPeriodoBase = temAnoAnteriorCompleto
+        ? new Date(`${anoAnteriorCompleto}-01-01`)
+        : new Date(hojeRef.getFullYear(), hojeRef.getMonth() - 11, 1);
+      const fimPeriodoBase = temAnoAnteriorCompleto ? new Date(`${anoAnteriorCompleto}-12-31`) : hojeRef;
+      const despesasPeriodoBase = (movements || []).filter(m => {
+        if (m.tipo !== "Despesa" || !m.data) return false;
+        const d = new Date(m.data);
+        return d >= inicioPeriodoBase && d <= fimPeriodoBase;
+      });
+
+      // Categorias já cobertas pelos 6 campos editáveis acima — qualquer
+      // OUTRA categoria real de despesa (Eletricidade, Comunicações, Água,
+      // Obras já concluídas, Despesas Bancárias, etc.) entra como rubrica
+      // adicional automática, pelo total real do exercício anterior.
+      const categoriaJaCoberta = (cat: string) => {
+        const c = cat.toLowerCase();
+        return (c.includes("manuten") && !c.includes("elevador")) || c.includes("limp") || c.includes("elevador") || c.includes("seguro") || c.includes("inspe") || c.includes("scie");
+      };
+      const totaisOutrasCategorias: Record<string, number> = {};
+      despesasPeriodoBase.forEach(m => {
+        const cat = m.categoria || "Outras Despesas";
+        if (categoriaJaCoberta(cat)) return;
+        totaisOutrasCategorias[cat] = (totaisOutrasCategorias[cat] || 0) + (Number(m.valor) || 0);
+      });
+      const rubricasAdicionaisReais = Object.entries(totaisOutrasCategorias).map(([cat, valor]) => ({
+        id: `real-${cat.toLowerCase().replace(/\s+/g, "-")}`,
+        nome: `${cat} (real, exercício anterior)`,
+        valor: Math.round(valor * 100) / 100,
+        editable: true
+      }));
+
+      // Receitas previstas deixam de ser um cálculo circular (quota
+      // recomendada × 12 × frações, que só reflete a própria sugestão) e
+      // passam a basear-se nas receitas REAIS do mesmo período anterior.
+      const receitasPeriodoBase = (movements || []).filter(m => {
+        if (m.tipo !== "Receita" || !m.data) return false;
+        const d = new Date(m.data);
+        return d >= inicioPeriodoBase && d <= fimPeriodoBase;
+      });
+      const receitasReaisPeriodoBase = Math.round(receitasPeriodoBase.reduce((s, m) => s + (Number(m.valor) || 0), 0) * 100) / 100;
+
       const novasRubricas = [
-        { id: "contratos", nome: "Contratos de Manutenção (Elevadores, Limpeza, etc.)", valor: contratos * 12, editable: true },
+        { id: "contratos", nome: "Contratos de Manutenção (Elevadores)", valor: contratos * 12, editable: true },
         { id: "seguros", nome: "Seguros do Edifício (Multirriscos Condomínio)", valor: seguros, editable: true },
         { id: "servicos", nome: "Serviços de Administração e Apoio", valor: servicos * 12, editable: true },
         { id: "manutencao", nome: "Manutenção Preventiva Periódica", valor: manutencao * 12, editable: true },
         { id: "limpeza", nome: "Limpeza Geral das Áreas Comuns", valor: limpeza * 12, editable: true },
         { id: "inspecoes", nome: "Inspeções Obrigatórias e Elevadores", valor: inspecoes, editable: true },
+        ...rubricasAdicionaisReais,
         { id: "obras", nome: "Fundo de Obras Futuras", valor: totalObrasReal, editable: true }
       ];
 
@@ -1346,6 +1400,12 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
           fundoMinimoLegal: fundoMinimoLegalReal,
           fundoRecomendado: fundoRecomendadoReal,
           saldoAnualPrevisto: saldoAnualPrevistoReal,
+          // Para a IA poder comparar a previsão com o que foi mesmo
+          // cobrado/gasto no exercício anterior, em vez de escrever só
+          // sobre a quota recomendada nova.
+          receitasReaisExercicioAnterior: receitasReaisPeriodoBase,
+          despesasReaisExercicioAnterior: Math.round(despesasPeriodoBase.reduce((s, m) => s + (Number(m.valor) || 0), 0) * 100) / 100,
+          periodoBaseUsado: temAnoAnteriorCompleto ? `ano ${anoAnteriorCompleto} completo` : "últimos 12 meses reais disponíveis",
           quotaMinima: quotaMinimaReal,
           quotaRecomendada: quotaRecomendadaReal,
           quotaIdeal: quotaIdealReal,
@@ -1369,6 +1429,9 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
         impacto_quotas_extraordinarias: narrativa.impacto_quotas_extraordinarias,
         impacto_inadimplencia_prevista: narrativa.impacto_inadimplencia_prevista,
         explicacao_quotas: narrativa.explicacao_quotas,
+        receitas_reais_exercicio_anterior: receitasReaisPeriodoBase,
+        despesas_reais_exercicio_anterior: Math.round(despesasPeriodoBase.reduce((s, m) => s + (Number(m.valor) || 0), 0) * 100) / 100,
+        periodo_base_usado: temAnoAnteriorCompleto ? `Ano ${anoAnteriorCompleto} completo` : "Últimos 12 meses reais disponíveis",
         // Equivalente mensal, por fração, do custo total das obras
         // pendentes espalhado por 12 meses — antes ficava sempre no valor
         // de exemplo fixo (€15,00), nunca recalculado a sério.
@@ -2294,12 +2357,20 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                 <h5 className="text-[11px] font-black uppercase tracking-wider text-slate-600 flex items-center">
                   <i className="fa-solid fa-calculator text-violet-500 mr-2"></i> Orçamento Anual Automático (IA)
                 </h5>
+                {budgetResult.periodo_base_usado && (
+                  <p className="text-[10px] text-slate-600 -mt-2">Base real usada: <strong>{budgetResult.periodo_base_usado}</strong> — receitas e despesas reais desse período, rubrica a rubrica.</p>
+                )}
 
                 <div className="space-y-3">
                   <div className="flex justify-between items-center p-3 bg-slate-50 hover:bg-slate-100/70 rounded-xl transition-colors">
                     <div>
                       <span className="text-xs font-semibold text-slate-600 block">Despesas Previstas</span>
-                      <span className="text-[10px] text-slate-600">Contratos, seguros, limpezas, vistorias</span>
+                      <span className="text-[10px] text-slate-600">
+                        Todas as rubricas reais do exercício anterior
+                        {typeof budgetResult.despesas_reais_exercicio_anterior === "number" && (
+                          <> · despesa real desse período: <strong>€{budgetResult.despesas_reais_exercicio_anterior.toFixed(2)}</strong></>
+                        )}
+                      </span>
                     </div>
                     <span className="text-sm font-bold text-slate-800">€{budgetResult.despesas_previstas?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
@@ -2307,7 +2378,12 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                   <div className="flex justify-between items-center p-3 bg-slate-50 hover:bg-slate-100/70 rounded-xl transition-colors">
                     <div>
                       <span className="text-xs font-semibold text-slate-600 block">Receitas Previstas</span>
-                      <span className="text-[10px] text-slate-600">Quotas regulares previstas</span>
+                      <span className="text-[10px] text-slate-600">
+                        Com a quota recomendada abaixo
+                        {typeof budgetResult.receitas_reais_exercicio_anterior === "number" && (
+                          <> · receita real do exercício anterior: <strong>€{budgetResult.receitas_reais_exercicio_anterior.toFixed(2)}</strong></>
+                        )}
+                      </span>
                     </div>
                     <span className="text-sm font-bold text-emerald-600">€{budgetResult.receitas_previstas?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
