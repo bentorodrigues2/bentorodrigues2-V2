@@ -949,26 +949,29 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
   // mesmo essa despesa.
   const mediaMensalDespesasReais = React.useMemo(() => {
     const despesas = (movements || []).filter(m => m.tipo === "Despesa" && m.data);
-    // Dividir só pelos meses em que ESSA categoria teve lançamento (em vez
-    // do total de meses do histórico) sobrestimava brutalmente qualquer
-    // contrato faturado trimestralmente/irregularmente, não todos os
-    // meses: confirmado em produção — "Manutenção de Elevadores" só teve
-    // lançamentos em 3 dos meses reais (3 faturas de ~400€, contrato
-    // trimestral de 1.600€/ano), mas a média "total ÷ 3 meses ativos × 12"
-    // projetava 4.134,84€/ano, mais do que o dobro do valor real do
-    // contrato. Divide-se sempre por 12 (o período anual que o resto desta
-    // ferramenta já assume) — o total real observado passa a ser
-    // apresentado tal como foi mesmo gasto, sem nenhuma suposição de
-    // periodicidade mensal que raramente é verdadeira para contratos de
-    // manutenção. O administrador continua a poder substituir este valor
-    // pelo valor real do contrato nos campos editáveis, sempre que o
-    // histórico ainda não tiver dados suficientes (prédio em utilização há
-    // poucos meses).
+    // Previsão anual = taxa mensal real × 12 — regra confirmada pelo
+    // administrador ("se por mês pagas 90€ de limpeza, 115€ de
+    // eletricidade, 8€ de comunicações, tens de multiplicar por 12"). A
+    // taxa mensal real de CADA categoria é o total dessa categoria dividido
+    // só pelos meses em que ela própria teve lançamento (nunca pelo total
+    // de meses do histórico, que dilui o valor sempre que faltar lançar
+    // alguma fatura, como aconteceu com a Limpeza — 2 faturas pagas
+    // diretamente pelo administrador entraram como dívida, não como
+    // despesa, por isso só 2 meses tinham lançamento, mas a taxa mensal
+    // real continua a ser ~90€).
+    // Exceção conhecida: contratos faturados trimestralmente/anualmente
+    // (ex: Manutenção de Elevadores, 1.600€/ano em 4 prestações de ~400€)
+    // não têm uma "taxa mensal" real — esta média ainda os sobrestima
+    // enquanto não houver um ano completo de faturas reais lançadas; até
+    // lá, o administrador deve substituir o valor sugerido pelo valor real
+    // anual do contrato diretamente no campo editável (ex: 1.600€/12 =
+    // 133,33€/mês).
     const mediaPorCategoria = (match: (cat: string) => boolean) => {
       const doCategoria = despesas.filter(m => match((m.categoria || "").toLowerCase()));
       if (doCategoria.length === 0) return 0;
+      const meses = new Set(doCategoria.map(m => String(m.data).slice(0, 7))).size || 1;
       const total = doCategoria.reduce((s, m) => s + (Number(m.valor) || 0), 0);
-      return Math.round((total / 12) * 100) / 100;
+      return Math.round((total / meses) * 100) / 100;
     };
     // "Seguros" e "Inspeções" entram na rubrica como valor já ANUAL (nunca
     // multiplicados por 12, ao contrário de contratos/manutenção/limpeza)
@@ -1078,6 +1081,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
     receitas_previstas: 0,
     fundo_minimo_legal: 0,
     fundo_recomendado: 0,
+    fundo_maneio: 0,
     saldo_anual_previsto: 0,
     impacto_obras: "Gere o orçamento inteligente para obter uma análise real com base nos dados deste prédio.",
     impacto_quotas_extraordinarias: "",
@@ -1384,24 +1388,49 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
         const c = cat.toLowerCase();
         return (c.includes("manuten") && !c.includes("elevador")) || c.includes("limp") || c.includes("elevador") || c.includes("seguro") || c.includes("inspe") || c.includes("scie");
       };
-      // Agrupar pela categoria normalizada (minúsculas/sem espaços a mais),
-      // não pelo texto exato — confirmado em produção: "Eletricidade" e
-      // "eletricidade" (só a diferença de maiúscula/minúscula) ficavam como
-      // duas rubricas "adicionais" separadas em vez de uma só com o total
-      // real combinado. Mantém-se o primeiro nome original encontrado para
-      // apresentação.
-      const totaisOutrasCategorias: Record<string, { nome: string; valor: number }> = {};
+      // Agrupar pela categoria normalizada (minúsculas/sem espaços a mais,
+      // e sinónimos conhecidos juntos), não pelo texto exato — confirmado
+      // em produção: "Eletricidade"/"eletricidade" (maiúscula/minúscula) E
+      // "Telecomunicações"/"Comunicações" (a mesma fatura NOWO, lançada por
+      // vezes de extrato e por vezes por email, cada uma com uma categoria
+      // diferente) ficavam como rubricas "adicionais" SEPARADAS — depois de
+      // cada uma ser anualizada à parte (ver abaixo), isto não só duplicava
+      // a listagem como duplicava o valor projetado (quase 192€/ano em vez
+      // dos ~96€/ano reais do NOWO). Mantém-se o primeiro nome original
+      // encontrado para apresentação.
+      const normalizarChaveCategoria = (cat: string): string => {
+        const c = cat.toLowerCase();
+        if (c.includes("telecom") || c.includes("comunica")) return "comunicações";
+        return c;
+      };
+      const totaisOutrasCategorias: Record<string, { nome: string; valor: number; meses: Set<string> }> = {};
       despesasPeriodoBase.forEach(m => {
         const cat = (m.categoria || "Outras Despesas").trim();
         if (categoriaJaCoberta(cat)) return;
-        const chave = cat.toLowerCase();
-        if (!totaisOutrasCategorias[chave]) totaisOutrasCategorias[chave] = { nome: cat, valor: 0 };
+        const chave = normalizarChaveCategoria(cat);
+        if (!totaisOutrasCategorias[chave]) totaisOutrasCategorias[chave] = { nome: cat, valor: 0, meses: new Set() };
         totaisOutrasCategorias[chave].valor += Number(m.valor) || 0;
+        if (m.data) totaisOutrasCategorias[chave].meses.add(String(m.data).slice(0, 7));
       });
-      const rubricasAdicionaisReais = Object.entries(totaisOutrasCategorias).map(([chave, { nome, valor }]) => ({
+      // Mesma regra de anualização por taxa mensal real × 12 usada acima
+      // para Contratos/Manutenção/Limpeza (ex: Eletricidade a 115€/mês real
+      // tem de projetar 1.380€/ano, não o total parcial só dos meses em que
+      // houve fatura lançada) — mas só se aplica a consumos/serviços
+      // claramente recorrentes mês a mês (água, eletricidade, gás,
+      // comunicações). Despesas pontuais por natureza (obras avulsas,
+      // comissões/taxas bancárias, honorários, "Outro") ficam pelo total
+      // real do período — multiplicá-las por 12 inventaria uma despesa
+      // anual que nunca existiu.
+      // "agua p/obras" é consumo de água de uma obra pontual, não o
+      // consumo normal recorrente do prédio — nunca deve ser anualizado
+      // (tinha ficado 10€ reais a projetar 120€/ano).
+      const ehConsumoRecorrente = (cat: string) => !/obra/i.test(cat) && /eletri|electri|comunica|telecom|água|agua|g[aá]s/i.test(cat);
+      const rubricasAdicionaisReais = Object.entries(totaisOutrasCategorias).map(([chave, { nome, valor, meses }]) => ({
         id: `real-${chave.replace(/\s+/g, "-")}`,
         nome: `${nome} (real, exercício anterior)`,
-        valor: Math.round(valor * 100) / 100,
+        valor: ehConsumoRecorrente(nome)
+          ? Math.round((valor / (meses.size || 1)) * 12 * 100) / 100
+          : Math.round(valor * 100) / 100,
         editable: true
       }));
 
@@ -1444,9 +1473,17 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
       const totalDespesasReal = novasRubricas.reduce((sum, r) => sum + r.valor, 0);
       const fundoMinimoLegalReal = Math.round(totalDespesasReal * 0.10 * 100) / 100;
       const fundoRecomendadoReal = Math.round(totalDespesasReal * 0.20 * 100) / 100;
+      // Fundo de Maneio: fundo de tesouraria corrente para cobrir o
+      // desencontro normal entre o momento em que as despesas têm de ser
+      // pagas e o momento em que as quotas são cobradas — distinto do FCR
+      // (Fundo Comum de Reserva, para obras/reparações futuras). Pedido
+      // explícito do administrador: "tens de ter fundo de maneio para além
+      // do FCR". Sem norma legal fixa; convenção comum é 1 mês de despesas
+      // correntes.
+      const fundoManeioReal = Math.round((totalDespesasReal / 12) * 100) / 100;
       const numFracoesReal = fracoes?.length || 1;
-      const quotaRecomendadaReal = Math.round(((totalDespesasReal + fundoRecomendadoReal) / (12 * numFracoesReal)) * 100) / 100;
-      const quotaMinimaReal = Math.round(((totalDespesasReal + fundoMinimoLegalReal) / (12 * numFracoesReal)) * 100) / 100;
+      const quotaRecomendadaReal = Math.round(((totalDespesasReal + fundoRecomendadoReal + fundoManeioReal) / (12 * numFracoesReal)) * 100) / 100;
+      const quotaMinimaReal = Math.round(((totalDespesasReal + fundoMinimoLegalReal + fundoManeioReal) / (12 * numFracoesReal)) * 100) / 100;
       const quotaIdealReal = Math.round((quotaRecomendadaReal * (1 + (inadimplenciaHistorica / 100))) * 100) / 100;
       const receitasPrevistasReal = Math.round((quotaRecomendadaReal * 12 * numFracoesReal) * 100) / 100;
       const saldoAnualPrevistoReal = Math.round((receitasPrevistasReal - totalDespesasReal) * 100) / 100;
@@ -1461,6 +1498,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
           receitasPrevistas: receitasPrevistasReal,
           fundoMinimoLegal: fundoMinimoLegalReal,
           fundoRecomendado: fundoRecomendadoReal,
+          fundoManeio: fundoManeioReal,
           saldoAnualPrevisto: saldoAnualPrevistoReal,
           // Para a IA poder comparar a previsão com o que foi mesmo
           // cobrado/gasto no exercício anterior, em vez de escrever só
@@ -1570,9 +1608,14 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
     // 3. Recommended fund (20% of total despesas)
     const fundoRec = Math.round(totalDespesas * 0.20 * 100) / 100;
 
+    // Fundo de Maneio (tesouraria corrente, distinto do FCR) — pedido
+    // explícito do administrador. Sem norma legal fixa; convenção comum é
+    // 1 mês de despesas correntes.
+    const fundoManeio = Math.round((totalDespesas / 12) * 100) / 100;
+
     const numFracoes = fracoes?.length || 8;
-    const qRecomendada = Math.round(((totalDespesas + fundoRec) / (12 * numFracoes)) * 100) / 100;
-    const qMinima = Math.round(((totalDespesas + fundoLegal) / (12 * numFracoes)) * 100) / 100;
+    const qRecomendada = Math.round(((totalDespesas + fundoRec + fundoManeio) / (12 * numFracoes)) * 100) / 100;
+    const qMinima = Math.round(((totalDespesas + fundoLegal + fundoManeio) / (12 * numFracoes)) * 100) / 100;
     const qIdeal = Math.round((qRecomendada * (1 + (inadimplenciaHistorica / 100))) * 100) / 100;
 
     // base expected revenues
@@ -1609,8 +1652,8 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
     // qMinima/qRecomendada/qIdeal acima ficam como MÉDIA de referência (o
     // total dividido pelas frações continua a bater certo com a soma real
     // por permilagem, porque as permilagens somam sempre 1000‰).
-    const totalAnualMinimo = totalDespesas + fundoLegal;
-    const totalAnualRecomendado = totalDespesas + fundoRec;
+    const totalAnualMinimo = totalDespesas + fundoLegal + fundoManeio;
+    const totalAnualRecomendado = totalDespesas + fundoRec + fundoManeio;
     const quotaPorFracao = (fracoes || []).map(f => {
       const permilagem = f.permilagem || 0;
       const valorAnualMinimo = totalAnualMinimo * permilagem / 1000;
@@ -1632,6 +1675,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
       receitas_previstas: totalReceitas,
       fundo_minimo_legal: fundoLegal,
       fundo_recomendado: fundoRec,
+      fundo_maneio: fundoManeio,
       saldo_anual_previsto: totalSaldo,
       quota_minima: qMinima,
       quota_recomendada: qRecomendada,
@@ -2492,6 +2536,14 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                       <span className="text-[10px] text-slate-600">Proposta IA com base em risco predial</span>
                     </div>
                     <span className="text-sm font-bold text-violet-600">€{budgetResult.fundo_recomendado?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center p-3 bg-slate-50 hover:bg-slate-100/70 rounded-xl transition-colors">
+                    <div>
+                      <span className="text-xs font-semibold text-slate-600 block">Fundo de Maneio</span>
+                      <span className="text-[10px] text-slate-600">Tesouraria corrente (1 mês de despesas), distinto do FCR</span>
+                    </div>
+                    <span className="text-sm font-bold text-sky-600">€{budgetResult.fundo_maneio?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
 
                   <div className="flex justify-between items-center p-3 bg-slate-900 text-slate-100 rounded-xl shadow-sm">
@@ -4035,6 +4087,12 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                       <span className="text-[8px] font-bold text-slate-600 uppercase tracking-wider block">Fundo de Reserva Legal (10%)</span>
                       <span className="text-sm font-extrabold text-slate-700 block mt-1">
                         €{budgetResult.fundo_minimo_legal?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                      <span className="text-[8px] font-bold text-slate-600 uppercase tracking-wider block">Fundo de Maneio</span>
+                      <span className="text-sm font-extrabold text-sky-700 block mt-1">
+                        €{budgetResult.fundo_maneio?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </span>
                     </div>
                     <div className="bg-slate-900 text-slate-100 rounded-xl p-3 border border-slate-800 shadow-sm">
