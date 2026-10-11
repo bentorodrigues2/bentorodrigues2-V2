@@ -1209,15 +1209,19 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
     }
   };
 
-  // Active rubrics for manual administration
+  // Active rubrics for manual administration — arrancam a 0€ (ponto de
+  // partida honesto) em vez de valores de exemplo do protótipo; o efeito
+  // "sliderOrcamentoJaPreenchido" preenche com dados reais assim que
+  // movimentos/avisos chegam. "Obras" não entra aqui — Obras Extraordinárias
+  // pendentes nunca contam para a quota ordinária, têm sempre o seu próprio
+  // cálculo à parte (ver quota_extraordinaria_sugestao).
   const [rubricas, setRubricas] = useState<Array<{ id: string; nome: string; valor: number; editable: boolean }>>([
-    { id: "contratos", nome: "Contratos de Manutenção (Elevadores, Limpeza, etc.)", valor: 250 * 12, editable: true },
-    { id: "seguros", nome: "Seguros do Edifício (Multirriscos Condomínio)", valor: 800, editable: true },
-    { id: "servicos", nome: "Serviços de Administração e Apoio", valor: 150 * 12, editable: true },
-    { id: "manutencao", nome: "Manutenção Preventiva Periódica", valor: 120 * 12, editable: true },
-    { id: "limpeza", nome: "Limpeza Geral das Áreas Comuns", valor: 180 * 12, editable: true },
-    { id: "inspecoes", nome: "Inspeções Obrigatórias e Elevadores", valor: 450, editable: true },
-    { id: "obras", nome: "Fundo de Obras Futuras", valor: 12000, editable: true }
+    { id: "contratos", nome: "Contratos de Manutenção (Elevadores)", valor: 0, editable: true },
+    { id: "seguros", nome: "Seguros do Edifício (Multirriscos Condomínio)", valor: 0, editable: true },
+    { id: "servicos", nome: "Serviços de Administração e Apoio", valor: 0, editable: true },
+    { id: "manutencao", nome: "Manutenção Preventiva Periódica", valor: 0, editable: true },
+    { id: "limpeza", nome: "Limpeza Geral das Áreas Comuns", valor: 0, editable: true },
+    { id: "inspecoes", nome: "Inspeções Obrigatórias e Elevadores", valor: 0, editable: true }
   ]);
 
   // Mantém as rubricas de Contratos/Seguros/Serviços/Limpeza sempre
@@ -1364,6 +1368,14 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
       });
       const receitasReaisPeriodoBase = Math.round(receitasPeriodoBase.reduce((s, m) => s + (Number(m.valor) || 0), 0) * 100) / 100;
 
+      // As Obras Extraordinárias pendentes NUNCA entram na quota ordinária —
+      // pedido explícito e taxativo do administrador: "esta fórmula são
+      // Quotas ordinárias nunca deverias ter incluído o valor das obras...
+      // é à parte, sempre que se tiver algo que tenha quota extraordinária
+      // é tudo calculado à parte". Já existe mecanismo próprio e separado
+      // para isso (quota_extraordinaria_sugestao, com fracionamento e
+      // repartição real por permilagem) — somar aqui também duplicava o
+      // custo da mesma obra nas duas quotas em simultâneo.
       const novasRubricas = [
         { id: "contratos", nome: "Contratos de Manutenção (Elevadores)", valor: contratos * 12, editable: true },
         { id: "seguros", nome: "Seguros do Edifício (Multirriscos Condomínio)", valor: seguros, editable: true },
@@ -1371,8 +1383,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
         { id: "manutencao", nome: "Manutenção Preventiva Periódica", valor: manutencao * 12, editable: true },
         { id: "limpeza", nome: "Limpeza Geral das Áreas Comuns", valor: limpeza * 12, editable: true },
         { id: "inspecoes", nome: "Inspeções Obrigatórias e Elevadores", valor: inspecoes, editable: true },
-        ...rubricasAdicionaisReais,
-        { id: "obras", nome: "Fundo de Obras Futuras", valor: totalObrasReal, editable: true }
+        ...rubricasAdicionaisReais
       ];
 
       // Números reais calculados já aqui (mesma fórmula de
