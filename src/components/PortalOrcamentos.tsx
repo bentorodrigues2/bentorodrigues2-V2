@@ -832,9 +832,9 @@ export function PortalOrcamentos({
           
           {/* LANÇAR NOVO CONCURSO (ADMIN) */}
           <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-5 space-y-4">
-            <div className="flex justify-between items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">Concursos de Obras (RFP)</h3>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <button
                   onClick={() => setMostrarArquivadosRfp(v => !v)}
                   title={mostrarArquivadosRfp ? "Ver concursos ativos" : "Ver concursos arquivados"}
@@ -1053,7 +1053,7 @@ export function PortalOrcamentos({
           <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-5 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center">
               <ExternalLink size={13} className="text-emerald-500 mr-1.5" />
-              {editingPropostaId ? "Editar Proposta" : "Submeter Proposta (Canal do Empreiteiro)"}
+              {editingPropostaId ? "Editar Proposta" : "Submeter Proposta"}
             </h3>
             <p className="text-[11px] text-slate-600 leading-relaxed">
               {editingPropostaId

@@ -940,30 +940,45 @@ async function hashesJaProcessados(hashes) {
  * responder) o MESMO email duas vezes quando chega por dois caminhos
  * diferentes (ex: o cron do gmail-reader.js processa-o diretamente, e um
  * Worker externo que lê a mesma caixa de correio reencaminha-o em separado
- * para /api/ai-studio?acao=inbound). O hash cobre remetente+assunto+corpo.
- * Janela curta (3 min) — chega para apanhar os dois caminhos a processar
- * quase em simultâneo (a razão de existir isto), mas sem impedir alguém de
- * reenviar minutos/horas depois o mesmo email de propósito (ex: depois de
- * uma falha de leitura, ou simplesmente a testar de novo) — uma janela de
- * 1h estava a bloquear reenvios genuínos como se fossem duplicados.
+ * para /api/ai-studio?acao=inbound). O hash cobre remetente+assunto+corpo,
+ * mais o "balde" de tempo corrente (janelas de 3 min) — dois pedidos quase
+ * simultâneos para o mesmo email caem sempre no mesmo balde, logo no mesmo
+ * hash, enquanto um reenvio genuíno minutos/horas depois cai num balde
+ * diferente e não fica bloqueado (uma janela de 1h estava a bloquear
+ * reenvios genuínos como se fossem duplicados).
  */
+const JANELA_DEDUP_EMAIL_MS = 3 * 60 * 1000;
 function calcularHashEmail(cleanFrom, subject, body) {
-  return "EMAIL-" + createHash("sha256").update(`${cleanFrom}|${subject}|${(body || "").slice(0, 2000)}`).digest("hex");
+  const balde = Math.floor(Date.now() / JANELA_DEDUP_EMAIL_MS);
+  return "EMAIL-" + createHash("sha256").update(`${cleanFrom}|${subject}|${(body || "").slice(0, 2000)}|${balde}`).digest("hex");
 }
 
-async function emailJaProcessadoRecentemente(hashEmail) {
+/**
+ * Reclama atomicamente este email como "a processar agora" — substitui o
+ * padrão anterior (ler se já existe, só depois inserir), que tinha uma
+ * janela de corrida real: confirmado em produção, o mesmo email da
+ * Iberdrola chegou 2x com ~1 segundo de diferença, ambos os pedidos leram
+ * "ainda não processado" ANTES de qualquer um dos dois ter inserido o seu
+ * próprio registo, e os dois prosseguiram — resultado, a mesma fatura
+ * lançada 2x. Ao tentar logo o INSERT (sem leitura prévia) contra um
+ * índice único em ai_auditoria(file_hash) WHERE origem =
+ * 'email_inbound_dedup', a base de dados garante que só UM dos dois
+ * pedidos consegue mesmo inserir — o outro recebe sempre um erro de
+ * violação de unicidade (23505), de forma atómica, nunca uma leitura
+ * desatualizada.
+ */
+async function tentarReclamarEmail(hashEmail) {
   try {
-    const desde = new Date(Date.now() - 3 * 60 * 1000).toISOString();
-    const { data } = await supabase
-      .from("ai_auditoria")
-      .select("id_log")
-      .eq("file_hash", hashEmail)
-      .gte("criado_em", desde)
-      .limit(1);
-    return Boolean(data && data.length > 0);
+    const { error } = await supabase.from("ai_auditoria").insert({ origem: "email_inbound_dedup", file_hash: hashEmail });
+    if (error) {
+      if (error.code === "23505") return false; // outro pedido já reclamou este email neste balde de tempo
+      console.warn("[inboundProcessor] Aviso ao reclamar deduplicação de email:", error.message);
+      return true; // falha desconhecida a gravar o marcador — não bloqueia o processamento
+    }
+    return true;
   } catch (e) {
-    console.warn("[inboundProcessor] Aviso ao verificar deduplicação de email:", e?.message || e);
-    return false;
+    console.warn("[inboundProcessor] Aviso ao reclamar deduplicação de email:", e?.message || e);
+    return true;
   }
 }
 
@@ -1470,16 +1485,12 @@ export async function processInboundEmail(payload) {
 
   // 1b. Deduplicação — o mesmo email pode chegar por dois caminhos (cron do
   // Gmail + eventual reencaminhamento externo para acao=inbound); sem isto
-  // o condómino recebia o aviso de receção e a resposta institucional 2x.
+  // o condómino recebia o aviso de receção e a resposta institucional 2x,
+  // e um documento real (ex: fatura) podia ficar lançado em duplicado.
   const hashEmail = calcularHashEmail(cleanFrom, subject, textoEmail);
-  if (await emailJaProcessadoRecentemente(hashEmail)) {
-    console.log(`[inboundProcessor] Email de ${cleanFrom} (assunto: ${subject}) já foi processado nos últimos 3 minutos — ignorado para evitar duplicação.`);
+  if (!(await tentarReclamarEmail(hashEmail))) {
+    console.log(`[inboundProcessor] Email de ${cleanFrom} (assunto: ${subject}) já foi reclamado por outro pedido simultâneo/recente — ignorado para evitar duplicação.`);
     return { ok: true, status: 200, autoresponder: false, motivo: "email_duplicado_ja_processado" };
-  }
-  try {
-    await supabase.from("ai_auditoria").insert({ origem: "email_inbound_dedup", file_hash: hashEmail });
-  } catch (e) {
-    console.warn("[inboundProcessor] Aviso ao registar hash de deduplicação:", e?.message || e);
   }
 
   console.log(`[inboundProcessor] A processar email de ${cleanFrom} | Assunto: ${subject}`);
