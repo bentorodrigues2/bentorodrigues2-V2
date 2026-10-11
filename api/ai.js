@@ -202,7 +202,9 @@ Taxa de inadimplência histórica assumida: ${inadimplenciaHistorica || 0}%
 Escreve uma análise curta e clara para a administração, em português de Portugal, usando SEMPRE estes números exatos (nunca outros). Devolve APENAS um JSON válido, sem markdown, no formato exato:
 {"impacto_obras": "...", "impacto_quotas_extraordinarias": "...", "impacto_inadimplencia_prevista": "...", "explicacao_quotas": "...", "impacto_fundo": "...", "impacto_saldo": "..."}
 
-Cada campo deve ter 1 a 3 frases. Se não houver obras pendentes, impacto_obras e impacto_quotas_extraordinarias devem dizê-lo claramente em vez de inventar obras.`.trim();
+Cada campo deve ter 1 a 3 frases. Se não houver obras pendentes, impacto_obras e impacto_quotas_extraordinarias devem dizê-lo claramente em vez de inventar obras.
+
+REGRA ABSOLUTA, NUNCA QUEBRES: és só um redator, não um calculador. NUNCA multipliques, divides, somes ou calcules NENHUM valor monetário novo — mesmo que pareça simples (ex: quota × 12 × frações). Usa EXCLUSIVAMENTE os números já dados acima, exatamente como estão, sem os combinar em nenhum total novo. Não escrevas nenhum valor em euros que não apareça literalmente na lista de números acima. Não inventes secções tipo "Conformidade (DL 268/94)" com valores de receita anual calculados por ti — isso já é feito, de forma verificada, pelo código, não pela tua escrita. Um valor em euros inventado ou mal calculado por ti aqui é um erro grave de contabilidade real apresentado a um condomínio.`.trim();
 
       const responseText = await generateWithFallback({
         contents: [{ role: "user", parts: [{ text: prompt }] }],

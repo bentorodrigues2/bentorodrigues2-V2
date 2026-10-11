@@ -1008,6 +1008,66 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
     };
   }, [movements]);
 
+  // Diagnóstico real: quotas ORDINÁRIAS tal como estão ESTIPULADAS hoje
+  // (o valor mensal que já consta nos avisos reais de cada fração), não
+  // uma quota nova "sugerida" calculada do zero — pedido explícito do
+  // administrador: "ele tem de fazer a análise pelos valores das quotas
+  // que estão estipuladas e a partir daí é que faz a análise de receitas e
+  // a necessidade de aumentar ou não". Para cada fração, usa o aviso de
+  // Quota Ordinária mais recente que seja uma emissão mensal normal (nunca
+  // um aviso de dívida antiga agregando vários meses — "15 meses × 46,13€"
+  // — que reflete um valor histórico, não a quota em vigor agora).
+  const quotaEstipuladaAtualPorFracao = React.useMemo(() => {
+    const ehAvisoAgregadoDeVariosMeses = (a: Aviso) => /\d+\s*mes(?:es)?\s*[x×]/i.test(String(a.descricao || ""));
+    // Um aumento de quota aprovado a meio do ano fica registado como 2
+    // avisos no mesmo mês: o valor antigo ("Quota Ordinária", já pago) e um
+    // segundo aviso "Diferença de Quota" só com a diferença — confirmado em
+    // produção, fração B tinha "Quota Ordinária" de 8,14€ + "Diferença de
+    // Quota" de 2,50€ no mesmo mês, e usar só o último cronologicamente
+    // (muitas vezes a diferença, um valor pequeno) dava uma quota
+    // estipulada de 2,50€/mês, quando a real é 10,64€. O texto do próprio
+    // aviso de diferença já tem a resposta: "(atualizada de 8.14€ para
+    // 10.64€)" — extrai sempre esse valor final quando presente, em vez de
+    // ler só o campo valor (que no aviso de diferença é só a diferença).
+    const extrairQuotaReal = (a: Aviso): number => {
+      const match = String(a.descricao || "").match(/atualizada de [\d.,]+\s*€\s*para\s*([\d.,]+)\s*€/i);
+      if (match) return parseFloat(match[1].replace(",", "."));
+      return Number(a.valor) || 0;
+    };
+    const porFracao: Record<string, number> = {};
+    (fracoes || []).forEach(f => {
+      const avisosOrdFracao = (avisos || [])
+        .filter(a => a.id_fracao === f.id_fracao && a.tipo === "Quota Ordinária" && !ehAvisoAgregadoDeVariosMeses(a))
+        .sort((a, b) => {
+          const porData = String(b.vencimento || b.data || "").localeCompare(String(a.vencimento || a.data || ""));
+          if (porData !== 0) return porData;
+          // Mesmo mês: o aviso "Diferença de Quota" é o mais autoritativo
+          // (tem o valor final já atualizado no próprio texto).
+          const aTemDiferenca = /diferença de quota/i.test(a.descricao || "") ? 1 : 0;
+          const bTemDiferenca = /diferença de quota/i.test(b.descricao || "") ? 1 : 0;
+          return bTemDiferenca - aTemDiferenca;
+        });
+      if (avisosOrdFracao.length > 0) porFracao[f.id_fracao] = extrairQuotaReal(avisosOrdFracao[0]);
+    });
+    return porFracao;
+  }, [avisos, fracoes]);
+
+  const diagnosticoQuotasEstipuladas = React.useMemo(() => {
+    const porFracao = (fracoes || []).map(f => {
+      const quotaMensalEstipulada = quotaEstipuladaAtualPorFracao[f.id_fracao] ?? null;
+      return {
+        fracao_nome: f.fracao_nome,
+        permilagem: f.permilagem || 0,
+        quota_mensal_estipulada: quotaMensalEstipulada,
+        receita_anual_estipulada: quotaMensalEstipulada !== null ? Math.round(quotaMensalEstipulada * 12 * 100) / 100 : null
+      };
+    }).sort((a, b) => String(a.fracao_nome).localeCompare(String(b.fracao_nome)));
+    const comQuotaConhecida = porFracao.filter(f => f.quota_mensal_estipulada !== null);
+    const receitaAnualEstipuladaTotal = Math.round(comQuotaConhecida.reduce((s, f) => s + (f.receita_anual_estipulada || 0), 0) * 100) / 100;
+    const fracoesSemQuotaConhecida = porFracao.length - comQuotaConhecida.length;
+    return { porFracao, receitaAnualEstipuladaTotal, fracoesSemQuotaConhecida };
+  }, [fracoes, quotaEstipuladaAtualPorFracao]);
+
   // Taxa de inadimplência REAL deste prédio: % do valor de avisos já
   // vencidos que continua por pagar (Pendente/Paga Parcialmente), em vez
   // do valor fixo de 12% apresentado antes para qualquer prédio.
@@ -2601,9 +2661,71 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                 </div>
               </div>
 
+              {/* Section 1b: Diagnóstico Real — Quotas Estipuladas vs Necessidade.
+                  Pedido explícito do administrador: a análise tem de partir
+                  do valor das quotas que JÁ ESTÃO ESTIPULADAS em cada
+                  fração (os avisos reais emitidos), não de uma quota nova
+                  "sugerida" calculada do zero — só depois de somar a
+                  receita real que isso gera é que faz sentido concluir se é
+                  preciso aumentar e por quanto. */}
+              {(() => {
+                const necessidadeAnualReal = Math.round(((budgetResult.despesas_previstas || 0) + (budgetResult.fundo_recomendado || 0) + (budgetResult.fundo_maneio || 0)) * 100) / 100;
+                const receitaEstipulada = diagnosticoQuotasEstipuladas.receitaAnualEstipuladaTotal;
+                const diferenca = Math.round((necessidadeAnualReal - receitaEstipulada) * 100) / 100;
+                const percentualAjuste = receitaEstipulada > 0 ? Math.round((diferenca / receitaEstipulada) * 1000) / 10 : null;
+                return (
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 block">Diagnóstico Real: Quotas Estipuladas vs Necessidade (DL 268/94)</span>
+                    <p className="text-[11px] text-slate-600">Parte do valor da quota que cada fração JÁ PAGA hoje (último aviso real de Quota Ordinária emitido) — não de uma quota nova inventada.</p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="border border-slate-200 rounded-xl p-3 text-center bg-slate-50">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 block">Receita Anual Estipulada (Real)</span>
+                        <span className="text-sm font-black text-slate-800 block mt-1">€{receitaEstipulada.toFixed(2)}</span>
+                        <span className="text-[8px] text-slate-600">soma das quotas atuais × 12{diagnosticoQuotasEstipuladas.fracoesSemQuotaConhecida > 0 ? ` · ${diagnosticoQuotasEstipuladas.fracoesSemQuotaConhecida} fração(ões) sem aviso real` : ""}</span>
+                      </div>
+                      <div className="border border-slate-200 rounded-xl p-3 text-center bg-slate-50">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 block">Necessidade Anual Real</span>
+                        <span className="text-sm font-black text-slate-800 block mt-1">€{necessidadeAnualReal.toFixed(2)}</span>
+                        <span className="text-[8px] text-slate-600">despesas reais + FCR + fundo de maneio</span>
+                      </div>
+                      <div className={`border rounded-xl p-3 text-center ${diferenca > 0 ? "border-red-200 bg-red-50/40" : "border-emerald-200 bg-emerald-50/40"}`}>
+                        <span className={`text-[9px] font-bold uppercase tracking-wider block ${diferenca > 0 ? "text-red-700" : "text-emerald-700"}`}>{diferenca > 0 ? "Défice — Falta Cobrar" : "Superávit"}</span>
+                        <span className={`text-sm font-black block mt-1 ${diferenca > 0 ? "text-red-700" : "text-emerald-700"}`}>€{Math.abs(diferenca).toFixed(2)}{percentualAjuste !== null && diferenca > 0 ? ` (+${percentualAjuste}%)` : ""}</span>
+                        <span className="text-[8px] text-slate-600">{diferenca > 0 ? "aumento de quotas necessário" : "quotas atuais já cobrem a necessidade"}</span>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto pt-1">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-200 text-[9px] font-bold uppercase text-slate-600 bg-slate-50">
+                            <th className="py-2 px-3">Fração</th>
+                            <th className="py-2 px-3">Permilagem</th>
+                            <th className="py-2 px-3 text-right">Quota Estipulada/mês</th>
+                            <th className="py-2 px-3 text-right">Receita Anual (×12)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {diagnosticoQuotasEstipuladas.porFracao.map((f) => (
+                            <tr key={f.fracao_nome}>
+                              <td className="py-2 px-3 font-bold text-slate-800 dark:text-slate-100">Fração {f.fracao_nome}</td>
+                              <td className="py-2 px-3 font-mono text-slate-600 dark:text-slate-400">{f.permilagem}‰</td>
+                              <td className="py-2 px-3 font-mono text-right">{f.quota_mensal_estipulada !== null ? `€${f.quota_mensal_estipulada.toFixed(2)}` : <span className="text-slate-600 italic">sem aviso real</span>}</td>
+                              <td className="py-2 px-3 font-mono font-bold text-right">{f.receita_anual_estipulada !== null ? `€${f.receita_anual_estipulada.toFixed(2)}` : "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Section 2: Sugestão Automática de Quota Mensal */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 block">Sugestão Automática de Quota Mensal (IA)</span>
+                <p className="text-[9px] text-slate-600 -mt-1.5">Quota TEÓRICA recalculada do zero a partir das despesas — útil para comparar, mas a decisão de aumentar parte do diagnóstico real acima.</p>
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="border border-slate-200 rounded-xl p-3 text-center bg-slate-50 hover:bg-slate-100/70 transition-all">
@@ -2681,9 +2803,6 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                   </h5>
                   <p className="text-[11px] text-slate-600 mt-0.5">Plano de comparticipação para execução de obras ou benfeitorias estruturais com fracionamento legal.</p>
                 </div>
-                <div className="bg-slate-900 text-slate-100 text-xs font-mono font-bold px-3 py-1.5 rounded-lg border border-slate-800 shadow-sm shrink-0">
-                  <span className="text-slate-600">Referência Obrigatória:</span> <span className="text-orange-400">BR23E</span>
-                </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -2714,12 +2833,12 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                   <p className="text-[9px] text-slate-600">Valores médios por fração — a repartição real de cada fração (pela sua permilagem) está na tabela abaixo.</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     {budgetResult.quota_extraordinaria_sugestao.fracionamentos?.map((frac: any, i: number) => (
-                      <div key={i} className="border border-slate-200 rounded-xl p-3 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 transition-all text-center">
+                      <div key={i} className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300 transition-all text-center">
                         <span className="text-[10px] bg-slate-900 text-white font-extrabold px-2 py-0.5 rounded-full inline-block mb-1.5">
                           {frac.meses} Meses
                         </span>
-                        <span className="text-xs font-black text-slate-800 block">€{frac.valor_mensal_medio?.toFixed(2)}</span>
-                        <span className="text-[8px] text-slate-600">média/fração/mês</span>
+                        <span className="text-xs font-black text-slate-800 dark:text-slate-100 block">€{frac.valor_mensal_medio?.toFixed(2)}</span>
+                        <span className="text-[8px] text-slate-600 dark:text-slate-400">média/fração/mês</span>
                       </div>
                     ))}
                   </div>
@@ -4057,19 +4176,9 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                   
                   <div className="flex items-center gap-4">
                     <div className="text-right space-y-1 text-xs font-mono">
-                      <div className="text-slate-900 font-extrabold text-[11px]">Ref: BR23E/ORC-26</div>
-                      <div className="text-[9px] text-slate-600">Emissão: 16 de Julho de 2026</div>
+                      <div className="text-[9px] text-slate-600">Emissão: {new Date().toLocaleDateString("pt-PT", { day: "2-digit", month: "long", year: "numeric" })}</div>
                       <div className="text-[9px] text-slate-600">Edifício: {predio?.nome || "Condomínio Exemplo"}</div>
-                      <div className="text-[8px] bg-slate-900 text-white font-black px-1.5 py-0.5 rounded uppercase mt-1 inline-block">Proposta Oficial</div>
-                    </div>
-                    {/* Mock QR Code purely in CSS Grid */}
-                    <div className="flex flex-col items-center shrink-0 border border-slate-200 p-1 rounded bg-white shadow-xs">
-                      <div className="grid grid-cols-5 gap-0.5 h-10 w-10">
-                        {[...Array(25)].map((_, idx) => (
-                          <div key={idx} className={`h-1.5 w-1.5 ${[0,1,2,3,4,5,9,10,14,15,19,20,21,22,23,24].includes(idx) || Math.random() > 0.5 ? 'bg-slate-900' : 'bg-transparent'}`} />
-                        ))}
-                      </div>
-                      <span className="text-[5px] text-slate-600 font-mono mt-0.5 uppercase">QR VERIFY</span>
+                      <div className="text-[8px] bg-slate-900 text-white font-black px-1.5 py-0.5 rounded uppercase mt-1 inline-block">Rascunho — Sujeito a Aprovação em Assembleia</div>
                     </div>
                   </div>
                 </div>
