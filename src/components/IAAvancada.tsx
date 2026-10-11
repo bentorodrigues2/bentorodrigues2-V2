@@ -1077,6 +1077,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
       valor_total: 0,
       valor_por_fracao_medio: 0,
       fracionamentos: [3, 6, 9, 12, 18, 24].map(meses => ({ meses, valor_mensal_medio: 0 })),
+      porFracao: [] as { fracao_nome: string; permilagem: number; valor_total: number; valor_mensal_6x: number }[],
       impacto_fundo: "",
       impacto_saldo: ""
     },
@@ -1375,7 +1376,25 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
         quota_extraordinaria_sugestao: {
           valor_total: totalObrasReal,
           valor_por_fracao_medio: numFracoesReal > 0 ? Math.round((totalObrasReal / numFracoesReal) * 100) / 100 : 0,
-          fracionamentos: [3, 6, 9, 12, 18, 24].map(m => ({ meses: m, valor_mensal_medio: Math.round((totalObrasReal / m) * 100) / 100 })),
+          // Bug confirmado pelo administrador: faltava dividir pelo nº de
+          // frações — mostrava o custo TOTAL do edifício por mês (ex:
+          // €3.490,10 para 3 meses) rotulado como "/fração/mês", quando
+          // devia ser esse valor a dividir pelas 17 frações.
+          fracionamentos: [3, 6, 9, 12, 18, 24].map(m => ({ meses: m, valor_mensal_medio: numFracoesReal > 0 ? Math.round((totalObrasReal / numFracoesReal / m) * 100) / 100 : 0 })),
+          // Repartição real por fração, pela permilagem de cada uma (a
+          // mesma regra legal já usada para a quota extraordinária real do
+          // telhado, nunca uma divisão igual entre frações) — pedido
+          // explícito: "a sugestão de quotas deveria estar por frações e
+          // não apenas para uma fração".
+          porFracao: (fracoes || []).map(f => {
+            const valorTotalFracao = Math.round((totalObrasReal * (f.permilagem || 0) / 1000) * 100) / 100;
+            return {
+              fracao_nome: f.fracao_nome,
+              permilagem: f.permilagem || 0,
+              valor_total: valorTotalFracao,
+              valor_mensal_6x: Math.round((valorTotalFracao / 6) * 100) / 100
+            };
+          }).sort((a, b) => String(a.fracao_nome).localeCompare(String(b.fracao_nome))),
           impacto_fundo: narrativa.impacto_fundo,
           impacto_saldo: narrativa.impacto_saldo
         },
@@ -2430,6 +2449,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
 
                 <div className="lg:col-span-8 space-y-3">
                   <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-600 block">Opções de Fracionamento Obrigatório (Sugestão IA)</span>
+                  <p className="text-[9px] text-slate-600">Valores médios por fração — a repartição real de cada fração (pela sua permilagem) está na tabela abaixo.</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     {budgetResult.quota_extraordinaria_sugestao.fracionamentos?.map((frac: any, i: number) => (
                       <div key={i} className="border border-slate-200 rounded-xl p-3 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 transition-all text-center">
@@ -2437,12 +2457,40 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                           {frac.meses} Meses
                         </span>
                         <span className="text-xs font-black text-slate-800 block">€{frac.valor_mensal_medio?.toFixed(2)}</span>
-                        <span className="text-[8px] text-slate-600">/fração/mês</span>
+                        <span className="text-[8px] text-slate-600">média/fração/mês</span>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
+
+              {budgetResult.quota_extraordinaria_sugestao.porFracao?.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-600 block">Repartição Real por Fração (pela Permilagem)</span>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-[9px] font-bold uppercase text-slate-600 bg-slate-50">
+                          <th className="py-2 px-3">Fração</th>
+                          <th className="py-2 px-3">Permilagem</th>
+                          <th className="py-2 px-3 text-right">Valor Total Devido</th>
+                          <th className="py-2 px-3 text-right">Prestação Mensal (6x)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {budgetResult.quota_extraordinaria_sugestao.porFracao.map((f: any) => (
+                          <tr key={f.fracao_nome}>
+                            <td className="py-2 px-3 font-bold text-slate-800">Fração {f.fracao_nome}</td>
+                            <td className="py-2 px-3 font-mono text-slate-600">{f.permilagem}‰</td>
+                            <td className="py-2 px-3 font-mono font-bold text-right">€{f.valor_total.toFixed(2)}</td>
+                            <td className="py-2 px-3 font-mono font-bold text-right text-orange-600">€{f.valor_mensal_6x.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
