@@ -1361,9 +1361,17 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
       // Obras/Extra" — nunca pelo nome do fornecedor, que mudaria a cada
       // obra nova.
       const contaObrasExtra = (contas || []).find(c => /interven|obra|extra/i.test(c.tipo || ""));
+      // Pagamentos de dívidas antigas (ex: tranches à antiga empresa
+      // gestora "Vip Condomínios") são liquidação de um passivo pontual já
+      // extinto, nunca um custo que se repete todos os anos — projetá-los
+      // para o orçamento do exercício seguinte inflacionava a quota
+      // ordinária com uma despesa que não vai voltar a existir. Confirmado
+      // e pedido explicitamente pelo administrador.
+      const ehDividaAntiga = (descricao: string) => /d[ií]vida.{0,20}antiga/i.test(descricao || "");
       const despesasPeriodoBase = (movements || []).filter(m => {
         if (m.tipo !== "Despesa" || !m.data) return false;
         if (contaObrasExtra && m.id_conta === contaObrasExtra.id_conta) return false;
+        if (ehDividaAntiga(m.descricao)) return false;
         const d = new Date(m.data);
         return d >= inicioPeriodoBase && d <= fimPeriodoBase;
       });
