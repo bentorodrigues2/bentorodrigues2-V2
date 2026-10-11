@@ -614,6 +614,20 @@ export function FinanceiroAvancado({
   // se já existir um "Pago" a cobrir esse mês, só a eventual "Diferença de
   // Quota" (o acerto real de um aumento entretanto aprovado) conta como
   // dívida — nunca a emissão regular completa do mesmo mês outra vez.
+  // Um único aviso pode representar VÁRIOS meses em dívida (dívida inicial
+  // da administração anterior, lançada como 1 registo com o valor já
+  // multiplicado — ex: "15 meses × 46,13€" — em vez de 1 registo por mês,
+  // como a emissão mensal normal faz). Contar sempre "1 aviso = 1 quota"
+  // subestimava o nº real de mensalidades em atraso nesses casos (ex:
+  // Fração N aparecia com "8 quota(s)" quando o real são 22 meses: 15 da
+  // dívida inicial + 6 extraordinárias + o mês corrente). Extrai o número
+  // real de meses do próprio texto do aviso quando presente.
+  const contarMesesReais = (avisosList: Aviso[]): number =>
+    avisosList.reduce((total, a) => {
+      const match = String(a.descricao || "").match(/(\d+)\s*mes(?:es)?\s*[x×]/i);
+      return total + (match ? parseInt(match[1], 10) : 1);
+    }, 0);
+
   const getPendentesReaisDaFracao = (id_fracao: string): Aviso[] => {
     const avisosFracao = predioAvisos.filter(a => a.id_fracao === id_fracao);
     const porMes: Record<string, Aviso[]> = {};
@@ -1725,7 +1739,7 @@ export function FinanceiroAvancado({
                       {predioFracoes.map(frac => {
                         const bal = getFracaoBalance(frac.id_fracao);
                         const isGoodStanding = bal >= 0;
-                        const pendCount = getPendentesReaisDaFracao(frac.id_fracao).length;
+                        const pendCount = contarMesesReais(getPendentesReaisDaFracao(frac.id_fracao));
                         return (
                           <tr key={frac.id_fracao} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-colors">
                             <td className="py-3 px-4 font-bold text-slate-800 dark:text-white">
