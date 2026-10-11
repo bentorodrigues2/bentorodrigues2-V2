@@ -949,12 +949,26 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
   // mesmo essa despesa.
   const mediaMensalDespesasReais = React.useMemo(() => {
     const despesas = (movements || []).filter(m => m.tipo === "Despesa" && m.data);
+    // Dividir só pelos meses em que ESSA categoria teve lançamento (em vez
+    // do total de meses do histórico) sobrestimava brutalmente qualquer
+    // contrato faturado trimestralmente/irregularmente, não todos os
+    // meses: confirmado em produção — "Manutenção de Elevadores" só teve
+    // lançamentos em 3 dos meses reais (3 faturas de ~400€, contrato
+    // trimestral de 1.600€/ano), mas a média "total ÷ 3 meses ativos × 12"
+    // projetava 4.134,84€/ano, mais do que o dobro do valor real do
+    // contrato. Divide-se sempre por 12 (o período anual que o resto desta
+    // ferramenta já assume) — o total real observado passa a ser
+    // apresentado tal como foi mesmo gasto, sem nenhuma suposição de
+    // periodicidade mensal que raramente é verdadeira para contratos de
+    // manutenção. O administrador continua a poder substituir este valor
+    // pelo valor real do contrato nos campos editáveis, sempre que o
+    // histórico ainda não tiver dados suficientes (prédio em utilização há
+    // poucos meses).
     const mediaPorCategoria = (match: (cat: string) => boolean) => {
       const doCategoria = despesas.filter(m => match((m.categoria || "").toLowerCase()));
       if (doCategoria.length === 0) return 0;
-      const meses = new Set(doCategoria.map(m => String(m.data).slice(0, 7))).size || 1;
       const total = doCategoria.reduce((s, m) => s + (Number(m.valor) || 0), 0);
-      return Math.round((total / meses) * 100) / 100;
+      return Math.round((total / 12) * 100) / 100;
     };
     // "Seguros" e "Inspeções" entram na rubrica como valor já ANUAL (nunca
     // multiplicados por 12, ao contrário de contratos/manutenção/limpeza)
@@ -1362,15 +1376,23 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
         const c = cat.toLowerCase();
         return (c.includes("manuten") && !c.includes("elevador")) || c.includes("limp") || c.includes("elevador") || c.includes("seguro") || c.includes("inspe") || c.includes("scie");
       };
-      const totaisOutrasCategorias: Record<string, number> = {};
+      // Agrupar pela categoria normalizada (minúsculas/sem espaços a mais),
+      // não pelo texto exato — confirmado em produção: "Eletricidade" e
+      // "eletricidade" (só a diferença de maiúscula/minúscula) ficavam como
+      // duas rubricas "adicionais" separadas em vez de uma só com o total
+      // real combinado. Mantém-se o primeiro nome original encontrado para
+      // apresentação.
+      const totaisOutrasCategorias: Record<string, { nome: string; valor: number }> = {};
       despesasPeriodoBase.forEach(m => {
-        const cat = m.categoria || "Outras Despesas";
+        const cat = (m.categoria || "Outras Despesas").trim();
         if (categoriaJaCoberta(cat)) return;
-        totaisOutrasCategorias[cat] = (totaisOutrasCategorias[cat] || 0) + (Number(m.valor) || 0);
+        const chave = cat.toLowerCase();
+        if (!totaisOutrasCategorias[chave]) totaisOutrasCategorias[chave] = { nome: cat, valor: 0 };
+        totaisOutrasCategorias[chave].valor += Number(m.valor) || 0;
       });
-      const rubricasAdicionaisReais = Object.entries(totaisOutrasCategorias).map(([cat, valor]) => ({
-        id: `real-${cat.toLowerCase().replace(/\s+/g, "-")}`,
-        nome: `${cat} (real, exercício anterior)`,
+      const rubricasAdicionaisReais = Object.entries(totaisOutrasCategorias).map(([chave, { nome, valor }]) => ({
+        id: `real-${chave.replace(/\s+/g, "-")}`,
+        nome: `${nome} (real, exercício anterior)`,
         valor: Math.round(valor * 100) / 100,
         editable: true
       }));
