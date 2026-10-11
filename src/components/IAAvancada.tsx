@@ -1071,6 +1071,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
     quota_minima: 0,
     quota_recomendada: 0,
     quota_ideal: 0,
+    quota_por_fracao: [] as { fracao_nome: string; permilagem: number; quota_mensal_minima: number; quota_mensal_recomendada: number; quota_mensal_ideal: number }[],
     quota_extraordinaria: 0,
     explicacao_quotas: "",
     quota_extraordinaria_sugestao: {
@@ -1567,6 +1568,33 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
 
     const totalSaldo = Math.round((totalReceitas - totalDespesas) * 100) / 100;
 
+    // A quota ordinária NUNCA pode ser um valor único "igual para todas as
+    // frações" — por lei (e pedido explícito do administrador: "os cálculos
+    // têm de ser por permilagem de fração, e tem de incluir todas as
+    // despesas do prédio nos cálculos mais FCR"), cada fração paga a sua
+    // quota proporcionalmente à sua permilagem sobre o total anual
+    // (despesas reais do prédio + Fundo Comum de Reserva), nunca uma
+    // divisão igual pelo nº de frações — a mesma regra legal já usada para
+    // a Quota Extraordinária (quota_extraordinaria_sugestao.porFracao).
+    // qMinima/qRecomendada/qIdeal acima ficam como MÉDIA de referência (o
+    // total dividido pelas frações continua a bater certo com a soma real
+    // por permilagem, porque as permilagens somam sempre 1000‰).
+    const totalAnualMinimo = totalDespesas + fundoLegal;
+    const totalAnualRecomendado = totalDespesas + fundoRec;
+    const quotaPorFracao = (fracoes || []).map(f => {
+      const permilagem = f.permilagem || 0;
+      const valorAnualMinimo = totalAnualMinimo * permilagem / 1000;
+      const valorAnualRecomendado = totalAnualRecomendado * permilagem / 1000;
+      const quotaMensalRecomendada = Math.round((valorAnualRecomendado / 12) * 100) / 100;
+      return {
+        fracao_nome: f.fracao_nome,
+        permilagem,
+        quota_mensal_minima: Math.round((valorAnualMinimo / 12) * 100) / 100,
+        quota_mensal_recomendada: quotaMensalRecomendada,
+        quota_mensal_ideal: Math.round((quotaMensalRecomendada * (1 + (inadimplenciaHistorica / 100))) * 100) / 100
+      };
+    }).sort((a, b) => String(a.fracao_nome).localeCompare(String(b.fracao_nome)));
+
     // Update the budgetResult state with the new values
     setBudgetResult((prev: any) => ({
       ...prev,
@@ -1578,6 +1606,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
       quota_minima: qMinima,
       quota_recomendada: qRecomendada,
       quota_ideal: qIdeal,
+      quota_por_fracao: quotaPorFracao,
       impacto_inadimplencia_prevista: aplicaPenalizacoes 
         ? `${penaltyImpactExplanation} O saldo final de tesouraria foi ajustado para €${totalSaldo.toFixed(2)}.` 
         : `Com inadimplência de ${inadimplenciaHistorica}%, estima-se quebra de liquidez de €${(totalReceitas * (inadimplenciaHistorica / 100)).toFixed(2)}. Nenhuma penalização ativa para compensar.`,
@@ -2512,6 +2541,37 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                   <i className="fa-solid fa-lightbulb text-violet-500 mr-1.5 text-xs"></i>
                   {budgetResult.explicacao_quotas}
                 </p>
+
+                {budgetResult.quota_por_fracao?.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-slate-100">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-600 block">Quota Ordinária Real por Fração (pela Permilagem)</span>
+                    <p className="text-[9px] text-slate-600">Os valores acima são a média do prédio — cada fração paga proporcionalmente à sua permilagem sobre o total anual (despesas reais + Fundo Comum de Reserva), nunca um valor igual para todas.</p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-200 text-[9px] font-bold uppercase text-slate-600 bg-slate-50">
+                            <th className="py-2 px-3">Fração</th>
+                            <th className="py-2 px-3">Permilagem</th>
+                            <th className="py-2 px-3 text-right">Mínima/mês</th>
+                            <th className="py-2 px-3 text-right">Recomendada/mês</th>
+                            <th className="py-2 px-3 text-right">Ideal/mês</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {budgetResult.quota_por_fracao.map((f: any) => (
+                            <tr key={f.fracao_nome}>
+                              <td className="py-2 px-3 font-bold text-slate-800">Fração {f.fracao_nome}</td>
+                              <td className="py-2 px-3 font-mono text-slate-600">{f.permilagem}‰</td>
+                              <td className="py-2 px-3 font-mono text-right">€{f.quota_mensal_minima.toFixed(2)}</td>
+                              <td className="py-2 px-3 font-mono font-bold text-right text-violet-700">€{f.quota_mensal_recomendada.toFixed(2)}</td>
+                              <td className="py-2 px-3 font-mono text-right">€{f.quota_mensal_ideal.toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
