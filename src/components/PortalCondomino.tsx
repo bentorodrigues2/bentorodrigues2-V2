@@ -1231,6 +1231,16 @@ export function PortalCondomino({
 
   useEffect(() => { carregarVotacoesOrcamentos(); }, [carregarVotacoesOrcamentos]);
 
+  // Deep-link do email/push de "Votação Disponível" (?abrir=votacao-concurso&id=...)
+  // — lido aqui mesmo, sem depender de nenhum router novo na app (que não
+  // existe); assim que a votação carrega, desloca a página até à secção.
+  useEffect(() => {
+    if (rfpsVotacaoFeed.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("abrir") !== "votacao-concurso") return;
+    setTimeout(() => document.getElementById("votacoes-orcamentos")?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+  }, [rfpsVotacaoFeed]);
+
   const jaVotouProposta = (idRfp: string) => (votosPorRfpFeed[idRfp] || []).some(v => v.id_fracao === activeUserFracao?.id_fracao);
 
   const handleVotarProposta = async (idRfp: string, idProposal: string) => {

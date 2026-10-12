@@ -16,7 +16,8 @@ import {
 } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { VotacaoAssembleiaVirtual } from "./VotacaoAssembleiaVirtual";
-import { saveReuniaoToSupabase, deleteReuniaoFromSupabase, saveDocumentoToSupabase, registarLogAuditoria, fetchObrasExtraFromSupabase, extrairNumeroAtaDoTexto, uploadDocumentoToStorage } from "../lib/supabaseService";
+import { saveReuniaoToSupabase, deleteReuniaoFromSupabase, saveDocumentoToSupabase, registarLogAuditoria, fetchObrasExtraFromSupabase, extrairNumeroAtaDoTexto, uploadDocumentoToStorage, fetchRfpsFromSupabase, fetchPropostasFromSupabase, fetchVotosPropostaFromSupabase } from "../lib/supabaseService";
+import type { RequestForProposal, Proposal, VotoProposta } from "../types";
 
 interface GestaoAssembleiasProps {
   predio: Predio;
@@ -69,6 +70,53 @@ export function GestaoAssembleias({ predio, fracoes, reunioes, onAddReuniao, set
   const [ataTexto, setAtaTexto] = useState("");
   const [loadingAta, setLoadingAta] = useState(false);
   const [loadingHumanize, setLoadingHumanize] = useState(false);
+
+  // Checklist de Votações de Propostas de Orçamento concluídas — pedido
+  // explícito do administrador, para incluir o resultado consultivo do
+  // concurso na ata, mesmo padrão de "Integrar Deliberações na Ata" já
+  // usado em VotacaoAssembleiaVirtual (gerarResumoDeliberacoesAta +
+  // onIntegrarNaAta), aqui para concursos em vez de pontos de assembleia.
+  const [rfpsFechadosAta, setRfpsFechadosAta] = useState<RequestForProposal[]>([]);
+  const [propostasPorRfpAta, setPropostasPorRfpAta] = useState<Record<string, Proposal[]>>({});
+  const [votosPorRfpAta, setVotosPorRfpAta] = useState<Record<string, VotoProposta[]>>({});
+  const [rfpsSelecionadosAta, setRfpsSelecionadosAta] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!predio.id_predio) return;
+    let cancelado = false;
+    (async () => {
+      const rfps = await fetchRfpsFromSupabase(predio.id_predio);
+      const concluidos = (rfps || []).filter((r: RequestForProposal) => r.publicado_para_votacao && r.votacao_fechada);
+      if (cancelado) return;
+      setRfpsFechadosAta(concluidos);
+      const entradas = await Promise.all(concluidos.map(async (r: RequestForProposal) => {
+        const [props, votos] = await Promise.all([fetchPropostasFromSupabase(r.id_rfp), fetchVotosPropostaFromSupabase(r.id_rfp)]);
+        return [r.id_rfp, props || [], votos || []] as [string, Proposal[], VotoProposta[]];
+      }));
+      if (cancelado) return;
+      setPropostasPorRfpAta(Object.fromEntries(entradas.map(([id, props]) => [id, props])));
+      setVotosPorRfpAta(Object.fromEntries(entradas.map(([id, , votos]) => [id, votos])));
+    })();
+    return () => { cancelado = true; };
+  }, [predio.id_predio]);
+
+  const handleIncluirVotacoesOrcamentoNaAta = () => {
+    if (rfpsSelecionadosAta.size === 0) return;
+    let texto = "REGISTO DE VOTAÇÕES DE PROPOSTAS DE ORÇAMENTO (CONSULTIVAS):\n\n";
+    rfpsFechadosAta.filter(r => rfpsSelecionadosAta.has(r.id_rfp)).forEach(r => {
+      const propostas = propostasPorRfpAta[r.id_rfp] || [];
+      const votos = votosPorRfpAta[r.id_rfp] || [];
+      texto += `Concurso: ${r.titulo} (${r.categoria})\n`;
+      propostas.forEach(p => {
+        const nVotos = votos.filter(v => v.id_proposal === p.id_proposal).length;
+        texto += `  • ${p.nome_empresa} — €${p.valor.toLocaleString("pt-PT")} — ${nVotos} voto(s) de ${votos.length} fração(ões) votante(s)\n`;
+      });
+      texto += `Resultado da votação CONSULTIVO — decisão final de adjudicação cabe à administração.\n\n`;
+    });
+    setNotasAta(prev => `${prev ? prev + "\n\n" : ""}${texto}`);
+    setRfpsSelecionadosAta(new Set());
+    setActiveTab("ata");
+  };
   const [loadingElaborarIA, setLoadingElaborarIA] = useState(false);
 
   // Digital Signature Canvas Refs & States
@@ -2472,6 +2520,41 @@ Com os meus cumprimentos,
                           setActiveTab("ata");
                         }}
                       />
+
+                      {/* Checklist de Votações de Propostas de Orçamento
+                          concluídas — pedido explícito do administrador. */}
+                      {rfpsFechadosAta.length > 0 && (
+                        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+                          <h4 className="text-xs font-black uppercase tracking-wider text-slate-600">Incluir Resultados de Votações de Orçamentos na Ata</h4>
+                          <div className="space-y-2">
+                            {rfpsFechadosAta.map(r => (
+                              <label key={r.id_rfp} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={rfpsSelecionadosAta.has(r.id_rfp)}
+                                  onChange={e => {
+                                    setRfpsSelecionadosAta(prev => {
+                                      const novo = new Set(prev);
+                                      if (e.target.checked) novo.add(r.id_rfp); else novo.delete(r.id_rfp);
+                                      return novo;
+                                    });
+                                  }}
+                                  className="rounded border-slate-300"
+                                />
+                                <span>{r.titulo} <span className="text-slate-600">({(votosPorRfpAta[r.id_rfp] || []).length} voto(s))</span></span>
+                              </label>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            disabled={rfpsSelecionadosAta.size === 0}
+                            onClick={handleIncluirVotacoesOrcamentoNaAta}
+                            className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold px-4 py-2 cursor-pointer"
+                          >
+                            Incluir Selecionados na Ata
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 

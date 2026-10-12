@@ -577,6 +577,18 @@ export default function PWACondominoView({
 
   useEffect(() => { carregarVotacoesOrcamentos(); }, [carregarVotacoesOrcamentos]);
 
+  // Deep-link do email/push de "Votação Disponível" (?abrir=votacao-concurso&id=...)
+  // — lido aqui mesmo, sem depender de nenhum router novo na app (que não
+  // existe): muda para a aba "sondagens" (onde a votação de orçamentos
+  // está inserida) e desloca até lá assim que carrega.
+  useEffect(() => {
+    if (rfpsVotacaoFeed.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("abrir") !== "votacao-concurso") return;
+    setActiveTab("sondagens");
+    setTimeout(() => document.getElementById("votacoes-orcamentos")?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+  }, [rfpsVotacaoFeed]);
+
   const jaVotouProposta = (idRfp: string) => (votosPorRfpFeed[idRfp] || []).some(v => v.id_fracao === condominoFracao?.id_fracao);
 
   const handleVotarProposta = async (idRfp: string, idProposal: string) => {
