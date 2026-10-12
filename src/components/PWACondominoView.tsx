@@ -18,7 +18,10 @@ import {
   Conta,
   MensagemConversa,
   SeguroFracao,
-  DocumentoSeguroAnexo
+  DocumentoSeguroAnexo,
+  RequestForProposal,
+  Proposal,
+  VotoProposta
 } from "../types";
 import { generateAndDownloadPdf, downloadEmailDocument, exportToXLS, downloadBlob, ehContaFundoReserva, gerarReferenciaBR23EExtra, formatDatePT } from "../utils";
 import { usePwaBackButton } from "../utils/usePwaBackButton";
@@ -48,7 +51,11 @@ import {
   fetchSegurosFracoesFromSupabase,
   saveSeguroFracaoToSupabase,
   uploadDocumentoToStorage,
-  registarLogAuditoria
+  registarLogAuditoria,
+  fetchRfpsFromSupabase,
+  fetchPropostasFromSupabase,
+  fetchVotosPropostaFromSupabase,
+  saveVotoPropostaToSupabase
 } from "../lib/supabaseService";
 import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { subscribeUserToPush } from "../utils/subscribeUser";
@@ -546,6 +553,52 @@ export default function PWACondominoView({
   const jaVotouSondagem = (s: Sondagem) => (s.votos || []).some(v => v.id_fracao === condominoFracao?.id_fracao);
   const jaRespondeuQuestionario = (q: Questionario) => (q.respostas || []).some(r => r.id_fracao === condominoFracao?.id_fracao);
   const sondagensPorVotar = sondagensFeed.filter(s => s.estado === "ativa" && !jaVotouSondagem(s));
+
+  // Votações de Propostas de Orçamento — mesmo mecanismo de
+  // PortalCondomino.tsx (votação consultiva: informa a adjudicação do
+  // administrador, não a decide sozinha).
+  const [rfpsVotacaoFeed, setRfpsVotacaoFeed] = useState<RequestForProposal[]>([]);
+  const [propostasPorRfpFeed, setPropostasPorRfpFeed] = useState<Record<string, Proposal[]>>({});
+  const [votosPorRfpFeed, setVotosPorRfpFeed] = useState<Record<string, VotoProposta[]>>({});
+  const [aVotarProposta, setAVotarProposta] = useState<string>("");
+
+  const carregarVotacoesOrcamentos = React.useCallback(async () => {
+    if (!predio?.id_predio) return;
+    const rfps = await fetchRfpsFromSupabase(predio.id_predio);
+    const abertas = (rfps || []).filter((r: RequestForProposal) => r.publicado_para_votacao && !r.votacao_fechada);
+    setRfpsVotacaoFeed(abertas);
+    const entradas = await Promise.all(abertas.map(async (r: RequestForProposal) => {
+      const [props, votos] = await Promise.all([fetchPropostasFromSupabase(r.id_rfp), fetchVotosPropostaFromSupabase(r.id_rfp)]);
+      return [r.id_rfp, props || [], votos || []] as [string, Proposal[], VotoProposta[]];
+    }));
+    setPropostasPorRfpFeed(Object.fromEntries(entradas.map(([id, props]) => [id, props])));
+    setVotosPorRfpFeed(Object.fromEntries(entradas.map(([id, , votos]) => [id, votos])));
+  }, [predio?.id_predio]);
+
+  useEffect(() => { carregarVotacoesOrcamentos(); }, [carregarVotacoesOrcamentos]);
+
+  const jaVotouProposta = (idRfp: string) => (votosPorRfpFeed[idRfp] || []).some(v => v.id_fracao === condominoFracao?.id_fracao);
+
+  const handleVotarProposta = async (idRfp: string, idProposal: string) => {
+    if (!condominoFracao?.id_fracao || aVotarProposta) return;
+    setAVotarProposta(idRfp);
+    try {
+      const ok = await saveVotoPropostaToSupabase({
+        id_voto: "votoprop_" + Date.now(),
+        id_rfp: idRfp,
+        id_fracao: condominoFracao.id_fracao,
+        id_proposal: idProposal
+      });
+      if (!ok) {
+        alert("❌ Não foi possível registar o voto. Tente novamente.");
+        return;
+      }
+      registarLogAuditoria("Concursos", "Fração votou numa proposta de orçamento", predio?.id_predio, loggedUser, `Fração ${condominoFracao.fracao_nome} — concurso ${idRfp}`);
+      await carregarVotacoesOrcamentos();
+    } finally {
+      setAVotarProposta("");
+    }
+  };
 
   // Notificações push reais — a subscrição fica gravada no Supabase e passa
   // a receber os envios reais disparados em Gestão de Comunicações (novo
@@ -2965,6 +3018,47 @@ export default function PWACondominoView({
             <div>
               <h3 className="text-sm font-black tracking-tight text-slate-800 dark:text-white">🗳️ Sondagens & Opiniões</h3>
             </div>
+
+            {/* Votações de Propostas de Orçamento (Concursos) — consultiva,
+                a decisão final de adjudicação continua a ser do
+                administrador. */}
+            {rfpsVotacaoFeed.length > 0 && (
+              <div id="votacoes-orcamentos" className="space-y-3">
+                <span className="text-[9px] font-extrabold text-emerald-600 uppercase tracking-widest block">Votações de Propostas de Orçamento</span>
+                {rfpsVotacaoFeed.map(r => {
+                  const propostas = propostasPorRfpFeed[r.id_rfp] || [];
+                  const jaVotouEsta = jaVotouProposta(r.id_rfp);
+                  const votoAtual = (votosPorRfpFeed[r.id_rfp] || []).find(v => v.id_fracao === condominoFracao?.id_fracao);
+                  return (
+                    <div key={r.id_rfp} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3.5 rounded-xl shadow-sm space-y-2 text-[10px]">
+                      <span className="font-bold text-xs text-slate-800 dark:text-white block">{r.titulo}</span>
+                      <span className="text-slate-600 dark:text-slate-400 block">Categoria: {r.categoria} · até {r.votacao_data_fecho ? new Date(r.votacao_data_fecho).toLocaleDateString("pt-PT") : "—"}</span>
+                      <div className="space-y-2 pt-1">
+                        {propostas.map(p => (
+                          <div key={p.id_proposal} className={`p-2.5 rounded-lg border flex items-center justify-between gap-2 ${votoAtual?.id_proposal === p.id_proposal ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30" : "border-slate-200 dark:border-slate-800"}`}>
+                            <div>
+                              <span className="font-bold text-slate-800 dark:text-slate-200 block">{p.nome_empresa}</span>
+                              <span className="text-slate-600 dark:text-slate-400">€{p.valor.toLocaleString("pt-PT")} · {p.prazo_dias} dias</span>
+                            </div>
+                            {votoAtual?.id_proposal === p.id_proposal ? (
+                              <span className="text-emerald-600 font-bold shrink-0"><Check className="h-3.5 w-3.5 inline" /></span>
+                            ) : (
+                              <button
+                                disabled={aVotarProposta === r.id_rfp}
+                                onClick={() => handleVotarProposta(r.id_rfp, p.id_proposal)}
+                                className="font-bold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-2.5 py-1 rounded-lg cursor-pointer shrink-0"
+                              >
+                                {jaVotouEsta ? "Mudar" : "Votar"}
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Sondagens Ativas — reais (Supabase), uma por cada sondagem em curso */}
             {sondagensFeed.filter(s => s.estado === "ativa").length === 0 ? (

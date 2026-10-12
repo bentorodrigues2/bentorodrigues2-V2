@@ -20,7 +20,7 @@ import {
   AlertTriangle,
   Upload
 } from "lucide-react";
-import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondagem, Questionario, MensagemConversa, SeguroFracao, DocumentoSeguroAnexo } from "../types";
+import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondagem, Questionario, MensagemConversa, SeguroFracao, DocumentoSeguroAnexo, RequestForProposal, Proposal, VotoProposta } from "../types";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
 import { generateCondominoPwaManualPDF, gerarReferenciaBR23EExtra, formatDatePT } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
@@ -44,7 +44,11 @@ import {
   registarLogAuditoria,
   fetchSegurosFracoesFromSupabase,
   saveSeguroFracaoToSupabase,
-  uploadDocumentoToStorage
+  uploadDocumentoToStorage,
+  fetchRfpsFromSupabase,
+  fetchPropostasFromSupabase,
+  fetchVotosPropostaFromSupabase,
+  saveVotoPropostaToSupabase
 } from "../lib/supabaseService";
 
 // Inner Interfaces
@@ -1204,6 +1208,52 @@ export function PortalCondomino({
 
   useEffect(() => { carregarFeedComunicacao(); }, [carregarFeedComunicacao]);
 
+  // Votações de Propostas de Orçamento — o administrador publica um
+  // concurso (RFP) para os condóminos votarem na proposta que preferem;
+  // votação CONSULTIVA (informa a adjudicação, não decide sozinha).
+  const [rfpsVotacaoFeed, setRfpsVotacaoFeed] = useState<RequestForProposal[]>([]);
+  const [propostasPorRfpFeed, setPropostasPorRfpFeed] = useState<Record<string, Proposal[]>>({});
+  const [votosPorRfpFeed, setVotosPorRfpFeed] = useState<Record<string, VotoProposta[]>>({});
+  const [aVotarProposta, setAVotarProposta] = useState<string>("");
+
+  const carregarVotacoesOrcamentos = React.useCallback(async () => {
+    if (!predio?.id_predio) return;
+    const rfps = await fetchRfpsFromSupabase(predio.id_predio);
+    const abertas = (rfps || []).filter((r: RequestForProposal) => r.publicado_para_votacao && !r.votacao_fechada);
+    setRfpsVotacaoFeed(abertas);
+    const entradas = await Promise.all(abertas.map(async (r: RequestForProposal) => {
+      const [props, votos] = await Promise.all([fetchPropostasFromSupabase(r.id_rfp), fetchVotosPropostaFromSupabase(r.id_rfp)]);
+      return [r.id_rfp, props || [], votos || []] as [string, Proposal[], VotoProposta[]];
+    }));
+    setPropostasPorRfpFeed(Object.fromEntries(entradas.map(([id, props]) => [id, props])));
+    setVotosPorRfpFeed(Object.fromEntries(entradas.map(([id, , votos]) => [id, votos])));
+  }, [predio?.id_predio]);
+
+  useEffect(() => { carregarVotacoesOrcamentos(); }, [carregarVotacoesOrcamentos]);
+
+  const jaVotouProposta = (idRfp: string) => (votosPorRfpFeed[idRfp] || []).some(v => v.id_fracao === activeUserFracao?.id_fracao);
+
+  const handleVotarProposta = async (idRfp: string, idProposal: string) => {
+    if (!activeUserFracao?.id_fracao || aVotarProposta) return;
+    setAVotarProposta(idRfp);
+    try {
+      const ok = await saveVotoPropostaToSupabase({
+        id_voto: "votoprop_" + Date.now(),
+        id_rfp: idRfp,
+        id_fracao: activeUserFracao.id_fracao,
+        id_proposal: idProposal
+      });
+      if (!ok) {
+        alert("❌ Não foi possível registar o voto. Tente novamente.");
+        return;
+      }
+      registarLogAuditoria("Concursos", "Fração votou numa proposta de orçamento", predio?.id_predio, loggedUser, `Fração ${activeUserFracao.fracao_nome} — concurso ${idRfp}`);
+      await carregarVotacoesOrcamentos();
+    } finally {
+      setAVotarProposta("");
+    }
+  };
+
   const jaVotou = (s: Sondagem) => (s.votos || []).some(v => v.id_fracao === activeUserFracao?.id_fracao);
   const jaRespondeu = (q: Questionario) => (q.respostas || []).some(r => r.id_fracao === activeUserFracao?.id_fracao);
 
@@ -1863,6 +1913,65 @@ export function PortalCondomino({
                       <p className="text-xs text-slate-600 mt-1">{c.mensagem}</p>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Votações de Propostas de Orçamento (Concursos) — consultiva,
+                a decisão final de adjudicação continua a ser do
+                administrador. */}
+            {rfpsVotacaoFeed.length > 0 && (
+              <div id="votacoes-orcamentos" className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+                <h3 className="text-sm font-bold uppercase text-slate-800 mb-4 flex items-center">
+                  <i className="fa-solid fa-file-invoice-dollar mr-2 text-emerald-600"></i> Votações de Propostas de Orçamento
+                </h3>
+                <div className="space-y-4">
+                  {rfpsVotacaoFeed.map(r => {
+                    const propostas = propostasPorRfpFeed[r.id_rfp] || [];
+                    const jaVotouEsta = jaVotouProposta(r.id_rfp);
+                    const votoAtual = (votosPorRfpFeed[r.id_rfp] || []).find(v => v.id_fracao === activeUserFracao?.id_fracao);
+                    return (
+                      <div key={r.id_rfp} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+                        <div>
+                          <span className="font-bold text-xs text-slate-900 block">{r.titulo}</span>
+                          <span className="text-[11px] text-slate-600">Categoria: {r.categoria} · Votação aberta até {r.votacao_data_fecho ? new Date(r.votacao_data_fecho).toLocaleDateString("pt-PT") : "—"}</span>
+                        </div>
+                        <div className="space-y-2">
+                          {propostas.map(p => (
+                            <div key={p.id_proposal} className={`p-3 rounded-lg border bg-white flex flex-wrap items-center justify-between gap-2 ${votoAtual?.id_proposal === p.id_proposal ? "border-emerald-400 ring-1 ring-emerald-300" : "border-slate-200"}`}>
+                              <div>
+                                <span className="font-bold text-xs text-slate-800 block">{p.nome_empresa}</span>
+                                <span className="text-[11px] text-slate-600">€{p.valor.toLocaleString("pt-PT")} · {p.prazo_dias} dias de prazo{p.garantia_anos ? ` · ${p.garantia_anos} anos de garantia` : ""}</span>
+                                {(p.anexos || []).length > 0 && (
+                                  <div className="mt-1 flex flex-wrap gap-2">
+                                    {(p.anexos || []).map((a, idx) => (
+                                      <a key={idx} href={a.caminho} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1">
+                                        <FileText size={11} /> {a.nome}
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              {votoAtual?.id_proposal === p.id_proposal ? (
+                                <span className="text-[11px] text-emerald-700 font-semibold shrink-0"><i className="fa-solid fa-circle-check mr-1"></i>O seu voto</span>
+                              ) : (
+                                <button
+                                  disabled={aVotarProposta === r.id_rfp}
+                                  onClick={() => handleVotarProposta(r.id_rfp, p.id_proposal)}
+                                  className="text-xs font-bold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-3 py-1.5 rounded-lg cursor-pointer shrink-0"
+                                >
+                                  {jaVotouEsta ? "Mudar voto para esta" : "Votar nesta"}
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        {jaVotouEsta && (
+                          <p className="text-[10px] text-slate-600">Pode mudar o seu voto a qualquer momento enquanto a votação estiver aberta.</p>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
