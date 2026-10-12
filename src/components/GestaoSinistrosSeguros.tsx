@@ -1004,6 +1004,11 @@ export function GestaoSinistrosSeguros({
                                 ({fracao.proprietario.email})
                               </span>
                             )}
+                            {segurosFracoesMap[fracao.id_fracao]?.submetido_por === "condomino" && segurosFracoesMap[fracao.id_fracao]?.estado_validacao === "Pendente" && (
+                              <span className="bg-violet-100 text-violet-700 border border-violet-200 font-black text-[9px] px-1.5 py-0.5 rounded-full uppercase flex items-center gap-1">
+                                <i className="fa-solid fa-user"></i> Submetido pelo Condómino — por rever
+                              </span>
+                            )}
                           </div>
 
                           {/* Red Bracket Callout for Expired or Unreceived */}

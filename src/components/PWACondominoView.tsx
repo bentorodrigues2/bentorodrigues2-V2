@@ -47,7 +47,8 @@ import {
   LimpezaRow,
   fetchSegurosFracoesFromSupabase,
   saveSeguroFracaoToSupabase,
-  uploadDocumentoToStorage
+  uploadDocumentoToStorage,
+  registarLogAuditoria
 } from "../lib/supabaseService";
 import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { subscribeUserToPush } from "../utils/subscribeUser";
@@ -956,7 +957,7 @@ export default function PWACondominoView({
   // submeter a apólice/fatura em falta.
   const [seguroFracao, setSeguroFracao] = useState<SeguroFracao | null>(null);
   const [showSeguroModal, setShowSeguroModal] = useState(false);
-  const [aEnviarDocSeguro, setAEnviarDocSeguro] = useState<"Apólice" | "Fatura de Renovação" | null>(null);
+  const [aEnviarDocSeguro, setAEnviarDocSeguro] = useState<"Apólice" | "Fatura de Pagamento" | null>(null);
   const seguroApoliceInputRef = useRef<HTMLInputElement>(null);
   const seguroFaturaInputRef = useRef<HTMLInputElement>(null);
 
@@ -995,13 +996,41 @@ export default function PWACondominoView({
   // ("quem ainda não tiver enviado a apólice e a última fatura").
   const docsAnexosSeguro = seguroFracao?.documentos_anexos || [];
   const faltaApoliceDoc = !docsAnexosSeguro.some(d => d.tipo === "Apólice");
-  const faltaFaturaDoc = !docsAnexosSeguro.some(d => d.tipo === "Fatura de Renovação");
+  const faltaFaturaDoc = !docsAnexosSeguro.some(d => d.tipo === "Fatura de Pagamento" || d.tipo === "Fatura de Renovação");
   const precisaAtencaoSeguro = seguroStatus !== "VALIDO" || faltaApoliceDoc || faltaFaturaDoc;
 
-  const handleEnviarDocumentoSeguro = async (file: File, tipo: "Apólice" | "Fatura de Renovação") => {
+  const lerFicheiroComoBase64Seguro = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1] || "");
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  // Submissão pelo próprio condómino (apólice + fatura de pagamento, ambas
+  // com deteção automática por IA — pedido explícito do administrador)
+  // — fica sempre "Pendente", a administração tem de confirmar/aprovar
+  // antes de o seguro contar como válido. Reutiliza o mesmo motor de IA já
+  // usado do lado da administração (GestaoSinistrosSeguros.tsx,
+  // /api/ai?acao=reconhecer-apolice).
+  const handleEnviarDocumentoSeguro = async (file: File, tipo: "Apólice" | "Fatura de Pagamento") => {
     if (!condominoFracao?.id_fracao) return;
     setAEnviarDocSeguro(tipo);
     try {
+      let dadosIA: { seguradora?: string; apolice_numero?: string; apolice_validade?: string; tipo_cobertura?: string; capital_seguro?: number } = {};
+      try {
+        const base64 = await lerFicheiroComoBase64Seguro(file);
+        const resp = await fetch("/api/ai?acao=reconhecer-apolice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ base64, mimeType: file.type || "application/octet-stream" })
+        });
+        const resultado = await resp.json();
+        if (resp.ok && resultado.ok) dadosIA = resultado.dados || {};
+      } catch (errIA) {
+        console.warn("[PWACondominoView] Aviso: IA não conseguiu ler o documento de seguro, continua só com o upload:", errIA);
+      }
+
       // Uma fotografia de telemóvel real facilmente passa dos 4-5MB — em
       // base64 isso são milhões de caracteres gravados diretamente na linha
       // da base de dados, o que fazia a gravação falhar em silêncio e o
@@ -1029,14 +1058,22 @@ export default function PWACondominoView({
         documentos_anexos: [],
         estado_validacao: "Pendente" as const
       };
+      // Só preenche com o que a IA encontrou mesmo — nunca apaga um campo
+      // já existente com um valor vazio devolvido pela IA.
       const seguroAtualizado: SeguroFracao = {
         ...base,
+        seguradora: dadosIA.seguradora || base.seguradora,
+        apolice_numero: dadosIA.apolice_numero || base.apolice_numero,
+        apolice_validade: dadosIA.apolice_validade || base.apolice_validade,
+        tipo_cobertura: dadosIA.tipo_cobertura || base.tipo_cobertura,
+        capital_seguro: dadosIA.capital_seguro || base.capital_seguro,
         documentos_anexos: [...(base.documentos_anexos || []), novoAnexo],
         // Um documento novo enviado pelo condómino marca sempre o seguro
         // como "Pendente" de verificação pela administração, mesmo que os
         // dados já estivessem válidos antes — nunca confirma sozinho,
         // mesma regra já usada do lado da administração.
-        estado_validacao: "Pendente"
+        estado_validacao: "Pendente",
+        submetido_por: "condomino"
       };
       const res = await saveSeguroFracaoToSupabase(seguroAtualizado);
       if (!res.success) {
@@ -1044,7 +1081,8 @@ export default function PWACondominoView({
         return;
       }
       setSeguroFracao(seguroAtualizado);
-      alert(`✅ ${tipo} enviada com sucesso! A administração irá confirmar os dados em breve.`);
+      registarLogAuditoria("Seguros", "Condómino submeteu documento de seguro", predio?.id_predio, loggedUser, `Fração ${condominoFracao.fracao_nome} — ${tipo}: ${file.name}`);
+      alert(`✅ ${tipo} enviada com sucesso!${dadosIA.seguradora ? ` A IA já identificou: ${dadosIA.seguradora}${dadosIA.apolice_numero ? ` (apólice ${dadosIA.apolice_numero})` : ""}.` : ""} A administração irá confirmar os dados em breve.`);
     } finally {
       setAEnviarDocSeguro(null);
     }
@@ -1772,7 +1810,7 @@ export default function PWACondominoView({
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (file) handleEnviarDocumentoSeguro(file, "Fatura de Renovação");
+                          if (file) handleEnviarDocumentoSeguro(file, "Fatura de Pagamento");
                           e.target.value = "";
                         }}
                       />
@@ -1783,7 +1821,7 @@ export default function PWACondominoView({
                         className="flex-1 bg-slate-700 hover:bg-slate-800 disabled:opacity-60 text-white font-bold py-2 rounded-xl text-[10px] transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                       >
                         <i className="fa-solid fa-file-arrow-up"></i>
-                        <span>{aEnviarDocSeguro === "Fatura de Renovação" ? "A enviar..." : "Fatura"}</span>
+                        <span>{aEnviarDocSeguro === "Fatura de Pagamento" ? "A enviar..." : "Fatura"}</span>
                       </button>
                     </div>
                     <p className="text-[8px] text-slate-500 leading-snug">Após o envio, a administração confirma os dados — o estado passa a "Por Confirmar" até lá.</p>

@@ -961,7 +961,7 @@ export function PortalCondomino({
   // usada na PWA (PWACondominoView), para o condómino ver exatamente o
   // mesmo estado e documentos quer entre pelo telemóvel quer pelo browser.
   const [seguroFracaoPortal, setSeguroFracaoPortal] = useState<SeguroFracao | null>(null);
-  const [aEnviarDocSeguroPortal, setAEnviarDocSeguroPortal] = useState<"Apólice" | "Fatura de Renovação" | null>(null);
+  const [aEnviarDocSeguroPortal, setAEnviarDocSeguroPortal] = useState<"Apólice" | "Fatura de Pagamento" | null>(null);
   const seguroApoliceInputPortalRef = useRef<HTMLInputElement>(null);
   const seguroFaturaInputPortalRef = useRef<HTMLInputElement>(null);
 
@@ -993,13 +993,42 @@ export function PortalCondomino({
   })();
   const docsAnexosSeguroPortal = seguroFracaoPortal?.documentos_anexos || [];
   const faltaApoliceDocPortal = !docsAnexosSeguroPortal.some(d => d.tipo === "Apólice");
-  const faltaFaturaDocPortal = !docsAnexosSeguroPortal.some(d => d.tipo === "Fatura de Renovação");
+  const faltaFaturaDocPortal = !docsAnexosSeguroPortal.some(d => d.tipo === "Fatura de Pagamento" || d.tipo === "Fatura de Renovação");
   const precisaAtencaoSeguroPortal = seguroStatusPortal !== "VALIDO" || faltaApoliceDocPortal || faltaFaturaDocPortal;
 
-  const handleEnviarDocumentoSeguroPortal = async (file: File, tipo: "Apólice" | "Fatura de Renovação") => {
+  const lerFicheiroComoBase64Seguro = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1] || "");
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  // Submissão pelo próprio condómino (apólice + fatura de pagamento, ambas
+  // com deteção automática por IA — pedido explícito do administrador)
+  // — fica sempre "Pendente", a administração tem de confirmar/aprovar
+  // antes de o seguro contar como válido (mesmo padrão já usado para
+  // documentos chegados por email, nunca se confirma sozinho). Reutiliza
+  // o mesmo motor de IA já usado do lado da administração
+  // (GestaoSinistrosSeguros.tsx, /api/ai?acao=reconhecer-apolice).
+  const handleEnviarDocumentoSeguroPortal = async (file: File, tipo: "Apólice" | "Fatura de Pagamento") => {
     if (!activeUserFracao?.id_fracao) return;
     setAEnviarDocSeguroPortal(tipo);
     try {
+      let dadosIA: { seguradora?: string; apolice_numero?: string; apolice_validade?: string; tipo_cobertura?: string; capital_seguro?: number } = {};
+      try {
+        const base64 = await lerFicheiroComoBase64Seguro(file);
+        const resp = await fetch("/api/ai?acao=reconhecer-apolice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ base64, mimeType: file.type || "application/octet-stream" })
+        });
+        const resultado = await resp.json();
+        if (resp.ok && resultado.ok) dadosIA = resultado.dados || {};
+      } catch (errIA) {
+        console.warn("[PortalCondomino] Aviso: IA não conseguiu ler o documento de seguro, continua só com o upload:", errIA);
+      }
+
       // Uma fotografia de telemóvel real facilmente passa dos 4-5MB — em
       // base64 isso são milhões de caracteres gravados diretamente na linha
       // da base de dados, o que fazia a gravação falhar em silêncio e o
@@ -1027,10 +1056,18 @@ export function PortalCondomino({
         documentos_anexos: [],
         estado_validacao: "Pendente" as const
       };
+      // Só preenche com o que a IA encontrou mesmo — nunca apaga um campo
+      // já existente com um valor vazio devolvido pela IA.
       const seguroAtualizado: SeguroFracao = {
         ...base,
+        seguradora: dadosIA.seguradora || base.seguradora,
+        apolice_numero: dadosIA.apolice_numero || base.apolice_numero,
+        apolice_validade: dadosIA.apolice_validade || base.apolice_validade,
+        tipo_cobertura: dadosIA.tipo_cobertura || base.tipo_cobertura,
+        capital_seguro: dadosIA.capital_seguro || base.capital_seguro,
         documentos_anexos: [...(base.documentos_anexos || []), novoAnexo],
-        estado_validacao: "Pendente"
+        estado_validacao: "Pendente",
+        submetido_por: "condomino"
       };
       const res = await saveSeguroFracaoToSupabase(seguroAtualizado);
       if (!res.success) {
@@ -1038,7 +1075,8 @@ export function PortalCondomino({
         return;
       }
       setSeguroFracaoPortal(seguroAtualizado);
-      alert(`✅ ${tipo} enviada com sucesso! A administração irá confirmar os dados em breve.`);
+      registarLogAuditoria("Seguros", "Condómino submeteu documento de seguro", predio?.id_predio, loggedUser, `Fração ${activeUserFracao.fracao_nome} — ${tipo}: ${file.name}`);
+      alert(`✅ ${tipo} enviada com sucesso!${dadosIA.seguradora ? ` A IA já identificou: ${dadosIA.seguradora}${dadosIA.apolice_numero ? ` (apólice ${dadosIA.apolice_numero})` : ""}.` : ""} A administração irá confirmar os dados em breve.`);
     } finally {
       setAEnviarDocSeguroPortal(null);
     }
@@ -1488,7 +1526,7 @@ export function PortalCondomino({
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (file) handleEnviarDocumentoSeguroPortal(file, "Fatura de Renovação");
+                          if (file) handleEnviarDocumentoSeguroPortal(file, "Fatura de Pagamento");
                           e.target.value = "";
                         }}
                       />
@@ -1499,7 +1537,7 @@ export function PortalCondomino({
                         className="flex-1 bg-slate-700 hover:bg-slate-800 disabled:opacity-60 text-white font-bold py-2 rounded-lg text-[10px] transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                       >
                         <i className="fa-solid fa-file-arrow-up"></i>
-                        <span>{aEnviarDocSeguroPortal === "Fatura de Renovação" ? "A enviar..." : "Enviar Fatura"}</span>
+                        <span>{aEnviarDocSeguroPortal === "Fatura de Pagamento" ? "A enviar..." : "Enviar Fatura de Pagamento"}</span>
                       </button>
                     </div>
                   </div>
