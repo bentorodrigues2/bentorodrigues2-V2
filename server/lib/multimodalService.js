@@ -14,7 +14,13 @@ imagens decorativas).
 
 Para CADA documento financeiro distinto encontrado, extrai:
 - entidade (quem emitiu)
-- valor_total (número, sem símbolo de moeda)
+- valor_total (número, sem símbolo de moeda — em comprovativos de
+  transferência bancária (ex: "Enviar Nacional", "Detalhe da Operação"),
+  usa SEMPRE o campo "Montante" (o valor realmente transferido/recebido
+  pelo destinatário). NUNCA somes nem incluas "Custos da Operação",
+  "Comissão", "Imposto de Selo" ou qualquer "Total" dessa secção de
+  custos — esses valores são cobrados a quem ENVIA a transferência, nunca
+  chegam à conta de destino, e nunca fazem parte do valor_total)
 - data_documento (YYYY-MM-DD)
 - referencia (nº fatura, nº recibo, etc.)
 - tipo_documento (um de: "comprovativo", "fatura", "recibo", "extrato", "debito_direto")
