@@ -785,7 +785,7 @@ export interface SinistroSeguro {
 export interface DocumentoSeguroAnexo {
   nome: string;
   url: string; // data URI (base64) do PDF/imagem, mesmo padrão já usado em Movimento.fotos
-  tipo: "Apólice" | "Fatura de Renovação" | "Outro";
+  tipo: "Apólice" | "Fatura de Renovação" | "Fatura de Pagamento" | "Outro";
   data_upload: string; // YYYY-MM-DD
 }
 
@@ -800,6 +800,11 @@ export interface SeguroFracao {
   documento_url?: string; // último documento carregado — mantido por compatibilidade com leituras antigas
   documentos_anexos?: DocumentoSeguroAnexo[];
   estado_validacao: "Pendente" | "Valido" | "Expirado" | "Recusado";
+  // Quem submeteu este seguro — distingue, na fila de aprovação do
+  // administrador, o que entrou por iniciativa do condómino (fica sempre
+  // "Pendente" até ser revisto) do que o administrador já carregou
+  // diretamente.
+  submetido_por?: "admin" | "condomino";
   criado_em?: string;
   atualizado_em?: string;
 }
@@ -1014,6 +1019,75 @@ export interface RespostaQuestionario {
   id_fracao: string;
   resposta_texto?: string;
   classificacao?: number;
+  created_at?: string;
+}
+
+// Concursos de Obras (RFP) e Propostas — movidos de PortalOrcamentos.tsx
+// (antes só locais a esse ficheiro) para serem usados também pela votação
+// de condóminos (PortalCondomino.tsx / PWACondominoView.tsx) e pela
+// inclusão de resultados na ata (GestaoAssembleias.tsx).
+export interface RequestForProposal {
+  id_rfp: string;
+  id_predio: string;
+  titulo: string;
+  categoria: string;
+  estimativa: number;
+  data_publicacao: string;
+  data_limite: string;
+  descricao: string;
+  estado: "Aberto" | "Adjudicado" | "Terminado" | "Cancelado";
+  fornecedor_adjudicado?: string;
+  // Um concurso adjudicado passa logo a arquivado (o próprio ato de
+  // adjudicar já é o fecho definitivo); "Terminado" é o fecho manual sem
+  // adjudicação (ex: nenhuma proposta serviu) e pode ser arquivado à parte
+  // com o botão "Arquivar". Arquivado = sai da lista principal, mas
+  // continua consultável em "Ver Arquivados".
+  arquivado?: boolean;
+  // Votação consultiva dos condóminos — o administrador continua a
+  // decidir a adjudicação (handleAdjudicarProposta), a votação só informa
+  // essa decisão e fica registada/auditável.
+  publicado_para_votacao?: boolean;
+  votacao_data_fecho?: string;
+  votacao_fechada?: boolean;
+}
+
+export interface Proposal {
+  id_proposal: string;
+  id_rfp: string;
+  nome_empresa: string;
+  nif: string;
+  email: string;
+  contacto: string;
+  valor: number;
+  prazo_dias: number;
+  garantia_anos: number;
+  descricao_tecnica: string;
+  ficheiro_nome: string;
+  ficheiro_caminho?: string;
+  data_submissao: string;
+  // Vários anexos por proposta (proposta comercial, fichas técnicas,
+  // seguros, certificações) — em vez de um único ficheiro.
+  anexos?: { nome: string; caminho: string }[];
+  // Aprovar ou rejeitar cada proposta individualmente, em vez de a única
+  // decisão possível ser adjudicar o concurso inteiro.
+  estado?: "Pendente" | "Aprovada" | "Rejeitada" | "Não Selecionada";
+  motivo_rejeicao?: string;
+  // Preenchidos quando aprovada: para onde foi a obra/intervenção real
+  // criada, e se vai ser paga a partir do Fundo de Reserva Comum.
+  destino_obra?: "obra_extraordinaria" | "intervencao";
+  usa_fundo_reserva?: boolean;
+  id_obra_criada?: string;
+}
+
+// Voto de uma fração numa proposta publicada para votação — 1 linha por
+// fração/concurso (substituível enquanto a votação estiver aberta), mesmo
+// padrão relacional de VotoSondagem (nunca JSON-blob), para ficar
+// diretamente auditável e consultável "quem votou o quê".
+export interface VotoProposta {
+  id_voto: string;
+  id_rfp: string;
+  id_fracao: string;
+  id_proposal: string;
   created_at?: string;
 }
 

@@ -38,7 +38,8 @@ import {
   ItemPlanoManutencao,
   MuralAviso,
   ReservaEspacoComum,
-  Correspondencia
+  Correspondencia,
+  VotoProposta
 } from "../types";
 
 /**
@@ -896,6 +897,7 @@ export async function fetchSegurosFracoesFromSupabase(fracaoIds?: string[]): Pro
       documento_url: row.documento_url || "",
       documentos_anexos: Array.isArray(row.documentos_anexos) ? row.documentos_anexos : [],
       estado_validacao: row.estado_validacao || "Pendente",
+      submetido_por: row.submetido_por || undefined,
       criado_em: row.criado_em,
       atualizado_em: row.atualizado_em
     }));
@@ -918,6 +920,7 @@ export async function saveSeguroFracaoToSupabase(seguro: SeguroFracao): Promise<
     documento_url: seguro.documento_url || null,
     documentos_anexos: seguro.documentos_anexos || [],
     estado_validacao: seguro.estado_validacao,
+    submetido_por: seguro.submetido_por || null,
     atualizado_em: new Date().toISOString()
   };
   const ok = await dbUpsert("seguros_fracoes", payload);
@@ -2364,10 +2367,18 @@ export async function savePushSubscriptionToSupabase(params: {
   // ("invalid input syntax for type uuid"), impedindo qualquer subscrição
   // push de ser gravada. Sem uma coluna de texto dedicada ao email nesta
   // tabela, omite-se o campo quando não é mesmo um UUID válido.
+  //
+  // user_email (nova coluna, texto) grava sempre o email real, à parte —
+  // é o que api/admin.js?acao=enviar-push usa para cruzar com
+  // profiles.notificacoes_preferencias; sem isto, um condómino que
+  // desligasse uma categoria de notificação opcional continuava sempre a
+  // recebê-la, porque user_id ficava sempre null e nada identificava de
+  // quem era aquela subscrição.
   return dbUpsert("push_subscriptions", {
     id_predio: params.idPredio || null,
     id_fracao: params.idFracao || null,
     user_id: params.userId && REGEX_UUID.test(params.userId) ? params.userId : null,
+    user_email: params.userId || null,
     endpoint: raw.endpoint,
     subscription: raw,
     is_admin: params.isAdmin || false,
@@ -2865,7 +2876,10 @@ export async function fetchRfpsFromSupabase(idPredio?: string): Promise<any[] | 
     descricao: row.descricao || "",
     estado: row.estado || "Aberto",
     fornecedor_adjudicado: row.fornecedor_adjudicado || undefined,
-    arquivado: Boolean(row.arquivado)
+    arquivado: Boolean(row.arquivado),
+    publicado_para_votacao: Boolean(row.publicado_para_votacao),
+    votacao_data_fecho: row.votacao_data_fecho || undefined,
+    votacao_fechada: Boolean(row.votacao_fechada)
   }));
 }
 
@@ -2873,6 +2887,7 @@ export async function saveRfpToSupabase(rfp: {
   id_rfp: string; id_predio: string; titulo: string; categoria: string; estimativa: number;
   data_publicacao: string; data_limite: string; descricao: string; estado: string;
   fornecedor_adjudicado?: string; criado_por?: string; arquivado?: boolean;
+  publicado_para_votacao?: boolean; votacao_data_fecho?: string; votacao_fechada?: boolean;
 }): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
   return dbUpsert("rfps", {
@@ -2888,8 +2903,38 @@ export async function saveRfpToSupabase(rfp: {
     fornecedor_adjudicado: rfp.fornecedor_adjudicado || null,
     criado_por: rfp.criado_por || null,
     arquivado: Boolean(rfp.arquivado),
+    publicado_para_votacao: Boolean(rfp.publicado_para_votacao),
+    votacao_data_fecho: rfp.votacao_data_fecho || null,
+    votacao_fechada: Boolean(rfp.votacao_fechada),
     updated_at: new Date().toISOString()
   });
+}
+
+// Voto de uma fração numa proposta publicada para votação — mesmo padrão
+// relacional de saveVotoSondagemToSupabase (1 linha por fração/concurso,
+// substituível via onConflict, nunca um JSON-blob), para ficar diretamente
+// auditável e consultável "quem votou o quê".
+export async function fetchVotosPropostaFromSupabase(idRfp: string): Promise<VotoProposta[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  const data = await dbSelect("propostas_votos", { filtros: [["id_rfp", "eq", idRfp]] });
+  if (!data) return null;
+  return data.map((row: any) => ({
+    id_voto: row.id_voto,
+    id_rfp: row.id_rfp,
+    id_fracao: row.id_fracao,
+    id_proposal: row.id_proposal,
+    created_at: row.created_at
+  }));
+}
+
+export async function saveVotoPropostaToSupabase(voto: VotoProposta): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbUpsert("propostas_votos", {
+    id_voto: voto.id_voto,
+    id_rfp: voto.id_rfp,
+    id_fracao: voto.id_fracao,
+    id_proposal: voto.id_proposal
+  }, { onConflict: "id_rfp,id_fracao" });
 }
 
 export async function deleteRfpFromSupabase(idRfp: string): Promise<boolean> {

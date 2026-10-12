@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Predio, Fracao, Fornecedor, LoggedUser, Conta, DividaFornecedor } from "../types";
+import { Predio, Fracao, Fornecedor, LoggedUser, Conta, DividaFornecedor, RequestForProposal, Proposal, VotoProposta } from "../types";
 import { Loader2, ShieldCheck, BadgeAlert, Sparkles, Building, Coins, Calendar, Plus, ExternalLink, ThumbsUp, Table, FileText, CheckCircle2, XCircle, Paperclip, HardHat, Wrench, PiggyBank, Pencil, Trash2, X, Archive, FlagTriangleRight } from "lucide-react";
 import {
   fetchRfpsFromSupabase,
@@ -13,7 +13,9 @@ import {
   saveObraExtraToSupabase,
   saveIntervencaoToSupabase,
   saveDividaFornecedorToSupabase,
-  registarLogAuditoria
+  registarLogAuditoria,
+  fetchVotosPropostaFromSupabase,
+  saveVotoPropostaToSupabase
 } from "../lib/supabaseService";
 import type { ObraExtraordinaria, Intervencao } from "./GestaoManutencaoIntervencoes";
 import { parseValorMonetario } from "../utils";
@@ -23,51 +25,31 @@ import { parseValorMonetario } from "../utils";
 // mesmo padrão já usado na Categoria de Dívida a Fornecedor.
 const CATEGORIAS_RFP = ["Obras", "Manutenção", "Novo Fornecedor", "Seguros", "Limpeza", "Jardinagem", "Segurança", "Consultoria / Jurídico", "Outro"];
 
-interface RequestForProposal {
-  id_rfp: string;
-  id_predio: string;
-  titulo: string;
-  categoria: string;
-  estimativa: number;
-  data_publicacao: string;
-  data_limite: string;
-  descricao: string;
-  estado: "Aberto" | "Adjudicado" | "Terminado" | "Cancelado";
-  fornecedor_adjudicado?: string;
-  // Um concurso adjudicado passa logo a arquivado (o próprio ato de
-  // adjudicar já é o fecho definitivo); "Terminado" é o fecho manual sem
-  // adjudicação (ex: nenhuma proposta serviu) e pode ser arquivado à parte
-  // com o botão "Arquivar". Arquivado = sai da lista principal, mas
-  // continua consultável em "Ver Arquivados".
-  arquivado?: boolean;
+// Mesmo padrão de GestaoComunicacoes.tsx (enviarPushComDiagnostico) — nunca
+// engole o resultado do envio em silêncio, devolve sempre um resumo legível
+// de quantos dispositivos receberam a notificação.
+async function enviarPushComDiagnostico(payload: { id_predio: string; id_fracao?: string; title: string; body: string; url?: string }): Promise<string> {
+  try {
+    const resp = await fetch("/api/admin?acao=enviar-push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) return `⚠️ Notificação push NÃO enviada: ${data?.error || "erro desconhecido no servidor"}`;
+    if ((data.total_subscricoes || 0) === 0) return "⚠️ Notificação push: nenhum condómino tem o telemóvel subscrito ainda.";
+    return `🔔 Notificação push: enviada a ${data.enviados} de ${data.total_subscricoes} dispositivo(s) subscrito(s).`;
+  } catch (err: any) {
+    return `⚠️ Notificação push NÃO enviada: ${err?.message || "erro de rede"}`;
+  }
 }
 
-interface Proposal {
-  id_proposal: string;
-  id_rfp: string;
-  nome_empresa: string;
-  nif: string;
-  email: string;
-  contacto: string;
-  valor: number;
-  prazo_dias: number;
-  garantia_anos: number;
-  descricao_tecnica: string;
-  ficheiro_nome: string;
-  ficheiro_caminho?: string;
-  data_submissao: string;
-  // Vários anexos por proposta (proposta comercial, fichas técnicas,
-  // seguros, certificações) — em vez de um único ficheiro.
-  anexos?: { nome: string; caminho: string }[];
-  // Aprovar ou rejeitar cada proposta individualmente, em vez de a única
-  // decisão possível ser adjudicar o concurso inteiro.
-  estado?: "Pendente" | "Aprovada" | "Rejeitada" | "Não Selecionada";
-  motivo_rejeicao?: string;
-  // Preenchidos quando aprovada: para onde foi a obra/intervenção real
-  // criada, e se vai ser paga a partir do Fundo de Reserva Comum.
-  destino_obra?: "obra_extraordinaria" | "intervencao";
-  usa_fundo_reserva?: boolean;
-  id_obra_criada?: string;
+// Deep-link lido no arranque da app (ver App.tsx) — abre diretamente o
+// concurso em votação na área do condómino, em vez de o email só dizer
+// "aceda à sua área de condómino" sem nenhum link real (como acontecia até
+// agora em todas as outras notificações da app).
+function linkVotacaoConcurso(idRfp: string): string {
+  return `https://bentorodrigues2.condomanagerai.com/?abrir=votacao-concurso&id=${encodeURIComponent(idRfp)}`;
 }
 
 interface ComparativeResponse {
@@ -186,6 +168,23 @@ export function PortalOrcamentos({
     });
     return () => { cancelado = true; };
   }, [selectedRfpForAnalysis]);
+
+  // Votos reais da votação de condóminos do concurso selecionado — 1 voto
+  // por fração, auditável (quem votou o quê), nunca anónimo.
+  const [votosPorRfp, setVotosPorRfp] = useState<VotoProposta[]>([]);
+  useEffect(() => {
+    let cancelado = false;
+    if (!selectedRfpForAnalysis) return;
+    fetchVotosPropostaFromSupabase(selectedRfpForAnalysis).then(dados => {
+      if (cancelado) return;
+      setVotosPorRfp(prev => [
+        ...prev.filter(v => v.id_rfp !== selectedRfpForAnalysis),
+        ...(dados || [])
+      ]);
+    });
+    return () => { cancelado = true; };
+  }, [selectedRfpForAnalysis]);
+  const votosAtivoRfp = votosPorRfp.filter(v => v.id_rfp === selectedRfpForAnalysis);
 
   // Submit New RFP
   const [publicandoRfp, setPublicandoRfp] = useState(false);
@@ -346,6 +345,72 @@ export function PortalOrcamentos({
     setRfps(prev => prev.map(x => x.id_rfp === r.id_rfp ? rfpAtualizado : x));
     registarLogAuditoria("Fornecedores", "Arquivou um concurso", predio.id_predio, loggedUser, r.titulo);
   };
+
+  // Publica o concurso para os condóminos votarem na proposta que preferem
+  // — votação CONSULTIVA (o administrador continua a decidir a adjudicação
+  // via handleAdjudicarProposta, informado pelo resultado), nunca
+  // vinculativa automaticamente, para não levantar problemas legais de uma
+  // "deliberação" informal sem os requisitos formais de uma assembleia
+  // (Art. 1432.º CC). Pedido explícito do administrador.
+  const [aPublicarVotacaoId, setAPublicarVotacaoId] = useState<string | null>(null);
+  const handlePublicarVotacao = async (r: RequestForProposal, dataFecho: string) => {
+    if (loggedUser.role !== "ADMIN") return alert("Apenas administradores podem publicar concursos para votação.");
+    setAPublicarVotacaoId(r.id_rfp);
+    try {
+      const rfpAtualizado: RequestForProposal = { ...r, publicado_para_votacao: true, votacao_data_fecho: dataFecho, votacao_fechada: false };
+      const ok = await saveRfpToSupabase({ ...rfpAtualizado, criado_por: loggedUser.nome });
+      if (!ok) return alert("❌ Não foi possível publicar o concurso para votação. Tente novamente.");
+      setRfps(prev => prev.map(x => x.id_rfp === r.id_rfp ? rfpAtualizado : x));
+
+      const link = linkVotacaoConcurso(r.id_rfp);
+      const resumoPush = await enviarPushComDiagnostico({
+        id_predio: predio.id_predio,
+        title: "🗳️ Votação de Propostas Disponível",
+        body: `"${r.titulo}" — vote na proposta que prefere até ${new Date(dataFecho).toLocaleDateString("pt-PT")}.`,
+        url: link
+      });
+
+      const destinatarios = fracoes.filter(f => f.id_predio === predio.id_predio && f.proprietario?.email).map(f => ({ email: f.proprietario!.email, nome: f.proprietario!.nome }));
+      let enviosEmail = 0;
+      if (destinatarios.length > 0) {
+        const resp = await fetch("/api/email?acao=broadcast", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            destinatarios,
+            assunto: `Votação Disponível: ${r.titulo}`,
+            mensagem: `A administração publicou o concurso "${r.titulo}" para votação dos condóminos — já pode consultar as propostas em PDF e votar na que prefere, até ${new Date(dataFecho).toLocaleDateString("pt-PT")}.<br><br><a href="${link}" style="display:inline-block;background-color:#059669;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Ver Propostas e Votar</a><br><br>Se o botão não funcionar, copie e cole este link no navegador:<br>${link}`
+          })
+        });
+        const data = await resp.json().catch(() => null);
+        enviosEmail = data?.total_enviados || 0;
+      }
+
+      registarLogAuditoria("Concursos", "Publicou concurso para votação dos condóminos", predio.id_predio, loggedUser, `${r.titulo} — fecho em ${dataFecho}`);
+      alert(`Concurso publicado para votação!\n\n${resumoPush}\n📧 Email enviado a ${enviosEmail} de ${destinatarios.length} fração(ões) com email.`);
+    } finally {
+      setAPublicarVotacaoId(null);
+    }
+  };
+
+  // Fecho manual da votação — nunca adjudica sozinho (decisão consultiva).
+  const [aFecharVotacaoId, setAFecharVotacaoId] = useState<string | null>(null);
+  const handleFecharVotacao = async (r: RequestForProposal) => {
+    if (loggedUser.role !== "ADMIN") return alert("Apenas administradores podem fechar a votação.");
+    if (!window.confirm(`Fechar a votação do concurso "${r.titulo}"? Os condóminos deixam de poder votar.`)) return;
+    setAFecharVotacaoId(r.id_rfp);
+    const rfpAtualizado: RequestForProposal = { ...r, votacao_fechada: true };
+    const ok = await saveRfpToSupabase({ ...rfpAtualizado, criado_por: loggedUser.nome });
+    setAFecharVotacaoId(null);
+    if (!ok) return alert("❌ Não foi possível fechar a votação. Tente novamente.");
+    setRfps(prev => prev.map(x => x.id_rfp === r.id_rfp ? rfpAtualizado : x));
+    registarLogAuditoria("Concursos", "Fechou a votação de condóminos de um concurso", predio.id_predio, loggedUser, r.titulo);
+  };
+
+  // Contagem de votos por proposta — 1 fração = 1 voto (decisão confirmada
+  // pelo administrador, não ponderado por permilagem).
+  const contarVotosPorProposta = (idProposal: string) => votosAtivoRfp.filter(v => v.id_proposal === idProposal).length;
+  const nomeFracaoPorId = (idFracao: string) => fracoes.find(f => f.id_fracao === idFracao)?.fracao_nome || idFracao;
 
   // Leitura por IA do PDF/imagem de orçamento anexado — antes o
   // administrador tinha sempre de transcrever à mão a empresa, NIF,
@@ -1273,6 +1338,91 @@ export function PortalOrcamentos({
                   <span>Propostas Recebidas: <strong className="text-emerald-600">{activeRfpProposals.length}</strong></span>
                 </div>
               </div>
+
+              {/* Votação dos Condóminos — consultiva: informa a decisão do
+                  administrador, nunca adjudica sozinha. */}
+              {loggedUser.role === "ADMIN" && (
+                <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-6 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                      <ThumbsUp size={13} className="text-emerald-500" /> Votação dos Condóminos
+                    </h3>
+                    {activeRfp.publicado_para_votacao && (
+                      <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${activeRfp.votacao_fechada ? "bg-slate-200 text-slate-700" : "bg-emerald-100 text-emerald-700"}`}>
+                        {activeRfp.votacao_fechada ? "Votação Fechada" : `Aberta até ${activeRfp.votacao_data_fecho ? new Date(activeRfp.votacao_data_fecho).toLocaleDateString("pt-PT") : "—"}`}
+                      </span>
+                    )}
+                  </div>
+
+                  {!activeRfp.publicado_para_votacao ? (
+                    activeRfpProposals.length >= 2 && activeRfp.estado === "Aberto" ? (
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                        <label className="text-xs text-slate-600">Votação aberta até:</label>
+                        <input
+                          type="date"
+                          id={`votacao-data-fecho-${activeRfp.id_rfp}`}
+                          defaultValue={new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0]}
+                          className="border border-slate-300 rounded-lg px-2 py-1.5 text-xs"
+                        />
+                        <button
+                          type="button"
+                          disabled={aPublicarVotacaoId === activeRfp.id_rfp}
+                          onClick={() => {
+                            const input = document.getElementById(`votacao-data-fecho-${activeRfp.id_rfp}`) as HTMLInputElement | null;
+                            const dataFecho = input?.value || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
+                            handlePublicarVotacao(activeRfp, dataFecho);
+                          }}
+                          className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold px-3 py-1.5 rounded-lg text-xs cursor-pointer flex items-center gap-1.5"
+                        >
+                          {aPublicarVotacaoId === activeRfp.id_rfp ? <Loader2 className="animate-spin" size={13} /> : <ThumbsUp size={13} />}
+                          Publicar para Votação
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-slate-600">É preciso pelo menos 2 propostas recebidas, com o concurso Aberto, para publicar a votação.</p>
+                    )
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-[11px] text-slate-600">Resultado consultivo — {votosAtivoRfp.length} fração(ões) já votou/votaram. A decisão final de adjudicação continua a ser do administrador.</p>
+                      <div className="space-y-2">
+                        {activeRfpProposals.map(p => {
+                          const votos = contarVotosPorProposta(p.id_proposal);
+                          const pct = votosAtivoRfp.length > 0 ? Math.round((votos / votosAtivoRfp.length) * 100) : 0;
+                          return (
+                            <div key={p.id_proposal} className="flex items-center gap-3">
+                              <span className="text-xs text-slate-700 dark:text-slate-300 w-40 truncate">{p.nome_empresa}</span>
+                              <div className="flex-1 h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-emerald-500" style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 w-20 text-right">{votos} voto(s)</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {votosAtivoRfp.length > 0 && (
+                        <details className="text-[11px] text-slate-600">
+                          <summary className="cursor-pointer font-bold">Ver quem votou o quê (auditável)</summary>
+                          <ul className="mt-2 space-y-1">
+                            {votosAtivoRfp.map(v => (
+                              <li key={v.id_voto}>Fração {nomeFracaoPorId(v.id_fracao)} → {activeRfpProposals.find(p => p.id_proposal === v.id_proposal)?.nome_empresa || v.id_proposal}</li>
+                            ))}
+                          </ul>
+                        </details>
+                      )}
+                      {!activeRfp.votacao_fechada && (
+                        <button
+                          type="button"
+                          disabled={aFecharVotacaoId === activeRfp.id_rfp}
+                          onClick={() => handleFecharVotacao(activeRfp)}
+                          className="bg-slate-800 hover:bg-slate-700 disabled:opacity-60 text-white font-bold px-3 py-1.5 rounded-lg text-xs cursor-pointer"
+                        >
+                          Fechar Votação
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Propostas Recebidas */}
               <div className="bg-white dark:bg-[#0f172a] rounded-xl border border-slate-200 dark:border-slate-800/60 shadow-sm p-6 space-y-4">

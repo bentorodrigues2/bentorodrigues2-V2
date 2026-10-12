@@ -283,7 +283,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "id_predio, title e body são obrigatórios" });
       }
 
-      let query = supabase.from("push_subscriptions").select("id, endpoint, subscription, user_id").eq("id_predio", id_predio);
+      let query = supabase.from("push_subscriptions").select("id, endpoint, subscription, user_id, user_email").eq("id_predio", id_predio);
       if (id_fracao) query = query.eq("id_fracao", id_fracao);
       let { data: subs, error: errSubs } = await query;
       if (errSubs) throw new Error(errSubs.message);
@@ -291,10 +291,14 @@ export default async function handler(req, res) {
       // Categorias opcionais respeitam a preferência do utilizador
       // (profiles.notificacoes_preferencias) — categorias críticas (ou sem
       // categoria indicada, para compatibilidade com envios mais antigos)
-      // são sempre enviadas a todos os subscritos.
+      // são sempre enviadas a todos os subscritos. Cruza por user_email
+      // (não user_id, que fica sempre null para condóminos comuns — o seu
+      // identificador real é o email, nunca um UUID; ver
+      // savePushSubscriptionToSupabase) — sem isto, um condómino que
+      // desligasse uma categoria opcional continuava sempre a recebê-la.
       let bloqueadosPorPreferencia = 0;
       if (categoria && categoria.startsWith("optional_")) {
-        const emails = (subs || []).map((s) => s.user_id).filter(Boolean);
+        const emails = (subs || []).map((s) => s.user_email || s.user_id).filter(Boolean);
         if (emails.length > 0) {
           const { data: perfis } = await supabase
             .from("profiles")
@@ -306,7 +310,10 @@ export default async function handler(req, res) {
               .map((p) => p.email)
           );
           const totalAntes = (subs || []).length;
-          subs = (subs || []).filter((s) => !s.user_id || !desativados.has(s.user_id));
+          subs = (subs || []).filter((s) => {
+            const identificador = s.user_email || s.user_id;
+            return !identificador || !desativados.has(identificador);
+          });
           bloqueadosPorPreferencia = totalAntes - subs.length;
         }
       }
