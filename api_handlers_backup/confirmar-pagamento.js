@@ -177,7 +177,32 @@ export default async function handler(req, res) {
         const ordenados = [...(pendentesAvisos || [])].sort(
           (a, b) => new Date(a.vencimento || a.data).getTime() - new Date(b.vencimento || b.data).getTime()
         );
-        const avisoAlvo = ordenados.find((a) => Math.abs(Number(a.valor || 0) - valorPago) < 0.05);
+        let avisoAlvo = ordenados.find((a) => Math.abs(Number(a.valor || 0) - valorPago) < 0.05);
+
+        // Rede de segurança: quando o valor lido do comprovativo não bate
+        // certo com NENHUM aviso pendente (ex: a IA somou por engano uma
+        // comissão bancária ao valor da transferência — bug real confirmado:
+        // 29.57€ lido como 30.61€), o código antigo criava sempre um aviso
+        // NOVO com esse valor errado, duplicando o mês — a fração ficava com
+        // 2 avisos de outubro (um pendente com o valor certo, outro "Pago"
+        // com o valor errado), e o Mapa de Pagamentos passava a mostrar o
+        // valor errado nesse mês mesmo depois de corrigido o movimento em si.
+        // Antes de desistir e criar um aviso novo, tenta por isso encontrar o
+        // aviso pendente do MESMO MÊS (Quota Ordinária, vencimento no mesmo
+        // mês/ano do pagamento) — o valor desse aviso, não o lido do
+        // comprovativo, é que é a fonte da verdade sobre quanto a fração
+        // deve nesse mês.
+        if (!avisoAlvo) {
+          const mesPagamento = (pagamento.data_pagamento || new Date().toISOString()).slice(0, 7);
+          avisoAlvo = ordenados.find(
+            (a) => a.tipo === "Quota Ordinária" && (a.vencimento || a.data || "").slice(0, 7) === mesPagamento
+          );
+          if (avisoAlvo) {
+            console.warn(
+              `[confirmar-pagamento] Valor do comprovativo (${valorPago}€) não bate certo com nenhum aviso pendente — associado por mês ao aviso ${avisoAlvo.id_aviso} (valor real: ${avisoAlvo.valor}€). Revisão manual recomendada.`
+            );
+          }
+        }
 
         // Se este pagamento já foi dividido em N meses (ver dividir-pagamento-meses.js),
         // já existem avisos "aviso-dividido-<id_pagamento>-*" a representá-lo —
