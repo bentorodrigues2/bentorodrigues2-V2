@@ -524,6 +524,14 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
   const [dataInicio, setDataInicio] = useState(() => new Date().toISOString().split("T")[0]);
   const [custoMensal, setCustoMensal] = useState("");
   const [custoAnual, setCustoAnual] = useState("");
+  // Fornecedores de consumo (eletricidade, água, gás...) não têm um custo
+  // mensal fixo — varia todos os meses conforme o consumo real. Antes o
+  // formulário obrigava sempre a um valor (Custo Mensal com "*", e o
+  // próprio "Custo Anual" também exigido no JS apesar da etiqueta não ter
+  // "*" — nunca era possível registar este tipo de contrato sem inventar
+  // um valor fixo falso). Esta opção substitui esse valor inventado por
+  // uma marcação explícita, sem precisar de nenhuma coluna nova na BD.
+  const [custoVariavel, setCustoVariavel] = useState(false);
   const [renovacaoAuto, setRenovacaoAuto] = useState(true);
   const [dataFim, setDataFim] = useState("2027-01-01");
   const [alertaDiasAntecedencia, setAlertaDiasAntecedencia] = useState(60);
@@ -709,19 +717,26 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     if (loggedUser.role !== 'ADMIN' && loggedUser.role !== 'EMPRESA_GESTORA') {
       return alert("Apenas administradores podem cadastrar contratos!");
     }
-    if (!selectedFornecedorId || !servicoNome || !custoAnual) {
-      return alert("Preencha todos os campos obrigatórios (Fornecedor, Serviço, Custo)!");
+    if (!selectedFornecedorId || !servicoNome || (!custoVariavel && !custoMensal)) {
+      return alert("Preencha todos os campos obrigatórios (Fornecedor, Serviço, Custo — ou assinale \"Custo Variável\" se for um fornecedor de consumo)!");
     }
 
-    const cMensal = parseValorMonetario(custoMensal) || 0;
-    const cAnual = parseValorMonetario(custoAnual) || 0;
+    const cMensal = custoVariavel ? 0 : (parseValorMonetario(custoMensal) || 0);
+    const cAnual = custoVariavel ? 0 : (parseValorMonetario(custoAnual) || 0);
+    // Marca o contrato como custo variável diretamente na descrição do
+    // serviço — evita uma coluna nova na BD (contratos.custo_mensal/anual
+    // mantêm-se 0, nunca um valor fixo inventado) e já fica visível em
+    // qualquer lista que mostre apenas "servico".
+    const servicoFinal = custoVariavel && !/\[Custo Variável/i.test(servicoNome)
+      ? `${servicoNome} [Custo Variável — consumo medido]`
+      : servicoNome;
 
     const novoContrato: Contrato = {
       id_contrato: crypto.randomUUID(),
       id_predio: predio.id_predio,
       id_fornecedor: selectedFornecedorId,
       tipo_contrato: tipoContrato,
-      servico: servicoNome,
+      servico: servicoFinal,
       data_inicio: dataInicio,
       custo_mensal: cMensal,
       custo_anual: cAnual,
@@ -782,6 +797,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
         setServicoNome("");
         setCustoMensal("");
         setCustoAnual("");
+        setCustoVariavel(false);
         setAlertaDiasAntecedencia(60);
         setDocumentoNome("");
         setDocumentoBase64("");
@@ -1695,17 +1711,33 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                 </div>
               </div>
 
+              <label className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={custoVariavel}
+                  onChange={e => {
+                    setCustoVariavel(e.target.checked);
+                    if (e.target.checked) { setCustoMensal(""); setCustoAnual(""); }
+                  }}
+                  className="mt-0.5 cursor-pointer"
+                />
+                <span className="text-xs text-amber-900">
+                  <strong>Custo Variável</strong> — fornecedor de consumo (eletricidade, água, gás...) sem valor mensal fixo. O custo real continua a refletir-se nos movimentos de despesa lançados, não neste contrato.
+                </span>
+              </label>
+
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-slate-600 mb-1">Custo Mensal (€) *</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1">Custo Mensal (€) {!custoVariavel && "*"}</label>
                   <input
                     type="text"
                     inputMode="decimal"
-                    required
-                    value={custoMensal}
+                    required={!custoVariavel}
+                    disabled={custoVariavel}
+                    value={custoVariavel ? "" : custoMensal}
                     onChange={e => handleCustoMensalChange(e.target.value)}
-                    placeholder="Ex: 85.00"
-                    className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono"
+                    placeholder={custoVariavel ? "Variável (consumo medido)" : "Ex: 85.00"}
+                    className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono disabled:bg-slate-100 disabled:text-slate-400"
                   />
                 </div>
 
@@ -1714,11 +1746,11 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                   <input
                     type="text"
                     inputMode="decimal"
-                    required
-                    value={custoAnual}
+                    disabled={custoVariavel}
+                    value={custoVariavel ? "" : custoAnual}
                     onChange={e => handleCustoAnualChange(e.target.value)}
-                    placeholder="Ex: 1020.00"
-                    className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono"
+                    placeholder={custoVariavel ? "Variável (consumo medido)" : "Ex: 1020.00"}
+                    className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono disabled:bg-slate-100 disabled:text-slate-400"
                   />
                 </div>
 
