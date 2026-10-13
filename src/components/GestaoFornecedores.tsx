@@ -532,6 +532,11 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
   // um valor fixo falso). Esta opção substitui esse valor inventado por
   // uma marcação explícita, sem precisar de nenhuma coluna nova na BD.
   const [custoVariavel, setCustoVariavel] = useState(false);
+  // Antes só era possível arquivar um contrato novo ou eliminá-lo — um
+  // engano ao preencher (ex: fornecedor duplicado por engano) só se
+  // corrigia apagando e recriando do zero, perdendo o histórico de
+  // renovações. Edição in-loco reaproveita o mesmo formulário.
+  const [editingContratoId, setEditingContratoId] = useState<string | null>(null);
   const [renovacaoAuto, setRenovacaoAuto] = useState(true);
   const [dataFim, setDataFim] = useState("2027-01-01");
   const [alertaDiasAntecedencia, setAlertaDiasAntecedencia] = useState(60);
@@ -731,8 +736,10 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       ? `${servicoNome} [Custo Variável — consumo medido]`
       : servicoNome;
 
+    const contratoExistente = editingContratoId ? contratos.find(c => c.id_contrato === editingContratoId) : undefined;
+
     const novoContrato: Contrato = {
-      id_contrato: crypto.randomUUID(),
+      id_contrato: editingContratoId || crypto.randomUUID(),
       id_predio: predio.id_predio,
       id_fornecedor: selectedFornecedorId,
       tipo_contrato: tipoContrato,
@@ -742,23 +749,28 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       custo_anual: cAnual,
       renovacao_automatica: renovacaoAuto,
       data_fim: dataFim,
-      estado: "Ativo",
+      estado: contratoExistente?.estado || "Ativo",
       alerta_renovacao: true,
       alerta_dias_antecedencia: alertaDiasAntecedencia,
       sla_resposta: slaResposta || "24h padrão",
       penalizacao_atraso: penalizacaoAtraso || "Sem penalização",
       indexacao_preco: indexacaoPreco || "IPC Taxa Inflação",
-      historico_renovacoes: [`Criado e registado em ${new Date().toLocaleDateString("pt-PT")}`],
+      historico_renovacoes: contratoExistente
+        ? [`Editado em ${new Date().toLocaleDateString("pt-PT")}`, ...(contratoExistente.historico_renovacoes || [])]
+        : [`Criado e registado em ${new Date().toLocaleDateString("pt-PT")}`],
       // Antes só se guardava o nome do ficheiro (documento_base64 ficava
       // capturado no estado local mas nunca era enviado ao Supabase) — o
       // anexo desaparecia sempre depois de recarregar a página.
-      documento_nome: documentoNome || undefined,
-      documento_base64: documentoBase64 || undefined
+      documento_nome: documentoNome || contratoExistente?.documento_nome || undefined,
+      documento_base64: documentoBase64 || contratoExistente?.documento_base64 || undefined,
+      rescisao: contratoExistente?.rescisao
     };
 
     saveContratoToSupabase(novoContrato).then(async ok => {
       if (ok) {
-        setContratos([novoContrato, ...contratos]);
+        setContratos(editingContratoId
+          ? contratos.map(c => c.id_contrato === editingContratoId ? novoContrato : c)
+          : [novoContrato, ...contratos]);
 
         // Arquiva automaticamente uma cópia real no módulo Documental geral
         // (Arquivo → Fornecedores) — antes o contrato só ficava acessível
@@ -794,6 +806,9 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
           }
         }
 
+        const foiEdicao = Boolean(editingContratoId);
+        setSelectedFornecedorId("");
+        setTipoContrato("Manutenção");
         setServicoNome("");
         setCustoMensal("");
         setCustoAnual("");
@@ -802,11 +817,52 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
         setDocumentoNome("");
         setDocumentoBase64("");
         setDocumentoFile(null);
-        alert("Serviço Contratado registado e arquivado no sistema (também disponível em Arquivo → Fornecedores)!");
+        setEditingContratoId(null);
+        alert(foiEdicao
+          ? "Contrato atualizado com sucesso!"
+          : "Serviço Contratado registado e arquivado no sistema (também disponível em Arquivo → Fornecedores)!");
       } else {
         alert("❌ Não foi possível guardar o contrato no Supabase. Tente novamente.");
       }
     });
+  };
+
+  // Carrega um contrato existente de volta para o formulário, para corrigir
+  // um engano (ex: fornecedor duplicado, valor errado) sem ter de eliminar
+  // e perder o histórico de renovações/rescisão já associado.
+  const iniciarEdicaoContrato = (c: Contrato) => {
+    setEditingContratoId(c.id_contrato);
+    setSelectedFornecedorId(c.id_fornecedor);
+    setTipoContrato(c.tipo_contrato);
+    const ehVariavel = /\[Custo Variável/i.test(c.servico);
+    setServicoNome(c.servico.replace(/\s*\[Custo Variável.*?\]\s*$/i, ""));
+    setCustoVariavel(ehVariavel);
+    setCustoMensal(ehVariavel ? "" : (c.custo_mensal ? c.custo_mensal.toFixed(2) : ""));
+    setCustoAnual(ehVariavel ? "" : (c.custo_anual ? c.custo_anual.toFixed(2) : ""));
+    setDataInicio(c.data_inicio);
+    setDataFim(c.data_fim);
+    setRenovacaoAuto(c.renovacao_automatica);
+    setAlertaDiasAntecedencia(c.alerta_dias_antecedencia || 60);
+    setSlaResposta(c.sla_resposta || "");
+    setPenalizacaoAtraso(c.penalizacao_atraso || "");
+    setIndexacaoPreco(c.indexacao_preco || "");
+    setDocumentoNome(c.documento_nome || "");
+    setDocumentoBase64(c.documento_base64 || "");
+    document.getElementById("form-contrato-fornecedor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const cancelarEdicaoContrato = () => {
+    setEditingContratoId(null);
+    setSelectedFornecedorId("");
+    setTipoContrato("Manutenção");
+    setServicoNome("");
+    setCustoMensal("");
+    setCustoAnual("");
+    setCustoVariavel(false);
+    setAlertaDiasAntecedencia(60);
+    setDocumentoNome("");
+    setDocumentoBase64("");
+    setDocumentoFile(null);
   };
 
   const excluirContrato = async (id: string) => {
@@ -814,6 +870,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     const ok = await deleteContratoFromSupabase(id);
     if (ok) {
       setContratos(contratos.filter(c => c.id_contrato !== id));
+      if (editingContratoId === id) cancelarEdicaoContrato();
     } else {
       alert("❌ Não foi possível remover o contrato no Supabase. Tente novamente.");
     }
@@ -1647,12 +1704,23 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
 
           {/* Form to archive new Contracted Service */}
           {(loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA') && (
-            <form onSubmit={submeterContrato} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4 no-print">
-              <h3 className="text-sm font-bold text-slate-800 flex items-center space-x-2">
-                <span className="p-1.5 bg-indigo-50 text-indigo-600 rounded">
-                  <i className="fa-solid fa-file-signature text-xs"></i>
+            <form id="form-contrato-fornecedor" onSubmit={submeterContrato} className={`bg-white p-6 rounded-xl border shadow-sm space-y-4 no-print ${editingContratoId ? "border-indigo-400 ring-2 ring-indigo-100" : "border-slate-200"}`}>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center justify-between">
+                <span className="flex items-center space-x-2">
+                  <span className="p-1.5 bg-indigo-50 text-indigo-600 rounded">
+                    <i className="fa-solid fa-file-signature text-xs"></i>
+                  </span>
+                  <span>{editingContratoId ? "A Editar Contrato de Prestação de Serviços" : "Arquivar Novo Contrato de Prestação de Serviços"}</span>
                 </span>
-                <span>Arquivar Novo Contrato de Prestação de Serviços</span>
+                {editingContratoId && (
+                  <button
+                    type="button"
+                    onClick={cancelarEdicaoContrato}
+                    className="text-[11px] font-bold text-slate-600 hover:text-slate-800 underline cursor-pointer"
+                  >
+                    Cancelar Edição
+                  </button>
+                )}
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1859,7 +1927,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                 className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors cursor-pointer flex items-center space-x-2 shadow-xs"
               >
                 <Save className="w-3.5 h-3.5" />
-                <span>Guardar e Vincular Contrato no Supabase</span>
+                <span>{editingContratoId ? "Guardar Alterações ao Contrato" : "Guardar e Vincular Contrato no Supabase"}</span>
               </button>
             </form>
           )}
@@ -2007,13 +2075,26 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                               <i className="fa-solid fa-download"></i>
                             </a>
                           )}
+                          {(loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA') && (
+                            <button
+                              type="button"
+                              onClick={() => iniciarEdicaoContrato(c)}
+                              className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1"
+                              title="Editar este contrato"
+                            >
+                              <img src="/estados-acoes/13-editar.png" alt="" className="h-3.5 w-3.5 object-contain" />
+                              <span>Editar</span>
+                            </button>
+                          )}
                           {loggedUser.role === 'ADMIN' && (
                             <button
+                              type="button"
                               onClick={() => excluirContrato(c.id_contrato)}
-                              className="p-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                              className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1"
                               title="Eliminar Registo do Contrato"
                             >
-                              <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="h-3.5 w-3.5 object-contain" />
+                              <img src="/estados-acoes/14-eliminar.png" alt="" className="h-3.5 w-3.5 object-contain" />
+                              <span>Eliminar</span>
                             </button>
                           )}
                         </div>
