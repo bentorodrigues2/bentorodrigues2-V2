@@ -1,36 +1,35 @@
-// Mostra um aviso discreto (em vez de recarregar sozinho, sem avisar) assim
-// que deteta uma versão nova publicada — pedido explícito do administrador:
-// com várias publicações seguidas no mesmo dia, o recarregamento automático
-// estava a interromper o que estava a ser feito de cada vez que se voltava
-// à aba. Fica ao critério de quem está a usar a app escolher quando
-// atualizar, nunca perde o que estava a meio.
-let avisoNovaVersaoJaMostrado = false;
-function mostrarAvisoNovaVersao(): void {
-  if (avisoNovaVersaoJaMostrado || typeof document === "undefined") return;
-  avisoNovaVersaoJaMostrado = true;
+// Atualiza sozinha assim que deteta uma versão nova publicada — pedido
+// explícito do administrador (reverte uma decisão anterior de só avisar e
+// deixar a pessoa escolher quando atualizar): o aviso persistente estava a
+// incomodar mais do que a interrupção que pretendia evitar. Em vez de
+// recarregar a meio de uma ação, espera que a aba fique inativa (sem
+// interação do utilizador há alguns segundos) ou escondida antes de
+// recarregar sozinha, para minimizar perder algo a meio do preenchimento.
+let atualizacaoJaAgendada = false;
+function agendarAtualizacaoAutomatica(): void {
+  if (atualizacaoJaAgendada || typeof document === "undefined") return;
+  atualizacaoJaAgendada = true;
 
-  const aviso = document.createElement("div");
-  aviso.setAttribute("role", "status");
-  aviso.style.cssText = "position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:99999;background:#111827;color:#f9fafb;padding:12px 16px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.35);font-family:system-ui,sans-serif;font-size:13px;display:flex;align-items:center;gap:12px;max-width:92vw;";
+  const recarregar = () => window.location.reload();
 
-  const texto = document.createElement("span");
-  texto.textContent = "Nova versão da app disponível.";
-  aviso.appendChild(texto);
+  // Já está em segundo plano ou inativa — recarrega já.
+  if (document.visibilityState !== "visible") {
+    recarregar();
+    return;
+  }
 
-  const botao = document.createElement("button");
-  botao.textContent = "Atualizar agora";
-  botao.style.cssText = "background:#10b981;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;";
-  botao.onclick = () => window.location.reload();
-  aviso.appendChild(botao);
-
-  const fechar = document.createElement("button");
-  fechar.textContent = "✕";
-  fechar.setAttribute("aria-label", "Fechar aviso");
-  fechar.style.cssText = "background:transparent;color:#9ca3af;border:none;font-size:14px;cursor:pointer;padding:0 2px;";
-  fechar.onclick = () => aviso.remove();
-  aviso.appendChild(fechar);
-
-  document.body.appendChild(aviso);
+  let timeoutId: ReturnType<typeof setTimeout>;
+  const reagendar = () => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(recarregar, 8000);
+  };
+  ["mousedown", "keydown", "touchstart", "scroll"].forEach((evento) => {
+    document.addEventListener(evento, reagendar, { passive: true });
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") recarregar();
+  });
+  reagendar();
 }
 
 // Deteta sozinha uma versão nova já publicada (deploy novo na Vercel) —
@@ -57,7 +56,7 @@ function watchForNewVersion(): void {
       const match = html.match(/\/assets\/index-[\w-]+\.js/);
       if (match && match[0] !== bundleAtual) {
         console.log("[Versão] Nova versão publicada detetada.");
-        mostrarAvisoNovaVersao();
+        agendarAtualizacaoAutomatica();
       }
     } catch {
       // Sem rede — não faz sentido recarregar, tenta-se de novo na próxima verificação.
@@ -87,14 +86,13 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
     const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
     console.log('[ServiceWorker] Registado com sucesso. Scope:', registration.scope);
 
-    // Avisa (em vez de recarregar sozinho) assim que um Service Worker novo
-    // assume o controlo — sem isto, uma aba/PWA deixada aberta continuava a
-    // correr o JavaScript antigo em memória indefinidamente mesmo com uma
-    // versão nova já publicada (sw.js já chama skipWaiting()+clients.claim(),
-    // só faltava este lado — a página em si nunca sabia que devia
-    // atualizar). Quem está a usar a app escolhe quando recarregar.
+    // Atualiza sozinha assim que um Service Worker novo assume o controlo —
+    // sem isto, uma aba/PWA deixada aberta continuava a correr o JavaScript
+    // antigo em memória indefinidamente mesmo com uma versão nova já
+    // publicada (sw.js já chama skipWaiting()+clients.claim(), só faltava
+    // este lado — a página em si nunca sabia que devia atualizar).
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      mostrarAvisoNovaVersao();
+      agendarAtualizacaoAutomatica();
     });
 
     // Uma PWA/aba aberta durante horas nunca voltava, sozinha, a perguntar
