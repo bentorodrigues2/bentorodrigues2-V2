@@ -215,6 +215,12 @@ export interface Proprietario {
   administrador_interno?: string;
   notificacao_preferencial?: string;
   referencia_br23e?: string;
+  // Data a partir da qual este proprietário assume a responsabilidade pela
+  // fração (compra/transferência de propriedade) — pode ser anterior ao dia
+  // em que o registo foi feito no sistema (ex: venda em julho, só registada
+  // em outubro). Sem isto não havia forma de corrigir a atribuição de
+  // quotas/avisos já emitidos nesse intervalo ao proprietário certo.
+  data_inicio_responsabilidade?: string;
 }
 
 export interface Inquilino {

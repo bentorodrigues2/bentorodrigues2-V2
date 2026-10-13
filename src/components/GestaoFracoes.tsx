@@ -228,6 +228,13 @@ export function GestaoFracoes({
   // quando o novo proprietário é mesmo gravado (evita ficar em limbo se o
   // admin desistir a meio, e mantém arquivamento + novo registo atómicos).
   const [transferindoPropriedadeDe, setTransferindoPropriedadeDe] = useState<Proprietario | null>(null);
+  // Data em que a responsabilidade passa para o novo proprietário — nunca
+  // existiu este campo (sempre se assumia "hoje", o dia em que o admin faz
+  // o registo, mesmo quando a venda/transição real foi semanas antes, ex:
+  // vendida em julho, responsabilidade a partir de 1 de agosto, só
+  // registada no sistema em outubro). Sem isto, o histórico da fração e os
+  // avisos emitidos entretanto ficavam com a data/titular errados.
+  const [dataInicioResponsabilidadeNovo, setDataInicioResponsabilidadeNovo] = useState<string>(() => new Date().toISOString().split("T")[0]);
   const [historicoModalFracaoId, setHistoricoModalFracaoId] = useState<string | null>(null);
   const [aArquivarRegistoDe, setAArquivarRegistoDe] = useState<string | null>(null);
 
@@ -663,6 +670,7 @@ export function GestaoFracoes({
     limparFormProprietario();
     setSelectedFracaoId(fracaoId);
     setTransferindoPropriedadeDe(targetFracao.proprietario);
+    setDataInicioResponsabilidadeNovo(new Date().toISOString().split("T")[0]);
     setCurrentSubTab("fracoes_proprietario");
     setTimeout(() => {
       document.getElementById("form-editar-proprietario")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1015,6 +1023,10 @@ export function GestaoFracoes({
       alert("Indique como quer ser notificado (campo obrigatório).");
       return;
     }
+    if (transferindoPropriedadeDe && !dataInicioResponsabilidadeNovo) {
+      alert("Indique a data de início de responsabilidade do novo proprietário (campo obrigatório).");
+      return;
+    }
 
     const targetFracao = selectedFracaoId ? predioFracoes.find(f => f.id_fracao === selectedFracaoId) : null;
     const refBR23E = targetFracao?.referencia_br23e || targetFracao?.proprietario?.referencia_br23e || gerarReferenciaBR23E(targetFracao?.fracao_nome || propNome.trim(), selectedFracaoId);
@@ -1040,7 +1052,8 @@ export function GestaoFracoes({
       foto: propFoto,
       administrador_interno: adminInterno,
       notificacao_preferencial: notificacao,
-      referencia_br23e: refBR23E
+      referencia_br23e: refBR23E,
+      data_inicio_responsabilidade: transferindoPropriedadeDe ? dataInicioResponsabilidadeNovo : targetFracao?.proprietario?.data_inicio_responsabilidade
     };
 
     // Salvaguardas para evitar associar por engano o proprietário errado a
@@ -1129,12 +1142,20 @@ export function GestaoFracoes({
           // no histórico da fração, em vez de o deixar desaparecer ao ser
           // substituído pelo novo — mantém o registo de quem era o
           // proprietário em cada período, para consulta de documentos antigos.
+          // O antigo proprietário é responsável até ao dia ANTERIOR ao início
+          // do novo (nunca o mesmo dia dos dois, para não haver sobreposição
+          // na atribuição de quotas/avisos emitidos nesse período).
+          const dataFimAntigoProprietario = (() => {
+            const d = new Date(`${dataInicioResponsabilidadeNovo}T00:00:00`);
+            d.setDate(d.getDate() - 1);
+            return d.toISOString().split("T")[0];
+          })();
           const novoHistoricoProprietarios = transferindoPropriedadeDe
             ? [
                 ...(targetFracao.historico_proprietarios || []),
                 {
                   proprietario: transferindoPropriedadeDe,
-                  data_fim: new Date().toISOString().split("T")[0],
+                  data_fim: dataFimAntigoProprietario,
                   motivo: "Transferência de propriedade"
                 }
               ]
@@ -2152,19 +2173,36 @@ export function GestaoFracoes({
             </div>
 
             {transferindoPropriedadeDe && (
-              <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <p className="text-xs text-amber-800 leading-relaxed">
-                  <i className="fa-solid fa-right-left mr-1.5"></i>
-                  <strong>Transferência de Propriedade em curso</strong> — está a registar o novo proprietário da Fração{" "}
-                  {predioFracoes.find(f => f.id_fracao === selectedFracaoId)?.fracao_nome}. Ao gravar, <strong>{transferindoPropriedadeDe.nome}</strong> será arquivado no histórico da fração (os documentos e recibos já emitidos em seu nome mantêm-se consultáveis).
-                </p>
-                <button
-                  type="button"
-                  onClick={limparFormProprietario}
-                  className="text-xs text-amber-700 hover:text-amber-900 font-bold underline cursor-pointer whitespace-nowrap"
-                >
-                  Cancelar Transferência
-                </button>
+              <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <p className="text-xs text-amber-800 leading-relaxed">
+                    <i className="fa-solid fa-right-left mr-1.5"></i>
+                    <strong>Transferência de Propriedade em curso</strong> — está a registar o novo proprietário da Fração{" "}
+                    {predioFracoes.find(f => f.id_fracao === selectedFracaoId)?.fracao_nome}. Ao gravar, <strong>{transferindoPropriedadeDe.nome}</strong> será arquivado no histórico da fração (os documentos e recibos já emitidos em seu nome mantêm-se consultáveis).
+                  </p>
+                  <button
+                    type="button"
+                    onClick={limparFormProprietario}
+                    className="text-xs text-amber-700 hover:text-amber-900 font-bold underline cursor-pointer whitespace-nowrap"
+                  >
+                    Cancelar Transferência
+                  </button>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-2 border-t border-amber-200">
+                  <label className="text-xs font-bold text-amber-800 whitespace-nowrap">
+                    Data de início de responsabilidade do novo proprietário <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={dataInicioResponsabilidadeNovo}
+                    onChange={e => setDataInicioResponsabilidadeNovo(e.target.value)}
+                    className="border border-amber-300 px-3 py-1.5 text-xs rounded-lg focus:outline-amber-500 bg-white"
+                  />
+                  <span className="text-[10px] text-amber-700">
+                    Pode ser anterior a hoje (ex: venda ocorrida há semanas, só agora registada) — {transferindoPropriedadeDe.nome} fica responsável até ao dia anterior a esta data.
+                  </span>
+                </div>
               </div>
             )}
 
