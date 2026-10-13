@@ -395,7 +395,14 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       descricao: `Pagamento a ${divida.fornecedor_nome} — ${divida.descricao}${saldoDevedor - valorTranche > 0.01 ? " (tranche)" : ""}`,
       valor: valorTranche,
       metodo_pagamento: "Transferência Bancária",
-      estado: "Justificado"
+      estado: "Justificado",
+      // Sem isto, o Assistente de Extração de Extratos nunca reconhecia este
+      // pagamento como já lançado quando o mesmo débito aparecia depois no
+      // extrato bancário real (a descrição do extrato nunca bate certo com
+      // a descrição daqui) — o único outro critério que o liga ao fornecedor
+      // certo é este campo, confirmado em falta em produção (THYSSENKRUPP
+      // pago aqui continuava a aparecer como "novo" ao importar o extrato).
+      id_fornecedor: divida.id_fornecedor
     };
     const movOk = await saveMovimentoToSupabase(novoMovimento);
     if (!movOk) return alert("❌ Não foi possível registar o movimento de pagamento. Tente novamente.");
