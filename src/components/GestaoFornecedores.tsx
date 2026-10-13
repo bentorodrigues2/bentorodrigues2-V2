@@ -1463,7 +1463,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                         <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1">Dados de Acesso:</p>
                         <p>• <strong>Link:</strong> <span className="font-mono text-indigo-600">https://bentorodrigues2.condomanagerai.com</span></p>
                         <p>• <strong>Utilizador:</strong> <span className="font-mono">{welcomeModalFornecedor.email_contacto || welcomeModalFornecedor.contacto || "fornecedor@empresa.pt"}</span></p>
-                        <p className="text-[10px] text-amber-700 italic mt-1">O email enviado ao fornecedor não contém nenhuma palavra-passe — inclui apenas o link de acesso e os dados de contacto da administração.</p>
+                        <p className="text-[10px] text-amber-700 italic mt-1">Ao confirmar, é criado um acesso real (Supabase Auth) e enviado um email próprio com um link seguro para o fornecedor definir a sua própria palavra-passe — nenhuma password é gerada ou mostrada aqui.</p>
                       </div>
 
                       <div className="bg-emerald-100/80 border border-emerald-200 p-2.5 rounded-lg flex items-center justify-between">
@@ -1497,6 +1497,33 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                       }
                       setEnviandoBoasVindasFornecedor(true);
                       try {
+                        // Este botão só enviava o PDF/email com instruções e um
+                        // link genérico de login — NUNCA criava de facto a conta
+                        // no Supabase Auth nem enviava o email real de definição
+                        // de password (confirmado em produção: fornecedores com
+                        // "pwa_acesso_enviado" true, mas sem nenhuma conta criada
+                        // — nunca conseguiam entrar nem pedir "Esqueci-me da
+                        // password", porque essa conta nunca existiu). Usa agora
+                        // o mesmo mecanismo real de convite (Supabase Auth
+                        // generateLink) já usado para gestores/administradores.
+                        const roleConvite = (welcomeModalFornecedor.perfis_pwa && welcomeModalFornecedor.perfis_pwa[0]) || "LIMPEZAS";
+                        const respConvite = await fetch("/api/admin?acao=convidar", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            email: destino,
+                            nome: welcomeModalFornecedor.nome,
+                            role: roleConvite,
+                            id_predio: predio.id_predio
+                          })
+                        });
+                        const resultadoConvite = await respConvite.json();
+                        if (!respConvite.ok || !resultadoConvite.ok || !resultadoConvite.email_enviado) {
+                          throw new Error(resultadoConvite?.error || "Não foi possível criar o acesso real nem enviar o email de ativação/password.");
+                        }
+
+                        // PDF com instruções de instalação PWA e dados de
+                        // faturação — complementar, não é o que dá acesso.
                         const resp = await fetch("/api/pdf?tipo=registo-fornecedor", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
@@ -1512,7 +1539,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                         const resultado = await resp.json();
                         if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar o email de boas-vindas");
                         setWelcomeModalFornecedor(null);
-                        alert("E-mail de boas-vindas e credenciais PWA enviados com sucesso!");
+                        alert(`✅ Acesso real criado e email${resultadoConvite.reenvio ? " de recuperação" : " de ativação/definição de password"} enviado, mais o PDF de instruções!`);
                       } catch (err: any) {
                         alert(`❌ Erro ao enviar o email de boas-vindas: ${err?.message || "erro desconhecido"}`);
                       } finally {
