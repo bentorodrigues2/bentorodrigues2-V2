@@ -1697,6 +1697,19 @@ export function GestaoDocumentos({
     });
   }, [predioDocsWithProfileAccess, activeTab]);
 
+  // Funde variantes conhecidas do mesmo fornecedor (ex.: a Thyssenkrupp
+  // Elevadores mudou de nome comercial para TK Elevators, e um dos emails
+  // automáticos de fatura chegou com o nome do fornecedor extraído pela IA
+  // concatenado com "via Email (Fração Não Identificada" por engano) numa
+  // só pasta, em vez de criarem pastas duplicadas no Arquivo Digital.
+  const normalizarNomePastaFornecedor = (nome: string): string => {
+    const semSufixoEmail = nome.split(" via Email (")[0].trim();
+    if (/thyssenkrupp|tk\s*elevador|tkelevator/i.test(semSufixoEmail)) {
+      return "THYSSENKRUPP / TKElevators";
+    }
+    return semSufixoEmail || nome;
+  };
+
   // Apply single dynamic filter bar criteria
   const docsFiltrados = useMemo(() => {
     return docsDoTipo.filter(d => {
@@ -1733,17 +1746,31 @@ export function GestaoDocumentos({
         doc.sub_pasta === "05. Manuais & Guias Operacionais" ||
         doc.sub_pasta === "Instruções PWA & Desktop";
 
-      const matchesFolder = !selectedFolder || 
+      // Ver nota em folderGroups/normalizarNomePastaFornecedor: atas ficam
+      // sempre na pasta pré-configurada, independentemente do ano.
+      const isAtaDoc = (doc: Documento) => doc.tema === "Atas & Convocatórias";
+
+      const matchesFolder = !selectedFolder ||
         ((selectedFolder === "Pasta Paga. Quotas" || selectedFolder === "Recibos e Quotas") ? isPastaPagaDoc(d) : (
           selectedFolder === "Manuais & Guias Operacionais" ? isManualDoc(d) : (
-            d.sub_pasta === selectedFolder || 
-            d.fornecedor === selectedFolder || 
-            d.tema === selectedFolder ||
-            d.categoria === selectedFolder
+            selectedFolder === "Atas & Convocatórias" ? isAtaDoc(d) : (
+              d.sub_pasta === selectedFolder ||
+              d.fornecedor === selectedFolder ||
+              d.tema === selectedFolder ||
+              d.categoria === selectedFolder ||
+              normalizarNomePastaFornecedor(d.sub_pasta || d.fornecedor || d.tema || "Faturas Diversas") === selectedFolder
+            )
           )
         ));
 
-      const matchesSubFolder = !selectedSubPasta || d.sub_pasta === selectedSubPasta;
+      // Dentro de "Recibos e Quotas" as 2 sub-pastas (Recibos / Notas de
+      // Cobrança) distinguem-se pelo campo real "tipo" — os documentos
+      // nunca tiveram um "sub_pasta" próprio preenchido, por isso filtrar
+      // por sub_pasta aqui nunca devolvia nada (pedido do administrador:
+      // separar estas 2 sub-pastas com filtro de pesquisa próprio).
+      const matchesSubFolder = !selectedSubPasta || (
+        selectedFolder === "Recibos e Quotas" ? d.tipo === selectedSubPasta : d.sub_pasta === selectedSubPasta
+      );
 
       return matchesSearch && matchesAno && matchesTema && matchesVis && matchesFornecedor && matchesFolder && matchesSubFolder;
     });
@@ -1802,13 +1829,24 @@ export function GestaoDocumentos({
         doc.sub_pasta === "Instruções PWA & Desktop"
       );
 
+      // Atas/convocatórias de assembleia são arquivadas com um sub_pasta
+      // POR ANO ("Assembleias 2026", "Assembleias 2022"...) — tem prioridade
+      // sobre "tema" na regra abaixo (doc.sub_pasta || doc.fornecedor ||
+      // doc.tema), por isso cada ano virava a sua própria pasta duplicada e
+      // a pasta pré-configurada "Atas & Convocatórias" ficava sempre vazia.
+      // Agrupa sempre pela pasta pré-configurada; o ano fica disponível no
+      // filtro "Ano" já existente na barra de filtros.
+      const isAta = doc.tema === "Atas & Convocatórias";
+
       let folderName: string;
       if (isPastaPaga) {
         folderName = "Recibos e Quotas";
       } else if (isManual) {
         folderName = "Manuais & Guias Operacionais";
+      } else if (isAta) {
+        folderName = "Atas & Convocatórias";
       } else {
-        folderName = doc.sub_pasta || doc.fornecedor || doc.tema || "Faturas Diversas";
+        folderName = normalizarNomePastaFornecedor(doc.sub_pasta || doc.fornecedor || doc.tema || "Faturas Diversas");
       }
 
       if (!groups[folderName]) {
@@ -2334,31 +2372,46 @@ export function GestaoDocumentos({
             </button>
           </div>
 
-          {selectedFolder === "Pasta Paga. Quotas" && (
+          {selectedFolder === "Recibos e Quotas" && (
             <div className="bg-emerald-950/80 border border-emerald-700/80 rounded-xl p-3 space-y-3">
               <div className="flex items-center justify-between text-[11px] text-emerald-300 font-bold border-b border-emerald-800/80 pb-2">
-                <span>📁 ESTRUTURA DA PASTA PAGA: 3 SUB-PASTAS POR ANO DE EXERCÍCIO</span>
+                <span>📁 ESTRUTURA DA PASTA: 2 SUB-PASTAS (RECIBOS / NOTAS DE COBRANÇA)</span>
                 {selectedSubPasta && (
-                  <button 
+                  <button
                     onClick={() => setSelectedSubPasta(null)}
                     className="text-amber-300 hover:underline text-[10px]"
                   >
-                    Ver todas as 3 sub-pastas
+                    Ver as 2 sub-pastas
                   </button>
                 )}
               </div>
 
-              {/* Sub-Pastas Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {/* Pesquisa dedicada a esta pasta — usa a mesma barra de pesquisa
+                  global (nome/descrição/fornecedor), só reexposta aqui para
+                  não obrigar a voltar ao topo da página. */}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-emerald-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={busca}
+                  onChange={e => setBusca(e.target.value)}
+                  placeholder="Pesquisar dentro de Recibos e Quotas (nome, fração, proprietário...)"
+                  className="w-full bg-emerald-900/60 border border-emerald-700 rounded-lg pl-8 pr-3 py-1.5 text-[11px] text-emerald-100 placeholder-emerald-400/70 focus:outline-none focus:border-emerald-400"
+                />
+              </div>
+
+              {/* Sub-Pastas Cards — divididas pelo campo real "tipo" de cada
+                  documento (Recibo vs Nota de Cobrança), o único campo que
+                  realmente distingue os 2 grupos nos dados existentes. */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {[
-                  { name: "Recibos", icon: "📄", label: "Recibos", desc: "Comprovativos e recibos de quotas mensais emitidos" },
-                  { name: "Recibos Quotas extra", icon: "💳", label: "Recibos Quotas Extra", desc: "Recibos de liquidação de quotas extraordinárias" },
-                  { name: "Notas de cobrança", icon: "📝", label: "Notas de Cobrança", desc: "Avisos de débito e notas de cobrança enviadas aos condóminos" }
+                  { name: "Recibo", icon: "📄", label: "Recibos", desc: "Comprovativos e recibos de quotas (ordinárias e extraordinárias) já pagas" },
+                  { name: "Nota de Cobrança", icon: "📝", label: "Notas de Cobrança", desc: "Avisos de débito e notas de cobrança enviadas aos condóminos" }
                 ].map(sub => {
                   const isActive = selectedSubPasta === sub.name;
-                  const count = docsDoTipo.filter(d => 
-                    (d.categoria === "Pasta Paga. Quotas" || d.tema === "Pasta Paga. Quotas" || ["Recibos", "Recibos Quotas extra", "Notas de cobrança"].includes(d.sub_pasta || "")) &&
-                    d.sub_pasta === sub.name &&
+                  const count = docsDoTipo.filter(d =>
+                    (d.categoria === "Pasta Paga. Quotas" || d.tema === "Pasta Paga. Quotas" || d.sub_pasta === "Recibos e Quotas" || ["Recibo", "Nota de Cobrança"].includes(d.tipo || "")) &&
+                    d.tipo === sub.name &&
                     (filtroAno === "Todos" || d.ano === filtroAno)
                   ).length;
 
