@@ -493,7 +493,7 @@ export function PainelControlo({
           </div>
           <div className="h-52 text-xs font-bold">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRec" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/>
@@ -506,7 +506,17 @@ export function PainelControlo({
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" stroke="#94a3b8" />
-                <YAxis stroke="#94a3b8" tickFormatter={(v) => `${v}€`} />
+                <YAxis
+                  stroke="#94a3b8"
+                  width={48}
+                  // Antes a margem esquerda negativa do gráfico cortava sempre
+                  // o primeiro dígito dos valores (ex: "4 500€" aparecia como
+                  // "500€", "2 000€" como "000€") — parecia dados errados ou
+                  // presos, quando era só um corte visual. Formato compacto
+                  // (ex: "4,5k€") nunca precisa de mais espaço do que o eixo
+                  // reserva, por maior que seja o valor real.
+                  tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${(v / 1000).toLocaleString("pt-PT", { maximumFractionDigits: 1 })}k€` : `${v}€`)}
+                />
                 <Tooltip formatter={(value: any) => [`${Number(value).toLocaleString("pt-PT")} €`, ""]} />
                 <Legend />
                 <Area type="monotone" name="Receitas" dataKey="Receitas" stroke="#10b981" fillOpacity={1} fill="url(#colorRec)" strokeWidth={2} />
