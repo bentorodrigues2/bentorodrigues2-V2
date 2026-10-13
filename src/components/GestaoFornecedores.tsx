@@ -1755,17 +1755,39 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-slate-600 mb-1">Tipo de Contrato *</label>
-                  <select
+                  {/* Lista pré-definida sugerida, mas editável — escreva
+                      qualquer outro tipo que não esteja na lista (o
+                      administrador reportou que faltavam tipos comuns como
+                      elevadores, energia ou segurança, e o anterior <select>
+                      só permitia escolher um dos 4 valores fixos). */}
+                  <input
+                    type="text"
+                    list="tipos-contrato-sugeridos"
                     required
                     value={tipoContrato}
                     onChange={e => setTipoContrato(e.target.value)}
+                    placeholder="Ex: Manutenção, Fornecimento de Energia..."
                     className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 bg-white"
-                  >
-                    <option value="Manutenção">Manutenção</option>
-                    <option value="Seguro">Seguro</option>
-                    <option value="Limpeza">Limpeza</option>
-                    <option value="Arrendamento">Arrendamento</option>
-                  </select>
+                  />
+                  <datalist id="tipos-contrato-sugeridos">
+                    <option value="Manutenção" />
+                    <option value="Seguro" />
+                    <option value="Limpeza" />
+                    <option value="Arrendamento" />
+                    <option value="Fornecimento de Energia" />
+                    <option value="Fornecimento de Água" />
+                    <option value="Fornecimento de Gás" />
+                    <option value="Telecomunicações / Internet" />
+                    <option value="Elevadores" />
+                    <option value="Segurança & Vigilância" />
+                    <option value="Jardinagem" />
+                    <option value="Desinfestação / Controlo de Pragas" />
+                    <option value="Contabilidade" />
+                    <option value="Jurídico" />
+                    <option value="Consultoria" />
+                    <option value="Obras / Empreitada" />
+                    <option value="Outro" />
+                  </datalist>
                 </div>
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-slate-600 mb-1">Data de Início *</label>
