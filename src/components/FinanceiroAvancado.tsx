@@ -1746,8 +1746,17 @@ export function FinanceiroAvancado({
                         const bal = getFracaoBalance(frac.id_fracao);
                         const isGoodStanding = bal >= 0;
                         const pendCount = contarMesesReais(getPendentesReaisDaFracao(frac.id_fracao));
+                        const abrirRelatorioFracao = () => {
+                          setSelectedFracaoId(frac.id_fracao);
+                          setLocalTab("extrato_saldo");
+                        };
                         return (
-                          <tr key={frac.id_fracao} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-colors">
+                          <tr
+                            key={frac.id_fracao}
+                            onClick={abrirRelatorioFracao}
+                            title="Ver relatório de dívida desta fração (exportável em PDF)"
+                            className="hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-colors cursor-pointer"
+                          >
                             <td className="py-3 px-4 font-bold text-slate-800 dark:text-white">
                               Fração "{frac.fracao_nome}" ({frac.piso})
                             </td>
@@ -1791,7 +1800,14 @@ export function FinanceiroAvancado({
                                 </span>
                               )}
                             </td>
-                            <td className="py-3 px-4 text-right">
+                            <td className="py-3 px-4 text-right" onClick={e => e.stopPropagation()}>
+                              <button
+                                onClick={abrirRelatorioFracao}
+                                className="bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all inline-flex items-center gap-1 cursor-pointer mr-1.5"
+                              >
+                                <i className="fa-solid fa-file-pdf"></i>
+                                <span>Ver Relatório / Exportar</span>
+                              </button>
                               <button
                                 onClick={() => openEmailShare(
                                   frac.proprietario.email,
