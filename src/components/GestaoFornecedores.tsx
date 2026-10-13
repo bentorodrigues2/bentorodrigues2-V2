@@ -401,7 +401,15 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     if (!movOk) return alert("❌ Não foi possível registar o movimento de pagamento. Tente novamente.");
 
     const contaAtualizada: Conta = { ...conta, saldo: conta.saldo - valorTranche };
-    await saveContaToSupabase(contaAtualizada);
+    const contaOk = await saveContaToSupabase(contaAtualizada);
+    if (!contaOk) {
+      // O movimento já ficou gravado — reverter deixava o pagamento "a meio"
+      // de forma pior (um movimento sem o débito correspondente na conta).
+      // Avisa claramente em vez de fingir sucesso e deixar o saldo
+      // silenciosamente desatualizado, como acontecia antes (bug real
+      // reportado: pagamento confirmado, saldo da conta nunca mexia).
+      return alert("⚠️ O pagamento foi registado nos movimentos, mas houve um erro ao atualizar o saldo da conta bancária. Corrija manualmente o saldo em Contas Bancárias ou tente novamente.");
+    }
     setContas(prev => prev.map(c => c.id_conta === conta.id_conta ? contaAtualizada : c));
     setMovements(prev => [novoMovimento, ...prev]);
 
