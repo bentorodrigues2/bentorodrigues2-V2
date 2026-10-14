@@ -78,15 +78,22 @@ export default async function handler(req, res) {
     // a marca "[pagamento:<id>]" na descrição por não haver FK entre as duas
     // tabelas). Sem isto, o movimento fica "Por Justificar" para sempre
     // mesmo depois do pagamento estar confirmado.
+    // movimentoLigadoId: guardado para se poder ligar id_movimento aos
+    // avisos fechados no passo 2.1 abaixo — sem isto, um aviso marcado
+    // "Pago" automaticamente nunca ficava rastreável até ao movimento
+    // bancário real que o liquidou.
+    let movimentoLigadoId = null;
     try {
-      await supabase
+      const { data: movsLigados } = await supabase
         .from("movimentos")
         .update({
           estado: "Justificado",
           estado_conciliacao: "CONCILIADO",
           is_movimento_cego: false
         })
-        .ilike("descricao", `%[pagamento:${id_pagamento}]%`);
+        .ilike("descricao", `%[pagamento:${id_pagamento}]%`)
+        .select("id_movimento");
+      movimentoLigadoId = movsLigados?.[0]?.id_movimento || null;
     } catch (errMovLink) {
       console.warn("[confirmar-pagamento] Aviso ao atualizar movimento ligado:", errMovLink?.message || errMovLink);
     }
@@ -165,6 +172,12 @@ export default async function handler(req, res) {
     // mas nada aparecia no Mapa de Pagamentos nem no histórico de avisos,
     // como se tivesse desaparecido. Cria-se agora, nesse caso, um aviso já
     // "Pago" com o mês do próprio pagamento, para nunca ficar por registar.
+    // avisosAutoFechados / valorAdiantamentoSemAviso: preenchidos abaixo
+    // quando o pagamento fecha mais do que 1 aviso de uma só vez — usados no
+    // passo 2.3/3 para o recibo sair discriminado por mês, tal como já
+    // acontecia quando o chamador passava avisos_ids explicitamente.
+    let avisosAutoFechados = [];
+    let valorAdiantamentoSemAviso = 0;
     try {
       if (pagamento.id_fracao && !(avisosIdsFechados && avisosIdsFechados.length)) {
         const valorPago = Number(pagamento.valor || 0);
@@ -204,6 +217,40 @@ export default async function handler(req, res) {
           }
         }
 
+        // Terceira tentativa — pagamento de uma só vez que cobre VÁRIOS
+        // meses em atraso (ex: condómino salda 5, 10, 12 meses juntos numa
+        // transferência). Sem isto, nenhum aviso real fechava — o pagamento
+        // ficava confirmado mas nenhum mês desaparecia do Mapa de
+        // Pagamentos, obrigando sempre a correção manual (confirmado em
+        // produção, repetidamente). Soma os avisos de Quota Ordinária
+        // pendentes, do mais antigo ao mais recente, enquanto a soma
+        // acumulada não ultrapassar o valor pago (margem de 0.05€) — fecha
+        // todos os que cabem inteiros; o que sobrar (se houver) fica
+        // registado como adiantamento explícito no recibo, nunca absorvido
+        // às cegas num mês que ainda nem foi emitido.
+        if (!avisoAlvo) {
+          const pendentesOrdinarias = ordenados.filter((a) => a.tipo === "Quota Ordinária");
+          let acumulado = 0;
+          const candidatos = [];
+          for (const a of pendentesOrdinarias) {
+            const valorAviso = Number(a.valor || 0);
+            if (acumulado + valorAviso > valorPago + 0.05) break;
+            candidatos.push(a);
+            acumulado += valorAviso;
+          }
+          // Só aceita esta via quando de facto fecha mais do que 1 mês (1 mês
+          // só já seria apanhado pelas tentativas acima) — fechar só 1 de
+          // vários candidatos seria mais provável ser coincidência do que a
+          // intenção real do pagamento.
+          if (candidatos.length >= 2) {
+            avisosAutoFechados = candidatos;
+            valorAdiantamentoSemAviso = Math.round((valorPago - acumulado) * 100) / 100;
+            console.warn(
+              `[confirmar-pagamento] Pagamento de ${valorPago}€ não bate certo com nenhum aviso isolado — fechados automaticamente ${candidatos.length} avisos pendentes (${acumulado.toFixed(2)}€)${valorAdiantamentoSemAviso > 0.004 ? `, com ${valorAdiantamentoSemAviso.toFixed(2)}€ por aplicar em meses futuros` : ""}.`
+            );
+          }
+        }
+
         // Se este pagamento já foi dividido em N meses (ver dividir-pagamento-meses.js),
         // já existem avisos "aviso-dividido-<id_pagamento>-*" a representá-lo —
         // criar aqui mais um aviso avulso duplicaria o valor.
@@ -214,7 +261,19 @@ export default async function handler(req, res) {
           .limit(1);
 
         if (avisoAlvo) {
-          await supabase.from("avisos").update({ estado: "Pago" }).eq("id_aviso", avisoAlvo.id_aviso);
+          await supabase.from("avisos").update({
+            estado: "Pago",
+            valor_pago: Number(avisoAlvo.valor || 0),
+            id_movimento: movimentoLigadoId
+          }).eq("id_aviso", avisoAlvo.id_aviso);
+        } else if (avisosAutoFechados.length) {
+          for (const a of avisosAutoFechados) {
+            await supabase.from("avisos").update({
+              estado: "Pago",
+              valor_pago: Number(a.valor || 0),
+              id_movimento: movimentoLigadoId
+            }).eq("id_aviso", a.id_aviso);
+          }
         } else if (!jaDivididoEm?.length) {
           const dataRef = vencimentoAlvo || pagamento.data_pagamento || new Date().toISOString().split("T")[0];
           const sufixoAdiantamento = vencimentoAlvo ? ` — adiantamento de ${new Date(`${vencimentoAlvo}T00:00:00`).toLocaleDateString("pt-PT", { month: "long", year: "numeric" })}.` : "";
@@ -229,6 +288,8 @@ export default async function handler(req, res) {
             valor: valorPago,
             valor_fundo_reserva: Math.round(valorPago * 0.10 * 100) / 100,
             estado: "Pago",
+            valor_pago: valorPago,
+            id_movimento: movimentoLigadoId,
             proprietario_nome: nomeDestinatario,
             proprietario_nif: nifDestinatario
           });
@@ -266,7 +327,9 @@ export default async function handler(req, res) {
 
     // 2.3) Se o chamador indicou exatamente quais avisos este pagamento
     // fecha, busca-os reais — servem para montar o recibo com 1 linha por
-    // mês/prestação (ver ponto 3) em vez de adivinhar a rubrica.
+    // mês/prestação (ver ponto 3) em vez de adivinhar a rubrica. Sem
+    // indicação explícita, usa os avisos que o passo 2.1 já tiver fechado
+    // automaticamente (pagamento de vários meses de uma vez).
     let avisosFechadosReais = [];
     if (avisosIdsFechados && avisosIdsFechados.length) {
       const { data: avisosReais } = await supabase
@@ -275,6 +338,8 @@ export default async function handler(req, res) {
         .in("id_aviso", avisosIdsFechados)
         .order("vencimento", { ascending: true });
       avisosFechadosReais = avisosReais || [];
+    } else if (avisosAutoFechados.length) {
+      avisosFechadosReais = avisosAutoFechados;
     }
     // Tipo de quota deste pagamento (Ordinária vs Extraordinária) — decide a
     // conta/IBAN certos no recibo. Sem avisos reais associados, mantém-se
@@ -321,27 +386,36 @@ export default async function handler(req, res) {
       // (fluxo antigo de comprovativo por email), mantém a divisão legal
       // mínima de 10% para o Fundo Comum de Reserva (DL 268/94, Art. 4.º).
       rubricas: avisosFechadosReais.length
-        ? avisosFechadosReais.flatMap((a) => {
-            const valorTotalAviso = Number(a.valor || 0);
-            const valorFcr = Number(a.valor_fundo_reserva || 0);
-            // Avisos de Quota Ordinária guardam a Quota + o FCR juntos num
-            // só registo (valor_fundo_reserva é só a parcela dentro de
-            // "valor") — sem isto, o recibo saía com 1 linha combinada
-            // ("Ordinária + Fundo de Reserva"), diferente da nota de
-            // cobrança do mesmo mês, que já sai sempre discriminada em 2
-            // linhas. Discrimina sempre aqui também, para nunca haver
-            // divergência entre os dois documentos.
-            if (valorFcr > 0 && valorFcr < valorTotalAviso) {
-              const valorOrdinaria = Math.round((valorTotalAviso - valorFcr) * 100) / 100;
-              const periodo = String(a.descricao || "").match(/-\s*([a-zàâãéêíóôõúç]+\s*\/\s*\d{4})\s*$/i)?.[1]?.trim();
-              const sufixoPeriodo = periodo ? ` - ${periodo}` : "";
-              return [
-                { descricao: `Quota de Condomínio Ordinária${sufixoPeriodo}`, valor: valorOrdinaria, tipo: a.tipo },
-                { descricao: `Fundo Comum de Reserva (FCR)${sufixoPeriodo}`, valor: valorFcr, tipo: "Fundo Comum de Reserva" }
-              ];
-            }
-            return [{ descricao: a.descricao || `${a.tipo} — vencimento ${a.vencimento || a.data}`, valor: valorTotalAviso, tipo: a.tipo }];
-          })
+        ? [
+            ...avisosFechadosReais.flatMap((a) => {
+              const valorTotalAviso = Number(a.valor || 0);
+              const valorFcr = Number(a.valor_fundo_reserva || 0);
+              // Avisos de Quota Ordinária guardam a Quota + o FCR juntos num
+              // só registo (valor_fundo_reserva é só a parcela dentro de
+              // "valor") — sem isto, o recibo saía com 1 linha combinada
+              // ("Ordinária + Fundo de Reserva"), diferente da nota de
+              // cobrança do mesmo mês, que já sai sempre discriminada em 2
+              // linhas. Discrimina sempre aqui também, para nunca haver
+              // divergência entre os dois documentos.
+              if (valorFcr > 0 && valorFcr < valorTotalAviso) {
+                const valorOrdinaria = Math.round((valorTotalAviso - valorFcr) * 100) / 100;
+                const periodo = String(a.descricao || "").match(/-\s*([a-zàâãéêíóôõúç]+\s*\/\s*\d{4})\s*$/i)?.[1]?.trim();
+                const sufixoPeriodo = periodo ? ` - ${periodo}` : "";
+                return [
+                  { descricao: `Quota de Condomínio Ordinária${sufixoPeriodo}`, valor: valorOrdinaria, tipo: a.tipo },
+                  { descricao: `Fundo Comum de Reserva (FCR)${sufixoPeriodo}`, valor: valorFcr, tipo: "Fundo Comum de Reserva" }
+                ];
+              }
+              return [{ descricao: a.descricao || `${a.tipo} — vencimento ${a.vencimento || a.data}`, valor: valorTotalAviso, tipo: a.tipo }];
+            }),
+            // Sobra do pagamento que não corresponde a nenhum aviso ainda
+            // emitido (ex: meses futuros cuja nota de cobrança só sai no dia
+            // 25 do mês anterior) — mostrado sempre como linha própria e
+            // explícita, nunca absorvido silenciosamente num mês ao calhas.
+            ...(valorAdiantamentoSemAviso > 0.004
+              ? [{ descricao: "Adiantamento para aplicar em meses futuros (ainda não emitidos)", valor: valorAdiantamentoSemAviso, tipo: "Quota Ordinária" }]
+              : [])
+          ]
         : (() => {
             const total = Number(pagamento.valor || 0);
             const valorReserva = Math.round(total * 0.10 * 100) / 100;
