@@ -1571,6 +1571,30 @@ export async function processInboundEmail(payload) {
   // 2. Obter contexto da fração/proprietário no Supabase
   let contexto = await obterContexto(cleanFrom);
 
+  // 2a. Email reencaminhado (ex: administrador a reenviar para o próprio
+  // sistema um comprovativo que um condómino lhe mandou diretamente para o
+  // email pessoal) — sem isto, o contexto ficava sempre o de quem
+  // reencaminhou, nunca o do condómino real identificado na mensagem
+  // original citada no corpo. Bug real confirmado em produção: um "Fw:
+  // Pagamento loja c" reencaminhado pelo administrador ficou atribuído à
+  // fração do próprio administrador, em vez da fração do condómino que
+  // mandou o pagamento (o nome/email dele estava, em texto simples, na
+  // linha "De:"/"From:" da mensagem original citada — só nunca era lido).
+  const ehReencaminhado = /^(fw|fwd|enc)\s*:/i.test((subject || "").trim()) || /forwarded message|mensagem reencaminhada/i.test(textoEmail);
+  if (ehReencaminhado) {
+    const matchRemetenteOriginal =
+      textoEmail.match(/(?:De|From)\s*:\s*[^\n\r<]*<([^<>\s]+@[^<>\s]+)>/i) ||
+      textoEmail.match(/(?:De|From)\s*:\s*([^\s<>,]+@[^\s<>,]+)/i);
+    const emailOriginal = matchRemetenteOriginal ? extrairEmailLimpo(matchRemetenteOriginal[1]).toLowerCase() : null;
+    if (emailOriginal && emailOriginal !== cleanFrom.toLowerCase()) {
+      const contextoOriginal = await obterContexto(emailOriginal);
+      if (contextoOriginal?.id_fracao) {
+        console.log(`[inboundProcessor] Email reencaminhado — contexto corrigido de ${cleanFrom} para o remetente original citado no corpo (${emailOriginal}), Fração ${contextoOriginal.fracao || contextoOriginal.id_fracao}.`);
+        contexto = contextoOriginal;
+      }
+    }
+  }
+
   // 2b. Respeitar a pausa do Sincronizador de Caixa de Entrada & Auto-Responder
   // (toggle "Ligar/Pausar Sincronizador" em Configurações → predios.autoresponder_ativo).
   // Quando pausado para este prédio, não processar nem responder automaticamente.
