@@ -2089,17 +2089,17 @@ export default function PWACondominoView({
                     <div className="space-y-3">
                       <p className="text-slate-700 text-[10px] leading-relaxed">Aceda à sua Biblioteca Documental IA inteligente:</p>
                       <div className="flex flex-col gap-2">
-                        <button 
-                          onClick={() => { setDocumentCategory("Todos"); setActivePwaModal("arquivo_completo"); setSelectedSubmenu(null); }} 
+                        {/* Antes abria um modal interno antigo ("arquivo_completo")
+                            com uma lista plana sem pastas nem filtros reais, e sem
+                            a pasta de Atas — nunca foi atualizado quando o Arquivo
+                            Digital (GestaoDocumentos) ganhou pastas/sub-pastas
+                            organizadas. Passa a abrir o mesmo ecrã correto já usado
+                            pelo módulo "Arquivo" do Hub. */}
+                        <button
+                          onClick={() => { setActiveTab("documentos"); setSelectedSubmenu(null); }}
                           className="w-full bg-blue-500 hover:bg-blue-600 text-white font-black py-2.5 rounded-xl text-center cursor-pointer transition-colors"
                         >
                           📂 Abrir Arquivo Completo
-                        </button>
-                        <button 
-                          onClick={() => { setDocumentCategory("Pendentes"); setActivePwaModal("atas_pendentes"); setSelectedSubmenu(null); }} 
-                          className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl text-center border border-slate-700 cursor-pointer transition-colors"
-                        >
-                          Ver Atas Pendentes
                         </button>
                       </div>
                     </div>
