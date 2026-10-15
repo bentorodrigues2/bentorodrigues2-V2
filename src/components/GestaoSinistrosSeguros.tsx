@@ -1397,7 +1397,7 @@ export function GestaoSinistrosSeguros({
                       handleUploadDocumentoIA(e.target.files[0], false);
                     }
                   }}
-                  accept=".pdf,.png,.jpg,.jpeg,.webp"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
                   className="hidden"
                 />
 
@@ -1475,7 +1475,7 @@ export function GestaoSinistrosSeguros({
                       e.target.value = "";
                     }
                   }}
-                  accept=".pdf,.png,.jpg,.jpeg,.webp"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
                   className="hidden"
                 />
                 <button
@@ -1679,7 +1679,7 @@ export function GestaoSinistrosSeguros({
                       handleUploadDocumentoIA(e.target.files[0], true);
                     }
                   }}
-                  accept=".pdf,.png,.jpg,.jpeg"
+                  accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
                   className="hidden"
                 />
 
@@ -1742,7 +1742,7 @@ export function GestaoSinistrosSeguros({
                       e.target.value = "";
                     }
                   }}
-                  accept=".pdf,.png,.jpg,.jpeg,.webp"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
                   className="hidden"
                 />
                 <button

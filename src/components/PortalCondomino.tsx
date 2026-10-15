@@ -1562,7 +1562,14 @@ export function PortalCondomino({
                       <input
                         ref={seguroApoliceInputPortalRef}
                         type="file"
-                        accept="image/*,application/pdf"
+                        // Antes só aceitava imagens/PDF — muitas apólices e
+                        // faturas chegam em Word (.doc/.docx) da seguradora,
+                        // e o seletor de ficheiros nem deixava escolher esse
+                        // tipo de ficheiro. A IA de leitura automática só lê
+                        // imagem/PDF — para Word, fica só o upload sem
+                        // preenchimento automático dos campos, mas o
+                        // documento fica sempre arquivado.
+                        accept="image/*,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
@@ -1582,7 +1589,7 @@ export function PortalCondomino({
                       <input
                         ref={seguroFaturaInputPortalRef}
                         type="file"
-                        accept="image/*,application/pdf"
+                        accept="image/*,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0];

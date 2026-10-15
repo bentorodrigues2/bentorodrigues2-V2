@@ -1851,7 +1851,12 @@ export default function PWACondominoView({
                       <input
                         ref={seguroApoliceInputRef}
                         type="file"
-                        accept="image/*,application/pdf"
+                        // Antes só aceitava imagens/PDF — muitas apólices e
+                        // faturas chegam em Word (.doc/.docx) da seguradora.
+                        // A IA de leitura automática só lê imagem/PDF — para
+                        // Word, fica só o upload sem preenchimento automático
+                        // dos campos, mas o documento fica sempre arquivado.
+                        accept="image/*,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
@@ -1871,7 +1876,7 @@ export default function PWACondominoView({
                       <input
                         ref={seguroFaturaInputRef}
                         type="file"
-                        accept="image/*,application/pdf"
+                        accept="image/*,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
