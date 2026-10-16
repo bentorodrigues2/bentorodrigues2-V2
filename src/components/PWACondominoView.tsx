@@ -626,6 +626,7 @@ export default function PWACondominoView({
   // impossível carregar no botão para ativar de verdade.
   const [pushAtivo, setPushAtivo] = useState(false);
   const [ativandoPush, setAtivandoPush] = useState(false);
+  const [mostrarConvitePush, setMostrarConvitePush] = useState(true);
   useEffect(() => {
     if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
     navigator.serviceWorker.ready
@@ -1525,6 +1526,45 @@ export default function PWACondominoView({
                 </button>
               </div>
             </div>
+
+            {/* CONVITE PARA ATIVAR NOTIFICAÇÕES — antes só existia um botão
+                escondido em Perfil → Definições, que quase ninguém
+                encontrava sozinho. Pedido explícito do administrador: tornar
+                a ativação visível e fácil logo no ecrã inicial. Ativar
+                notificações push exige sempre um gesto direto do próprio
+                utilizador (autorização do próprio sistema operativo/
+                navegador) — nenhuma app ou servidor consegue ligar isto à
+                força em nome de outra pessoa; isto é só o convite mais
+                visível para dar esse passo, nunca a ativação em si. Some
+                sozinho quando o utilizador fecha ou já tem ativado. */}
+            {!pushAtivo && mostrarConvitePush && (
+              <div className="w-full border border-emerald-300 dark:border-emerald-800 rounded-xl p-3 shadow-sm bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={handleAtivarPush}
+                  disabled={ativandoPush}
+                  className="flex items-center gap-2.5 text-left cursor-pointer disabled:opacity-60 flex-1"
+                >
+                  <span className="h-8 w-8 rounded-lg bg-white/70 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <i className="fa-solid fa-bell text-sm"></i>
+                  </span>
+                  <div>
+                    <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-300 block">
+                      {ativandoPush ? "A ativar..." : "Ativar Notificações"}
+                    </span>
+                    <span className="text-[9px] text-emerald-700 dark:text-emerald-400">Avisos, finanças, reservas e limpezas — recebe tudo e desliga o que não quiseres depois.</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMostrarConvitePush(false)}
+                  className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 shrink-0 p-1"
+                  title="Agora não"
+                >
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            )}
 
             {/* CHAMADA DE ATENÇÃO — SEGURO DE INCÊNDIO EM FALTA/EXPIRADO.
                 Pedido explícito: avisar logo no ecrã inicial quem ainda não

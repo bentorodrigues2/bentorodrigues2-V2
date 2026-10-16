@@ -18,9 +18,13 @@ export function getDefaultNotificationPreferences(userId: string = 'user-default
     critical_occurrences: true,
     critical_documents: true,
     critical_assemblies: true,
-    optional_finances: false,
-    optional_reservations: false,
-    optional_cleaning: false,
+    // Pedido explícito do administrador: ao ativar notificações, o
+    // condómino recebe tudo por omissão (nunca exige ir às Definições
+    // ligar categoria a categoria primeiro) — pode sempre desligar depois
+    // o que não quiser.
+    optional_finances: true,
+    optional_reservations: true,
+    optional_cleaning: true,
     updated_at: new Date().toISOString()
   };
 }
