@@ -1129,6 +1129,8 @@ export async function saveContratoToSupabase(contrato: any): Promise<boolean> {
     historico_renovacoes: contrato.historico_renovacoes || [],
     documento_nome: contrato.documento_nome || null,
     documento_base64: contrato.documento_base64 || null,
+    documentos_anexos: contrato.documentos_anexos || [],
+    observacoes: contrato.observacoes || null,
     rescisao: contrato.rescisao || null
   });
 }
@@ -1158,6 +1160,8 @@ export async function fetchContratosFromSupabase(idPredio?: string): Promise<any
     historico_renovacoes: row.historico_renovacoes || [],
     documento_nome: row.documento_nome || undefined,
     documento_base64: row.documento_base64 || undefined,
+    documentos_anexos: row.documentos_anexos || [],
+    observacoes: row.observacoes || undefined,
     rescisao: row.rescisao || undefined
   }));
 }

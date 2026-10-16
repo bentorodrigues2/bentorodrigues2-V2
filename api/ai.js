@@ -848,6 +848,76 @@ Regras: "valor" é o valor total da proposta em euros, só o número (sem símbo
     }
   }
 
+  // 9.8. RECONHECER CONTRATO DE PRESTAÇÃO DE SERVIÇOS (?acao=reconhecer-contrato)
+  // Usado por GestaoFornecedores.tsx ao anexar o(s) documento(s) de um
+  // contrato de fornecedor — antes não havia nenhuma leitura automática,
+  // o administrador tinha sempre de transcrever à mão serviço, datas,
+  // valores e condições a partir do documento já anexado. Mesmo padrão de
+  // reconhecer-proposta (aceita vários anexos da mesma vez).
+  if (acao === "reconhecer-contrato") {
+    if (req.method === "GET") {
+      return res.status(200).json({ status: "online", endpoint: "/api/ai?acao=reconhecer-contrato" });
+    }
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
+
+    try {
+      const body = req.body || {};
+      const anexos = Array.isArray(body.anexos) && body.anexos.length > 0
+        ? body.anexos
+        : (body.base64 && body.mimeType ? [{ base64: body.base64, mimeType: body.mimeType }] : []);
+      if (anexos.length === 0 || anexos.some(a => !a?.base64 || !a?.mimeType)) {
+        return res.status(400).json({ error: "Envie pelo menos um anexo válido (base64 + mimeType)." });
+      }
+
+      const prompt = `És um sistema de OCR e extração documental de contratos de prestação de serviços a condomínios em Portugal (manutenção, limpeza, elevadores, jardinagem, segurança, fornecimento de energia/água/gás, etc.).
+Analisa TODOS os ${anexos.length} documento(s) em anexo (podem ser páginas/ficheiros diferentes do mesmo contrato) e extrai os dados reais neles contidos, combinando a informação de todos.
+Devolve APENAS JSON estrito com as chaves:
+{
+  "fornecedor_nome": "Nome legal real da empresa prestadora do serviço indicado no documento",
+  "tipo_contrato": "Tipo de serviço contratado, uma palavra ou expressão curta (ex: Manutenção, Limpeza, Elevadores, Segurança, Fornecimento de Energia)",
+  "servico_descricao": "Descrição real do serviço/objeto do contrato tal como consta no documento",
+  "data_inicio": "Data de início de vigência no formato YYYY-MM-DD",
+  "data_fim": "Data de fim de vigência/renovação no formato YYYY-MM-DD",
+  "custo_mensal": 0,
+  "custo_anual": 0,
+  "renovacao_automatica": false,
+  "sla_resposta": "Prazo/condições de resposta a avarias indicado no documento (ex: 24 horas para avarias)",
+  "penalizacao_atraso": "Cláusula de penalização por incumprimento/atraso indicada no documento",
+  "indexacao_preco": "Regra de indexação/atualização de preço indicada no documento (ex: IPC Inflação INE)"
+}
+Regras: "custo_mensal"/"custo_anual" são só o número em euros, sem símbolo (preenche o que o documento indicar — mensal, anual, ou ambos se indicados; se só vier um deles, deixa o outro a 0). Se algum campo não constar no documento, usa null nesse campo (ou 0/false nos respetivos tipos). Nunca inventes valores que não constem no documento.`;
+
+      const rawResponse = await generateWithFallback({
+        contents: [{
+          role: "user",
+          parts: [
+            { text: prompt },
+            ...anexos.map(a => ({ inlineData: { mimeType: a.mimeType, data: a.base64 } }))
+          ]
+        }],
+        responseMimeType: "application/json"
+      });
+
+      let dados = null;
+      try {
+        dados = JSON.parse(rawResponse);
+      } catch {
+        const match = rawResponse.match(/\{[\s\S]*\}/);
+        if (match) dados = JSON.parse(match[0]);
+      }
+
+      if (!dados) {
+        return res.status(502).json({ error: "A IA não conseguiu extrair dados deste documento." });
+      }
+      return res.status(200).json({ ok: true, dados });
+    } catch (err) {
+      console.error("[api/ai?acao=reconhecer-contrato] Erro:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao reconhecer o contrato." });
+    }
+  }
+
   // 10. HUMANIZAR CONVOCATÓRIA (/api/humanize-convocatoria -> ?acao=humanize-convocatoria)
   // SUGESTÃO DE TEMA & ORDEM DE TRABALHOS PARA UMA NOVA ASSEMBLEIA
   // (?acao=sugerir-ordem-trabalhos) — antes disto, o botão "Elaborar com
@@ -1094,6 +1164,7 @@ Devolve apenas o texto do corpo da carta (saudação + parágrafos + despedida),
         "extrair-movimentos-historicos",
         "reconhecer-apolice",
         "reconhecer-proposta",
+        "reconhecer-contrato",
         "humanize-convocatoria",
         "validar-regulamento",
         "redigir-carta"

@@ -63,8 +63,16 @@ export interface Contrato {
   penalizacao_atraso?: string;
   indexacao_preco?: string;
   historico_renovacoes?: string[];
+  // Mantidos só por compatibilidade com contratos antigos (um único
+  // documento, em base64). Novos contratos usam sempre documentos_anexos
+  // (vários ficheiros, guardados no Storage real, nunca base64 na BD).
   documento_nome?: string;
   documento_base64?: string;
+  documentos_anexos?: { nome: string; url: string }[];
+  // Apontamentos livres do administrador sobre o contrato (ex: acordos
+  // verbais, exceções, histórico de negociação) — não existia nenhum campo
+  // para isto, só os campos estruturados (SLA, penalização, indexação).
+  observacoes?: string;
   // Registo da rescisão — só existe depois de emitida a carta de rescisão.
   // enviado_em/comprovativo confirmam que a carta foi mesmo enviada por
   // email (ou o motivo de não ter sido), em vez de um botão que só finge.
@@ -558,12 +566,18 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
   const [slaResposta, setSlaResposta] = useState("4 horas para avarias");
   const [penalizacaoAtraso, setPenalizacaoAtraso] = useState("5% desconto em mora");
   const [indexacaoPreco, setIndexacaoPreco] = useState("IPC Inflação INE");
-  const [documentoNome, setDocumentoNome] = useState("");
-  const [documentoBase64, setDocumentoBase64] = useState("");
-  // Ficheiro real (não só o base64) — precisa dele para o poder enviar
-  // também para o Supabase Storage e arquivar no módulo Documental geral
-  // (Arquivo → Fornecedores), que antes nunca recebia estes contratos.
-  const [documentoFile, setDocumentoFile] = useState<File | null>(null);
+  // Vários ficheiros por contrato (antes só 1) — upload real para o Storage
+  // (nunca base64 na BD), arquivados também no módulo Documental geral
+  // (Arquivo → Fornecedores). documentosAnexosExistentes guarda os já
+  // associados ao contrato ao editar (para nunca se perderem ao adicionar
+  // mais); documentoFiles são só os NOVOS ainda por enviar.
+  const [documentoFiles, setDocumentoFiles] = useState<File[]>([]);
+  const [documentosAnexosExistentes, setDocumentosAnexosExistentes] = useState<{ nome: string; url: string }[]>([]);
+  const [observacoesContrato, setObservacoesContrato] = useState("");
+  // Preenchimento automático por IA a partir do(s) documento(s) anexado(s)
+  // — antes não existia nenhuma leitura automática, era tudo transcrito à
+  // mão a partir do documento já anexado.
+  const [aLerContratoComIA, setALerContratoComIA] = useState(false);
 
   // Rescisão de contrato — emite carta real (PDF + email) e regista
   // comprovativo de envio no próprio contrato.
@@ -641,19 +655,61 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     }
   };
 
-  const handleContractFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const lerFicheiroComoBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
-    setDocumentoNome(file.name);
-    setDocumentoFile(file);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setDocumentoBase64(event.target.result as string);
+  // Aceita vários ficheiros de uma vez (antes só 1) e lê-os logo por IA para
+  // preencher sozinha o resto do formulário — antes não havia nenhuma
+  // leitura automática, era tudo transcrito à mão a partir do documento já
+  // anexado.
+  const handleContractFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const novosFicheiros: File[] = Array.from(e.target.files || []);
+    if (novosFicheiros.length === 0) return;
+    setDocumentoFiles(prev => [...prev, ...novosFicheiros]);
+    e.target.value = "";
+
+    setALerContratoComIA(true);
+    try {
+      const anexos = await Promise.all(novosFicheiros.map(async f => ({
+        base64: ((await lerFicheiroComoBase64(f)) as string).split(",")[1] || "",
+        mimeType: f.type || "application/octet-stream"
+      })));
+      const resp = await fetch("/api/ai?acao=reconhecer-contrato", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ anexos })
+      });
+      const resultado = await resp.json();
+      if (resp.ok && resultado.ok && resultado.dados) {
+        const d = resultado.dados;
+        if (d.tipo_contrato) setTipoContrato(d.tipo_contrato);
+        if (d.servico_descricao) setServicoNome(d.servico_descricao);
+        if (d.data_inicio) setDataInicio(d.data_inicio);
+        if (d.data_fim) setDataFim(d.data_fim);
+        if (d.custo_mensal) handleCustoMensalChange(String(d.custo_mensal));
+        else if (d.custo_anual) handleCustoAnualChange(String(d.custo_anual));
+        if (d.sla_resposta) setSlaResposta(d.sla_resposta);
+        if (d.penalizacao_atraso) setPenalizacaoAtraso(d.penalizacao_atraso);
+        if (d.indexacao_preco) setIndexacaoPreco(d.indexacao_preco);
+        // Fornecedor: só sugere automaticamente se ainda não houver nenhum
+        // selecionado e existir já um fornecedor registado com o mesmo
+        // nome — nunca cria um fornecedor novo sozinho nem troca um que já
+        // tenha sido escolhido à mão.
+        if (d.fornecedor_nome && !selectedFornecedorId) {
+          const match = predioForn.find(f => f.nome.toLowerCase().trim() === String(d.fornecedor_nome).toLowerCase().trim());
+          if (match) setSelectedFornecedorId(match.id_fornecedor);
+        }
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn("[GestaoFornecedores] Aviso: IA não conseguiu ler o(s) documento(s) do contrato, continua só com o upload:", err);
+    } finally {
+      setALerContratoComIA(false);
+    }
   };
 
   const submeterFornecedor = async (e: React.FormEvent) => {
@@ -732,7 +788,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     alert("Fornecedor registado com sucesso!");
   };
 
-  const submeterContrato = (e: React.FormEvent) => {
+  const submeterContrato = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loggedUser.role !== 'ADMIN' && loggedUser.role !== 'EMPRESA_GESTORA') {
       return alert("Apenas administradores podem cadastrar contratos!");
@@ -752,6 +808,43 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       : servicoNome;
 
     const contratoExistente = editingContratoId ? contratos.find(c => c.id_contrato === editingContratoId) : undefined;
+    const fornecedorNome = predioForn.find(f => f.id_fornecedor === selectedFornecedorId)?.nome || "Fornecedor";
+
+    // Envia TODOS os ficheiros novos para o Storage real (nunca base64 na
+    // BD) antes de gravar o contrato, e arquiva uma cópia de cada um no
+    // módulo Documental geral (Arquivo → Fornecedores) — antes só era
+    // possível anexar 1 único ficheiro por contrato.
+    const novosAnexos: { nome: string; url: string }[] = [];
+    for (const file of documentoFiles) {
+      const ano = new Date().getFullYear().toString();
+      const caminhoStorage = `${ano}/Fornecedores/${predio.id_predio}/${Date.now()}-${file.name}`;
+      const urlReal = await uploadDocumentoToStorage(file, caminhoStorage);
+      if (!urlReal) continue;
+      novosAnexos.push({ nome: file.name, url: urlReal });
+
+      const novoDoc: Documento = {
+        id_doc: "doc-contr-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+        id_predio: predio.id_predio,
+        nome: `Contrato - ${servicoNome} (${fornecedorNome}) - ${file.name}`,
+        tipo: file.type.includes("pdf") ? "PDF" : file.type.includes("word") || file.name.match(/\.docx?$/i) ? "Word" : "Imagem",
+        data_upload: new Date().toISOString().split("T")[0],
+        tamanho: `${(file.size / 1024).toFixed(0)} KB`,
+        categoria: "Fornecedores",
+        descricao: `Contrato de ${tipoContrato} com ${fornecedorNome} — ${servicoNome}`,
+        visibilidade: "Administração",
+        autor: loggedUser.nome,
+        tema: "Fornecedores",
+        ano,
+        sub_pasta: fornecedorNome,
+        fornecedor: fornecedorNome,
+        caminho: urlReal,
+        arquivado: true,
+        data_arquivamento: new Date().toISOString().split("T")[0],
+        tipo_arquivo: "documento",
+        relevancia_perfis: ["ADMIN", "EMPRESA_GESTORA", "CONTABILISTA"]
+      };
+      await saveDocumentoToSupabase(novoDoc);
+    }
 
     const novoContrato: Contrato = {
       id_contrato: editingContratoId || crypto.randomUUID(),
@@ -773,11 +866,11 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       historico_renovacoes: contratoExistente
         ? [`Editado em ${new Date().toLocaleDateString("pt-PT")}`, ...(contratoExistente.historico_renovacoes || [])]
         : [`Criado e registado em ${new Date().toLocaleDateString("pt-PT")}`],
-      // Antes só se guardava o nome do ficheiro (documento_base64 ficava
-      // capturado no estado local mas nunca era enviado ao Supabase) — o
-      // anexo desaparecia sempre depois de recarregar a página.
-      documento_nome: documentoNome || contratoExistente?.documento_nome || undefined,
-      documento_base64: documentoBase64 || contratoExistente?.documento_base64 || undefined,
+      // Mantidos só por compatibilidade com contratos antigos.
+      documento_nome: contratoExistente?.documento_nome,
+      documento_base64: contratoExistente?.documento_base64,
+      documentos_anexos: [...documentosAnexosExistentes, ...novosAnexos],
+      observacoes: observacoesContrato.trim() || undefined,
       rescisao: contratoExistente?.rescisao
     };
 
@@ -787,40 +880,6 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
           ? contratos.map(c => c.id_contrato === editingContratoId ? novoContrato : c)
           : [novoContrato, ...contratos]);
 
-        // Arquiva automaticamente uma cópia real no módulo Documental geral
-        // (Arquivo → Fornecedores) — antes o contrato só ficava acessível
-        // aqui, na aba Contratos, e nunca aparecia em Arquivo para consulta.
-        if (documentoFile) {
-          const fornecedorNome = predioForn.find(f => f.id_fornecedor === selectedFornecedorId)?.nome || "Fornecedor";
-          const ano = new Date().getFullYear().toString();
-          const caminhoStorage = `${ano}/Fornecedores/${predio.id_predio}/${Date.now()}-${documentoFile.name}`;
-          const urlReal = await uploadDocumentoToStorage(documentoFile, caminhoStorage);
-          if (urlReal) {
-            const novoDoc: Documento = {
-              id_doc: "doc-contr-" + Date.now(),
-              id_predio: predio.id_predio,
-              nome: `Contrato - ${servicoNome} (${fornecedorNome})`,
-              tipo: documentoFile.type.includes("pdf") ? "PDF" : "Imagem",
-              data_upload: new Date().toISOString().split("T")[0],
-              tamanho: `${(documentoFile.size / 1024).toFixed(0)} KB`,
-              categoria: "Fornecedores",
-              descricao: `Contrato de ${tipoContrato} com ${fornecedorNome} — ${servicoNome}`,
-              visibilidade: "Administração",
-              autor: loggedUser.nome,
-              tema: "Fornecedores",
-              ano,
-              sub_pasta: fornecedorNome,
-              fornecedor: fornecedorNome,
-              caminho: urlReal,
-              arquivado: true,
-              data_arquivamento: new Date().toISOString().split("T")[0],
-              tipo_arquivo: "documento",
-              relevancia_perfis: ["ADMIN", "EMPRESA_GESTORA", "CONTABILISTA"]
-            };
-            await saveDocumentoToSupabase(novoDoc);
-          }
-        }
-
         const foiEdicao = Boolean(editingContratoId);
         setSelectedFornecedorId("");
         setTipoContrato("Manutenção");
@@ -829,9 +888,9 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
         setCustoAnual("");
         setCustoVariavel(false);
         setAlertaDiasAntecedencia(60);
-        setDocumentoNome("");
-        setDocumentoBase64("");
-        setDocumentoFile(null);
+        setDocumentoFiles([]);
+        setDocumentosAnexosExistentes([]);
+        setObservacoesContrato("");
         setEditingContratoId(null);
         alert(foiEdicao
           ? "Contrato atualizado com sucesso!"
@@ -861,8 +920,9 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     setSlaResposta(c.sla_resposta || "");
     setPenalizacaoAtraso(c.penalizacao_atraso || "");
     setIndexacaoPreco(c.indexacao_preco || "");
-    setDocumentoNome(c.documento_nome || "");
-    setDocumentoBase64(c.documento_base64 || "");
+    setObservacoesContrato(c.observacoes || "");
+    setDocumentosAnexosExistentes(c.documentos_anexos || []);
+    setDocumentoFiles([]);
     document.getElementById("form-contrato-fornecedor")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
@@ -875,9 +935,9 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     setCustoAnual("");
     setCustoVariavel(false);
     setAlertaDiasAntecedencia(60);
-    setDocumentoNome("");
-    setDocumentoBase64("");
-    setDocumentoFile(null);
+    setObservacoesContrato("");
+    setDocumentosAnexosExistentes([]);
+    setDocumentoFiles([]);
   };
 
   const excluirContrato = async (id: string) => {
@@ -1958,35 +2018,72 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                 </div>
               </div>
 
-              {/* PDF Contract Uploader */}
-              <div className="flex flex-col pt-1">
-                <label className="text-xs font-semibold text-slate-600 mb-1">Anexo / Arquivo Digital do Contrato (Opcional)</label>
-                <div className="flex items-center space-x-3">
+              {/* Contract Document(s) Uploader — vários ficheiros, lidos por
+                  IA para preencher sozinha o resto do formulário */}
+              <div className="flex flex-col pt-1 space-y-2">
+                <label className="text-xs font-semibold text-slate-600 mb-1">Anexos / Arquivo Digital do Contrato (Opcional, vários ficheiros)</label>
+                <div className="flex items-center space-x-3 flex-wrap gap-2">
                   <button
                     type="button"
+                    disabled={aLerContratoComIA}
                     onClick={() => document.getElementById("contract-file-selector")?.click()}
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold border border-slate-250 cursor-pointer flex items-center space-x-1.5"
+                    className="bg-slate-100 hover:bg-slate-200 disabled:opacity-60 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold border border-slate-250 cursor-pointer flex items-center space-x-1.5"
                   >
                     <FileText className="w-4 h-4 shrink-0 text-red-600" />
-                    <span>Selecionar Documento Contratual</span>
+                    <span>Selecionar Documento(s) Contratuais</span>
                   </button>
                   <input
                     id="contract-file-selector"
                     type="file"
-                    accept=".pdf,image/*"
+                    multiple
+                    accept=".pdf,image/*,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     onChange={handleContractFile}
                     className="hidden"
                   />
-                  {documentoNome && (
-                    <span className="text-xs text-slate-600 font-bold font-mono bg-slate-50 px-2 py-1 rounded border border-slate-200">
-                      ✓ {documentoNome}
+                  {aLerContratoComIA && (
+                    <span className="text-xs text-indigo-600 font-bold flex items-center gap-1.5">
+                      <i className="fa-solid fa-circle-notch fa-spin"></i>
+                      A ler documento(s) com IA e a preencher o formulário...
                     </span>
                   )}
                 </div>
+                {(documentosAnexosExistentes.length > 0 || documentoFiles.length > 0) && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {documentosAnexosExistentes.map((a, idx) => (
+                      <span key={`existente-${idx}`} className="text-xs text-slate-600 font-bold font-mono bg-slate-50 px-2 py-1 rounded border border-slate-200 flex items-center gap-1.5">
+                        <a href={a.url} target="_blank" rel="noopener noreferrer" className="hover:underline">✓ {a.nome}</a>
+                        <button type="button" onClick={() => setDocumentosAnexosExistentes(prev => prev.filter((_, i) => i !== idx))} className="text-red-500 hover:text-red-700 cursor-pointer" title="Remover este anexo">
+                          <i className="fa-solid fa-xmark"></i>
+                        </button>
+                      </span>
+                    ))}
+                    {documentoFiles.map((f, idx) => (
+                      <span key={`novo-${idx}`} className="text-xs text-emerald-700 font-bold font-mono bg-emerald-50 px-2 py-1 rounded border border-emerald-200 flex items-center gap-1.5">
+                        ✓ {f.name} <span className="text-[10px] font-normal">(novo)</span>
+                        <button type="button" onClick={() => setDocumentoFiles(prev => prev.filter((_, i) => i !== idx))} className="text-red-500 hover:text-red-700 cursor-pointer" title="Remover este anexo">
+                          <i className="fa-solid fa-xmark"></i>
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <button 
-                type="submit" 
+              {/* Observações livres — não existia nenhum campo para
+                  apontamentos soltos (acordos verbais, exceções, etc.). */}
+              <div className="flex flex-col pt-1">
+                <label className="text-xs font-semibold text-slate-600 mb-1">Observações (Opcional)</label>
+                <textarea
+                  value={observacoesContrato}
+                  onChange={e => setObservacoesContrato(e.target.value)}
+                  placeholder="Apontamentos livres sobre este contrato (ex: acordos verbais, exceções, histórico de negociação)..."
+                  rows={2}
+                  className="w-full border border-slate-200 px-3 py-2 text-xs rounded-lg focus:outline-indigo-500 bg-white resize-y"
+                />
+              </div>
+
+              <button
+                type="submit"
                 id="btn-guardar-contrato-supabase"
                 className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors cursor-pointer flex items-center space-x-2 shadow-xs"
               >
@@ -2090,6 +2187,12 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                             <span>Último Registo: {c.historico_renovacoes[0]}</span>
                           </div>
                         )}
+                        {c.observacoes && (
+                          <div className="text-[10px] text-amber-800 bg-amber-50 px-2.5 py-1.5 rounded border border-amber-200/60 italic">
+                            <i className="fa-solid fa-note-sticky mr-1 text-amber-600"></i>
+                            {c.observacoes}
+                          </div>
+                        )}
                       </div>
 
                       {/* Right financials & Contract archive buttons */}
@@ -2129,7 +2232,20 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                             </button>
                           )}
 
-                          {c.documento_nome && (
+                          {(c.documentos_anexos || []).map((a, idx) => (
+                            <a
+                              key={idx}
+                              href={a.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all"
+                              title={`Abrir ${a.nome}`}
+                            >
+                              <i className="fa-solid fa-download"></i>
+                            </a>
+                          ))}
+                          {/* Compatibilidade com contratos antigos (1 único anexo em base64) */}
+                          {!c.documentos_anexos?.length && c.documento_nome && (
                             <a
                               href={c.documento_base64 || "#"}
                               download={c.documento_nome}
