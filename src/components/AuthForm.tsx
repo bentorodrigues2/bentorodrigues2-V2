@@ -32,34 +32,23 @@ export default function AuthForm({
     }
   }, [initialErrorMessage]);
 
-  // Se este dispositivo já tem biometria registada, dispara logo o pedido de
-  // Face ID/Touch ID ao abrir o ecrã, sem obrigar a escrever o email primeiro.
-  // Só fica silencioso quando o próprio utilizador cancela o pedido (ex:
-  // fechou a caixa do Face ID) — qualquer outra falha mostra o erro real,
-  // tal como já acontece no botão manual, para não ficar "preso" no ecrã
-  // sem nenhuma pista do que correu mal.
+  // Só pré-preenche o email guardado — NUNCA dispara o pedido de biometria
+  // sozinho. Disparava antes logo ao abrir o ecrã (se o dispositivo já
+  // tivesse biometria registada), o que invoca o diálogo NATIVO do sistema
+  // operativo (Windows Hello / Touch ID / Face ID) por baixo da página — um
+  // diálogo modal do próprio SO, não da app, que rouba o foco do teclado e
+  // do rato silenciosamente. Quem só queria escrever a password via o
+  // formulário normal via sempre o botão "ENTRAR" parecer "preso"/sem
+  // resposta (os cliques eram engolidos pelo diálogo escondido), só voltando
+  // a reagir depois de várias tentativas, que acabavam por descartar o
+  // diálogo nativo por timeout/clique fora dele — bug real confirmado em
+  // produção ("fica estático, só após várias tentativas é que entra").
+  // Quem quer mesmo entrar por biometria continua a poder, com o botão
+  // "Entrar com Biometria" abaixo, desta vez por escolha explícita.
   useEffect(() => {
-    if (!suportaBiometria) return;
     let emailGuardado = "";
     try { emailGuardado = localStorage.getItem("webauthn_email") || ""; } catch {}
-    if (!emailGuardado) return;
-    setEmail(emailGuardado);
-    (async () => {
-      setAutenticandoComBiometria(true);
-      try {
-        const resultado = await loginComBiometria(emailGuardado);
-        if (resultado.cancelado) return;
-        if (!resultado.ok) {
-          setErrorMessage(`ℹ️ ${resultado.error || "Não foi possível autenticar com biometria."}`);
-          createSecurityLog(emailGuardado, "LOGIN_FAILED", resultado.error || "Falha na autenticação biométrica automática.");
-          return;
-        }
-        createSecurityLog(emailGuardado, "LOGIN_SUCCESS", "Login efetuado com sucesso via Biometria (WebAuthn).");
-        onLoginSuccess(emailGuardado);
-      } finally {
-        setAutenticandoComBiometria(false);
-      }
-    })();
+    if (emailGuardado) setEmail(emailGuardado);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
