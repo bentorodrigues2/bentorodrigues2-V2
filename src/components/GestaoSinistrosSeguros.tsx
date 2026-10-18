@@ -474,6 +474,24 @@ export function GestaoSinistrosSeguros({
       return;
     }
 
+    // Notifica a fração por push quando o seguro passa a validar-se de
+    // verdade agora (não em todo "guardar", só na transição real para
+    // "Válido") — pedido explícito do administrador: já tinha ficado
+    // definido, nunca chegou a ser implementado.
+    const estadoAntes = modalSeguroFracao.seguroExistente?.estado_validacao;
+    if (seguroObj.estado_validacao === "Valido" && estadoAntes !== "Valido") {
+      fetch("/api/admin?acao=enviar-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_predio: predio.id_predio,
+          id_fracao: fracao.id_fracao,
+          title: "✅ Seguro de Incêndio Validado",
+          body: `A apólice da sua fração (${seguroObj.seguradora}, nº ${seguroObj.apolice_numero}) foi confirmada pela administração.`
+        })
+      }).catch(console.error);
+    }
+
     // 2. Atualizar tabela de fracoes no Supabase
     if (isSupabaseConfigured) {
       await dbUpdate("fracoes", {
