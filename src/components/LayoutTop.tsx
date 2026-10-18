@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AuthModal from "./AuthModal";
 import "./LayoutTop.css";
 
@@ -8,6 +8,26 @@ interface LayoutTopProps {
 
 export default function LayoutTop({ onLoginSuccess }: LayoutTopProps) {
   const [showAuth, setShowAuth] = useState(false);
+
+  // O vídeo decorativo (2MB) nunca é o elemento mais importante do ecrã
+  // (LCP é sempre o logótipo, acima dele em z-index e com fetchPriority
+  // "high") — mas com <video preload="auto"> (o valor por omissão) o
+  // browser começa já a descarregá-lo assim que a página arranca, a
+  // competir por rede com o logótipo, o CSS e a fonte, que SÃO críticos
+  // para o primeiro ecrã. Só monta o elemento <video> (e portanto só pede
+  // o ficheiro) depois do resto já ter tido a oportunidade de carregar —
+  // o loop continua a dar a sensação de "sempre lá", só começa com um
+  // atraso impercetível em vez de concorrer pela rede com o essencial.
+  const [mostrarVideo, setMostrarVideo] = useState(false);
+  useEffect(() => {
+    const idCallback = (window as any).requestIdleCallback
+      ? (window as any).requestIdleCallback(() => setMostrarVideo(true), { timeout: 1500 })
+      : setTimeout(() => setMostrarVideo(true), 400);
+    return () => {
+      if ((window as any).cancelIdleCallback) (window as any).cancelIdleCallback(idCallback);
+      else clearTimeout(idCallback as any);
+    };
+  }, []);
 
   return (
     <div className="layout-top-container">
@@ -30,19 +50,22 @@ export default function LayoutTop({ onLoginSuccess }: LayoutTopProps) {
       <img src="/marca/02-versao-horizontal.webp" alt="Logo CondoManager" className="logo-img" fetchPriority="high" />
 
       <div className="video-frame">
-        <video
-          src="/intro.mp4"
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="video-element"
-        />
+        {mostrarVideo && (
+          <video
+            src="/intro.mp4"
+            preload="none"
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="video-element"
+          />
+        )}
       </div>
 
       {showAuth && (
-        <AuthModal 
-          onClose={() => setShowAuth(false)} 
+        <AuthModal
+          onClose={() => setShowAuth(false)}
           onLoginSuccess={onLoginSuccess}
         />
       )}
