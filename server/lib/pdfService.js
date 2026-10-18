@@ -15,6 +15,7 @@ function gerarPDFBuffer(conteudo, titulo, predioNome) {
   // "mm" (não "pt") porque addPdfHeaderWithLogo desenha o logótipo e o
   // nome do prédio com coordenadas fixas assumindo uma página A4 de 210mm.
   const doc = new jsPDF({ unit: "mm", format: "a4" });
+  doc.setLanguage("pt");
 
   const marginX = 14;
   const marginBottom = 20;

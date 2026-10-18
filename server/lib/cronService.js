@@ -1563,6 +1563,7 @@ export async function arquivarConversasAntigas() {
       const ano = new Date(conversa.created_at || Date.now()).getFullYear();
 
       const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      doc.setLanguage("pt");
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.text(`HISTÓRICO DE MENSAGENS — Fração ${fracaoNome}`, 105, 18, { align: "center" });

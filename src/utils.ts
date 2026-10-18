@@ -231,6 +231,7 @@ export function exportarTabelaParaPDF(
 ) {
   try {
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    doc.setLanguage("pt");
     let y = addPdfHeaderWithLogo(doc, buildingName);
 
     doc.setFont("helvetica", "bold");
@@ -429,6 +430,7 @@ export function generateAndDownloadPdf(
       unit: "mm",
       format: "a4"
     });
+    doc.setLanguage("pt");
 
     // Top Header: Logo centered at top (NO BARS)
     let y = addPdfHeaderWithLogo(doc);
@@ -603,6 +605,7 @@ export function downloadFichaCondominoVaziaPDF(
 ) {
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    doc.setLanguage("pt");
 
     // 1. Top Header: Logo centered at top (NO BARS)
     let y = addPdfHeaderWithLogo(doc);
@@ -842,6 +845,7 @@ export interface DynamicReportOptions {
 export async function generateDynamicReportPDF(opts: DynamicReportOptions) {
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    doc.setLanguage("pt");
     const bName = opts.predio?.nome || opts.predio?.morada_linha1 || "Condomínio";
     let y = addPdfHeaderWithLogo(doc, bName);
 
@@ -1217,6 +1221,7 @@ export async function generateDynamicReportPDF(opts: DynamicReportOptions) {
 export function downloadFichaCondominoPreenchidaPDF(predioNome: string = "Condomínio Activo", fracao: any) {
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    doc.setLanguage("pt");
 
     // Top Header: Logo centered at top (NO BARS)
     let y = addPdfHeaderWithLogo(doc);
@@ -1365,6 +1370,7 @@ export function downloadFichaCondominoPreenchidaPDF(predioNome: string = "Condom
 export function downloadListaCondominosPDF(predioNome: string = "Condomínio Activo", fracoes: any[]) {
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    doc.setLanguage("pt");
 
     // Top Header: Logo centered at top (NO BARS)
     let y = addPdfHeaderWithLogo(doc);
@@ -1531,6 +1537,7 @@ export function combinarMoradaAlternativa(morada: string, codigoPostal: string, 
 export function downloadProprietariosFiltradosPDF(predioNome: string, proprietarios: (Proprietario & { fracao_nome?: string })[]) {
   try {
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    doc.setLanguage("pt");
     let y = addPdfHeaderWithLogo(doc);
 
     doc.setTextColor(15, 23, 42);
@@ -1710,6 +1717,7 @@ export function gerarPdfRegistoFornecedorHomologado(
 ) {
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    doc.setLanguage("pt");
     addPdfWatermark(doc);
 
     const condominioNome = "Condomínio Edifício Estrela da Barra";
@@ -1910,6 +1918,7 @@ export function gerarPdfRegistoFornecedorHomologado(
 export function generateCondominoPwaManualPDF(condominoNome: string, buildingName: string = "Condomínio Bento Rodrigues 2", _passwordProvisoria?: string, devolverDoc?: boolean) {
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    doc.setLanguage("pt");
     let y = addPdfHeaderWithLogo(doc, `${buildingName} - Manual do Condómino`);
 
     doc.setTextColor(15, 23, 42);
@@ -2109,6 +2118,7 @@ export function getPrazoLimiteTexto(dataEmissao?: string, dataLimite?: string): 
 
 export function generateReceiptPDF(data: ReceiptPdfData): jsPDF {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a5" });
+  doc.setLanguage("pt");
   const isNotaCobranca = data.tipoDocumento === "NOTA_COBRANCA";
 
   // 1. Watermark Image
@@ -2463,6 +2473,7 @@ export function gerarPdfEtiquetasChaves(
 ) {
   try {
     const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+    doc.setLanguage("pt");
     
     const labelWidth = 30; // 3cm
     const labelHeight = 15; // 1.5cm
@@ -2694,6 +2705,7 @@ export function gerarPdfBoasVindasAdministrador(
 ) {
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    doc.setLanguage("pt");
     addPdfWatermark(doc);
 
     const nomeAdmin = adminInfo?.nome || "Administrador do Condomínio";
@@ -2890,6 +2902,7 @@ export function gerarPdfBoasVindasGestor(
 
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    doc.setLanguage("pt");
     addPdfWatermark(doc);
 
     const nomeGestor = gestor?.nome || "Gestor de Carteira";
@@ -3275,6 +3288,7 @@ export function gerarConvocatoriaOficialPDF(
       unit: "mm",
       format: "a4"
     });
+    doc.setLanguage("pt");
 
     // Watermark & Header with Logo
     let y = addPdfHeaderWithLogo(doc, predio.nome);
@@ -3603,6 +3617,7 @@ export function gerarCartaoAniversarioCondominoPDF(
       unit: "mm",
       format: "a5" // 210 x 148 mm
     });
+    doc.setLanguage("pt");
 
     // Fundo base e imagem de marca de água intimista (Bolo de Aniversário com Vela Acesa)
     doc.setFillColor(255, 255, 255);
@@ -3753,6 +3768,7 @@ export function gerarNotificacaoDividaPDF(
       unit: "mm",
       format: "a4"
     });
+    doc.setLanguage("pt");
 
     let y = addPdfHeaderWithLogo(doc, predioNome);
 
@@ -3939,6 +3955,7 @@ export function gerarAtaAprovadaOficialPDF(
       unit: "mm",
       format: "a4"
     });
+    doc.setLanguage("pt");
 
     let y = addSimpleTextHeaderAta(doc, predioNome, predioNif);
 
@@ -4076,6 +4093,7 @@ export function gerarParticipacaoSinistroPDF(
       unit: "mm",
       format: "a4"
     });
+    doc.setLanguage("pt");
 
     let y = addPdfHeaderWithLogo(doc, predioNome);
 
@@ -4227,6 +4245,7 @@ export function gerarParticipacaoSinistroPDF(
 export function gerarDeclaracaoRepresentacaoPDF(devolverDoc?: boolean) {
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    doc.setLanguage("pt");
     const CINZA_LINHA = "____________________________________________";
 
     let y = addPdfHeaderWithLogo(doc);
@@ -4431,6 +4450,7 @@ export function gerarTermoAcordoPagamentoPDF(params: {
 }, devolverDoc?: boolean) {
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    doc.setLanguage("pt");
     let y = addPdfHeaderWithLogo(doc, params.predioNome);
 
     doc.setFillColor(15, 23, 42);
@@ -4548,6 +4568,7 @@ export function gerarCartaRescisaoContratoPDF(params: {
 }, devolverDoc?: boolean) {
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    doc.setLanguage("pt");
     let y = addPdfHeaderWithLogo(doc, params.predioNome);
 
     doc.setFillColor(15, 23, 42);
@@ -4657,6 +4678,7 @@ export function gerarNotificacaoObrasIrregularesPDF(params: {
 }, devolverDoc?: boolean) {
   try {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    doc.setLanguage("pt");
     let y = addPdfHeaderWithLogo(doc, params.predioNome);
 
     doc.setFillColor(15, 23, 42);
