@@ -1210,6 +1210,152 @@ export async function enviarLembretesQuotas() {
 }
 
 /**
+ * Soma a dívida real pendente de uma fração, discriminada por tipo de quota
+ * (Ordinária vs Extraordinária) — pedido explícito do administrador para o
+ * aviso de mora (dia 16) deixar de mostrar só o nº de meses em atraso e
+ * passar a mostrar o valor total em dívida, separado por tipo (contas e
+ * origem diferentes). Soma direta por avisos "Pendente"/"Paga Parcialmente"
+ * — não repete a deduplicação por mês usada no Relatório de Dívidas da app
+ * (FinanceiroAvancado.tsx), por ser um resumo informativo por email, não um
+ * documento legal; mesmo nível de precisão já usado nesta função para o
+ * "mesesEmAtraso".
+ */
+async function obterDividaPorTipoFracao(id_fracao) {
+  const { data } = await supabase
+    .from("avisos")
+    .select("tipo, valor, valor_pago")
+    .eq("id_fracao", id_fracao)
+    .in("estado", ["Pendente", "Paga Parcialmente"]);
+
+  let ordinaria = 0;
+  let extraordinaria = 0;
+  (data || []).forEach((a) => {
+    const pendente = Number(a.valor || 0) - Number(a.valor_pago || 0);
+    if (String(a.tipo || "").includes("Extraordinária")) extraordinaria += pendente;
+    else ordinaria += pendente;
+  });
+  return { ordinaria, extraordinaria, total: ordinaria + extraordinaria };
+}
+
+/**
+ * Dia 8: aviso de vencimento — lembra que o prazo de pagamento da quota do
+ * mês a decorrer termina HOJE. Distinto do lembrete do dia 5 (cordial, "está
+ * a aproximar-se") e do aviso de mora do dia 16 (já em atraso) — pedido
+ * explícito do administrador: um terceiro ponto de contacto, exatamente no
+ * dia do vencimento.
+ */
+export async function enviarAvisoVencimentoHoje() {
+  const hoje = new Date();
+  const [inicioMes, fimMes] = limitesMesAtualUTC(hoje);
+
+  const { data: avisosPendentes, error } = await supabase
+    .from("avisos")
+    .select("*")
+    .eq("tipo", "Quota Ordinária")
+    .eq("estado", "Pendente")
+    .gte("vencimento", inicioMes)
+    .lte("vencimento", fimMes);
+
+  if (error || !avisosPendentes) {
+    if (error) console.error("[cronService] Erro ao obter avisos a vencer hoje:", error.message);
+    return { job: "enviarAvisoVencimentoHoje", total: 0, resultados: [] };
+  }
+
+  const resultados = [];
+  for (const aviso of avisosPendentes) {
+    try {
+      if (await jaExecutadoHoje("cron_vencimento_hoje", aviso.id_fracao)) continue;
+
+      const [{ data: fracao }, proprietario] = await Promise.all([
+        supabase.from("fracoes").select("fracao_nome").eq("id_fracao", aviso.id_fracao).maybeSingle(),
+        obterProprietarioDaFracao(aviso.id_fracao)
+      ]);
+      if (!proprietario?.email) continue;
+
+      const fracaoNome = fracao?.fracao_nome || aviso.id_fracao;
+
+      const assunto = `Hoje é o Dia de Vencimento da Quota — Fração ${fracaoNome}`;
+      const corpo = `Relembramos que <strong>hoje, ${formatarDataPT(aviso.vencimento)}</strong>, é o dia limite de pagamento da quota de condomínio referente à fração <strong>${fracaoNome}</strong>, no valor de <strong>${Number(aviso.valor).toFixed(2)} €</strong>.<br><br>Se já efetuou o pagamento, pode ignorar esta mensagem — basta enviar o comprovativo para o email <strong>bentorodrgues2@gmail.com</strong> de forma a que seja validado pela administração e o respetivo recibo lhe seja enviado.`;
+
+      const html = gerarHtmlResposta(proprietario.nome, corpo);
+
+      const enviado = await enviarEmailSemAnexo({
+        to: proprietario.email,
+        subject: assunto,
+        html
+      });
+
+      if (enviado) {
+        await marcarExecutadoHoje("cron_vencimento_hoje", aviso.id_fracao, fracaoNome, aviso.id_predio);
+        resultados.push({ fracao: fracaoNome, email: proprietario.email });
+      }
+    } catch (errAviso) {
+      console.error("[cronService] Erro ao enviar aviso de vencimento:", errAviso);
+    }
+  }
+
+  return { job: "enviarAvisoVencimentoHoje", total: resultados.length, resultados };
+}
+
+/**
+ * Dia 12: aviso de prazo ultrapassado — primeiro contacto já depois do
+ * vencimento (dia 8), ainda com tom de lembrete (antes do aviso de mora mais
+ * formal do dia 16). Pedido explícito do administrador.
+ */
+export async function enviarAvisoPrazoUltrapassado() {
+  const hoje = new Date();
+  const [inicioMes, fimMes] = limitesMesAtualUTC(hoje);
+
+  const { data: avisosPendentes, error } = await supabase
+    .from("avisos")
+    .select("*")
+    .eq("tipo", "Quota Ordinária")
+    .eq("estado", "Pendente")
+    .gte("vencimento", inicioMes)
+    .lte("vencimento", fimMes);
+
+  if (error || !avisosPendentes) {
+    if (error) console.error("[cronService] Erro ao obter avisos com prazo ultrapassado:", error.message);
+    return { job: "enviarAvisoPrazoUltrapassado", total: 0, resultados: [] };
+  }
+
+  const resultados = [];
+  for (const aviso of avisosPendentes) {
+    try {
+      if (await jaExecutadoHoje("cron_prazo_ultrapassado", aviso.id_fracao)) continue;
+
+      const [{ data: fracao }, proprietario] = await Promise.all([
+        supabase.from("fracoes").select("fracao_nome").eq("id_fracao", aviso.id_fracao).maybeSingle(),
+        obterProprietarioDaFracao(aviso.id_fracao)
+      ]);
+      if (!proprietario?.email) continue;
+
+      const fracaoNome = fracao?.fracao_nome || aviso.id_fracao;
+
+      const assunto = `Prazo de Pagamento Ultrapassado — Quota em Atraso — Fração ${fracaoNome}`;
+      const corpo = `Informamos que o prazo de pagamento (<strong>${formatarDataPT(aviso.vencimento)}</strong>) da quota de condomínio referente à fração <strong>${fracaoNome}</strong>, no valor de <strong>${Number(aviso.valor).toFixed(2)} €</strong>, já foi ultrapassado.<br><br>Solicitamos a regularização o mais breve possível. Se já efetuou o pagamento, agradecemos o envio do comprovativo para o email <strong>bentorodrgues2@gmail.com</strong> de forma a que seja validado e o respetivo recibo lhe seja enviado.`;
+
+      const html = gerarHtmlResposta(proprietario.nome, corpo);
+
+      const enviado = await enviarEmailSemAnexo({
+        to: proprietario.email,
+        subject: assunto,
+        html
+      });
+
+      if (enviado) {
+        await marcarExecutadoHoje("cron_prazo_ultrapassado", aviso.id_fracao, fracaoNome, aviso.id_predio);
+        resultados.push({ fracao: fracaoNome, email: proprietario.email });
+      }
+    } catch (errAviso) {
+      console.error("[cronService] Erro ao enviar aviso de prazo ultrapassado:", errAviso);
+    }
+  }
+
+  return { job: "enviarAvisoPrazoUltrapassado", total: resultados.length, resultados };
+}
+
+/**
  * Dia 16: aviso de mora — tom mais formal, para quem continua "Pendente"
  * depois do lembrete do dia 5. Não altera o estado do aviso (teria de
  * continuar "Pendente" para a dívida ser corretamente contabilizada em toda
@@ -1255,6 +1401,12 @@ export async function avisarQuotasEmMora() {
         .eq("tipo", "Quota Ordinária")
         .eq("estado", "Pendente");
 
+      // Pedido explícito do administrador: este aviso de mora passa a
+      // discriminar o total em dívida da fração por tipo de quota
+      // (Ordinária vs Extraordinária), não só o nº de meses em atraso.
+      const dividaPorTipo = await obterDividaPorTipoFracao(aviso.id_fracao);
+      const resumoDividaHtml = `<br><br><strong>Resumo da Dívida Total da Fração:</strong><br>- Quota Ordinária: ${dividaPorTipo.ordinaria.toFixed(2)} €<br>- Quota Extraordinária: ${dividaPorTipo.extraordinaria.toFixed(2)} €<br>- Total: ${dividaPorTipo.total.toFixed(2)} €`;
+
       const modeloMora = await obterModeloEmail(aviso.id_predio, "aviso_divida");
       const valoresMora = {
         nome: proprietario.nome,
@@ -1267,9 +1419,10 @@ export async function avisarQuotasEmMora() {
       const assuntoMora = modeloMora
         ? interpolarModeloEmail(modeloMora.subject, valoresMora)
         : `Aviso de Mora — Quota de Condomínio em Atraso — Fração ${fracaoNome}`;
-      const corpoMora = modeloMora
+      const corpoMora = (modeloMora
         ? interpolarModeloEmail(modeloMora.body, valoresMora).replace(/\n/g, "<br>")
-        : `A quota de condomínio referente à fração <strong>${fracaoNome}</strong>, no valor de <strong>${Number(aviso.valor).toFixed(2)} €</strong>, encontra-se em mora — o prazo de vencimento (<strong>${formatarDataPT(aviso.vencimento)}</strong>) já foi ultrapassado.<br><br>Solicitamos a regularização o mais breve possível, de forma a evitar o agravamento da dívida nos termos regulamentares. Caso já tenha efetuado o pagamento, agradecemos o envio do comprovativo para o email <strong>bentorodrgues2@gmail.com</strong>.`;
+        : `A quota de condomínio referente à fração <strong>${fracaoNome}</strong>, no valor de <strong>${Number(aviso.valor).toFixed(2)} €</strong>, encontra-se em mora — o prazo de vencimento (<strong>${formatarDataPT(aviso.vencimento)}</strong>) já foi ultrapassado.<br><br>Solicitamos a regularização o mais breve possível, de forma a evitar o agravamento da dívida nos termos regulamentares. Caso já tenha efetuado o pagamento, agradecemos o envio do comprovativo para o email <strong>bentorodrgues2@gmail.com</strong>.`
+      ) + resumoDividaHtml;
 
       const html = gerarHtmlResposta(proprietario.nome, corpoMora);
 

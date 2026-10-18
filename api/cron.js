@@ -1,4 +1,4 @@
-import { emitirQuotasMensais, emitirNotasEmAtrasoFracao, emitirNotasExtraordinariasEmAtraso, processarAgendamentosAvisos, enviarLembretesQuotas, avisarQuotasEmMora, enviarFelicitacoesAniversario, sincronizarOrcamentosVigentes, processarContratosFornecedores, arquivarConversasAntigas, enviarNotasCorrecaoNovaQuota } from "../server/lib/cronService.js";
+import { emitirQuotasMensais, emitirNotasEmAtrasoFracao, emitirNotasExtraordinariasEmAtraso, processarAgendamentosAvisos, enviarLembretesQuotas, enviarAvisoVencimentoHoje, enviarAvisoPrazoUltrapassado, avisarQuotasEmMora, enviarFelicitacoesAniversario, sincronizarOrcamentosVigentes, processarContratosFornecedores, arquivarConversasAntigas, enviarNotasCorrecaoNovaQuota } from "../server/lib/cronService.js";
 
 // Ação pontual (agendada para 2026-09-20 09:00 Lisboa, ver vercel.json —
 // "0 8 20 9 *", só volta a coincidir com esta data daqui a um ano) pedida
@@ -34,7 +34,9 @@ async function emitirNotasAtrasoRegistados() {
  * por dia. Decide sozinho, pela data de hoje, quais dos jobs deve correr:
  *   - dia 25: emissão da nota de cobrança do mês seguinte
  *   - dia 5:  lembrete a quem ainda não pagou a quota do mês a decorrer
- *   - dia 16: aviso de mora a quem continua sem pagar
+ *   - dia 8:  aviso de que hoje é o dia de vencimento da quota
+ *   - dia 12: aviso de que o prazo de pagamento já foi ultrapassado
+ *   - dia 16: aviso de mora (com dívida total discriminada por tipo de quota) a quem continua sem pagar
  *   - todos os dias: felicitações de aniversário
  *   - todos os dias: aplica adendas ao orçamento cuja data de vigência já chegou
  *   - todos os dias: renova/expira contratos de fornecedores e envia alertas de fim de contrato
@@ -101,6 +103,18 @@ export default async function handler(req, res) {
     // a app já esteja a correr quando a hora chegar.
     if (forcar === "lembrete" || (!forcar && dia === 5)) {
       resultados.push(await enviarLembretesQuotas());
+    }
+
+    // Dia 8: hoje é o próprio dia de vencimento da quota. Dia 12: o prazo já
+    // passou. Dois pontos de contacto novos entre o lembrete cordial do dia
+    // 5 e o aviso de mora mais formal do dia 16 — pedido explícito do
+    // administrador.
+    if (forcar === "vencimento" || (!forcar && dia === 8)) {
+      resultados.push(await enviarAvisoVencimentoHoje());
+    }
+
+    if (forcar === "prazo-ultrapassado" || (!forcar && dia === 12)) {
+      resultados.push(await enviarAvisoPrazoUltrapassado());
     }
 
     if (forcar === "mora" || (!forcar && dia === 16)) {
