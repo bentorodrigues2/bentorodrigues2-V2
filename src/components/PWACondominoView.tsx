@@ -1440,6 +1440,7 @@ export default function PWACondominoView({
         onClick={() => setShowMenuLateral(true)}
         className="fixed top-20 left-3 z-40 h-9 w-9 rounded-xl bg-slate-900/80 dark:bg-slate-800/90 text-white border border-slate-700 flex items-center justify-center shadow-lg cursor-pointer backdrop-blur-sm"
         title="Menu"
+        aria-label="Menu"
       >
         <i className="fa-solid fa-bars text-sm"></i>
       </button>
@@ -1541,6 +1542,7 @@ export default function PWACondominoView({
                   }} 
                   className="px-2.5 py-1 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white border border-red-500 text-[10px] font-bold transition-all cursor-pointer flex items-center space-x-1 shadow-sm hover:scale-105 active:scale-95 active:ring-2 active:ring-red-400 shrink-0"
                   title="Sair / Terminar Sessão"
+                  aria-label="Sair / Terminar Sessão"
                 >
                     <img src="/estados-acoes/17-desligar.png" alt="Sair" className="h-4 w-4 object-contain" />
                   <span>Sair</span>
@@ -1581,6 +1583,7 @@ export default function PWACondominoView({
                   onClick={() => setMostrarConvitePush(false)}
                   className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 shrink-0 p-1"
                   title="Agora não"
+                  aria-label="Agora não"
                 >
                   <i className="fa-solid fa-xmark"></i>
                 </button>
@@ -1654,6 +1657,7 @@ export default function PWACondominoView({
                         onClick={() => closeNotif(notif.id)}
                         className="text-red-500 hover:text-red-600 font-black text-xs cursor-pointer px-1 z-10"
                         title="Marcar como lida e fechar permanentemente"
+                        aria-label="Marcar como lida e fechar permanentemente"
                       >
                         ✕
                       </button>
@@ -2475,6 +2479,7 @@ export default function PWACondominoView({
                           }}
                           className="p-1 text-slate-600 hover:text-emerald-600 dark:text-white dark:hover:text-emerald-400 cursor-pointer"
                           title="Visualização Online"
+                          aria-label="Visualização Online"
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </button>
@@ -2488,6 +2493,7 @@ export default function PWACondominoView({
                           )}
                           className="p-1 text-slate-600 hover:text-emerald-600 dark:text-white dark:hover:text-emerald-400 cursor-pointer"
                           title="Fazer Download PDF"
+                          aria-label="Fazer Download PDF"
                         >
                           <Download className="h-3.5 w-3.5" />
                         </button>
@@ -3637,6 +3643,7 @@ export default function PWACondominoView({
                       : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
                   }`}
                   title="Anexar documento, fotografia ou aceder à câmara (Clip)"
+                  aria-label="Anexar documento, fotografia ou aceder à câmara (Clip)"
                 >
                   <Paperclip className="h-4 w-4" />
                 </button>
@@ -3654,6 +3661,7 @@ export default function PWACondominoView({
                       : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-amber-500"
                   }`}
                   title="Inserir Emoji"
+                  aria-label="Inserir Emoji"
                 >
                   <Smile className="h-4 w-4" />
                 </button>
@@ -3701,6 +3709,7 @@ export default function PWACondominoView({
                   type="submit"
                   className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl cursor-pointer transition-all active:scale-95 shadow-md flex items-center justify-center shrink-0"
                   title="Enviar Mensagem"
+                  aria-label="Enviar Mensagem"
                 >
                   <Send className="h-4 w-4" />
                 </button>
@@ -5054,6 +5063,7 @@ export default function PWACondominoView({
           onClick={() => setShowChatModal(true)}
           className="fixed bottom-20 right-4 z-40 select-none"
           title="Contactar Administração"
+          aria-label="Contactar Administração"
         >
           <div className="relative w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white shadow-2xl flex items-center justify-center border-2 border-white dark:border-slate-900 ring-4 ring-emerald-600/20 transition-all cursor-pointer">
             <img
@@ -5207,6 +5217,7 @@ export default function PWACondominoView({
                     : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
                 }`}
                 title="Anexar documento, fotografia ou aceder à câmara (Clip)"
+                aria-label="Anexar documento, fotografia ou aceder à câmara (Clip)"
               >
                 <Paperclip className="h-4 w-4" />
               </button>
@@ -5217,6 +5228,7 @@ export default function PWACondominoView({
                   isEmojiPickerOpen ? "bg-amber-500 text-white shadow-xs" : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-amber-500"
                 }`}
                 title="Inserir Emoji"
+                aria-label="Inserir Emoji"
               >
                 <Smile className="h-4 w-4" />
               </button>
@@ -5250,6 +5262,7 @@ export default function PWACondominoView({
                 disabled={!newMsgText.trim() && !chatPhotoWebp && !chatDocAttachment && !chatAudioData}
                 className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white p-2.5 rounded-xl cursor-pointer shrink-0"
                 title="Enviar"
+                aria-label="Enviar"
               >
                 <Send className="h-4 w-4" />
               </button>

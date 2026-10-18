@@ -1360,6 +1360,7 @@ export function PortalCondomino({
               onClick={() => setActiveTab(activeTab === "portal" ? "backoffice" : "portal")}
               className="px-3 py-2 text-[10px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
               title="Alternar vista apenas para simulação do motor"
+              aria-label="Alternar vista apenas para simulação do motor"
             >
               <i className="fa-solid fa-arrows-rotate mr-1"></i> Simular Outra Vista ({activeTab === "portal" ? "Backoffice" : "Portal"})
             </button>
@@ -2407,6 +2408,7 @@ export function PortalCondomino({
             onClick={() => { setMsgDrawerOpen(true); marcarRespostasComoVistas(mensagens); }}
             className="fixed bottom-6 right-6 z-40 cursor-grab active:cursor-grabbing select-none"
             title="Contactar Administração (Deslocável)"
+            aria-label="Contactar Administração (Deslocável)"
           >
             <div className="relative w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xl flex items-center justify-center border-2 border-white ring-4 ring-emerald-600/20 transition-colors">
               <img
@@ -2718,6 +2720,7 @@ export function PortalCondomino({
                             : "text-slate-600 hover:text-emerald-700 hover:bg-slate-200 dark:hover:bg-slate-700"
                         }`}
                         title="Anexar documento, fotografia ou aceder à câmara (Clip)"
+                        aria-label="Anexar documento, fotografia ou aceder à câmara (Clip)"
                       >
                         <Paperclip className="h-4 w-4" />
                       </button>
@@ -2735,6 +2738,7 @@ export function PortalCondomino({
                             : "text-amber-500 hover:text-amber-600 hover:bg-slate-200 dark:hover:bg-slate-700"
                         }`}
                         title="Inserir Emoji"
+                        aria-label="Inserir Emoji"
                       >
                         <Smile className="h-4 w-4" />
                       </button>
@@ -2754,6 +2758,7 @@ export function PortalCondomino({
                         onClick={handleToggleVoiceRecording}
                         className="p-2.5 text-slate-600 hover:text-emerald-700 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer shrink-0"
                         title="Gravar Mensagem de Áudio (Nota de Voz)"
+                        aria-label="Gravar Mensagem de Áudio (Nota de Voz)"
                       >
                         <Mic className="h-4 w-4" />
                       </button>
@@ -2764,6 +2769,7 @@ export function PortalCondomino({
                         disabled={msgSending || (!newMsgTexto && !newMsgAnexo && !recordedAudioUrl && !msgDocAttachment)}
                         className="w-10 h-10 bg-[#075E54] hover:bg-emerald-700 disabled:bg-slate-300 text-white rounded-full flex items-center justify-center shrink-0 shadow-md transition-all cursor-pointer disabled:cursor-not-allowed"
                         title="Enviar Mensagem"
+                        aria-label="Enviar Mensagem"
                       >
                         <Send className="h-4 w-4 text-white" />
                       </button>

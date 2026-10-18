@@ -174,6 +174,7 @@ export default function AuthForm({
             onClick={() => setErrorMessage("")}
             className="text-red-400 hover:text-white shrink-0 ml-1 font-bold"
             title="Fechar aviso"
+            aria-label="Fechar aviso"
           >
             ✕
           </button>
