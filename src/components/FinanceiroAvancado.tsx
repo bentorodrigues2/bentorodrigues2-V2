@@ -1728,7 +1728,7 @@ export function FinanceiroAvancado({
                   <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1 font-mono">
                     {predioFracoes.filter(f => getFracaoBalance(f.id_fracao) >= 0).length}
                   </div>
-                  <span className="text-[10px] text-emerald-500 mt-1 block">Regularizados (Verde)</span>
+                  <span className="text-[10px] text-emerald-500 mt-1 block">Regularizados</span>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
@@ -1968,20 +1968,20 @@ export function FinanceiroAvancado({
 
                   <div className="text-right">
                     <span className="text-[10px] font-extrabold uppercase tracking-wider block text-slate-600">
-                      Saldo Atual (Regra Cor)
+                      Saldo Atual
                     </span>
                     {getFracaoBalance(selectedFracao.id_fracao) >= 0 ? (
                       <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono flex items-center justify-end gap-2">
                         <span>+ 0,00 €</span>
                         <span className="text-xs bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 px-2.5 py-1 rounded-full uppercase font-black">
-                          Contas em Dia (Verde)
+                          Contas em Dia
                         </span>
                       </div>
                     ) : (
                       <div className="text-2xl font-black text-red-600 dark:text-red-400 font-mono flex items-center justify-end gap-2">
                         <span>{getFracaoBalance(selectedFracao.id_fracao).toFixed(2)} €</span>
                         <span className="text-xs bg-red-100 dark:bg-red-900/60 text-red-800 dark:text-red-300 px-2.5 py-1 rounded-full uppercase font-black">
-                          Em Dívida (Vermelho)
+                          Em Dívida
                         </span>
                       </div>
                     )}
