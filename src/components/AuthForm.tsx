@@ -147,6 +147,8 @@ export default function AuthForm({
           <img
             src="/marca/02-versao-horizontal.webp"
             alt="CondoManager AI"
+            width={840}
+            height={335}
             className="h-14 sm:h-18 w-auto max-w-[280px] object-contain select-none drop-shadow-2xl"
             referrerPolicy="no-referrer"
             onError={(e) => {
@@ -164,7 +166,7 @@ export default function AuthForm({
 
       {/* ERROR / INFO MESSAGE ALERT BANNER */}
       {errorMessage && (
-        <div className="bg-red-950/80 border border-red-500/60 p-2.5 rounded-xl text-red-200 text-[11px] font-medium text-left flex items-start justify-between gap-2">
+        <div role="alert" className="bg-red-950/80 border border-red-500/60 p-2.5 rounded-xl text-red-200 text-[11px] font-medium text-left flex items-start justify-between gap-2">
           <div className="flex items-start space-x-1.5">
             <span className="text-red-400 font-bold shrink-0">ℹ️</span>
             <span>{errorMessage}</span>

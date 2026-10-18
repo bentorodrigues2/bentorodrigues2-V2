@@ -62,6 +62,7 @@ import { subscribeUserToPush } from "../utils/subscribeUser";
 import { loadUserPreferences, NotificationPreferences } from "../utils/loadUserPreferences";
 import { saveUserPreferences } from "../utils/saveUserPreferences";
 import { loadPrefereContactoTexto, savePrefereContactoTexto } from "../utils/acessibilidadePreferencias";
+import { useModalAcessivel } from "../utils/useModalAcessivel";
 
 interface TicketMensagem {
   id_conversa: string;
@@ -417,6 +418,7 @@ export default function PWACondominoView({
   // ao backend.
   const [mensagens, setMensagens] = useState<TicketMensagem[]>([]);
   const [showChatModal, setShowChatModal] = useState(false);
+  const chatModalRef = useModalAcessivel<HTMLDivElement>(showChatModal, () => setShowChatModal(false));
   const respostasPorLerPwa = mensagens.filter((m) => m.respostaAdmin && !respostasVistasPwa.has(chaveRespostaVistaPwa(m.id_conversa, m.dataResposta))).length;
   useEffect(() => {
     if ((activeTab !== "mensagens" && !showChatModal) || mensagens.length === 0) return;
@@ -5103,7 +5105,9 @@ export default function PWACondominoView({
           onClick={() => setShowChatModal(false)}
         >
           <div
-            className="bg-white dark:bg-slate-900 w-full sm:max-w-sm max-h-[85vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            ref={chatModalRef}
+            tabIndex={-1}
+            className="bg-white dark:bg-slate-900 w-full sm:max-w-sm max-h-[85vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden outline-none"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="bg-emerald-600 px-4 py-3 text-white flex justify-between items-center shrink-0">

@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+/* Quem ativou "reduzir movimento" no sistema operativo (sensibilidade a
+   animação/vestibular) deixa de ver qualquer animação/transição CSS —
+   aplica-se a toda a app de uma vez, sem precisar de tocar em cada
+   componente. Não desativa animações essenciais ao funcionamento (ex.:
+   indicadores de carregamento "fa-spin"/"animate-spin"), só as puramente
+   decorativas/de transição. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .fa-spin, .animate-spin {
+    animation-duration: 1s !important;
+  }
+}
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", sans-serif;

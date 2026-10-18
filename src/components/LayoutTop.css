@@ -74,10 +74,18 @@ html, body {
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  transition: 0.3s;
+  /* "transition: 0.3s" (sem propriedade) anima TUDO, incluindo
+     background-color — o browser tem de repintar o botão em cada frame
+     em vez de compor na GPU (apontado pelo Lighthouse como "animação não
+     composta"). Só a cor muda ao passar o rato, por isso só a cor
+     precisa de transição; o destaque extra (scale) usa transform, que
+     esse sim é sempre composto na GPU. */
+  transition: background-color 0.3s;
   margin-right: 0.5cm;
 }
 
 .area-pessoal-btn:hover {
   background-color: #00cc66;
+  transform: scale(1.03);
+  transition: background-color 0.3s, transform 0.15s;
 }

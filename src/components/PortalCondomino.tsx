@@ -23,6 +23,7 @@ import {
 import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondagem, Questionario, MensagemConversa, SeguroFracao, DocumentoSeguroAnexo, RequestForProposal, Proposal, VotoProposta } from "../types";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
 import { generateCondominoPwaManualPDF, gerarReferenciaBR23EExtra, formatDatePT, loadPrefereContactoTexto, savePrefereContactoTexto } from "../utils";
+import { useModalAcessivel } from "../utils/useModalAcessivel";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { playVoiceNoteSimulation, playNotificationTone } from "../lib/soundService";
 import { encontrarFracaoDoCondomino } from "../lib/condominoUtils";
@@ -198,6 +199,7 @@ export function PortalCondomino({
 
   // Add Message Modal/State & WhatsApp Chat Engine
   const [msgDrawerOpen, setMsgDrawerOpen] = useState(false);
+  const msgDrawerRef = useModalAcessivel<HTMLDivElement>(msgDrawerOpen, () => setMsgDrawerOpen(false));
 
   // Contagem real de respostas por ler no botão flutuante — antes contava
   // sempre "Pendente OU tem resposta" (praticamente tudo) e nunca baixava
@@ -1824,7 +1826,7 @@ export function PortalCondomino({
                 </button>
               </form>
               {recoveryStatus && (
-                <p className={`text-xs font-semibold mt-3 ${recoveryStatus.includes("Sucesso") ? "text-emerald-700" : "text-red-600"}`}>
+                <p role="status" className={`text-xs font-semibold mt-3 ${recoveryStatus.includes("Sucesso") ? "text-emerald-700" : "text-red-600"}`}>
                   {recoveryStatus}
                 </p>
               )}
@@ -2452,11 +2454,13 @@ export function PortalCondomino({
               className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
             >
               <motion.div
+                ref={msgDrawerRef}
+                tabIndex={-1}
                 onClick={(e) => e.stopPropagation()}
                 initial={{ opacity: 0, y: 40, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 40, scale: 0.96 }}
-                className="w-full max-w-lg bg-[#EFEAE2] dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[85vh] sm:h-[650px] border border-slate-300 dark:border-slate-800 relative"
+                className="w-full max-w-lg bg-[#EFEAE2] dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[85vh] sm:h-[650px] border border-slate-300 dark:border-slate-800 relative outline-none"
               >
                 {/* WhatsApp Header */}
                 <div className="bg-[#075E54] text-white px-4 py-3 flex items-center justify-between shadow-md shrink-0">

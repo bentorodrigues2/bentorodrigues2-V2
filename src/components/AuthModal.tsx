@@ -1,5 +1,6 @@
 import React from "react";
 import AuthForm from "./AuthForm";
+import { useModalAcessivel } from "../utils/useModalAcessivel";
 
 interface AuthModalProps {
   onClose: () => void;
@@ -8,13 +9,16 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ onClose, onLoginSuccess, onOpenSecurityLogs }: AuthModalProps) {
+  const modalRef = useModalAcessivel<HTMLDivElement>(true, onClose);
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in"
       onClick={onClose}
     >
-      <div 
-        className="relative z-50"
+      <div
+        ref={modalRef}
+        tabIndex={-1}
+        className="relative z-50 outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <button

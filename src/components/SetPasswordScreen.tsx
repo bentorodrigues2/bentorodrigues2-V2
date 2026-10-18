@@ -62,7 +62,7 @@ export default function SetPasswordScreen({ email, onDone }: SetPasswordScreenPr
         </div>
 
         {errorMessage && (
-          <div className="bg-red-950/80 border border-red-500/60 p-2.5 rounded-xl text-red-200 text-[11px] font-medium">
+          <div role="alert" className="bg-red-950/80 border border-red-500/60 p-2.5 rounded-xl text-red-200 text-[11px] font-medium">
             {errorMessage}
           </div>
         )}
