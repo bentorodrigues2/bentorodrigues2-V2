@@ -1778,6 +1778,9 @@ export function FinanceiroAvancado({
                           <tr
                             key={frac.id_fracao}
                             onClick={abrirRelatorioFracao}
+                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrirRelatorioFracao(); } }}
+                            role="button"
+                            tabIndex={0}
                             title="Ver relatório de dívida desta fração (exportável em PDF)"
                             aria-label="Ver relatório de dívida desta fração (exportável em PDF)"
                             className="hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-colors cursor-pointer"

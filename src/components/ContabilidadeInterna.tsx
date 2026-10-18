@@ -839,12 +839,12 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                     <div key={r.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100">
                       <span className="text-xs text-slate-700">
                         <span className="font-mono font-bold bg-white border border-slate-200 px-1.5 py-0.5 rounded">{r.palavra_chave}</span>
-                        <i className="fa-solid fa-arrow-right mx-2 text-slate-400"></i>
+                        <i className="fa-solid fa-arrow-right mx-2 text-slate-600"></i>
                         Conta {r.codigo_conta}{conta ? ` — ${conta.nome}` : ""}
                       </span>
                       <button
                         onClick={() => handleEliminarRegra(r)}
-                        className="text-slate-400 hover:text-red-600 cursor-pointer px-2"
+                        className="text-slate-600 hover:text-red-600 cursor-pointer px-2"
                         title="Eliminar regra"
                         aria-label="Eliminar regra"
                       >

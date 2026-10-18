@@ -2800,7 +2800,14 @@ export function GestaoDocumentos({
               className="bg-emerald-800 hover:bg-emerald-800 border border-emerald-700 hover:border-emerald-400 rounded-2xl overflow-hidden shadow-xl flex flex-col group transition-all text-white"
             >
               {/* Imagem / Preview com Botão Zoom */}
-              <div className="relative h-40 bg-emerald-950 overflow-hidden cursor-pointer" onClick={() => setActivePhotoModal(foto)}>
+              <div
+                className="relative h-40 bg-emerald-950 overflow-hidden cursor-pointer"
+                onClick={() => setActivePhotoModal(foto)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setActivePhotoModal(foto); } }}
+                role="button"
+                tabIndex={0}
+                aria-label={`Ver fotografia ${foto.nome} em ecrã completo`}
+              >
                 <img
                   src={foto.url_foto || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80"}
                   alt={foto.nome}

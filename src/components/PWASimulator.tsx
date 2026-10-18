@@ -2397,7 +2397,7 @@ export function PWASimulator({
                               {notifCount}
                             </span>
                           )}
-                          <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
+                          <ChevronRight className="h-4 w-4 text-slate-600 shrink-0" />
                         </button>
                       );
                     })}

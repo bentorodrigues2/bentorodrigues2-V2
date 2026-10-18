@@ -3994,7 +3994,19 @@ export function GestaoFracoes({
               const isSelected = selectedFracaoId === f.id_fracao;
               
               return (
-                <tr key={f.id_fracao} onClick={() => !isEditingPermilages && setSelectedFracaoId(f.id_fracao)} className={`border-b border-slate-100 transition-colors ${isSelected ? 'bg-emerald-50/50 font-medium' : 'hover:bg-slate-50/50'} ${isEditingPermilages ? '' : 'cursor-pointer'}`}>
+                <tr
+                  key={f.id_fracao}
+                  onClick={() => !isEditingPermilages && setSelectedFracaoId(f.id_fracao)}
+                  onKeyDown={(e) => {
+                    if (isEditingPermilages) return;
+                    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedFracaoId(f.id_fracao); }
+                  }}
+                  role={isEditingPermilages ? undefined : "button"}
+                  tabIndex={isEditingPermilages ? undefined : 0}
+                  aria-pressed={isEditingPermilages ? undefined : isSelected}
+                  aria-label={isEditingPermilages ? undefined : `Selecionar Fração ${f.fracao_nome}`}
+                  className={`border-b border-slate-100 transition-colors ${isSelected ? 'bg-emerald-50/50 font-medium' : 'hover:bg-slate-50/50'} ${isEditingPermilages ? '' : 'cursor-pointer'}`}
+                >
                   <td className="p-3">
                     <div className="font-bold text-slate-800">Fração {f.fracao_nome}</div>
                     <div className="text-[10px] text-slate-600 font-semibold">{f.piso} • {f.tipologia}</div>

@@ -2016,7 +2016,7 @@ export function ConstituicaoProcessosJuridicos({
               </div>
               <button
                 onClick={() => { setShowLoteProvaModal(false); setItensLoteProva([]); }}
-                className="text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer p-1"
+                className="text-slate-600 hover:text-slate-700 dark:hover:text-white cursor-pointer p-1"
               >
                 <i className="fa-solid fa-xmark text-lg"></i>
               </button>
@@ -2062,7 +2062,7 @@ export function ConstituicaoProcessosJuridicos({
                           {item.urlPreview ? (
                             <img src={item.urlPreview} alt="" className="h-12 w-12 object-cover rounded-lg border border-slate-200 dark:border-slate-800 shrink-0" />
                           ) : (
-                            <div className="h-12 w-12 rounded-lg bg-slate-100 dark:bg-slate-900 flex items-center justify-center shrink-0 text-slate-400">
+                            <div className="h-12 w-12 rounded-lg bg-slate-100 dark:bg-slate-900 flex items-center justify-center shrink-0 text-slate-600">
                               <i className={`fa-solid ${item.tipoFicheiro === "pdf" ? "fa-file-pdf" : "fa-file"}`}></i>
                             </div>
                           )}
@@ -2127,7 +2127,7 @@ export function ConstituicaoProcessosJuridicos({
                         <button
                           type="button"
                           onClick={() => setItensLoteProva((prev) => prev.filter((i) => i.id !== item.id))}
-                          className="text-slate-400 hover:text-rose-600 cursor-pointer shrink-0 self-start"
+                          className="text-slate-600 hover:text-rose-600 cursor-pointer shrink-0 self-start"
                           title="Remover este ficheiro do lote"
                           aria-label="Remover este ficheiro do lote"
                         >

@@ -2384,7 +2384,7 @@ A Administração do Condomínio`
             </div>
           ) : correspondenciasFiltradas.length === 0 ? (
             <div className="bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-10 text-center text-slate-600">
-              <Mail className="h-8 w-8 mx-auto mb-2 text-slate-400" />
+              <Mail className="h-8 w-8 mx-auto mb-2 text-slate-600" />
               Ainda não há correspondência registada{filtroCorresp !== "Todas" ? ` (${filtroCorresp.toLowerCase()})` : ""}.
             </div>
           ) : (
@@ -2546,7 +2546,7 @@ A Administração do Condomínio`
                     <Sparkles className="h-5 w-5 text-emerald-500" />
                     {corresRespondendoA ? `Responder a: ${corresRespondendoA.assunto}` : "Nova Carta de Correspondência"}
                   </h3>
-                  <button onClick={() => setModalCorrespAberto(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer"><X className="h-5 w-5" /></button>
+                  <button onClick={() => setModalCorrespAberto(null)} className="text-slate-600 hover:text-slate-600 cursor-pointer"><X className="h-5 w-5" /></button>
                 </div>
                 <div className="p-5 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2700,7 +2700,7 @@ A Administração do Condomínio`
                   <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
                     <Inbox className="h-5 w-5 text-amber-500" /> Registar Correspondência Recebida
                   </h3>
-                  <button onClick={() => setModalCorrespAberto(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer"><X className="h-5 w-5" /></button>
+                  <button onClick={() => setModalCorrespAberto(null)} className="text-slate-600 hover:text-slate-600 cursor-pointer"><X className="h-5 w-5" /></button>
                 </div>
                 <div className="p-5 space-y-4">
                   <div>

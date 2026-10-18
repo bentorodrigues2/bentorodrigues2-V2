@@ -1921,7 +1921,7 @@ Com os meus cumprimentos,
             <i className="fa-solid fa-file-arrow-up text-purple-600"></i>
             Carregar Ata Antiga / Realizada Fora da Plataforma
           </span>
-          <i className={`fa-solid fa-chevron-${showUploadAtaAntiga ? "up" : "down"} text-slate-400 text-xs`}></i>
+          <i className={`fa-solid fa-chevron-${showUploadAtaAntiga ? "up" : "down"} text-slate-600 text-xs`}></i>
         </button>
         {showUploadAtaAntiga && (
           <div className="mt-3 space-y-3">

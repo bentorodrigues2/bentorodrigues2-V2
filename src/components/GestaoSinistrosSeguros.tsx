@@ -1493,12 +1493,12 @@ export function GestaoSinistrosSeguros({
                           <FileText className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
                           <span className="truncate">{doc.nome}</span>
                           <span className="shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600">{doc.tipo}</span>
-                          <span className="shrink-0 text-[9px] text-slate-400">{doc.data_upload}</span>
+                          <span className="shrink-0 text-[9px] text-slate-600">{doc.data_upload}</span>
                         </a>
                         <button
                           type="button"
                           onClick={() => handleRemoverDocumentoAnexo(idx)}
-                          className="shrink-0 text-slate-400 hover:text-red-600 cursor-pointer"
+                          className="shrink-0 text-slate-600 hover:text-red-600 cursor-pointer"
                           title="Remover este documento"
                           aria-label="Remover este documento"
                         >
@@ -1761,12 +1761,12 @@ export function GestaoSinistrosSeguros({
                           <FileText className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
                           <span className="truncate">{doc.nome}</span>
                           <span className="shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600">{doc.tipo}</span>
-                          <span className="shrink-0 text-[9px] text-slate-400">{doc.data_upload}</span>
+                          <span className="shrink-0 text-[9px] text-slate-600">{doc.data_upload}</span>
                         </a>
                         <button
                           type="button"
                           onClick={() => handleRemoverDocumentoAnexo(idx, true)}
-                          className="shrink-0 text-slate-400 hover:text-red-600 cursor-pointer"
+                          className="shrink-0 text-slate-600 hover:text-red-600 cursor-pointer"
                           title="Remover este documento"
                           aria-label="Remover este documento"
                         >

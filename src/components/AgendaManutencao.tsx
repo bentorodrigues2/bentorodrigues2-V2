@@ -1007,7 +1007,7 @@ export function AgendaManutencao({ predio, loggedUser, fornecedores = [] }: Agen
                     </div>
                   ))}
                   {novoItemFotos.length < MAX_FOTOS_ITEM && (
-                    <label className="aspect-square rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center cursor-pointer hover:border-emerald-500 transition-colors text-slate-400 hover:text-emerald-600">
+                    <label className="aspect-square rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center cursor-pointer hover:border-emerald-500 transition-colors text-slate-600 hover:text-emerald-600">
                       <Upload className="h-5 w-5" />
                       <input
                         type="file"
