@@ -24,6 +24,7 @@ import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondag
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
 import { generateCondominoPwaManualPDF, gerarReferenciaBR23EExtra, formatDatePT, loadPrefereContactoTexto, savePrefereContactoTexto } from "../utils";
 import { useModalAcessivel } from "../utils/useModalAcessivel";
+import { transcreverAudio } from "../utils/transcreverAudio";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { playVoiceNoteSimulation, playNotificationTone } from "../lib/soundService";
 import { encontrarFracaoDoCondomino } from "../lib/condominoUtils";
@@ -622,6 +623,7 @@ export function PortalCondomino({
       let anexoUrlFinal: string | null = null;
       let anexoTipoFinal: "foto" | "documento" | "audio" | undefined;
       let anexoNomeFinal: string | undefined;
+      let anexoTranscricaoFinal: string | undefined;
       if (newMsgAnexo) {
         const file = await dataUrlParaFile(newMsgAnexo, `foto_${Date.now()}.webp`);
         if (file) anexoUrlFinal = await uploadAnexoConversaToStorage(file, idConversa, idMensagem);
@@ -634,6 +636,7 @@ export function PortalCondomino({
         const file = new File([msgAudioBlob], "nota-de-voz.webm", { type: "audio/webm" });
         anexoUrlFinal = await uploadAnexoConversaToStorage(file, idConversa, idMensagem);
         anexoTipoFinal = "audio";
+        anexoTranscricaoFinal = await transcreverAudio(msgAudioBlob);
       }
 
       // Um único fio de conversa por fração (mesmo ID sempre) — antes cada
@@ -656,7 +659,8 @@ export function PortalCondomino({
         texto: textoFinal,
         anexo_url: anexoUrlFinal || undefined,
         anexo_tipo: anexoTipoFinal,
-        anexo_nome: anexoNomeFinal
+        anexo_nome: anexoNomeFinal,
+        anexo_transcricao: anexoTranscricaoFinal
       });
 
       // Notifica a Administração por notificação push real (não email) —
@@ -2520,7 +2524,14 @@ export function PortalCondomino({
                             </div>
                           )}
                           {m.anexo_tipo === "audio" && m.anexo_url && (
-                            <audio controls src={m.anexo_url} className="w-full h-9" />
+                            <div className="space-y-1">
+                              <audio controls src={m.anexo_url} className="w-full h-9" />
+                              {m.anexo_transcricao && (
+                                <p className="text-[10px] italic text-slate-600 dark:text-slate-400 bg-black/5 dark:bg-white/5 rounded-lg px-2 py-1">
+                                  🗒️ "{m.anexo_transcricao}"
+                                </p>
+                              )}
+                            </div>
                           )}
                           {m.anexo_tipo === "foto" && m.anexo_url && (
                             <a href={m.anexo_url} target="_blank" rel="noopener noreferrer" className="rounded-xl overflow-hidden border border-black/10 bg-white block">

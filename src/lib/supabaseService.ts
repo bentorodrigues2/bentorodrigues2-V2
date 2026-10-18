@@ -2081,6 +2081,7 @@ export async function fetchMensagensConversaFromSupabase(idConversa: string): Pr
       anexo_url: row.anexo_url || undefined,
       anexo_tipo: row.anexo_tipo || undefined,
       anexo_nome: row.anexo_nome || undefined,
+      anexo_transcricao: row.anexo_transcricao || undefined,
       lida: !!row.lida
     }));
   } catch (err) {
@@ -2097,7 +2098,8 @@ export async function saveMensagemConversaToSupabase(mensagem: MensagemConversa)
     texto: mensagem.texto,
     anexo_url: mensagem.anexo_url || null,
     anexo_tipo: mensagem.anexo_tipo || null,
-    anexo_nome: mensagem.anexo_nome || null
+    anexo_nome: mensagem.anexo_nome || null,
+    anexo_transcricao: mensagem.anexo_transcricao || null
   });
 }
 

@@ -63,6 +63,7 @@ import { loadUserPreferences, NotificationPreferences } from "../utils/loadUserP
 import { saveUserPreferences } from "../utils/saveUserPreferences";
 import { loadPrefereContactoTexto, savePrefereContactoTexto } from "../utils/acessibilidadePreferencias";
 import { useModalAcessivel } from "../utils/useModalAcessivel";
+import { transcreverAudio } from "../utils/transcreverAudio";
 
 interface TicketMensagem {
   id_conversa: string;
@@ -795,6 +796,9 @@ export default function PWACondominoView({
       novaMensagemChat.anexo_url = url;
       novaMensagemChat.anexo_tipo = chatPhotoFile ? "foto" : chatDocFile ? "documento" : "audio";
       novaMensagemChat.anexo_nome = chatDocFile?.name;
+      if (chatAudioBlob) {
+        novaMensagemChat.anexo_transcricao = await transcreverAudio(chatAudioBlob);
+      }
     }
     limparAnexosChat();
 
@@ -5144,7 +5148,14 @@ export default function PWACondominoView({
                       <a href={m.anexo_url} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 p-1.5 rounded-lg text-[10px] ${m.autor === "condomino" ? "bg-emerald-700/60" : "bg-slate-100 dark:bg-slate-700"}`}><File className="h-3.5 w-3.5" /><span className="truncate">{m.anexo_nome}</span></a>
                     )}
                     {m.anexo_tipo === "audio" && m.anexo_url && (
-                      <audio controls src={m.anexo_url} className="max-w-[220px] h-8" />
+                      <div className="space-y-1">
+                        <audio controls src={m.anexo_url} className="max-w-[220px] h-8" />
+                        {m.anexo_transcricao && (
+                          <p className={`text-[9px] italic rounded-lg px-2 py-1 max-w-[220px] ${m.autor === "condomino" ? "bg-black/10" : "bg-black/5"}`}>
+                            🗒️ "{m.anexo_transcricao}"
+                          </p>
+                        )}
+                      </div>
                     )}
                     <p className="leading-normal text-[10px]">{m.texto}</p>
                     <div className={`text-[9px] text-right ${m.autor === "condomino" ? "text-emerald-100" : "text-slate-600"}`}>

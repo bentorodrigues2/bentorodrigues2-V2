@@ -16,6 +16,7 @@ import {
   saveQuestionarioToSupabase
 } from "../lib/supabaseService";
 import { playNotificationTone } from "../lib/soundService";
+import { transcreverAudio } from "../utils/transcreverAudio";
 
 // Dispara uma notificação push real e devolve sempre um resumo legível do
 // que aconteceu (quantas chegaram, quantas falharam, ou o erro do
@@ -415,6 +416,9 @@ export function GestaoComunicacoes({
         novaMensagem.anexo_url = url;
         novaMensagem.anexo_tipo = chatFotoFile ? "foto" : chatDocFile ? "documento" : "audio";
         novaMensagem.anexo_nome = chatDocFile?.name;
+        if (chatAudioBlob) {
+          novaMensagem.anexo_transcricao = await transcreverAudio(chatAudioBlob);
+        }
       }
 
       await saveMensagemConversaToSupabase(novaMensagem);
@@ -608,6 +612,7 @@ export function GestaoComunicacoes({
       let anexoUrlBroadcast: string | null = null;
       let anexoTipoBroadcast: "foto" | "documento" | "audio" | undefined;
       let anexoNomeBroadcast: string | undefined;
+      let anexoTranscricaoBroadcast: string | undefined;
       if (temAnexoBroadcast) {
         const arquivo = broadcastFotoFile || broadcastDocFile || new File([broadcastAudioBlob as Blob], "nota-de-voz.webm", { type: "audio/webm" });
         const idMensagemBroadcast = "msg_" + Date.now();
@@ -619,6 +624,9 @@ export function GestaoComunicacoes({
         }
         anexoTipoBroadcast = broadcastFotoFile ? "foto" : broadcastDocFile ? "documento" : "audio";
         anexoNomeBroadcast = broadcastDocFile?.name;
+        if (broadcastAudioBlob) {
+          anexoTranscricaoBroadcast = await transcreverAudio(broadcastAudioBlob);
+        }
       }
       const textoBroadcast = textoParaTodasFracoes.trim() || (broadcastFotoFile ? "📷 Fotografia" : broadcastDocFile ? `📎 ${broadcastDocFile.name}` : "🎙️ Nota de voz");
 
@@ -646,7 +654,7 @@ export function GestaoComunicacoes({
           id_conversa: idConversa,
           autor: "administracao",
           texto: textoBroadcast,
-          ...(anexoUrlBroadcast ? { anexo_url: anexoUrlBroadcast, anexo_tipo: anexoTipoBroadcast, anexo_nome: anexoNomeBroadcast } : {})
+          ...(anexoUrlBroadcast ? { anexo_url: anexoUrlBroadcast, anexo_tipo: anexoTipoBroadcast, anexo_nome: anexoNomeBroadcast, anexo_transcricao: anexoTranscricaoBroadcast } : {})
         });
         novasConversas.push(conversaAtual);
       }
@@ -1293,7 +1301,14 @@ export function GestaoComunicacoes({
                             </a>
                           )}
                           {m.anexo_tipo === "audio" && m.anexo_url && (
-                            <audio controls src={m.anexo_url} className="max-w-[220px] h-8" />
+                            <div className="space-y-1">
+                              <audio controls src={m.anexo_url} className="max-w-[220px] h-8" />
+                              {m.anexo_transcricao && (
+                                <p className="text-[10px] italic text-slate-600 bg-black/5 rounded-lg px-2 py-1 max-w-[220px]">
+                                  🗒️ "{m.anexo_transcricao}"
+                                </p>
+                              )}
+                            </div>
                           )}
                           <div>{m.texto}</div>
                           <div className="text-[9px] text-slate-600 text-right">{m.created_at ? new Date(m.created_at).toLocaleString("pt-PT") : ""}</div>

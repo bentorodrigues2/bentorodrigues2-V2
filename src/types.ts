@@ -974,6 +974,11 @@ export interface MensagemConversa {
   anexo_url?: string;
   anexo_tipo?: "foto" | "documento" | "audio";
   anexo_nome?: string;
+  // Transcrição automática por IA de uma nota de voz (anexo_tipo "audio")
+  // — pedido explícito: plataforma inclusiva, um condómino surdo/com
+  // dificuldade auditiva tem assim uma alternativa em texto, sem depender
+  // de ouvir o áudio.
+  anexo_transcricao?: string;
   lida?: boolean;
 }
 

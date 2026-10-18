@@ -775,6 +775,44 @@ Se algum campo não constar no documento, usa null nesse campo. Nunca inventes v
     }
   }
 
+  // 9.6b. TRANSCREVER NOTA DE VOZ (?acao=transcrever-audio)
+  // Pedido explícito do administrador — plataforma inclusiva: uma nota de
+  // voz enviada no chat (admin<->condómino, GestaoComunicacoes.tsx,
+  // PWACondominoView.tsx, PortalCondomino.tsx) ficava sem alternativa
+  // nenhuma em texto, inútil para quem é surdo ou tem dificuldade
+  // auditiva. O Gemini aceita áudio diretamente como input multimodal
+  // (mesmo mecanismo inlineData já usado para imagens/PDFs acima), por
+  // isso não precisa de nenhum serviço de transcrição à parte.
+  if (acao === "transcrever-audio") {
+    if (req.method === "GET") {
+      return res.status(200).json({ status: "online", endpoint: "/api/ai?acao=transcrever-audio" });
+    }
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
+
+    try {
+      const { base64, mimeType } = req.body || {};
+      if (!base64 || !mimeType) {
+        return res.status(400).json({ error: "base64 e mimeType são obrigatórios" });
+      }
+
+      const prompt = `Transcreve literalmente, em português de Portugal, o que é dito neste áudio (uma nota de voz enviada num chat entre a administração de um condomínio e um condómino). Devolve APENAS o texto transcrito, sem comentários, sem aspas, sem "Transcrição:" à frente. Se não conseguires perceber nada com confiança, devolve exatamente: [Não foi possível transcrever este áudio]`;
+
+      const texto = await generateWithFallback({
+        contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType, data: base64 } }] }]
+      });
+
+      if (!texto || !texto.trim()) {
+        return res.status(502).json({ error: "A IA não conseguiu transcrever este áudio." });
+      }
+      return res.status(200).json({ ok: true, texto: texto.trim() });
+    } catch (err) {
+      console.error("[api/ai?acao=transcrever-audio] Erro:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao transcrever o áudio." });
+    }
+  }
+
   // 9.7. RECONHECER PROPOSTA / ORÇAMENTO DE FORNECEDOR (?acao=reconhecer-proposta)
   // Usado por PortalOrcamentos.tsx ao anexar o(s) PDF(s)/imagem(ns) de
   // orçamento de um fornecedor à proposta — antes o administrador tinha
@@ -1173,6 +1211,6 @@ Devolve apenas o texto do corpo da carta (saudação + parágrafos + despedida),
   }
 
   return res.status(400).json({
-    error: "Ação não especificada ou inválida. Use ?acao=chat|generate-legal-notice|ai-query|predict-budget|predict-reserve-fund|compare-proposals|generate-minutes|parse-import|reconhecer-recibo|classificar-documento|reconhecer-anexo|extrair-movimentos-historicos|reconhecer-apolice|reconhecer-proposta|humanize-convocatoria|validar-regulamento|redigir-carta"
+    error: "Ação não especificada ou inválida. Use ?acao=chat|generate-legal-notice|ai-query|predict-budget|predict-reserve-fund|compare-proposals|generate-minutes|parse-import|reconhecer-recibo|classificar-documento|reconhecer-anexo|extrair-movimentos-historicos|reconhecer-apolice|transcrever-audio|reconhecer-proposta|humanize-convocatoria|validar-regulamento|redigir-carta"
   });
 }
