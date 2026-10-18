@@ -1403,9 +1403,25 @@ export async function avisarQuotasEmMora() {
 
       // Pedido explícito do administrador: este aviso de mora passa a
       // discriminar o total em dívida da fração por tipo de quota
-      // (Ordinária vs Extraordinária), não só o nº de meses em atraso.
+      // (Ordinária vs Extraordinária), não só o nº de meses em atraso — e a
+      // indicar o IBAN certo para cada transferência (mesma regra de
+      // escolherIbanContaPorTipo usada nas notas de cobrança: Ordinária/FCR
+      // na conta principal, Extraordinária na conta de poupança/obras).
       const dividaPorTipo = await obterDividaPorTipoFracao(aviso.id_fracao);
-      const resumoDividaHtml = `<br><br><strong>Resumo da Dívida Total da Fração:</strong><br>- Quota Ordinária: ${dividaPorTipo.ordinaria.toFixed(2)} €<br>- Quota Extraordinária: ${dividaPorTipo.extraordinaria.toFixed(2)} €<br>- Total: ${dividaPorTipo.total.toFixed(2)} €`;
+      const contasMora = await obterContasDoPredio(aviso.id_predio);
+      const ibanOrdinaria = escolherIbanContaPorTipo(contasMora, "Quota Ordinária");
+      const ibanExtraordinaria = escolherIbanContaPorTipo(contasMora, "Quota Extraordinária");
+      const linhasDivida = [];
+      if (dividaPorTipo.ordinaria > 0.004) {
+        linhasDivida.push(`- Quota Ordinária: ${dividaPorTipo.ordinaria.toFixed(2)} €${ibanOrdinaria ? ` — IBAN: ${ibanOrdinaria}` : ""}`);
+      }
+      if (dividaPorTipo.extraordinaria > 0.004) {
+        linhasDivida.push(`- Quota Extraordinária: ${dividaPorTipo.extraordinaria.toFixed(2)} €${ibanExtraordinaria ? ` — IBAN: ${ibanExtraordinaria}` : ""}`);
+      }
+      const resumoDividaHtml =
+        `<br><br><strong>Resumo da Dívida Total da Fração:</strong><br>` +
+        linhasDivida.join("<br>") +
+        `<br>- Total: ${dividaPorTipo.total.toFixed(2)} €`;
 
       const modeloMora = await obterModeloEmail(aviso.id_predio, "aviso_divida");
       const valoresMora = {
