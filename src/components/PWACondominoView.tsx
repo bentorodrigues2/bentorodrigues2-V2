@@ -61,6 +61,7 @@ import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { subscribeUserToPush } from "../utils/subscribeUser";
 import { loadUserPreferences, NotificationPreferences } from "../utils/loadUserPreferences";
 import { saveUserPreferences } from "../utils/saveUserPreferences";
+import { loadPrefereContactoTexto, savePrefereContactoTexto } from "../utils/acessibilidadePreferencias";
 
 interface TicketMensagem {
   id_conversa: string;
@@ -656,6 +657,26 @@ export default function PWACondominoView({
     } finally {
       setGuardandoPref(null);
     }
+  };
+
+  // Acessibilidade — preferência pessoal "só contacto por texto/chat"
+  // (surdo/mudo ou dificuldade auditiva), editável pelo próprio condómino
+  // nas Definições de Perfil, nunca fixada pela administração no registo.
+  const [prefereContactoTexto, setPrefereContactoTexto] = useState(false);
+  const [aGuardarContactoTexto, setAGuardarContactoTexto] = useState(false);
+  useEffect(() => {
+    if (!loggedUser?.email) return;
+    loadPrefereContactoTexto(loggedUser.email).then(setPrefereContactoTexto);
+  }, [loggedUser?.email]);
+
+  const handleTogglePrefereContactoTexto = async () => {
+    if (aGuardarContactoTexto || !loggedUser?.email) return;
+    const novoValor = !prefereContactoTexto;
+    setAGuardarContactoTexto(true);
+    setPrefereContactoTexto(novoValor);
+    const ok = await savePrefereContactoTexto(loggedUser.email, novoValor);
+    if (!ok) setPrefereContactoTexto(!novoValor);
+    setAGuardarContactoTexto(false);
   };
 
   const handleAtivarPush = async () => {
@@ -3932,6 +3953,24 @@ export default function PWACondominoView({
                       <p className="text-[9px] text-slate-600 pt-1">As notificações de ocorrências, documentos, assembleias, comunicados, sondagens e questionários são sempre enviadas.</p>
                     </div>
                   )}
+                </div>
+
+                {/* ACESSIBILIDADE — preferência pessoal, nunca fixada pela
+                    administração: só a própria pessoa decide aqui. */}
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 dark:text-white block">🤟 Acessibilidade</span>
+                      <span className="text-[9.5px] text-slate-600">Prefiro ser contactado(a) só por texto/chat (surdo/mudo ou dificuldade auditiva) — a administração deixa de tentar ligar e usa sempre o chat ou email.</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={prefereContactoTexto}
+                      disabled={aGuardarContactoTexto}
+                      onChange={handleTogglePrefereContactoTexto}
+                      className="h-5 w-5 accent-emerald-600 cursor-pointer disabled:opacity-50 shrink-0"
+                    />
+                  </div>
                 </div>
 
               </div>

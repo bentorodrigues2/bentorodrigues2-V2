@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondagem, Questionario, MensagemConversa, SeguroFracao, DocumentoSeguroAnexo, RequestForProposal, Proposal, VotoProposta } from "../types";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
-import { generateCondominoPwaManualPDF, gerarReferenciaBR23EExtra, formatDatePT } from "../utils";
+import { generateCondominoPwaManualPDF, gerarReferenciaBR23EExtra, formatDatePT, loadPrefereContactoTexto, savePrefereContactoTexto } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { playVoiceNoteSimulation, playNotificationTone } from "../lib/soundService";
 import { encontrarFracaoDoCondomino } from "../lib/condominoUtils";
@@ -126,6 +126,26 @@ export function PortalCondomino({
   // Navigation inside Portal
   const [activeTab, setActiveTab] = useState<"portal" | "backoffice">("portal");
   const [biometricsEnabled, setBiometricsEnabled] = useState<boolean>(true);
+
+  // Acessibilidade — preferência pessoal "só contacto por texto/chat"
+  // (surdo/mudo ou dificuldade auditiva), editável pelo próprio condómino
+  // nas Definições de Perfil, nunca fixada pela administração no registo.
+  const [prefereContactoTexto, setPrefereContactoTexto] = useState(false);
+  const [aGuardarContactoTexto, setAGuardarContactoTexto] = useState(false);
+  useEffect(() => {
+    if (!loggedUser?.email) return;
+    loadPrefereContactoTexto(loggedUser.email).then(setPrefereContactoTexto);
+  }, [loggedUser?.email]);
+
+  const handleTogglePrefereContactoTexto = async () => {
+    if (aGuardarContactoTexto || !loggedUser?.email) return;
+    const novoValor = !prefereContactoTexto;
+    setAGuardarContactoTexto(true);
+    setPrefereContactoTexto(novoValor);
+    const ok = await savePrefereContactoTexto(loggedUser.email, novoValor);
+    if (!ok) setPrefereContactoTexto(!novoValor);
+    setAGuardarContactoTexto(false);
+  };
 
   // Local State representing PWA messages, payment proofs, and credentials
   const [mensagens, setMensagens] = useState<MensagemAdministracao[]>([]);
@@ -1734,6 +1754,24 @@ export function PortalCondomino({
                     idPredio={predio.id_predio}
                     idFracao={activeUserFracao?.id_fracao}
                   />
+                </div>
+
+                {/* ACESSIBILIDADE — preferência pessoal, nunca fixada pela
+                    administração: só a própria pessoa decide aqui. */}
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                  <div className="flex items-center justify-between gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">🤟 Acessibilidade</span>
+                      <span className="text-[9.5px] text-slate-600">Prefiro ser contactado(a) só por texto/chat (surdo/mudo ou dificuldade auditiva) — a administração deixa de tentar ligar e usa sempre o chat ou email.</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={prefereContactoTexto}
+                      disabled={aGuardarContactoTexto}
+                      onChange={handleTogglePrefereContactoTexto}
+                      className="h-5 w-5 accent-emerald-600 cursor-pointer disabled:opacity-50 shrink-0"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

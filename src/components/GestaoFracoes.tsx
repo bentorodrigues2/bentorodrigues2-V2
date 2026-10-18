@@ -471,6 +471,21 @@ export function GestaoFracoes({
     }
   }, [predioFracoes, selectedFracaoId]);
 
+  // Acessibilidade: emails que marcaram "só contacto por texto/chat" nas
+  // suas Definições de Perfil (surdo/mudo ou dificuldade auditiva) — para
+  // avisar a administração aqui, junto ao telefone, em vez de ligar sem
+  // saber. Carregado uma vez por prédio, não por fração.
+  const [emailsPrefereContactoTexto, setEmailsPrefereContactoTexto] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!predio?.id_predio) return;
+    dbSelect("profiles", {
+      colunas: "email",
+      filtros: [["id_predio", "eq", predio.id_predio], ["prefere_contacto_texto", "eq", true]]
+    }).then((rows) => {
+      setEmailsPrefereContactoTexto(new Set((rows || []).map((r: any) => (r.email || "").toLowerCase())));
+    });
+  }, [predio?.id_predio]);
+
   // Carregar listas de frações e proprietários diretamente do Supabase
   useEffect(() => {
     let isMounted = true;
@@ -3629,6 +3644,11 @@ export function GestaoFracoes({
                       <div>
                         <span className="text-[10px] uppercase font-semibold text-slate-600 block">Telemóvel / Telefone</span>
                         <a href={`tel:${selectedFracao.proprietario.tlm}`} className="text-slate-700 hover:underline font-mono font-semibold">{selectedFracao.proprietario.tlm || "Sem Telefone"}</a>
+                        {emailsPrefereContactoTexto.has((selectedFracao.proprietario.email || "").toLowerCase()) && (
+                          <span className="block mt-1 text-[9px] font-bold text-amber-800 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded w-fit">
+                            🤟 Prefere só texto/chat — evite ligar
+                          </span>
+                        )}
                       </div>
                       <div className="col-span-2 border-t border-slate-100 dark:border-slate-800 pt-2.5 space-y-1">
                         <div className="flex items-center justify-between">
@@ -3730,6 +3750,11 @@ export function GestaoFracoes({
                       <div>
                         <span className="text-[10px] uppercase font-semibold text-slate-600 block">Telemóvel / Telefone</span>
                         <a href={`tel:${selectedFracao.inquilino.tlm}`} className="text-slate-700 hover:underline font-mono font-semibold">{selectedFracao.inquilino.tlm || "Sem Telefone"}</a>
+                        {emailsPrefereContactoTexto.has((selectedFracao.inquilino.email || "").toLowerCase()) && (
+                          <span className="block mt-1 text-[9px] font-bold text-amber-800 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded w-fit">
+                            🤟 Prefere só texto/chat — evite ligar
+                          </span>
+                        )}
                       </div>
                       <div className="col-span-2 border-t border-slate-100 pt-2">
                         <span className="text-[10px] uppercase font-semibold text-slate-600 block">Canal Preferencial para Avisos</span>

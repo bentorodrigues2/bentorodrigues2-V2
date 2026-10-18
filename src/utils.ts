@@ -4791,6 +4791,7 @@ export * from './utils/requestPermission';
 export * from './utils/subscribeUser';
 export * from './utils/loadUserPreferences';
 export * from './utils/saveUserPreferences';
+export * from './utils/acessibilidadePreferencias';
 export * from './utils/sendNotification';
 
 
