@@ -257,14 +257,6 @@ export function PainelControlo({
             contagem: limpezasCount
           },
           {
-            name: "Documentos IA",
-            val: `${documentosCount} Arquivados`,
-            icon: "/modulos/27-arquivo-automatico.png",
-            section: "documentos",
-            fixo: false,
-            contagem: documentosCount
-          },
-          {
             // Sempre visível (fixo) — o número de mensagens por ler mostra-se
             // como emblema vermelho no canto superior direito do ícone, estilo
             // WhatsApp/SMS, em vez de depender do cartão aparecer/desaparecer.
@@ -300,7 +292,10 @@ export function PainelControlo({
             contagem: 1,
             corSinal: lancamentosPorConfirmarCount > 0,
             positivo: false,
-            apenasAdmin: true
+            apenasAdmin: true,
+            // Pedido explícito: emblema vermelho a piscar com o número,
+            // estilo SMS/WhatsApp — mesmo mecanismo já usado em "Mensagens".
+            emblemaContagem: lancamentosPorConfirmarCount
           },
           {
             name: "Alertas Jurídicos",
