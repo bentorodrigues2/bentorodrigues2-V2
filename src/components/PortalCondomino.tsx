@@ -18,9 +18,12 @@ import {
   FileCheck,
   FileSpreadsheet,
   AlertTriangle,
-  Upload
+  Upload,
+  CheckCircle,
+  Star
 } from "lucide-react";
-import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondagem, Questionario, MensagemConversa, SeguroFracao, DocumentoSeguroAnexo, RequestForProposal, Proposal, VotoProposta, Documento } from "../types";
+import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondagem, Questionario, MensagemConversa, SeguroFracao, DocumentoSeguroAnexo, RequestForProposal, Proposal, VotoProposta, Documento, Ocorrencia } from "../types";
+import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { GestaoDocumentos } from "./GestaoDocumentos";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
 import { generateCondominoPwaManualPDF, gerarReferenciaBR23EExtra, formatDatePT, loadPrefereContactoTexto, savePrefereContactoTexto } from "../utils";
@@ -51,7 +54,11 @@ import {
   fetchRfpsFromSupabase,
   fetchPropostasFromSupabase,
   fetchVotosPropostaFromSupabase,
-  saveVotoPropostaToSupabase
+  saveVotoPropostaToSupabase,
+  saveOcorrenciaToSupabase,
+  fetchObrasExtraFromSupabase,
+  fetchLimpezasFromSupabase,
+  LimpezaRow
 } from "../lib/supabaseService";
 
 // Inner Interfaces
@@ -113,6 +120,7 @@ interface PortalCondominoProps {
   setLoggedUser: (user: LoggedUser) => void;
   documentos: Documento[];
   setDocumentos: React.Dispatch<React.SetStateAction<Documento[]>>;
+  ocorrencias: Ocorrencia[];
 }
 
 export function PortalCondomino({
@@ -129,6 +137,7 @@ export function PortalCondomino({
   setLoggedUser,
   documentos,
   setDocumentos,
+  ocorrencias,
 }: PortalCondominoProps) {
   // Navigation inside Portal
   const [activeTab, setActiveTab] = useState<"portal" | "backoffice">("portal");
@@ -999,6 +1008,123 @@ export function PortalCondomino({
     (a) => a.id_fracao === activeUserFracao?.id_fracao && a.id_predio === predio.id_predio
   );
 
+  // --- SERVIÇOS DO CONDOMÍNIO (paridade Browser/PWA): Avarias/Ocorrências,
+  // Obras, Limpezas, Regras & Contactos de Emergência — mesmos dados reais e
+  // mesmos handlers já usados em PWACondominoView.tsx, agrupados aqui num
+  // único modal com separadores internos em vez de vários botões no topo.
+  const [showServicos, setShowServicos] = useState(false);
+  const [servicosTab, setServicosTab] = useState<"avarias" | "obras" | "limpezas" | "regras" | "emergencia">("avarias");
+  const servicosModalRef = useModalAcessivel<HTMLDivElement>(showServicos, () => setShowServicos(false));
+
+  const [ocorrenciasReceemCriadasPortal, setOcorrenciasReceemCriadasPortal] = useState<Ocorrencia[]>([]);
+  const ocorrenciasFracaoPortal = React.useMemo(() => {
+    const daProp = (ocorrencias || []).filter((o) => o.id_fracao === activeUserFracao?.id_fracao);
+    const idsProp = new Set(daProp.map((o) => o.id_ocorr));
+    const extras = ocorrenciasReceemCriadasPortal.filter((o) => !idsProp.has(o.id_ocorr));
+    return [...extras, ...daProp].sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+  }, [ocorrencias, activeUserFracao?.id_fracao, ocorrenciasReceemCriadasPortal]);
+
+  const [newIntervEquipamentoPortal, setNewIntervEquipamentoPortal] = useState("Elevador");
+  const [newIntervDescPortal, setNewIntervDescPortal] = useState("");
+  const [newIntervPhotoPortal, setNewIntervPhotoPortal] = useState<string | null>(null);
+  const [newIntervPhotoNamePortal, setNewIntervPhotoNamePortal] = useState("");
+  const [aReportarAvariaPortal, setAReportarAvariaPortal] = useState(false);
+
+  const handleEscolherFotoAvariaPortal = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX = 900;
+        let w = img.width, h = img.height;
+        if (w > MAX) { h = Math.round((h * MAX) / w); w = MAX; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d")?.drawImage(img, 0, 0, w, h);
+        setNewIntervPhotoPortal(canvas.toDataURL("image/webp", 0.8));
+        setNewIntervPhotoNamePortal(file.name || "avaria_foto.webp");
+      };
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleReportAvariaPortal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newIntervDescPortal) {
+      alert("Por favor escreva uma descrição.");
+      return;
+    }
+    if (!predio?.id_predio || !activeUserFracao?.id_fracao) return;
+    setAReportarAvariaPortal(true);
+    try {
+      const novaOcorrencia: Ocorrencia = {
+        id_ocorr: `ocorr-${Date.now()}`,
+        id_predio: predio.id_predio,
+        id_fracao: activeUserFracao.id_fracao,
+        descricao: newIntervDescPortal,
+        data: new Date().toISOString().split("T")[0],
+        estado: "Pendente",
+        medidas_tomadas: "",
+        fotos: newIntervPhotoPortal ? [{ name: newIntervPhotoNamePortal || "foto.webp", preview: newIntervPhotoPortal, size: "" }] : [],
+        categoria: newIntervEquipamentoPortal
+      };
+      const ok = await saveOcorrenciaToSupabase(novaOcorrencia);
+      if (!ok) {
+        alert("❌ Não foi possível registar a avaria. Tente novamente.");
+        return;
+      }
+      setOcorrenciasReceemCriadasPortal((prev) => [novaOcorrencia, ...prev]);
+      fetch("/api/admin?acao=enviar-push-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_predio: predio.id_predio,
+          title: `🚨 Nova Avaria — ${activeUserFracao.piso || "Fração " + (activeUserFracao.fracao_nome || "?")}`,
+          body: `${newIntervEquipamentoPortal}: ${newIntervDescPortal}`
+        })
+      }).catch(() => {});
+      alert("Avaria reportada com sucesso! A administração foi notificada.");
+      setNewIntervDescPortal("");
+      setNewIntervPhotoPortal(null);
+      setNewIntervPhotoNamePortal("");
+    } finally {
+      setAReportarAvariaPortal(false);
+    }
+  };
+
+  const [obrasReaisPortal, setObrasReaisPortal] = useState<ObraExtraordinaria[]>([]);
+  useEffect(() => {
+    if (!predio?.id_predio) return;
+    fetchObrasExtraFromSupabase(predio.id_predio).then((dados) => { if (dados) setObrasReaisPortal(dados); });
+  }, [predio?.id_predio]);
+
+  const [cleaningRatingsPortal, setCleaningRatingsPortal] = useState<Record<string, number>>({});
+  const [limpezasReaisPortal, setLimpezasReaisPortal] = useState<LimpezaRow[]>([]);
+  useEffect(() => {
+    if (!predio?.id_predio) return;
+    fetchLimpezasFromSupabase(predio.id_predio).then((dados) => setLimpezasReaisPortal(dados || []));
+  }, [predio?.id_predio]);
+  const limpezasHistoricoPortal = limpezasReaisPortal.map((l) => ({
+    id: l.id_limpeza,
+    data: formatDatePT(l.data),
+    hora: l.hora,
+    tecnico: l.executor,
+    avariaDetetada: l.observacoes || "Nenhuma",
+    estado: "Concluído" as const
+  }));
+
+  const contactosEmergenciaPortal = [
+    { servico: "Piquete de Elevadores (Otis)", num: "808 20 20 20", desc: "Avarias em cabines ou pessoas presas" },
+    { servico: "Canalizador Técnico do Prédio", num: "912 345 678", desc: "Ruturas de água, inundações ou torneiras de corte" },
+    { servico: "Piquete Geral de Eletricidade", num: "800 234 567", desc: "Falta de luz no hall, patamares ou garagem" },
+    { servico: "Portões Automáticos (Assistência)", num: "933 888 111", desc: "Bloqueio ou descarrilamento do portão garagem" },
+    { servico: "Administração CondoManager AI", num: "210 111 222", desc: "Assuntos gerais urgentes e dúvidas técnicas" }
+  ];
+
   // --- SEGURO DE INCÊNDIO DA FRAÇÃO — mesma lógica de consulta/envio já
   // usada na PWA (PWACondominoView), para o condómino ver exatamente o
   // mesmo estado e documentos quer entre pelo telemóvel quer pelo browser.
@@ -1406,12 +1532,20 @@ export function PortalCondomino({
 
         <div className="flex space-x-2">
           {activeTab === "portal" && (
-            <button
-              onClick={() => setShowArquivoDigital(true)}
-              className="bg-indigo-50 border border-indigo-200 text-indigo-700 font-semibold px-3 py-1.5 rounded-lg text-xs hover:bg-indigo-100 transition-all cursor-pointer"
-            >
-              <i className="fa-solid fa-box-archive mr-1.5"></i> Arquivo Digital
-            </button>
+            <>
+              <button
+                onClick={() => setShowArquivoDigital(true)}
+                className="bg-indigo-50 border border-indigo-200 text-indigo-700 font-semibold px-3 py-1.5 rounded-lg text-xs hover:bg-indigo-100 transition-all cursor-pointer"
+              >
+                <i className="fa-solid fa-box-archive mr-1.5"></i> Arquivo Digital
+              </button>
+              <button
+                onClick={() => { setServicosTab("avarias"); setShowServicos(true); }}
+                className="bg-rose-50 border border-rose-200 text-rose-700 font-semibold px-3 py-1.5 rounded-lg text-xs hover:bg-rose-100 transition-all cursor-pointer"
+              >
+                <i className="fa-solid fa-screwdriver-wrench mr-1.5"></i> Serviços do Condomínio
+              </button>
+            </>
           )}
           <button
             onClick={handleSendPwaLink}
@@ -3164,6 +3298,301 @@ export function PortalCondomino({
                 fracaoDoCondomino={activeUserFracao?.id_fracao}
                 fracaoNomeDoCondomino={activeUserFracao?.fracao_nome}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Serviços do Condomínio — Avarias/Ocorrências, Obras, Limpezas,
+          Regras & Contactos de Emergência: paridade Browser/PWA, mesmos
+          dados reais e handlers que já existem em PWACondominoView.tsx. */}
+      {showServicos && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-6">
+          <div
+            ref={servicosModalRef}
+            tabIndex={-1}
+            className="w-full max-w-3xl max-h-[92vh] bg-white dark:bg-slate-950 rounded-2xl shadow-2xl overflow-y-auto outline-none"
+          >
+            <div className="sticky top-0 z-10 bg-white/95 dark:bg-slate-950/95 backdrop-blur border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between px-5 py-3.5">
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  <i className="fa-solid fa-screwdriver-wrench text-rose-500"></i> Serviços do Condomínio
+                </h3>
+                <button
+                  onClick={() => setShowServicos(false)}
+                  className="h-9 w-9 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                  title="Fechar Serviços do Condomínio"
+                  aria-label="Fechar Serviços do Condomínio"
+                >
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+              <div className="flex gap-1 overflow-x-auto px-3 pb-2 text-[10.5px] font-bold">
+                {([
+                  ["avarias", "🔧 Avarias"],
+                  ["obras", "🏗️ Obras"],
+                  ["limpezas", "🧹 Limpezas"],
+                  ["regras", "📋 Regras"],
+                  ["emergencia", "📞 Emergência"]
+                ] as const).map(([tab, label]) => (
+                  <button
+                    key={tab}
+                    onClick={() => setServicosTab(tab)}
+                    className={`px-3 py-1.5 rounded-lg cursor-pointer shrink-0 transition-colors ${
+                      servicosTab === tab
+                        ? "bg-rose-600 text-white"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-4 space-y-4 text-[11px]">
+              {/* --- AVARIAS --- */}
+              {servicosTab === "avarias" && (
+                <>
+                  <div className="space-y-2.5">
+                    {ocorrenciasFracaoPortal.length === 0 && (
+                      <p className="text-slate-600 dark:text-slate-400 text-[10px] text-center py-6 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">Nenhuma avaria reportada até ao momento.</p>
+                    )}
+                    {ocorrenciasFracaoPortal.map((interv) => (
+                      <div key={interv.id_ocorr} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3 rounded-xl shadow-xs space-y-2 text-[10px]">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="text-[8px] text-slate-600 dark:text-slate-400 font-extrabold block uppercase tracking-wider font-mono">{formatDatePT(interv.data)}</span>
+                            <h4 className="font-extrabold text-slate-800 dark:text-slate-200">{interv.categoria || "Outros"}</h4>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase ${
+                            interv.estado === "Pendente" ? "bg-amber-50 text-amber-600 dark:bg-amber-950/20" :
+                            interv.estado === "Em Curso" ? "bg-blue-50 text-blue-600 dark:bg-blue-950/20" :
+                            "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20"
+                          }`}>
+                            {interv.estado}
+                          </span>
+                        </div>
+                        <p className="text-slate-600 dark:text-slate-400 leading-tight">"{interv.descricao}"</p>
+                        <div className="flex justify-between items-center pt-1.5 border-t border-slate-100 dark:border-slate-800/60 text-[9px]">
+                          <span className="text-slate-600 dark:text-slate-400">{interv.tecnico_atribuido ? <>Técnico: <strong className="text-slate-600 dark:text-slate-300">{interv.tecnico_atribuido}</strong></> : "Aguarda triagem da administração"}</span>
+                          {interv.medidas_tomadas && (
+                            <button
+                              onClick={() => alert(`Medidas tomadas:\n${interv.medidas_tomadas}`)}
+                              className="text-emerald-600 hover:underline cursor-pointer font-bold"
+                            >
+                              Ver Medidas Tomadas
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <form onSubmit={handleReportAvariaPortal} className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3.5 rounded-xl shadow-sm space-y-3 text-[10px]">
+                    <span className="text-[10px] font-extrabold text-rose-500 uppercase tracking-widest block">
+                      🚨 Reportar Nova Avaria / Anomalia
+                    </span>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-600 dark:text-slate-400 uppercase text-[8px]">Selecione o Equipamento / Área</label>
+                      <select
+                        value={newIntervEquipamentoPortal}
+                        onChange={e => setNewIntervEquipamentoPortal(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2 rounded-lg font-bold text-slate-800 dark:text-white focus:outline-none focus:border-rose-500"
+                      >
+                        <option value="Elevador">Elevador do Edifício</option>
+                        <option value="Portão da Garagem">Portão Principal de Garagem</option>
+                        <option value="Bomba de Água">Grupo de Bombas de Água</option>
+                        <option value="Iluminação Comum">Iluminação de Patamar / Escadas</option>
+                        <option value="Limpeza / Higiene">Problema de Limpeza / Higiene</option>
+                        <option value="Outros">Outras Situações Gerais</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-600 dark:text-slate-400 uppercase text-[8px]">Descrição Detalhada do Problema</label>
+                      <textarea
+                        required
+                        rows={2}
+                        value={newIntervDescPortal}
+                        onChange={e => setNewIntervDescPortal(e.target.value)}
+                        placeholder="Ex: Lâmpada fundida no teto do 2º andar esquerdo..."
+                        className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:border-rose-500 font-medium"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="font-bold text-slate-600 dark:text-slate-400 uppercase text-[8px] block">Anexar Fotografia (Opcional)</label>
+                      <div className="flex items-center space-x-2">
+                        <input id="portal-avaria-foto-input" type="file" accept="image/*" className="hidden" onChange={handleEscolherFotoAvariaPortal} />
+                        <button
+                          type="button"
+                          onClick={() => document.getElementById("portal-avaria-foto-input")?.click()}
+                          className="flex items-center space-x-1 px-3 py-2 bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-slate-700 dark:text-slate-300 cursor-pointer"
+                        >
+                          <Camera className="h-3.5 w-3.5" />
+                          <span>Capturar Foto</span>
+                        </button>
+                        <span className="text-[9px] text-slate-600 dark:text-slate-400 italic">
+                          {newIntervPhotoNamePortal || "Sem anexo fotográfico"}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={aReportarAvariaPortal}
+                      className="w-full bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white font-extrabold py-2 rounded-lg text-center cursor-pointer transition-colors uppercase text-[9px] shadow-xs"
+                    >
+                      {aReportarAvariaPortal ? "A enviar..." : "Submeter e Enviar Notificação Push"}
+                    </button>
+                  </form>
+                </>
+              )}
+
+              {/* --- OBRAS --- */}
+              {servicosTab === "obras" && (
+                <div className="space-y-2.5">
+                  {obrasReaisPortal.length === 0 && (
+                    <p className="text-slate-600 dark:text-slate-400 text-[10px] text-center py-6 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">Nenhuma obra registada até ao momento.</p>
+                  )}
+                  {obrasReaisPortal.map(obra => (
+                    <div key={obra.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3 rounded-xl shadow-xs space-y-2 text-[10px]">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className={`text-[8px] px-2 py-0.5 rounded font-bold uppercase ${
+                            obra.estado === "Concluída" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400" :
+                            obra.estado === "Em Curso" ? "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400" :
+                            "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400"
+                          }`}>{obra.estado}</span>
+                          <h4 className="font-extrabold text-slate-800 dark:text-slate-200 mt-1">{obra.descricao}</h4>
+                        </div>
+                        {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && (
+                          <span className="font-bold text-indigo-600 font-mono">{obra.custoTotal.toLocaleString("pt-PT")} €</span>
+                        )}
+                      </div>
+                      <p className="text-slate-600 dark:text-slate-400 leading-tight">
+                        {obra.dataInicio ? `Início: ${formatDatePT(obra.dataInicio)}` : ""}{obra.dataFim ? ` • Fim: ${formatDatePT(obra.dataFim)}` : ""}
+                      </p>
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex justify-between text-[9px] text-slate-600 dark:text-slate-400 font-bold">
+                        <span>{obra.fornecedorNome ? `Empreiteiro: ${obra.fornecedorNome}` : "Fornecedor por adjudicar"}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* --- LIMPEZAS --- */}
+              {servicosTab === "limpezas" && (
+                <div className="space-y-2.5">
+                  {limpezasHistoricoPortal.length === 0 && (
+                    <p className="text-slate-600 dark:text-slate-400 text-[10px] text-center py-6 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">Nenhuma limpeza registada até ao momento.</p>
+                  )}
+                  {limpezasHistoricoPortal.map(limp => (
+                    <div key={limp.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3 rounded-xl shadow-xs space-y-2 text-[10px]">
+                      <div className="flex justify-between font-bold">
+                        <span className="text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[8px] font-mono">{limp.id} • {limp.data} às {limp.hora}</span>
+                        <span className="text-emerald-600 flex items-center"><CheckCircle className="h-3 w-3 mr-0.5" /> {limp.estado}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 leading-tight">
+                        <div>
+                          <span className="text-[8px] text-slate-600 dark:text-slate-400 uppercase block font-bold">Técnico Responsável</span>
+                          <strong className="text-slate-700 dark:text-slate-300">{limp.tecnico}</strong>
+                        </div>
+                        <div>
+                          <span className="text-[8px] text-slate-600 dark:text-slate-400 uppercase block font-bold">Anomalias Detetadas</span>
+                          <strong className={limp.avariaDetetada !== "Nenhuma" ? "text-red-600" : "text-emerald-600"}>
+                            {limp.avariaDetetada}
+                          </strong>
+                        </div>
+                      </div>
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 space-y-1.5">
+                        <span className="text-[8px] font-bold text-slate-600 dark:text-slate-400 uppercase block">Avalie a qualidade do serviço</span>
+                        <div className="flex items-center justify-between">
+                          <div className="flex space-x-1">
+                            {[1, 2, 3, 4, 5].map(star => (
+                              <button
+                                key={star}
+                                onClick={() => {
+                                  setCleaningRatingsPortal(prev => ({ ...prev, [limp.id]: star }));
+                                  alert(`Avaliou este serviço com ${star} estrelas! Obrigado.`);
+                                }}
+                                className="cursor-pointer"
+                              >
+                                <Star className={`h-4 w-4 ${
+                                  (cleaningRatingsPortal[limp.id] || 0) >= star ? "text-amber-500 fill-amber-500" : "text-slate-300 dark:text-slate-700"
+                                }`} />
+                              </button>
+                            ))}
+                          </div>
+                          <span className="text-[8px] text-slate-600 dark:text-slate-400 font-bold">
+                            {cleaningRatingsPortal[limp.id] ? "Obrigado!" : "Por avaliar"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* --- REGRAS --- */}
+              {servicosTab === "regras" && (
+                <div className="space-y-3.5 text-[10px]">
+                  <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3 rounded-xl shadow-xs space-y-2">
+                    <span className="text-[9px] font-extrabold text-teal-600 uppercase tracking-widest block">Regulamento Interno Escrito</span>
+                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+                      De acordo com a Ata de Assembleia Geral, as normas de ruído estipulam silêncio obrigatório entre as <strong className="text-slate-700 dark:text-slate-200">22h00 e as 08h00</strong>. Quaisquer obras particulares de condóminos só podem decorrer em dias úteis das 09h00 às 18h00.
+                    </p>
+                  </div>
+                  <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3 rounded-xl shadow-xs space-y-2">
+                    <span className="text-[9px] font-extrabold text-teal-600 uppercase tracking-widest block">Capacidade Máxima de Espaços Comuns</span>
+                    <div className="grid grid-cols-2 gap-2 text-[9px] font-bold">
+                      <div className="p-2 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <span className="text-slate-600 dark:text-slate-400 block text-[7px] uppercase">Salão de Festas</span>
+                        <span className="text-slate-700 dark:text-slate-300">Máx. 40 Pessoas</span>
+                      </div>
+                      <div className="p-2 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <span className="text-slate-600 dark:text-slate-400 block text-[7px] uppercase">Ginásio Comum</span>
+                        <span className="text-slate-700 dark:text-slate-300">Máx. 5 Pessoas</span>
+                      </div>
+                      <div className="p-2 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <span className="text-slate-600 dark:text-slate-400 block text-[7px] uppercase">Elevadores</span>
+                        <span className="text-slate-700 dark:text-slate-300">Máx. 4 Pessoas</span>
+                      </div>
+                      <div className="p-2 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <span className="text-slate-600 dark:text-slate-400 block text-[7px] uppercase">Parque Infantil</span>
+                        <span className="text-slate-700 dark:text-slate-300">Máx. 12 Crianças</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3 rounded-xl shadow-xs space-y-2">
+                    <span className="text-[9px] font-extrabold text-teal-600 uppercase tracking-widest block">Segurança & Convivência</span>
+                    <ul className="list-disc pl-4 space-y-1 text-slate-600 dark:text-slate-400 font-medium">
+                      <li>Proibido depositar lixo doméstico ou entulho nas áreas comuns e patamares de escadas.</li>
+                      <li>As chaves e códigos de entrada de garagem são de cariz estritamente confidencial.</li>
+                      <li>Uso obrigatório de trela para animais domésticos no interior do átrio comum.</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+
+              {/* --- CONTACTOS DE EMERGÊNCIA --- */}
+              {servicosTab === "emergencia" && (
+                <div className="space-y-2">
+                  {contactosEmergenciaPortal.map((cont, idx) => (
+                    <div key={idx} className="bg-slate-900 border border-slate-800 p-2.5 rounded-xl flex justify-between items-center gap-2">
+                      <div className="space-y-1 truncate">
+                        <h4 className="font-extrabold text-white text-[10.5px] truncate">{cont.servico}</h4>
+                        <span className="text-[8px] text-slate-400 block truncate">{cont.desc}</span>
+                        <strong className="text-emerald-400 font-mono text-[9.5px]">{cont.num}</strong>
+                      </div>
+                      <button
+                        onClick={() => alert(`A simular chamada para piquete de emergência:\n${cont.servico}: ${cont.num}`)}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-slate-950 rounded-lg font-black text-[9px] uppercase cursor-pointer shrink-0"
+                      >
+                        Ligar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

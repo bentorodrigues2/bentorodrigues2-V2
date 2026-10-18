@@ -3217,6 +3217,7 @@ export default function App() {
               setLoggedUser={setLoggedUser}
               documentos={documentos}
               setDocumentos={setDocumentos}
+              ocorrencias={ocorrencias}
             />
           )}
 
