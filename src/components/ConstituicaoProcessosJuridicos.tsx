@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import { Predio, Fracao, LoggedUser, ProcessoJuridico, ProcessoProva, TipoProvaJuridica, Documento, Aviso } from "../types";
 import { generateAndDownloadPdf, formatDatePT, parseValorMonetario } from "../utils";
-import { saveProcessoJuridicoToSupabase, deleteProcessoJuridicoFromSupabase, uploadDocumentoToStorage } from "../lib/supabaseService";
+import { saveProcessoJuridicoToSupabase, deleteProcessoJuridicoFromSupabase, uploadDocumentoToStorage, registarLogAuditoria } from "../lib/supabaseService";
 import { MoneyInput } from "./MoneyInput";
 
 // Boilerplate jurídico de cada um dos 8 modelos de prova pré-definidos —
@@ -129,6 +129,15 @@ export function ConstituicaoProcessosJuridicos({
   const [filtroTipoProva, setFiltroTipoProva] = useState<string>("TODAS");
   const [buscaProva, setBuscaProva] = useState<string>("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Arquivo próprio de processos: "Arquivar" sai da lista principal de
+  // Dossiês Judiciais mas continua consultável aqui (Restaurar/Editar
+  // ficam sempre disponíveis) — mesmo padrão de "Ver Arquivados" já usado
+  // no Portal de Orçamentos (RequestForProposal.arquivado).
+  const [mostrarArquivados, setMostrarArquivados] = useState<boolean>(false);
+  const processosDoPredioTodos = processos.filter(p => p.id_predio === predio.id_predio);
+  const processosVisiveis = processosDoPredioTodos.filter(p => mostrarArquivados ? p.arquivado : !p.arquivado);
+  const totalProcessosArquivados = processosDoPredioTodos.filter(p => p.arquivado).length;
 
   // Modals
   const [showNovoProcessoModal, setShowNovoProcessoModal] = useState<boolean>(false);
@@ -512,11 +521,14 @@ export function ConstituicaoProcessosJuridicos({
       proc.decisao_tribunal || ""
     );
     if (decisaoFinal === null) return; // cancelado
+    const dataHoje = new Date().toISOString().split("T")[0];
     const processoArquivado: ProcessoJuridico = {
       ...proc,
       fase_processual: "CONCLUIDO_EXTINTO",
       decisao_tribunal: decisaoFinal.trim() || proc.decisao_tribunal,
-      data_ultima_atualizacao: new Date().toISOString().split("T")[0],
+      data_ultima_atualizacao: dataHoje,
+      arquivado: true,
+      data_arquivamento: dataHoje,
       historico_tramitacao: [
         ...proc.historico_tramitacao,
         {
@@ -532,7 +544,35 @@ export function ConstituicaoProcessosJuridicos({
     };
     setProcessos(prev => prev.map(p => p.id_processo === proc.id_processo ? processoArquivado : p));
     saveProcessoJuridicoToSupabase(processoArquivado).catch(console.error);
-    showToast(`Processo ${proc.id_processo} arquivado como Concluído/Extinto.`);
+    registarLogAuditoria("Jurídico", `Arquivou o processo ${proc.id_processo} (${proc.titulo_processo})`, predio.id_predio, loggedUser, decisaoFinal.trim() || undefined).catch(console.error);
+    showToast(`Processo ${proc.id_processo} arquivado — saiu da lista ativa, continua consultável em "Arquivados".`);
+  };
+
+  // Restaura um processo arquivado para a lista ativa — mantém o histórico,
+  // nº de processo e decisão intactos; nunca apaga nada (auditável).
+  const handleRestaurarProcesso = async (proc: ProcessoJuridico) => {
+    if (!window.confirm(`Restaurar o processo ${proc.id_processo} para a lista ativa de Dossiês Judiciais?`)) return;
+    const processoRestaurado: ProcessoJuridico = {
+      ...proc,
+      arquivado: false,
+      data_arquivamento: undefined,
+      data_ultima_atualizacao: new Date().toISOString().split("T")[0],
+      historico_tramitacao: [
+        ...proc.historico_tramitacao,
+        {
+          id_fase: `tram-${Date.now()}`,
+          data_hora: new Date().toISOString().replace("T", " ").substring(0, 16),
+          fase: "Processo Restaurado",
+          descricao: "Processo restaurado do arquivo para a lista ativa pela Administração.",
+          responsavel: loggedUser.nome
+        }
+      ]
+    };
+    setProcessos(prev => prev.map(p => p.id_processo === proc.id_processo ? processoRestaurado : p));
+    saveProcessoJuridicoToSupabase(processoRestaurado).catch(console.error);
+    registarLogAuditoria("Jurídico", `Restaurou o processo ${proc.id_processo} (${proc.titulo_processo}) do arquivo`, predio.id_predio, loggedUser).catch(console.error);
+    setMostrarArquivados(false);
+    showToast(`Processo ${proc.id_processo} restaurado para a lista ativa.`);
   };
 
   const handleEliminarProcesso = async (proc: ProcessoJuridico) => {
@@ -1156,18 +1196,44 @@ export function ConstituicaoProcessosJuridicos({
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3 mb-3">
               <h4 className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
                 <i className="fa-solid fa-folder-tree text-emerald-500"></i>
-                Dossiês Judiciais ({processos.length})
+                Dossiês Judiciais ({processosVisiveis.length})
               </h4>
-              <button
-                onClick={() => setShowNovoProcessoModal(true)}
-                className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <i className="fa-solid fa-plus"></i> Novo
-              </button>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  onClick={() => setMostrarArquivados(v => !v)}
+                  title={mostrarArquivados ? "Ver processos ativos" : "Ver processos arquivados"}
+                  aria-label={mostrarArquivados ? "Ver processos ativos" : "Ver processos arquivados"}
+                  className={`font-bold px-2 py-1 text-[10px] rounded transition-colors cursor-pointer flex items-center gap-1 shrink-0 ${
+                    mostrarArquivados ? "bg-slate-700 text-white hover:bg-slate-800" : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
+                  }`}
+                >
+                  <i className="fa-solid fa-box-archive"></i>
+                  {mostrarArquivados ? "Ativos" : `Arquivados (${totalProcessosArquivados})`}
+                </button>
+                {!mostrarArquivados && (
+                  <button
+                    onClick={() => setShowNovoProcessoModal(true)}
+                    className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <i className="fa-solid fa-plus"></i> Novo
+                  </button>
+                )}
+              </div>
             </div>
 
+            {mostrarArquivados && (
+              <p className="text-[10.5px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 mb-2.5 leading-snug">
+                Processos arquivados — fora da lista ativa, mas continuam consultáveis, editáveis e podem ser restaurados.
+              </p>
+            )}
+
             <div className="space-y-2.5 max-h-[620px] overflow-y-auto pr-1">
-              {processos.map(proc => {
+              {processosVisiveis.length === 0 && (
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 text-center py-6">
+                  {mostrarArquivados ? "Nenhum processo arquivado." : "Nenhum processo ativo."}
+                </p>
+              )}
+              {processosVisiveis.map(proc => {
                 const isSelected = proc.id_processo === selectedProcessoId;
                 const { texto: descritivoValor, aviso: avisoValor } = descritivoValorPedido(proc);
                 return (
@@ -1222,6 +1288,11 @@ export function ConstituicaoProcessosJuridicos({
                         {proc.tribunal_competente.includes("BNI") ? "Injunção BNI" : "Julgado de Paz"}
                       </span>
                     </div>
+                    {proc.arquivado && (
+                      <div className="mt-1.5 text-[9.5px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <i className="fa-solid fa-box-archive"></i> Arquivado{proc.data_arquivamento ? ` em ${formatDatePT(proc.data_arquivamento)}` : ""}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1249,6 +1320,12 @@ export function ConstituicaoProcessosJuridicos({
         <div className="lg:col-span-8 space-y-6">
           {currentProcesso ? (
             <>
+              {currentProcesso.arquivado && (
+                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800/60 text-amber-800 dark:text-amber-300 rounded-xl px-4 py-2.5 text-xs font-bold flex items-center gap-2">
+                  <i className="fa-solid fa-box-archive"></i>
+                  Processo arquivado{currentProcesso.data_arquivamento ? ` em ${formatDatePT(currentProcesso.data_arquivamento)}` : ""} — fora da lista ativa. Continua consultável, editável e pode ser restaurado em qualquer momento.
+                </div>
+              )}
               {/* Process Header & Metadata Details */}
               <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
@@ -1308,15 +1385,25 @@ export function ConstituicaoProcessosJuridicos({
                     >
                       <i className="fa-solid fa-pen"></i>
                     </button>
-                    {currentProcesso.fase_processual !== "CONCLUIDO_EXTINTO" && (
+                    {!currentProcesso.arquivado ? (
                       <button
                         onClick={() => handleArquivarProcesso(currentProcesso)}
                         className="bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border border-emerald-200 dark:border-emerald-900"
-                        title="Marcar como Concluído/Extinto e arquivar (mantém o dossier, não elimina)"
-                        aria-label="Marcar como Concluído/Extinto e arquivar (mantém o dossier, não elimina)"
+                        title="Marcar como Concluído/Extinto e arquivar (mantém o dossier, não elimina, sai da lista ativa)"
+                        aria-label="Marcar como Concluído/Extinto e arquivar (mantém o dossier, não elimina, sai da lista ativa)"
                       >
                         <i className="fa-solid fa-box-archive"></i>
                         <span>Arquivar</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleRestaurarProcesso(currentProcesso)}
+                        className="bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border border-amber-200 dark:border-amber-900"
+                        title="Restaurar processo do arquivo para a lista ativa"
+                        aria-label="Restaurar processo do arquivo para a lista ativa"
+                      >
+                        <i className="fa-solid fa-rotate-left"></i>
+                        <span>Restaurar</span>
                       </button>
                     )}
                     <button

@@ -716,6 +716,12 @@ export interface ProcessoJuridico {
     responsavel: string;
   }[];
   pasta_arquivo_digital_nome?: string;
+  // Arquivado = sai da lista principal da Área Jurídica (Dossiês Judiciais),
+  // mas continua consultável em "Ver Arquivados", com opção de Restaurar e
+  // de continuar a Editar — nunca fica bloqueado nem é apagado. Mesmo
+  // padrão de RequestForProposal.arquivado.
+  arquivado?: boolean;
+  data_arquivamento?: string;
 }
 
 // ----------------------------------------------------------------------------

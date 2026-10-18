@@ -1952,7 +1952,9 @@ export async function fetchProcessosJuridicosFromSupabase(idPredio?: string): Pr
       mandatario_responsavel: row.mandatario_responsavel || "",
       provas: row.provas || [],
       historico_tramitacao: row.historico_tramitacao || [],
-      pasta_arquivo_digital_nome: row.pasta_arquivo_digital_nome || undefined
+      pasta_arquivo_digital_nome: row.pasta_arquivo_digital_nome || undefined,
+      arquivado: !!row.arquivado,
+      data_arquivamento: row.data_arquivamento || undefined
     }));
   } catch (err) {
     return null;
@@ -1981,7 +1983,10 @@ export async function saveProcessoJuridicoToSupabase(processo: ProcessoJuridico)
     data_abertura: processo.data_abertura,
     mandatario_responsavel: processo.mandatario_responsavel,
     historico_tramitacao: processo.historico_tramitacao,
-    provas: processo.provas
+    provas: processo.provas,
+    pasta_arquivo_digital_nome: processo.pasta_arquivo_digital_nome || null,
+    arquivado: !!processo.arquivado,
+    data_arquivamento: processo.data_arquivamento || null
   });
 }
 
