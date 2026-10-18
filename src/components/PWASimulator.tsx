@@ -3204,6 +3204,8 @@ export function PWASimulator({
                           setContas={setContas}
                           loggedUser={loggedUser}
                           setLoggedUser={setLoggedUser}
+                          documentos={documentos}
+                          setDocumentos={setDocumentos}
                         />
                       )}
                       {activePwaSubMenuDetails === "assembleias_gestao" && (

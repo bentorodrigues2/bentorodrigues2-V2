@@ -20,7 +20,8 @@ import {
   AlertTriangle,
   Upload
 } from "lucide-react";
-import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondagem, Questionario, MensagemConversa, SeguroFracao, DocumentoSeguroAnexo, RequestForProposal, Proposal, VotoProposta } from "../types";
+import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondagem, Questionario, MensagemConversa, SeguroFracao, DocumentoSeguroAnexo, RequestForProposal, Proposal, VotoProposta, Documento } from "../types";
+import { GestaoDocumentos } from "./GestaoDocumentos";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
 import { generateCondominoPwaManualPDF, gerarReferenciaBR23EExtra, formatDatePT, loadPrefereContactoTexto, savePrefereContactoTexto } from "../utils";
 import { useModalAcessivel } from "../utils/useModalAcessivel";
@@ -110,6 +111,8 @@ interface PortalCondominoProps {
   setContas: React.Dispatch<React.SetStateAction<Conta[]>>;
   loggedUser: LoggedUser;
   setLoggedUser: (user: LoggedUser) => void;
+  documentos: Documento[];
+  setDocumentos: React.Dispatch<React.SetStateAction<Documento[]>>;
 }
 
 export function PortalCondomino({
@@ -124,6 +127,8 @@ export function PortalCondomino({
   setContas,
   loggedUser,
   setLoggedUser,
+  documentos,
+  setDocumentos,
 }: PortalCondominoProps) {
   // Navigation inside Portal
   const [activeTab, setActiveTab] = useState<"portal" | "backoffice">("portal");
@@ -201,6 +206,13 @@ export function PortalCondomino({
   // Add Message Modal/State & WhatsApp Chat Engine
   const [msgDrawerOpen, setMsgDrawerOpen] = useState(false);
   const msgDrawerRef = useModalAcessivel<HTMLDivElement>(msgDrawerOpen, () => setMsgDrawerOpen(false));
+
+  // Arquivo Digital — mesmo componente GestaoDocumentos já usado na PWA, com
+  // o mesmo filtro de privacidade por fração (ver GestaoDocumentos.tsx),
+  // para o condómino ter acesso idêntico quer entre pelo Browser quer pela
+  // PWA (pedido explícito do administrador).
+  const [showArquivoDigital, setShowArquivoDigital] = useState(false);
+  const arquivoDigitalRef = useModalAcessivel<HTMLDivElement>(showArquivoDigital, () => setShowArquivoDigital(false));
 
   // Contagem real de respostas por ler no botão flutuante — antes contava
   // sempre "Pendente OU tem resposta" (praticamente tudo) e nunca baixava
@@ -1393,6 +1405,14 @@ export function PortalCondomino({
         </div>
 
         <div className="flex space-x-2">
+          {activeTab === "portal" && (
+            <button
+              onClick={() => setShowArquivoDigital(true)}
+              className="bg-indigo-50 border border-indigo-200 text-indigo-700 font-semibold px-3 py-1.5 rounded-lg text-xs hover:bg-indigo-100 transition-all cursor-pointer"
+            >
+              <i className="fa-solid fa-box-archive mr-1.5"></i> Arquivo Digital
+            </button>
+          )}
           <button
             onClick={handleSendPwaLink}
             className="bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold px-3 py-1.5 rounded-lg text-xs hover:bg-emerald-100 transition-all cursor-pointer"
@@ -3108,6 +3128,43 @@ export function PortalCondomino({
             ) : (
               <span className="text-slate-600 text-[10px]">Mantenha o dedo no leitor ou olhe para a câmara</span>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Arquivo Digital — mesma vista/filtro de privacidade por fração do
+          GestaoDocumentos já usado na PWA (PWACondominoView.tsx). */}
+      {showArquivoDigital && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-6">
+          <div
+            ref={arquivoDigitalRef}
+            tabIndex={-1}
+            className="w-full max-w-6xl max-h-[92vh] bg-white dark:bg-slate-950 rounded-2xl shadow-2xl overflow-y-auto outline-none"
+          >
+            <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-3.5 bg-white/95 dark:bg-slate-950/95 backdrop-blur border-b border-slate-200 dark:border-slate-800">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                <i className="fa-solid fa-box-archive text-indigo-500"></i> Arquivo Digital
+              </h3>
+              <button
+                onClick={() => setShowArquivoDigital(false)}
+                className="h-9 w-9 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                title="Fechar Arquivo Digital"
+                aria-label="Fechar Arquivo Digital"
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <div className="p-4">
+              <GestaoDocumentos
+                predio={predio}
+                documentos={documentos}
+                onAddDocumento={(doc) => setDocumentos(prev => [...prev, doc])}
+                setDocumentos={setDocumentos}
+                loggedUser={loggedUser}
+                fracaoDoCondomino={activeUserFracao?.id_fracao}
+                fracaoNomeDoCondomino={activeUserFracao?.fracao_nome}
+              />
+            </div>
           </div>
         </div>
       )}

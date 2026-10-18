@@ -3215,6 +3215,8 @@ export default function App() {
               setContas={setContas}
               loggedUser={loggedUser}
               setLoggedUser={setLoggedUser}
+              documentos={documentos}
+              setDocumentos={setDocumentos}
             />
           )}
 
