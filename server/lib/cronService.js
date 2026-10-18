@@ -725,6 +725,82 @@ async function idsAvisosComAgendamentoFuturo() {
  * partilhada com emitirNotasExtraordinariasEmAtraso) — nunca duplica, mesmo
  * que o mesmo agendamento seja processado por engano mais do que uma vez.
  */
+// Mesmo email/assunto do pedido manual em GestaoSinistrosSeguros.tsx
+// (handleEnviarPedidoApolice/enviarNotificacaoApolice) — repetido aqui em
+// vez de chamado por HTTP interno, porque este job corre do lado do
+// servidor (/api/cron ou logo a seguir a agendar), sem browser nenhum
+// aberto a fazer o fetch original.
+async function enviarNotificacaoApoliceSeguroJob(id_fracao) {
+  const { data: f } = await supabase.from("fracoes").select("fracao_nome, proprietario").eq("id_fracao", id_fracao).maybeSingle();
+  if (!f) return { enviado: false, erro: "Fração não encontrada" };
+  const email = f.proprietario?.email;
+  if (!email) return { enviado: false, erro: "Proprietário sem email registado", fracao_nome: f.fracao_nome };
+
+  const nome = f.proprietario?.nome || f.fracao_nome;
+  const assunto = `Notificação Legal — Seguro de Incêndio da Fração ${f.fracao_nome}`;
+  const mensagem = `Nos termos do <strong>Artigo 1429.º do Código Civil</strong>, é obrigatório o seguro contra o risco de incêndio da sua fração e das partes comuns do edifício.<br><br>Solicitamos o envio do comprovativo de apólice em vigor (ou da sua renovação) referente à fração <strong>${f.fracao_nome}</strong>, no mais curto espaço de tempo possível.<br><br>Caso já tenha efetuado a contratação/renovação, agradecemos o envio do comprovativo por email.`;
+  const html = gerarHtmlResposta(nome, mensagem);
+  const enviado = await enviarEmailSemAnexo({ to: email, subject: assunto, html });
+  return { enviado: !!enviado, fracao_nome: f.fracao_nome, email };
+}
+
+/**
+ * Despacha UM agendamento devido para a rotina real de envio certa, segundo
+ * o seu "tipo" — ver processarAgendamentosAvisos. "Quota Extraordinária"
+ * (o tipo original, único até agora) usa o lote de avisos (ids_avisos); os
+ * 3 tipos novos (pedido explícito do administrador: dar opção de agendar
+ * também aos avisos manuais de "Notas em Atraso" e ao pedido de apólice de
+ * Seguro de Incêndio, não só à emissão de Quota Extraordinária) usam
+ * "payload" para os parâmetros próprios de cada um (ex.: id_fracao).
+ */
+async function executarAgendamentoDevido(agendamento) {
+  const payload = agendamento.payload || {};
+
+  if (agendamento.tipo === "Notas em Atraso — Quota Ordinária") {
+    const resultado = await emitirNotasEmAtrasoFracao(agendamento.id_predio, payload.id_fracao, payload.mes_inicio || "2026-06-01");
+    if (!resultado.ok) throw new Error(resultado.error || "Falha ao emitir notas em atraso");
+    return { enviados: resultado.mesesEmitidos, total_lote: resultado.mesesEmitidos + (resultado.mesesJaExistentes || 0) };
+  }
+
+  if (agendamento.tipo === "Notas em Atraso — Quota Extraordinária") {
+    const resultado = await emitirNotasExtraordinariasEmAtraso();
+    return { enviados: resultado.resultados.filter((r) => r.emailEnviado).length, total_lote: resultado.total };
+  }
+
+  if (agendamento.tipo === "Notificação Seguro de Incêndio") {
+    const resultado = await enviarNotificacaoApoliceSeguroJob(payload.id_fracao);
+    if (!resultado.enviado) throw new Error(resultado.erro || "Falha ao enviar notificação de apólice");
+    return { enviados: 1, total_lote: 1 };
+  }
+
+  // "Quota Extraordinária" (comportamento original, por lote de avisos já
+  // criados em GestaoQuotasOrcamento.tsx) — fica como estava.
+  const ids = agendamento.ids_avisos || [];
+  const { data: avisosDoLote } = await supabase.from("avisos").select("*").in("id_aviso", ids);
+  const { data: predio } = await supabase.from("predios").select("*").eq("id_predio", agendamento.id_predio).maybeSingle();
+  if (!predio) throw new Error("Prédio não encontrado");
+
+  const contas = await obterContasDoPredio(predio.id_predio);
+  const prefixoEdificio = derivarPrefixoEdificio(predio.nome);
+
+  let enviados = 0;
+  for (const aviso of avisosDoLote || []) {
+    // Já pago ou cancelado entretanto — não faz sentido notificar.
+    if (aviso.estado !== "Pendente") continue;
+    if (await jaFoiEnviadaNotaExtraordinaria(aviso.id_aviso)) continue;
+
+    const { data: f } = await supabase.from("fracoes").select("*").eq("id_fracao", aviso.id_fracao).maybeSingle();
+    if (!f) continue;
+    const proprietario = await obterProprietarioDaFracao(aviso.id_fracao);
+
+    await emitirNotaExtraordinariaSeparada({ predio, f, proprietario, avisoExtra: aviso, prefixoEdificio, contas });
+    await marcarExecutadoHoje("nota_extraordinaria_enviada", aviso.id_aviso, f.fracao_nome, predio.id_predio);
+    enviados += 1;
+  }
+
+  return { enviados, total_lote: ids.length };
+}
+
 export async function processarAgendamentosAvisos(idAgendamentoEspecifico) {
   let query = supabase.from("agendamentos_avisos").select("*").eq("estado", "Pendente");
   query = idAgendamentoEspecifico
@@ -740,37 +816,14 @@ export async function processarAgendamentosAvisos(idAgendamentoEspecifico) {
   const resultados = [];
   for (const agendamento of agendamentosDevidos || []) {
     try {
-      const ids = agendamento.ids_avisos || [];
-      const { data: avisosDoLote } = await supabase.from("avisos").select("*").in("id_aviso", ids);
-      const { data: predio } = await supabase.from("predios").select("*").eq("id_predio", agendamento.id_predio).maybeSingle();
-      if (!predio) {
-        resultados.push({ id_agendamento: agendamento.id_agendamento, ok: false, error: "Prédio não encontrado" });
-        continue;
-      }
-      const contas = await obterContasDoPredio(predio.id_predio);
-      const prefixoEdificio = derivarPrefixoEdificio(predio.nome);
-
-      let enviados = 0;
-      for (const aviso of avisosDoLote || []) {
-        // Já pago ou cancelado entretanto — não faz sentido notificar.
-        if (aviso.estado !== "Pendente") continue;
-        if (await jaFoiEnviadaNotaExtraordinaria(aviso.id_aviso)) continue;
-
-        const { data: f } = await supabase.from("fracoes").select("*").eq("id_fracao", aviso.id_fracao).maybeSingle();
-        if (!f) continue;
-        const proprietario = await obterProprietarioDaFracao(aviso.id_fracao);
-
-        await emitirNotaExtraordinariaSeparada({ predio, f, proprietario, avisoExtra: aviso, prefixoEdificio, contas });
-        await marcarExecutadoHoje("nota_extraordinaria_enviada", aviso.id_aviso, f.fracao_nome, predio.id_predio);
-        enviados += 1;
-      }
+      const { enviados, total_lote } = await executarAgendamentoDevido(agendamento);
 
       await supabase
         .from("agendamentos_avisos")
         .update({ estado: "Executado", executado_em: new Date().toISOString() })
         .eq("id_agendamento", agendamento.id_agendamento);
 
-      resultados.push({ id_agendamento: agendamento.id_agendamento, ok: true, enviados, total_lote: ids.length });
+      resultados.push({ id_agendamento: agendamento.id_agendamento, ok: true, enviados, total_lote });
     } catch (errAg) {
       console.error(`[cronService] Erro ao processar agendamento ${agendamento.id_agendamento}:`, errAg);
       resultados.push({ id_agendamento: agendamento.id_agendamento, ok: false, error: errAg?.message || String(errAg) });

@@ -2313,14 +2313,14 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-slate-600 mb-1">Tipo de Movimento *</label>
-                  <select value={tipo} onChange={e => setTipo(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white">
+                  <select value={tipo} onChange={e => setTipo(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white text-slate-900">
                     <option value="Despesa">Despesa (Débito da Conta)</option>
                     <option value="Receita">Receita (Crédito na Conta)</option>
                   </select>
                 </div>
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-slate-600 mb-1">Conta Bancária Afetada *</label>
-                  <select required value={contaId} onChange={e => setContaId(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white">
+                  <select required value={contaId} onChange={e => setContaId(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white text-slate-900">
                     <option value="">Selecione a conta bancária...</option>
                     {predioContas.map(c => (
                       <option key={c.id_conta} value={c.id_conta}>{c.banco} ({c.tipo})</option>
@@ -2343,7 +2343,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-slate-600 mb-1">Categoria de Lançamento *</label>
-                  <select value={categoria} onChange={e => setCategoria(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white">
+                  <select value={categoria} onChange={e => setCategoria(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white text-slate-900">
                     <optgroup label="Receitas / Quotas">
                       <option value="Quotas Ordinárias">Quotas Ordinárias (Exercício Corrente)</option>
                       <option value="Quotas de Exercícios Anteriores / Dívidas Transitadas">Quotas de Exercícios Anteriores / Dívidas Transitadas</option>

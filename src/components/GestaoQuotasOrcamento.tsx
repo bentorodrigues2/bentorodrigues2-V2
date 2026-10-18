@@ -521,9 +521,33 @@ export function GestaoQuotasOrcamento({
   // sozinha todos os dias via /api/cron), para não obrigar a esperar pelo
   // cron seguinte depois de corrigir isto.
   const [aEmitirNotasExtraAtraso, setAEmitirNotasExtraAtraso] = useState(false);
+  // Enviar agora ou agendar para depois — mesmo mecanismo (tabela
+  // agendamentos_avisos) já usado na emissão da Quota Extraordinária acima;
+  // pedido explícito do administrador para também poder agendar o aviso
+  // manual de "Notas em Atraso".
+  const [modoEnvioNotasExtraAtraso, setModoEnvioNotasExtraAtraso] = useState<"imediato" | "agendado">("imediato");
+  const [dataHoraNotasExtraAtraso, setDataHoraNotasExtraAtraso] = useState<string>("");
   const handleEmitirNotasExtraordinariasEmAtraso = async () => {
+    if (modoEnvioNotasExtraAtraso === "agendado" && !dataHoraNotasExtraAtraso) {
+      alert("Escolha a data/hora de envio, ou muda para \"Enviar Imediatamente\".");
+      return;
+    }
     setAEmitirNotasExtraAtraso(true);
     try {
+      if (modoEnvioNotasExtraAtraso === "agendado") {
+        const ok = await dbInsert("agendamentos_avisos", {
+          id_agendamento: "ag-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+          id_predio: predio.id_predio,
+          tipo: "Notas em Atraso — Quota Extraordinária",
+          ids_avisos: [],
+          data_hora_agendada: new Date(dataHoraNotasExtraAtraso).toISOString(),
+          estado: "Pendente"
+        });
+        if (!ok) throw new Error("Não foi possível agendar o envio");
+        alert(`Envio das notas de cobrança em atraso agendado para ${new Date(dataHoraNotasExtraAtraso).toLocaleString("pt-PT")}.`);
+        return;
+      }
+
       const resp = await fetch("/api/pagamento?acao=emitir-notas-extraordinarias-atraso", { method: "POST" });
       const resultado = await resp.json();
       if (!resp.ok || resultado?.error) throw new Error(resultado?.error || "Erro desconhecido");
@@ -1472,7 +1496,7 @@ export function GestaoQuotasOrcamento({
               </div>
               <div className="flex flex-col">
                 <label className="text-xs font-semibold text-slate-600 mb-1">Mês de Emissão *</label>
-                <select value={mes} onChange={e => setMes(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white">
+                <select value={mes} onChange={e => setMes(e.target.value)} className="border border-slate-200 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white text-slate-900">
                   <option value="Janeiro">Janeiro</option>
                   <option value="Fevereiro">Fevereiro</option>
                   <option value="Março">Março</option>
@@ -1664,7 +1688,7 @@ export function GestaoQuotasOrcamento({
                 <div className="flex flex-wrap items-end gap-2 bg-slate-50 border border-slate-100 rounded-xl p-3">
                   <div className="flex flex-col">
                     <label className="text-[10px] font-semibold text-slate-600 mb-1">Aplicar regra em lote a</label>
-                    <select value={regraLoteTipoAlvo} onChange={e => setRegraLoteTipoAlvo(e.target.value)} className="border border-slate-200 px-2.5 py-1.5 text-xs rounded-lg bg-white">
+                    <select value={regraLoteTipoAlvo} onChange={e => setRegraLoteTipoAlvo(e.target.value)} className="border border-slate-200 px-2.5 py-1.5 text-xs rounded-lg bg-white text-slate-900">
                       <option value="todas">Todas as Frações</option>
                       <option value="habitacionais">Frações Habitacionais (T1, T2, T3...)</option>
                       <option value="lojas">Só Lojas Comerciais</option>
@@ -2060,15 +2084,43 @@ export function GestaoQuotasOrcamento({
                   {aEmitirExtra ? <i className="fa-solid fa-spinner animate-spin w-3.5 h-3.5"></i> : <Save className="w-3.5 h-3.5" />}
                   <span>{aEmitirExtra ? "A emitir..." : "Emitir Quota Extraordinária"}</span>
                 </button>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-2">
+                  <div className="flex gap-1.5 text-[10px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setModoEnvioNotasExtraAtraso("imediato")}
+                      className={`flex-1 px-2 py-1.5 rounded-lg transition-colors cursor-pointer ${modoEnvioNotasExtraAtraso === "imediato" ? "bg-emerald-600 text-white" : "bg-white text-slate-900 border border-slate-200"}`}
+                    >
+                      <i className="fa-solid fa-bolt mr-1"></i>Enviar Imediatamente
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModoEnvioNotasExtraAtraso("agendado")}
+                      className={`flex-1 px-2 py-1.5 rounded-lg transition-colors cursor-pointer ${modoEnvioNotasExtraAtraso === "agendado" ? "bg-indigo-600 text-white" : "bg-white text-slate-900 border border-slate-200"}`}
+                    >
+                      <i className="fa-solid fa-clock mr-1"></i>Agendar para Depois
+                    </button>
+                  </div>
+                  {modoEnvioNotasExtraAtraso === "agendado" && (
+                    <input
+                      type="datetime-local"
+                      value={dataHoraNotasExtraAtraso}
+                      onChange={(e) => setDataHoraNotasExtraAtraso(e.target.value)}
+                      min={new Date().toISOString().slice(0, 16)}
+                      className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-[11px] focus:outline-indigo-500 bg-white text-slate-900"
+                    />
+                  )}
+                </div>
+
                 <button
                   type="button"
                   onClick={handleEmitirNotasExtraordinariasEmAtraso}
                   disabled={aEmitirNotasExtraAtraso}
-                  title="Emite agora (sem esperar pelo dia seguinte) a nota de cobrança + email de qualquer prestação de Quota Extraordinária já vencida e ainda sem notificação — cobre datas de início já no passado."
+                  title="Emite (ou agenda) a nota de cobrança + email de qualquer prestação de Quota Extraordinária já vencida e ainda sem notificação — cobre datas de início já no passado."
                   className="w-full px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
                 >
                   <i className={`fa-solid ${aEmitirNotasExtraAtraso ? "fa-spinner animate-spin" : "fa-clock-rotate-left"}`}></i>
-                  <span>{aEmitirNotasExtraAtraso ? "A emitir notas em atraso..." : "Emitir Notas em Atraso (meses já vencidos)"}</span>
+                  <span>{aEmitirNotasExtraAtraso ? "A processar..." : modoEnvioNotasExtraAtraso === "agendado" ? "Agendar Notas em Atraso (meses já vencidos)" : "Emitir Notas em Atraso (meses já vencidos)"}</span>
                 </button>
               </div>
             )}

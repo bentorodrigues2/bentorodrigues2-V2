@@ -42,6 +42,7 @@ import {
   saveSinistroToSupabase,
   deleteSinistroFromSupabase,
   dbUpdate,
+  dbInsert,
   uploadDocumentoToStorage
 } from "../lib/supabaseService";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
@@ -742,10 +743,46 @@ export function GestaoSinistrosSeguros({
     if (!resp.ok || !resultado.ok) throw new Error(resultado?.error || "Falha ao enviar notificação");
   };
 
+  // Enviar agora ou agendar para depois (mesmo mecanismo de
+  // agendamentos_avisos usado nas notas de cobrança em atraso) — pedido
+  // explícito do administrador para incluir também o pedido de apólice de
+  // Seguro de Incêndio.
+  const [modoEnvioApolice, setModoEnvioApolice] = useState<"imediato" | "agendado">("imediato");
+  const [dataHoraApolice, setDataHoraApolice] = useState<string>("");
+
+  const handleAgendarPedidoApolice = async (fracao: Fracao) => {
+    if (!dataHoraApolice) {
+      alert("Escolhe a data/hora de envio.");
+      return;
+    }
+    try {
+      const ok = await dbInsert("agendamentos_avisos", {
+        id_agendamento: "ag-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+        id_predio: predio.id_predio,
+        tipo: "Notificação Seguro de Incêndio",
+        ids_avisos: [],
+        payload: { id_fracao: fracao.id_fracao },
+        data_hora_agendada: new Date(dataHoraApolice).toISOString(),
+        estado: "Pendente"
+      });
+      if (!ok) throw new Error("Não foi possível agendar o envio");
+      showToast(`🕐 Notificação agendada para ${new Date(dataHoraApolice).toLocaleString("pt-PT")} (Fração ${fracao.fracao_nome}).`);
+      setNotifModalFracao(null);
+      setModoEnvioApolice("imediato");
+      setDataHoraApolice("");
+    } catch (err: any) {
+      alert(`❌ Erro ao agendar: ${err?.message || "erro desconhecido"}`);
+    }
+  };
+
   const handleEnviarPedidoApolice = (fracao: Fracao) => {
     const email = fracao.proprietario?.email;
     if (!email) {
       alert(`A fração ${fracao.fracao_nome} não tem email de proprietário registado.`);
+      return;
+    }
+    if (modoEnvioApolice === "agendado") {
+      handleAgendarPedidoApolice(fracao);
       return;
     }
     triggerSendReaction("email", `A enviar notificação de apólice de seguro: Fração ${fracao.fracao_nome}`, async () => {
@@ -2212,10 +2249,38 @@ export function GestaoSinistrosSeguros({
                 </div>
               </div>
 
+              <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 space-y-2">
+                <div className="flex gap-1.5 text-[10px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setModoEnvioApolice("imediato")}
+                    className={`flex-1 px-2 py-1.5 rounded-lg transition-colors cursor-pointer ${modoEnvioApolice === "imediato" ? "bg-emerald-600 text-white" : "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-300 border border-slate-200 dark:border-slate-700"}`}
+                  >
+                    <i className="fa-solid fa-bolt mr-1"></i>Enviar Imediatamente
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModoEnvioApolice("agendado")}
+                    className={`flex-1 px-2 py-1.5 rounded-lg transition-colors cursor-pointer ${modoEnvioApolice === "agendado" ? "bg-indigo-600 text-white" : "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-300 border border-slate-200 dark:border-slate-700"}`}
+                  >
+                    <i className="fa-solid fa-clock mr-1"></i>Agendar para Depois
+                  </button>
+                </div>
+                {modoEnvioApolice === "agendado" && (
+                  <input
+                    type="datetime-local"
+                    value={dataHoraApolice}
+                    onChange={(e) => setDataHoraApolice(e.target.value)}
+                    min={new Date().toISOString().slice(0, 16)}
+                    className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-[11px] focus:outline-indigo-500 bg-white text-slate-900"
+                  />
+                )}
+              </div>
+
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setNotifModalFracao(null)}
+                  onClick={() => { setNotifModalFracao(null); setModoEnvioApolice("imediato"); setDataHoraApolice(""); }}
                   className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl cursor-pointer"
                 >
                   Cancelar
@@ -2226,7 +2291,7 @@ export function GestaoSinistrosSeguros({
                   className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl cursor-pointer shadow-md transition-all flex items-center justify-center gap-1.5"
                 >
                   <Send className="h-4 w-4" />
-                  <span>Enviar Notificação</span>
+                  <span>{modoEnvioApolice === "agendado" ? "Agendar Notificação" : "Enviar Notificação"}</span>
                 </button>
               </div>
             </div>

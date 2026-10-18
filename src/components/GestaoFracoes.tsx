@@ -131,6 +131,41 @@ export function GestaoFracoes({
     }
   };
 
+  // Alternativa ao envio imediato acima — agenda o mesmo envio (via
+  // agendamentos_avisos, processado por /api/cron ou de imediato ao
+  // agendar com a hora de agora) para uma data/hora à escolha do
+  // administrador. Pedido explícito: dar esta opção também aqui, não só na
+  // emissão de Quota Extraordinária.
+  const [agendarNotasAtrasoFracaoId, setAgendarNotasAtrasoFracaoId] = useState<string | null>(null);
+  const [dataHoraAgendarNotasAtraso, setDataHoraAgendarNotasAtraso] = useState<string>("");
+  const [aAgendarNotasAtrasoId, setAAgendarNotasAtrasoId] = useState<string | null>(null);
+  const confirmarAgendamentoNotasAtraso = async (idFracao: string, nomeFracao: string) => {
+    if (!dataHoraAgendarNotasAtraso) {
+      alert("Escolhe a data/hora de envio.");
+      return;
+    }
+    setAAgendarNotasAtrasoId(idFracao);
+    try {
+      const ok = await dbInsert("agendamentos_avisos", {
+        id_agendamento: "ag-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+        id_predio: predio.id_predio,
+        tipo: "Notas em Atraso — Quota Ordinária",
+        ids_avisos: [],
+        payload: { id_fracao: idFracao },
+        data_hora_agendada: new Date(dataHoraAgendarNotasAtraso).toISOString(),
+        estado: "Pendente"
+      });
+      if (!ok) throw new Error("Não foi possível agendar o envio");
+      alert(`✅ Envio das notas de cobrança em atraso da Fração ${nomeFracao} agendado para ${new Date(dataHoraAgendarNotasAtraso).toLocaleString("pt-PT")}.`);
+      setAgendarNotasAtrasoFracaoId(null);
+      setDataHoraAgendarNotasAtraso("");
+    } catch (err: any) {
+      alert(`❌ Erro ao agendar: ${err?.message || "erro desconhecido"}`);
+    } finally {
+      setAAgendarNotasAtrasoId(null);
+    }
+  };
+
   // Digital Signature Pad state for Administrator
   const adminCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const adminSigFileRef = React.useRef<HTMLInputElement>(null);
@@ -2462,15 +2497,15 @@ export function GestaoFracoes({
 
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-slate-600 mb-1">IBAN de Origem</label>
-                  <input type="text" value={propIban} onChange={e => setPropIban(e.target.value)} placeholder="PT50..." className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono bg-white" />
+                  <input type="text" value={propIban} onChange={e => setPropIban(e.target.value)} placeholder="PT50..." className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono bg-white text-slate-900" />
                 </div>
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-slate-600 mb-1">Titular da Conta Bancária</label>
-                  <input type="text" value={propTitular} onChange={e => setPropTitular(e.target.value)} placeholder="Nome do titular" className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white" />
+                  <input type="text" value={propTitular} onChange={e => setPropTitular(e.target.value)} placeholder="Nome do titular" className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white text-slate-900" />
                 </div>
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-slate-600 mb-1">Entidade Bancária</label>
-                  <input type="text" value={propBanco} onChange={e => setPropBanco(e.target.value)} placeholder="Ex: BPI, CGD, ActivoBank" className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white" />
+                  <input type="text" value={propBanco} onChange={e => setPropBanco(e.target.value)} placeholder="Ex: BPI, CGD, ActivoBank" className="border border-slate-300 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 bg-white text-slate-900" />
                 </div>
 
                 <div className="flex flex-col col-span-2 sm:col-span-3 bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
@@ -2680,26 +2715,26 @@ export function GestaoFracoes({
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   <div className="flex flex-col">
                     <label className="text-xs font-semibold text-slate-600 mb-1">Nome Completo</label>
-                    <input type="text" value={coNome} onChange={e => setCoNome(e.target.value)} placeholder="Ex: Ana Maria Guerra" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500" />
+                    <input type="text" value={coNome} onChange={e => setCoNome(e.target.value)} placeholder="Ex: Ana Maria Guerra" className="border border-slate-200 bg-white text-slate-900 px-3 py-2 text-sm rounded-lg focus:outline-indigo-500" />
                   </div>
                   <div className="flex flex-col">
                     <label className="text-xs font-semibold text-slate-600 mb-1">NIF Fiscal</label>
-                    <input type="text" value={coNif} onChange={e => setCoNif(e.target.value)} placeholder="Ex: 234567890" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono" />
+                    <input type="text" value={coNif} onChange={e => setCoNif(e.target.value)} placeholder="Ex: 234567890" className="border border-slate-200 bg-white text-slate-900 px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono" />
                   </div>
                   <div className="flex flex-col">
                     <label className="text-xs font-semibold text-slate-600 mb-1">E-mail</label>
-                    <input type="email" value={coEmail} onChange={e => setCoEmail(e.target.value)} placeholder="Ex: ana@email.com" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono" />
+                    <input type="email" value={coEmail} onChange={e => setCoEmail(e.target.value)} placeholder="Ex: ana@email.com" className="border border-slate-200 bg-white text-slate-900 px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono" />
                   </div>
                   <div className="flex flex-col">
                     <label className="text-xs font-semibold text-slate-600 mb-1">Telemóvel</label>
-                    <input type="text" value={coTlm} onChange={e => setCoTlm(e.target.value)} placeholder="Ex: 919888777" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono" />
+                    <input type="text" value={coTlm} onChange={e => setCoTlm(e.target.value)} placeholder="Ex: 919888777" className="border border-slate-200 bg-white text-slate-900 px-3 py-2 text-sm rounded-lg focus:outline-indigo-500 font-mono" />
                   </div>
                   <div className="flex flex-col">
                     <label className="text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
                       <i className="fa-solid fa-cake-candles text-indigo-500 text-xs"></i>
                       <span>Data de Nascimento</span>
                     </label>
-                    <input type="date" value={coDataNascimento} onChange={e => setCoDataNascimento(e.target.value)} className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-indigo-500" />
+                    <input type="date" value={coDataNascimento} onChange={e => setCoDataNascimento(e.target.value)} className="border border-slate-200 bg-white text-slate-900 px-3 py-2 text-sm rounded-lg focus:outline-indigo-500" />
                   </div>
                 </div>
 
@@ -2881,26 +2916,26 @@ export function GestaoFracoes({
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div className="flex flex-col">
                       <label className="text-xs font-semibold text-slate-600 mb-1">Nome Completo do Inquilino</label>
-                      <input type="text" value={inqNome} onChange={e => setInqNome(e.target.value)} placeholder="Ex: Ricardo Inquilino" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+                      <input type="text" value={inqNome} onChange={e => setInqNome(e.target.value)} placeholder="Ex: Ricardo Inquilino" className="border border-slate-200 bg-white text-slate-900 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
                     </div>
                     <div className="flex flex-col">
                       <label className="text-xs font-semibold text-slate-600 mb-1">NIF Fiscal Inquilino</label>
-                      <input type="text" value={inqNif} onChange={e => setInqNif(e.target.value)} placeholder="Contribuinte" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
+                      <input type="text" value={inqNif} onChange={e => setInqNif(e.target.value)} placeholder="Contribuinte" className="border border-slate-200 bg-white text-slate-900 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
                     </div>
                     <div className="flex flex-col">
                       <label className="text-xs font-semibold text-slate-600 mb-1">E-mail</label>
-                      <input type="email" value={inqEmail} onChange={e => setInqEmail(e.target.value)} placeholder="ricardo@email.com" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
+                      <input type="email" value={inqEmail} onChange={e => setInqEmail(e.target.value)} placeholder="ricardo@email.com" className="border border-slate-200 bg-white text-slate-900 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
                     </div>
                     <div className="flex flex-col">
                       <label className="text-xs font-semibold text-slate-600 mb-1">Telemóvel</label>
-                      <input type="text" value={inqTlm} onChange={e => setInqTlm(e.target.value)} placeholder="929887766" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
+                      <input type="text" value={inqTlm} onChange={e => setInqTlm(e.target.value)} placeholder="929887766" className="border border-slate-200 bg-white text-slate-900 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500 font-mono" />
                     </div>
                     <div className="flex flex-col">
                       <label className="text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
                         <i className="fa-solid fa-cake-candles text-amber-500 text-xs"></i>
                         <span>Data de Nascimento</span>
                       </label>
-                      <input type="date" value={inqDataNascimento} onChange={e => setInqDataNascimento(e.target.value)} className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+                      <input type="date" value={inqDataNascimento} onChange={e => setInqDataNascimento(e.target.value)} className="border border-slate-200 bg-white text-slate-900 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
                     </div>
                   </div>
 
@@ -2908,7 +2943,7 @@ export function GestaoFracoes({
                     <div className="col-span-3 grid grid-cols-1 sm:grid-cols-4 gap-3">
                       <div className="flex flex-col sm:col-span-2">
                         <label className="text-xs font-semibold text-slate-600 mb-1">Morada Alternativa do Proprietário (Obrigatório se Arrendado)</label>
-                        <input type="text" value={propMoradaAlt} onChange={e => setPropMoradaAlt(e.target.value)} placeholder="Rua, nº, andar" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+                        <input type="text" value={propMoradaAlt} onChange={e => setPropMoradaAlt(e.target.value)} placeholder="Rua, nº, andar" className="border border-slate-200 bg-white text-slate-900 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
                       </div>
                       <div className="flex flex-col">
                         <label className="text-xs font-semibold text-slate-600 mb-1">Código-Postal</label>
@@ -2929,7 +2964,7 @@ export function GestaoFracoes({
                       </div>
                       <div className="flex flex-col">
                         <label className="text-xs font-semibold text-slate-600 mb-1">Localidade{aProcurarLocalidadeAlt ? " (a procurar...)" : ""}</label>
-                        <input type="text" value={propMoradaAltLocalidade} onChange={e => setPropMoradaAltLocalidade(e.target.value)} placeholder="Reconhecida automaticamente pelo código-postal" className="border border-slate-200 bg-white px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
+                        <input type="text" value={propMoradaAltLocalidade} onChange={e => setPropMoradaAltLocalidade(e.target.value)} placeholder="Reconhecida automaticamente pelo código-postal" className="border border-slate-200 bg-white text-slate-900 px-3 py-2 text-sm rounded-lg focus:outline-emerald-500" />
                       </div>
                     </div>
                     <div className="flex flex-col">
@@ -3185,16 +3220,55 @@ export function GestaoFracoes({
                               </button>
                             )}
                             {prop.id_fracao && prop.email && /\S+@\S+\.\S+/.test(prop.email) && (
-                              <button
-                                type="button"
-                                disabled={aEmitirNotasAtrasoId === prop.id_fracao}
-                                onClick={() => emitirNotasAtrasoManual(prop.id_fracao!, prop.fracao_nome || prop.id_fracao!, prop.email)}
-                                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-indigo-200 flex items-center gap-1 shadow-xs disabled:opacity-50"
-                                title="Emitir e enviar notas de cobrança em atraso (desde o início de atividade)"
-                              >
-                                <i className="fa-solid fa-paper-plane text-indigo-600 shrink-0"></i>
-                                <span className="font-semibold text-[10px]">{aEmitirNotasAtrasoId === prop.id_fracao ? "A emitir..." : "Notas em Atraso"}</span>
-                              </button>
+                              <div className="relative flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  disabled={aEmitirNotasAtrasoId === prop.id_fracao}
+                                  onClick={() => emitirNotasAtrasoManual(prop.id_fracao!, prop.fracao_nome || prop.id_fracao!, prop.email)}
+                                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-indigo-200 flex items-center gap-1 shadow-xs disabled:opacity-50"
+                                  title="Emitir e enviar agora as notas de cobrança em atraso (desde o início de atividade)"
+                                >
+                                  <i className="fa-solid fa-paper-plane text-indigo-600 shrink-0"></i>
+                                  <span className="font-semibold text-[10px]">{aEmitirNotasAtrasoId === prop.id_fracao ? "A emitir..." : "Notas em Atraso"}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setAgendarNotasAtrasoFracaoId(agendarNotasAtrasoFracaoId === prop.id_fracao ? null : prop.id_fracao!)}
+                                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-indigo-200 shadow-xs"
+                                  title="Agendar o envio das notas de cobrança em atraso para mais tarde"
+                                >
+                                  <i className="fa-solid fa-clock text-indigo-600 shrink-0"></i>
+                                </button>
+                                {agendarNotasAtrasoFracaoId === prop.id_fracao && (
+                                  <div className="absolute z-20 top-full right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg p-2.5 space-y-2 w-56">
+                                    <label className="text-[10px] font-bold text-slate-600">Agendar envio para:</label>
+                                    <input
+                                      type="datetime-local"
+                                      value={dataHoraAgendarNotasAtraso}
+                                      onChange={(e) => setDataHoraAgendarNotasAtraso(e.target.value)}
+                                      min={new Date().toISOString().slice(0, 16)}
+                                      className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-[11px] focus:outline-indigo-500 bg-white text-slate-900"
+                                    />
+                                    <div className="flex gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => { setAgendarNotasAtrasoFracaoId(null); setDataHoraAgendarNotasAtraso(""); }}
+                                        className="flex-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-900 hover:bg-slate-200 cursor-pointer"
+                                      >
+                                        Cancelar
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={aAgendarNotasAtrasoId === prop.id_fracao}
+                                        onClick={() => confirmarAgendamentoNotasAtraso(prop.id_fracao!, prop.fracao_nome || prop.id_fracao!)}
+                                        className="flex-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 cursor-pointer"
+                                      >
+                                        {aAgendarNotasAtrasoId === prop.id_fracao ? "A agendar..." : "Agendar"}
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             )}
                             {prop.id_fracao && (fracoes.find(f => f.id_fracao === prop.id_fracao)?.historico_proprietarios?.length ?? 0) > 0 && (
                               <button
@@ -3254,7 +3328,7 @@ export function GestaoFracoes({
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
               <div>
                 <label className="font-semibold text-slate-600 block mb-1">Fração *</label>
-                <select value={resFracaoTarget} onChange={e => setResFracaoTarget(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 bg-white">
+                <select value={resFracaoTarget} onChange={e => setResFracaoTarget(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 bg-white text-slate-900">
                   <option value="">-- Escolher Fração --</option>
                   {predioFracoes.map(f => (
                     <option key={f.id_fracao} value={f.id_fracao}>Fração {f.fracao_nome} ({f.piso})</option>
@@ -3263,33 +3337,33 @@ export function GestaoFracoes({
               </div>
               <div>
                 <label className="font-semibold text-slate-600 block mb-1">Nome Completo *</label>
-                <input type="text" value={resNome} onChange={e => setResNome(e.target.value)} placeholder="Ex: Maria Antónia" className="w-full border border-slate-300 rounded-lg p-2 bg-white" />
+                <input type="text" value={resNome} onChange={e => setResNome(e.target.value)} placeholder="Ex: Maria Antónia" className="w-full border border-slate-300 rounded-lg p-2 bg-white text-slate-900" />
               </div>
               <div>
                 <label className="font-semibold text-slate-600 block mb-1">NIF *</label>
-                <input type="text" value={resNif} onChange={e => setResNif(e.target.value)} placeholder="Ex: 234567890 (ou NA se recusar)" className="w-full border border-slate-300 rounded-lg p-2 bg-white font-mono" />
+                <input type="text" value={resNif} onChange={e => setResNif(e.target.value)} placeholder="Ex: 234567890 (ou NA se recusar)" className="w-full border border-slate-300 rounded-lg p-2 bg-white text-slate-900 font-mono" />
               </div>
               <div>
                 <label className="font-semibold text-slate-600 block mb-1">E-mail</label>
-                <input type="text" value={resEmail} onChange={e => setResEmail(e.target.value)} placeholder="residente@email.com (ou NA)" className="w-full border border-slate-300 rounded-lg p-2 bg-white" />
+                <input type="text" value={resEmail} onChange={e => setResEmail(e.target.value)} placeholder="residente@email.com (ou NA)" className="w-full border border-slate-300 rounded-lg p-2 bg-white text-slate-900" />
               </div>
               <div>
                 <label className="font-semibold text-slate-600 block mb-1">Telefone</label>
-                <input type="text" value={resTlm} onChange={e => setResTlm(e.target.value)} placeholder="912345678 (ou NA)" className="w-full border border-slate-300 rounded-lg p-2 bg-white font-mono" />
+                <input type="text" value={resTlm} onChange={e => setResTlm(e.target.value)} placeholder="912345678 (ou NA)" className="w-full border border-slate-300 rounded-lg p-2 bg-white text-slate-900 font-mono" />
               </div>
               <div>
                 <label className="font-semibold text-slate-600 block mb-1">Data de Entrada *</label>
-                <input type="date" value={resDataEntrada} onChange={e => setResDataEntrada(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 bg-white font-mono" />
+                <input type="date" value={resDataEntrada} onChange={e => setResDataEntrada(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 bg-white text-slate-900 font-mono" />
               </div>
               <div>
                 <label className="font-semibold text-slate-600 block mb-1">Fim de Contrato / Validade</label>
-                <input type="date" value={resContratoFim} onChange={e => setResContratoFim(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 bg-white font-mono" />
+                <input type="date" value={resContratoFim} onChange={e => setResContratoFim(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 bg-white text-slate-900 font-mono" />
               </div>
               <div>
                 <label className="font-semibold text-slate-600 block mb-1">Valor Renda (€) / Caução (€)</label>
                 <div className="flex gap-1">
-                  <input type="text" inputMode="decimal" value={resValorRenda} onChange={e => setResValorRenda(e.target.value)} placeholder="Renda €" className="w-1/2 border border-slate-300 rounded-lg p-2 bg-white font-mono" />
-                  <input type="text" inputMode="decimal" value={resCaucao} onChange={e => setResCaucao(e.target.value)} placeholder="Caução €" className="w-1/2 border border-slate-300 rounded-lg p-2 bg-white font-mono" />
+                  <input type="text" inputMode="decimal" value={resValorRenda} onChange={e => setResValorRenda(e.target.value)} placeholder="Renda €" className="w-1/2 border border-slate-300 rounded-lg p-2 bg-white text-slate-900 font-mono" />
+                  <input type="text" inputMode="decimal" value={resCaucao} onChange={e => setResCaucao(e.target.value)} placeholder="Caução €" className="w-1/2 border border-slate-300 rounded-lg p-2 bg-white text-slate-900 font-mono" />
                 </div>
               </div>
             </div>
