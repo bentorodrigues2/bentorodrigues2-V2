@@ -30,7 +30,7 @@ export default function LayoutTop({ onLoginSuccess }: LayoutTopProps) {
   }, []);
 
   return (
-    <div className="layout-top-container">
+    <main className="layout-top-container">
 
       <div className="top-bar">
         <span className="condo-address">
@@ -69,6 +69,6 @@ export default function LayoutTop({ onLoginSuccess }: LayoutTopProps) {
           onLoginSuccess={onLoginSuccess}
         />
       )}
-    </div>
+    </main>
   );
 }

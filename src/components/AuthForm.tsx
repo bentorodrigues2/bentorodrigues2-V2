@@ -172,7 +172,7 @@ export default function AuthForm({
           <button
             type="button"
             onClick={() => setErrorMessage("")}
-            className="text-red-400 hover:text-white shrink-0 ml-1 font-bold"
+            className="text-red-400 hover:text-white shrink-0 ml-1 font-bold p-1.5 -m-1.5 min-h-[24px] min-w-[24px] flex items-center justify-center"
             title="Fechar aviso"
             aria-label="Fechar aviso"
           >
@@ -190,7 +190,7 @@ export default function AuthForm({
                 ✓
               </div>
               <h4 className="text-xs font-bold text-emerald-300">E-mail de Recuperação Enviado!</h4>
-              <p className="text-[10px] text-slate-600 leading-normal">
+              <p className="text-[10px] text-slate-400 leading-normal">
                 Enviámos um link seguro de redefinição de password para: <strong className="text-white font-mono">{email}</strong>.
                 Abra o email e siga o link para definir uma nova palavra-passe.
               </p>
@@ -198,7 +198,7 @@ export default function AuthForm({
           ) : (
             <div className="space-y-2.5">
               <div className="space-y-1">
-                <label className="text-[9px] font-extrabold text-slate-600 uppercase tracking-widest block">
+                <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">
                   E-mail da Conta
                 </label>
                 <div className="relative">
@@ -209,7 +209,7 @@ export default function AuthForm({
                     placeholder="utilizador@condomanager.pt"
                     className="w-full bg-slate-950 border border-slate-800 text-xs rounded-lg p-2 pl-8 font-medium text-white focus:outline-none focus:border-emerald-500"
                   />
-                  <span className="absolute left-2.5 top-2.5 text-slate-600 text-xs">✉</span>
+                  <span className="absolute left-2.5 top-2.5 text-slate-400 text-xs">✉</span>
                 </div>
               </div>
 
@@ -230,7 +230,7 @@ export default function AuthForm({
               setResetMode(false);
               setResetSent(false);
             }}
-            className="w-full text-center text-[11px] text-slate-600 hover:text-white pt-1 block cursor-pointer transition-colors"
+            className="w-full text-center text-[11px] text-slate-400 hover:text-white pt-1 block cursor-pointer transition-colors"
           >
             ← Voltar ao Login
           </button>
@@ -240,7 +240,7 @@ export default function AuthForm({
         <form onSubmit={handleStandardLogin} className="space-y-3 text-left pt-0.5">
           {/* Email Field */}
           <div className="space-y-1">
-            <label className="text-[9px] font-extrabold text-slate-600 uppercase tracking-widest block">
+            <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">
               E-MAIL DE UTILIZADOR
             </label>
             <div className="relative">
@@ -254,14 +254,14 @@ export default function AuthForm({
                 placeholder="o.seu.email@exemplo.com"
                 className="w-full bg-[#070b14] border border-slate-800 text-xs rounded-xl p-2.5 pl-8 font-medium text-white focus:outline-none focus:border-emerald-500 transition-all"
               />
-              <span className="absolute left-2.5 top-2.5 text-slate-600 text-xs">✉</span>
+              <span className="absolute left-2.5 top-2.5 text-slate-400 text-xs">✉</span>
             </div>
           </div>
 
           {/* Password Field */}
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-[9px] font-extrabold text-slate-600 uppercase tracking-widest block">
+              <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">
                 PALAVRA-PASSE
               </label>
               <button
@@ -286,7 +286,7 @@ export default function AuthForm({
                 placeholder="••••••••"
                 className="w-full bg-[#070b14] border border-slate-800 text-xs rounded-xl p-2.5 pl-8 font-mono text-white focus:outline-none focus:border-emerald-500 transition-all"
               />
-              <span className="absolute left-2.5 top-2.5 text-slate-600 text-xs">🔒</span>
+              <span className="absolute left-2.5 top-2.5 text-slate-400 text-xs">🔒</span>
             </div>
           </div>
 
@@ -327,7 +327,7 @@ export default function AuthForm({
         </form>
       )}
 
-      <div className="pt-3 border-t border-slate-800/80 flex justify-between items-center text-[9px] text-slate-600 font-mono">
+      <div className="pt-3 border-t border-slate-800/80 flex justify-between items-center text-[9px] text-slate-400 font-mono">
         <span>SECURE SUPABASE AUTH</span>
         <span>CondoManager AI © 2026</span>
       </div>
