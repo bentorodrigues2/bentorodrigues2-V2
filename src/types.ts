@@ -407,6 +407,12 @@ export interface Documento {
   relevancia_perfis?: ("ADMIN" | "EMPRESA_GESTORA" | "USER" | "INQUILINO" | "TECNICO" | "LIMPEZAS" | "JURIDICO" | "AUDITOR" | "CONTABILISTA")[];
   /** Caminho no Supabase Storage (bucket "documentos") — só existe em documentos gerados pelo backend */
   caminho?: string;
+  // id_fracao a que o documento pertence (ex: notas de cobrança, boas-vindas,
+  // seguros de fração) — quando preenchido, é um documento PESSOAL de uma
+  // fração específica e só deve ser visível a essa fração + à administração,
+  // nunca a todos os condóminos do prédio. Quando vazio/undefined, é um
+  // documento do prédio em geral (atas, regulamentos, etc), visível a todos.
+  fracao?: string;
 }
 
 export interface OcorrenciaFoto {

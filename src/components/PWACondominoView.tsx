@@ -2321,6 +2321,8 @@ export default function PWACondominoView({
               onAddDocumento={(doc) => setDocumentos(prev => [...prev, doc])}
               setDocumentos={setDocumentos}
               loggedUser={loggedUser}
+              fracaoDoCondomino={condominoFracao?.id_fracao}
+              fracaoNomeDoCondomino={condominoFracao?.fracao_nome}
             />
           </div>
         )}

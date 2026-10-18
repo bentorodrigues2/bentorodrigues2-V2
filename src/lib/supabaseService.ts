@@ -1456,7 +1456,8 @@ export async function fetchDocumentosFromSupabase(idPredio?: string): Promise<Do
       arquivado: row.arquivado ?? undefined,
       data_arquivamento: row.data_arquivamento || undefined,
       versao_atual: row.versao_atual != null ? Number(row.versao_atual) : 1,
-      versoes: row.versoes || []
+      versoes: row.versoes || [],
+      fracao: row.fracao || undefined
     }));
   } catch (err) {
     return null;
@@ -1486,7 +1487,8 @@ export async function saveDocumentoToSupabase(doc: Documento): Promise<boolean> 
     arquivado: doc.arquivado ?? null,
     data_arquivamento: doc.data_arquivamento || null,
     versao_atual: doc.versao_atual || 1,
-    versoes: doc.versoes || []
+    versoes: doc.versoes || [],
+    fracao: doc.fracao || null
   });
 }
 

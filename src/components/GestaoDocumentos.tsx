@@ -50,14 +50,28 @@ interface GestaoDocumentosProps {
   onAddDocumento: (novoDoc: Documento) => void;
   loggedUser: LoggedUser;
   setDocumentos?: React.Dispatch<React.SetStateAction<Documento[]>>;
+  // Identificadores da fração do condómino que está a ver o arquivo
+  // (USER/INQUILINO/COPROPRIETARIO) — quando definidos, restringem os
+  // documentos pessoais de fração (notas de cobrança, boas-vindas,
+  // seguros, etc — ver Documento.fracao) só à sua própria fração;
+  // documentos sem fração associada (atas, regulamentos, contratos gerais)
+  // continuam visíveis a todos. Nunca definidos nas vistas de
+  // administração. Dois identificadores (não só um) porque Documento.fracao
+  // foi gravado de forma inconsistente ao longo do tempo pelos vários
+  // fluxos automáticos — ora com o id_fracao, ora com a letra da fração
+  // (fracao_nome) — por isso compara-se contra ambos.
+  fracaoDoCondomino?: string;
+  fracaoNomeDoCondomino?: string;
 }
 
-export function GestaoDocumentos({ 
-  predio, 
-  documentos, 
-  onAddDocumento, 
+export function GestaoDocumentos({
+  predio,
+  documentos,
+  onAddDocumento,
   loggedUser,
-  setDocumentos 
+  setDocumentos,
+  fracaoDoCondomino,
+  fracaoNomeDoCondomino
 }: GestaoDocumentosProps) {
   // Main view mode tab: "documentos" or "fotografias" or "enciclopedia"
   const [activeTab, setActiveTab] = useState<"documentos" | "fotografias" | "enciclopedia">("documentos");
@@ -1650,10 +1664,26 @@ export function GestaoDocumentos({
   // Profile-based access filtering
   const predioDocsWithProfileAccess = useMemo(() => {
     return predioDocsRaw.filter(d => {
-      if (["ADMIN", "EMPRESA_GESTORA", "USER"].includes(loggedUser.role)) {
-        if (loggedUser.role === "USER" && d.visibilidade === "Administração") {
-          return false;
-        }
+      if (["ADMIN", "EMPRESA_GESTORA"].includes(loggedUser.role)) {
+        return true;
+      }
+
+      // Condóminos (proprietário, inquilino, coproprietário): nunca veem
+      // documentos marcados só para a Administração, e um documento
+      // pessoal de outra fração (d.fracao preenchido e diferente da sua)
+      // fica sempre fora — só documentos sem fração associada (do prédio
+      // em geral) ou da sua própria fração. Antes disto, INQUILINO e
+      // COPROPRIETARIO nem sequer tinham este filtro (caíam no "return
+      // true" final) e viam tudo, incluindo notas de cobrança, boas-vindas
+      // e seguros de OUTRAS frações — corrigido aqui.
+      if (["USER", "INQUILINO", "COPROPRIETARIO"].includes(loggedUser.role)) {
+        if (d.visibilidade === "Administração") return false;
+        // Um "Seguro de Fração" sem fração identificada (ex: email recebido
+        // de um endereço que não bateu certo com nenhum condómino) nunca
+        // deve ser visível a todo o prédio — fica reservado à Administração
+        // até ser associado manualmente à fração certa.
+        if (d.tipo === "Seguro de Fração" && !d.fracao) return false;
+        if (d.fracao && d.fracao !== fracaoDoCondomino && d.fracao !== fracaoNomeDoCondomino) return false;
         return true;
       }
 
@@ -1684,7 +1714,7 @@ export function GestaoDocumentos({
 
       return true;
     });
-  }, [predioDocsRaw, loggedUser.role]);
+  }, [predioDocsRaw, loggedUser.role, fracaoDoCondomino, fracaoNomeDoCondomino]);
 
   // Filter by active Tab (Documentos vs Fotografias)
   const docsDoTipo = useMemo(() => {
