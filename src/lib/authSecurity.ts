@@ -146,20 +146,46 @@ export function validatePasswordPolicy(
 // honesta de o obter do lado do cliente é perguntar a um serviço de eco
 // de IP. Se falhar (rede lenta, bloqueador), assume-se "Não disponível"
 // em vez de inventar um IP fixo como acontecia antes.
+//
+// Duas falhas reais corrigidas aqui: (1) o fetch não tinha timeout nenhum —
+// se este serviço externo ficar a "ligar" sem responder nem recusar (comum
+// com bloqueadores de anúncios/firewalls que descartam o pedido em silêncio
+// em vez de o rejeitarem), o browser só desiste sozinho depois de um
+// timeout de rede que pode passar largamente de 1 minuto, e qualquer ecrã
+// que espere por este IP (ex.: login, registo de auditoria de documentos)
+// ficava preso esse tempo todo. (2) sem partilhar o pedido em curso, cada
+// chamada concorrente (ex.: vários registos de segurança a acontecer perto
+// um do outro) abria a sua própria ligação pendente em vez de esperar pela
+// mesma — multiplicando o número de ligações presas.
 let cachedClientIp: string | null = null;
+let pedidoIpEmCurso: Promise<string> | null = null;
 export async function getRealClientIp(): Promise<string> {
   if (cachedClientIp) return cachedClientIp;
-  try {
-    const resp = await fetch("https://api.ipify.org?format=json");
-    const data = await resp.json();
-    if (data?.ip) {
-      cachedClientIp = data.ip;
-      return data.ip;
+  if (pedidoIpEmCurso) return pedidoIpEmCurso;
+
+  pedidoIpEmCurso = (async () => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      try {
+        const resp = await fetch("https://api.ipify.org?format=json", { signal: controller.signal });
+        const data = await resp.json();
+        if (data?.ip) {
+          cachedClientIp = data.ip;
+          return data.ip;
+        }
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    } catch {
+      // rede indisponível, bloqueada ou timeout — não inventar um IP
+    } finally {
+      pedidoIpEmCurso = null;
     }
-  } catch {
-    // rede indisponível ou bloqueada — não inventar um IP
-  }
-  return "Não disponível";
+    return "Não disponível";
+  })();
+
+  return pedidoIpEmCurso;
 }
 
 // Security Audit Log Helper — grava em auditoria_plataforma (Supabase real,

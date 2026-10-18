@@ -1,5 +1,5 @@
 import { Shield, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight, Calculator } from "lucide-react";
-import { useState, useEffect, useCallback, Fragment } from "react";
+import { useState, useEffect, useCallback, Fragment, lazy, Suspense } from "react";
 import { ActionIcon } from "./components/ActionIcon";
 import { LoggedUser, Predio, Conta, Fornecedor, Fracao, Aviso, Movimento, Reuniao, Documento, Ocorrencia, Reserva, CapacidadeLimite } from "./types";
 import { initialPredios, initialContas, initialFornecedores, initialFracoes, initialAvisos, initialMovements, initialReunioes, initialDocumentos, initialOcorrencias, defaultEmptyPredio } from "./data";
@@ -33,51 +33,60 @@ import {
   fetchConversasFromSupabase,
   fetchDividasFornecedoresFromSupabase
 } from "./lib/supabaseService";
-import { PainelControlo } from "./components/PainelControlo";
-import { GestaoPredios } from "./components/GestaoPredios";
-import { GestaoFracoes } from "./components/GestaoFracoes";
-import { GestaoFornecedores } from "./components/GestaoFornecedores";
-import { GestaoContas } from "./components/GestaoContas";
-import { GestaoQuotasOrcamento } from "./components/GestaoQuotasOrcamento";
-import { GestaoMovimentos } from "./components/GestaoMovimentos";
-import { AgendadorAutomatico } from "./components/AgendadorAutomatico";
-import { LeitorAnexosIA } from "./components/LeitorAnexosIA";
-import { GestaoAssembleias } from "./components/GestaoAssembleias";
-import { GestaoDocumentos } from "./components/GestaoDocumentos";
-import { GestaoVistoriasLimpezas } from "./components/GestaoVistoriasLimpezas";
-import { IAAvancada } from "./components/IAAvancada";
-import { GestaoComunicacoes } from "./components/GestaoComunicacoes";
-import { AssistenteImportacao } from "./components/AssistenteImportacao";
-import { ClassificadorDocumentos } from "./components/ClassificadorDocumentos";
-import { GestaoReservas } from "./components/GestaoReservas";
-import { PortalCondomino } from "./components/PortalCondomino";
-import { ContenciosoJuridico } from "./components/ContenciosoJuridico";
-import { FinanceiroAvancado } from "./components/FinanceiroAvancado";
-import { PortalOrcamentos } from "./components/PortalOrcamentos";
-import { DashboardKPIs } from "./components/DashboardKPIs";
-import { MultiCondominio } from "./components/MultiCondominio";
-import { PWASimulator } from "./components/PWASimulator";
-import { FichaEmpresaGestora } from "./components/FichaEmpresaGestora";
 import { UserSecurityModal } from "./components/UserSecurityModal";
-import { GestaoFundoReserva } from "./components/GestaoFundoReserva";
-import { GestaoRelatorios } from "./components/GestaoRelatorios";
-import { ContabilidadeInterna } from "./components/ContabilidadeInterna";
-import { AuditoriaInterna } from "./components/AuditoriaInterna";
-import { GestaoManutencaoIntervencoes } from "./components/GestaoManutencaoIntervencoes";
-import { ConfiguracoesAdministracao } from "./components/ConfiguracoesAdministracao";
-import { InventarioTecnico } from "./components/InventarioTecnico";
-import { EnviosProgramados } from "./components/EnviosProgramados";
-import { CentralDocumentosMinutas } from "./components/CentralDocumentosMinutas";
-import { ConfiguracaoArranqueSaldos } from "./components/ConfiguracaoArranqueSaldos";
-import { AgendaManutencao } from "./components/AgendaManutencao";
-import { GestaoSinistrosSeguros } from "./components/GestaoSinistrosSeguros";
-import { MuralDigitalReservas } from "./components/MuralDigitalReservas";
 import { SecurityAuditModal } from "./components/SecurityAuditModal";
 import { SendingReactionModal } from "./components/SendingReactionModal";
 import { DraggableAIFloatingButton } from "./components/DraggableAIFloatingButton";
 import LayoutTop from "./components/LayoutTop";
 import AuthForm from "./components/AuthForm";
 import SetPasswordScreen from "./components/SetPasswordScreen";
+
+// Todos os ecrãs abaixo só são precisos DEPOIS do login, e cada um só
+// quando a respetiva secção é aberta — antes desta mudança, eram todos
+// importados de forma eager, o que obrigava a descarregar e interpretar a
+// app inteira (todos os ecrãs de admin + portal do condómino + fornecedores
+// + assembleias, etc., ~4,8MB) só para mostrar o ecrã de login. Com
+// React.lazy(), o Vite separa cada um no seu próprio ficheiro, só pedido ao
+// browser quando essa secção é mesmo aberta (ver <Suspense> a envolver a
+// área de conteúdo mais abaixo).
+const PainelControlo = lazy(() => import("./components/PainelControlo").then(m => ({ default: m.PainelControlo })));
+const GestaoPredios = lazy(() => import("./components/GestaoPredios").then(m => ({ default: m.GestaoPredios })));
+const GestaoFracoes = lazy(() => import("./components/GestaoFracoes").then(m => ({ default: m.GestaoFracoes })));
+const GestaoFornecedores = lazy(() => import("./components/GestaoFornecedores").then(m => ({ default: m.GestaoFornecedores })));
+const GestaoContas = lazy(() => import("./components/GestaoContas").then(m => ({ default: m.GestaoContas })));
+const GestaoQuotasOrcamento = lazy(() => import("./components/GestaoQuotasOrcamento").then(m => ({ default: m.GestaoQuotasOrcamento })));
+const GestaoMovimentos = lazy(() => import("./components/GestaoMovimentos").then(m => ({ default: m.GestaoMovimentos })));
+const AgendadorAutomatico = lazy(() => import("./components/AgendadorAutomatico").then(m => ({ default: m.AgendadorAutomatico })));
+const LeitorAnexosIA = lazy(() => import("./components/LeitorAnexosIA").then(m => ({ default: m.LeitorAnexosIA })));
+const GestaoAssembleias = lazy(() => import("./components/GestaoAssembleias").then(m => ({ default: m.GestaoAssembleias })));
+const GestaoDocumentos = lazy(() => import("./components/GestaoDocumentos").then(m => ({ default: m.GestaoDocumentos })));
+const GestaoVistoriasLimpezas = lazy(() => import("./components/GestaoVistoriasLimpezas").then(m => ({ default: m.GestaoVistoriasLimpezas })));
+const IAAvancada = lazy(() => import("./components/IAAvancada").then(m => ({ default: m.IAAvancada })));
+const GestaoComunicacoes = lazy(() => import("./components/GestaoComunicacoes").then(m => ({ default: m.GestaoComunicacoes })));
+const AssistenteImportacao = lazy(() => import("./components/AssistenteImportacao").then(m => ({ default: m.AssistenteImportacao })));
+const ClassificadorDocumentos = lazy(() => import("./components/ClassificadorDocumentos").then(m => ({ default: m.ClassificadorDocumentos })));
+const GestaoReservas = lazy(() => import("./components/GestaoReservas").then(m => ({ default: m.GestaoReservas })));
+const PortalCondomino = lazy(() => import("./components/PortalCondomino").then(m => ({ default: m.PortalCondomino })));
+const ContenciosoJuridico = lazy(() => import("./components/ContenciosoJuridico").then(m => ({ default: m.ContenciosoJuridico })));
+const FinanceiroAvancado = lazy(() => import("./components/FinanceiroAvancado").then(m => ({ default: m.FinanceiroAvancado })));
+const PortalOrcamentos = lazy(() => import("./components/PortalOrcamentos").then(m => ({ default: m.PortalOrcamentos })));
+const DashboardKPIs = lazy(() => import("./components/DashboardKPIs").then(m => ({ default: m.DashboardKPIs })));
+const MultiCondominio = lazy(() => import("./components/MultiCondominio").then(m => ({ default: m.MultiCondominio })));
+const PWASimulator = lazy(() => import("./components/PWASimulator").then(m => ({ default: m.PWASimulator })));
+const FichaEmpresaGestora = lazy(() => import("./components/FichaEmpresaGestora").then(m => ({ default: m.FichaEmpresaGestora })));
+const GestaoFundoReserva = lazy(() => import("./components/GestaoFundoReserva").then(m => ({ default: m.GestaoFundoReserva })));
+const GestaoRelatorios = lazy(() => import("./components/GestaoRelatorios").then(m => ({ default: m.GestaoRelatorios })));
+const ContabilidadeInterna = lazy(() => import("./components/ContabilidadeInterna").then(m => ({ default: m.ContabilidadeInterna })));
+const AuditoriaInterna = lazy(() => import("./components/AuditoriaInterna").then(m => ({ default: m.AuditoriaInterna })));
+const GestaoManutencaoIntervencoes = lazy(() => import("./components/GestaoManutencaoIntervencoes").then(m => ({ default: m.GestaoManutencaoIntervencoes })));
+const ConfiguracoesAdministracao = lazy(() => import("./components/ConfiguracoesAdministracao").then(m => ({ default: m.ConfiguracoesAdministracao })));
+const InventarioTecnico = lazy(() => import("./components/InventarioTecnico").then(m => ({ default: m.InventarioTecnico })));
+const EnviosProgramados = lazy(() => import("./components/EnviosProgramados").then(m => ({ default: m.EnviosProgramados })));
+const CentralDocumentosMinutas = lazy(() => import("./components/CentralDocumentosMinutas").then(m => ({ default: m.CentralDocumentosMinutas })));
+const ConfiguracaoArranqueSaldos = lazy(() => import("./components/ConfiguracaoArranqueSaldos").then(m => ({ default: m.ConfiguracaoArranqueSaldos })));
+const AgendaManutencao = lazy(() => import("./components/AgendaManutencao").then(m => ({ default: m.AgendaManutencao })));
+const GestaoSinistrosSeguros = lazy(() => import("./components/GestaoSinistrosSeguros").then(m => ({ default: m.GestaoSinistrosSeguros })));
+const MuralDigitalReservas = lazy(() => import("./components/MuralDigitalReservas").then(m => ({ default: m.MuralDigitalReservas })));
 import { validatePasswordPolicy, createSecurityLog, INITIAL_USER_SECURITY, UserSecurityState } from "./lib/authSecurity";
 import { 
   createNewSession, 
@@ -2741,6 +2750,11 @@ export default function App() {
             padding em modo PWA, para a app ficar edge-to-edge no
             telemóvel real. */}
         <div className={viewMode === "PWA" ? "flex-grow overflow-y-auto" : "flex-grow p-3 sm:p-5 md:p-8 overflow-y-auto"}>
+          <Suspense fallback={
+            <div className="flex items-center justify-center py-24">
+              <i className="fa-solid fa-circle-notch fa-spin text-emerald-500 text-2xl"></i>
+            </div>
+          }>
           {viewMode === "PWA" ? (
             <PWASimulator
               predio={predioAtivo}
@@ -3274,6 +3288,7 @@ export default function App() {
           )}
             </Fragment>
           )}
+          </Suspense>
         </div>
       </main>
 
