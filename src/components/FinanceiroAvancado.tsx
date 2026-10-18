@@ -675,6 +675,23 @@ export function FinanceiroAvancado({
     return totalPend === 0 ? 0 : -totalPend;
   };
 
+  // Discrimina a dívida pendente por tipo (Quota Ordinária vs Extraordinária)
+  // — pedido explícito: os relatórios de dívida enviados por email aos
+  // condóminos não podiam continuar a mostrar só um valor único, já que as
+  // duas têm origens e contas diferentes (ordinária é a quota mensal
+  // normal; extraordinária é obra/fundo pontual aprovado em assembleia).
+  const getFracaoDividaPorTipo = (id_fracao: string) => {
+    const pendentes = getPendentesReaisDaFracao(id_fracao);
+    let ordinaria = 0;
+    let extraordinaria = 0;
+    pendentes.forEach(a => {
+      const valorPend = a.valor - (a.valor_pago || 0);
+      if (String(a.tipo || "").includes("Extraordinária")) extraordinaria += valorPend;
+      else ordinaria += valorPend;
+    });
+    return { ordinaria, extraordinaria, total: ordinaria + extraordinaria };
+  };
+
   // Helper: get selected fraction object — para um condómino, ignora sempre
   // selectedFracaoId e usa a própria fração (defesa em profundidade, mesmo
   // que o seletor de fração venha a ficar visível nalgum ponto por engano).
@@ -1663,12 +1680,16 @@ export function FinanceiroAvancado({
                   <span>Download Relatório PDF</span>
                 </button>
                 <button
-                  onClick={() => openEmailShare(
-                    "administracao@condomanager.pt",
-                    `Relatório de Dívidas - Edifício ${predio.nome}`,
-                    `Junto enviamos o relatório global de dívidas de quotas do edifício ${predio.nome} atualizado à data corrente.\n\nTotal em Incumprimento no Edifício: € ${predioFracoes.reduce((s, f) => s + Math.abs(Math.min(0, getFracaoBalance(f.id_fracao))), 0).toFixed(2)}`,
-                    `Relatório Dívidas ${predio.nome}`
-                  )}
+                  onClick={() => {
+                    const totalOrdinaria = predioFracoes.reduce((s, f) => s + getFracaoDividaPorTipo(f.id_fracao).ordinaria, 0);
+                    const totalExtraordinaria = predioFracoes.reduce((s, f) => s + getFracaoDividaPorTipo(f.id_fracao).extraordinaria, 0);
+                    openEmailShare(
+                      "administracao@condomanager.pt",
+                      `Relatório de Dívidas - Edifício ${predio.nome}`,
+                      `Junto enviamos o relatório global de dívidas de quotas do edifício ${predio.nome} atualizado à data corrente, discriminado por tipo de quota:\n\n- Total Quota Ordinária em dívida: € ${totalOrdinaria.toFixed(2)}\n- Total Quota Extraordinária em dívida: € ${totalExtraordinaria.toFixed(2)}\n- Total em Incumprimento no Edifício: € ${(totalOrdinaria + totalExtraordinaria).toFixed(2)}`,
+                      `Relatório Dívidas ${predio.nome}`
+                    );
+                  }}
                   className="bg-cyan-600 hover:bg-cyan-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-2 cursor-pointer"
                 >
                   <i className="fa-solid fa-envelope"></i>
@@ -1746,6 +1767,7 @@ export function FinanceiroAvancado({
                         const bal = getFracaoBalance(frac.id_fracao);
                         const isGoodStanding = bal >= 0;
                         const pendCount = contarMesesReais(getPendentesReaisDaFracao(frac.id_fracao));
+                        const dividaPorTipo = getFracaoDividaPorTipo(frac.id_fracao);
                         const abrirRelatorioFracao = () => {
                           setSelectedFracaoId(frac.id_fracao);
                           setLocalTab("extrato_saldo");
@@ -1783,10 +1805,15 @@ export function FinanceiroAvancado({
                                   <span>+ 0,00 € (Em Dia)</span>
                                 </span>
                               ) : (
-                                <span className="text-red-600 dark:text-red-400 font-extrabold flex items-center gap-1.5">
-                                  <i className="fa-solid fa-triangle-exclamation"></i>
-                                  <span>{bal.toFixed(2)} € (Dívida)</span>
-                                </span>
+                                <div>
+                                  <span className="text-red-600 dark:text-red-400 font-extrabold flex items-center gap-1.5">
+                                    <i className="fa-solid fa-triangle-exclamation"></i>
+                                    <span>{bal.toFixed(2)} € (Dívida)</span>
+                                  </span>
+                                  <span className="text-[9px] text-slate-600 font-normal block mt-0.5">
+                                    Ordinária: {dividaPorTipo.ordinaria.toFixed(2)} € • Extraordinária: {dividaPorTipo.extraordinaria.toFixed(2)} €
+                                  </span>
+                                </div>
                               )}
                             </td>
                             <td className="py-3 px-4">
@@ -1812,7 +1839,7 @@ export function FinanceiroAvancado({
                                 onClick={() => openEmailShare(
                                   frac.proprietario.email,
                                   `Extrato de Dívida e Ponto de Situação - Fração ${frac.fracao_nome}`,
-                                  `Exmo(a). Sr(a). ${frac.proprietario.nome},\n\nInformamos que à presente data a fração "${frac.fracao_nome}" apresenta o saldo de ${bal.toFixed(2)} € referente a quotas do condomínio.\n\nA Administração do Condomínio ${predio.nome}`,
+                                  `Exmo(a). Sr(a). ${frac.proprietario.nome},\n\nInformamos que à presente data a fração "${frac.fracao_nome}" apresenta o saldo de ${bal.toFixed(2)} € referente a quotas do condomínio, discriminado da seguinte forma:\n\n- Quota Ordinária em dívida: ${dividaPorTipo.ordinaria.toFixed(2)} €\n- Quota Extraordinária em dívida: ${dividaPorTipo.extraordinaria.toFixed(2)} €\n\nA Administração do Condomínio ${predio.nome}`,
                                   `Relatório Dívida Fração ${frac.fracao_nome}`
                                 )}
                                 className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all inline-flex items-center gap-1 cursor-pointer"
@@ -1837,6 +1864,24 @@ export function FinanceiroAvancado({
       {currentTab === "extrato_saldo" && (
         <div className="space-y-6 animate-fadeIn">
           <div className="bg-white dark:bg-[#0f172a] p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+            {/* Botão "Voltar" — chegar aqui a partir de um clique numa linha
+                de "Relatórios de Dívidas" só muda o separador local
+                (setLocalTab), nunca o activeSubSection vindo da barra
+                lateral — clicar outra vez em "Relatórios" no menu não
+                refaz a sincronização (o valor do prop não mudou, o
+                useEffect não volta a correr), deixando este ecrã sem
+                nenhuma forma de voltar atrás. Pedido explícito do
+                administrador, confirmado a acontecer em vários menus. */}
+            {!ehCondomino && (
+              <button
+                type="button"
+                onClick={() => setLocalTab("relatorio_dividas")}
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors cursor-pointer -mb-2"
+              >
+                <i className="fa-solid fa-arrow-left"></i>
+                <span>Voltar aos Relatórios de Dívidas</span>
+              </button>
+            )}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h2 className="text-base font-black text-slate-800 dark:text-white flex items-center gap-2.5">
@@ -1962,7 +2007,7 @@ export function FinanceiroAvancado({
                           onClick={() => openEmailShare(
                             selectedFracao.proprietario.email,
                             `Extrato Oficial de Condomínio - Fração ${selectedFracao.fracao_nome}`,
-                            `Exmo(a). Sr(a). ${selectedFracao.proprietario.nome},\n\nJunto remetemos o extrato detalhado de quotas e pagamentos da sua fração "${selectedFracao.fracao_nome}".\n\nSaldo atual: ${getFracaoBalance(selectedFracao.id_fracao).toFixed(2)} €\n\nA Administração ${predio.nome}`,
+                            `Exmo(a). Sr(a). ${selectedFracao.proprietario.nome},\n\nJunto remetemos o extrato detalhado de quotas e pagamentos da sua fração "${selectedFracao.fracao_nome}".\n\nSaldo atual: ${getFracaoBalance(selectedFracao.id_fracao).toFixed(2)} €, discriminado da seguinte forma:\n- Quota Ordinária em dívida: ${getFracaoDividaPorTipo(selectedFracao.id_fracao).ordinaria.toFixed(2)} €\n- Quota Extraordinária em dívida: ${getFracaoDividaPorTipo(selectedFracao.id_fracao).extraordinaria.toFixed(2)} €\n\nA Administração ${predio.nome}`,
                             `Extrato ${selectedFracao.fracao_nome}`
                           )}
                           className="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
