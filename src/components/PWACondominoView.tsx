@@ -1169,6 +1169,23 @@ export default function PWACondominoView({
       }
       setSeguroFracao(seguroAtualizado);
       registarLogAuditoria("Seguros", "Condómino submeteu documento de seguro", predio?.id_predio, loggedUser, `Fração ${condominoFracao.fracao_nome} — ${tipo}: ${file.name}`);
+
+      // Notifica a Administração por push real — pedido explícito do
+      // administrador: ficou definido que receberia notificação para
+      // confirmar, mas isto nunca foi implementado em lado nenhum (nem
+      // aqui nem em PortalCondomino.tsx). Mesmo endpoint já usado para
+      // mensagens diretas do condómino (enviar-push-admin, só chega a
+      // quem ativou notificações push da administração).
+      fetch("/api/admin?acao=enviar-push-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_predio: predio?.id_predio,
+          title: `🛡️ Seguro submetido — Fração ${condominoFracao.fracao_nome}`,
+          body: `${loggedUser.nome} enviou ${tipo.toLowerCase()} para confirmação.${dadosIA.seguradora ? ` Seguradora: ${dadosIA.seguradora}.` : ""}`
+        })
+      }).catch(console.error);
+
       alert(`✅ ${tipo} enviada com sucesso!${dadosIA.seguradora ? ` A IA já identificou: ${dadosIA.seguradora}${dadosIA.apolice_numero ? ` (apólice ${dadosIA.apolice_numero})` : ""}.` : ""} A administração irá confirmar os dados em breve.`);
     } finally {
       setAEnviarDocSeguro(null);
@@ -2375,7 +2392,7 @@ export default function PWACondominoView({
                         doc.categoria?.toLowerCase() === documentCategory.toLowerCase() || 
                         (documentCategory === "Fração" && doc.categoria === "Privado") || 
                         (documentCategory === "Prédio" && doc.categoria === "Público") ||
-                        (documentCategory === "Biblioteca" && (doc.categoria === "Público" || doc.categoria?.toLowerCase() === "regulamentos" || doc.categoria?.toLowerCase() === "contratos" || doc.categoria?.toLowerCase() === "atas" || doc.categoria?.toLowerCase() === "seguros"))
+                        (documentCategory === "Biblioteca" && (doc.categoria === "Público" || doc.categoria?.toLowerCase() === "regulamentos" || doc.categoria?.toLowerCase() === "contratos" || doc.categoria?.toLowerCase().startsWith("atas") || doc.categoria?.toLowerCase() === "seguros"))
                       )
                       .filter(doc => doc.nome.toLowerCase().includes(documentSearch.toLowerCase()));
                     
@@ -2446,7 +2463,7 @@ export default function PWACondominoView({
                     doc.categoria?.toLowerCase() === documentCategory.toLowerCase() || 
                     (documentCategory === "Fração" && doc.categoria === "Privado") || 
                     (documentCategory === "Prédio" && doc.categoria === "Público") ||
-                    (documentCategory === "Biblioteca" && (doc.categoria === "Público" || doc.categoria?.toLowerCase() === "regulamentos" || doc.categoria?.toLowerCase() === "contratos" || doc.categoria?.toLowerCase() === "atas" || doc.categoria?.toLowerCase() === "seguros"))
+                    (documentCategory === "Biblioteca" && (doc.categoria === "Público" || doc.categoria?.toLowerCase() === "regulamentos" || doc.categoria?.toLowerCase() === "contratos" || doc.categoria?.toLowerCase().startsWith("atas") || doc.categoria?.toLowerCase() === "seguros"))
                   )
                   .filter(doc => doc.nome.toLowerCase().includes(documentSearch.toLowerCase()))
                   .map(doc => (

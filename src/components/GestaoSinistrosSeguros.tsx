@@ -434,6 +434,22 @@ export function GestaoSinistrosSeguros({
     }
     const dadosIncompletos = !formSeguradora.trim() || !formApoliceNum.trim() || !formValidade.trim();
 
+    // Antes, escolher "Válido" no Estado de Validação com a Seguradora/Nº
+    // Apólice/Validade por preencher (ex.: a IA não conseguiu ler a data na
+    // apólice anexada) era silenciosamente ignorado — o código revertia
+    // sozinho para "Pendente" sem avisar, e o administrador só via "não me
+    // deixa confirmar" sem perceber porquê. Avisa agora exatamente qual(is)
+    // campo(s) falta(m), em vez de reverter a escolha em silêncio.
+    if (formEstadoValidacao === "Valido" && dadosIncompletos) {
+      const camposEmFalta = [
+        !formSeguradora.trim() && "Companhia de Seguros",
+        !formApoliceNum.trim() && "Nº da Apólice",
+        !formValidade.trim() && "Data de Validade / Renovação"
+      ].filter(Boolean).join(", ");
+      alert(`Não é possível confirmar como "Válido" com campos obrigatórios por preencher: ${camposEmFalta}.\n\nPreencha-os (reveja o documento anexado, se necessário) e tente novamente.`);
+      return;
+    }
+
     const seguroObj: SeguroFracao = {
       id: modalSeguroFracao.seguroExistente?.id || `seg-frac-${fracao.id_fracao}`,
       fracao_id: fracao.id_fracao,

@@ -15,6 +15,26 @@ import {
   gerarCartaRescisaoContratoPDF
 } from "../server/lib/pdfDocs.js";
 
+/**
+ * O campo "caminho" de um documento deve ser sempre a chave relativa dentro
+ * do bucket "documentos" (ex.: "atas/predio-x/ficheiro.pdf") — é isso que
+ * createSignedUrl() espera. Encontrados 29 registos reais (atas,
+ * contratos, faturas, dívidas de fornecedores — sobretudo gerados por
+ * scripts de backfill) em que "caminho" tinha sido gravado como o URL
+ * assinado completo (https://...supabase.co/storage/v1/object/sign/
+ * documentos/<chave>?token=...) em vez da chave só — createSignedUrl()
+ * tentava então assinar literalmente essa string toda como se fosse uma
+ * chave, nunca encontrava o objeto, e tanto o download como o envio por
+ * email falhavam sempre com "Documento não encontrado". Corrigidos os
+ * dados existentes diretamente na base; esta função protege também
+ * contra o mesmo erro se voltar a acontecer nalgum sítio novo.
+ */
+function normalizarCaminhoStorage(caminho) {
+  if (typeof caminho !== "string" || !caminho.startsWith("http")) return caminho;
+  const match = caminho.match(/\/object\/(?:sign|public)\/documentos\/([^?]+)/);
+  return match ? decodeURIComponent(match[1]) : caminho;
+}
+
 const TIPOS = {
   convocatoria: { tema: "Assembleias", tipo: "Convocatória", fluxo: "convocatoria", categoria: "Atas & Convocatórias" },
   ata: { tema: "Assembleias", tipo: "Ata", fluxo: "ata", categoria: "Atas & Convocatórias" },
@@ -279,7 +299,7 @@ async function handleAcaoDocumento(req, res, acao) {
         return res.status(400).json({ error: "caminho é obrigatório" });
       }
 
-      const { data, error } = await supabase.storage.from("documentos").createSignedUrl(caminho, 300);
+      const { data, error } = await supabase.storage.from("documentos").createSignedUrl(normalizarCaminhoStorage(caminho), 300);
       if (error || !data?.signedUrl) {
         return res.status(404).json({ error: error?.message || "Documento não encontrado no arquivo" });
       }
@@ -294,7 +314,7 @@ async function handleAcaoDocumento(req, res, acao) {
       }
 
       await enviarDocumentoExistente({
-        caminho,
+        caminho: normalizarCaminhoStorage(caminho),
         nomeFicheiro: nome || caminho.split("/").pop(),
         to: email,
         assunto: assunto || `Documento: ${nome || "Documento"}`,

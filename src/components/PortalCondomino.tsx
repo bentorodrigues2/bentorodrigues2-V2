@@ -1100,6 +1100,25 @@ export function PortalCondomino({
       }
       setSeguroFracaoPortal(seguroAtualizado);
       registarLogAuditoria("Seguros", "Condómino submeteu documento de seguro", predio?.id_predio, loggedUser, `Fração ${activeUserFracao.fracao_nome} — ${tipo}: ${file.name}`);
+
+      // Notifica a Administração por push real — pedido explícito do
+      // administrador: ficou definido que receberia notificação para
+      // confirmar, mas isto nunca foi implementado (o upload ficava
+      // "Pendente" em silêncio, só visível a quem fosse manualmente abrir
+      // Seguro de Incêndio & Sinistros e reparasse no emblema "Submetido
+      // pelo Condómino"). Mesmo endpoint/mecanismo já usado para mensagens
+      // diretas do condómino (enviar-push-admin, só chega a quem ativou
+      // notificações push da administração).
+      fetch("/api/admin?acao=enviar-push-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_predio: predio?.id_predio,
+          title: `🛡️ Seguro submetido — Fração ${activeUserFracao.fracao_nome}`,
+          body: `${loggedUser.nome} enviou ${tipo.toLowerCase()} para confirmação.${dadosIA.seguradora ? ` Seguradora: ${dadosIA.seguradora}.` : ""}`
+        })
+      }).catch(console.error);
+
       alert(`✅ ${tipo} enviada com sucesso!${dadosIA.seguradora ? ` A IA já identificou: ${dadosIA.seguradora}${dadosIA.apolice_numero ? ` (apólice ${dadosIA.apolice_numero})` : ""}.` : ""} A administração irá confirmar os dados em breve.`);
     } finally {
       setAEnviarDocSeguroPortal(null);
