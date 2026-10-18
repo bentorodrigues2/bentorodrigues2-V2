@@ -507,14 +507,121 @@ export function GestaoComunicacoes({
   const [textoParaTodasFracoes, setTextoParaTodasFracoes] = useState("");
   const [aEnviarParaTodos, setAEnviarParaTodos] = useState(false);
 
+  // Anexos/emoji/áudio para a mensagem a TODAS as frações — mesma
+  // capacidade real já existente na resposta de uma conversa individual
+  // (chatFotoFile/chatDocFile/chatAudioBlob acima), replicada aqui com
+  // estado próprio para não interferir com essa caixa (podem estar as
+  // duas visíveis ao mesmo tempo). Pedido explícito do administrador.
+  const [broadcastFotoFile, setBroadcastFotoFile] = useState<File | null>(null);
+  const [broadcastFotoPreview, setBroadcastFotoPreview] = useState<string | null>(null);
+  const [broadcastDocFile, setBroadcastDocFile] = useState<File | null>(null);
+  const [broadcastAudioBlob, setBroadcastAudioBlob] = useState<Blob | null>(null);
+  const [broadcastAudioSegundos, setBroadcastAudioSegundos] = useState(0);
+  const [aGravarAudioBroadcast, setAGravarAudioBroadcast] = useState(false);
+  const [showEmojiPickerBroadcast, setShowEmojiPickerBroadcast] = useState(false);
+  const [showAnexoMenuBroadcast, setShowAnexoMenuBroadcast] = useState(false);
+  const mediaRecorderBroadcastRef = React.useRef<MediaRecorder | null>(null);
+  const audioChunksBroadcastRef = React.useRef<Blob[]>([]);
+  const audioTimerBroadcastRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const limparAnexosBroadcast = () => {
+    setBroadcastFotoFile(null);
+    setBroadcastFotoPreview(null);
+    setBroadcastDocFile(null);
+    setBroadcastAudioBlob(null);
+    setBroadcastAudioSegundos(0);
+  };
+
+  const handleEscolherFotoBroadcast = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    limparAnexosBroadcast();
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX = 900;
+        let w = img.width, h = img.height;
+        if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d")?.drawImage(img, 0, 0, w, h);
+        canvas.toBlob((blob) => {
+          if (!blob) return;
+          setBroadcastFotoFile(new File([blob], "foto.webp", { type: "image/webp" }));
+          setBroadcastFotoPreview(canvas.toDataURL("image/webp", 0.8));
+        }, "image/webp", 0.8);
+      };
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleEscolherDocBroadcast = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    limparAnexosBroadcast();
+    setBroadcastDocFile(file);
+  };
+
+  const handleIniciarGravacaoAudioBroadcast = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      limparAnexosBroadcast();
+      audioChunksBroadcastRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksBroadcastRef.current.push(e.data); };
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunksBroadcastRef.current, { type: "audio/webm" });
+        setBroadcastAudioBlob(blob);
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mediaRecorderBroadcastRef.current = recorder;
+      recorder.start();
+      setAGravarAudioBroadcast(true);
+      setBroadcastAudioSegundos(0);
+      audioTimerBroadcastRef.current = setInterval(() => setBroadcastAudioSegundos(s => s + 1), 1000);
+    } catch {
+      alert("Não foi possível aceder ao microfone. Verifique as permissões do navegador.");
+    }
+  };
+
+  const handlePararGravacaoAudioBroadcast = () => {
+    mediaRecorderBroadcastRef.current?.stop();
+    setAGravarAudioBroadcast(false);
+    if (audioTimerBroadcastRef.current) { clearInterval(audioTimerBroadcastRef.current); audioTimerBroadcastRef.current = null; }
+  };
+
   const handleEnviarMensagemParaTodasFracoes = async () => {
-    if (!textoParaTodasFracoes.trim() || !predio?.id_predio || aEnviarParaTodos) return;
+    const temAnexoBroadcast = broadcastFotoFile || broadcastDocFile || broadcastAudioBlob;
+    if ((!textoParaTodasFracoes.trim() && !temAnexoBroadcast) || !predio?.id_predio || aEnviarParaTodos) return;
     const fracoesPredio = fracoes.filter(f => f.id_predio === predio.id_predio);
     if (fracoesPredio.length === 0) return;
     if (!confirm(`Enviar esta mensagem a todas as ${fracoesPredio.length} frações do prédio?`)) return;
 
     setAEnviarParaTodos(true);
     try {
+      // Upload único do anexo (se existir) — o mesmo ficheiro é partilhado
+      // por todas as mensagens, em vez de o enviar N vezes para o Storage.
+      let anexoUrlBroadcast: string | null = null;
+      let anexoTipoBroadcast: "foto" | "documento" | "audio" | undefined;
+      let anexoNomeBroadcast: string | undefined;
+      if (temAnexoBroadcast) {
+        const arquivo = broadcastFotoFile || broadcastDocFile || new File([broadcastAudioBlob as Blob], "nota-de-voz.webm", { type: "audio/webm" });
+        const idMensagemBroadcast = "msg_" + Date.now();
+        anexoUrlBroadcast = await uploadAnexoConversaToStorage(arquivo, "broadcast", idMensagemBroadcast);
+        if (!anexoUrlBroadcast) {
+          alert("Não foi possível enviar o anexo. Tente novamente.");
+          setAEnviarParaTodos(false);
+          return;
+        }
+        anexoTipoBroadcast = broadcastFotoFile ? "foto" : broadcastDocFile ? "documento" : "audio";
+        anexoNomeBroadcast = broadcastDocFile?.name;
+      }
+      const textoBroadcast = textoParaTodasFracoes.trim() || (broadcastFotoFile ? "📷 Fotografia" : broadcastDocFile ? `📎 ${broadcastDocFile.name}` : "🎙️ Nota de voz");
+
       const novasConversas: ConversaCondomino[] = [];
       for (const f of fracoesPredio) {
         const idConversa = "conv-" + f.id_fracao;
@@ -538,7 +645,8 @@ export function GestaoComunicacoes({
           id_mensagem: "msg_" + Date.now() + "_" + f.id_fracao,
           id_conversa: idConversa,
           autor: "administracao",
-          texto: textoParaTodasFracoes
+          texto: textoBroadcast,
+          ...(anexoUrlBroadcast ? { anexo_url: anexoUrlBroadcast, anexo_tipo: anexoTipoBroadcast, anexo_nome: anexoNomeBroadcast } : {})
         });
         novasConversas.push(conversaAtual);
       }
@@ -553,12 +661,13 @@ export function GestaoComunicacoes({
       const resumoPushTodos = await enviarPushComDiagnostico({
         id_predio: predio.id_predio,
         title: "Nova mensagem da Administração",
-        body: textoParaTodasFracoes.length > 120 ? textoParaTodasFracoes.slice(0, 117) + "..." : textoParaTodasFracoes,
+        body: textoBroadcast.length > 120 ? textoBroadcast.slice(0, 117) + "..." : textoBroadcast,
         url: "/"
       });
 
       alert(`✅ Mensagem enviada a ${fracoesPredio.length} frações.\n\n${resumoPushTodos}`);
       setTextoParaTodasFracoes("");
+      limparAnexosBroadcast();
       setNovaConversaParaTodos(false);
       setShowNovaConversa(false);
     } catch (err) {
@@ -994,21 +1103,97 @@ export function GestaoComunicacoes({
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <textarea
-                      rows={2}
-                      value={textoParaTodasFracoes}
-                      onChange={e => setTextoParaTodasFracoes(e.target.value)}
-                      placeholder={`Escreva a mensagem a enviar a todas as ${fracoes.filter(f => f.id_predio === predio.id_predio).length} frações...`}
-                      className="flex-1 min-w-[220px] text-xs p-2 rounded-lg border border-slate-300 bg-white resize-none"
-                    />
-                    <button
-                      onClick={handleEnviarMensagemParaTodasFracoes}
-                      disabled={!textoParaTodasFracoes.trim() || aEnviarParaTodos}
-                      className="text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg px-3 py-2 cursor-pointer shrink-0"
-                    >
-                      {aEnviarParaTodos ? "A enviar..." : "Enviar a Todos"}
-                    </button>
+                  <div className="space-y-1.5">
+                    {/* Pré-visualização do anexo escolhido */}
+                    {(broadcastFotoPreview || broadcastDocFile || broadcastAudioBlob) && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {broadcastFotoPreview && (
+                          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg text-[10px] text-emerald-700">
+                            <img src={broadcastFotoPreview} alt="" className="h-6 w-6 rounded object-cover" />
+                            <span className="font-bold">Fotografia</span>
+                            <button type="button" onClick={limparAnexosBroadcast} className="text-red-500 font-bold ml-1 cursor-pointer">✕</button>
+                          </div>
+                        )}
+                        {broadcastDocFile && (
+                          <div className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 px-2 py-1 rounded-lg text-[10px] text-indigo-700">
+                            <i className="fa-solid fa-file"></i>
+                            <span className="font-bold truncate max-w-[140px]">{broadcastDocFile.name}</span>
+                            <button type="button" onClick={limparAnexosBroadcast} className="text-red-500 font-bold ml-1 cursor-pointer">✕</button>
+                          </div>
+                        )}
+                        {broadcastAudioBlob && (
+                          <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg text-[10px] text-amber-700">
+                            <i className="fa-solid fa-microphone"></i>
+                            <span className="font-bold">Nota de voz ({broadcastAudioSegundos}s)</span>
+                            <button type="button" onClick={limparAnexosBroadcast} className="text-red-500 font-bold ml-1 cursor-pointer">✕</button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {showEmojiPickerBroadcast && (
+                      <div className="flex gap-1.5">
+                        {["👍", "❤️", "😂", "😮", "🙏", "✅"].map(emoji => (
+                          <button key={emoji} type="button" onClick={() => { setTextoParaTodasFracoes(t => t + emoji); setShowEmojiPickerBroadcast(false); }} className="text-lg hover:scale-125 transition-transform cursor-pointer">
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {showAnexoMenuBroadcast && (
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => { setShowAnexoMenuBroadcast(false); document.getElementById("admin-broadcast-foto-input")?.click(); }} className="flex-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg py-1.5 cursor-pointer">
+                          <i className="fa-solid fa-image mr-1"></i> Fotografia
+                        </button>
+                        <button type="button" onClick={() => { setShowAnexoMenuBroadcast(false); document.getElementById("admin-broadcast-doc-input")?.click(); }} className="flex-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg py-1.5 cursor-pointer">
+                          <i className="fa-solid fa-file mr-1"></i> Documento
+                        </button>
+                      </div>
+                    )}
+                    <input id="admin-broadcast-foto-input" type="file" accept="image/*" className="hidden" onChange={handleEscolherFotoBroadcast} />
+                    <input id="admin-broadcast-doc-input" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt" className="hidden" onChange={handleEscolherDocBroadcast} />
+
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => { setShowAnexoMenuBroadcast(v => !v); setShowEmojiPickerBroadcast(false); }}
+                        className="text-slate-600 hover:text-emerald-600 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer shrink-0"
+                        title="Anexar ficheiro"
+                      >
+                        <i className="fa-solid fa-paperclip"></i>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowEmojiPickerBroadcast(v => !v); setShowAnexoMenuBroadcast(false); }}
+                        className="text-slate-600 hover:text-emerald-600 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer shrink-0"
+                        title="Emoji"
+                      >
+                        <i className="fa-regular fa-face-smile"></i>
+                      </button>
+                      <textarea
+                        rows={2}
+                        value={textoParaTodasFracoes}
+                        onChange={e => setTextoParaTodasFracoes(e.target.value)}
+                        placeholder={`Escreva a mensagem a enviar a todas as ${fracoes.filter(f => f.id_predio === predio.id_predio).length} frações...`}
+                        className="flex-1 min-w-[220px] text-xs p-2 rounded-lg border border-slate-300 bg-white resize-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={aGravarAudioBroadcast ? handlePararGravacaoAudioBroadcast : handleIniciarGravacaoAudioBroadcast}
+                        className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer shrink-0 transition-colors ${aGravarAudioBroadcast ? "bg-red-600 text-white animate-pulse" : "text-slate-600 hover:text-emerald-600"}`}
+                        title={aGravarAudioBroadcast ? "Parar gravação" : "Gravar nota de voz"}
+                      >
+                        <i className="fa-solid fa-microphone"></i>
+                      </button>
+                      <button
+                        onClick={handleEnviarMensagemParaTodasFracoes}
+                        disabled={(!textoParaTodasFracoes.trim() && !broadcastFotoFile && !broadcastDocFile && !broadcastAudioBlob) || aEnviarParaTodos}
+                        className="text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg px-3 py-2 cursor-pointer shrink-0"
+                      >
+                        {aEnviarParaTodos ? "A enviar..." : "Enviar a Todos"}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
