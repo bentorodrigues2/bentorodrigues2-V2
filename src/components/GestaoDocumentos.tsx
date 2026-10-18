@@ -1707,6 +1707,17 @@ export function GestaoDocumentos({
     if (/thyssenkrupp|tk\s*elevador|tkelevator/i.test(semSufixoEmail)) {
       return "THYSSENKRUPP / TKElevators";
     }
+    // "DÉBITO DIRETO" é o método de pagamento, nunca um fornecedor — nunca
+    // devia existir como pasta própria (ver nota em GestaoMovimentos.tsx,
+    // handleAnexarFaturaDespesa). Qualquer documento antigo que ainda
+    // tenha ficado com este nome junta-se aqui a "Fornecedor Não
+    // Identificado", em vez de continuar como pasta à parte sem sentido.
+    if (/^d[ée]bito direto$/i.test(semSufixoEmail)) {
+      return "Fornecedor Não Identificado";
+    }
+    if (/iberdrola/i.test(semSufixoEmail)) {
+      return "IBERDROLA CLIENTES PORTUGAL, UNIPESSOAL, LDA.";
+    }
     return semSufixoEmail || nome;
   };
 

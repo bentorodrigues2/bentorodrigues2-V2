@@ -1629,7 +1629,19 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
     setEditFracaoIdMov(m.id_fracao || "");
     setEditDataMov(m.data || "");
     setFaturaDespesaFile(null);
-    setFaturaDespesaFornecedor(m.descricao?.replace(/^\[Extraído por IA\]\s*/i, "").split(/[-–]/)[0]?.trim() || "");
+    // A descrição real de um débito direto reconhecido por IA/extrato vem
+    // sempre no formato "DÉBITO DIRETO-<entidade real>-<referência>" (ex:
+    // "DÉBITO DIRETO-IBERDROLA CLIENT-219702983000") — "DÉBITO DIRETO" é
+    // só o método de pagamento, nunca o fornecedor. Cortar no primeiro
+    // travessão dava sempre "Débito Direto" como nome do fornecedor, e foi
+    // assim que 10 faturas da Iberdrola ficaram arquivadas numa pasta
+    // "DÉBITO DIRETO" sem sentido nenhum em vez de na pasta da própria
+    // Iberdrola. Ignora esse prefixo (e variantes "MB WAY-"/
+    // "TRANSFERÊNCIA-"/"MULTIBANCO-", mesmo problema) e usa o segmento
+    // seguinte, o que sobra depois de o retirar.
+    const semPrefixoIA = (m.descricao || "").replace(/^\[Extraído por IA\]\s*/i, "");
+    const semMetodoPagamento = semPrefixoIA.replace(/^(DÉBITO DIRETO|MB WAY|MULTIBANCO|TRANSFERÊNCIA)[-–]\s*/i, "");
+    setFaturaDespesaFornecedor(semMetodoPagamento.split(/[-–]/)[0]?.trim() || "");
   };
 
   const handleAnexarFaturaDespesa = async () => {
