@@ -3078,8 +3078,9 @@ export default function PWACondominoView({
 
             {/* Votações de Propostas de Orçamento (Concursos) — consultiva,
                 a decisão final de adjudicação continua a ser do
-                administrador. */}
-            {rfpsVotacaoFeed.length > 0 && (
+                administrador. Envolve decisão sobre dinheiro do prédio —
+                reserva de proprietário, tal como os questionários. */}
+            {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && rfpsVotacaoFeed.length > 0 && (
               <div id="votacoes-orcamentos" className="space-y-3">
                 <span className="text-[9px] font-extrabold text-emerald-600 uppercase tracking-widest block">Votações de Propostas de Orçamento</span>
                 {rfpsVotacaoFeed.map(r => {
@@ -3202,8 +3203,9 @@ export default function PWACondominoView({
               </div>
             )}
 
-            {/* Questionários Ativos — reais (Supabase) */}
-            {questionariosFeed.filter(q => q.estado === "ativo").length > 0 && (
+            {/* Questionários Ativos — reais (Supabase). Reserva de decisão do
+                proprietário — inquilino/coproprietário não respondem. */}
+            {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && questionariosFeed.filter(q => q.estado === "ativo").length > 0 && (
               <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3.5 rounded-xl shadow-sm space-y-3 text-[10px]">
                 <span className="text-[9px] font-extrabold text-emerald-600 uppercase tracking-widest block">📋 Questionários Ativos</span>
                 {questionariosFeed.filter(q => q.estado === "ativo").map(q => (

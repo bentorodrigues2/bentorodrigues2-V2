@@ -1339,10 +1339,16 @@ export function GestaoFracoes({
           // Convite real de acesso ao inquilino — antes era só um registo
           // informativo, nunca recebia email nenhum nem conseguia entrar na
           // plataforma. Mesma ordem: boas-vindas primeiro, 60s depois a
-          // ativação. Só dispara quando a fração não tinha inquilino nenhum
-          // antes — nunca por o email ter sido corrigido numa edição normal
-          // do mesmo inquilino (usa-se o botão "Reenviar" para isso).
-          const isNovoInquilino = arrendada && inqNome.trim() && inqEmail.trim() && /\S+@\S+\.\S+/.test(inqEmail.trim()) && !targetFracao.inquilino;
+          // ativação. Dispara quando o EMAIL do inquilino é novo ou mudou —
+          // comparar por email (não só "não tinha inquilino nenhum antes")
+          // apanha também o caso de a fração já ter um registo de inquilino
+          // (ex: placeholder, ou outro inquilino anterior) e o admin
+          // preencher/substituir por um inquilino real só agora — confirmado
+          // em produção: um inquilino real nunca chegou a ser convidado por
+          // a fração já ter algum valor em "inquilino" antes.
+          const emailInquilinoAnterior = (targetFracao.inquilino?.email || "").trim().toLowerCase();
+          const emailInquilinoNovo = inqEmail.trim().toLowerCase();
+          const isNovoInquilino = arrendada && inqNome.trim() && emailInquilinoNovo && /\S+@\S+\.\S+/.test(emailInquilinoNovo) && emailInquilinoNovo !== emailInquilinoAnterior;
           if (isNovoInquilino) {
             setEnviandoConvites(true);
             try {

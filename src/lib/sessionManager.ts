@@ -105,10 +105,16 @@ export const RoleNavigationMap: Record<UserRole, RoleNavigationConfig> = {
     displayName: "Condómino (Proprietário)",
     badgeColor: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30"
   },
+  // Pedido explícito do administrador: o inquilino tem o mesmo perfil que
+  // o proprietário (mesmo fluxo de registo/emails/notificações), exceto
+  // tudo o que revele dados financeiros (do prédio ou do próprio
+  // proprietário) ou poder de decisão — Financeiro, Assembleias/
+  // Convocatórias e Questionários ficam reservados ao proprietário.
+  // "comunicacao_questionarios" removido (estava indevidamente incluído).
   INQUILINO: {
     role: "INQUILINO",
     defaultTab: "portal_condomino",
-    allowedTabs: ["portal_condomino", "painel", "predios", "predios_cadastro", "predios_regras", "comunicacao_broadcast", "comunicacao_sondagens", "comunicacao_questionarios", "vistorias_limpezas", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
+    allowedTabs: ["portal_condomino", "painel", "predios", "predios_cadastro", "predios_regras", "comunicacao_broadcast", "comunicacao_sondagens", "vistorias_limpezas", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
     displayName: "Inquilino / Arrendatário (Sem Acesso Financeiro)",
     badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/30"
   },
@@ -120,7 +126,7 @@ export const RoleNavigationMap: Record<UserRole, RoleNavigationConfig> = {
   COPROPRIETARIO: {
     role: "COPROPRIETARIO",
     defaultTab: "portal_condomino",
-    allowedTabs: ["portal_condomino", "painel", "predios", "predios_cadastro", "predios_regras", "comunicacao_broadcast", "comunicacao_sondagens", "comunicacao_questionarios", "vistorias_limpezas", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
+    allowedTabs: ["portal_condomino", "painel", "predios", "predios_cadastro", "predios_regras", "comunicacao_broadcast", "comunicacao_sondagens", "vistorias_limpezas", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
     displayName: "Coproprietário (Sem Acesso Financeiro)",
     badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/30"
   }

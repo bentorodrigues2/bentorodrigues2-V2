@@ -1936,8 +1936,9 @@ export function PortalCondomino({
 
             {/* Votações de Propostas de Orçamento (Concursos) — consultiva,
                 a decisão final de adjudicação continua a ser do
-                administrador. */}
-            {rfpsVotacaoFeed.length > 0 && (
+                administrador. Envolve decisão sobre dinheiro do prédio —
+                reserva de proprietário, tal como os questionários. */}
+            {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && rfpsVotacaoFeed.length > 0 && (
               <div id="votacoes-orcamentos" className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
                 <h3 className="text-sm font-bold uppercase text-slate-800 mb-4 flex items-center">
                   <i className="fa-solid fa-file-invoice-dollar mr-2 text-emerald-600"></i> Votações de Propostas de Orçamento
@@ -2025,8 +2026,9 @@ export function PortalCondomino({
               </div>
             )}
 
-            {/* Questionários Ativos */}
-            {questionariosFeed.filter(q => q.estado === "ativo").length > 0 && (
+            {/* Questionários Ativos — reserva de decisão do proprietário,
+                inquilino/coproprietário não respondem. */}
+            {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && questionariosFeed.filter(q => q.estado === "ativo").length > 0 && (
               <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
                 <h3 className="text-sm font-bold uppercase text-slate-800 mb-4 flex items-center">
                   <i className="fa-solid fa-clipboard-question mr-2 text-emerald-600"></i> Questionários Ativos
