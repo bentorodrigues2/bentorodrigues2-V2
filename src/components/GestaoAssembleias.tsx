@@ -1510,7 +1510,7 @@ Com os meus cumprimentos,
               } else if (sig) {
                 signatureCell = `
                   <div style="text-align: center;">
-                    <img src="${sig.img}" style="max-height: 32px; max-width: 140px; mix-blend-mode: multiply; display: block; margin: 0 auto;" />
+                    <img src="${sig.img}" alt="Assinatura digital" style="max-height: 32px; max-width: 140px; mix-blend-mode: multiply; display: block; margin: 0 auto;" />
                     <span style="font-size: 7px; color: #10b981; font-weight: bold; display: block; margin-top: 1px; letter-spacing: 0.2px;">✓ ASSINADO DIGITALMENTE</span>
                   </div>
                 `;
@@ -1568,7 +1568,7 @@ Com os meus cumprimentos,
               if (presSig) {
                 return `
                   <div style="display: flex; justify-content: center; align-items: center; height: 50px;">
-                    <img src="${presSig.img}" style="max-height: 45px; max-width: 140px; mix-blend-mode: multiply;" />
+                    <img src="${presSig.img}" alt="Assinatura digital do presidente" style="max-height: 45px; max-width: 140px; mix-blend-mode: multiply;" />
                   </div>
                   <p style="font-size: 8px; color: #059669; margin: 5px 0 0 0; font-weight: bold;">✓ ASSINADO DIGITALMENTE (ID: ${presSig.nome})</p>
                 `;
@@ -1874,6 +1874,7 @@ Com os meus cumprimentos,
               onClick={redigirConvocatoriaHumanizadaComIA}
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
               title="A IA analisa os pontos da agenda e reescreve a convocatória com calor humano, empatia, clareza e rigor legal"
+              aria-label="A IA analisa os pontos da agenda e reescreve a convocatória com calor humano, empatia, clareza e rigor legal"
             >
               {loadingHumanize ? (
                 <>
@@ -1899,6 +1900,7 @@ Com os meus cumprimentos,
               onClick={() => gerarDeclaracaoRepresentacaoPDF()}
               className="bg-white hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-lg text-sm font-semibold border border-slate-200 transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
               title="Documento em branco, para qualquer condómino preencher e entregar antes da reunião"
+              aria-label="Documento em branco, para qualquer condómino preencher e entregar antes da reunião"
             >
               <i className="fa-solid fa-file-pdf text-red-600"></i>
               <span>Declaração de Representação (PDF)</span>
@@ -1969,6 +1971,7 @@ Com os meus cumprimentos,
                 onClick={redigirConvocatoriaHumanizadaComIA}
                 className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold px-2.5 py-1.5 rounded-lg border border-indigo-200 transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
                 title="Pedir à IA para reanalisar e reescrever num tom mais humano e analítico"
+                aria-label="Pedir à IA para reanalisar e reescrever num tom mais humano e analítico"
               >
                 <i className={`fa-solid ${loadingHumanize ? "fa-spinner fa-spin" : "fa-wand-magic-sparkles text-indigo-600"}`}></i>
                 <span>{loadingHumanize ? "A Reescrever..." : "Melhorar com IA"}</span>
@@ -2003,6 +2006,7 @@ Com os meus cumprimentos,
                 onClick={() => gerarDeclaracaoRepresentacaoPDF()}
                 className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 cursor-pointer flex items-center gap-1.5"
                 title="Documento em branco, para qualquer condómino preencher e entregar antes da reunião"
+                aria-label="Documento em branco, para qualquer condómino preencher e entregar antes da reunião"
               >
                 <i className="fa-solid fa-file-pdf text-red-600"></i>
                 <span>Declaração de Representação</span>
@@ -2212,6 +2216,7 @@ Com os meus cumprimentos,
                     onClick={() => gerarConvocatoriaOficialPDF(predio, r, fracoes, loggedUser?.nome)}
                     className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
                     title="Descarregar Convocatória Oficial de Assembleia em PDF estruturado com Procuração anexa"
+                    aria-label="Descarregar Convocatória Oficial de Assembleia em PDF estruturado com Procuração anexa"
                   >
                     <img src="/marca/18-pdf.png" alt="PDF" className="w-3.5 h-3.5 object-contain shrink-0" />
                     <span>Convocatória Oficial (PDF)</span>
@@ -2223,6 +2228,7 @@ Com os meus cumprimentos,
                     onClick={() => handleArquivarConvocatoria(r)}
                     className="bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
                     title="Guardar / Arquivar Convocatória no Arquivo Digital (Pasta 'Atas & Convocatórias')"
+                    aria-label="Guardar / Arquivar Convocatória no Arquivo Digital (Pasta 'Atas & Convocatórias')"
                   >
                     <img src="/modulos/27-arquivo-automatico.png" alt="Arquivo" className="w-3.5 h-3.5 object-contain shrink-0" onError={(e) => { e.currentTarget.src = "/marca/18-pdf.png"; }} />
                     <span>Arquivar Convocatória</span>
@@ -2237,6 +2243,7 @@ Com os meus cumprimentos,
                       onClick={() => handleArquivarAta(r)}
                       className="bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
                       title="Carregar o PDF real da Ata (gerado pela app ou redigido fora da plataforma) para o Arquivo Digital"
+                      aria-label="Carregar o PDF real da Ata (gerado pela app ou redigido fora da plataforma) para o Arquivo Digital"
                     >
                       <img src="/modulos/27-arquivo-automatico.png" alt="Arquivo" className="w-3.5 h-3.5 object-contain shrink-0" onError={(e) => { e.currentTarget.src = "/marca/18-pdf.png"; }} />
                       <span>Arquivar Ata (PDF)</span>
@@ -2249,6 +2256,7 @@ Com os meus cumprimentos,
                     onClick={() => exportarBalanceteMapaAnualXLS(predio, fracoes, new Date().getFullYear(), avisos, movements)}
                     className="bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
                     title="Descarregar Grelha das 12 Quotas Mensais de todas as Frações num ficheiro Excel/CSV para a Assembleia"
+                    aria-label="Descarregar Grelha das 12 Quotas Mensais de todas as Frações num ficheiro Excel/CSV para a Assembleia"
                   >
                     <img src="/modulos/66-exportacao-financeira.png" alt="Excel" className="w-3.5 h-3.5 object-contain shrink-0" onError={(e) => { e.currentTarget.src = "/marca/18-pdf.png"; }} />
                     <span>Mapa Anual / Balancete (.CSV)</span>
@@ -2402,6 +2410,7 @@ Com os meus cumprimentos,
                                       disabled={uploadingDeclaracaoFracaoId === f.id_fracao}
                                       onClick={() => { setFracaoAlvoDeclaracao(f.id_fracao); declaracaoInputRef.current?.click(); }}
                                       title="Anexar declaração de representação"
+                                      aria-label="Anexar declaração de representação"
                                       className="shrink-0 px-2 py-1.5 rounded text-[10px] font-bold cursor-pointer border disabled:opacity-50 bg-indigo-50 text-indigo-700 border-indigo-200"
                                     >
                                       <i className={`fa-solid ${uploadingDeclaracaoFracaoId === f.id_fracao ? "fa-spinner fa-spin" : "fa-paperclip"}`}></i>
@@ -2702,6 +2711,7 @@ Com os meus cumprimentos,
                             onClick={handleFinalizarEArquivarAta}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer flex items-center gap-1.5 shadow-xs"
                             title="Nos termos do Art. 1432.º do Código Civil: prazo legal de 30 dias para notificar os condóminos ausentes"
+                            aria-label="Nos termos do Art. 1432.º do Código Civil: prazo legal de 30 dias para notificar os condóminos ausentes"
                           >
                             <i className="fa-solid fa-paper-plane"></i>
                             <span>Guardar, Arquivar & Enviar Ata aos Condóminos</span>
@@ -3010,6 +3020,7 @@ Com os meus cumprimentos,
                                   }}
                                   className="absolute top-1 right-1 text-[10px] text-red-600 hover:text-red-800 border border-red-400 bg-red-50 hover:bg-red-100 active:scale-95 px-1.5 py-0.5 rounded-md cursor-pointer transition-all flex items-center gap-1 active:ring-1 active:ring-red-400 select-none"
                                   title="Eliminar assinatura"
+                                  aria-label="Eliminar assinatura"
                                 >
                                   <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="h-3 w-3 object-contain" />
                                   <span>Eliminar</span>
@@ -3020,7 +3031,7 @@ Com os meus cumprimentos,
                                   <span className="text-[7px] text-indigo-600 font-bold -mt-1 mb-1">em representação de {fracaoDaAss!.proprietario.nome}</span>
                                 )}
                                 <div className="bg-slate-50 border border-slate-100 p-1.5 rounded w-full flex items-center justify-center">
-                                  <img src={ass.img} className="max-h-[40px] max-width-[100px] object-contain mix-blend-multiply" />
+                                  <img src={ass.img} alt={`Assinatura de ${ass.fracao}`} className="max-h-[40px] max-width-[100px] object-contain mix-blend-multiply" />
                                 </div>
                                 <span className="text-[7px] text-emerald-600 font-bold mt-1.5"><i className="fa-solid fa-circle-check mr-0.5"></i> AUTENTICADO</span>
                                 {ass.assistiuVideoconferencia && (

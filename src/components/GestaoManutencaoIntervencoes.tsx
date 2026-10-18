@@ -1144,7 +1144,7 @@ export function GestaoManutencaoIntervencoes({
                     <div className="grid grid-cols-4 gap-2 mt-2">
                       {ocFotos.map((f, idx) => (
                         <div key={idx} className="relative rounded overflow-hidden aspect-square border">
-                          <img src={f.preview} className="w-full h-full object-cover" />
+                          <img src={f.preview} alt={`Fotografia ${idx + 1} da ocorrência`} className="w-full h-full object-cover" />
                         </div>
                       ))}
                     </div>
@@ -1248,7 +1248,7 @@ export function GestaoManutencaoIntervencoes({
                         <div className="flex gap-2 pt-1">
                           {o.fotos.map((img, idx) => (
                             <div key={idx} className="relative rounded overflow-hidden h-12 w-16 border">
-                              <img src={img.preview} className="w-full h-full object-cover" />
+                              <img src={img.preview} alt={`Fotografia ${idx + 1} da ocorrência`} className="w-full h-full object-cover" />
                             </div>
                           ))}
                         </div>
@@ -2077,6 +2077,7 @@ export function GestaoManutencaoIntervencoes({
                       onClick={() => handleEliminarObraExtra(o)}
                       className="bg-red-50 hover:bg-red-100 text-red-700 font-bold py-1.5 px-3 rounded-lg text-[11px] cursor-pointer border border-red-200 flex items-center gap-1.5"
                       title="Eliminar esta obra registada mal, para corrigir/voltar atrás"
+                      aria-label="Eliminar esta obra registada mal, para corrigir/voltar atrás"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                       <span>Eliminar Obra (corrigir registo)</span>
@@ -2290,7 +2291,7 @@ export function GestaoManutencaoIntervencoes({
                         <div className="flex gap-2">
                           {task.fotos.map((f, idx) => (
                             <div key={idx} className="relative rounded overflow-hidden h-12 w-16 border bg-slate-100">
-                              <img src={f.preview} className="w-full h-full object-cover" />
+                              <img src={f.preview} alt={`Fotografia ${idx + 1} da intervenção`} className="w-full h-full object-cover" />
                             </div>
                           ))}
                         </div>
@@ -2520,6 +2521,7 @@ export function GestaoManutencaoIntervencoes({
                             onClick={() => alert(`A descarregar ${d.nome} do servidor CondoManager AI...`)}
                             className="bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 border p-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-800 cursor-pointer shadow-sm shrink-0"
                             title="Descarregar Documento"
+                            aria-label="Descarregar Documento"
                           >
                             <FileDown className="h-3.5 w-3.5" />
                           </button>

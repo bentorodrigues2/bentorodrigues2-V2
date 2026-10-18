@@ -1018,6 +1018,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 <button
                   onClick={() => alert(`📋 Planificação Anual de Vistorias de 2026 para ${predio.nome} exportada em PDF!`)}
                   title="Exportar PDF"
+                  aria-label="Exportar PDF"
                   className="p-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-xs"
                 >
                   <img src="/modulos/80-pdf-de-resultados.png" alt="PDF" className="h-6 w-6 object-contain" onError={(e) => { e.currentTarget.src = "/modulos/25-relatorio.png"; }} />
@@ -1125,6 +1126,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                                 setPlanificacaoVistorias(prev => prev.filter(p => p.id !== item.id));
                               }}
                               title="Remover"
+                              aria-label="Remover"
                               className="p-1 text-slate-600 hover:text-red-600 transition-colors cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1343,6 +1345,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 <button
                   onClick={exportarVistoriasXLS}
                   title="Exportar Excel"
+                  aria-label="Exportar Excel"
                   className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-xs"
                 >
                   <img src="/modulos/66-exportacao-financeira.png" alt="Excel" className="h-6 w-6 object-contain" onError={(e) => { e.currentTarget.src = "/modulos/26-exportacao.png"; }} />
@@ -1350,6 +1353,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 <button
                   onClick={imprimirVistoriasPDF}
                   title="Exportar PDF"
+                  aria-label="Exportar PDF"
                   className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-xs"
                 >
                   <img src="/marca/18-pdf.png" alt="PDF" className="h-6 w-6 object-contain" onError={(e) => { e.currentTarget.src = "/modulos/80-pdf-de-resultados.png"; }} />
@@ -1511,6 +1515,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                     alert("✓ Planificação Anual de Vistorias sincronizada com os equipamentos SCIE registados!");
                   }}
                   title="Sincronizar com a Planificação Anual de Vistorias"
+                  aria-label="Sincronizar com a Planificação Anual de Vistorias"
                   className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
@@ -1744,6 +1749,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                                   type="button"
                                   onClick={() => handleEditarScie(eq)}
                                   title="Editar Equipamento"
+                                  aria-label="Editar Equipamento"
                                   className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
                                 >
                                   <Edit3 className="w-3.5 h-3.5" />
@@ -1752,6 +1758,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                                   type="button"
                                   onClick={() => handleEliminarScie(eq.id)}
                                   title="Eliminar Equipamento"
+                                  aria-label="Eliminar Equipamento"
                                   className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -2090,6 +2097,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 <button
                   onClick={exportarLimpezasXLS}
                   title="Exportar Excel"
+                  aria-label="Exportar Excel"
                   className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-xs"
                 >
                   <img src="/modulos/66-exportacao-financeira.png" alt="Excel" className="h-6 w-6 object-contain" onError={(e) => { e.currentTarget.src = "/modulos/26-exportacao.png"; }} />
@@ -2097,6 +2105,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 <button
                   onClick={imprimirLimpezasPDF}
                   title="Exportar PDF"
+                  aria-label="Exportar PDF"
                   className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-xs"
                 >
                   <img src="/marca/18-pdf.png" alt="PDF" className="h-6 w-6 object-contain" onError={(e) => { e.currentTarget.src = "/modulos/80-pdf-de-resultados.png"; }} />
@@ -2247,6 +2256,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                         onClick={() => setIncFoto("")}
                         className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full p-1 text-[10px] shadow cursor-pointer"
                         title="Remover foto"
+                        aria-label="Remover foto"
                       >
                         <X className="w-3 h-3" />
                       </button>

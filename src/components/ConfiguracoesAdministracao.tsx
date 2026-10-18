@@ -1590,6 +1590,7 @@ export function ConfiguracoesAdministracao({
                   }}
                   className="border-2 border-red-500 bg-red-50 hover:bg-red-100 active:bg-red-200 active:scale-95 text-red-700 dark:text-red-300 font-bold px-4 py-2 rounded-xl text-xs transition-all cursor-pointer shadow-xs hover:shadow-md active:ring-2 active:ring-red-400 select-none flex items-center gap-2"
                   title="Eliminar este prédio do sistema"
+                  aria-label="Eliminar este prédio do sistema"
                 >
                   <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="h-5 w-5 object-contain" />
                   <span>Eliminar</span>
@@ -1600,6 +1601,7 @@ export function ConfiguracoesAdministracao({
                 type="submit"
                 className="border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 active:scale-95 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all cursor-pointer shadow-md hover:shadow-lg active:ring-2 active:ring-emerald-400 select-none flex items-center gap-2"
                 title="Gravar dados do prédio no sistema Condomanager AI"
+                aria-label="Gravar dados do prédio no sistema Condomanager AI"
               >
                 <img src="/estados-acoes/12-adicionar.png" alt="Gravar" className="h-5 w-5 object-contain" />
                 <span>Gravar</span>

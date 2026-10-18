@@ -1288,6 +1288,7 @@ export function ConstituicaoProcessosJuridicos({
                       onClick={() => setShowLoteProvaModal(true)}
                       className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-2 cursor-pointer border border-indigo-400"
                       title="Carrega vários documentos de uma vez — a IA reconhece o tipo de cada um e regista-os automaticamente"
+                      aria-label="Carrega vários documentos de uma vez — a IA reconhece o tipo de cada um e regista-os automaticamente"
                     >
                       <i className="fa-solid fa-wand-magic-sparkles"></i>
                       <span>Carregar Vários Documentos (IA)</span>
@@ -1303,6 +1304,7 @@ export function ConstituicaoProcessosJuridicos({
                       onClick={() => iniciarEdicaoProcesso(currentProcesso)}
                       className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer border border-slate-300 dark:border-slate-700"
                       title="Editar Processo (corrigir valores/dados)"
+                      aria-label="Editar Processo (corrigir valores/dados)"
                     >
                       <i className="fa-solid fa-pen"></i>
                     </button>
@@ -1311,6 +1313,7 @@ export function ConstituicaoProcessosJuridicos({
                         onClick={() => handleArquivarProcesso(currentProcesso)}
                         className="bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border border-emerald-200 dark:border-emerald-900"
                         title="Marcar como Concluído/Extinto e arquivar (mantém o dossier, não elimina)"
+                        aria-label="Marcar como Concluído/Extinto e arquivar (mantém o dossier, não elimina)"
                       >
                         <i className="fa-solid fa-box-archive"></i>
                         <span>Arquivar</span>
@@ -1320,6 +1323,7 @@ export function ConstituicaoProcessosJuridicos({
                       onClick={() => handleEliminarProcesso(currentProcesso)}
                       className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer border border-rose-200 dark:border-rose-900"
                       title="Eliminar Processo"
+                      aria-label="Eliminar Processo"
                     >
                       <i className="fa-solid fa-trash-can"></i>
                     </button>
@@ -1587,6 +1591,7 @@ export function ConstituicaoProcessosJuridicos({
                                 onClick={() => setLightboxProva(prova)}
                                 className="p-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors text-xs cursor-pointer"
                                 title="Visualizar Prova / Fotografia"
+                                aria-label="Visualizar Prova / Fotografia"
                               >
                                 <i className="fa-solid fa-eye"></i>
                               </button>
@@ -1597,6 +1602,7 @@ export function ConstituicaoProcessosJuridicos({
                               }}
                               className="p-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors text-xs cursor-pointer"
                               title="Descarregar Ficheiro"
+                              aria-label="Descarregar Ficheiro"
                             >
                               <i className="fa-solid fa-download"></i>
                             </button>
@@ -1604,6 +1610,7 @@ export function ConstituicaoProcessosJuridicos({
                               onClick={() => handleRemoverProva(prova.id_prova)}
                               className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors text-xs cursor-pointer"
                               title="Retirar dos Autos"
+                              aria-label="Retirar dos Autos"
                             >
                               <i className="fa-solid fa-trash-can"></i>
                             </button>
@@ -2122,6 +2129,7 @@ export function ConstituicaoProcessosJuridicos({
                           onClick={() => setItensLoteProva((prev) => prev.filter((i) => i.id !== item.id))}
                           className="text-slate-400 hover:text-rose-600 cursor-pointer shrink-0 self-start"
                           title="Remover este ficheiro do lote"
+                          aria-label="Remover este ficheiro do lote"
                         >
                           <i className="fa-solid fa-trash-can text-xs"></i>
                         </button>
@@ -2234,6 +2242,7 @@ export function ConstituicaoProcessosJuridicos({
                       onClick={() => setNovoValorCapital(calcularDividaRealFracao(novoFracaoId).toFixed(2))}
                       className="text-[10px] font-bold text-emerald-600 hover:underline cursor-pointer"
                       title="Ir buscar novamente o valor real em dívida da fração (avisos Pendente/Paga Parcialmente)"
+                      aria-label="Ir buscar novamente o valor real em dívida da fração (avisos Pendente/Paga Parcialmente)"
                     >
                       <i className="fa-solid fa-rotate mr-1"></i>Recalcular da dívida real
                     </button>

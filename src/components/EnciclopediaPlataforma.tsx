@@ -520,6 +520,7 @@ export function EnciclopediaPlataforma({ documentos, onOpenManual }: Enciclopedi
                     onClick={reiniciarVideo}
                     className="bg-slate-800 hover:bg-slate-700 text-slate-600 px-2.5 py-1.5 rounded-lg flex items-center gap-1 cursor-pointer transition-all"
                     title="Reiniciar Vídeo"
+                    aria-label="Reiniciar Vídeo"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                     <span className="text-[11px]">Reiniciar</span>

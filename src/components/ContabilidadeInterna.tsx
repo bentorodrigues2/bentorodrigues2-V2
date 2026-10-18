@@ -846,6 +846,7 @@ export function ContabilidadeInterna({ predio, loggedUser, movimentos = [] }: Co
                         onClick={() => handleEliminarRegra(r)}
                         className="text-slate-400 hover:text-red-600 cursor-pointer px-2"
                         title="Eliminar regra"
+                        aria-label="Eliminar regra"
                       >
                         <i className="fa-solid fa-trash-can"></i>
                       </button>

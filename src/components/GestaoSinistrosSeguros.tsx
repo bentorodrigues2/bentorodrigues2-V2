@@ -1085,6 +1085,7 @@ export function GestaoSinistrosSeguros({
                           onClick={() => abrirModalSeguroFracao(fracao)}
                           className="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all cursor-pointer flex items-center gap-1.5"
                           title="Carregar apólice, ler com IA ou editar manualmente"
+                          aria-label="Carregar apólice, ler com IA ou editar manualmente"
                         >
                           <Edit3 className="h-3.5 w-3.5 text-emerald-600" />
                           <span>{apoliceNum ? "Editar Apólice" : "Registar / Ler com IA"}</span>
@@ -1192,6 +1193,7 @@ export function GestaoSinistrosSeguros({
                         onClick={() => abrirModalSinistro(sinistro)}
                         className="p-1.5 text-slate-600 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
                         title="Editar Sinistro"
+                        aria-label="Editar Sinistro"
                       >
                         <Edit3 className="h-4 w-4" />
                       </button>
@@ -1201,6 +1203,7 @@ export function GestaoSinistrosSeguros({
                         onClick={() => handleEliminarSinistro(sinistro.id_sinistro)}
                         className="p-1.5 text-red-400 hover:text-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40"
                         title="Eliminar Sinistro"
+                        aria-label="Eliminar Sinistro"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -1288,6 +1291,7 @@ export function GestaoSinistrosSeguros({
                     onClick={handleEliminarSeguroPartesComuns}
                     className="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1.5 rounded-xl cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/40"
                     title="Eliminar Apólice"
+                    aria-label="Eliminar Apólice"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -1496,6 +1500,7 @@ export function GestaoSinistrosSeguros({
                           onClick={() => handleRemoverDocumentoAnexo(idx)}
                           className="shrink-0 text-slate-400 hover:text-red-600 cursor-pointer"
                           title="Remover este documento"
+                          aria-label="Remover este documento"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -1763,6 +1768,7 @@ export function GestaoSinistrosSeguros({
                           onClick={() => handleRemoverDocumentoAnexo(idx, true)}
                           className="shrink-0 text-slate-400 hover:text-red-600 cursor-pointer"
                           title="Remover este documento"
+                          aria-label="Remover este documento"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>

@@ -772,6 +772,7 @@ export function GestaoReservas({
                               onClick={() => eliminarReserva(r.id_reserva)}
                               className="text-red-500 hover:text-red-700 p-1 rounded cursor-pointer shrink-0"
                               title="Cancelar Reserva"
+                              aria-label="Cancelar Reserva"
                             >
                               <i className="fa-solid fa-trash-can"></i>
                             </button>
@@ -851,6 +852,7 @@ export function GestaoReservas({
                                 onClick={() => eliminarReserva(r.id_reserva)}
                                 className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 p-1.5 rounded transition-colors cursor-pointer"
                                 title="Cancelar Reserva"
+                                aria-label="Cancelar Reserva"
                               >
                                 <i className="fa-solid fa-trash-can"></i>
                               </button>
@@ -1033,6 +1035,7 @@ export function GestaoReservas({
                             }}
                             className="p-1.5 text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-300 rounded-lg transition-all cursor-pointer active:scale-90 active:ring-2 active:ring-red-400 select-none"
                             title="Eliminar do Arquivo"
+                            aria-label="Eliminar do Arquivo"
                           >
                             <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="h-3.5 w-3.5 object-contain" />
                           </button>

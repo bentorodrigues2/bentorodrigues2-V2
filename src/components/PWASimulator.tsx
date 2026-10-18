@@ -1369,6 +1369,7 @@ export function PWASimulator({
                   }}
                   className="px-2.5 py-1 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white border border-red-500 text-[10px] font-bold transition-all cursor-pointer flex items-center space-x-1 shadow-sm hover:scale-105 active:scale-95 active:ring-2 active:ring-red-400 shrink-0"
                   title="Sair da Conta"
+                  aria-label="Sair da Conta"
                 >
                     <img src="/estados-acoes/17-desligar.png" alt="Sair" className="h-4 w-4 object-contain" />
                   <span>Sair</span>

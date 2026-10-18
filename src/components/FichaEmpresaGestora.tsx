@@ -853,6 +853,7 @@ export function FichaEmpresaGestora({
                               onClick={() => handleEnviarEmailBoasVindas(gestor)}
                               className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-[10.5px] font-bold transition-all shadow-xs cursor-pointer flex items-center space-x-1"
                               title="Enviar E-mail de Boas-Vindas com PDF explicativo e credenciais"
+                              aria-label="Enviar E-mail de Boas-Vindas com PDF explicativo e credenciais"
                             >
                               <Send className="h-3 w-3" />
                               <span>Boas-Vindas (PDF)</span>
@@ -864,6 +865,7 @@ export function FichaEmpresaGestora({
                               onClick={() => abrirModalEditarGestor(gestor)}
                               className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 p-1.5 rounded-lg transition-colors cursor-pointer"
                               title="Editar dados do gestor"
+                              aria-label="Editar dados do gestor"
                             >
                               <Edit3 className="h-3.5 w-3.5" />
                             </button>
@@ -874,6 +876,7 @@ export function FichaEmpresaGestora({
                               onClick={() => handleRemoverGestor(gestor.id_gestor)}
                               className="bg-red-50 dark:bg-red-950/40 hover:bg-red-600 text-red-600 hover:text-white p-1.5 rounded-lg transition-colors cursor-pointer border border-red-200 dark:border-red-800/40"
                               title="Remover gestor"
+                              aria-label="Remover gestor"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>

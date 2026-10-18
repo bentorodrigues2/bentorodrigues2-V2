@@ -1439,6 +1439,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                               onClick={() => handleEditarFornecedor(f)}
                               className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
                               title="Editar Fornecedor"
+                              aria-label="Editar Fornecedor"
                             >
                               <Pencil className="h-2.5 w-2.5" />
                               <span>Editar</span>
@@ -1459,6 +1460,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                               onClick={() => handleEliminarFornecedor(f)}
                               className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
                               title="Eliminar Fornecedor"
+                              aria-label="Eliminar Fornecedor"
                             >
                               <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="h-2.5 w-2.5 object-contain" />
                               <span>Eliminar</span>
@@ -2210,6 +2212,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                               onClick={() => renovarContratoAutomatico(c.id_contrato)}
                               className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 shadow-xs"
                               title="Executar Renovação (+1 ano)"
+                              aria-label="Executar Renovação (+1 ano)"
                             >
                               <i className="fa-solid fa-rotate"></i>
                               <span>Renovar</span>
@@ -2226,6 +2229,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                               }}
                               className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1"
                               title="Emitir Carta de Rescisão"
+                              aria-label="Emitir Carta de Rescisão"
                             >
                               <i className="fa-solid fa-file-signature"></i>
                               <span>Rescindir</span>
@@ -2261,6 +2265,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                               onClick={() => iniciarEdicaoContrato(c)}
                               className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1"
                               title="Editar este contrato"
+                              aria-label="Editar este contrato"
                             >
                               <img src="/estados-acoes/13-editar.png" alt="" className="h-3.5 w-3.5 object-contain" />
                               <span>Editar</span>
@@ -2272,6 +2277,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                               onClick={() => excluirContrato(c.id_contrato)}
                               className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1"
                               title="Eliminar Registo do Contrato"
+                              aria-label="Eliminar Registo do Contrato"
                             >
                               <img src="/estados-acoes/14-eliminar.png" alt="" className="h-3.5 w-3.5 object-contain" />
                               <span>Eliminar</span>
@@ -2545,6 +2551,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                               onClick={() => handleEditarDivida(d)}
                               className="p-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-lg transition-all cursor-pointer"
                               title="Editar Dívida"
+                              aria-label="Editar Dívida"
                             >
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
@@ -2562,6 +2569,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                               }}
                               className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
                               title="Pagar (total ou em tranche)"
+                              aria-label="Pagar (total ou em tranche)"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               <span>Pagar</span>
@@ -2572,6 +2580,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                               onClick={() => handleRemoverDivida(d)}
                               className="p-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded-lg transition-all cursor-pointer"
                               title="Eliminar Lançamento"
+                              aria-label="Eliminar Lançamento"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -2595,6 +2604,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
                                   <button
                                     onClick={() => handleRemoverPagamento(d, p)}
                                     title="Eliminar esta tranche (reverte o movimento e o saldo da conta)"
+                                    aria-label="Eliminar esta tranche (reverte o movimento e o saldo da conta)"
                                     className="text-slate-600 hover:text-red-600 cursor-pointer ml-2"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />

@@ -437,6 +437,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio, fracoes 
               }}
               className="p-2 text-slate-600 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition-colors"
               title="Nova Conversa / Limpar"
+              aria-label="Nova Conversa / Limpar"
             >
               <RefreshCw className="h-4 w-4" />
             </button>
@@ -459,6 +460,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio, fracoes 
               onClick={onClose}
               className="p-2 text-slate-600 hover:text-white hover:bg-red-500/20 hover:text-red-400 rounded-xl transition-colors"
               title="Fechar Assistente"
+              aria-label="Fechar Assistente"
             >
               <X className="h-5 w-5" />
             </button>
@@ -563,6 +565,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio, fracoes 
                           onClick={() => handleCopy(msg.documentArtifact!.content, `doc-${msg.id}`)}
                           className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                           title="Copiar texto do documento"
+                          aria-label="Copiar texto do documento"
                         >
                           {copiedId === `doc-${msg.id}` ? (
                             <Check className="h-3.5 w-3.5 text-emerald-400" />
@@ -579,6 +582,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio, fracoes 
                           onClick={() => handlePrint(msg.documentArtifact!.content)}
                           className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                           title="Imprimir Documento"
+                          aria-label="Imprimir Documento"
                         >
                           <Printer className="h-3.5 w-3.5" />
                           <span className="hidden sm:inline">Imprimir</span>
@@ -589,6 +593,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio, fracoes 
                           onClick={() => handleExportPDF(msg.documentArtifact!)}
                           className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-md transition-all cursor-pointer"
                           title="Descarregar PDF Oficial"
+                          aria-label="Descarregar PDF Oficial"
                         >
                           <Download className="h-3.5 w-3.5" />
                           <span>Descarregar PDF</span>
@@ -636,6 +641,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio, fracoes 
                       onClick={() => handleCopy(msg.text, msg.id)}
                       className="hover:text-white flex items-center gap-1 text-slate-600 transition-colors"
                       title="Copiar mensagem"
+                      aria-label="Copiar mensagem"
                     >
                       {copiedId === msg.id ? (
                         <Check className="h-3 w-3 text-emerald-400" />
@@ -714,6 +720,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio, fracoes 
                     onClick={() => setAttachedImages((prev) => prev.filter((i) => i.id !== img.id))}
                     className="absolute top-0.5 right-0.5 bg-red-600 text-white rounded-full p-0.5 opacity-90 hover:opacity-100"
                     title="Remover fotografia"
+                    aria-label="Remover fotografia"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -760,6 +767,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio, fracoes 
                 onClick={() => fileInputRef.current?.click()}
                 className="p-2 text-slate-600 hover:text-emerald-400 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
                 title="Anexar Ficheiros, Documentos ou Fotografias"
+                aria-label="Anexar Ficheiros, Documentos ou Fotografias"
               >
                 <Paperclip className="h-5 w-5" />
               </button>
@@ -790,6 +798,7 @@ export function AIAssistantModal({ isOpen, onClose, loggedUser, predio, fracoes 
                 disabled={(!inputText.trim() && attachedImages.length === 0 && attachedDocs.length === 0) || isLoading}
                 className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:hover:bg-emerald-600 text-white font-bold p-2.5 rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center"
                 title="Enviar ao Gemini"
+                aria-label="Enviar ao Gemini"
               >
                 <Send className="h-4 w-4" />
               </button>

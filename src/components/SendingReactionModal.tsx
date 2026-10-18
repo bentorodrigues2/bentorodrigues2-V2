@@ -148,6 +148,7 @@ export const SendingReactionModal: React.FC<SendingReactionModalProps> = ({
             src={htmlSrc}
             className="w-full h-full border-0"
             title="Reação Envio"
+            aria-label="Reação Envio"
           />
         </div>
 

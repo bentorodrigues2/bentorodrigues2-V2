@@ -894,6 +894,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                               }}
                               className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[10px] font-semibold py-1 px-2 rounded cursor-pointer transition-colors"
                               title="Gerar Notificação de Cobrança Registada"
+                              aria-label="Gerar Notificação de Cobrança Registada"
                             >
                               <i className="fa-solid fa-envelope-open-text"></i> Carta AR
                             </button>
@@ -905,6 +906,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                                 }}
                                 className="bg-red-500 hover:bg-red-600 text-white text-[10px] font-bold py-1 px-2 rounded cursor-pointer transition-colors"
                                 title="Gerar Requerimento Judicial de Injunção"
+                                aria-label="Gerar Requerimento Judicial de Injunção"
                               >
                                 <i className="fa-solid fa-gavel"></i> Injunção
                               </button>
@@ -2358,6 +2360,7 @@ ${formatDatePT(anchorDate.toISOString().split("T")[0])}`);
                       }}
                       className="bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
                       title="Copiar Texto"
+                      aria-label="Copiar Texto"
                     >
                       <i className="fa-solid fa-copy mr-1"></i>Copiar
                     </button>

@@ -617,6 +617,7 @@ export function MultiCondominio({
                         onClick={() => handleDeleteTeamMember(t.id)}
                         className="border border-red-400 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/40 text-red-700 dark:text-red-300 px-3 py-1 rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-xs active:scale-95 active:ring-2 active:ring-red-400 select-none"
                         title="Eliminar membro da equipa"
+                        aria-label="Eliminar membro da equipa"
                       >
                         <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="h-3.5 w-3.5 object-contain" />
                         <span>Eliminar</span>

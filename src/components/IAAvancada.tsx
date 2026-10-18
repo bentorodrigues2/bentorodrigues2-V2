@@ -2070,6 +2070,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                       onClick={handleCopiarMinuta}
                       className="bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
                       title="Copiar Texto"
+                      aria-label="Copiar Texto"
                     >
                       <i className="fa-solid fa-copy mr-1"></i>Copiar
                     </button>
@@ -3036,6 +3037,7 @@ export function IAAvancada({ predio, fracoes, avisos, movements, contas, fornece
                               onClick={() => handleRemoveRubrica(rub.id)}
                               className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-40 disabled:hover:bg-transparent"
                               title="Remover Rubrica"
+                              aria-label="Remover Rubrica"
                             >
                               <i className="fa-solid fa-trash-can"></i>
                             </button>

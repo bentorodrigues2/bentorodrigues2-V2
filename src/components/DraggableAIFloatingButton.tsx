@@ -57,6 +57,7 @@ export function DraggableAIFloatingButton({
         } ${className}`}
         style={{ touchAction: "none" }}
         title="Assistente Gemini IA Ativa • Arraste para mover ou clique para abrir"
+        aria-label="Assistente Gemini IA Ativa • Arraste para mover ou clique para abrir"
       >
         <button
           type="button"

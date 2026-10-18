@@ -437,6 +437,7 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
                           job.ativo ? "bg-emerald-600" : "bg-slate-300 dark:bg-slate-700"
                         }`}
                         title="Apenas visual — não desativa o envio real no servidor"
+                        aria-label="Apenas visual — não desativa o envio real no servidor"
                       >
                         <span
                           className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
@@ -452,6 +453,7 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
                         disabled={isRunning}
                         className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                         title="Executar imediatamente esta rotina"
+                        aria-label="Executar imediatamente esta rotina"
                       >
                         {isRunning ? (
                           <>
@@ -496,6 +498,7 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
                                     value={job.dia_mes || 1}
                                     disabled
                                     title="Fixo no calendário real do servidor — ver nota abaixo"
+                                    aria-label="Fixo no calendário real do servidor — ver nota abaixo"
                                     className="w-full bg-slate-100 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 cursor-not-allowed"
                                   />
                                 </div>
@@ -506,6 +509,7 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
                                     value={job.hora_execucao}
                                     disabled
                                     title="Fixo no calendário real do servidor — ver nota abaixo"
+                                    aria-label="Fixo no calendário real do servidor — ver nota abaixo"
                                     className="w-full bg-slate-100 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 cursor-not-allowed"
                                   />
                                 </div>
@@ -518,6 +522,7 @@ export function AgendadorAutomatico({ predio, fracoes, avisos = [], setAvisos, l
                                   value={job.hora_execucao}
                                   disabled
                                   title="Fixo no calendário real do servidor — ver nota abaixo"
+                                  aria-label="Fixo no calendário real do servidor — ver nota abaixo"
                                   className="w-full bg-slate-100 dark:bg-slate-800/60 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 cursor-not-allowed"
                                 />
                               </div>

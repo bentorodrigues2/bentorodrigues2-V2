@@ -2022,6 +2022,7 @@ A Administração do Condomínio`
                     }}
                     className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl transition-colors cursor-pointer"
                     title="Copiar"
+                    aria-label="Copiar"
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </button>

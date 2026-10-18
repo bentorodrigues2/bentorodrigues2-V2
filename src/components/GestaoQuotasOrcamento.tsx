@@ -1477,6 +1477,7 @@ export function GestaoQuotasOrcamento({
       {(loggedUser.role === 'ADMIN' || loggedUser.role === 'EMPRESA_GESTORA') && (
         <AccordionSection
           title="1. Orçamento Anual & Adendas"
+          aria-label="1. Orçamento Anual & Adendas"
           subtitle="Define o orçamento anual em vigor, regista revisões aprovadas em assembleia e emite as quotas mensais em lote"
           icon={<FileSignature className="w-4 h-4" />}
         >
@@ -1533,6 +1534,7 @@ export function GestaoQuotasOrcamento({
                 type="button"
                 onClick={abrirTabelaCalculoOrdinaria}
                 title="Mostra a tabela de cálculo por fração (Quota Mensal + Fundo de Reserva = Quota Ordinária) e permite exportar"
+                aria-label="Mostra a tabela de cálculo por fração (Quota Mensal + Fundo de Reserva = Quota Ordinária) e permite exportar"
                 className="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors cursor-pointer flex items-center space-x-2"
               >
                 <Calculator className="w-3.5 h-3.5" />
@@ -1670,6 +1672,7 @@ export function GestaoQuotasOrcamento({
                     type="button"
                     onClick={() => { setNovaRevisaoValor(""); setOverridesQuotaFracao({}); }}
                     title="Fecha esta pré-visualização sem aplicar nada"
+                    aria-label="Fecha esta pré-visualização sem aplicar nada"
                     className="text-[11px] font-semibold text-slate-600 hover:text-red-600 shrink-0 cursor-pointer flex items-center gap-1"
                   >
                     <i className="fa-solid fa-xmark"></i> Fechar
@@ -1796,6 +1799,7 @@ export function GestaoQuotasOrcamento({
         open={secao2Aberta}
         onToggle={setSecao2Aberta}
         title="2. Cálculo de Quotas por Fração"
+        aria-label="2. Cálculo de Quotas por Fração"
         subtitle={`Repartição proporcional pela permilagem, quotas extraordinárias (obras/FCR) e discriminação das ${predioFracoes.length} frações`}
         icon={<Calculator className="w-4 h-4" />}
         badge={
@@ -1835,6 +1839,7 @@ export function GestaoQuotasOrcamento({
                   readOnly
                   disabled
                   title="Valor real em vigor, vindo do Orçamento Anual definido acima — não editável aqui para nunca duplicar a emissão automática mensal (dia 25)."
+                  aria-label="Valor real em vigor, vindo do Orçamento Anual definido acima — não editável aqui para nunca duplicar a emissão automática mensal (dia 25)."
                   className="w-full border border-slate-200 px-3 py-2 text-xs rounded-xl bg-slate-100 font-mono font-bold text-slate-600 cursor-not-allowed"
                 />
                 <p className="text-[9.5px] text-slate-600 mt-1">Vem do Orçamento Anual (secção 1 acima). A quota ordinária é sempre emitida automaticamente no dia 25 — aqui só se emite a extraordinária.</p>
@@ -2117,6 +2122,7 @@ export function GestaoQuotasOrcamento({
                   onClick={handleEmitirNotasExtraordinariasEmAtraso}
                   disabled={aEmitirNotasExtraAtraso}
                   title="Emite (ou agenda) a nota de cobrança + email de qualquer prestação de Quota Extraordinária já vencida e ainda sem notificação — cobre datas de início já no passado."
+                  aria-label="Emite (ou agenda) a nota de cobrança + email de qualquer prestação de Quota Extraordinária já vencida e ainda sem notificação — cobre datas de início já no passado."
                   className="w-full px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
                 >
                   <i className={`fa-solid ${aEmitirNotasExtraAtraso ? "fa-spinner animate-spin" : "fa-clock-rotate-left"}`}></i>
@@ -2150,6 +2156,7 @@ export function GestaoQuotasOrcamento({
               onClick={() => exportarBalanceteMapaAnualXLS(predio, predioFracoesFiltradas, new Date().getFullYear(), avisos)}
               className="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
               title="Descarregar grelha das 12 quotas mensais das frações visíveis em Excel/CSV para entregar em Assembleia"
+              aria-label="Descarregar grelha das 12 quotas mensais das frações visíveis em Excel/CSV para entregar em Assembleia"
             >
               <Download className="h-3.5 w-3.5" />
               <span>Exportar Mapa Anual (XLS)</span>
@@ -2297,6 +2304,7 @@ export function GestaoQuotasOrcamento({
                   }}
                   className="bg-sky-700 hover:bg-sky-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
                   title="Descarregar a tabela de cálculo da quota extraordinária (Fração, Nome, Valores, Mês Início/Final) em Excel/CSV"
+                  aria-label="Descarregar a tabela de cálculo da quota extraordinária (Fração, Nome, Valores, Mês Início/Final) em Excel/CSV"
                 >
                   <Download className="h-3.5 w-3.5" />
                   <span>Exportar Quota Extra (XLS)</span>
@@ -2375,6 +2383,7 @@ export function GestaoQuotasOrcamento({
       {/* SECÇÃO 3 — AVISOS DE COBRANÇA EMITIDOS */}
       <AccordionSection
         title="3. Avisos de Cobrança Emitidos"
+        aria-label="3. Avisos de Cobrança Emitidos"
         subtitle="Notas de cobrança e recibos já emitidos — gerar documentos, editar ou eliminar"
         icon={<FileText className="w-4 h-4" />}
         badge={<span className="text-[10px] bg-slate-200 text-slate-600 font-bold px-2 py-0.5 rounded-full">Total: {predioAvisos.length} docs</span>}
@@ -2395,6 +2404,7 @@ export function GestaoQuotasOrcamento({
             onClick={exportarAvisosXLS}
             className="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0"
             title="Descarregar a lista filtrada em Excel/CSV"
+            aria-label="Descarregar a lista filtrada em Excel/CSV"
           >
             <Download className="h-3.5 w-3.5" />
             <span>Exportar ({predioAvisosFiltrados.length})</span>

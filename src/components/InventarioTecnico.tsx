@@ -299,6 +299,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
                         onClick={() => setFotos(prev => prev.filter((_, idx) => idx !== i))}
                         className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white cursor-pointer transition-opacity"
                         title="Remover fotografia"
+                        aria-label="Remover fotografia"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -405,6 +406,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
                     onClick={() => handleRemove(e.id)}
                     className="p-1.5 rounded-lg border bg-white dark:bg-slate-900 text-slate-600 hover:text-red-500 hover:border-red-200 shrink-0 self-end sm:self-center cursor-pointer shadow-sm"
                     title="Remover Equipamento"
+                    aria-label="Remover Equipamento"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>

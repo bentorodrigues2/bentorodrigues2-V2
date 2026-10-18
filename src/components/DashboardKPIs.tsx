@@ -317,6 +317,7 @@ export function DashboardKPIs({
             onClick={recarregarTudo}
             disabled={aAtualizar}
             title="Atualizar agora"
+            aria-label="Atualizar agora"
             className="flex items-center gap-1.5 text-xs text-slate-600 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-60 cursor-pointer"
           >
             <RefreshCw size={12} className={aAtualizar ? "animate-spin" : ""} />

@@ -436,6 +436,7 @@ export function GestaoContas({
                   onClick={handleReconciliarSaldo}
                   disabled={aReconciliarSaldo}
                   title="Verifica se há pagamentos confirmados que ainda não estão refletidos no saldo (ex: confirmados antes da correção automática) e credita a diferença."
+                  aria-label="Verifica se há pagamentos confirmados que ainda não estão refletidos no saldo (ex: confirmados antes da correção automática) e credita a diferença."
                   className="text-[11px] text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1.5 font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <i className={`fa-solid ${aReconciliarSaldo ? "fa-spinner fa-spin" : "fa-rotate"}`}></i>
@@ -549,6 +550,7 @@ export function GestaoContas({
                           onClick={() => handleIniciarEdicao(c)}
                           className="text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1.5 font-bold transition-all flex items-center gap-1 cursor-pointer"
                           title="Editar Conta Bancária"
+                          aria-label="Editar Conta Bancária"
                         >
                           <img src="/estados-acoes/13-editar.png" alt="Editar" className="w-3.5 h-3.5 object-contain" />
                           <span>Editar</span>
@@ -561,6 +563,7 @@ export function GestaoContas({
                           onClick={() => handleEliminarConta(c)}
                           className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5 font-bold transition-all flex items-center gap-1 cursor-pointer"
                           title="Eliminar Conta Bancária"
+                          aria-label="Eliminar Conta Bancária"
                         >
                           <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="w-3.5 h-3.5 object-contain" />
                           <span>Eliminar</span>

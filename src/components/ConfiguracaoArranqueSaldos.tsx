@@ -1260,6 +1260,7 @@ export function ConfiguracaoArranqueSaldos({
                           onClick={() => handleRemoveConta(conta.id_conta)}
                           className="p-1.5 text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
                           title="Eliminar esta conta"
+                          aria-label="Eliminar esta conta"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -1918,6 +1919,7 @@ export function ConfiguracaoArranqueSaldos({
                     key={m.id}
                     onClick={() => abrirEdicaoMovimento(m)}
                     title="Clique para corrigir este movimento"
+                    aria-label="Clique para corrigir este movimento"
                     className="hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer"
                   >
                     <td className="p-2.5 font-mono text-[11px] text-slate-600">{m.data}</td>
@@ -1944,6 +1946,7 @@ export function ConfiguracaoArranqueSaldos({
                         onClick={(e) => { e.stopPropagation(); handleRemoveMovimentoHistorico(m.id); }}
                         className="p-1 text-slate-600 hover:text-red-500 transition-colors cursor-pointer"
                         title="Remover"
+                        aria-label="Remover"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>

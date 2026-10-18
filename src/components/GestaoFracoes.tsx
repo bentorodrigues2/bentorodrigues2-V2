@@ -1618,6 +1618,7 @@ export function GestaoFracoes({
             onClick={() => setIsFiltroRelatoriosOpen(true)} 
             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
             title="Abrir Filtro Dinâmico para exportar relatórios por prédio, por fração ou todas"
+            aria-label="Abrir Filtro Dinâmico para exportar relatórios por prédio, por fração ou todas"
           >
             <img src="/marca/16-documentos-relatorios.png" alt="Relatórios" className="h-4 w-4 object-contain" onError={(e) => { e.currentTarget.src = "/marca/18-pdf.png"; }} />
             <span>Filtro & Relatórios</span>
@@ -1630,6 +1631,7 @@ export function GestaoFracoes({
               onClick={() => setIsOpcoesExportacaoOpen(!isOpcoesExportacaoOpen)} 
               className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-2 shadow-xs border border-slate-700"
               title="Opções de Exportação e Fichas"
+              aria-label="Opções de Exportação e Fichas"
             >
               <i className="fa-solid fa-file-export text-emerald-400 text-xs"></i>
               <span>Opções de Exportação</span>
@@ -1958,6 +1960,7 @@ export function GestaoFracoes({
                   }}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                   title="Registar uma nova fração"
+                  aria-label="Registar uma nova fração"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Adicionar Fração</span>
@@ -2116,6 +2119,7 @@ export function GestaoFracoes({
                                 }}
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 rounded text-[10px] cursor-pointer transition-all shadow-xs flex items-center gap-1"
                                 title="Associar Proprietário a esta Fração"
+                                aria-label="Associar Proprietário a esta Fração"
                               >
                                 <i className="fa-solid fa-user-plus text-[9px]"></i>
                                 <span>Associar Proprietário</span>
@@ -2130,6 +2134,7 @@ export function GestaoFracoes({
                               onClick={() => handleEditarFracao(f)}
                               className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-emerald-200 flex items-center gap-1 shadow-xs"
                               title="Editar Fração"
+                              aria-label="Editar Fração"
                             >
                               <Pencil className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                               <span className="font-semibold text-[10px]">Editar</span>
@@ -2139,6 +2144,7 @@ export function GestaoFracoes({
                               onClick={() => handleEliminarFracao(f.id_fracao, f.fracao_nome)}
                               className="bg-red-50 hover:bg-red-100 text-red-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-red-200 flex items-center gap-1 shadow-xs"
                               title="Eliminar Fração"
+                              aria-label="Eliminar Fração"
                             >
                               <Trash2 className="w-3.5 h-3.5 text-red-600 shrink-0" />
                               <span className="font-semibold text-[10px]">Eliminar</span>
@@ -2220,6 +2226,7 @@ export function GestaoFracoes({
                     onClick={() => setCurrentSubTab("fracoes_nova")}
                     className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold px-2.5 py-1 rounded transition-colors cursor-pointer whitespace-nowrap"
                     title="Abrir ecrã de frações"
+                    aria-label="Abrir ecrã de frações"
                   >
                     <i className="fa-solid fa-hotel mr-1 text-emerald-600"></i>
                     <span>Ver Frações</span>
@@ -2277,6 +2284,7 @@ export function GestaoFracoes({
                       onClick={() => reenviarConviteAcesso(propEmail.trim(), propNome.trim(), "USER", setReenviandoConviteProprietario)}
                       className="text-emerald-600 hover:text-emerald-800 disabled:opacity-40 p-1 text-xs cursor-pointer"
                       title="Reenviar email de definição de password (link expirado ou nunca recebido)"
+                      aria-label="Reenviar email de definição de password (link expirado ou nunca recebido)"
                     >
                       <i className={`fa-solid ${reenviandoConviteProprietario ? "fa-spinner fa-spin" : "fa-paper-plane"}`}></i>
                     </button>
@@ -2505,6 +2513,7 @@ export function GestaoFracoes({
                         : "Aguardando Fração"
                     } 
                     title="Referência bancária BR23E gerada e guardada automaticamente pelo sistema para conciliação (não editável)"
+                    aria-label="Referência bancária BR23E gerada e guardada automaticamente pelo sistema para conciliação (não editável)"
                     className="w-full border border-emerald-300 dark:border-emerald-700 px-2.5 py-1.5 text-xs rounded font-mono font-bold text-emerald-800 dark:text-emerald-300 bg-white dark:bg-slate-900 cursor-not-allowed select-all" 
                   />
                   <span className="text-[9px] text-emerald-700/80 dark:text-emerald-400 mt-1 font-medium">Conciliação automática</span>
@@ -2567,6 +2576,7 @@ export function GestaoFracoes({
                           onClick={() => setPropContasAdicionais(prev => prev.filter((_, i) => i !== idx))}
                           className="text-red-500 hover:text-red-600 cursor-pointer shrink-0"
                           title="Remover esta conta"
+                          aria-label="Remover esta conta"
                         >
                           <i className="fa-solid fa-trash text-xs"></i>
                         </button>
@@ -2599,7 +2609,7 @@ export function GestaoFracoes({
                     }} className="hidden" />
                     {propFoto && (
                       <div className="relative">
-                        <img src={propFoto} className="h-9 w-9 rounded-full object-cover border border-slate-300" referrerPolicy="no-referrer" />
+                        <img src={propFoto} alt="Fotografia do proprietário" className="h-9 w-9 rounded-full object-cover border border-slate-300" referrerPolicy="no-referrer" />
                         <button type="button" onClick={() => setPropFoto(null)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 text-[8px] hover:bg-red-600"><i className="fa-solid fa-xmark"></i></button>
                       </div>
                     )}
@@ -2623,7 +2633,7 @@ export function GestaoFracoes({
                       <div key={idx} className="flex items-center justify-between bg-white p-2 rounded border border-slate-200">
                         <div className="flex items-center space-x-2">
                           {co.foto ? (
-                            <img src={co.foto} className="h-7 w-7 rounded-full object-cover border border-slate-300" referrerPolicy="no-referrer" />
+                            <img src={co.foto} alt={`Fotografia de ${co.nome}`} className="h-7 w-7 rounded-full object-cover border border-slate-300" referrerPolicy="no-referrer" />
                           ) : (
                             <div className="h-7 w-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold">{co.nome.slice(0,2).toUpperCase()}</div>
                           )}
@@ -2675,6 +2685,7 @@ export function GestaoFracoes({
                             }}
                             className="text-emerald-500 hover:text-emerald-700 disabled:opacity-40 p-1 text-xs cursor-pointer"
                             title="Reenviar Convite de Acesso (link expirado ou nunca recebido)"
+                            aria-label="Reenviar Convite de Acesso (link expirado ou nunca recebido)"
                           >
                             <i className={`fa-solid ${reenviandoConviteCoIdx === idx ? "fa-spinner fa-spin" : "fa-paper-plane"}`}></i>
                           </button>
@@ -2692,6 +2703,7 @@ export function GestaoFracoes({
                             }}
                             className="text-indigo-500 hover:text-indigo-700 p-1 text-xs cursor-pointer"
                             title="Editar Coproprietário"
+                            aria-label="Editar Coproprietário"
                           >
                             <i className="fa-solid fa-pen"></i>
                           </button>
@@ -2715,6 +2727,7 @@ export function GestaoFracoes({
                             }}
                             className="text-red-500 hover:text-red-700 p-1 text-xs cursor-pointer"
                             title="Remover Coproprietário"
+                            aria-label="Remover Coproprietário"
                           >
                             <i className="fa-solid fa-trash-can"></i>
                           </button>
@@ -2778,7 +2791,7 @@ export function GestaoFracoes({
                       }} className="hidden" />
                       {coFoto && (
                         <div className="relative">
-                          <img src={coFoto} className="h-9 w-9 rounded-full object-cover border border-slate-300" referrerPolicy="no-referrer" />
+                          <img src={coFoto} alt="Fotografia do coproprietário" className="h-9 w-9 rounded-full object-cover border border-slate-300" referrerPolicy="no-referrer" />
                           <button type="button" onClick={() => setCoFoto(null)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 text-[8px] hover:bg-red-600"><i className="fa-solid fa-xmark"></i></button>
                         </div>
                       )}
@@ -2922,6 +2935,7 @@ export function GestaoFracoes({
                         onClick={() => reenviarConviteAcesso(inqEmail.trim(), inqNome.trim(), "INQUILINO", setReenviandoConviteInquilino)}
                         className="text-emerald-600 hover:text-emerald-800 disabled:opacity-40 p-1 text-xs cursor-pointer"
                         title="Reenviar email de definição de password (link expirado ou nunca recebido)"
+                        aria-label="Reenviar email de definição de password (link expirado ou nunca recebido)"
                       >
                         <i className={`fa-solid ${reenviandoConviteInquilino ? "fa-spinner fa-spin" : "fa-paper-plane"}`}></i>
                       </button>
@@ -2992,7 +3006,7 @@ export function GestaoFracoes({
                         <input ref={inqFileRef} type="file" accept="image/*" onChange={(e) => processarFotoWebP(e, setInqFoto)} className="hidden" />
                         {inqFoto && (
                           <div className="relative">
-                            <img src={inqFoto} className="h-9 w-9 rounded-full object-cover border border-slate-300" referrerPolicy="no-referrer" />
+                            <img src={inqFoto} alt="Fotografia do inquilino" className="h-9 w-9 rounded-full object-cover border border-slate-300" referrerPolicy="no-referrer" />
                             <button type="button" onClick={() => setInqFoto(null)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 text-[8px] hover:bg-red-600"><i className="fa-solid fa-xmark"></i></button>
                           </div>
                         )}
@@ -3053,6 +3067,7 @@ export function GestaoFracoes({
                   onClick={() => downloadProprietariosFiltradosPDF(predio.nome, proprietariosFiltrados)}
                   className="bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                   title="Exportar lista filtrada em PDF"
+                  aria-label="Exportar lista filtrada em PDF"
                 >
                   <i className="fa-solid fa-file-pdf text-xs text-rose-500"></i>
                   <span>PDF</span>
@@ -3062,6 +3077,7 @@ export function GestaoFracoes({
                   onClick={exportarProprietariosFiltradosXLS}
                   className="bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                   title="Exportar lista filtrada em Excel"
+                  aria-label="Exportar lista filtrada em Excel"
                 >
                   <i className="fa-solid fa-file-excel text-xs text-emerald-600"></i>
                   <span>Excel</span>
@@ -3219,6 +3235,7 @@ export function GestaoFracoes({
                               }}
                               className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-emerald-200 flex items-center gap-1 shadow-xs"
                               title="Editar Proprietário"
+                              aria-label="Editar Proprietário"
                             >
                               <Pencil className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                               <span className="font-semibold text-[10px]">Editar</span>
@@ -3229,6 +3246,7 @@ export function GestaoFracoes({
                                 onClick={() => iniciarTransferenciaPropriedade(prop.id_fracao!)}
                                 className="bg-amber-50 hover:bg-amber-100 text-amber-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-amber-200 flex items-center gap-1 shadow-xs"
                                 title="Transferir Propriedade (arquiva este proprietário e regista o novo)"
+                                aria-label="Transferir Propriedade (arquiva este proprietário e regista o novo)"
                               >
                                 <ArrowLeftRight className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                                 <span className="font-semibold text-[10px]">Transferir</span>
@@ -3242,6 +3260,7 @@ export function GestaoFracoes({
                                   onClick={() => emitirNotasAtrasoManual(prop.id_fracao!, prop.fracao_nome || prop.id_fracao!, prop.email)}
                                   className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-indigo-200 flex items-center gap-1 shadow-xs disabled:opacity-50"
                                   title="Emitir e enviar agora as notas de cobrança em atraso (desde o início de atividade)"
+                                  aria-label="Emitir e enviar agora as notas de cobrança em atraso (desde o início de atividade)"
                                 >
                                   <i className="fa-solid fa-paper-plane text-indigo-600 shrink-0"></i>
                                   <span className="font-semibold text-[10px]">{aEmitirNotasAtrasoId === prop.id_fracao ? "A emitir..." : "Notas em Atraso"}</span>
@@ -3251,6 +3270,7 @@ export function GestaoFracoes({
                                   onClick={() => setAgendarNotasAtrasoFracaoId(agendarNotasAtrasoFracaoId === prop.id_fracao ? null : prop.id_fracao!)}
                                   className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-indigo-200 shadow-xs"
                                   title="Agendar o envio das notas de cobrança em atraso para mais tarde"
+                                  aria-label="Agendar o envio das notas de cobrança em atraso para mais tarde"
                                 >
                                   <i className="fa-solid fa-clock text-indigo-600 shrink-0"></i>
                                 </button>
@@ -3291,6 +3311,7 @@ export function GestaoFracoes({
                                 onClick={() => setHistoricoModalFracaoId(prop.id_fracao!)}
                                 className="bg-slate-50 hover:bg-slate-100 text-slate-600 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-slate-200 flex items-center gap-1 shadow-xs"
                                 title="Ver Histórico de Proprietários"
+                                aria-label="Ver Histórico de Proprietários"
                               >
                                 <History className="w-3.5 h-3.5 text-slate-600 shrink-0" />
                               </button>
@@ -3300,6 +3321,7 @@ export function GestaoFracoes({
                               onClick={() => handleEliminarProprietario(prop)}
                               className="bg-red-50 hover:bg-red-100 text-red-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-red-200 flex items-center gap-1 shadow-xs"
                               title="Eliminar Proprietário"
+                              aria-label="Eliminar Proprietário"
                             >
                               <Trash2 className="w-3.5 h-3.5 text-red-600 shrink-0" />
                               <span className="font-semibold text-[10px]">Eliminar</span>
@@ -3601,6 +3623,7 @@ export function GestaoFracoes({
                   onClick={() => downloadFichaCondominoPreenchidaPDF(predio.nome, selectedFracao)}
                   className="bg-red-50 hover:bg-red-100 border border-red-300 text-red-900 font-bold px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
                   title="Descarregar Ficha de Registo desta Fração em PDF"
+                  aria-label="Descarregar Ficha de Registo desta Fração em PDF"
                 >
                   <img src="/modulos/80-pdf-de-resultados.png" alt="PDF" className="h-4 w-4 object-contain" onError={(e) => { e.currentTarget.src = "/modulos/25-relatorio.png"; }} />
                   <span>Descarregar Ficha (PDF)</span>
@@ -3626,7 +3649,7 @@ export function GestaoFracoes({
                   <div className="flex flex-col space-y-3">
                     <div className="flex items-center space-x-3">
                       {selectedFracao.proprietario.foto ? (
-                        <img src={selectedFracao.proprietario.foto} className="h-12 w-12 rounded-full object-cover border border-slate-300 shadow-xs" referrerPolicy="no-referrer" />
+                        <img src={selectedFracao.proprietario.foto} alt={`Fotografia de ${selectedFracao.proprietario.nome}`} className="h-12 w-12 rounded-full object-cover border border-slate-300 shadow-xs" referrerPolicy="no-referrer" />
                       ) : (
                         <img src="/modulos/11-proprietario.png" alt="Proprietário" className="h-12 w-12 rounded-xl bg-slate-100 p-1 object-contain border border-slate-200 shadow-xs" />
                       )}
@@ -3699,7 +3722,7 @@ export function GestaoFracoes({
                           {selectedFracao.proprietarios_adicionais.map((co, idx) => (
                             <div key={idx} className="flex items-center space-x-2.5 bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-250/50">
                               {co.foto ? (
-                                <img src={co.foto} className="h-9 w-9 rounded-full object-cover border border-slate-200" referrerPolicy="no-referrer" />
+                                <img src={co.foto} alt={`Fotografia de ${co.nome}`} className="h-9 w-9 rounded-full object-cover border border-slate-200" referrerPolicy="no-referrer" />
                               ) : (
                                 <div className="h-9 w-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 flex items-center justify-center text-[10px] border border-slate-200 font-extrabold uppercase">{co.nome.slice(0, 2)}</div>
                               )}
@@ -3732,7 +3755,7 @@ export function GestaoFracoes({
                   <div className="flex flex-col space-y-3 animate-fadeIn">
                     <div className="flex items-center space-x-3">
                       {selectedFracao.inquilino.foto ? (
-                        <img src={selectedFracao.inquilino.foto} className="h-12 w-12 rounded-full object-cover border border-slate-300 shadow-xs" referrerPolicy="no-referrer" />
+                        <img src={selectedFracao.inquilino.foto} alt={`Fotografia de ${selectedFracao.inquilino.nome}`} className="h-12 w-12 rounded-full object-cover border border-slate-300 shadow-xs" referrerPolicy="no-referrer" />
                       ) : (
                         <div className="h-12 w-12 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-lg border border-slate-300 font-semibold uppercase">{selectedFracao.inquilino.nome.slice(0, 2)}</div>
                       )}
@@ -4001,7 +4024,7 @@ export function GestaoFracoes({
                   <td className="p-3">
                     {f.proprietario ? (
                       <div className="flex items-center space-x-2">
-                        {f.proprietario.foto && <img src={f.proprietario.foto} className="h-6 w-6 rounded-full border border-slate-300" />}
+                        {f.proprietario.foto && <img src={f.proprietario.foto} alt={`Fotografia de ${f.proprietario.nome}`} className="h-6 w-6 rounded-full border border-slate-300" />}
                         <div>
                           <p className="font-semibold text-slate-700">{f.proprietario.nome}</p>
                           <p className="text-[10px] text-slate-600 font-mono">{f.proprietario.iban ? `${f.proprietario.entidade_bancaria}` : "Sem Banco"}</p>
@@ -4020,6 +4043,7 @@ export function GestaoFracoes({
                           }}
                           className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-0.5 rounded text-[10px] cursor-pointer transition-all shadow-xs flex items-center gap-1"
                           title="Associar Proprietário a esta Fração"
+                          aria-label="Associar Proprietário a esta Fração"
                         >
                           <i className="fa-solid fa-user-plus text-[9px]"></i>
                           <span>Associar</span>
@@ -4030,7 +4054,7 @@ export function GestaoFracoes({
                   <td className="p-3">
                     {f.is_arrendada && f.inquilino ? (
                       <div className="flex items-center space-x-2">
-                        {f.inquilino.foto && <img src={f.inquilino.foto} className="h-6 w-6 rounded-full border border-slate-300" />}
+                        {f.inquilino.foto && <img src={f.inquilino.foto} alt={`Fotografia de ${f.inquilino.nome}`} className="h-6 w-6 rounded-full border border-slate-300" />}
                         <div>
                           <p className="font-semibold text-violet-700">{f.inquilino.nome}</p>
                           <p className="text-[9px] text-slate-600">Arrendatário</p>

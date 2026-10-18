@@ -2082,6 +2082,7 @@ export function GestaoDocumentos({
               }}
               className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
               title="Gerar e descarregar PDF com resumo completo de menus, sub-menus, IA e OCR"
+              aria-label="Gerar e descarregar PDF com resumo completo de menus, sub-menus, IA e OCR"
             >
               <FileDown className="h-4 w-4" />
               <span>⚡ PDF Guia Sintetizado (IA & OCR)</span>
@@ -2281,6 +2282,7 @@ export function GestaoDocumentos({
               <button
                 onClick={resetAllFilters}
                 title="Limpar Filtros"
+                aria-label="Limpar Filtros"
                 className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-emerald-200 shrink-0 transition-all cursor-pointer"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
@@ -2715,6 +2717,7 @@ export function GestaoDocumentos({
                   <button
                     onClick={() => abrirModalArquivamentoIA(doc)}
                     title="Arquivar Ficheiro com IA"
+                    aria-label="Arquivar Ficheiro com IA"
                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
                   >
                     <Save className="h-4 w-4" />
@@ -2724,6 +2727,7 @@ export function GestaoDocumentos({
                   <button
                     onClick={() => abrirModalEditarDoc(doc)}
                     title="Editar metadados e registo oficial"
+                    aria-label="Editar metadados e registo oficial"
                     className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-all border border-slate-300 shadow-xs cursor-pointer"
                   >
                     <FileText className="h-3.5 w-3.5 text-slate-600" />
@@ -2735,6 +2739,7 @@ export function GestaoDocumentos({
                   <button
                     onClick={() => abrirModalEnviarEmail(doc)}
                     title="Enviar documento oficial por e-mail com anexo"
+                    aria-label="Enviar documento oficial por e-mail com anexo"
                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-all cursor-pointer shadow-xs"
                   >
                     <Send className="h-3.5 w-3.5" />
@@ -2744,6 +2749,7 @@ export function GestaoDocumentos({
                   <button
                     onClick={() => handleDownloadPdf(doc)}
                     title="Exportar & Abrir PDF Oficial com Logótipo e Marca de Água"
+                    aria-label="Exportar & Abrir PDF Oficial com Logótipo e Marca de Água"
                     className="p-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-xs"
                   >
                     <img src="/modulos/80-pdf-de-resultados.png" alt="PDF" className="h-5 w-5 object-contain" onError={(e) => { e.currentTarget.src = "/modulos/25-relatorio.png"; }} />
@@ -2751,6 +2757,7 @@ export function GestaoDocumentos({
                   <button
                     onClick={() => handleDownloadDoc(doc)}
                     title="Exportar Documento Editável Word (.doc)"
+                    aria-label="Exportar Documento Editável Word (.doc)"
                     className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-colors cursor-pointer border border-slate-200 shadow-xs"
                   >
                     <FileDown className="h-3.5 w-3.5 text-blue-600" />
@@ -2763,6 +2770,7 @@ export function GestaoDocumentos({
                     <button
                       onClick={() => alternarVisibilidade(doc)}
                       title="Alternar Visibilidade"
+                      aria-label="Alternar Visibilidade"
                       className="p-1.5 text-slate-600 hover:text-amber-600 bg-slate-50 border border-slate-200 rounded-lg transition-colors cursor-pointer"
                     >
                       {doc.visibilidade === "Administração" ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
@@ -2770,6 +2778,7 @@ export function GestaoDocumentos({
                     <button
                       onClick={() => eliminarDocumento(doc.id_doc)}
                       title="Eliminar do Arquivo"
+                      aria-label="Eliminar do Arquivo"
                       className="p-1.5 text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-300 rounded-lg transition-all cursor-pointer active:scale-90 active:ring-2 active:ring-red-400 select-none"
                     >
                       <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="h-3.5 w-3.5 object-contain" />
@@ -2835,6 +2844,7 @@ export function GestaoDocumentos({
                   <button
                     onClick={() => abrirModalArquivamentoIA(foto)}
                     title="Arquivar Fotografia com IA"
+                    aria-label="Arquivar Fotografia com IA"
                     className="bg-emerald-400 hover:bg-emerald-300 text-emerald-950 font-black px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition-all shadow cursor-pointer border border-emerald-200"
                   >
                     <Save className="h-3.5 w-3.5" />

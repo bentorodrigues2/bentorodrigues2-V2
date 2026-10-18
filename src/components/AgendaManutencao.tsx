@@ -674,6 +674,7 @@ export function AgendaManutencao({ predio, loggedUser, fornecedores = [] }: Agen
                       onClick={() => abrirModalEdicao(item)}
                       className="px-2.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-600 text-slate-600 dark:text-slate-400 font-bold rounded-xl text-xs flex items-center transition-all cursor-pointer"
                       title="Editar Item (incluindo definir Próxima Inspeção manualmente)"
+                      aria-label="Editar Item (incluindo definir Próxima Inspeção manualmente)"
                     >
                       <i className="fa-solid fa-pen"></i>
                     </button>
@@ -682,6 +683,7 @@ export function AgendaManutencao({ predio, loggedUser, fornecedores = [] }: Agen
                       onClick={() => handleEliminarItem(item)}
                       className="px-2.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 text-slate-600 dark:text-slate-400 font-bold rounded-xl text-xs flex items-center transition-all cursor-pointer"
                       title="Eliminar Item do Plano"
+                      aria-label="Eliminar Item do Plano"
                     >
                       <i className="fa-solid fa-trash-can"></i>
                     </button>
@@ -998,6 +1000,7 @@ export function AgendaManutencao({ predio, loggedUser, fornecedores = [] }: Agen
                         onClick={() => handleRemoverFotoItem(idx)}
                         className="absolute top-0.5 right-0.5 bg-red-600 hover:bg-red-700 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
                         title="Remover foto"
+                        aria-label="Remover foto"
                       >
                         ✕
                       </button>

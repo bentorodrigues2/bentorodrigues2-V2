@@ -232,6 +232,7 @@ export function GestaoRelatorios({ predio, loggedUser, movimentos = [], fracoes 
             }}
             className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all cursor-pointer flex items-center gap-2 shadow-sm"
             title="Exportar Grelha das 12 Quotas Mensais de todas as Frações num único ficheiro Excel/CSV"
+            aria-label="Exportar Grelha das 12 Quotas Mensais de todas as Frações num único ficheiro Excel/CSV"
           >
             <img src="/modulos/66-exportacao-financeira.png" alt="Excel" className="h-4 w-4 object-contain" onError={(e) => { e.currentTarget.src = "/marca/18-pdf.png"; }} />
             <span>📊 Mapa Anual 12 Quotas (.XLSX/.CSV)</span>

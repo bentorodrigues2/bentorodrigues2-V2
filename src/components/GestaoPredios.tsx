@@ -681,6 +681,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                   }}
                   className="bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs transition-all shadow-sm flex items-center space-x-1.5 cursor-pointer shrink-0 border border-slate-700 disabled:opacity-50"
                   title="Guardar e sincronizar todas as chaves no Supabase"
+                  aria-label="Guardar e sincronizar todas as chaves no Supabase"
                 >
                   <i className={`fa-solid ${salvandoChavesSupabase ? "fa-spinner fa-spin" : "fa-cloud-arrow-up text-emerald-400"}`}></i>
                   <span>{salvandoChavesSupabase ? "A guardar..." : "Guardar Chaves"}</span>
@@ -913,6 +914,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                           }}
                           className="h-4 w-4 text-emerald-600 rounded border-slate-300 cursor-pointer"
                           title="Selecionar / Desmarcar todas as chaves"
+                          aria-label="Selecionar / Desmarcar todas as chaves"
                         />
                       </div>
                     </th>
@@ -1077,6 +1079,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                           }}
                           className="text-red-500 hover:text-red-700 p-1 cursor-pointer"
                           title="Eliminar chave"
+                          aria-label="Eliminar chave"
                         >
                           <i className="fa-solid fa-trash-can"></i>
                         </button>
@@ -1592,6 +1595,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
                   onClick={() => handleRemoverPredio(selectedPredioId)}
                   className="border-2 border-red-500 bg-red-50 hover:bg-red-100 active:bg-red-200 active:scale-95 text-red-700 font-bold px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer shadow-xs hover:shadow-md active:ring-2 active:ring-red-400 select-none flex items-center gap-1.5"
                   title="Eliminar este prédio do sistema"
+                  aria-label="Eliminar este prédio do sistema"
                 >
                   <img src="/estados-acoes/14-eliminar.png" alt="Eliminar" className="h-4 w-4 object-contain" />
                   <span>Eliminar</span>
@@ -1681,7 +1685,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
             <input ref={fileInputRef} type="file" accept="image/*" onChange={processarImagemPredio} className="hidden" />
             {foto && (
               <div className="flex items-center space-x-2">
-                <img src={foto} className="h-10 w-10 rounded object-cover border border-slate-300" referrerPolicy="no-referrer" />
+                <img src={foto} alt="Fotografia do prédio" className="h-10 w-10 rounded object-cover border border-slate-300" referrerPolicy="no-referrer" />
                 <span className="text-xs text-slate-600 font-medium font-mono-custom">Carregada</span>
                 <button type="button" onClick={() => setFoto(null)} className="text-red-500 text-xs hover:underline cursor-pointer"><i className="fa-solid fa-trash"></i></button>
               </div>
@@ -1752,6 +1756,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
             onClick={limparFormulario}
             className="border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-xl text-xs transition-all cursor-pointer shadow-xs flex items-center gap-2 select-none"
             title="Cancelar edição e voltar à lista de prédios"
+            aria-label="Cancelar edição e voltar à lista de prédios"
           >
             <i className="fa-solid fa-xmark text-slate-600"></i>
             <span>Cancelar Edição</span>
@@ -1761,6 +1766,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
             type="submit"
             className="border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 active:scale-95 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all cursor-pointer shadow-md hover:shadow-lg active:ring-2 active:ring-emerald-400 select-none flex items-center gap-2"
             title="Guardar dados do prédio no sistema"
+            aria-label="Guardar dados do prédio no sistema"
           >
             <img 
               src="/estados-acoes/12-adicionar.png" 

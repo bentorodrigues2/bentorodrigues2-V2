@@ -1025,6 +1025,7 @@ export function GestaoComunicacoes({
                                 type="button"
                                 onClick={() => handleIniciarEdicaoComunicado(item)}
                                 title="Editar comunicado"
+                                aria-label="Editar comunicado"
                                 className="text-slate-600 hover:text-emerald-700 cursor-pointer p-1"
                               >
                                 <i className="fa-solid fa-pen text-[11px]"></i>
@@ -1033,6 +1034,7 @@ export function GestaoComunicacoes({
                                 type="button"
                                 onClick={() => handleEliminarComunicado(item)}
                                 title="Eliminar comunicado"
+                                aria-label="Eliminar comunicado"
                                 className="text-slate-600 hover:text-red-600 cursor-pointer p-1"
                               >
                                 <i className="fa-solid fa-trash text-[11px]"></i>
@@ -1160,6 +1162,7 @@ export function GestaoComunicacoes({
                         onClick={() => { setShowAnexoMenuBroadcast(v => !v); setShowEmojiPickerBroadcast(false); }}
                         className="text-slate-600 hover:text-emerald-600 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer shrink-0"
                         title="Anexar ficheiro"
+                        aria-label="Anexar ficheiro"
                       >
                         <i className="fa-solid fa-paperclip"></i>
                       </button>
@@ -1168,6 +1171,7 @@ export function GestaoComunicacoes({
                         onClick={() => { setShowEmojiPickerBroadcast(v => !v); setShowAnexoMenuBroadcast(false); }}
                         className="text-slate-600 hover:text-emerald-600 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer shrink-0"
                         title="Emoji"
+                        aria-label="Emoji"
                       >
                         <i className="fa-regular fa-face-smile"></i>
                       </button>
@@ -1355,6 +1359,7 @@ export function GestaoComunicacoes({
                       onClick={() => { setShowAnexoMenu(v => !v); setShowEmojiPicker(false); }}
                       className="text-slate-600 hover:text-emerald-600 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer shrink-0"
                       title="Anexar ficheiro"
+                      aria-label="Anexar ficheiro"
                     >
                       <i className="fa-solid fa-paperclip"></i>
                     </button>
@@ -1363,6 +1368,7 @@ export function GestaoComunicacoes({
                       onClick={() => { setShowEmojiPicker(v => !v); setShowAnexoMenu(false); }}
                       className="text-slate-600 hover:text-emerald-600 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer shrink-0"
                       title="Emoji"
+                      aria-label="Emoji"
                     >
                       <i className="fa-regular fa-face-smile"></i>
                     </button>

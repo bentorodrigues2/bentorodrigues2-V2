@@ -927,6 +927,7 @@ export function FinanceiroAvancado({
           }}
           className="px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-xs"
           title="Exportar Balancete e Grelha das 12 Quotas Mensais de todas as Frações em Excel / CSV para Assembleia"
+          aria-label="Exportar Balancete e Grelha das 12 Quotas Mensais de todas as Frações em Excel / CSV para Assembleia"
         >
           <img src="/modulos/66-exportacao-financeira.png" alt="Excel" className="h-4 w-4 object-contain" onError={(e) => { e.currentTarget.src = "/marca/18-pdf.png"; }} />
           <span>Exportar Balancete / Mapa Anual (Excel)</span>
@@ -937,6 +938,7 @@ export function FinanceiroAvancado({
           onClick={() => setIsFiltroRelatoriosOpen(true)}
           className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-xs"
           title="Filtro para exportar relatórios por prédio, por fração ou todas"
+          aria-label="Filtro para exportar relatórios por prédio, por fração ou todas"
         >
           <img src="/marca/16-documentos-relatorios.png" alt="Relatórios" className="h-4 w-4 object-contain" onError={(e) => { e.currentTarget.src = "/marca/18-pdf.png"; }} />
           <span>Filtro & Relatórios</span>
@@ -1777,6 +1779,7 @@ export function FinanceiroAvancado({
                             key={frac.id_fracao}
                             onClick={abrirRelatorioFracao}
                             title="Ver relatório de dívida desta fração (exportável em PDF)"
+                            aria-label="Ver relatório de dívida desta fração (exportável em PDF)"
                             className="hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-colors cursor-pointer"
                           >
                             <td className="py-3 px-4 font-bold text-slate-800 dark:text-white">
@@ -2230,6 +2233,7 @@ export function FinanceiroAvancado({
                                 onClick={() => { setEditandoCelulaChave(`quota|${l.fracao.id_fracao}`); setValorQuotaEditado(String(l.quotaMensal ?? "")); }}
                                 className="text-slate-600 hover:text-indigo-600 cursor-pointer"
                                 title="Corrigir quota mensal"
+                                aria-label="Corrigir quota mensal"
                               >
                                 <i className="fa-solid fa-pen text-[9px]"></i>
                               </button>
@@ -2272,6 +2276,7 @@ export function FinanceiroAvancado({
                                 }}
                                 className="text-emerald-700 hover:text-emerald-900 cursor-pointer"
                                 title="Guardar"
+                                aria-label="Guardar"
                               >
                                 <i className="fa-solid fa-check"></i>
                               </button>

@@ -280,6 +280,7 @@ export function MuralDigitalReservas({
                           }
                         }}
                         title="Eliminar comunicado"
+                        aria-label="Eliminar comunicado"
                         className="p-1 text-slate-600 hover:text-red-600 transition-colors cursor-pointer rounded-md"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -397,6 +398,7 @@ export function MuralDigitalReservas({
                         }
                       }}
                       title="Cancelar Reserva"
+                      aria-label="Cancelar Reserva"
                       className="p-1.5 text-slate-600 hover:text-red-600 transition-colors cursor-pointer rounded-lg flex items-center gap-1 text-xs"
                     >
                       <Trash2 className="h-3.5 w-3.5" />

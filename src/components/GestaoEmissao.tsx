@@ -885,6 +885,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                           <button
                             onClick={() => abrirDocumento(a, "NOTA_COBRANCA")}
                             title="Nota de Cobrança"
+                            aria-label="Nota de Cobrança"
                             className="p-1 px-2 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 text-slate-600 rounded text-[10px] font-bold cursor-pointer transition-colors"
                           >
                             <i className="fa-solid fa-file-invoice mr-1"></i> Nota
@@ -892,6 +893,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                           <button
                             onClick={() => abrirDocumento(a, "RECIBO")}
                             title="Emitir Recibo Oficial"
+                            aria-label="Emitir Recibo Oficial"
                             className="p-1 px-2 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 border border-slate-200 text-slate-600 rounded text-[10px] font-bold cursor-pointer transition-colors"
                           >
                             <i className="fa-solid fa-receipt mr-1"></i> Recibo
@@ -899,6 +901,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                           <button
                             onClick={() => abrirEdicaoAviso(a)}
                             title="Editar Aviso"
+                            aria-label="Editar Aviso"
                             className="p-1 px-2 bg-slate-100 hover:bg-amber-50 hover:text-amber-600 border border-slate-200 text-slate-600 rounded text-[10px] font-bold cursor-pointer transition-colors"
                           >
                             <i className="fa-solid fa-pen"></i>
@@ -906,6 +909,7 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
                           <button
                             onClick={() => eliminarAviso(a)}
                             title="Eliminar Aviso"
+                            aria-label="Eliminar Aviso"
                             className="p-1 px-2 bg-slate-100 hover:bg-red-50 hover:text-red-600 border border-slate-200 text-slate-600 rounded text-[10px] font-bold cursor-pointer transition-colors"
                           >
                             <i className="fa-solid fa-trash-can"></i>

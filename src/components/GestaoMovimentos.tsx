@@ -1880,6 +1880,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                         <button
                           onClick={() => abrirDetalheMov(m)}
                           title="Ver detalhe / Corrigir valor"
+                          aria-label="Ver detalhe / Corrigir valor"
                           className="bg-slate-100 hover:bg-slate-200 text-slate-600 p-1.5 rounded text-[10px] font-bold transition-colors cursor-pointer"
                         >
                           <i className="fa-solid fa-eye"></i>
@@ -1887,6 +1888,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                         <button
                           onClick={() => handleEliminarMov(m.id_mov)}
                           title="Eliminar"
+                          aria-label="Eliminar"
                           className="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded text-[10px] font-bold transition-colors cursor-pointer"
                         >
                           <i className="fa-solid fa-trash-can"></i>
@@ -2223,6 +2225,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                     <button
                       onClick={() => abrirDetalheMov(m)}
                       title="Ver detalhe / Corrigir valor"
+                      aria-label="Ver detalhe / Corrigir valor"
                       className="bg-slate-100 hover:bg-slate-200 text-slate-600 p-1.5 rounded text-[10px] font-bold transition-colors cursor-pointer"
                     >
                       <i className="fa-solid fa-eye"></i>
@@ -2230,6 +2233,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                     <button
                       onClick={() => handleEliminarMov(m.id_mov)}
                       title="Eliminar"
+                      aria-label="Eliminar"
                       className="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded text-[10px] font-bold transition-colors cursor-pointer"
                     >
                       <i className="fa-solid fa-trash-can"></i>
@@ -2433,7 +2437,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                   <div className="flex space-x-1.5 overflow-x-auto py-1">
                     {uploadedFotos.map((imgUrl, i) => (
                       <div key={i} className="relative h-10 w-10 border border-slate-200 rounded overflow-hidden">
-                        <img src={imgUrl} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                        <img src={imgUrl} alt={`Comprovativo ${i + 1}`} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
                         <button 
                           type="button" 
                           onClick={() => setUploadedFotos(prev => prev.filter((_, idx) => idx !== i))}
@@ -2482,6 +2486,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                   onClick={sincronizarEmailsReais}
                   disabled={sincronizandoEmails}
                   title="Sincronizar caixa de correio com fornecedores"
+                  aria-label="Sincronizar caixa de correio com fornecedores"
                   className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer border border-slate-200"
                 >
                   <i className={`fa-solid fa-rotate ${sincronizandoEmails ? "animate-spin text-emerald-600" : ""}`}></i>
@@ -2491,6 +2496,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                   type="button"
                   onClick={() => setManualEmailModalOpen(true)}
                   title="Registar e-mail de fatura recebido manualmente"
+                  aria-label="Registar e-mail de fatura recebido manualmente"
                   className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold px-2 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
                 >
                   <i className="fa-solid fa-plus"></i>
@@ -3132,6 +3138,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                             }}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white p-1 rounded transition-colors cursor-pointer"
                             title="Lançar Movimento Validado"
+                            aria-label="Lançar Movimento Validado"
                           >
                             <i className="fa-solid fa-plus-circle"></i>
                           </button>
@@ -3176,6 +3183,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
             onClick={() => setFiltroExtratoConta("TODAS")}
             className={`px-3 py-2 rounded-t-lg text-xs font-bold transition-colors cursor-pointer border-b-2 ${filtroExtratoConta === "TODAS" ? "bg-slate-100 text-slate-800 border-slate-500" : "text-slate-600 border-transparent hover:bg-slate-50"}`}
             title="Ver todas as contas juntas (não recomendado para conciliação — contas têm saldos independentes)"
+            aria-label="Ver todas as contas juntas (não recomendado para conciliação — contas têm saldos independentes)"
           >
             Todas as Contas
           </button>
@@ -3195,6 +3203,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
               disabled={extratoConsolidadoFiltrado.length === 0}
               className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
               title="Exportar Excel (.xls) com os filtros aplicados"
+              aria-label="Exportar Excel (.xls) com os filtros aplicados"
             >
               <i className="fa-solid fa-file-excel"></i> Excel
             </button>
@@ -3204,6 +3213,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
               disabled={extratoConsolidadoFiltrado.length === 0}
               className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
               title="Exportar PDF com os filtros aplicados"
+              aria-label="Exportar PDF com os filtros aplicados"
             >
               <i className="fa-solid fa-file-pdf"></i> PDF
             </button>
@@ -3356,6 +3366,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
                         title="Ver fatura/comprovativo anexado"
+                        aria-label="Ver fatura/comprovativo anexado"
                         className="text-slate-600 hover:text-indigo-600 shrink-0"
                       >
                         <i className="fa-solid fa-paperclip"></i>
@@ -3414,7 +3425,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                                   {ehPdf ? (
                                     <i className="fa-solid fa-file-pdf text-red-500"></i>
                                   ) : (
-                                    <img src={f} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                                    <img src={f} alt={`Anexo ${i + 1}`} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
                                   )}
                                 </a>
                               );
@@ -3446,6 +3457,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                             type="button"
                             onClick={() => abrirDetalheMov(m)}
                             title="Editar fração, data, descrição ou valor deste movimento"
+                            aria-label="Editar fração, data, descrição ou valor deste movimento"
                             className="flex items-center gap-1.5 text-blue-700 hover:text-blue-900 font-bold text-[10px] cursor-pointer"
                           >
                             <i className="fa-solid fa-pen"></i> Editar
@@ -3456,6 +3468,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                               disabled={aDesfazerConfirmacaoMovId === m.id_mov}
                               onClick={() => desfazerConfirmacaoPagamento(m)}
                               title="Volta a colocar este pagamento em 'por confirmar' — usa quando ficou mal processado (fração errada, devia ter sido dividido em vários meses, etc.)"
+                              aria-label="Volta a colocar este pagamento em 'por confirmar' — usa quando ficou mal processado (fração errada, devia ter sido dividido em vários meses, etc.)"
                               className="flex items-center gap-1.5 text-amber-700 hover:text-amber-900 font-bold text-[10px] cursor-pointer disabled:opacity-50"
                             >
                               <i className={`fa-solid ${aDesfazerConfirmacaoMovId === m.id_mov ? "fa-spinner fa-spin" : "fa-rotate-left"}`}></i> Desfazer Confirmação
