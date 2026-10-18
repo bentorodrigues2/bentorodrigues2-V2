@@ -354,10 +354,21 @@ export default async function handler(req, res) {
     const hash = createHash("sha256").update(`${pagamento.id}-${pagamento.valor}-${pagamento.confirmado_em}`).digest("hex");
     const prefixoEdificio = derivarPrefixoEdificio(predio?.nome);
 
-    const { count: totalConfirmados } = await supabase
-      .from("pagamentos")
-      .select("id", { count: "exact", head: true })
-      .eq("estado", "confirmado");
+    // Antes: COUNT(*) de pagamentos confirmados — raciava sob concorrência
+    // (duas confirmações em simultâneo podiam ler o mesmo total antes de
+    // qualquer uma gravar) e ficava cego a recibos criados por fora deste
+    // fluxo (scripts manuais de reconciliação), que não contam como
+    // "pagamento confirmado" mas já usaram um número. Foi assim que
+    // "BR2 00114" saiu duplicado. Passa a usar um contador atómico
+    // dedicado por prédio (obter_proximo_numero_recibo, tabela
+    // recibo_sequencias) — um único UPDATE...RETURNING serializa-se
+    // sozinho mesmo com pedidos concorrentes, e nunca repete um número já
+    // emitido (semeado com o maior número real já em uso no arquivo).
+    const { data: totalConfirmados, error: erroSequencial } = await supabase
+      .rpc("obter_proximo_numero_recibo", { p_id_predio: fracao?.id_predio || predio?.id_predio });
+    if (erroSequencial) {
+      console.error("[confirmar-pagamento] Erro ao obter número sequencial do recibo:", erroSequencial.message);
+    }
 
     const sequencial = String(totalConfirmados || 1).padStart(5, "0");
     const idRecibo = `${prefixoEdificio} ${sequencial}`;

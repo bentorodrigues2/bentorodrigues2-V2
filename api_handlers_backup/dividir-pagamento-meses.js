@@ -231,10 +231,16 @@ export default async function handler(req, res) {
 
     const hash = createHash("sha256").update(`${id_pagamento}-dividido-${numMeses}-${Date.now()}`).digest("hex");
     const prefixoEdificio = derivarPrefixoEdificio(predio?.nome);
-    const { count: totalConfirmados } = await supabase
-      .from("pagamentos")
-      .select("id", { count: "exact", head: true })
-      .eq("estado", "confirmado");
+    // Mesmo contador atómico por prédio usado em confirmar-pagamento.js —
+    // ver obter_proximo_numero_recibo (tabela recibo_sequencias) — nunca
+    // repete um número, mesmo sob concorrência ou recibos emitidos por
+    // outros fluxos (era exatamente essa cegueira mútua, com o antigo
+    // COUNT(*), que causou "BR2 00114" duplicado).
+    const { data: totalConfirmados, error: erroSequencial } = await supabase
+      .rpc("obter_proximo_numero_recibo", { p_id_predio: fracao?.id_predio || predio?.id_predio });
+    if (erroSequencial) {
+      console.error("[dividir-pagamento-meses] Erro ao obter número sequencial do recibo:", erroSequencial.message);
+    }
     const sequencial = String(totalConfirmados || 1).padStart(5, "0");
     const idRecibo = `${prefixoEdificio} ${sequencial}`;
 
