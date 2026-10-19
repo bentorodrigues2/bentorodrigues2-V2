@@ -1724,6 +1724,30 @@ export function PortalCondomino({
                 })()}
               </div>
 
+              {/* SALDO DAS CONTAS DO CONDOMÍNIO — transparência pedida
+                  explicitamente pela administração, paridade com a PWA: o
+                  condómino via só o IBAN para onde pagar, nunca quanto
+                  dinheiro o condomínio tem de facto em cada conta real. */}
+              {contas.length > 0 && (
+                <div className="px-6 pt-6">
+                  <div className="bg-white border border-slate-100 p-4 rounded-xl shadow-sm space-y-2 text-[10px]">
+                    <span className="text-[9px] font-extrabold text-teal-600 uppercase tracking-widest block">Saldo das Contas do Condomínio</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {contas.map((c) => (
+                        <div key={c.id_conta} className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <span className="text-[8px] text-slate-600 font-extrabold uppercase tracking-wider block truncate">{c.banco}{c.tipo ? ` — ${c.tipo}` : ""}</span>
+                          </div>
+                          <strong className={`font-mono text-[11px] whitespace-nowrap ${Number(c.saldo || 0) >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                            {Number(c.saldo || 0).toFixed(2)} €
+                          </strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* SEGURO DE INCÊNDIO DA FRAÇÃO — consulta dos dados e
                   documentos já carregados pela administração, mais envio da
                   apólice/última fatura em falta diretamente pelo condómino.
@@ -2292,6 +2316,56 @@ export function PortalCondomino({
                       )}
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Resultados/Estatísticas de Sondagens — paridade com a PWA
+                (modal "estatisticas_sondagem"): mostra a contagem real de
+                votos por opção de TODAS as sondagens, ativas ou encerradas,
+                não só a possibilidade de votar nas ainda ativas. */}
+            {sondagensFeed.length > 0 && (
+              <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+                <h3 className="text-sm font-bold uppercase text-slate-800 mb-4 flex items-center">
+                  <i className="fa-solid fa-chart-simple mr-2 text-emerald-600"></i> Resultados das Sondagens
+                </h3>
+                <div className="space-y-4">
+                  {sondagensFeed.map(s => {
+                    const votos = s.votos || [];
+                    const totalVotos = votos.length;
+                    return (
+                      <div key={s.id_sondagem} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2.5">
+                        <div className="space-y-1">
+                          <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded border ${s.estado === "ativa" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-200 text-slate-600 border-slate-300"}`}>
+                            {s.estado === "ativa" ? "Deliberação Ativa" : "Encerrada"}
+                          </span>
+                          <h4 className="font-bold text-xs text-slate-900 block mt-1">{s.pergunta}</h4>
+                        </div>
+                        {totalVotos === 0 ? (
+                          <p className="text-slate-600 text-[10px]">Ainda sem votos registados.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {s.opcoes.map(op => {
+                              const count = votos.filter(v => v.opcao_escolhida === op).length;
+                              const pct = totalVotos > 0 ? (count / totalVotos) * 100 : 0;
+                              return (
+                                <div key={op} className="space-y-1">
+                                  <div className="flex justify-between font-bold text-[10px] text-slate-700">
+                                    <span>{op}</span>
+                                    <span className="font-mono text-emerald-700">{pct.toFixed(1)}% ({count} votos)</span>
+                                  </div>
+                                  <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                                    <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        <span className="text-[9px] text-slate-500 font-mono uppercase font-bold text-center block pt-1.5 border-t border-slate-200">Total de Votos: {totalVotos}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
