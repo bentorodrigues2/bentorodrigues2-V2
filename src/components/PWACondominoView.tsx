@@ -1389,85 +1389,6 @@ export default function PWACondominoView({
     }
   };
 
-  // Touch Signature Pad States & Handlers for PWA Assembleia Atas
-  const [signingAtaTarget, setSigningAtaTarget] = useState<any | null>(null);
-  // Antes havia sempre uma ata fictícia fixa ("ATA-056", de teste) — não
-  // existe ainda nenhuma fonte real de atas pendentes de assinatura ligada a
-  // este ecrã (precisaria de vir por prop de App.tsx + um registo real de
-  // quem já assinou cada ata), por isso fica honestamente vazio por agora,
-  // em vez de mostrar um pedido de assinatura que nunca existiu.
-  const atasPendentesReais: { id: string; nome: string; data: string; estado: string }[] = [];
-  const pwaCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [isDrawingPwa, setIsDrawingPwa] = useState(false);
-  const [hasSignaturePwa, setHasSignaturePwa] = useState(false);
-
-  const startDrawingPwa = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    const canvas = pwaCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    setIsDrawingPwa(true);
-    setHasSignaturePwa(true);
-    
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-    
-    ctx.lineWidth = 3;
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "#10b981";
-    ctx.beginPath();
-    ctx.moveTo(clientX - rect.left, clientY - rect.top);
-  };
-
-  const drawPwa = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawingPwa) return;
-    const canvas = pwaCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-    
-    ctx.lineTo(clientX - rect.left, clientY - rect.top);
-    ctx.stroke();
-  };
-
-  const stopDrawingPwa = () => {
-    setIsDrawingPwa(false);
-  };
-
-  const clearPwaCanvas = () => {
-    const canvas = pwaCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      setHasSignaturePwa(false);
-    }
-  };
-
-  const confirmPwaSignature = () => {
-    if (!hasSignaturePwa) {
-      alert("Por favor desenhe a sua assinatura no quadro tátil antes de confirmar!");
-      return;
-    }
-    
-    setPwaNotifications(prev => [{
-      id: `NOT-${Date.now()}`,
-      title: "Ata Assinada Digitalmente",
-      desc: `Assinou e autenticou digitalmente a Ata ${signingAtaTarget?.id || 'ATA-056'} no ecrã tátil!`,
-      date: "Hoje",
-      isArchived: false
-    }, ...prev]);
-
-    alert(`✓ Assinatura Digital de ${loggedUser.nome} autenticada com sucesso! O documento foi assinado, carimbado com hora oficial e arquivado.`);
-    setSigningAtaTarget(null);
-    setActivePwaModal(null);
-  };
-
   // Handle Comprovativo upload and mock IA extraction (Módulo 6)
   const handleComprovativoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -4462,7 +4383,6 @@ export default function PWACondominoView({
                   {activePwaModal === "consultar_referencias" && "💳 Referências de Pagamento"}
                   {activePwaModal === "contactos_emergencia" && "📞 Contactos de Emergência"}
                   {activePwaModal === "arquivo_completo" && "📂 Biblioteca de Documentos"}
-                  {activePwaModal === "atas_pendentes" && "✍️ Atas por Assinar"}
                   {activePwaModal === "reservar_espaco" && "📅 Reservar Espaço Comum"}
                   {activePwaModal === "ver_limpezas" && "🧼 Escala de Limpezas"}
                   {activePwaModal === "avaliar_servico" && "⭐ Avaliação de Serviço"}
@@ -4804,49 +4724,6 @@ export default function PWACondominoView({
                             </div>
                           </div>
                         ))}
-                    </div>
-                  </div>
-                )}
-
-                {activePwaModal === "atas_pendentes" && (
-                  <div className="space-y-3.5 text-[10px]">
-                    <p className="text-slate-700">As seguintes atas de assembleia aguardam a sua leitura e assinatura digital para validação jurídica do condomínio:</p>
-
-                    <div className="space-y-2.5">
-                      {(atasPendentesReais as { id: string; nome: string; data: string; estado: string }[]).length === 0 && (
-                        <p className="text-slate-600 italic text-[10px] py-4 text-center">Não há nenhuma ata pendente de assinatura neste momento.</p>
-                      )}
-                      {atasPendentesReais.map((ata, idx) => (
-                        <div key={idx} className="bg-slate-800 border border-slate-800 p-3 rounded-xl space-y-2">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <span className="text-[8px] font-mono text-slate-600 font-extrabold">{ata.id} • {ata.data}</span>
-                              <h4 className="font-extrabold text-white text-[10.5px]">{ata.nome}</h4>
-                            </div>
-                            <span className="px-1.5 py-0.5 rounded text-[7px] font-bold bg-amber-950 text-amber-400 border border-amber-900/30 uppercase">{ata.estado}</span>
-                          </div>
-                          <p className="text-slate-600 leading-normal text-[9px]">Deliberações aprovadas: Orçamento da pintura das fachadas por votação maioritária qualificada.</p>
-                          <div className="flex gap-2 pt-1 border-t border-slate-800/60">
-                            <button
-                              onClick={() => generateAndDownloadPdf(
-                                ata.nome,
-                                [{ heading: "Deliberações da Assembleia", content: "Ata aprovada com contagem de votos por permilagem. Deliberações sobre orçamentos de obras e manutenção geral do condomínio." }],
-                                `${ata.id}_${ata.nome.replace(/\s+/g, '_')}.pdf`,
-                                [{ label: "Condomínio", value: predio.nome }, { label: "Data", value: ata.data }]
-                              )}
-                              className="flex-grow py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold cursor-pointer"
-                            >
-                              Ler Ata
-                            </button>
-                            <button
-                              onClick={() => setSigningAtaTarget(ata)}
-                              className="flex-grow py-1.5 bg-emerald-600 hover:bg-emerald-700 text-slate-950 font-black rounded-lg uppercase text-[8.5px] cursor-pointer shadow flex items-center justify-center gap-1"
-                            >
-                              ✍️ Assinar com Quadro Tátil
-                            </button>
-                          </div>
-                        </div>
-                      ))}
                     </div>
                   </div>
                 )}
@@ -5486,82 +5363,6 @@ export default function PWACondominoView({
           </motion.div>
         </div>
       )}
-
-      {/* TOUCH CANVAS SIGNATURE MODAL FOR PWA ATAS */}
-      {signingAtaTarget && (
-        <div 
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setSigningAtaTarget(null);
-          }}
-          className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-[105] flex items-center justify-center p-4"
-        >
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            className="bg-slate-900 border border-emerald-500/40 rounded-2xl p-4 max-w-sm w-full space-y-3.5 text-white shadow-2xl animate-fade-in"
-          >
-            <div className="flex justify-between items-start border-b border-slate-800 pb-2.5">
-              <div>
-                <span className="text-[8px] font-mono font-bold text-emerald-400 uppercase tracking-widest block">Recolha de Assinatura Tátil PWA</span>
-                <h3 className="font-extrabold text-xs text-white leading-tight">{signingAtaTarget.nome || "Ata de Assembleia"}</h3>
-              </div>
-              <button 
-                type="button"
-                onClick={() => setSigningAtaTarget(null)}
-                className="flex items-center gap-1 px-2.5 py-1 bg-red-600 hover:bg-red-700 active:scale-95 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0"
-                title="Sair / Fechar"
-                aria-label="Sair / Fechar"
-              >
-                <X className="h-3.5 w-3.5 stroke-[2.5]" />
-                <span>Sair</span>
-              </button>
-            </div>
-
-            <p className="text-[9.5px] text-slate-600 leading-normal">
-              Utilize o dedo ou caneta stylus para desenhar a sua assinatura no quadro abaixo. A assinatura será autenticada e vinculada à fração <strong>{condominoFracao?.piso || condominoFracao?.fracao_nome || "—"}</strong>.
-            </p>
-
-            {/* Interactive Touch Canvas */}
-            <div className="border-2 border-dashed border-emerald-500/40 rounded-xl bg-slate-950 p-2 relative overflow-hidden">
-              <span className="absolute top-1.5 left-2.5 text-[8px] font-mono text-emerald-400/60 uppercase tracking-wider select-none pointer-events-none">
-                ✍️ Quadro Tátil • Desenhe a sua assinatura
-              </span>
-              <canvas
-                ref={pwaCanvasRef}
-                width={320}
-                height={150}
-                className="w-full h-[150px] bg-slate-950 block cursor-crosshair touch-none rounded-lg"
-                onMouseDown={startDrawingPwa}
-                onMouseMove={drawPwa}
-                onMouseUp={stopDrawingPwa}
-                onMouseLeave={stopDrawingPwa}
-                onTouchStart={startDrawingPwa}
-                onTouchMove={drawPwa}
-                onTouchEnd={stopDrawingPwa}
-              />
-            </div>
-
-            <div className="flex items-center justify-between gap-2 pt-1">
-              <button
-                type="button"
-                onClick={clearPwaCanvas}
-                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-600 font-bold rounded-xl text-[10px] cursor-pointer"
-              >
-                Limpar Quadro
-              </button>
-              <button
-                type="button"
-                onClick={confirmPwaSignature}
-                className="flex-1 py-2.5 border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 active:scale-95 text-white font-bold rounded-xl text-xs transition-all cursor-pointer shadow-md active:ring-2 active:ring-emerald-400 select-none flex items-center justify-center gap-2"
-              >
-                <img src="/estados-acoes/12-adicionar.png" alt="Gravar" className="h-4 w-4 object-contain" />
-                <span>Gravar</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-
 
       {/* SWIPE HOME INDICATOR BOTTOM BAR */}
       <div className="h-4 shrink-0 bg-slate-100 dark:bg-slate-900 flex items-center justify-center pb-1">
