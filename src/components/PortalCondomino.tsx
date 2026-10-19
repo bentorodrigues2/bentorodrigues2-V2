@@ -22,7 +22,7 @@ import {
   CheckCircle,
   Star
 } from "lucide-react";
-import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondagem, Questionario, MensagemConversa, SeguroFracao, DocumentoSeguroAnexo, RequestForProposal, Proposal, VotoProposta, Documento, Ocorrencia } from "../types";
+import { Predio, Fracao, LoggedUser, Aviso, Conta, Movimento, Comunicado, Sondagem, Questionario, MensagemConversa, SeguroFracao, DocumentoSeguroAnexo, RequestForProposal, Proposal, VotoProposta, Documento, Ocorrencia, ReservaEspacoComum } from "../types";
 import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { GestaoDocumentos } from "./GestaoDocumentos";
 import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
@@ -60,7 +60,9 @@ import {
   saveOcorrenciaToSupabase,
   fetchObrasExtraFromSupabase,
   fetchLimpezasFromSupabase,
-  LimpezaRow
+  LimpezaRow,
+  fetchReservasEspacosMuralFromSupabase,
+  saveReservaEspacoMuralToSupabase
 } from "../lib/supabaseService";
 
 // Inner Interfaces
@@ -1036,8 +1038,72 @@ export function PortalCondomino({
   // mesmos handlers já usados em PWACondominoView.tsx, agrupados aqui num
   // único modal com separadores internos em vez de vários botões no topo.
   const [showServicos, setShowServicos] = useState(false);
-  const [servicosTab, setServicosTab] = useState<"avarias" | "obras" | "limpezas" | "regras" | "emergencia">("avarias");
+  const [servicosTab, setServicosTab] = useState<"avarias" | "obras" | "limpezas" | "regras" | "emergencia" | "reservas">("avarias");
   const servicosModalRef = useModalAcessivel<HTMLDivElement>(showServicos, () => setShowServicos(false));
+
+  // --- RESERVA DE ESPAÇOS COMUNS — real (reservas_espacos_mural), mesmo
+  // backend já usado pela administração em MuralDigitalReservas.tsx. A PWA
+  // só tinha um formulário simulado (alert + notificação local, nunca
+  // gravava nem chegava à administração); aqui já fica real nos dois lados.
+  const [reservasFracaoPortal, setReservasFracaoPortal] = useState<ReservaEspacoComum[]>([]);
+  useEffect(() => {
+    if (!predio?.id_predio || !activeUserFracao?.id_fracao) return;
+    fetchReservasEspacosMuralFromSupabase(predio.id_predio).then((lista) => {
+      setReservasFracaoPortal((lista || []).filter((r) => r.id_fracao === activeUserFracao.id_fracao));
+    });
+  }, [predio?.id_predio, activeUserFracao?.id_fracao]);
+  const [resEspacoPortal, setResEspacoPortal] = useState<ReservaEspacoComum["espaco"]>("SALAO_CONDOMINIO");
+  const [resDataPortal, setResDataPortal] = useState(() => new Date().toISOString().split("T")[0]);
+  const [resHoraInicioPortal, setResHoraInicioPortal] = useState("10:00");
+  const [resHoraFimPortal, setResHoraFimPortal] = useState("18:00");
+  const [resFinalidadePortal, setResFinalidadePortal] = useState("");
+  const [resPessoasPortal, setResPessoasPortal] = useState(1);
+  const [aSubmeterReservaPortal, setASubmeterReservaPortal] = useState(false);
+
+  const handleCriarReservaPortal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!predio?.id_predio || !activeUserFracao?.id_fracao || aSubmeterReservaPortal) return;
+    setASubmeterReservaPortal(true);
+    try {
+      const nova: ReservaEspacoComum = {
+        id_reserva: `res-${Date.now()}`,
+        id_predio: predio.id_predio,
+        id_fracao: activeUserFracao.id_fracao,
+        fracao_nome: activeUserFracao.fracao_nome,
+        solicitante_nome: activeUserFracao.proprietario?.nome || loggedUser.nome || "Condómino",
+        espaco: resEspacoPortal,
+        data_evento: resDataPortal,
+        hora_inicio: resHoraInicioPortal,
+        hora_fim: resHoraFimPortal,
+        finalidade: resFinalidadePortal || "Convívio de Condóminos",
+        num_pessoas_estimado: resPessoasPortal,
+        caucao_paga: false,
+        valor_caucao: 50.0,
+        termo_responsabilidade_aceite: true,
+        estado: "PENDENTE_APROVACAO"
+      };
+      const ok = await saveReservaEspacoMuralToSupabase(nova);
+      if (!ok) {
+        alert("❌ Não foi possível submeter o pedido de reserva. Tente novamente.");
+        return;
+      }
+      setReservasFracaoPortal((prev) => [nova, ...prev]);
+      registarLogAuditoria("Reservas", `Submeteu pedido de reserva de "${resEspacoPortal}"`, predio.id_predio, loggedUser, `Fração ${activeUserFracao.fracao_nome}`);
+      fetch("/api/admin?acao=enviar-push-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_predio: predio.id_predio,
+          title: `📅 Novo pedido de reserva — Fração ${activeUserFracao.fracao_nome}`,
+          body: `${resEspacoPortal.replace(/_/g, " ")} em ${resDataPortal} (${resHoraInicioPortal}-${resHoraFimPortal})`
+        })
+      }).catch(() => {});
+      alert("📅 Pedido de reserva submetido com sucesso! Aguarda validação da administração.");
+      setResFinalidadePortal("");
+    } finally {
+      setASubmeterReservaPortal(false);
+    }
+  };
 
   const [ocorrenciasReceemCriadasPortal, setOcorrenciasReceemCriadasPortal] = useState<Ocorrencia[]>([]);
   const ocorrenciasFracaoPortal = React.useMemo(() => {
@@ -3458,6 +3524,7 @@ export function PortalCondomino({
                   ["avarias", "🔧 Avarias"],
                   ["obras", "🏗️ Obras"],
                   ["limpezas", "🧹 Limpezas"],
+                  ["reservas", "📅 Reservas"],
                   ["regras", "📋 Regras"],
                   ["emergencia", "📞 Emergência"]
                 ] as const).map(([tab, label]) => (
@@ -3656,6 +3723,84 @@ export function PortalCondomino({
                     </div>
                   ))}
                 </div>
+              )}
+
+              {/* --- RESERVAS --- */}
+              {servicosTab === "reservas" && (
+                <>
+                  <div className="space-y-2.5">
+                    {reservasFracaoPortal.length === 0 && (
+                      <p className="text-slate-600 dark:text-slate-400 text-[10px] text-center py-6 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">Ainda não submeteu nenhum pedido de reserva.</p>
+                    )}
+                    {reservasFracaoPortal.map((r) => (
+                      <div key={r.id_reserva} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3 rounded-xl shadow-xs space-y-1.5 text-[10px]">
+                        <div className="flex justify-between items-start">
+                          <h4 className="font-extrabold text-slate-800 dark:text-slate-200">{r.espaco.replace(/_/g, " ")}</h4>
+                          <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase ${
+                            r.estado === "CONFIRMADA" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20" :
+                            r.estado === "RECUSADA" ? "bg-rose-50 text-rose-600 dark:bg-rose-950/20" :
+                            r.estado === "CONCLUIDA" ? "bg-slate-100 text-slate-600 dark:bg-slate-800" :
+                            "bg-amber-50 text-amber-600 dark:bg-amber-950/20"
+                          }`}>
+                            {r.estado === "PENDENTE_APROVACAO" ? "Pendente" : r.estado === "CONFIRMADA" ? "Confirmada" : r.estado === "RECUSADA" ? "Recusada" : "Concluída"}
+                          </span>
+                        </div>
+                        <p className="text-slate-600 dark:text-slate-400">{formatDatePT(r.data_evento)} • {r.hora_inicio}-{r.hora_fim} • {r.num_pessoas_estimado} pessoas</p>
+                        {r.finalidade && <p className="text-slate-500 dark:text-slate-500 italic">"{r.finalidade}"</p>}
+                      </div>
+                    ))}
+                  </div>
+
+                  <form onSubmit={handleCriarReservaPortal} className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3.5 rounded-xl shadow-sm space-y-3 text-[10px]">
+                    <span className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-widest block">
+                      📅 Pedir Reserva de Espaço Comum
+                    </span>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-600 dark:text-slate-400 uppercase text-[8px]">Espaço</label>
+                      <select
+                        value={resEspacoPortal}
+                        onChange={e => setResEspacoPortal(e.target.value as ReservaEspacoComum["espaco"])}
+                        className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2 rounded-lg font-bold text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500"
+                      >
+                        <option value="SALAO_CONDOMINIO">Salão do Condomínio</option>
+                        <option value="CHURRASQUEIRA">Churrasqueira</option>
+                        <option value="TERRACO_COMUM">Terraço Comum</option>
+                        <option value="GINASIO">Ginásio</option>
+                        <option value="PISCINA">Piscina</option>
+                        <option value="ZONA_JARDIM">Zona de Jardim</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-600 dark:text-slate-400 uppercase text-[8px]">Data</label>
+                        <input type="date" value={resDataPortal} onChange={e => setResDataPortal(e.target.value)} className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 font-mono text-[9px]" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-600 dark:text-slate-400 uppercase text-[8px]">Início</label>
+                        <input type="time" value={resHoraInicioPortal} onChange={e => setResHoraInicioPortal(e.target.value)} className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 font-mono text-[9px]" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-600 dark:text-slate-400 uppercase text-[8px]">Fim</label>
+                        <input type="time" value={resHoraFimPortal} onChange={e => setResHoraFimPortal(e.target.value)} className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 font-mono text-[9px]" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-600 dark:text-slate-400 uppercase text-[8px]">Nº Estimado de Convidados</label>
+                      <input type="number" min={1} max={100} value={resPessoasPortal} onChange={e => setResPessoasPortal(parseInt(e.target.value) || 1)} className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 font-mono" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-600 dark:text-slate-400 uppercase text-[8px]">Finalidade</label>
+                      <input type="text" value={resFinalidadePortal} onChange={e => setResFinalidadePortal(e.target.value)} placeholder="Ex: Aniversário, convívio familiar..." className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500" />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={aSubmeterReservaPortal}
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-extrabold py-2 rounded-lg text-center cursor-pointer transition-colors uppercase text-[9px] shadow-xs"
+                    >
+                      {aSubmeterReservaPortal ? "A submeter..." : "Submeter Pedido de Reserva"}
+                    </button>
+                  </form>
+                </>
               )}
 
               {/* --- REGRAS --- */}

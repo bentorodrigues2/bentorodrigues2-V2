@@ -21,7 +21,8 @@ import {
   DocumentoSeguroAnexo,
   RequestForProposal,
   Proposal,
-  VotoProposta
+  VotoProposta,
+  ReservaEspacoComum
 } from "../types";
 import { generateAndDownloadPdf, downloadEmailDocument, exportToXLS, downloadBlob, ehContaFundoReserva, gerarReferenciaBR23EExtra, formatDatePT } from "../utils";
 import { usePwaBackButton } from "../utils/usePwaBackButton";
@@ -55,7 +56,9 @@ import {
   fetchRfpsFromSupabase,
   fetchPropostasFromSupabase,
   fetchVotosPropostaFromSupabase,
-  saveVotoPropostaToSupabase
+  saveVotoPropostaToSupabase,
+  fetchReservasEspacosMuralFromSupabase,
+  saveReservaEspacoMuralToSupabase
 } from "../lib/supabaseService";
 import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { subscribeUserToPush } from "../utils/subscribeUser";
@@ -1227,6 +1230,67 @@ export default function PWACondominoView({
   const [bookingDate, setBookingDate] = useState("2026-07-25");
   const [bookingTime, setBookingTime] = useState("14:00 - 18:00");
   const [bookingGuests, setBookingGuests] = useState(15);
+  const [aSubmeterReserva, setASubmeterReserva] = useState(false);
+
+  // Gravação real da reserva (reservas_espacos_mural), mesmo backend já
+  // usado pela administração em MuralDigitalReservas.tsx — antes este botão
+  // só mostrava um alert() e uma notificação local, nunca gravava nada nem
+  // chegava à administração.
+  const handleConfirmarReservaEspaco = async () => {
+    if (!predio?.id_predio || !condominoFracao?.id_fracao || aSubmeterReserva) return;
+    setASubmeterReserva(true);
+    try {
+      const mapaEspaco: Record<string, ReservaEspacoComum["espaco"]> = {
+        "Salão de Festas": "SALAO_CONDOMINIO",
+        "Ginásio Comum": "GINASIO",
+        "Churrasqueira Coletiva": "CHURRASQUEIRA"
+      };
+      const [horaInicio, horaFim] = bookingTime.split(" - ").map(s => s.trim());
+      const nova: ReservaEspacoComum = {
+        id_reserva: `res-${Date.now()}`,
+        id_predio: predio.id_predio,
+        id_fracao: condominoFracao.id_fracao,
+        fracao_nome: condominoFracao.fracao_nome,
+        solicitante_nome: condominoFracao.proprietario?.nome || loggedUser.nome || "Condómino",
+        espaco: mapaEspaco[bookingSpace] || "SALAO_CONDOMINIO",
+        data_evento: bookingDate,
+        hora_inicio: horaInicio || "",
+        hora_fim: horaFim || "",
+        finalidade: "Convívio de Condóminos",
+        num_pessoas_estimado: bookingGuests,
+        caucao_paga: false,
+        valor_caucao: 50.0,
+        termo_responsabilidade_aceite: true,
+        estado: "PENDENTE_APROVACAO"
+      };
+      const ok = await saveReservaEspacoMuralToSupabase(nova);
+      if (!ok) {
+        alert("❌ Não foi possível submeter o pedido de reserva. Tente novamente.");
+        return;
+      }
+      registarLogAuditoria("Reservas", `Submeteu pedido de reserva de "${bookingSpace}"`, predio.id_predio, loggedUser, `Fração ${condominoFracao.fracao_nome}`);
+      fetch("/api/admin?acao=enviar-push-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_predio: predio.id_predio,
+          title: `📅 Novo pedido de reserva — Fração ${condominoFracao.fracao_nome}`,
+          body: `${bookingSpace} em ${bookingDate} (${bookingTime})`
+        })
+      }).catch(() => {});
+      alert(`Pedido de reserva submetido com sucesso!\nEspaço: ${bookingSpace}\nData: ${bookingDate}\nHorário: ${bookingTime}\nNº Estimado de Convidados: ${bookingGuests}\n\nAguarda validação da administração.`);
+      setPwaNotifications(prev => [{
+        id: `NOT-${Date.now()}`,
+        title: "Pedido de Reserva Submetido",
+        desc: `Pediu o espaço "${bookingSpace}" para ${bookingDate}, aguarda validação.`,
+        date: "Hoje",
+        isArchived: false
+      }, ...prev]);
+      setActivePwaModal(null);
+    } finally {
+      setASubmeterReserva(false);
+    }
+  };
 
   // Conversão real para .webp (mesmo padrão do avatar) — antes o botão
   // "Capturar Foto" nem tinha seletor de ficheiro nenhum, só fingia com um
@@ -4823,20 +4887,11 @@ export default function PWACondominoView({
                     </div>
 
                     <button
-                      onClick={() => {
-                        alert(`Reserva efetuada com sucesso!\nEspaço: ${bookingSpace}\nData: ${bookingDate}\nHorário: ${bookingTime}\nNº Estimado de Convidados: ${bookingGuests}\n\nA sua reserva está ativa e autorizada pela IA de gestão!`);
-                        setPwaNotifications(prev => [{
-                          id: `NOT-${Date.now()}`,
-                          title: "Espaço Reservado",
-                          desc: `Reservou o espaço "${bookingSpace}" para ${bookingDate}.`,
-                          date: "Hoje",
-                          isArchived: false
-                        }, ...prev]);
-                        setActivePwaModal(null);
-                      }}
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-slate-950 font-black py-2.5 rounded-xl uppercase tracking-wider text-[9px] cursor-pointer mt-1"
+                      onClick={handleConfirmarReservaEspaco}
+                      disabled={aSubmeterReserva}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-slate-950 font-black py-2.5 rounded-xl uppercase tracking-wider text-[9px] cursor-pointer mt-1"
                     >
-                      📅 Confirmar Reserva de Espaço
+                      {aSubmeterReserva ? "A submeter..." : "📅 Submeter Pedido de Reserva"}
                     </button>
                   </div>
                 )}
