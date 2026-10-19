@@ -2792,6 +2792,16 @@ export function GestaoDocumentos({
               <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <button
+                    onClick={() => setActivePdfViewerDoc(doc)}
+                    title="Abrir para Consulta"
+                    aria-label="Abrir para Consulta"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-black px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                  >
+                    <Eye className="h-4 w-4" />
+                    <span>Abrir</span>
+                  </button>
+
+                  <button
                     onClick={() => abrirModalArquivamentoIA(doc)}
                     title="Arquivar Ficheiro com IA"
                     aria-label="Arquivar Ficheiro com IA"

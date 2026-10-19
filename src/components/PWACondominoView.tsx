@@ -2318,7 +2318,7 @@ export default function PWACondominoView({
         {/* MÓDULO 2 — DOCUMENTOS (Biblioteca Documental & Arquivo) */}
         {/* ========================================== */}
         {(activeTab === "documentos" || activeTab === "arquivo") && (
-          <div className="space-y-4 animate-fade-in" id="pwa-modulo-documentos">
+          <div className="space-y-4 animate-fade-in custom-pwa-backoffice-content" id="pwa-modulo-documentos">
             <GestaoDocumentos
               predio={predio}
               documentos={documentos}

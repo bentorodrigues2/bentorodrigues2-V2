@@ -3522,7 +3522,7 @@ export function PortalCondomino({
                 <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
-            <div className="p-4">
+            <div className="p-4 custom-pwa-backoffice-content">
               <GestaoDocumentos
                 predio={predio}
                 documentos={documentos}
