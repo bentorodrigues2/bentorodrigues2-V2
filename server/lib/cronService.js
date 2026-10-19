@@ -927,10 +927,31 @@ export async function processarContratosFornecedores() {
       const diasRestantes = Math.ceil((new Date(c.data_fim).getTime() - new Date(hojeISO).getTime()) / 86400000);
 
       if (diasRestantes <= 0) {
+        // Protege contra o /api/cron ser invocado mais do que uma vez no
+        // mesmo dia (foi o que aconteceu de facto em produção: 17, 18 e 19
+        // de outubro de 2026 tiveram cada um 2 renovações deste mesmo
+        // contrato) — sem isto, cada invocação a mais avançava a data de
+        // fim outro ano e reenviava o email de "renovado".
+        if (await jaExecutadoHoje("cron_contrato_fornecedor", c.id_contrato)) continue;
+        await marcarExecutadoHoje("cron_contrato_fornecedor", c.id_contrato, c.titulo, predio.id_predio);
+
         if (c.renovacao_automatica) {
           const parts = String(c.data_fim).split("-");
-          const anoSeguinte = (parseInt(parts[0], 10) || new Date().getFullYear()) + 1;
-          const novaDataFim = `${anoSeguinte}-${parts[1] || "12"}-${parts[2] || "31"}`;
+          const anoAntigo = parseInt(parts[0], 10) || new Date().getFullYear();
+          // Um contrato pode ficar "parado" vários anos sem o cron correr
+          // (ex: descoberto tarde, ou invocações falhadas) — avançar sempre
+          // +1 ano a partir da data de fim ANTIGA nunca apanha o presente
+          // nesse caso: um contrato de 2018 só chegaria a 2026 depois de 8
+          // dias seguidos de cron, reenviando um email de "renovado" por
+          // dia. Em vez disso, avança já o número de anos suficiente para
+          // ultrapassar hoje, numa só vez.
+          const anoHoje = new Date(hojeISO).getFullYear();
+          let anoSeguinte = anoAntigo + Math.max(1, anoHoje - anoAntigo + 1);
+          let novaDataFim = `${anoSeguinte}-${parts[1] || "12"}-${parts[2] || "31"}`;
+          while (new Date(novaDataFim).getTime() <= new Date(hojeISO).getTime()) {
+            anoSeguinte += 1;
+            novaDataFim = `${anoSeguinte}-${parts[1] || "12"}-${parts[2] || "31"}`;
+          }
           const logMsg = `Renovado automaticamente pelo sistema em ${new Date().toLocaleDateString("pt-PT")} para ${novaDataFim}`;
 
           await supabase
