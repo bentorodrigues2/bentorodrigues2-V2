@@ -58,7 +58,8 @@ import {
   fetchVotosPropostaFromSupabase,
   saveVotoPropostaToSupabase,
   fetchReservasEspacosMuralFromSupabase,
-  saveReservaEspacoMuralToSupabase
+  saveReservaEspacoMuralToSupabase,
+  registarLeituraConteudo
 } from "../lib/supabaseService";
 import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { subscribeUserToPush } from "../utils/subscribeUser";
@@ -557,6 +558,23 @@ export default function PWACondominoView({
   }, [predio?.id_predio]);
 
   useEffect(() => { carregarFeedComunicacao(); }, [carregarFeedComunicacao]);
+
+  // Relatório de Leitura ("quem leu", como o visto do WhatsApp) — mesma
+  // lógica do Portal (PortalCondomino.tsx), para o relatório ser idêntico
+  // independentemente de o condómino entrar pela PWA ou pelo Browser.
+  const idsLeiturasRegistadasPwaRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!predio?.id_predio || !condominoFracao?.id_fracao) return;
+    const marcar = (tipo: "comunicado" | "sondagem" | "questionario", id: string) => {
+      const chave = `${tipo}:${id}`;
+      if (idsLeiturasRegistadasPwaRef.current.has(chave)) return;
+      idsLeiturasRegistadasPwaRef.current.add(chave);
+      registarLeituraConteudo(tipo, id, predio.id_predio, condominoFracao.id_fracao, condominoFracao.fracao_nome, loggedUser.email, loggedUser.nome).catch(() => {});
+    };
+    comunicadosFeed.forEach(c => marcar("comunicado", c.id_comunicado));
+    sondagensFeed.forEach(s => marcar("sondagem", s.id_sondagem));
+    questionariosFeed.forEach(q => marcar("questionario", q.id_questionario));
+  }, [comunicadosFeed, sondagensFeed, questionariosFeed, predio?.id_predio, condominoFracao?.id_fracao, condominoFracao?.fracao_nome, loggedUser.email, loggedUser.nome]);
 
   const jaVotouSondagem = (s: Sondagem) => (s.votos || []).some(v => v.id_fracao === condominoFracao?.id_fracao);
   const jaRespondeuQuestionario = (q: Questionario) => (q.respostas || []).some(r => r.id_fracao === condominoFracao?.id_fracao);

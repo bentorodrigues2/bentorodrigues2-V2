@@ -62,7 +62,8 @@ import {
   fetchLimpezasFromSupabase,
   LimpezaRow,
   fetchReservasEspacosMuralFromSupabase,
-  saveReservaEspacoMuralToSupabase
+  saveReservaEspacoMuralToSupabase,
+  registarLeituraConteudo
 } from "../lib/supabaseService";
 
 // Inner Interfaces
@@ -1479,6 +1480,23 @@ export function PortalCondomino({
   }, [predio?.id_predio]);
 
   useEffect(() => { carregarFeedComunicacao(); }, [carregarFeedComunicacao]);
+
+  // Relatório de Leitura ("quem leu", como o visto do WhatsApp) — regista
+  // que esta fração abriu/viu cada comunicado, sondagem e questionário.
+  // idsLeiturasRegistadasRef evita repetir a chamada a cada re-render.
+  const idsLeiturasRegistadasRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!predio?.id_predio || !activeUserFracao?.id_fracao) return;
+    const marcar = (tipo: "comunicado" | "sondagem" | "questionario", id: string) => {
+      const chave = `${tipo}:${id}`;
+      if (idsLeiturasRegistadasRef.current.has(chave)) return;
+      idsLeiturasRegistadasRef.current.add(chave);
+      registarLeituraConteudo(tipo, id, predio.id_predio, activeUserFracao.id_fracao, activeUserFracao.fracao_nome, loggedUser.email, loggedUser.nome).catch(() => {});
+    };
+    comunicadosFeed.forEach(c => marcar("comunicado", c.id_comunicado));
+    sondagensFeed.forEach(s => marcar("sondagem", s.id_sondagem));
+    questionariosFeed.forEach(q => marcar("questionario", q.id_questionario));
+  }, [comunicadosFeed, sondagensFeed, questionariosFeed, predio?.id_predio, activeUserFracao?.id_fracao, activeUserFracao?.fracao_nome, loggedUser.email, loggedUser.nome]);
 
   // Votações de Propostas de Orçamento — o administrador publica um
   // concurso (RFP) para os condóminos votarem na proposta que preferem;

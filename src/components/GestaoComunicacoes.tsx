@@ -13,7 +13,9 @@ import {
   fetchSondagensFromSupabase,
   saveSondagemToSupabase,
   fetchQuestionariosFromSupabase,
-  saveQuestionarioToSupabase
+  saveQuestionarioToSupabase,
+  fetchLeiturasConteudo,
+  LeituraConteudo
 } from "../lib/supabaseService";
 import { playNotificationTone } from "../lib/soundService";
 import { transcreverAudio } from "../utils/transcreverAudio";
@@ -55,6 +57,68 @@ async function enviarPushComDiagnostico(payload: {
   } catch (err: any) {
     return `⚠️ Notificação push NÃO enviada: ${err?.message || "falha de rede ao contactar o servidor"}`;
   }
+}
+
+// Relatório de Leitura ("quem leu", como o visto do WhatsApp) — reutilizado
+// nas 3 listas (comunicados, sondagens, questionários). Só vai buscar os
+// dados reais quando o administrador expande o painel (evita 3 pedidos por
+// item logo ao abrir a lista inteira); granularidade por fração.
+function RelatorioLeituraBadge({
+  tipo,
+  idConteudo,
+  totalFracoes
+}: {
+  tipo: "comunicado" | "sondagem" | "questionario";
+  idConteudo: string;
+  totalFracoes: number;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [aCarregar, setACarregar] = useState(false);
+  const [leituras, setLeituras] = useState<LeituraConteudo[] | null>(null);
+
+  const alternar = async () => {
+    const vaiAbrir = !aberto;
+    setAberto(vaiAbrir);
+    if (vaiAbrir && leituras === null) {
+      setACarregar(true);
+      const dados = await fetchLeiturasConteudo(tipo, idConteudo);
+      setLeituras(dados || []);
+      setACarregar(false);
+    }
+  };
+
+  return (
+    <div className="inline-block">
+      <button
+        type="button"
+        onClick={alternar}
+        className="text-[10px] font-bold text-slate-600 hover:text-indigo-700 bg-slate-100 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-full px-2 py-0.5 cursor-pointer inline-flex items-center gap-1"
+        title="Relatório de leitura — quem já viu"
+      >
+        <i className="fa-solid fa-eye text-[9px]"></i>
+        {leituras !== null ? `${leituras.length}/${totalFracoes} leram` : "Relatório de leitura"}
+      </button>
+      {aberto && (
+        <div className="mt-1.5 p-2.5 bg-white border border-slate-200 rounded-xl shadow-sm text-[10px] space-y-1 max-h-40 overflow-y-auto">
+          {aCarregar ? (
+            <span className="text-slate-600"><i className="fa-solid fa-spinner fa-spin mr-1"></i>A carregar...</span>
+          ) : !leituras || leituras.length === 0 ? (
+            <span className="text-slate-600 italic">Ainda ninguém leu.</span>
+          ) : (
+            leituras
+              .slice()
+              .sort((a, b) => (a.lido_em || "").localeCompare(b.lido_em || ""))
+              .map(l => (
+                <div key={l.id} className="flex justify-between gap-2">
+                  <span className="font-bold text-slate-700">Fração {l.fracao_nome || l.id_fracao}{l.nome ? ` — ${l.nome}` : ""}</span>
+                  <span className="text-slate-600 shrink-0">{l.lido_em ? new Date(l.lido_em).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}</span>
+                </div>
+              ))
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 interface GestaoComunicacoesProps {
@@ -1058,6 +1122,9 @@ export function GestaoComunicacoes({
                             <span>Data: {item.created_at ? new Date(item.created_at).toLocaleDateString("pt-PT") : ""}</span>
                             <span className="text-emerald-600 font-bold">✓ Enviado a {item.total_enviados}/{item.total_destinatarios} fração(ões)</span>
                           </div>
+                          <div className="pt-1">
+                            <RelatorioLeituraBadge tipo="comunicado" idConteudo={item.id_comunicado} totalFracoes={fracoes.filter(f => f.id_predio === predio.id_predio).length} />
+                          </div>
                         </>
                       )}
                     </div>
@@ -1513,6 +1580,7 @@ export function GestaoComunicacoes({
                           </div>
                         ))}
                       </div>
+                      <RelatorioLeituraBadge tipo="sondagem" idConteudo={s.id_sondagem} totalFracoes={fracoes.filter(f => f.id_predio === predio.id_predio).length} />
                     </div>
                   ))
                 )}
@@ -1593,6 +1661,7 @@ export function GestaoComunicacoes({
                         <span>Criado em: {q.created_at ? new Date(q.created_at).toLocaleDateString("pt-PT") : ""}</span>
                         <span className="font-bold text-emerald-700">{(q.respostas || []).length} Respostas Recebidas</span>
                       </div>
+                      <RelatorioLeituraBadge tipo="questionario" idConteudo={q.id_questionario} totalFracoes={fracoes.filter(f => f.id_predio === predio.id_predio).length} />
                     </div>
                   ))
                 )}

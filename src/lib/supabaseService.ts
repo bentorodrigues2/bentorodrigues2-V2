@@ -707,6 +707,63 @@ export async function registarLogAuditoria(
   });
 }
 
+// ============================================================================
+// RELATÓRIO DE LEITURA (comunicados, sondagens, questionários) — "quem leu",
+// à semelhança do visto do WhatsApp. Granularidade por fração (1 registo por
+// fração por conteúdo), consistente com VotoSondagem/RespostaQuestionario,
+// que também são por id_fracao e não por pessoa individual.
+// ============================================================================
+export interface LeituraConteudo {
+  id: string;
+  id_predio: string;
+  tipo: "comunicado" | "sondagem" | "questionario";
+  id_conteudo: string;
+  id_fracao: string;
+  fracao_nome?: string;
+  email?: string;
+  nome?: string;
+  lido_em?: string;
+}
+
+export async function registarLeituraConteudo(
+  tipo: "comunicado" | "sondagem" | "questionario",
+  idConteudo: string,
+  idPredio: string,
+  idFracao: string,
+  fracaoNome?: string,
+  email?: string,
+  nome?: string
+): Promise<boolean> {
+  if (!isSupabaseConfigured() || !idConteudo || !idFracao) return false;
+  return dbUpsert("leituras_conteudo", {
+    id: `leit_${tipo}_${idConteudo}_${idFracao}`,
+    id_predio: idPredio,
+    tipo,
+    id_conteudo: idConteudo,
+    id_fracao: idFracao,
+    fracao_nome: fracaoNome || null,
+    email: email || null,
+    nome: nome || null
+  });
+}
+
+export async function fetchLeiturasConteudo(tipo: "comunicado" | "sondagem" | "questionario", idConteudo: string): Promise<LeituraConteudo[] | null> {
+  if (!isSupabaseConfigured() || !idConteudo) return null;
+  const data = await dbSelect("leituras_conteudo", { filtros: [["tipo", "eq", tipo], ["id_conteudo", "eq", idConteudo]] });
+  if (!data) return null;
+  return data.map((row: any) => ({
+    id: row.id,
+    id_predio: row.id_predio,
+    tipo: row.tipo,
+    id_conteudo: row.id_conteudo,
+    id_fracao: row.id_fracao,
+    fracao_nome: row.fracao_nome || undefined,
+    email: row.email || undefined,
+    nome: row.nome || undefined,
+    lido_em: row.lido_em || undefined
+  }));
+}
+
 export interface DecisaoIA {
   id_log: number;
   id_predio?: string | null;
