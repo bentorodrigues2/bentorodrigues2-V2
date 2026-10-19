@@ -2850,6 +2850,26 @@ export function PortalCondomino({
                     </span>
                   </div>
 
+                  {/* Atalhos rápidos — paridade com a PWA */}
+                  <div className="grid grid-cols-2 gap-2 text-[9px] mb-2">
+                    <button
+                      type="button"
+                      onClick={() => { setMsgDrawerOpen(false); setServicosTab("emergencia"); setShowServicos(true); }}
+                      className="p-2.5 bg-red-50/80 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 rounded-xl text-left hover:border-red-400 cursor-pointer transition-all space-y-0.5"
+                    >
+                      <span className="font-black text-red-600 dark:text-red-400 block uppercase tracking-wider text-[8px]">🚨 Piquete Urgente</span>
+                      <p className="text-slate-600 dark:text-slate-300 font-bold">24h Assistência Técnica</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewMsgTexto("Assunto: Pedido de esclarecimento sobre a ata da última assembleia.")}
+                      className="p-2.5 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/40 rounded-xl text-left hover:border-indigo-400 cursor-pointer transition-all space-y-0.5"
+                    >
+                      <span className="font-black text-indigo-600 dark:text-indigo-400 block uppercase tracking-wider text-[8px]">📋 Modelo Rápido</span>
+                      <p className="text-slate-600 dark:text-slate-300 font-bold">Pedir Esclarecimento</p>
+                    </button>
+                  </div>
+
                   {mensagensThreadPortal.length === 0 ? (
                     <div className="text-center py-12 px-4 space-y-2">
                       <div className="w-12 h-12 mx-auto rounded-full bg-emerald-100/80 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
