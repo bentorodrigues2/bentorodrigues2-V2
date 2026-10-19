@@ -1461,60 +1461,80 @@ export async function avisarQuotasEmMora() {
 }
 
 /**
- * Diário: felicitações de aniversário — compara mês/dia de
- * proprietarios.data_nascimento com a data de hoje.
+ * Diário: felicitações de aniversário — compara mês/dia da data de
+ * nascimento de hoje com a de cada pessoa real de cada fração.
+ *
+ * Bug real confirmado em produção (2026-10-19): esta função lia da tabela
+ * "proprietarios", mas essa tabela está vazia/desatualizada para este
+ * prédio — a Administração preenche sempre a Data de Nascimento em Gestão
+ * de Frações, que grava em fracoes.proprietario/.inquilino/
+ * .proprietarios_adicionais (JSONB), nunca na tabela "proprietarios".
+ * Resultado: nenhum aniversário real desta fonte chegava a disparar.
+ * Passa a ler sempre de "fracoes", e cobre as 3 pessoas possíveis por
+ * fração (proprietário, inquilino, cada coproprietário) — antes só
+ * considerava o proprietário.
  */
 export async function enviarFelicitacoesAniversario() {
   const hoje = new Date();
   const mesHoje = hoje.getUTCMonth() + 1;
   const diaHoje = hoje.getUTCDate();
 
-  const { data: proprietarios, error } = await supabase
-    .from("proprietarios")
-    .select("*")
-    .not("data_nascimento", "is", null);
+  const { data: fracoesTodas, error } = await supabase
+    .from("fracoes")
+    .select("id_fracao, id_predio, fracao_nome, proprietario, inquilino, proprietarios_adicionais");
 
-  if (error || !proprietarios) {
-    if (error) console.error("[cronService] Erro ao obter proprietários para aniversários:", error.message);
+  if (error || !fracoesTodas) {
+    if (error) console.error("[cronService] Erro ao obter frações para aniversários:", error.message);
     return { job: "enviarFelicitacoesAniversario", total: 0, resultados: [] };
   }
 
-  const aniversariantes = proprietarios.filter((p) => {
-    const partes = String(p.data_nascimento).split("-");
-    if (partes.length !== 3) return false;
-    const [, mes, dia] = partes;
-    return Number(mes) === mesHoje && Number(dia) === diaHoje;
-  });
+  const aniversariantes = [];
+  for (const f of fracoesTodas) {
+    const coproprietarios = Array.isArray(f.proprietarios_adicionais) ? f.proprietarios_adicionais : [];
+    const candidatos = [
+      { pessoa: f.proprietario, papel: "Proprietário", ref: `${f.id_fracao}:proprietario` },
+      { pessoa: f.inquilino, papel: "Inquilino", ref: `${f.id_fracao}:inquilino` },
+      ...coproprietarios.map((p, i) => ({ pessoa: p, papel: "Coproprietário", ref: `${f.id_fracao}:coproprietario:${i}` }))
+    ];
+    for (const c of candidatos) {
+      if (!c.pessoa?.data_nascimento || !c.pessoa?.email) continue;
+      const partes = String(c.pessoa.data_nascimento).split("-");
+      if (partes.length !== 3) continue;
+      const [, mes, dia] = partes;
+      if (Number(mes) === mesHoje && Number(dia) === diaHoje) {
+        aniversariantes.push({ ...c, id_predio: f.id_predio, fracao_nome: f.fracao_nome });
+      }
+    }
+  }
 
   const resultados = [];
-  for (const proprietario of aniversariantes) {
+  for (const aniv of aniversariantes) {
     try {
-      if (!proprietario.email) continue;
-      if (await jaExecutadoHoje("cron_aniversario", proprietario.id_proprietario)) continue;
+      if (await jaExecutadoHoje("cron_aniversario", aniv.ref)) continue;
 
-      const { data: predio } = proprietario.id_predio
-        ? await supabase.from("predios").select("nome, patrimonio").eq("id_predio", proprietario.id_predio).maybeSingle()
+      const { data: predio } = aniv.id_predio
+        ? await supabase.from("predios").select("nome, patrimonio").eq("id_predio", aniv.id_predio).maybeSingle()
         : { data: null };
 
       // O postal é o próprio corpo do email (não faz sentido como PDF em
       // anexo) e leva a assinatura digital real do administrador quando
       // existir — ver src/components/GestaoFracoes.tsx.
       const html = gerarHtmlAniversario({
-        nome: proprietario.nome,
+        nome: aniv.pessoa.nome,
         predioNome: predio?.nome || "Condomínio",
         adminNome: predio?.patrimonio?.nome_administrador || "José Carlos Guerra",
         adminSignatureBase64: predio?.patrimonio?.assinatura_admin_base64 || null
       });
 
       const enviado = await enviarEmailSemAnexo({
-        to: proprietario.email,
-        subject: `Feliz Aniversário, ${proprietario.nome}! 🎉`,
+        to: aniv.pessoa.email,
+        subject: `Feliz Aniversário, ${aniv.pessoa.nome}! 🎉`,
         html
       });
 
       if (enviado) {
-        await marcarExecutadoHoje("cron_aniversario", proprietario.id_proprietario, proprietario.nome, proprietario.id_predio);
-        resultados.push({ proprietario: proprietario.nome, email: proprietario.email });
+        await marcarExecutadoHoje("cron_aniversario", aniv.ref, aniv.pessoa.nome, aniv.id_predio);
+        resultados.push({ proprietario: aniv.pessoa.nome, email: aniv.pessoa.email, papel: aniv.papel, fracao: aniv.fracao_nome });
       }
     } catch (errAniv) {
       console.error("[cronService] Erro ao enviar felicitação de aniversário:", errAniv);
