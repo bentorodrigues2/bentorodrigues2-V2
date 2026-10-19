@@ -4,7 +4,7 @@ import { Predio, Documento, LoggedUser, DocumentoVersao } from "../types";
 import { formatDatePT, downloadBlob, addPdfHeaderWithLogo, downloadReceiptPDF, downloadNotaCobrancaPDF } from "../utils";
 import { getIllustratedManualHtml } from "../utils/manualIllustratedTemplates";
 import { triggerSendReaction } from "./SendingReactionModal";
-import { updateDocumentoMetadataToSupabase, deleteDocumentoFromSupabase, registarLogAuditoria } from "../lib/supabaseService";
+import { updateDocumentoMetadataToSupabase, deleteDocumentoFromSupabase, registarLogAuditoria, fetchConfirmacoesLeituraDoDocumento, ConfirmacaoLeituraEmail } from "../lib/supabaseService";
 import { EnciclopediaPlataforma } from "./EnciclopediaPlataforma";
 import { 
   FileText, 
@@ -118,6 +118,19 @@ export function GestaoDocumentos({
       })
       .catch(err => console.error("Erro ao obter pré-visualização real do documento:", err));
 
+    return () => { cancelado = true; };
+  }, [activePdfViewerDoc]);
+
+  // Estado de confirmação de leitura (Jurídico/Seguros/Financeiro), quando
+  // este documento foi enviado com esse pedido ativo (ver abrirModalEnviarEmail).
+  const [confirmacoesLeituraDoc, setConfirmacoesLeituraDoc] = useState<ConfirmacaoLeituraEmail[] | null>(null);
+  useEffect(() => {
+    let cancelado = false;
+    setConfirmacoesLeituraDoc(null);
+    if (!activePdfViewerDoc?.id_doc) return;
+    fetchConfirmacoesLeituraDoDocumento(activePdfViewerDoc.id_doc).then(dados => {
+      if (!cancelado) setConfirmacoesLeituraDoc(dados);
+    });
     return () => { cancelado = true; };
   }, [activePdfViewerDoc]);
 
@@ -1565,12 +1578,28 @@ export function GestaoDocumentos({
   const [emailAssunto, setEmailAssunto] = useState<string>("");
   const [emailMensagem, setEmailMensagem] = useState<string>("");
   const [emailEnviarCopiaAdmin, setEmailEnviarCopiaAdmin] = useState<boolean>(true);
+  // Confirmação de leitura (sinal de melhor esforço, ver nota junto à
+  // checkbox) — pré-ativada sozinha para Jurídico/Seguros/Financeiro,
+  // sempre alterável pelo administrador antes de enviar.
+  const [emailPedirConfirmacaoLeitura, setEmailPedirConfirmacaoLeitura] = useState<boolean>(false);
+  const [emailTipoConfirmacao, setEmailTipoConfirmacao] = useState<"juridico" | "seguro" | "financeiro" | "outro">("outro");
+
+  const classificarTipoConfirmacaoLeitura = (doc: Documento): "juridico" | "seguro" | "financeiro" | "outro" => {
+    const alvo = `${doc.tema || ""} ${doc.categoria || ""} ${doc.tipo || ""}`.toLowerCase();
+    if (alvo.includes("jurídico") || alvo.includes("juridico") || alvo.includes("legal") || alvo.includes("processo")) return "juridico";
+    if (alvo.includes("seguro") || alvo.includes("apólice") || alvo.includes("apolice")) return "seguro";
+    if (alvo.includes("fatura") || alvo.includes("recibo") || alvo.includes("extrato") || alvo.includes("quota") || alvo.includes("financeiro")) return "financeiro";
+    return "outro";
+  };
 
   const abrirModalEnviarEmail = (doc: Documento) => {
     setEmailModalDoc(doc);
     setEmailDestinatario(predio.email_condominio || "jcafguerra@hotmail.com");
     setEmailAssunto(`[CondoManager • ${predio.nome || "Edifício"}] ${doc.nome}`);
     setEmailMensagem(`Exmo.(a) Sr.(a),\n\nSegue em anexo para os devidos efeitos o documento oficial "${doc.nome}" (${doc.tipo || "Documento"}), referente ao condomínio ${predio.nome || "Edifício"}.\n\nDocumento autenticado e emitido via plataforma CondoManager AI.\n\nCom os melhores cumprimentos,\nA Administração`);
+    const tipoSugerido = classificarTipoConfirmacaoLeitura(doc);
+    setEmailTipoConfirmacao(tipoSugerido);
+    setEmailPedirConfirmacaoLeitura(tipoSugerido !== "outro");
   };
 
   const confirmarEnvioEmail = () => {
@@ -1582,6 +1611,8 @@ export function GestaoDocumentos({
     const mensagem = emailMensagem;
     const adminEmail = predio.email_condominio || predio.email;
     const cc = emailEnviarCopiaAdmin && adminEmail && adminEmail !== dest ? adminEmail : undefined;
+    const pedirConfirmacaoLeitura = emailPedirConfirmacaoLeitura;
+    const tipoConfirmacao = emailTipoConfirmacao;
     setEmailModalDoc(null);
 
     triggerSendReaction("email", `A enviar "${docNome}" para ${dest}...`, async () => {
@@ -1595,7 +1626,12 @@ export function GestaoDocumentos({
             email: dest,
             assunto,
             mensagem,
-            cc
+            cc,
+            pedirConfirmacaoLeitura,
+            tipoConfirmacao,
+            idPredio: predio.id_predio,
+            idFracao: doc.fracao,
+            idDoc: doc.id_doc
           })
         });
         const resultado = await resp.json();
@@ -3334,6 +3370,24 @@ export function GestaoDocumentos({
               </div>
             </div>
 
+            {/* Confirmação de Leitura — só aparece se este documento foi
+                enviado por email com esse pedido ativo. */}
+            {confirmacoesLeituraDoc && confirmacoesLeituraDoc.length > 0 && (
+              <div className="bg-amber-950/40 border-b border-amber-800/60 px-4 py-2.5 space-y-1.5 shrink-0">
+                {confirmacoesLeituraDoc.map(c => (
+                  <div key={c.id} className="flex items-center justify-between gap-2 text-[10.5px]">
+                    <span className="text-amber-200">
+                      👁️ {c.destinatario_nome || c.destinatario_email} —{" "}
+                      {c.aberto_em ? <strong className="text-emerald-400">Aberto em {new Date(c.aberto_em).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</strong>
+                        : c.entregue_em ? <strong className="text-blue-300">Entregue, ainda não aberto</strong>
+                        : <strong className="text-slate-400">Enviado, a aguardar entrega</strong>}
+                    </span>
+                  </div>
+                ))}
+                <p className="text-[9px] text-amber-400/80">⚠️ Sinal de melhor esforço (não é prova legal garantida) — ver nota ao enviar.</p>
+              </div>
+            )}
+
             {/* Modal Embedded Preview Frame */}
             <div className="flex-1 bg-white relative p-2">
               {activePdfViewerDoc.caminho && !pdfViewerRealUrl ? (
@@ -3592,6 +3646,38 @@ export function GestaoDocumentos({
                 <label htmlFor="emailCopiaAdmin" className="text-[10.5px] text-slate-600 cursor-pointer">
                   Enviar cópia de confirmação para o e-mail da Administração
                 </label>
+              </div>
+
+              <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="emailConfirmacaoLeitura"
+                    checked={emailPedirConfirmacaoLeitura}
+                    onChange={e => setEmailPedirConfirmacaoLeitura(e.target.checked)}
+                    className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-400"
+                  />
+                  <label htmlFor="emailConfirmacaoLeitura" className="text-[10.5px] font-bold text-white cursor-pointer">
+                    👁️ Pedir confirmação de leitura (Jurídico / Seguros / Financeiro)
+                  </label>
+                </div>
+                {emailPedirConfirmacaoLeitura && (
+                  <>
+                    <select
+                      value={emailTipoConfirmacao}
+                      onChange={e => setEmailTipoConfirmacao(e.target.value as any)}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white text-[11px] focus:outline-none focus:border-emerald-400"
+                    >
+                      <option value="juridico">Jurídico</option>
+                      <option value="seguro">Seguro</option>
+                      <option value="financeiro">Financeiro</option>
+                      <option value="outro">Outro</option>
+                    </select>
+                    <p className="text-[9.5px] text-amber-400/90 leading-relaxed">
+                      ⚠️ Sinal de "melhor esforço": fica a saber-se se o email foi entregue e, se o cliente de email do destinatário carregar imagens, se foi aberto. Alguns clientes bloqueiam isto (falso negativo) e o Apple Mail pode marcar "aberto" só por chegar à caixa de entrada (falso positivo). <strong>Não é prova legal garantida</strong> — para isso continue a usar carta registada com AR.
+                    </p>
+                  </>
+                )}
               </div>
             </div>
 

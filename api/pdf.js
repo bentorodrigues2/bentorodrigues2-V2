@@ -1,4 +1,4 @@
-import { gerarDocumentoPDF, guardarNoArquivo, registarDocumento, enviarEmailPDF } from "../server/lib/pdfService.js";
+import { gerarDocumentoPDF, guardarNoArquivo, registarDocumento, enviarEmailPDF, enviarEmailPDFComConfirmacaoLeitura } from "../server/lib/pdfService.js";
 import { supabase } from "../server/lib/supabaseServer.js";
 import { exigirSessaoValida } from "../server/lib/verificarSessao.js";
 import { arquivarAnexoOriginal } from "../server/lib/multimodalService.js";
@@ -261,7 +261,7 @@ async function gerarDocumentoEspecial(tipo, config, body) {
  * funções serverless do plano Hobby da Vercel) — chamado via ?acao=,
  * distinto do dispatcher por ?tipo= usado pelo resto deste ficheiro.
  */
-async function enviarDocumentoExistente({ caminho, nomeFicheiro, to, assunto, mensagem, nomeDestinatario, cc }) {
+async function enviarDocumentoExistente({ caminho, nomeFicheiro, to, assunto, mensagem, nomeDestinatario, cc, confirmacaoLeitura }) {
   const { data, error } = await supabase.storage.from("documentos").download(caminho);
   if (error || !data) {
     throw new Error(error?.message || "Documento não encontrado no arquivo");
@@ -269,6 +269,25 @@ async function enviarDocumentoExistente({ caminho, nomeFicheiro, to, assunto, me
 
   const arrayBuffer = await data.arrayBuffer();
   const pdfBuffer = Buffer.from(arrayBuffer);
+
+  if (confirmacaoLeitura) {
+    const idRastreio = `leit_email_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    await enviarEmailPDFComConfirmacaoLeitura({
+      to,
+      nomeDestinatario,
+      assunto,
+      mensagem,
+      pdfBuffer,
+      nome: nomeFicheiro,
+      cc,
+      idPredio: confirmacaoLeitura.idPredio,
+      idFracao: confirmacaoLeitura.idFracao,
+      tipo: confirmacaoLeitura.tipo,
+      idDoc: confirmacaoLeitura.idDoc,
+      idRastreio
+    });
+    return;
+  }
 
   await enviarEmailPDF({
     to,
@@ -308,7 +327,7 @@ async function handleAcaoDocumento(req, res, acao) {
     }
 
     if (acao === "enviar") {
-      const { caminho, nome, email, assunto, mensagem, nomeDestinatario, cc } = body;
+      const { caminho, nome, email, assunto, mensagem, nomeDestinatario, cc, pedirConfirmacaoLeitura, tipoConfirmacao, idPredio, idFracao, idDoc } = body;
       if (!caminho || !email) {
         return res.status(400).json({ error: "caminho e email são obrigatórios" });
       }
@@ -320,7 +339,10 @@ async function handleAcaoDocumento(req, res, acao) {
         assunto: assunto || `Documento: ${nome || "Documento"}`,
         mensagem: mensagem || `Segue em anexo o documento solicitado.`,
         nomeDestinatario,
-        cc
+        cc,
+        confirmacaoLeitura: pedirConfirmacaoLeitura
+          ? { idPredio, idFracao, tipo: tipoConfirmacao || "outro", idDoc }
+          : null
       });
 
       return res.status(200).json({ ok: true, email_enviado: true });

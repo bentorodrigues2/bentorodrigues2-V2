@@ -747,6 +747,43 @@ export async function registarLeituraConteudo(
   });
 }
 
+// Confirmação de leitura de email (Jurídico/Seguros/Financeiro) — ver
+// server/lib/pdfService.js enviarEmailPDFComConfirmacaoLeitura e
+// api/webhooks/resend.js. Sinal de "melhor esforço" (pixel de abertura do
+// Resend); nunca apresentar como prova legal garantida.
+export interface ConfirmacaoLeituraEmail {
+  id: string;
+  id_predio: string;
+  id_fracao?: string;
+  tipo: "juridico" | "seguro" | "financeiro" | "outro";
+  id_doc?: string;
+  nome_documento?: string;
+  destinatario_email: string;
+  destinatario_nome?: string;
+  enviado_em?: string;
+  entregue_em?: string;
+  aberto_em?: string;
+}
+
+export async function fetchConfirmacoesLeituraDoDocumento(idDoc: string): Promise<ConfirmacaoLeituraEmail[] | null> {
+  if (!isSupabaseConfigured() || !idDoc) return null;
+  const data = await dbSelect("confirmacoes_leitura_email", { filtros: [["id_doc", "eq", idDoc]] });
+  if (!data) return null;
+  return data.map((row: any) => ({
+    id: row.id,
+    id_predio: row.id_predio,
+    id_fracao: row.id_fracao || undefined,
+    tipo: row.tipo,
+    id_doc: row.id_doc || undefined,
+    nome_documento: row.nome_documento || undefined,
+    destinatario_email: row.destinatario_email,
+    destinatario_nome: row.destinatario_nome || undefined,
+    enviado_em: row.enviado_em || undefined,
+    entregue_em: row.entregue_em || undefined,
+    aberto_em: row.aberto_em || undefined
+  }));
+}
+
 export async function fetchLeiturasConteudo(tipo: "comunicado" | "sondagem" | "questionario", idConteudo: string): Promise<LeituraConteudo[] | null> {
   if (!isSupabaseConfigured() || !idConteudo) return null;
   const data = await dbSelect("leituras_conteudo", { filtros: [["tipo", "eq", tipo], ["id_conteudo", "eq", idConteudo]] });

@@ -145,6 +145,76 @@ export async function enviarEmailPDF({ to, nomeDestinatario, assunto, mensagem, 
 }
 
 /**
+ * Variante de enviarEmailPDF com pedido de confirmação de leitura — usada
+ * para documentos de Jurídico/Seguros/Financeiro onde a administração
+ * precisa de saber se o condómino abriu o email. Ativa o rastreio de
+ * abertura do Resend (ligado ao domínio em server/lib/mailer.js e no
+ * dashboard do Resend) através de "tags", que o webhook
+ * (api/webhooks/resend.js, evento "email.opened") usa depois para
+ * encontrar e atualizar o registo em confirmacoes_leitura_email.
+ *
+ * Nota de transparência dada ao administrador: isto é um sinal de
+ * "melhor esforço" (o pixel só dispara se o cliente de email do
+ * destinatário carregar imagens — ex. Gmail carrega sempre, Outlook
+ * frequentemente bloqueia, Apple Mail pode disparar sozinho só por a
+ * mensagem chegar à caixa de entrada). NÃO constitui prova legal
+ * garantida — para isso continua a ser necessário AR/CTT.
+ */
+export async function enviarEmailPDFComConfirmacaoLeitura({
+  to, nomeDestinatario, assunto, mensagem, pdfBuffer, nome, cc,
+  idPredio, idFracao, tipo, idDoc, idRastreio
+}) {
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (!resendApiKey || !to) return { ok: false };
+
+  const fromEmail = process.env.EMAIL_FROM_ADDRESS || "administracao@condomanagerai.com";
+  const fromAddress = fromEmail.includes("<") ? fromEmail : `CondoManager AI Condomínio <${fromEmail}>`;
+
+  const html = gerarHtmlResposta(nomeDestinatario || "Condómino(a)", mensagem);
+
+  // Tags do Resend: só aceitam letras, números, "_" e "-" — nunca o id do
+  // documento em bruto (pode ter outros caracteres), por isso vai só o
+  // id_rastreio (gerado por nós, já sanitizado) a identificar o registo.
+  const resp = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendApiKey}` },
+    body: JSON.stringify({
+      from: fromAddress,
+      to: [to],
+      ...(cc ? { cc: [cc] } : {}),
+      subject: assunto,
+      html,
+      attachments: [{ filename: nome, content: pdfBuffer.toString("base64") }],
+      tags: [{ name: "id_rastreio", value: idRastreio }]
+    })
+  });
+
+  if (!resp.ok) {
+    console.error("[pdfService] Erro ao enviar email com confirmação de leitura:", resp.status, await resp.text());
+    return { ok: false };
+  }
+  const data = await resp.json();
+
+  try {
+    await supabase.from("confirmacoes_leitura_email").insert({
+      id: idRastreio,
+      id_predio: idPredio || null,
+      id_fracao: idFracao || null,
+      tipo: tipo || "outro",
+      id_doc: idDoc || null,
+      nome_documento: nome || null,
+      destinatario_email: to,
+      destinatario_nome: nomeDestinatario || null,
+      resend_email_id: data?.id || null
+    });
+  } catch (err) {
+    console.warn("[pdfService] Aviso ao registar rastreio de leitura:", err?.message || err);
+  }
+
+  return { ok: true, resendId: data?.id };
+}
+
+/**
  * Gera o PDF (a partir de texto simples), arquiva-o no Supabase Storage,
  * regista o documento e (se emailDestino for fornecido) envia-o por email
  * com o template institucional. Para documentos com layout legal próprio
