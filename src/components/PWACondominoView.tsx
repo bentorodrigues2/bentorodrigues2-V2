@@ -103,9 +103,10 @@ import {
   Plus, 
   Brush, 
   Trash2, 
-  Archive, 
-  Check, 
-  Clock, 
+  Archive,
+  Check,
+  CheckCheck,
+  Clock,
   ArrowRight, 
   Send, 
   Building,
@@ -5215,8 +5216,13 @@ export default function PWACondominoView({
                       </div>
                     )}
                     <p className="leading-normal text-[10px]">{m.texto}</p>
-                    <div className={`text-[9px] text-right ${m.autor === "condomino" ? "text-emerald-100" : "text-slate-600"}`}>
-                      {m.created_at ? new Date(m.created_at).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}
+                    <div className={`text-[9px] text-right flex items-center justify-end gap-1 ${m.autor === "condomino" ? "text-emerald-100" : "text-slate-600"}`}>
+                      <span>{m.created_at ? new Date(m.created_at).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}</span>
+                      {m.autor === "condomino" && (
+                        <span title={m.lida ? "Lida pela administração" : "Enviada, ainda não lida"}>
+                          <CheckCheck className={`h-3.5 w-3.5 ${m.lida ? "text-sky-200" : "text-emerald-300/70"}`} />
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -2913,7 +2913,11 @@ export function PortalCondomino({
                           <p className="text-xs leading-relaxed whitespace-pre-wrap">{m.texto}</p>
                           <div className={`flex items-center ${m.autor === "condomino" ? "justify-end" : "justify-between"} space-x-1 text-[9.5px] text-slate-600 dark:text-slate-400 font-mono-custom`}>
                             <span>{m.created_at ? new Date(m.created_at).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}</span>
-                            {m.autor === "condomino" && <CheckCheck className="h-3.5 w-3.5 text-blue-500 inline ml-1" />}
+                            {m.autor === "condomino" && (
+                              <span title={m.lida ? "Lida pela administração" : "Enviada, ainda não lida"}>
+                                <CheckCheck className={`h-3.5 w-3.5 inline ml-1 ${m.lida ? "text-blue-500" : "text-slate-400"}`} />
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>

@@ -331,7 +331,11 @@ export function GestaoComunicacoes({
   const primeiraCargaConversasRef = React.useRef(true);
   const carregarConversas = useCallback(async () => {
     if (!predio?.id_predio) return;
-    setLoadingConversas(true);
+    // Só mostra "A carregar..." na primeira vez — as verificações seguintes
+    // (a cada 5s, para substituir o Realtime) corriam sempre em silêncio,
+    // mas isto punha o spinner a piscar por cima da lista de conversas a
+    // cada 5 segundos, mesmo sem nada de novo (efeito "psicadélico").
+    if (primeiraCargaConversasRef.current) setLoadingConversas(true);
     const dados = await fetchConversasFromSupabase(predio.id_predio);
     if (dados) {
       if (!primeiraCargaConversasRef.current) {
