@@ -29,6 +29,8 @@ import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
 import { generateCondominoPwaManualPDF, gerarReferenciaBR23EExtra, formatDatePT, loadPrefereContactoTexto, savePrefereContactoTexto } from "../utils";
 import { useModalAcessivel } from "../utils/useModalAcessivel";
 import { transcreverAudio } from "../utils/transcreverAudio";
+import { loadUserPreferences, NotificationPreferences } from "../utils/loadUserPreferences";
+import { saveUserPreferences } from "../utils/saveUserPreferences";
 import { triggerSendReaction } from "./SendingReactionModal";
 import { playVoiceNoteSimulation, playNotificationTone } from "../lib/soundService";
 import { encontrarFracaoDoCondomino } from "../lib/condominoUtils";
@@ -142,6 +144,27 @@ export function PortalCondomino({
   // Navigation inside Portal
   const [activeTab, setActiveTab] = useState<"portal" | "backoffice">("portal");
   const [biometricsEnabled, setBiometricsEnabled] = useState<boolean>(true);
+
+  // Notificações Push — Categorias Opcionais (paridade com a PWA), gravadas
+  // em profiles.notificacoes_preferencias.
+  const [notifPrefsPortal, setNotifPrefsPortal] = useState<NotificationPreferences | null>(null);
+  const [guardandoPrefPortal, setGuardandoPrefPortal] = useState<string | null>(null);
+  useEffect(() => {
+    if (!loggedUser?.email) return;
+    loadUserPreferences(loggedUser.email).then(setNotifPrefsPortal);
+  }, [loggedUser?.email]);
+  const handleTogglePrefPortal = async (categoria: "optional_finances" | "optional_reservations" | "optional_cleaning") => {
+    if (!notifPrefsPortal || guardandoPrefPortal) return;
+    setGuardandoPrefPortal(categoria);
+    const atualizado = { ...notifPrefsPortal, [categoria]: !notifPrefsPortal[categoria] };
+    setNotifPrefsPortal(atualizado);
+    try {
+      const salvo = await saveUserPreferences(atualizado);
+      setNotifPrefsPortal(salvo);
+    } finally {
+      setGuardandoPrefPortal(null);
+    }
+  };
 
   // Acessibilidade — preferência pessoal "só contacto por texto/chat"
   // (surdo/mudo ou dificuldade auditiva), editável pelo próprio condómino
@@ -1935,6 +1958,35 @@ export function PortalCondomino({
                     idFracao={activeUserFracao?.id_fracao}
                   />
                 </div>
+
+                {/* CATEGORIAS OPCIONAIS DE NOTIFICAÇÕES PUSH — paridade com
+                    a PWA (notifPrefs/handleTogglePref), gravadas em
+                    profiles.notificacoes_preferencias, sincronizam entre
+                    dispositivos independentemente de por onde entrar. */}
+                {notifPrefsPortal && (
+                  <div className="mt-4 pt-4 border-t border-slate-100">
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-2">
+                      <span className="text-[9.5px] font-bold text-slate-600 uppercase tracking-wide block mb-1">Notificações Push — Categorias Opcionais</span>
+                      {([
+                        { key: "optional_finances", label: "Financeiro" },
+                        { key: "optional_reservations", label: "Reservas" },
+                        { key: "optional_cleaning", label: "Limpezas" }
+                      ] as const).map(cat => (
+                        <label key={cat.key} className="flex items-center justify-between gap-2 cursor-pointer">
+                          <span className="text-[11px] text-slate-700 font-medium">{cat.label}</span>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(notifPrefsPortal[cat.key])}
+                            disabled={guardandoPrefPortal === cat.key}
+                            onChange={() => handleTogglePrefPortal(cat.key)}
+                            className="h-4 w-4 accent-emerald-600 cursor-pointer disabled:opacity-50"
+                          />
+                        </label>
+                      ))}
+                      <p className="text-[9px] text-slate-600 pt-1">As notificações de ocorrências, documentos, assembleias, comunicados, sondagens e questionários são sempre enviadas.</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* ACESSIBILIDADE — preferência pessoal, nunca fixada pela
                     administração: só a própria pessoa decide aqui. */}
