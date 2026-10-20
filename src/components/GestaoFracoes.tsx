@@ -3205,16 +3205,20 @@ export function GestaoFracoes({
                         <td className="py-2.5 px-3 text-slate-600 font-mono text-[11px]">
                           <span className="flex items-center gap-1.5 flex-wrap">
                             <span>{prop.tlm || "-"}</span>
-                            {prop.id_fracao && instalacoesPwaPorFracao.has(prop.id_fracao) && (
-                              <span
-                                title={instalacoesPwaPorFracao.get(prop.id_fracao)!.preciso
-                                  ? `PWA instalada em ${new Date(instalacoesPwaPorFracao.get(prop.id_fracao)!.primeira_deteccao_em || "").toLocaleDateString("pt-PT")}`
-                                  : "PWA detetada instalada (iOS — sem data exata disponível)"}
-                                className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded shrink-0"
-                              >
-                                📲 PWA
-                              </span>
-                            )}
+                            {prop.id_fracao && instalacoesPwaPorFracao.has(prop.id_fracao) && (() => {
+                              const inst = instalacoesPwaPorFracao.get(prop.id_fracao)!;
+                              const rotuloPlataforma = inst.plataforma === "ios" ? "iPhone" : inst.plataforma === "android" ? "Android" : "dispositivo";
+                              return (
+                                <span
+                                  title={inst.preciso
+                                    ? `PWA (${rotuloPlataforma}) instalada em ${new Date(inst.primeira_deteccao_em || "").toLocaleDateString("pt-PT")}`
+                                    : `PWA (${rotuloPlataforma}) detetada instalada — sem data exata disponível`}
+                                  className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded shrink-0"
+                                >
+                                  📲 PWA
+                                </span>
+                              );
+                            })()}
                           </span>
                         </td>
                         <td className="py-2.5 px-3 text-center">
@@ -3691,16 +3695,20 @@ export function GestaoFracoes({
                         <span className="text-[10px] uppercase font-semibold text-slate-600 block">Telemóvel / Telefone</span>
                         <span className="flex items-center gap-1.5 flex-wrap">
                           <a href={`tel:${selectedFracao.proprietario.tlm}`} className="text-slate-700 hover:underline font-mono font-semibold">{selectedFracao.proprietario.tlm || "Sem Telefone"}</a>
-                          {instalacoesPwaPorFracao.has(selectedFracao.id_fracao) && (
-                            <span
-                              title={instalacoesPwaPorFracao.get(selectedFracao.id_fracao)!.preciso
-                                ? `PWA instalada em ${new Date(instalacoesPwaPorFracao.get(selectedFracao.id_fracao)!.primeira_deteccao_em || "").toLocaleDateString("pt-PT")}`
-                                : "PWA detetada instalada (iOS — sem data exata disponível)"}
-                              className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded w-fit"
-                            >
-                              📲 PWA
-                            </span>
-                          )}
+                          {instalacoesPwaPorFracao.has(selectedFracao.id_fracao) && (() => {
+                            const inst = instalacoesPwaPorFracao.get(selectedFracao.id_fracao)!;
+                            const rotuloPlataforma = inst.plataforma === "ios" ? "iPhone" : inst.plataforma === "android" ? "Android" : "dispositivo";
+                            return (
+                              <span
+                                title={inst.preciso
+                                  ? `PWA (${rotuloPlataforma}) instalada em ${new Date(inst.primeira_deteccao_em || "").toLocaleDateString("pt-PT")}`
+                                  : `PWA (${rotuloPlataforma}) detetada instalada — sem data exata disponível`}
+                                className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded w-fit"
+                              >
+                                📲 PWA
+                              </span>
+                            );
+                          })()}
                         </span>
                         {emailsPrefereContactoTexto.has((selectedFracao.proprietario.email || "").toLowerCase()) && (
                           <span className="block mt-1 text-[9px] font-bold text-amber-800 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded w-fit">
