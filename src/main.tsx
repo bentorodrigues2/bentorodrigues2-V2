@@ -5,6 +5,7 @@ import './index.css';
 import { purgeProvisionalDemoData } from './utils/cleanupProvisionalData';
 import { registerServiceWorker } from './utils/registerServiceWorker';
 import { installAuthFetchInterceptor } from './lib/authFetch';
+import { ativarArrastarParaRolar } from './utils/ativarArrastarParaRolar';
 
 // Anexa a sessão real do utilizador a todas as chamadas fetch("/api/...") —
 // tem de ser instalado antes de qualquer outro código correr.
@@ -15,6 +16,11 @@ purgeProvisionalDemoData();
 
 // Registar Service Worker para instalação PWA e funcionamento offline
 registerServiceWorker();
+
+// Permite arrastar com o rato qualquer tabela/menu com scroll horizontal em
+// toda a app, em vez de obrigar a ir até à régua de scroll — ver
+// src/utils/ativarArrastarParaRolar.ts.
+ativarArrastarParaRolar();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

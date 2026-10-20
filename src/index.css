@@ -18,6 +18,17 @@
   }
 }
 
+/* Arrastar com o rato para deslocar tabelas/menus largos (ver
+   src/utils/ativarArrastarParaRolar.ts) — cursor de "mão" indica que o
+   contentor pode ser arrastado, não só rolado pela régua lá em baixo. */
+.overflow-x-auto, .overflow-x-scroll {
+  cursor: grab;
+}
+.overflow-x-auto.a-arrastar-horizontal, .overflow-x-scroll.a-arrastar-horizontal {
+  cursor: grabbing;
+  user-select: none;
+}
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", sans-serif;

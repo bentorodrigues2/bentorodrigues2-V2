@@ -3171,7 +3171,16 @@ export function GestaoFracoes({
                     </tr>
                   ) : (
                     proprietariosFiltrados.map((prop, idx) => (
-                      <tr key={prop.nif || `${prop.nome}-${idx}`} className="hover:bg-slate-50/70 transition-colors">
+                      <tr
+                        key={prop.nif || `${prop.nome}-${idx}`}
+                        onClick={() => {
+                          if (!prop.id_fracao) return;
+                          setSelectedFracaoId(prop.id_fracao);
+                          setCurrentSubTab("fracoes_perfis");
+                        }}
+                        className={`hover:bg-emerald-50/60 transition-colors ${prop.id_fracao ? "cursor-pointer" : ""}`}
+                        title={prop.id_fracao ? "Ver ficha individual deste condómino" : undefined}
+                      >
                         <td className="py-2.5 px-3 font-semibold text-slate-800">
                           <div className="flex items-center gap-2.5">
                             {prop.foto ? (
@@ -3253,7 +3262,7 @@ export function GestaoFracoes({
                             </span>
                           )}
                         </td>
-                        <td className="py-2.5 px-3 text-center">
+                        <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               type="button"
