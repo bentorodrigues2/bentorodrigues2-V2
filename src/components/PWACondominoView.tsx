@@ -68,6 +68,7 @@ import { saveUserPreferences } from "../utils/saveUserPreferences";
 import { loadPrefereContactoTexto, savePrefereContactoTexto } from "../utils/acessibilidadePreferencias";
 import { useModalAcessivel } from "../utils/useModalAcessivel";
 import { transcreverAudio } from "../utils/transcreverAudio";
+import { useDetetarInstalacaoPwa } from "../utils/detetarInstalacaoPwa";
 
 interface TicketMensagem {
   id_conversa: string;
@@ -693,6 +694,14 @@ export default function PWACondominoView({
     if (!loggedUser?.email) return;
     loadPrefereContactoTexto(loggedUser.email).then(setPrefereContactoTexto);
   }, [loggedUser?.email]);
+
+  // Deteta e regista a instalação da PWA (ver src/utils/detetarInstalacaoPwa.ts).
+  useDetetarInstalacaoPwa({
+    idPredio: predio?.id_predio,
+    idFracao: condominoFracao?.id_fracao,
+    email: loggedUser.email,
+    nome: loggedUser.nome
+  });
 
   const handleTogglePrefereContactoTexto = async () => {
     if (aGuardarContactoTexto || !loggedUser?.email) return;

@@ -6,7 +6,7 @@ import { ModalFichaCondominoEditavel } from "./ModalFichaCondominoEditavel";
 import { MoneyInput } from "./MoneyInput";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
-import { saveFracaoToSupabase, deleteFracaoFromSupabase, saveProprietarioToSupabase, deleteProprietarioFromSupabase, dbSelect, dbUpdate, dbInsert, dbDelete, dbUpsert, saveAvisosToSupabase, registarLogAuditoria, fetchResidentesInquilinosFromSupabase, saveResidenteInquilinoToSupabase, uploadDocumentoToStorage, saveDocumentoToSupabase, converterNotificacaoParaEnumProprietarios, converterAdminInternoParaBoolean } from "../lib/supabaseService";
+import { saveFracaoToSupabase, deleteFracaoFromSupabase, saveProprietarioToSupabase, deleteProprietarioFromSupabase, dbSelect, dbUpdate, dbInsert, dbDelete, dbUpsert, saveAvisosToSupabase, registarLogAuditoria, fetchResidentesInquilinosFromSupabase, saveResidenteInquilinoToSupabase, uploadDocumentoToStorage, saveDocumentoToSupabase, converterNotificacaoParaEnumProprietarios, converterAdminInternoParaBoolean, fetchInstalacoesPwa, InstalacaoPwa } from "../lib/supabaseService";
 
 interface GestaoFracoesProps {
   predio: Predio;
@@ -483,6 +483,17 @@ export function GestaoFracoes({
       filtros: [["id_predio", "eq", predio.id_predio], ["prefere_contacto_texto", "eq", true]]
     }).then((rows) => {
       setEmailsPrefereContactoTexto(new Set((rows || []).map((r: any) => (r.email || "").toLowerCase())));
+    });
+  }, [predio?.id_predio]);
+
+  // Instalação da PWA por fração (ver src/utils/detetarInstalacaoPwa.ts) —
+  // "preciso" (Android: evento real, data exata) vs deteção só (iOS: sem
+  // data de instalação, a Apple nunca expôs essa informação).
+  const [instalacoesPwaPorFracao, setInstalacoesPwaPorFracao] = useState<Map<string, InstalacaoPwa>>(new Map());
+  useEffect(() => {
+    if (!predio?.id_predio) return;
+    fetchInstalacoesPwa(predio.id_predio).then((lista) => {
+      setInstalacoesPwaPorFracao(new Map((lista || []).map((i) => [i.id_fracao, i])));
     });
   }, [predio?.id_predio]);
 
@@ -3666,7 +3677,19 @@ export function GestaoFracoes({
                       </div>
                       <div>
                         <span className="text-[10px] uppercase font-semibold text-slate-600 block">Telemóvel / Telefone</span>
-                        <a href={`tel:${selectedFracao.proprietario.tlm}`} className="text-slate-700 hover:underline font-mono font-semibold">{selectedFracao.proprietario.tlm || "Sem Telefone"}</a>
+                        <span className="flex items-center gap-1.5 flex-wrap">
+                          <a href={`tel:${selectedFracao.proprietario.tlm}`} className="text-slate-700 hover:underline font-mono font-semibold">{selectedFracao.proprietario.tlm || "Sem Telefone"}</a>
+                          {instalacoesPwaPorFracao.has(selectedFracao.id_fracao) && (
+                            <span
+                              title={instalacoesPwaPorFracao.get(selectedFracao.id_fracao)!.preciso
+                                ? `PWA instalada em ${new Date(instalacoesPwaPorFracao.get(selectedFracao.id_fracao)!.primeira_deteccao_em || "").toLocaleDateString("pt-PT")}`
+                                : "PWA detetada instalada (iOS — sem data exata disponível)"}
+                              className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded w-fit"
+                            >
+                              📲 PWA
+                            </span>
+                          )}
+                        </span>
                         {emailsPrefereContactoTexto.has((selectedFracao.proprietario.email || "").toLowerCase()) && (
                           <span className="block mt-1 text-[9px] font-bold text-amber-800 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded w-fit">
                             🤟 Prefere só texto/chat — evite ligar

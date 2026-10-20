@@ -784,6 +784,82 @@ export async function fetchConfirmacoesLeituraDoDocumento(idDoc: string): Promis
   }));
 }
 
+// Instalação da PWA — dois sinais com fiabilidade diferente, nunca
+// misturados: "evento_appinstalled" (Android/Chrome/Edge, o browser avisa
+// mesmo o momento exato da instalação) vs "modo_standalone_detetado"
+// (iOS/Safari — a Apple nunca expôs nenhuma forma de saber QUANDO alguém
+// faz "Adicionar ao Ecrã Principal"; só conseguimos detetar, da próxima
+// vez que a pessoa abre a app, que já está instalada — sem data exata de
+// instalação). Ver src/utils/detetarInstalacaoPwa.ts.
+export interface InstalacaoPwa {
+  id: string;
+  id_predio: string;
+  id_fracao: string;
+  email?: string;
+  nome?: string;
+  plataforma?: string;
+  metodo: "evento_appinstalled" | "modo_standalone_detetado";
+  preciso: boolean;
+  primeira_deteccao_em?: string;
+  ultima_deteccao_em?: string;
+}
+
+export async function registarInstalacaoPwa(params: {
+  idPredio: string;
+  idFracao: string;
+  email?: string;
+  nome?: string;
+  plataforma?: string;
+  metodo: "evento_appinstalled" | "modo_standalone_detetado";
+}): Promise<void> {
+  if (!isSupabaseConfigured() || !params.idPredio || !params.idFracao) return;
+  const id = `${params.idPredio}:${params.idFracao}`;
+  const preciso = params.metodo === "evento_appinstalled";
+  try {
+    const existentes = await dbSelect("instalacoes_pwa", { filtros: [["id", "eq", id]] });
+    const existente = existentes?.[0];
+    // Nunca "despromove" um registo já preciso (evento real de instalação)
+    // para o sinal mais fraco (standalone detetado) — só atualiza a
+    // última deteção nesse caso.
+    if (existente?.preciso && !preciso) {
+      await dbUpdate("instalacoes_pwa", { ultima_deteccao_em: new Date().toISOString() }, [["id", "eq", id]]);
+      return;
+    }
+    await dbUpsert("instalacoes_pwa", {
+      id,
+      id_predio: params.idPredio,
+      id_fracao: params.idFracao,
+      email: params.email || null,
+      nome: params.nome || null,
+      plataforma: params.plataforma || null,
+      metodo: params.metodo,
+      preciso,
+      primeira_deteccao_em: existente?.primeira_deteccao_em || new Date().toISOString(),
+      ultima_deteccao_em: new Date().toISOString()
+    });
+  } catch (err) {
+    console.warn("[supabaseService] Aviso ao registar instalação da PWA:", err);
+  }
+}
+
+export async function fetchInstalacoesPwa(idPredio: string): Promise<InstalacaoPwa[] | null> {
+  if (!isSupabaseConfigured() || !idPredio) return null;
+  const data = await dbSelect("instalacoes_pwa", { filtros: [["id_predio", "eq", idPredio]] });
+  if (!data) return null;
+  return data.map((row: any) => ({
+    id: row.id,
+    id_predio: row.id_predio,
+    id_fracao: row.id_fracao,
+    email: row.email || undefined,
+    nome: row.nome || undefined,
+    plataforma: row.plataforma || undefined,
+    metodo: row.metodo,
+    preciso: Boolean(row.preciso),
+    primeira_deteccao_em: row.primeira_deteccao_em || undefined,
+    ultima_deteccao_em: row.ultima_deteccao_em || undefined
+  }));
+}
+
 export async function fetchLeiturasConteudo(tipo: "comunicado" | "sondagem" | "questionario", idConteudo: string): Promise<LeituraConteudo[] | null> {
   if (!isSupabaseConfigured() || !idConteudo) return null;
   const data = await dbSelect("leituras_conteudo", { filtros: [["tipo", "eq", tipo], ["id_conteudo", "eq", idConteudo]] });

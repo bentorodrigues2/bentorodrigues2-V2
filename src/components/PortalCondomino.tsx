@@ -29,6 +29,7 @@ import { UserSecuritySubmenu } from "./UserSecuritySubmenu";
 import { generateCondominoPwaManualPDF, gerarReferenciaBR23EExtra, formatDatePT, loadPrefereContactoTexto, savePrefereContactoTexto } from "../utils";
 import { useModalAcessivel } from "../utils/useModalAcessivel";
 import { transcreverAudio } from "../utils/transcreverAudio";
+import { useDetetarInstalacaoPwa } from "../utils/detetarInstalacaoPwa";
 import { loadUserPreferences, NotificationPreferences } from "../utils/loadUserPreferences";
 import { saveUserPreferences } from "../utils/saveUserPreferences";
 import { triggerSendReaction } from "./SendingReactionModal";
@@ -1033,6 +1034,14 @@ export function PortalCondomino({
   const activeUserAvisos = avisos.filter(
     (a) => a.id_fracao === activeUserFracao?.id_fracao && a.id_predio === predio.id_predio
   );
+
+  // Deteta e regista a instalação da PWA (ver src/utils/detetarInstalacaoPwa.ts).
+  useDetetarInstalacaoPwa({
+    idPredio: predio?.id_predio,
+    idFracao: activeUserFracao?.id_fracao,
+    email: loggedUser.email,
+    nome: loggedUser.nome
+  });
 
   // --- SERVIÇOS DO CONDOMÍNIO (paridade Browser/PWA): Avarias/Ocorrências,
   // Obras, Limpezas, Regras & Contactos de Emergência — mesmos dados reais e
