@@ -513,7 +513,12 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
 
             <div>
               <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Fotografias</label>
-              <input ref={fotoInputRef} type="file" accept="image/*" multiple capture="environment" onChange={handleFotosChange} className="hidden" />
+              {/* Sem "capture" — isso forçava o telemóvel a abrir SEMPRE a
+                  câmara diretamente, sem dar a escolher a galeria/ficheiros
+                  já existentes (bug real reportado: "só abre a máquina
+                  fotográfica"). Sem o atributo, o próprio telemóvel mostra
+                  as duas opções. */}
+              <input ref={fotoInputRef} type="file" accept="image/*" multiple onChange={handleFotosChange} className="hidden" />
               <button
                 type="button"
                 onClick={() => fotoInputRef.current?.click()}

@@ -2237,10 +2237,11 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
 
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wide text-slate-600 block mb-1">Fotografia / Evidência (Câmara ou Galeria)</label>
+                  {/* Sem "capture" — a própria etiqueta já promete "Câmara ou
+                      Galeria", mas o atributo forçava sempre só a câmara. */}
                   <input
                     type="file"
                     accept="image/*"
-                    capture="environment"
                     ref={incFileInputRef}
                     onChange={(e) => {
                       const f = e.target.files?.[0];
