@@ -84,7 +84,7 @@ export async function guardarNoArquivo({ pdfBuffer, ano, tema, tipo, predio, fra
  * deixava os documentos gerados aqui a aparecer só por acaso, via
  * correspondência solta ao campo "tipo".
  */
-export async function registarDocumento({ caminho, ano, tema, tipo, predio, fracao, fluxo, origem, nomeFicheiro, categoria, visibilidade, subPasta, fornecedor }) {
+export async function registarDocumento({ caminho, ano, tema, tipo, predio, fracao, fluxo, origem, nomeFicheiro, categoria, visibilidade, subPasta, fornecedor, descricao }) {
   const { error } = await supabase.from("documentos").insert({
     id_doc: `DOC-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     id_predio: predio,
@@ -105,6 +105,14 @@ export async function registarDocumento({ caminho, ano, tema, tipo, predio, frac
     // aparecia dentro da pasta desse fornecedor em concreto.
     sub_pasta: subPasta || null,
     fornecedor: fornecedor || null,
+    // descricao: antes este parâmetro nem existia aqui — recibos, notas de
+    // cobrança e atas geradas pelo servidor ficavam sempre com descrição
+    // vazia na base de dados real, mesmo quando o código chamador pensava
+    // estar a passar uma. Pedido explícito do administrador: a descrição
+    // tem de identificar fração + mês + ano (recibos/notas) ou o número
+    // da ata, para a pesquisa do Arquivo Digital conseguir mesmo encontrar
+    // o documento certo.
+    descricao: descricao || null,
     created_at: new Date().toISOString()
   });
 

@@ -6,6 +6,7 @@ import { gerarHtmlResposta, gerarHtmlAniversario } from "./htmlemail.js";
 import { derivarPrefixoEdificio } from "./reciboUtils.js";
 import { enviarEmailSemAnexo } from "./mailer.js";
 import { obterModeloEmail, interpolarModeloEmail } from "./emailTemplates.js";
+import { sanitizarSegmentoStorage } from "./storageUtils.js";
 
 /**
  * Guarda de "já executado hoje" — protege contra envios duplicados quando o
@@ -309,15 +310,21 @@ async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, ano
 
   const doc = generateOfficialReceiptPDF(nota, predio, f);
   const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
-  const nomeFicheiro = nomeFicheiroRecibo(nota);
+  // Nome do ficheiro/descrição têm de identificar fração + mês + ano de
+  // relance — pedido explícito do administrador, para nunca mais "andar
+  // 1h à procura" de uma nota de cobrança específica.
+  const fracaoSlug = sanitizarSegmentoStorage(f.fracao_nome || f.id_fracao || "fracao");
+  const mesAnoSlug = sanitizarSegmentoStorage(`${mesRefLabel}_${anoRef}`);
+  const nomeFicheiro = nomeFicheiroRecibo(nota).replace(/\.pdf$/i, `_${fracaoSlug}_${mesAnoSlug}.pdf`);
+  const descricaoNota = `Nota de cobrança — Fração ${f.fracao_nome} — ${mesRefLabel} / ${anoRef}`;
 
   const caminho = await guardarNoArquivo({
     pdfBuffer,
     ano: anoRef,
-    tema: "Financeiro",
+    tema: "Notas de Cobrança",
     tipo: "Nota de Cobrança",
     predio: predio.id_predio,
-    fracao: f.id_fracao,
+    fracao: f.fracao_nome || f.id_fracao,
     fluxo: fluxo || "emissao_quotas_mensal",
     nomeFicheiro
   });
@@ -333,7 +340,9 @@ async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, ano
     origem: "cron_emissao_quotas",
     nomeFicheiro,
     categoria: "Pasta Paga. Quotas",
-    visibilidade: "Público"
+    subPasta: f.fracao_nome || undefined,
+    visibilidade: "Público",
+    descricao: descricaoNota
   });
 
   const modeloCobranca = await obterModeloEmail(predio.id_predio, "aviso_cobranca");
@@ -405,15 +414,19 @@ async function emitirNotaExtraordinariaSeparada({ predio, f, proprietario, aviso
 
   const doc = generateOfficialReceiptPDF(nota, predio, f);
   const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
-  const nomeFicheiro = nomeFicheiroRecibo(nota);
+  const mesRefExtra = new Date(avisoExtra.vencimento).toLocaleDateString("pt-PT", { month: "long", timeZone: "UTC" });
+  const fracaoSlugExtra = sanitizarSegmentoStorage(f.fracao_nome || f.id_fracao || "fracao");
+  const mesAnoSlugExtra = sanitizarSegmentoStorage(`${mesRefExtra}_${nota.ano}`);
+  const nomeFicheiro = nomeFicheiroRecibo(nota).replace(/\.pdf$/i, `_${fracaoSlugExtra}_${mesAnoSlugExtra}.pdf`);
+  const descricaoNotaExtra = `Nota de cobrança — Quota Extraordinária — Fração ${f.fracao_nome} — ${mesRefExtra} / ${nota.ano}`;
 
   const caminho = await guardarNoArquivo({
     pdfBuffer,
     ano: nota.ano,
-    tema: "Financeiro",
+    tema: "Notas de Cobrança",
     tipo: "Nota de Cobrança",
     predio: predio.id_predio,
-    fracao: f.id_fracao,
+    fracao: f.fracao_nome || f.id_fracao,
     fluxo: "emissao_quota_extraordinaria",
     nomeFicheiro
   });
@@ -429,7 +442,9 @@ async function emitirNotaExtraordinariaSeparada({ predio, f, proprietario, aviso
     origem: "cron_emissao_quotas",
     nomeFicheiro,
     categoria: "Pasta Paga. Quotas",
-    visibilidade: "Público"
+    subPasta: f.fracao_nome || undefined,
+    visibilidade: "Público",
+    descricao: descricaoNotaExtra
   });
 
   const modeloCobranca = await obterModeloEmail(predio.id_predio, "aviso_cobranca");
@@ -520,15 +535,18 @@ export async function reenviarNotaCobrancaCorrigida(id_predio, aviso) {
 
   const doc = generateOfficialReceiptPDF(nota, predio, f);
   const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
-  const nomeFicheiro = nomeFicheiroRecibo(nota);
+  const fracaoSlugCorr = sanitizarSegmentoStorage(f.fracao_nome || f.id_fracao || "fracao");
+  const mesAnoSlugCorr = sanitizarSegmentoStorage(`${mesRefLabel}_${anoRef}`);
+  const nomeFicheiro = nomeFicheiroRecibo(nota).replace(/\.pdf$/i, `_${fracaoSlugCorr}_${mesAnoSlugCorr}.pdf`);
+  const descricaoNotaCorr = `Nota de cobrança (correção) — Fração ${f.fracao_nome} — ${mesRefLabel} / ${anoRef}`;
 
   const caminho = await guardarNoArquivo({
     pdfBuffer,
     ano: anoRef,
-    tema: "Financeiro",
+    tema: "Notas de Cobrança",
     tipo: "Nota de Cobrança",
     predio: predio.id_predio,
-    fracao: f.id_fracao,
+    fracao: f.fracao_nome || f.id_fracao,
     fluxo: "correcao_quotas",
     nomeFicheiro
   });
@@ -544,7 +562,9 @@ export async function reenviarNotaCobrancaCorrigida(id_predio, aviso) {
     origem: "correcao_manual_permilagem",
     nomeFicheiro,
     categoria: "Pasta Paga. Quotas",
-    visibilidade: "Público"
+    subPasta: f.fracao_nome || undefined,
+    visibilidade: "Público",
+    descricao: descricaoNotaCorr
   });
 
   const emailEnviado = await enviarEmailPDF({

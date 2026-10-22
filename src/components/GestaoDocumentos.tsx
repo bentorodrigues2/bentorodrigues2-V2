@@ -41,7 +41,8 @@ import {
   SlidersHorizontal,
   Eye,
   BookOpen,
-  Video
+  Video,
+  Share2
 } from "lucide-react";
 
 interface GestaoDocumentosProps {
@@ -91,6 +92,11 @@ export function GestaoDocumentos({
   // Selected dynamic folder (if user clicks a folder card)
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [selectedSubPasta, setSelectedSubPasta] = useState<string | null>(null);
+  // 3º nível de navegação, só dentro de "Recibos e Quotas": depois de
+  // escolher Recibos/Notas de Cobrança, dividir ainda por fração (pedido
+  // explícito: "dentro destas tem de estar divididas em pastas referentes
+  // ás frações").
+  const [selectedFracaoPasta, setSelectedFracaoPasta] = useState<string | null>(null);
 
   // Photo Lightbox modal
   const [activePhotoModal, setActivePhotoModal] = useState<Documento | null>(null);
@@ -1123,6 +1129,65 @@ export function GestaoDocumentos({
     URL.revokeObjectURL(url);
   };
 
+  // Partilha nativa do documento (Web Share API) — antes não existia
+  // nenhuma forma de partilhar um PDF diretamente (ex: para WhatsApp ou
+  // Mail do telemóvel); o único caminho era descarregar e partilhar à
+  // parte. Vai buscar o ficheiro real do arquivo (mesma lógica de
+  // handleDownloadPdf) e tenta partilhar o próprio ficheiro; se o
+  // dispositivo/browser não suportar partilha de ficheiros, cai para
+  // partilhar só a ligação; sem suporte nenhum a navigator.share, copia a
+  // ligação para a área de transferência.
+  const handlePartilharDoc = async (docItem: Documento) => {
+    let url: string | null = null;
+    if (docItem.caminho) {
+      try {
+        const resp = await fetch("/api/pdf?acao=descarregar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ caminho: docItem.caminho })
+        });
+        const resultado = await resp.json();
+        if (resp.ok && resultado?.url) url = resultado.url;
+      } catch (err) {
+        console.error("Erro ao obter URL do documento para partilha:", err);
+      }
+    } else if (docItem.url_foto) {
+      url = docItem.url_foto;
+    }
+
+    if (!url) {
+      alert("❌ Não foi possível localizar o ficheiro real deste documento para partilhar. Experimente descarregá-lo primeiro.");
+      return;
+    }
+
+    const nomeFicheiro = docItem.nome.toLowerCase().endsWith(".pdf") ? docItem.nome : `${docItem.nome}.pdf`;
+
+    try {
+      const fileResp = await fetch(url);
+      const blob = await fileResp.blob();
+      const ficheiro = new File([blob], nomeFicheiro, { type: blob.type || "application/pdf" });
+
+      if (navigator.canShare && navigator.canShare({ files: [ficheiro] })) {
+        await navigator.share({ files: [ficheiro], title: docItem.nome, text: docItem.descricao || docItem.nome });
+        return;
+      }
+      if (navigator.share) {
+        await navigator.share({ url, title: docItem.nome, text: docItem.descricao || docItem.nome });
+        return;
+      }
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError") return;
+      console.error("Erro ao partilhar documento:", err);
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      alert("🔗 Este dispositivo/navegador não suporta partilha nativa — a ligação ao documento foi copiada para a área de transferência.");
+    } catch {
+      alert(`Não foi possível partilhar automaticamente. Ligação direta ao documento:\n${url}`);
+    }
+  };
+
   const handleDownloadPdf = async (docItem: Documento) => {
     // Documento com ficheiro real arquivado no Supabase Storage — vai
     // sempre buscar esse ficheiro em vez de regenerar um PDF a partir de
@@ -1791,11 +1856,20 @@ export function GestaoDocumentos({
   const docsFiltrados = useMemo(() => {
     return docsDoTipo.filter(d => {
       const termoBusca = busca.trim().toLowerCase();
-      const matchesSearch = !termoBusca || 
-                            d.nome.toLowerCase().includes(termoBusca) || 
+      // Pesquisa alargada a todos os campos identificadores do documento —
+      // antes só olhava a nome/descricao/fornecedor/sub_pasta, por isso
+      // escrever um ano, um tema ou uma fração não encontrava nada
+      // (queixa do administrador: "o filtro não serve para nada").
+      const matchesSearch = !termoBusca ||
+                            d.nome.toLowerCase().includes(termoBusca) ||
                             (d.descricao && d.descricao.toLowerCase().includes(termoBusca)) ||
                             (d.fornecedor && d.fornecedor.toLowerCase().includes(termoBusca)) ||
-                            (d.sub_pasta && d.sub_pasta.toLowerCase().includes(termoBusca));
+                            (d.sub_pasta && d.sub_pasta.toLowerCase().includes(termoBusca)) ||
+                            (d.tema && d.tema.toLowerCase().includes(termoBusca)) ||
+                            (d.categoria && d.categoria.toLowerCase().includes(termoBusca)) ||
+                            (d.tipo && d.tipo.toLowerCase().includes(termoBusca)) ||
+                            (d.ano && d.ano.toLowerCase().includes(termoBusca)) ||
+                            (d.autor && d.autor.toLowerCase().includes(termoBusca));
 
       const matchesAno = filtroAno === "Todos" || d.ano === filtroAno;
       const matchesTema = filtroTema === "Todos" || d.tema === filtroTema || d.categoria === filtroTema;
@@ -1849,12 +1923,19 @@ export function GestaoDocumentos({
         selectedFolder === "Recibos e Quotas" ? d.tipo === selectedSubPasta : d.sub_pasta === selectedSubPasta
       );
 
-      return matchesSearch && matchesAno && matchesTema && matchesVis && matchesFornecedor && matchesFolder && matchesSubFolder;
+      // 3º nível: dentro de Recibos/Notas de Cobrança, por fração (campo
+      // sub_pasta passou a guardar o nome da fração para estes dois tipos —
+      // ver guardarNoArquivo/registarDocumento em confirmar-pagamento.js,
+      // dividir-pagamento-meses.js e cronService.js).
+      const matchesFracaoPasta = !selectedFracaoPasta || selectedFolder !== "Recibos e Quotas" ||
+        (d.sub_pasta || "Sem Fração Identificada") === selectedFracaoPasta;
+
+      return matchesSearch && matchesAno && matchesTema && matchesVis && matchesFornecedor && matchesFolder && matchesSubFolder && matchesFracaoPasta;
     });
-  }, [docsDoTipo, busca, filtroAno, filtroTema, filtroFornecedor, filtroVisibilidade, selectedFolder, selectedSubPasta]);
+  }, [docsDoTipo, busca, filtroAno, filtroTema, filtroFornecedor, filtroVisibilidade, selectedFolder, selectedSubPasta, selectedFracaoPasta]);
 
   // Check if any filters are active
-  const hasActiveFilters = busca !== "" || filtroAno !== "Todos" || filtroTema !== "Todos" || filtroFornecedor !== "Todos" || filtroVisibilidade !== "Todos" || selectedFolder !== null || selectedSubPasta !== null;
+  const hasActiveFilters = busca !== "" || filtroAno !== "Todos" || filtroTema !== "Todos" || filtroFornecedor !== "Todos" || filtroVisibilidade !== "Todos" || selectedFolder !== null || selectedSubPasta !== null || selectedFracaoPasta !== null;
 
   const resetAllFilters = () => {
     setBusca("");
@@ -1864,6 +1945,7 @@ export function GestaoDocumentos({
     setFiltroVisibilidade("Todos");
     setSelectedFolder(null);
     setSelectedSubPasta(null);
+    setSelectedFracaoPasta(null);
   };
 
   // Pre-configured standard empty folders in Arquivo Digital
@@ -2444,7 +2526,7 @@ export function GestaoDocumentos({
               <span className="text-sm">A ver Pasta: <strong className="font-black text-emerald-200">{selectedFolder}</strong> ({docsFiltrados.length} ficheiros)</span>
             </div>
             <button
-              onClick={() => { setSelectedFolder(null); setSelectedSubPasta(null); }}
+              onClick={() => { setSelectedFolder(null); setSelectedSubPasta(null); setSelectedFracaoPasta(null); }}
               className="bg-emerald-950 hover:bg-emerald-950/80 border border-emerald-700 px-3 py-1.5 rounded-xl text-emerald-200 font-bold text-[11px] cursor-pointer transition-all"
             >
               ← Voltar a Todas as Pastas
@@ -2497,7 +2579,7 @@ export function GestaoDocumentos({
                   return (
                     <button
                       key={sub.name}
-                      onClick={() => setSelectedSubPasta(isActive ? null : sub.name)}
+                      onClick={() => { setSelectedSubPasta(isActive ? null : sub.name); setSelectedFracaoPasta(null); }}
                       className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                         isActive 
                           ? "bg-amber-500/20 border-amber-400 text-amber-200 ring-2 ring-amber-400/40" 
@@ -2542,6 +2624,60 @@ export function GestaoDocumentos({
                   ))}
                 </div>
               </div>
+
+              {/* 3º nível: pastas por Fração, só depois de escolher Recibos
+                  ou Notas de Cobrança — pedido explícito: "dentro destas
+                  tem de estar divididas em pastas referentes ás frações". */}
+              {selectedSubPasta && (() => {
+                const fracoesNaSubPasta = Array.from(new Set<string>(
+                  docsDoTipo
+                    .filter(d =>
+                      (d.categoria === "Pasta Paga. Quotas" || d.tema === "Pasta Paga. Quotas" || d.sub_pasta === "Recibos e Quotas" || ["Recibo", "Nota de Cobrança"].includes(d.tipo || "")) &&
+                      d.tipo === selectedSubPasta &&
+                      (filtroAno === "Todos" || d.ano === filtroAno)
+                    )
+                    .map(d => d.sub_pasta || "Sem Fração Identificada")
+                )).sort((a, b) => a.localeCompare(b, "pt-PT"));
+
+                return (
+                  <div className="pt-1 space-y-2 border-t border-emerald-800/80">
+                    <div className="flex items-center justify-between text-[11px] text-emerald-300 font-bold">
+                      <span>🏠 Frações dentro de "{selectedSubPasta === "Recibo" ? "Recibos" : "Notas de Cobrança"}"</span>
+                      {selectedFracaoPasta && (
+                        <button onClick={() => setSelectedFracaoPasta(null)} className="text-amber-300 hover:underline text-[10px]">
+                          Ver todas as frações
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5">
+                      {fracoesNaSubPasta.map(fracaoNome => {
+                        const isActiveFracao = selectedFracaoPasta === fracaoNome;
+                        const countFracao = docsDoTipo.filter(d =>
+                          (d.categoria === "Pasta Paga. Quotas" || d.tema === "Pasta Paga. Quotas" || d.sub_pasta === "Recibos e Quotas" || ["Recibo", "Nota de Cobrança"].includes(d.tipo || "")) &&
+                          d.tipo === selectedSubPasta &&
+                          (filtroAno === "Todos" || d.ano === filtroAno) &&
+                          (d.sub_pasta || "Sem Fração Identificada") === fracaoNome
+                        ).length;
+
+                        return (
+                          <button
+                            key={fracaoNome}
+                            onClick={() => setSelectedFracaoPasta(isActiveFracao ? null : fracaoNome)}
+                            className={`px-2 py-1.5 rounded-lg border text-[10px] font-bold text-left transition-all cursor-pointer truncate ${
+                              isActiveFracao
+                                ? "bg-amber-500/20 border-amber-400 text-amber-200 ring-2 ring-amber-400/40"
+                                : "bg-emerald-900/60 hover:bg-emerald-800/60 border-emerald-700/80 text-emerald-100"
+                            }`}
+                            title={fracaoNome}
+                          >
+                            {fracaoNome} <span className="opacity-70">({countFracao})</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -2650,7 +2786,7 @@ export function GestaoDocumentos({
                       <th className="p-3 text-center">Ano</th>
                       <th className="p-3">Carregado</th>
                       <th className="p-3 text-center">Visibilidade</th>
-                      <th className="p-3 text-center no-print">Ações</th>
+                      <th className="p-3 text-center no-print sticky right-0 bg-emerald-50 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)]">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -2685,13 +2821,16 @@ export function GestaoDocumentos({
                             {doc.visibilidade || "Público"}
                           </span>
                         </td>
-                        <td className="p-3 text-center no-print" onClick={(e) => e.stopPropagation()}>
+                        <td className="p-3 text-center no-print sticky right-0 bg-white group-hover:bg-emerald-50/60 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)]" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1">
                             <button onClick={() => abrirModalEditarDoc(doc)} title="Editar metadados" className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 cursor-pointer transition-colors">
                               <FileText className="h-3.5 w-3.5" />
                             </button>
                             <button onClick={() => abrirModalEnviarEmail(doc)} title="Enviar por email" className="p-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 cursor-pointer transition-colors">
                               <Send className="h-3.5 w-3.5" />
+                            </button>
+                            <button onClick={() => handlePartilharDoc(doc)} title="Partilhar" className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 cursor-pointer transition-colors">
+                              <Share2 className="h-3.5 w-3.5" />
                             </button>
                             <button onClick={() => handleDownloadPdf(doc)} title="Descarregar PDF" className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 cursor-pointer transition-colors">
                               <img src="/modulos/80-pdf-de-resultados.png" alt="PDF" className="h-3.5 w-3.5 object-contain" onError={(e) => { e.currentTarget.src = "/modulos/25-relatorio.png"; }} />
@@ -2831,6 +2970,15 @@ export function GestaoDocumentos({
                   >
                     <Send className="h-3.5 w-3.5" />
                     <span>Enviar E-mail</span>
+                  </button>
+
+                  <button
+                    onClick={() => handlePartilharDoc(doc)}
+                    title="Partilhar documento (WhatsApp, Mail, etc.)"
+                    aria-label="Partilhar documento"
+                    className="p-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-600 transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-xs"
+                  >
+                    <Share2 className="h-4 w-4" />
                   </button>
 
                   <button
@@ -3355,6 +3503,14 @@ export function GestaoDocumentos({
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePartilharDoc(activePdfViewerDoc)}
+                  className="bg-indigo-500 hover:bg-indigo-400 text-white font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow transition-all cursor-pointer"
+                >
+                  <Share2 className="h-4 w-4" />
+                  <span>Partilhar</span>
+                </button>
+
                 <button
                   onClick={() => handleDownloadPdf(activePdfViewerDoc)}
                   className="bg-emerald-400 hover:bg-emerald-300 text-emerald-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow transition-all cursor-pointer"

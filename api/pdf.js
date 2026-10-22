@@ -125,7 +125,12 @@ function gerarDocEspecial(tipo, body, logoWhiteLabel) {
       doc: gerarAtaAprovadaOficialPDF(body.ataNumero, body.dataAssembleia, body.predioNome, body.predioNif, true, body.conteudoReal),
       nomeFicheiro: `Ata_N${body.ataNumero || ""}_Assinada.pdf`,
       assunto: `Ata Aprovada n.º ${body.ataNumero || ""} — ${body.predioNome || "Condomínio"}`,
-      mensagem: `Em cumprimento do disposto no n.º 1 do Artigo 1432.º do Código Civil e da Lei n.º 8/2022, remete-se em anexo a cópia integral da ata respeitante à Assembleia Geral realizada a ${body.dataAssembleia || ""}.<br><br>Os condóminos ausentes dispõem do prazo de 90 dias após a receção desta comunicação para exercer o direito de oposição às deliberações tomadas, caso assim o entendam.`
+      mensagem: `Em cumprimento do disposto no n.º 1 do Artigo 1432.º do Código Civil e da Lei n.º 8/2022, remete-se em anexo a cópia integral da ata respeitante à Assembleia Geral realizada a ${body.dataAssembleia || ""}.<br><br>Os condóminos ausentes dispõem do prazo de 90 dias após a receção desta comunicação para exercer o direito de oposição às deliberações tomadas, caso assim o entendam.`,
+      // Pedido explícito do administrador: as atas nunca tinham número
+      // nenhum na descrição gravada na base de dados real (registarDocumento
+      // nem sequer aceitava este parâmetro até agora), só no nome do
+      // ficheiro — dificultava identificá-las no Arquivo Digital.
+      descricao: `Ata n.º ${body.ataNumero || "?"} — Assembleia Geral de ${body.dataAssembleia || ""} (${body.predioNome || "Condomínio"})`
     };
   }
 
@@ -193,7 +198,7 @@ async function gerarDocumentoEspecial(tipo, config, body) {
     }
   }
 
-  const { doc, nomeFicheiro, assunto, mensagem, categoria } = gerarDocEspecial(tipo, body, logoWhiteLabel);
+  const { doc, nomeFicheiro, assunto, mensagem, categoria, descricao } = gerarDocEspecial(tipo, body, logoWhiteLabel);
   const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
 
   const caminho = await guardarNoArquivo({
@@ -226,7 +231,8 @@ async function gerarDocumentoEspecial(tipo, config, body) {
     categoria: categoria || config.categoria,
     subPasta: nomeFornecedorRescisao,
     fornecedor: nomeFornecedorRescisao,
-    visibilidade: nomeFornecedorRescisao ? "Administração" : "Público"
+    visibilidade: nomeFornecedorRescisao ? "Administração" : "Público",
+    descricao: descricao || undefined
   });
 
   // "convocatoria-oficial" vai para todos os condóminos (destinatarios[]);

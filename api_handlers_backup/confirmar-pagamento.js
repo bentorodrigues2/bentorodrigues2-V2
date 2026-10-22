@@ -5,6 +5,7 @@ import { generateOfficialReceiptPDF, nomeFicheiroRecibo } from "../server/lib/re
 import { derivarPrefixoEdificio } from "../server/lib/reciboUtils.js";
 import { obterModeloEmail, interpolarModeloEmail } from "../server/lib/emailTemplates.js";
 import { escolherContaPorTipo, ajustarSaldoConta } from "../server/lib/contaSaldo.js";
+import { sanitizarSegmentoStorage } from "../server/lib/storageUtils.js";
 
 // Escolhe o IBAN certo consoante o tipo de aviso: Quota Ordinária e Fundo
 // Comum de Reserva usam a conta corrente principal (is_principal), Quota
@@ -449,15 +450,23 @@ export default async function handler(req, res) {
 
     const doc = generateOfficialReceiptPDF(recibo, predioParaRecibo, fracao || {});
     const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
-    const nomeFicheiro = nomeFicheiroRecibo(recibo);
+    // Nome do ficheiro/descrição têm de identificar fração + mês + ano de
+    // relance — pedido explícito do administrador, depois de "andar 1h à
+    // procura" porque os recibos nunca traziam essa informação (só um nº
+    // sequencial do prédio inteiro, ex. "Recibo_de_Pagamento_ED1_00042.pdf").
+    const mesAnoPagamento = new Date(recibo.data_pagamento).toLocaleDateString("pt-PT", { month: "long", year: "numeric", timeZone: "UTC" });
+    const fracaoSlug = sanitizarSegmentoStorage(fracaoNome || recibo.id_fracao || "fracao");
+    const mesAnoSlug = sanitizarSegmentoStorage(mesAnoPagamento);
+    const nomeFicheiro = nomeFicheiroRecibo(recibo).replace(/\.pdf$/i, `_${fracaoSlug}_${mesAnoSlug}.pdf`);
+    const descricaoRecibo = `Recibo de pagamento — Fração ${fracaoNome || recibo.id_fracao} — ${mesAnoPagamento}`;
 
     const caminho = await guardarNoArquivo({
       pdfBuffer,
       ano,
-      tema: "Financeiro",
+      tema: "Recibos",
       tipo: "Recibo",
       predio: fracao?.id_predio || "geral",
-      fracao: pagamento.id_fracao || "geral",
+      fracao: fracaoNome || pagamento.id_fracao || "geral",
       fluxo: "recibo_pos_confirmacao",
       nomeFicheiro
     });
@@ -473,7 +482,9 @@ export default async function handler(req, res) {
       origem: "confirmacao_pagamento",
       nomeFicheiro,
       categoria: "Pasta Paga. Quotas",
-      visibilidade: "Público"
+      subPasta: fracaoNome || undefined,
+      visibilidade: "Público",
+      descricao: descricaoRecibo
     });
 
     if (emailDestinatario) {
