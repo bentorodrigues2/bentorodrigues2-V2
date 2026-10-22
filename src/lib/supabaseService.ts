@@ -2877,7 +2877,14 @@ export async function fetchInventarioTecnicoFromSupabase(idPredio: string): Prom
     frequenciaInspecao: row.frequencia_inspecao || "",
     fabricante: row.fabricante || undefined,
     detalhes: row.detalhes || undefined,
-    fotos: Array.isArray(row.fotos) ? row.fotos : []
+    fotos: Array.isArray(row.fotos) ? row.fotos : [],
+    entidadeResponsavel: row.entidade_responsavel || undefined,
+    baseLegalDgeg: row.base_legal_dgeg || undefined,
+    numCertificadoRelatorio: row.num_certificado_relatorio || undefined,
+    proximaInspecaoData: row.proxima_inspecao_data || undefined,
+    diasAlertaAntecedencia: row.dias_alerta_antecedencia != null ? Number(row.dias_alerta_antecedencia) : 30,
+    alertaEnviadoEm: row.alerta_enviado_em || undefined,
+    historicoVistorias: Array.isArray(row.historico_vistorias) ? row.historico_vistorias : []
   }));
 }
 
@@ -2894,7 +2901,14 @@ export async function saveEquipamentoTecnicoToSupabase(idPredio: string, eq: Equ
     frequencia_inspecao: eq.frequenciaInspecao || null,
     fabricante: eq.fabricante || null,
     detalhes: eq.detalhes || null,
-    fotos: eq.fotos || []
+    fotos: eq.fotos || [],
+    entidade_responsavel: eq.entidadeResponsavel || null,
+    base_legal_dgeg: eq.baseLegalDgeg || null,
+    num_certificado_relatorio: eq.numCertificadoRelatorio || null,
+    proxima_inspecao_data: eq.proximaInspecaoData || null,
+    dias_alerta_antecedencia: eq.diasAlertaAntecedencia ?? 30,
+    alerta_enviado_em: eq.alertaEnviadoEm || null,
+    historico_vistorias: eq.historicoVistorias || []
   });
 }
 

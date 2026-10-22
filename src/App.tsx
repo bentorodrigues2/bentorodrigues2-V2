@@ -84,7 +84,6 @@ const InventarioTecnico = lazy(() => import("./components/InventarioTecnico").th
 const EnviosProgramados = lazy(() => import("./components/EnviosProgramados").then(m => ({ default: m.EnviosProgramados })));
 const CentralDocumentosMinutas = lazy(() => import("./components/CentralDocumentosMinutas").then(m => ({ default: m.CentralDocumentosMinutas })));
 const ConfiguracaoArranqueSaldos = lazy(() => import("./components/ConfiguracaoArranqueSaldos").then(m => ({ default: m.ConfiguracaoArranqueSaldos })));
-const AgendaManutencao = lazy(() => import("./components/AgendaManutencao").then(m => ({ default: m.AgendaManutencao })));
 const GestaoSinistrosSeguros = lazy(() => import("./components/GestaoSinistrosSeguros").then(m => ({ default: m.GestaoSinistrosSeguros })));
 const MuralDigitalReservas = lazy(() => import("./components/MuralDigitalReservas").then(m => ({ default: m.MuralDigitalReservas })));
 import { validatePasswordPolicy, createSecurityLog, INITIAL_USER_SECURITY, UserSecurityState } from "./lib/authSecurity";
@@ -1715,14 +1714,14 @@ export default function App() {
               id="sidebar-item-manutencao"
               onClick={() => {
                 setOpenMenuVistoriasIntervencoes(!openMenuVistoriasIntervencoes);
-                if (!["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "manutencao_agenda", "agenda_manutencao", "inventario_tecnico"].includes(activeSection)) {
+                if (!["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "manutencao_agenda", "inventario_tecnico"].includes(activeSection)) {
                   setActiveSection("manutencao_ocorrencias");
                 }
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                ["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "manutencao_agenda", "agenda_manutencao", "inventario_tecnico"].includes(activeSection)
+                ["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "manutencao_agenda", "inventario_tecnico"].includes(activeSection)
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                   : "text-slate-600 hover:text-white hover:bg-slate-800/30"
               }`}
@@ -1820,22 +1819,6 @@ export default function App() {
                     separada do Portal de Orçamentos apesar de serem passos
                     do mesmo processo (orçamento → adjudicação → obra).
                     Passa a viver só no novo menu "Obras & Contratação". */}
-                <button
-                  onClick={() => {
-                    setActiveSection("agenda_manutencao");
-                    setViewMode("BROWSER");
-                    setIaInitialTab(undefined);
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "agenda_manutencao"
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
-                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
-                  }`}
-                >
-                  <i className="fa-solid fa-clipboard-list text-emerald-400 text-xs"></i>
-                  <span>Plano de Manutenção Obrigatória</span>
-                </button>
-
                 <button
                   onClick={() => {
                     setActiveSection("inventario_tecnico");
@@ -2657,7 +2640,6 @@ export default function App() {
                 {activeSection === "financeiro_mapa_pagamentos" && "Mapa de Pagamentos por Fração & Mês"}
                 {activeSection === "relatorios_automaticos" && "Relatórios Financeiros (Prestação de Contas)"}
                 {activeSection === "contabilidade_interna" && "Contabilidade Interna"}
-                {activeSection === "agenda_manutencao" && "Plano de Manutenção Obrigatória"}
                 {activeSection === "auditoria_interna" && "Auditoria Interna"}
                 {activeSection === "agendador_automatico" && "Agendador Automático de Jobs"}
                 {activeSection === "financeiro_extratos" && "Extrato de Movimentos e Saldo (Visão Condómino)"}
@@ -2994,14 +2976,6 @@ export default function App() {
               fracoes={fracoes}
               loggedUser={loggedUser}
               onUpdateFracoes={handleUpdateFracoes}
-            />
-          )}
-
-          {activeSection === "agenda_manutencao" && (
-            <AgendaManutencao
-              predio={predioAtivo}
-              loggedUser={loggedUser}
-              fornecedores={fornecedores}
             />
           )}
 

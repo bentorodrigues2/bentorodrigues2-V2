@@ -1035,6 +1035,60 @@ export async function processarContratosFornecedores() {
 }
 
 /**
+ * Diário: alerta a administração X dias antes de uma inspeção/manutenção
+ * técnica obrigatória vencer (Inventário Técnico — elevadores, extintores,
+ * portas corta-fogo, etc.). Pedido explícito do administrador: "se houve
+ * uma revisão tem de acertar logo a validade... e programar a próxima
+ * inspeção... por isso 1 mês antes tenho de receber um alerta para agendar
+ * com fornecedor". Mesmo padrão exato do alerta de contratos de
+ * fornecedores acima (alerta_enviado_em como guarda de deduplicação,
+ * reposto a null sempre que a vistoria é registada e a próxima inspeção
+ * recalculada — ver handleGravarVistoria em InventarioTecnico.tsx).
+ */
+export async function alertarInspecoesEquipamentosAVencer() {
+  const hojeISO = new Date().toISOString().split("T")[0];
+  const predios = await obterPredios();
+  const resultado = { alertas_enviados: 0, detalhe: [] };
+
+  for (const predio of predios) {
+    const { data: equipamentos } = await supabase
+      .from("inventario_tecnico")
+      .select("*")
+      .eq("id_predio", predio.id_predio)
+      .not("proxima_inspecao_data", "is", null);
+    if (!equipamentos || equipamentos.length === 0) continue;
+
+    const { data: admins } = await supabase
+      .from("profiles")
+      .select("email, nome")
+      .in("role", ["ADMIN", "EMPRESA_GESTORA", "GESTOR"])
+      .or(`id_predio.eq.${predio.id_predio},id_predio.is.null`);
+    const destinatarios = (admins || []).filter((a) => a.email);
+    if (destinatarios.length === 0) continue;
+
+    for (const eq of equipamentos) {
+      const diasRestantes = Math.ceil((new Date(eq.proxima_inspecao_data).getTime() - new Date(hojeISO).getTime()) / 86400000);
+      const prazoAlerta = Number(eq.dias_alerta_antecedencia) || 30;
+      if (diasRestantes <= prazoAlerta && !eq.alerta_enviado_em) {
+        await supabase.from("inventario_tecnico").update({ alerta_enviado_em: hojeISO }).eq("id", eq.id);
+        resultado.alertas_enviados += 1;
+        resultado.detalhe.push({ id_equipamento: eq.id, acao: "alerta", dias_restantes: diasRestantes });
+
+        const html = gerarHtmlResposta(
+          "Administração",
+          `O equipamento "${eq.nome}" (${eq.categoria}, ${predio.nome}) tem a próxima inspeção/manutenção obrigatória ${diasRestantes < 0 ? `<strong>vencida há ${Math.abs(diasRestantes)} dias</strong>` : `marcada para <strong>${eq.proxima_inspecao_data}</strong> (dentro de ${diasRestantes} dias)`}.${eq.entidade_responsavel ? ` Entidade responsável: <strong>${eq.entidade_responsavel}</strong>.` : " Agende com o fornecedor habitual."} Registe a vistoria em Inventário Técnico assim que for realizada, para a validade e a próxima inspeção ficarem atualizadas automaticamente.`
+        );
+        for (const dest of destinatarios) {
+          await enviarEmailSemAnexo({ to: dest.email, subject: `Inspeção a vencer em ${diasRestantes} dias — ${eq.nome}`, html }).catch(() => {});
+        }
+      }
+    }
+  }
+
+  return { job: "ALERTAR_INSPECOES_EQUIPAMENTOS", ...resultado };
+}
+
+/**
  * Dia 25: emite a nota de cobrança das quotas do mês seguinte para todas as
  * frações de todos os prédios (Quota Ordinária + 10% Fundo Comum de Reserva,
  * DL 268/94). Cria os avisos ("Pendente") e envia a nota de cobrança por

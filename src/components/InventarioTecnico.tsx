@@ -1,7 +1,18 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Predio, LoggedUser, Fracao } from "../types";
-import { Wrench, Plus, Check, MapPin, Sparkles, Building, Landmark, Trash2, ShieldAlert, Camera, X } from "lucide-react";
-import { fetchInventarioTecnicoFromSupabase, saveEquipamentoTecnicoToSupabase, deleteEquipamentoTecnicoFromSupabase, registarLogAuditoria } from "../lib/supabaseService";
+import { Wrench, Plus, Check, MapPin, Sparkles, Building, Landmark, Trash2, ShieldAlert, Camera, X, Pencil, CalendarCheck, FileText, Paperclip, Bell } from "lucide-react";
+import { fetchInventarioTecnicoFromSupabase, saveEquipamentoTecnicoToSupabase, deleteEquipamentoTecnicoFromSupabase, registarLogAuditoria, uploadDocumentoToStorage } from "../lib/supabaseService";
+import { formatDatePT } from "../utils";
+
+export interface HistoricoVistoriaEquipamento {
+  id: string;
+  data: string;
+  tecnico: string;
+  resultado: "Aprovado" | "Aprovado com Reservas" | "Reprovado";
+  observacoes?: string;
+  documentoUrl?: string;
+  documentoNome?: string;
+}
 
 export interface EquipamentoTecnico {
   id: string;
@@ -14,6 +25,18 @@ export interface EquipamentoTecnico {
   fabricante?: string;
   detalhes?: string;
   fotos?: string[];
+  // Unificação com o antigo "Plano de Manutenção Obrigatória" (2026-10-22,
+  // pedido explícito do administrador: um só ecrã, sem duplicação) — uma
+  // vistoria (agendada ou avulsa) atualiza sempre ultimaInspecao e agenda
+  // automaticamente proximaInspecaoData, para o cron poder alertar antes do
+  // vencimento (ver alertarInspecoesEquipamentosAVencer em cronService.js).
+  entidadeResponsavel?: string;
+  baseLegalDgeg?: string;
+  numCertificadoRelatorio?: string;
+  proximaInspecaoData?: string;
+  diasAlertaAntecedencia?: number;
+  alertaEnviadoEm?: string;
+  historicoVistorias?: HistoricoVistoriaEquipamento[];
 }
 
 interface InventarioTecnicoProps {
@@ -31,7 +54,10 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
     fetchInventarioTecnicoFromSupabase(predio.id_predio).then(dados => { if (dados) setEquipamentos(dados); });
   }, [predio.id_predio]);
 
-  // Form states to add custom equipment
+  // Form states to add custom equipment — reutilizado também para Editar
+  // (ver editingId/iniciarEdicao): quando definido, handleAddCustom
+  // atualiza em vez de criar.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [nome, setNome] = useState("");
   const [categoria, setCategoria] = useState("Elevadores");
   const [andar, setAndar] = useState("");
@@ -40,6 +66,142 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
   const [detalhes, setDetalhes] = useState("");
   const [fotos, setFotos] = useState<string[]>([]);
   const fotoInputRef = useRef<HTMLInputElement>(null);
+  const [frequenciaInspecao, setFrequenciaInspecao] = useState("Anual");
+  const [entidadeResponsavel, setEntidadeResponsavel] = useState("");
+  const [baseLegalDgeg, setBaseLegalDgeg] = useState("");
+  const [diasAlertaAntecedencia, setDiasAlertaAntecedencia] = useState(30);
+
+  // Converte o rótulo de periodicidade (igual ao já usado em toda a app,
+  // ex: contratos de fornecedores) no número de meses correspondente, para
+  // calcular a próxima inspeção automaticamente a seguir a cada vistoria.
+  const periodicidadeParaMeses = (freq: string): number => {
+    const f = freq.toLowerCase();
+    if (f.includes("mensal")) return 1;
+    if (f.includes("trimestral")) return 3;
+    if (f.includes("semestral")) return 6;
+    if (f.includes("bianual") || f.includes("2 anos")) return 24;
+    return 12; // Anual, por omissão
+  };
+
+  const calcularProximaInspecao = (dataBase: string, freq: string): string => {
+    const d = new Date(dataBase);
+    d.setMonth(d.getMonth() + periodicidadeParaMeses(freq));
+    return d.toISOString().split("T")[0];
+  };
+
+  const limparFormulario = () => {
+    setEditingId(null);
+    setNome("");
+    setCategoria("Elevadores");
+    setEstado("Operacional");
+    setFabricante("");
+    setDetalhes("");
+    setFotos([]);
+    setFrequenciaInspecao("Anual");
+    setEntidadeResponsavel("");
+    setBaseLegalDgeg("");
+    setDiasAlertaAntecedencia(30);
+  };
+
+  const iniciarEdicao = (eq: EquipamentoTecnico) => {
+    setEditingId(eq.id);
+    setNome(eq.nome);
+    setCategoria(eq.categoria);
+    setAndar(eq.andar);
+    setEstado(eq.estado);
+    setFabricante(eq.fabricante || "");
+    setDetalhes(eq.detalhes || "");
+    setFotos(eq.fotos || []);
+    setFrequenciaInspecao(eq.frequenciaInspecao || "Anual");
+    setEntidadeResponsavel(eq.entidadeResponsavel || "");
+    setBaseLegalDgeg(eq.baseLegalDgeg || "");
+    setDiasAlertaAntecedencia(eq.diasAlertaAntecedencia ?? 30);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // --- Registar Vistoria (agendada ou avulsa) ---
+  // Atualiza logo a validade (ultimaInspecao) e agenda automaticamente a
+  // próxima inspeção, para o alerta de antecedência (cron) saber quando
+  // disparar — pedido explícito do administrador: "se houve uma revisão
+  // tem de acertar logo a validade... e programar a próxima inspeção".
+  const [vistoriaTargetId, setVistoriaTargetId] = useState<string | null>(null);
+  const [vistoriaData, setVistoriaData] = useState(() => new Date().toISOString().split("T")[0]);
+  const [vistoriaTecnico, setVistoriaTecnico] = useState("");
+  const [vistoriaResultado, setVistoriaResultado] = useState<HistoricoVistoriaEquipamento["resultado"]>("Aprovado");
+  const [vistoriaObservacoes, setVistoriaObservacoes] = useState("");
+  const [vistoriaDocFile, setVistoriaDocFile] = useState<File | null>(null);
+  const [aGravarVistoria, setAGravarVistoria] = useState(false);
+  const vistoriaDocInputRef = useRef<HTMLInputElement>(null);
+
+  const abrirRegistarVistoria = (eq: EquipamentoTecnico) => {
+    setVistoriaTargetId(eq.id);
+    setVistoriaData(new Date().toISOString().split("T")[0]);
+    setVistoriaTecnico("");
+    setVistoriaResultado("Aprovado");
+    setVistoriaObservacoes("");
+    setVistoriaDocFile(null);
+  };
+
+  const handleGravarVistoria = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const eqAlvo = equipamentos.find(eq => eq.id === vistoriaTargetId);
+    if (!eqAlvo) return;
+    setAGravarVistoria(true);
+    try {
+      let documentoUrl: string | undefined;
+      if (vistoriaDocFile) {
+        const caminho = `inventario_tecnico/${predio.id_predio}/${eqAlvo.id}/${Date.now()}-${vistoriaDocFile.name}`;
+        documentoUrl = (await uploadDocumentoToStorage(vistoriaDocFile, caminho)) || undefined;
+        if (!documentoUrl) {
+          alert("❌ Não foi possível carregar o documento comprovativo. Tente novamente.");
+          setAGravarVistoria(false);
+          return;
+        }
+      }
+
+      const novaEntrada: HistoricoVistoriaEquipamento = {
+        id: `vist-${Date.now()}`,
+        data: vistoriaData,
+        tecnico: vistoriaTecnico || "Não identificado",
+        resultado: vistoriaResultado,
+        observacoes: vistoriaObservacoes || undefined,
+        documentoUrl,
+        documentoNome: vistoriaDocFile?.name
+      };
+
+      // O resultado da vistoria reflete-se logo no estado de conservação —
+      // nunca fica "Operacional" por omissão se a vistoria reprovou.
+      const novoEstado: EquipamentoTecnico["estado"] =
+        vistoriaResultado === "Reprovado" ? "Crítico" :
+        vistoriaResultado === "Aprovado com Reservas" ? "Necessita Manutenção" :
+        "Operacional";
+
+      const proximaInspecao = calcularProximaInspecao(vistoriaData, eqAlvo.frequenciaInspecao || "Anual");
+
+      const equipamentoAtualizado: EquipamentoTecnico = {
+        ...eqAlvo,
+        estado: novoEstado,
+        ultimaInspecao: vistoriaData,
+        proximaInspecaoData: proximaInspecao,
+        // Reposto a undefined sempre que a próxima inspeção muda, para o
+        // cron poder voltar a alertar no novo ciclo.
+        alertaEnviadoEm: undefined,
+        historicoVistorias: [novaEntrada, ...(eqAlvo.historicoVistorias || [])]
+      };
+
+      const ok = await saveEquipamentoTecnicoToSupabase(predio.id_predio, equipamentoAtualizado);
+      if (!ok) {
+        alert("❌ Não foi possível gravar a vistoria. Tente novamente.");
+        return;
+      }
+      setEquipamentos(prev => prev.map(eq => eq.id === eqAlvo.id ? equipamentoAtualizado : eq));
+      registarLogAuditoria("Manutenção", `Registou vistoria de "${eqAlvo.nome}" (${vistoriaResultado}) — próxima inspeção agendada para ${formatDatePT(proximaInspecao)}`, predio.id_predio, loggedUser, vistoriaObservacoes || undefined);
+      setVistoriaTargetId(null);
+      alert(`✅ Vistoria registada! Validade atualizada e próxima inspeção agendada para ${formatDatePT(proximaInspecao)}.`);
+    } finally {
+      setAGravarVistoria(false);
+    }
+  };
 
   // Pisos reais deste prédio (a partir das frações reais) — antes era uma
   // lista fixa "Piso -2" a "Piso 3", que não correspondia a este edifício
@@ -98,27 +260,36 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
     e.preventDefault();
     if (!nome.trim()) return;
 
-    const newEquipment: EquipamentoTecnico = {
-      id: "eq-custom-" + Date.now(),
+    const existente = editingId ? equipamentos.find(eq => eq.id === editingId) : null;
+    const equipment: EquipamentoTecnico = {
+      id: editingId || "eq-custom-" + Date.now(),
       nome,
       categoria,
       andar,
       estado,
-      ultimaInspecao: new Date().toISOString().substring(0, 10),
-      frequenciaInspecao: "Anual",
+      ultimaInspecao: existente?.ultimaInspecao || new Date().toISOString().substring(0, 10),
+      frequenciaInspecao,
       fabricante: fabricante || "Personalizado",
       detalhes: detalhes || "Adicionado via painel técnico.",
-      fotos
+      fotos,
+      entidadeResponsavel: entidadeResponsavel || undefined,
+      baseLegalDgeg: baseLegalDgeg || undefined,
+      diasAlertaAntecedencia,
+      proximaInspecaoData: existente?.proximaInspecaoData,
+      alertaEnviadoEm: existente?.alertaEnviadoEm,
+      historicoVistorias: existente?.historicoVistorias || []
     };
 
-    setEquipamentos([...equipamentos, newEquipment]);
-    saveEquipamentoTecnicoToSupabase(predio.id_predio, newEquipment).catch(console.error);
-    registarLogAuditoria("Manutenção", `Adicionou "${nome}" ao inventário técnico`, predio.id_predio, loggedUser);
-    setNome("");
-    setFabricante("");
-    setDetalhes("");
-    setFotos([]);
-    alert(`Equipamento "${nome}" adicionado com sucesso! Aparece automaticamente mapeado na planta técnica do edifício.`);
+    if (editingId) {
+      setEquipamentos(prev => prev.map(eq => eq.id === editingId ? equipment : eq));
+    } else {
+      setEquipamentos(prev => [...prev, equipment]);
+    }
+    saveEquipamentoTecnicoToSupabase(predio.id_predio, equipment).catch(console.error);
+    registarLogAuditoria("Manutenção", `${editingId ? "Editou" : "Adicionou"} "${nome}" no inventário técnico`, predio.id_predio, loggedUser);
+    const eraEdicao = !!editingId;
+    limparFormulario();
+    alert(eraEdicao ? `Equipamento "${nome}" atualizado com sucesso!` : `Equipamento "${nome}" adicionado com sucesso! Aparece automaticamente mapeado na planta técnica do edifício.`);
   };
 
   const handleRemove = (id: string) => {
@@ -193,12 +364,23 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
         
         {/* Left column: Add customized equipment */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 h-fit">
-          <div>
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1">
-              <Plus className="h-4 w-4 text-emerald-500" />
-              Adicionar Equipamento Personalizado
-            </h3>
-            <p className="text-[11px] text-slate-600">Novos equipamentos aparecem instantaneamente no mapeamento técnico da planta.</p>
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1">
+                {editingId ? <Pencil className="h-4 w-4 text-indigo-500" /> : <Plus className="h-4 w-4 text-emerald-500" />}
+                {editingId ? "Editar Equipamento" : "Adicionar Equipamento Personalizado"}
+              </h3>
+              <p className="text-[11px] text-slate-600">{editingId ? "A corrigir um equipamento já registado." : "Novos equipamentos aparecem instantaneamente no mapeamento técnico da planta."}</p>
+            </div>
+            {editingId && (
+              <button
+                type="button"
+                onClick={limparFormulario}
+                className="text-[10px] font-bold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-lg cursor-pointer shrink-0"
+              >
+                Cancelar
+              </button>
+            )}
           </div>
 
           <form onSubmit={handleAddCustom} className="space-y-3.5">
@@ -256,15 +438,66 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Fabricante / Fornecedor</label>
+                <input
+                  type="text"
+                  value={fabricante}
+                  onChange={e => setFabricante(e.target.value)}
+                  placeholder="Ex: Schindler Lda."
+                  className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Periodicidade de Inspeção</label>
+                <select
+                  value={frequenciaInspecao}
+                  onChange={e => setFrequenciaInspecao(e.target.value)}
+                  className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-semibold cursor-pointer"
+                >
+                  <option value="Mensal">Mensal</option>
+                  <option value="Trimestral">Trimestral</option>
+                  <option value="Semestral">Semestral</option>
+                  <option value="Anual">Anual</option>
+                  <option value="Bianual">Bianual (2 anos)</option>
+                </select>
+              </div>
+            </div>
+
             <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Fabricante / Fornecedor</label>
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Entidade Responsável / Prestador de Serviço</label>
               <input
                 type="text"
-                value={fabricante}
-                onChange={e => setFabricante(e.target.value)}
-                placeholder="Ex: Schindler Lda."
+                value={entidadeResponsavel}
+                onChange={e => setEntidadeResponsavel(e.target.value)}
+                placeholder="Ex: TKE, Fidelidade, A definir..."
                 className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs focus:outline-none focus:border-emerald-500"
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Base Legal / DGEG (Opcional)</label>
+                <input
+                  type="text"
+                  value={baseLegalDgeg}
+                  onChange={e => setBaseLegalDgeg(e.target.value)}
+                  placeholder="Ex: DL 320/2002"
+                  className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Alertar (dias antes)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={180}
+                  value={diasAlertaAntecedencia}
+                  onChange={e => setDiasAlertaAntecedencia(parseInt(e.target.value) || 30)}
+                  className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-mono focus:outline-none focus:border-emerald-500"
+                />
+              </div>
             </div>
 
             <div>
@@ -311,10 +544,10 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
 
             <button
               type="submit"
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-xs cursor-pointer shadow flex items-center justify-center gap-1"
+              className={`w-full text-white font-bold py-2 rounded-lg text-xs cursor-pointer shadow flex items-center justify-center gap-1 ${editingId ? "bg-indigo-600 hover:bg-indigo-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
             >
-              <Plus className="h-4 w-4" />
-              <span>Inserir no Mapa Técnico</span>
+              {editingId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              <span>{editingId ? "Guardar Alterações" : "Inserir no Mapa Técnico"}</span>
             </button>
           </form>
         </div>
@@ -383,13 +616,37 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
                     <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">{e.nome}</h4>
                     <p className="text-[11px] text-slate-600 font-medium leading-tight">{e.detalhes}</p>
 
-                    <div className="flex gap-3 text-[10px] text-slate-600 pt-1 font-semibold">
+                    <div className="flex gap-3 text-[10px] text-slate-600 pt-1 font-semibold flex-wrap">
                       <span>Piso: <strong className="text-slate-600 dark:text-slate-300">{e.andar}</strong></span>
                       <span>•</span>
                       <span>Fabricante: <strong className="text-slate-600 dark:text-slate-300">{e.fabricante || "N/A"}</strong></span>
                       <span>•</span>
-                      <span>Inspecção: <strong className="text-slate-600 dark:text-slate-300">{e.ultimaInspecao} ({e.frequenciaInspecao})</strong></span>
+                      <span>Última inspeção: <strong className="text-slate-600 dark:text-slate-300">{e.ultimaInspecao || "Nunca"} ({e.frequenciaInspecao})</strong></span>
+                      {e.entidadeResponsavel && (
+                        <>
+                          <span>•</span>
+                          <span>Entidade: <strong className="text-slate-600 dark:text-slate-300">{e.entidadeResponsavel}</strong></span>
+                        </>
+                      )}
                     </div>
+
+                    {e.proximaInspecaoData && (() => {
+                      const diasRestantes = Math.ceil((new Date(e.proximaInspecaoData).getTime() - Date.now()) / 86400000);
+                      const prazo = e.diasAlertaAntecedencia ?? 30;
+                      const aVencer = diasRestantes <= prazo;
+                      return (
+                        <div className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-lg border ${
+                          diasRestantes < 0 ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400" :
+                          aVencer ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400" :
+                          "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400"
+                        }`}>
+                          <CalendarCheck className="h-3 w-3" />
+                          {diasRestantes < 0
+                            ? `Inspeção vencida há ${Math.abs(diasRestantes)} dias (${formatDatePT(e.proximaInspecaoData)})`
+                            : `Próxima inspeção: ${formatDatePT(e.proximaInspecaoData)} (${diasRestantes} dias)`}
+                        </div>
+                      );
+                    })()}
 
                     {e.fotos && e.fotos.length > 0 && (
                       <div className="flex gap-1.5 pt-1">
@@ -400,16 +657,56 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
                         ))}
                       </div>
                     )}
+
+                    {e.historicoVistorias && e.historicoVistorias.length > 0 && (
+                      <div className="pt-1.5 space-y-1 border-t border-slate-200 dark:border-slate-800 mt-1.5">
+                        <span className="text-[9px] font-bold text-slate-600 uppercase block">Histórico de Vistorias ({e.historicoVistorias.length})</span>
+                        {e.historicoVistorias.slice(0, 3).map(v => (
+                          <div key={v.id} className="flex items-center gap-1.5 text-[10px] flex-wrap">
+                            <span className="text-slate-600 dark:text-slate-400">{formatDatePT(v.data)}</span>
+                            <span className={`px-1.5 py-0.5 rounded font-bold text-[9px] ${
+                              v.resultado === "Aprovado" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400" :
+                              v.resultado === "Aprovado com Reservas" ? "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400" :
+                              "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400"
+                            }`}>{v.resultado}</span>
+                            <span className="text-slate-600 dark:text-slate-400">— {v.tecnico}</span>
+                            {v.documentoUrl && (
+                              <a href={v.documentoUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline font-bold flex items-center gap-0.5">
+                                <Paperclip className="h-2.5 w-2.5" /> comprovativo
+                              </a>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <button
-                    onClick={() => handleRemove(e.id)}
-                    className="p-1.5 rounded-lg border bg-white dark:bg-slate-900 text-slate-600 hover:text-red-500 hover:border-red-200 shrink-0 self-end sm:self-center cursor-pointer shadow-sm"
-                    title="Remover Equipamento"
-                    aria-label="Remover Equipamento"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                    <button
+                      onClick={() => abrirRegistarVistoria(e)}
+                      className="p-1.5 rounded-lg border bg-white dark:bg-slate-900 text-slate-600 hover:text-emerald-600 hover:border-emerald-200 cursor-pointer shadow-sm"
+                      title="Registar Vistoria"
+                      aria-label="Registar Vistoria"
+                    >
+                      <CalendarCheck className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => iniciarEdicao(e)}
+                      className="p-1.5 rounded-lg border bg-white dark:bg-slate-900 text-slate-600 hover:text-indigo-600 hover:border-indigo-200 cursor-pointer shadow-sm"
+                      title="Editar Equipamento"
+                      aria-label="Editar Equipamento"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleRemove(e.id)}
+                      className="p-1.5 rounded-lg border bg-white dark:bg-slate-900 text-slate-600 hover:text-red-500 hover:border-red-200 cursor-pointer shadow-sm"
+                      title="Remover Equipamento"
+                      aria-label="Remover Equipamento"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -418,6 +715,110 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
         </div>
 
       </div>
+
+      {/* Modal: Registar Vistoria (agendada ou avulsa) */}
+      {vistoriaTargetId && (() => {
+        const eqAlvo = equipamentos.find(eq => eq.id === vistoriaTargetId);
+        if (!eqAlvo) return null;
+        return (
+          <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div>
+                  <h3 className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-2">
+                    <CalendarCheck className="h-4 w-4 text-emerald-500" /> Registar Vistoria
+                  </h3>
+                  <p className="text-[11px] text-slate-600">{eqAlvo.nome} — {eqAlvo.categoria}</p>
+                </div>
+                <button
+                  onClick={() => setVistoriaTargetId(null)}
+                  className="p-1.5 text-slate-600 hover:text-slate-800 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  title="Fechar"
+                  aria-label="Fechar"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleGravarVistoria} className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Data da Vistoria</label>
+                    <input
+                      type="date"
+                      value={vistoriaData}
+                      onChange={e => setVistoriaData(e.target.value)}
+                      required
+                      className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-mono focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Resultado</label>
+                    <select
+                      value={vistoriaResultado}
+                      onChange={e => setVistoriaResultado(e.target.value as any)}
+                      className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-semibold cursor-pointer"
+                    >
+                      <option value="Aprovado">Aprovado</option>
+                      <option value="Aprovado com Reservas">Aprovado com Reservas</option>
+                      <option value="Reprovado">Reprovado</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Técnico / Entidade que Realizou</label>
+                  <input
+                    type="text"
+                    value={vistoriaTecnico}
+                    onChange={e => setVistoriaTecnico(e.target.value)}
+                    placeholder="Ex: João Silva (TKE)"
+                    className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Observações</label>
+                  <textarea
+                    value={vistoriaObservacoes}
+                    onChange={e => setVistoriaObservacoes(e.target.value)}
+                    rows={3}
+                    placeholder="Observações técnicas da vistoria..."
+                    className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Documento Comprovativo (Opcional)</label>
+                  <input ref={vistoriaDocInputRef} type="file" accept=".pdf,image/*" onChange={e => setVistoriaDocFile(e.target.files?.[0] || null)} className="hidden" />
+                  <button
+                    type="button"
+                    onClick={() => vistoriaDocInputRef.current?.click()}
+                    className="w-full border border-dashed p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300 text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:border-emerald-400 hover:text-emerald-600"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                    <span>{vistoriaDocFile ? vistoriaDocFile.name : "Anexar Comprovativo (PDF/Foto)"}</span>
+                  </button>
+                </div>
+
+                <div className="bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40 rounded-xl p-2.5 text-[10px] text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
+                  <Bell className="h-3.5 w-3.5 shrink-0" />
+                  <span>A gravar, a validade é atualizada e a próxima inspeção fica agendada automaticamente para <strong>{formatDatePT(calcularProximaInspecao(vistoriaData, eqAlvo.frequenciaInspecao || "Anual"))}</strong> ({eqAlvo.frequenciaInspecao || "Anual"}), com alerta {eqAlvo.diasAlertaAntecedencia ?? 30} dias antes.</span>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={aGravarVistoria}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold py-2 rounded-lg text-xs cursor-pointer shadow flex items-center justify-center gap-1.5"
+                >
+                  <Check className="h-4 w-4" />
+                  <span>{aGravarVistoria ? "A gravar..." : "Concluir Vistoria"}</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );
