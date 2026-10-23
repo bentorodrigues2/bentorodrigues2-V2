@@ -125,21 +125,46 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
   // disparar — pedido explícito do administrador: "se houve uma revisão
   // tem de acertar logo a validade... e programar a próxima inspeção".
   const [vistoriaTargetId, setVistoriaTargetId] = useState<string | null>(null);
+  // Quando definido, o modal passa a EDITAR esta entrada já gravada do
+  // histórico em vez de criar uma nova — antes não havia forma nenhuma de
+  // corrigir uma vistoria já registada (ex: relatório do técnico anexado
+  // por engano, dados errados).
+  const [vistoriaEditId, setVistoriaEditId] = useState<string | null>(null);
   const [vistoriaData, setVistoriaData] = useState(() => new Date().toISOString().split("T")[0]);
   const [vistoriaTecnico, setVistoriaTecnico] = useState("");
   const [vistoriaResultado, setVistoriaResultado] = useState<HistoricoVistoriaEquipamento["resultado"]>("Aprovado");
   const [vistoriaObservacoes, setVistoriaObservacoes] = useState("");
   const [vistoriaDocFile, setVistoriaDocFile] = useState<File | null>(null);
+  // Documento já existente (só relevante em edição) e se o administrador
+  // pediu para o remover sem escolher um novo — sem isto não havia forma de
+  // remover um anexo errado, só de o substituir.
+  const [vistoriaDocExistente, setVistoriaDocExistente] = useState<{ url: string; nome?: string } | null>(null);
+  const [vistoriaDocRemovido, setVistoriaDocRemovido] = useState(false);
   const [aGravarVistoria, setAGravarVistoria] = useState(false);
   const vistoriaDocInputRef = useRef<HTMLInputElement>(null);
 
   const abrirRegistarVistoria = (eq: EquipamentoTecnico) => {
     setVistoriaTargetId(eq.id);
+    setVistoriaEditId(null);
     setVistoriaData(new Date().toISOString().split("T")[0]);
     setVistoriaTecnico("");
     setVistoriaResultado("Aprovado");
     setVistoriaObservacoes("");
     setVistoriaDocFile(null);
+    setVistoriaDocExistente(null);
+    setVistoriaDocRemovido(false);
+  };
+
+  const iniciarEdicaoVistoria = (eq: EquipamentoTecnico, v: HistoricoVistoriaEquipamento) => {
+    setVistoriaTargetId(eq.id);
+    setVistoriaEditId(v.id);
+    setVistoriaData(v.data);
+    setVistoriaTecnico(v.tecnico === "Não identificado" ? "" : v.tecnico);
+    setVistoriaResultado(v.resultado);
+    setVistoriaObservacoes(v.observacoes || "");
+    setVistoriaDocFile(null);
+    setVistoriaDocExistente(v.documentoUrl ? { url: v.documentoUrl, nome: v.documentoNome } : null);
+    setVistoriaDocRemovido(false);
   };
 
   const handleGravarVistoria = async (e: React.FormEvent) => {
@@ -149,6 +174,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
     setAGravarVistoria(true);
     try {
       let documentoUrl: string | undefined;
+      let documentoNome: string | undefined;
       if (vistoriaDocFile) {
         const caminho = `inventario_tecnico/${predio.id_predio}/${eqAlvo.id}/${Date.now()}-${vistoriaDocFile.name}`;
         documentoUrl = (await uploadDocumentoToStorage(vistoriaDocFile, caminho)) || undefined;
@@ -157,36 +183,48 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
           setAGravarVistoria(false);
           return;
         }
+        documentoNome = vistoriaDocFile.name;
+      } else if (vistoriaEditId && !vistoriaDocRemovido && vistoriaDocExistente) {
+        // Em edição, sem ficheiro novo escolhido e sem pedido de remoção —
+        // mantém o documento já anexado em vez de o apagar silenciosamente.
+        documentoUrl = vistoriaDocExistente.url;
+        documentoNome = vistoriaDocExistente.nome;
       }
 
-      const novaEntrada: HistoricoVistoriaEquipamento = {
-        id: `vist-${Date.now()}`,
+      const entradaVistoria: HistoricoVistoriaEquipamento = {
+        id: vistoriaEditId || `vist-${Date.now()}`,
         data: vistoriaData,
         tecnico: vistoriaTecnico || "Não identificado",
         resultado: vistoriaResultado,
         observacoes: vistoriaObservacoes || undefined,
         documentoUrl,
-        documentoNome: vistoriaDocFile?.name
+        documentoNome
       };
 
-      // O resultado da vistoria reflete-se logo no estado de conservação —
-      // nunca fica "Operacional" por omissão se a vistoria reprovou.
-      const novoEstado: EquipamentoTecnico["estado"] =
-        vistoriaResultado === "Reprovado" ? "Crítico" :
-        vistoriaResultado === "Aprovado com Reservas" ? "Necessita Manutenção" :
-        "Operacional";
+      const historicoAtualizado = vistoriaEditId
+        ? (eqAlvo.historicoVistorias || []).map(v => v.id === vistoriaEditId ? entradaVistoria : v)
+        : [entradaVistoria, ...(eqAlvo.historicoVistorias || [])];
 
-      const proximaInspecao = calcularProximaInspecao(vistoriaData, eqAlvo.frequenciaInspecao || "Anual");
+      // A validade/estado do equipamento refletem sempre a vistoria mais
+      // RECENTE por data (não a última gravada) — importante em edição,
+      // onde corrigir a data de uma entrada antiga não pode mudar a
+      // validade atual se já houver uma vistoria mais recente no histórico.
+      const maisRecente = [...historicoAtualizado].sort((a, b) => b.data.localeCompare(a.data))[0];
+      const novoEstado: EquipamentoTecnico["estado"] =
+        maisRecente.resultado === "Reprovado" ? "Crítico" :
+        maisRecente.resultado === "Aprovado com Reservas" ? "Necessita Manutenção" :
+        "Operacional";
+      const proximaInspecao = calcularProximaInspecao(maisRecente.data, eqAlvo.frequenciaInspecao || "Anual");
 
       const equipamentoAtualizado: EquipamentoTecnico = {
         ...eqAlvo,
         estado: novoEstado,
-        ultimaInspecao: vistoriaData,
+        ultimaInspecao: maisRecente.data,
         proximaInspecaoData: proximaInspecao,
         // Reposto a undefined sempre que a próxima inspeção muda, para o
         // cron poder voltar a alertar no novo ciclo.
         alertaEnviadoEm: undefined,
-        historicoVistorias: [novaEntrada, ...(eqAlvo.historicoVistorias || [])]
+        historicoVistorias: historicoAtualizado
       };
 
       const ok = await saveEquipamentoTecnicoToSupabase(predio.id_predio, equipamentoAtualizado);
@@ -195,9 +233,12 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
         return;
       }
       setEquipamentos(prev => prev.map(eq => eq.id === eqAlvo.id ? equipamentoAtualizado : eq));
-      registarLogAuditoria("Manutenção", `Registou vistoria de "${eqAlvo.nome}" (${vistoriaResultado}) — próxima inspeção agendada para ${formatDatePT(proximaInspecao)}`, predio.id_predio, loggedUser, vistoriaObservacoes || undefined);
+      registarLogAuditoria("Manutenção", `${vistoriaEditId ? "Editou" : "Registou"} vistoria de "${eqAlvo.nome}" (${vistoriaResultado}) — próxima inspeção agendada para ${formatDatePT(proximaInspecao)}`, predio.id_predio, loggedUser, vistoriaObservacoes || undefined);
       setVistoriaTargetId(null);
-      alert(`✅ Vistoria registada! Validade atualizada e próxima inspeção agendada para ${formatDatePT(proximaInspecao)}.`);
+      setVistoriaEditId(null);
+      alert(vistoriaEditId
+        ? `✅ Vistoria atualizada! Validade e próxima inspeção recalculadas para ${formatDatePT(proximaInspecao)}.`
+        : `✅ Vistoria registada! Validade atualizada e próxima inspeção agendada para ${formatDatePT(proximaInspecao)}.`);
     } finally {
       setAGravarVistoria(false);
     }
@@ -680,6 +721,15 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
                                 <Paperclip className="h-2.5 w-2.5" /> comprovativo
                               </a>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => iniciarEdicaoVistoria(e, v)}
+                              title="Editar esta vistoria"
+                              aria-label="Editar esta vistoria"
+                              className="text-slate-600 hover:text-indigo-600 active:text-indigo-700 active:scale-90 transition-all cursor-pointer"
+                            >
+                              <Pencil className="h-2.5 w-2.5" />
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -689,7 +739,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
                   <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
                     <button
                       onClick={() => abrirRegistarVistoria(e)}
-                      className="p-1.5 rounded-lg border bg-white dark:bg-slate-900 text-slate-600 hover:text-emerald-600 hover:border-emerald-200 cursor-pointer shadow-sm"
+                      className="p-1.5 rounded-lg border bg-white dark:bg-slate-900 text-slate-600 hover:text-emerald-600 hover:border-emerald-200 active:border-emerald-400 active:bg-emerald-50 active:scale-95 transition-all cursor-pointer shadow-sm"
                       title="Registar Vistoria"
                       aria-label="Registar Vistoria"
                     >
@@ -697,7 +747,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
                     </button>
                     <button
                       onClick={() => iniciarEdicao(e)}
-                      className="p-1.5 rounded-lg border bg-white dark:bg-slate-900 text-slate-600 hover:text-indigo-600 hover:border-indigo-200 cursor-pointer shadow-sm"
+                      className="p-1.5 rounded-lg border bg-white dark:bg-slate-900 text-slate-600 hover:text-indigo-600 hover:border-indigo-200 active:border-indigo-400 active:bg-indigo-50 active:scale-95 transition-all cursor-pointer shadow-sm"
                       title="Editar Equipamento"
                       aria-label="Editar Equipamento"
                     >
@@ -705,7 +755,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
                     </button>
                     <button
                       onClick={() => handleRemove(e.id)}
-                      className="p-1.5 rounded-lg border bg-white dark:bg-slate-900 text-slate-600 hover:text-red-500 hover:border-red-200 cursor-pointer shadow-sm"
+                      className="p-1.5 rounded-lg border bg-white dark:bg-slate-900 text-slate-600 hover:text-red-500 hover:border-red-200 active:border-red-400 active:bg-red-50 active:scale-95 transition-all cursor-pointer shadow-sm"
                       title="Remover Equipamento"
                       aria-label="Remover Equipamento"
                     >
@@ -731,12 +781,12 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div>
                   <h3 className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-2">
-                    <CalendarCheck className="h-4 w-4 text-emerald-500" /> Registar Vistoria
+                    <CalendarCheck className="h-4 w-4 text-emerald-500" /> {vistoriaEditId ? "Editar Vistoria" : "Registar Vistoria"}
                   </h3>
                   <p className="text-[11px] text-slate-600">{eqAlvo.nome} — {eqAlvo.categoria}</p>
                 </div>
                 <button
-                  onClick={() => setVistoriaTargetId(null)}
+                  onClick={() => { setVistoriaTargetId(null); setVistoriaEditId(null); }}
                   className="p-1.5 text-slate-600 hover:text-slate-800 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                   title="Fechar"
                   aria-label="Fechar"
@@ -795,6 +845,39 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
 
                 <div>
                   <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Documento Comprovativo (Opcional)</label>
+                  {/* Documento já anexado (só em edição) — antes não havia
+                      nenhuma forma de o remover, só de o substituir por um
+                      novo. Pedido explícito: documento errado/formato não
+                      reconhecido tem de poder ser removido. */}
+                  {vistoriaEditId && vistoriaDocExistente && !vistoriaDocRemovido && !vistoriaDocFile && (
+                    <div className="flex items-center justify-between gap-2 mb-1.5 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40 rounded-lg px-2.5 py-1.5">
+                      <a href={vistoriaDocExistente.url} target="_blank" rel="noopener noreferrer" className="text-indigo-700 dark:text-indigo-300 text-xs font-semibold flex items-center gap-1.5 truncate">
+                        <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{vistoriaDocExistente.nome || "Documento atual"}</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => setVistoriaDocRemovido(true)}
+                        title="Remover este documento"
+                        aria-label="Remover este documento"
+                        className="text-red-600 hover:text-red-700 active:scale-90 transition-all cursor-pointer shrink-0"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+                  {vistoriaEditId && vistoriaDocRemovido && (
+                    <div className="flex items-center justify-between gap-2 mb-1.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-lg px-2.5 py-1.5">
+                      <span className="text-red-700 dark:text-red-400 text-[11px] font-semibold">Documento marcado para remoção ao gravar.</span>
+                      <button
+                        type="button"
+                        onClick={() => setVistoriaDocRemovido(false)}
+                        className="text-[10px] text-slate-600 hover:underline cursor-pointer shrink-0"
+                      >
+                        Desfazer
+                      </button>
+                    </div>
+                  )}
                   <input ref={vistoriaDocInputRef} type="file" accept=".pdf,image/*" onChange={e => setVistoriaDocFile(e.target.files?.[0] || null)} className="hidden" />
                   <button
                     type="button"
@@ -802,7 +885,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
                     className="w-full border border-dashed p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300 text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:border-emerald-400 hover:text-emerald-600"
                   >
                     <Paperclip className="h-4 w-4" />
-                    <span>{vistoriaDocFile ? vistoriaDocFile.name : "Anexar Comprovativo (PDF/Foto)"}</span>
+                    <span>{vistoriaDocFile ? vistoriaDocFile.name : vistoriaDocExistente && !vistoriaDocRemovido ? "Substituir Comprovativo (PDF/Foto)" : "Anexar Comprovativo (PDF/Foto)"}</span>
                   </button>
                 </div>
 
@@ -817,7 +900,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
                   className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold py-2 rounded-lg text-xs cursor-pointer shadow flex items-center justify-center gap-1.5"
                 >
                   <Check className="h-4 w-4" />
-                  <span>{aGravarVistoria ? "A gravar..." : "Concluir Vistoria"}</span>
+                  <span>{aGravarVistoria ? "A gravar..." : vistoriaEditId ? "Guardar Alterações" : "Concluir Vistoria"}</span>
                 </button>
               </form>
             </div>

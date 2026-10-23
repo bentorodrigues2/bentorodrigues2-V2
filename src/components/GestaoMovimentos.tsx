@@ -3143,6 +3143,18 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                           <span className="text-[10px] text-slate-600 font-semibold">Lança em: <strong className="text-slate-700">{contas.find(c => c.id_conta === contaExtratoId)?.banco}</strong></span>
                           <button
                             onClick={() => {
+                              // Pagamento de condómino (fração escolhida/sugerida): tem de
+                              // passar pelo pipeline real de confirmação — liquidar os
+                              // avisos (quotas) correspondentes, gerar o recibo oficial e
+                              // enviá-lo por email — em vez de lancarItemExtraido, que só
+                              // sabe lançar um movimento genérico (nunca cruzava com as
+                              // quotas pendentes nem atualizava o Mapa de Pagamentos,
+                              // apesar de a fração e os avisos já virem identificados
+                              // aqui em cima). Bug real confirmado em produção.
+                              if (item.tipo === "Receita" && item.fracaoSugeridaId) {
+                                aprovarPagamentoCondomino(item, index);
+                                return;
+                              }
                               const fornSel = document.getElementById(`extract-forn-select-${index}`) as HTMLSelectElement | null;
                               const motivoInput = document.getElementById(`extract-forn-motivo-${index}`) as HTMLInputElement | null;
                               const faturaInput = document.getElementById(`extract-fatura-${index}`) as HTMLInputElement | null;
