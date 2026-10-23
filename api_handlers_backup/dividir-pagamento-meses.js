@@ -180,7 +180,57 @@ export default async function handler(req, res) {
         if (valorAReduzir <= 0) continue;
         const novoValor = Math.round(((Number(divida.valor) || 0) - valorAReduzir) * 100) / 100;
         if (novoValor <= 0.01) {
-          await supabase.from("avisos").update({ estado: "Pago" }).eq("id_aviso", divida.id_aviso);
+          // Bug real confirmado em produção (Fração J): marcar "Pago" só
+          // neste único registo combinado ("N meses × Y€") deixa o Mapa de
+          // Pagamentos (FinanceiroAvancado.tsx, grelha mês a mês) sem onde o
+          // mostrar — o vencimento deste aviso é só UM mês fixo (o da
+          // abertura de saldos), nunca os meses reais que ele cobre. Em vez
+          // de só mudar o estado, substitui-se por 1 aviso "Pago" por cada
+          // mês realmente coberto, à semelhança dos avisos "...paga
+          // adiantadamente" criados acima — assim a grelha mensal mostra
+          // corretamente cada mês como pago.
+          const match = (divida.descricao || "").match(/desde (\d{4}-\d{2}-\d{2}) \((\d+) (?:mês|meses) × ([\d.,]+)€\)/);
+          if (match) {
+            const totalMesesOriginal = parseInt(match[2], 10);
+            const valorPorMes = parseFloat(match[3].replace(",", "."));
+            const mesesRestantes = valorPorMes > 0 ? Math.max(1, Math.round((Number(divida.valor) || 0) / valorPorMes)) : 1;
+            const mesesJaLiquidados = Math.max(0, totalMesesOriginal - mesesRestantes);
+            const dataBase = new Date(`${match[1]}T00:00:00Z`);
+            dataBase.setUTCMonth(dataBase.getUTCMonth() + mesesJaLiquidados);
+
+            await supabase.from("avisos").update({
+              valor: 0,
+              valor_fundo_reserva: 0,
+              descricao: `[SUBSTITUÍDO por ${mesesRestantes} aviso(s) mensal(is) — ver meses correspondentes] ${divida.descricao}`
+            }).eq("id_aviso", divida.id_aviso);
+
+            const avisosMensaisDivida = [];
+            for (let i = 0; i < mesesRestantes; i++) {
+              const dMes = new Date(dataBase);
+              dMes.setUTCMonth(dMes.getUTCMonth() + i);
+              const isoMesDivida = dMes.toISOString().split("T")[0];
+              const nomeMesDivida = dMes.toLocaleDateString("pt-PT", { month: "long", year: "numeric", timeZone: "UTC" });
+              avisosMensaisDivida.push({
+                id_aviso: `${divida.id_aviso}-mes${i}`,
+                id_predio: fracao.id_predio,
+                id_fracao: pagamento.id_fracao,
+                tipo: "Quota Ordinária",
+                data: isoMesDivida,
+                vencimento: isoMesDivida,
+                descricao: `Quota Ordinária em dívida da administração anterior — ${nomeMesDivida} (${valorPorMes.toFixed(2)}€).`,
+                valor: valorPorMes,
+                valor_fundo_reserva: Math.round(valorPorMes * 0.10 * 100) / 100,
+                estado: "Pago",
+                proprietario_nome: proprietarioNome,
+                proprietario_nif: proprietarioNif
+              });
+            }
+            await supabase.from("avisos").upsert(avisosMensaisDivida, { onConflict: "id_aviso" });
+          } else {
+            // Aviso de dívida antiga sem o padrão "(N meses × Y€)" (ex: um só
+            // mês) — não precisa de divisão, o próprio vencimento já é real.
+            await supabase.from("avisos").update({ estado: "Pago" }).eq("id_aviso", divida.id_aviso);
+          }
         } else {
           await supabase
             .from("avisos")
