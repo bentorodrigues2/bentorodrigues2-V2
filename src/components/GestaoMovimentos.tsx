@@ -2159,8 +2159,24 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                     }
                     if (pendentesFracao.length > 0) {
                       return (
-                        <p className="text-[10px] text-amber-700 font-semibold bg-amber-50 border border-amber-200 rounded px-2 py-1">
-                          ⚠ Não bate certo com nenhuma quota pendente desta fração (mais próxima: {pendentesFracao[0].valor.toFixed(2)}€ — {formatDatePT(pendentesFracao[0].vencimento || pendentesFracao[0].data)})
+                        <p className="text-[10px] text-amber-700 font-semibold bg-amber-50 border border-amber-200 rounded px-2 py-1 flex items-center justify-between gap-2">
+                          <span>⚠ Não bate certo com nenhuma quota pendente desta fração (mais próxima: {pendentesFracao[0].valor.toFixed(2)}€ — {formatDatePT(pendentesFracao[0].vencimento || pendentesFracao[0].data)})</span>
+                          {/* Só liga a "Ligar a Notas de Cobrança Específicas"
+                              quando esse painel existe mesmo (precisa de um
+                              pagamento ligado — mesma condição da linha 2026),
+                              senão o clique não tinha nenhum efeito visível. */}
+                          {idPagamentoDetalhe && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAvisosSelecionadosParaLigar([]);
+                                setLigandoAvisosMovId(mov.id_mov);
+                              }}
+                              className="underline hover:text-amber-900 shrink-0 cursor-pointer"
+                            >
+                              Ajustar manualmente
+                            </button>
+                          )}
                         </p>
                       );
                     }
