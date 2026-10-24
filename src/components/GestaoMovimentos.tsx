@@ -2180,6 +2180,26 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                         </p>
                       );
                     }
+                    // Sem NENHUM aviso Pendente — pode ser uma fração que paga
+                    // sempre adiantado (sem nunca ficar "em dívida"), como a
+                    // Fração F: já paga até fevereiro de 2027, por isso não há
+                    // nenhuma quota pendente para comparar, mas o valor deste
+                    // movimento claramente continua a mesma sequência. Infere o
+                    // mês seguinte ao último já emitido (qualquer estado) com
+                    // valor parecido, deixando claro que é uma sugestão, não
+                    // uma correspondência confirmada.
+                    const ultimoAvisoFracao = (avisos || [])
+                      .filter(a => a.id_fracao === editFracaoIdMov)
+                      .sort((a, b) => new Date(b.vencimento || b.data).getTime() - new Date(a.vencimento || a.data).getTime())[0];
+                    if (ultimoAvisoFracao && Math.abs(ultimoAvisoFracao.valor - editValorMov) < 0.05) {
+                      const dataSeguinte = new Date(`${ultimoAvisoFracao.vencimento || ultimoAvisoFracao.data}T00:00:00Z`);
+                      dataSeguinte.setUTCMonth(dataSeguinte.getUTCMonth() + 1);
+                      return (
+                        <p className="text-[10px] text-sky-700 font-semibold bg-sky-50 border border-sky-200 rounded px-2 py-1">
+                          ℹ Sem quotas pendentes (fração paga adiantadamente, já liquidada até {formatDatePT(ultimoAvisoFracao.vencimento || ultimoAvisoFracao.data)}) — valor igual à quota mensal, provavelmente referente a {dataSeguinte.toLocaleDateString("pt-PT", { month: "long", year: "numeric", timeZone: "UTC" })}.
+                        </p>
+                      );
+                    }
                     return null;
                   })()}
                 </div>
