@@ -1005,9 +1005,20 @@ async function hashesJaProcessados(hashes) {
  * reenvios genuínos como se fossem duplicados).
  */
 const JANELA_DEDUP_EMAIL_MS = 3 * 60 * 1000;
-function calcularHashEmail(cleanFrom, subject, body) {
+// anexosAssinatura: bug real confirmado em produção — dois comprovativos de
+// pagamento REAIS e distintos (mesmo condómino, mesmo valor, documentos
+// diferentes), reencaminhados pela app do banco dentro da mesma janela de 3
+// min, têm o MESMO remetente/assunto/corpo (o corpo do email do banco é só
+// um template genérico, nunca inclui os dados da transação, que só vêm no
+// PDF anexo) — sem distinguir pelos anexos, o 2º comprovativo era descartado
+// como "duplicado" antes sequer de o seu PDF ser lido, apesar de o
+// deduplicador por anexo (hashesJaProcessados, mais abaixo) já saber
+// corretamente distinguir dois PDFs diferentes. Incluir aqui uma assinatura
+// barata dos anexos (id/nome/tamanho — sem ler o conteúdo completo) garante
+// que só o mesmo email com os MESMOS anexos cai no mesmo hash.
+function calcularHashEmail(cleanFrom, subject, body, anexosAssinatura) {
   const balde = Math.floor(Date.now() / JANELA_DEDUP_EMAIL_MS);
-  return "EMAIL-" + createHash("sha256").update(`${cleanFrom}|${subject}|${(body || "").slice(0, 2000)}|${balde}`).digest("hex");
+  return "EMAIL-" + createHash("sha256").update(`${cleanFrom}|${subject}|${(body || "").slice(0, 2000)}|${balde}|${anexosAssinatura || ""}`).digest("hex");
 }
 
 /**
@@ -1560,7 +1571,13 @@ export async function processInboundEmail(payload) {
   // Gmail + eventual reencaminhamento externo para acao=inbound); sem isto
   // o condómino recebia o aviso de receção e a resposta institucional 2x,
   // e um documento real (ex: fatura) podia ficar lançado em duplicado.
-  const hashEmail = calcularHashEmail(cleanFrom, subject, textoEmail);
+  // anexosAssinatura: ver nota em calcularHashEmail — distingue 2 emails
+  // reais com o mesmo remetente/assunto/corpo mas anexos diferentes.
+  const anexosAssinatura = [
+    ...(Array.isArray(attachments) ? attachments.map((a) => `${a.id || ""}:${a.filename || ""}:${a.size || ""}`) : []),
+    ...(Array.isArray(anexosGmail) ? anexosGmail.map((a) => `${a.filename || ""}:${(a.base64 || "").length}`) : [])
+  ].sort().join("|");
+  const hashEmail = calcularHashEmail(cleanFrom, subject, textoEmail, anexosAssinatura);
   if (!(await tentarReclamarEmail(hashEmail))) {
     console.log(`[inboundProcessor] Email de ${cleanFrom} (assunto: ${subject}) já foi reclamado por outro pedido simultâneo/recente — ignorado para evitar duplicação.`);
     return { ok: true, status: 200, autoresponder: false, motivo: "email_duplicado_ja_processado" };
