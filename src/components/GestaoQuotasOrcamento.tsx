@@ -720,6 +720,7 @@ export function GestaoQuotasOrcamento({
       const avisosParaGuardar: Aviso[] = [];
       let contadorAtualizados = 0;
       let contadorDiferencas = 0;
+      let contadorIgnoradosPorValorInvalido = 0;
 
       for (const f of predioFracoes) {
         const novoValorTotal = quotaFinalRevisao(f);
@@ -732,6 +733,19 @@ export function GestaoQuotasOrcamento({
             avisosParaGuardar.push({ ...av, valor: novoValorTotal, valor_fundo_reserva: novoValorFCR });
             contadorAtualizados++;
           } else if (av.estado === "Pago" && criarDiferencaMesesPagos) {
+            // Rede de segurança: um aviso real "Pago" nunca tem valor 0/negativo
+            // — se tiver, é sinal de leitura desatualizada/corrida (confirmado
+            // em produção: a Fração F ficou com uma "Diferença de Quota" de
+            // 29,56€ em vez de ~5€, porque o valor do aviso original de
+            // janeiro não estava disponível no momento do cálculo, lendo como
+            // 0 e produzindo uma diferença igual ao valor total em vez de à
+            // diferença real). Em vez de gravar uma diferença claramente
+            // errada em silêncio, ignora-se esse aviso e conta-se à parte para
+            // o administrador poder corrigir manualmente.
+            if (!(av.valor > 0)) {
+              contadorIgnoradosPorValorInvalido++;
+              continue;
+            }
             const diferenca = Math.round((novoValorTotal - av.valor) * 100) / 100;
             if (diferenca > 0.01) {
               avisosParaGuardar.push({
@@ -784,7 +798,7 @@ export function GestaoQuotasOrcamento({
         "Aplicou uma revisão de quota às frações",
         predio.id_predio,
         loggedUser,
-        `${contadorAtualizados} aviso(s) pendente(s) atualizado(s), ${contadorDiferencas} aviso(s) de diferença criado(s), a partir de ${formatDatePT(dataVigenciaAlvo)}`
+        `${contadorAtualizados} aviso(s) pendente(s) atualizado(s), ${contadorDiferencas} aviso(s) de diferença criado(s)${contadorIgnoradosPorValorInvalido > 0 ? `, ${contadorIgnoradosPorValorInvalido} ignorado(s) por valor original inválido (requer correção manual)` : ""}, a partir de ${formatDatePT(dataVigenciaAlvo)}`
       );
 
       let emailResumo = "";
@@ -826,7 +840,7 @@ export function GestaoQuotasOrcamento({
         emailResumo = ` Email informativo enviado a ${enviados} de ${destinatarios.length} condómino(s).`;
       }
 
-      alert(`✅ Revisão aplicada: ${contadorAtualizados} aviso(s) pendente(s) atualizado(s) e ${contadorDiferencas} aviso(s) de diferença criado(s).${emailResumo}`);
+      alert(`✅ Revisão aplicada: ${contadorAtualizados} aviso(s) pendente(s) atualizado(s) e ${contadorDiferencas} aviso(s) de diferença criado(s).${emailResumo}${contadorIgnoradosPorValorInvalido > 0 ? `\n\n⚠️ ${contadorIgnoradosPorValorInvalido} aviso(s) já pago(s) foram IGNORADOS por terem um valor original inválido (0€) — não ficou nenhuma diferença criada para esses. Verifica manualmente no Mapa de Pagamentos.` : ""}`);
       setOverridesQuotaFracao({});
       // Limpa o campo que gera a tabela de pré-visualização — sem isto, o
       // valor ficava esquecido no campo depois de aplicado, e a tabela
