@@ -1573,9 +1573,19 @@ export async function processInboundEmail(payload) {
   // e um documento real (ex: fatura) podia ficar lançado em duplicado.
   // anexosAssinatura: ver nota em calcularHashEmail — distingue 2 emails
   // reais com o mesmo remetente/assunto/corpo mas anexos diferentes.
+  // anexosGmail já traz o conteúdo completo em base64 neste ponto (sem
+  // pedido de rede extra) — usa-se o hash do CONTEÚDO real, não o nome/
+  // tamanho: dois comprovativos do mesmo banco, mesmo valor, só a diferir
+  // numa referência curta, podem sair com o mesmo nome de ficheiro e um
+  // tamanho em bytes praticamente igual, o que deixaria nome+tamanho
+  // insuficiente para os distinguir (bug real reportado: exatamente este
+  // caso). Para o webhook do Resend ("attachments"), o conteúdo só é obtido
+  // mais abaixo (obterConteudoAnexo, assíncrono) — usa-se aqui o "id" do
+  // anexo dado pelo Resend, que já identifica o ficheiro real em si, nunca
+  // o nome/tamanho sozinhos.
   const anexosAssinatura = [
-    ...(Array.isArray(attachments) ? attachments.map((a) => `${a.id || ""}:${a.filename || ""}:${a.size || ""}`) : []),
-    ...(Array.isArray(anexosGmail) ? anexosGmail.map((a) => `${a.filename || ""}:${(a.base64 || "").length}`) : [])
+    ...(Array.isArray(attachments) ? attachments.map((a) => `${a.id || ""}`) : []),
+    ...(Array.isArray(anexosGmail) ? anexosGmail.map((a) => createHash("sha256").update(Buffer.from(a.base64 || "", "base64")).digest("hex")) : [])
   ].sort().join("|");
   const hashEmail = calcularHashEmail(cleanFrom, subject, textoEmail, anexosAssinatura);
   if (!(await tentarReclamarEmail(hashEmail))) {
