@@ -2131,6 +2131,41 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                       </option>
                     ))}
                   </select>
+                  {/* Indicação automática de a que mês(es) de quota pendente
+                      este valor corresponde — já existia antes, pedido
+                      explícito do administrador para voltar a tê-la, para
+                      confirmar mais facilmente sem ter de clicar em "Ligar a
+                      Notas de Cobrança Específicas" só para ver. */}
+                  {editFracaoIdMov && editValorMov > 0 && (() => {
+                    const pendentesFracao = (avisos || [])
+                      .filter(a => a.id_fracao === editFracaoIdMov && a.estado === "Pendente")
+                      .sort((a, b) => new Date(a.vencimento || a.data).getTime() - new Date(b.vencimento || b.data).getTime());
+                    const unico = pendentesFracao.find(a => Math.abs(a.valor - editValorMov) < 0.05);
+                    const combinacao = !unico ? selecionarAvisosCobertosPeloValor(pendentesFracao, editValorMov) : [];
+                    const combinacaoBate = combinacao.length >= 1 && Math.abs(combinacao.reduce((s, a) => s + a.valor, 0) - editValorMov) < 0.05;
+                    if (unico) {
+                      return (
+                        <p className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 rounded px-2 py-1">
+                          ✓ Corresponde à quota de {formatDatePT(unico.vencimento || unico.data)} — {unico.descricao}
+                        </p>
+                      );
+                    }
+                    if (combinacaoBate) {
+                      return (
+                        <p className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 rounded px-2 py-1">
+                          ✓ Corresponde a {combinacao.length} meses: {combinacao.map(a => formatDatePT(a.vencimento || a.data)).join(", ")}
+                        </p>
+                      );
+                    }
+                    if (pendentesFracao.length > 0) {
+                      return (
+                        <p className="text-[10px] text-amber-700 font-semibold bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                          ⚠ Não bate certo com nenhuma quota pendente desta fração (mais próxima: {pendentesFracao[0].valor.toFixed(2)}€ — {formatDatePT(pendentesFracao[0].vencimento || pendentesFracao[0].data)})
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
 
                 <div className="space-y-1">
