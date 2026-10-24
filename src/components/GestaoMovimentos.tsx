@@ -453,7 +453,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
     }
   };
 
-  const confirmarPagamentoEEnviarRecibo = async (mov: Movimento) => {
+  const confirmarPagamentoEEnviarRecibo = async (mov: Movimento, vencimentoAlvo?: string) => {
     let idPagamento = mov.descricao?.match(/\[pagamento:([^\]]+)\]/)?.[1];
 
     setConfirmandoPagamentoMovId(mov.id_mov);
@@ -487,7 +487,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
       const resp = await fetch("/api/pagamento?acao=confirmar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_pagamento: idPagamento })
+        body: JSON.stringify({ id_pagamento: idPagamento, ...(vencimentoAlvo ? { vencimento_alvo: vencimentoAlvo } : {}) })
       });
       const data = await resp.json();
 
@@ -1613,6 +1613,13 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
   const [editFracaoIdMov, setEditFracaoIdMov] = useState<string>("");
   const [editDataMov, setEditDataMov] = useState<string>("");
   const [aGuardarDetalheMov, setAGuardarDetalheMov] = useState(false);
+  // Mês a que um adiantamento se refere quando a fração não tem nenhum
+  // aviso Pendente para cruzar automaticamente (ex: fração já paga meses à
+  // frente) — sem isto, confirmar este pagamento criava sempre um aviso
+  // novo na data real da transferência bancária, nunca no mês real do
+  // adiantamento (pedido explícito do administrador: mostrar E deixar
+  // corrigir o mês antes de confirmar, não só informar).
+  const [vencimentoAlvoDetalheMov, setVencimentoAlvoDetalheMov] = useState<string>("");
 
   // Anexar fatura/comprovativo a uma Despesa para a justificar — facultativo,
   // não mexe no saldo (ao contrário do Movimento Cego, esta despesa já está
@@ -1628,6 +1635,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
     setEditDescricaoMov(m.descricao);
     setEditFracaoIdMov(m.id_fracao || "");
     setEditDataMov(m.data || "");
+    setVencimentoAlvoDetalheMov("");
     setFaturaDespesaFile(null);
     // A descrição real de um débito direto reconhecido por IA/extrato vem
     // sempre no formato "DÉBITO DIRETO-<entidade real>-<referência>" (ex:
@@ -2182,25 +2190,53 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                     }
                     // Sem NENHUM aviso Pendente — pode ser uma fração que paga
                     // sempre adiantado (sem nunca ficar "em dívida"), como a
-                    // Fração F: já paga até fevereiro de 2027, por isso não há
-                    // nenhuma quota pendente para comparar, mas o valor deste
-                    // movimento claramente continua a mesma sequência. Infere o
-                    // mês seguinte ao último já emitido (qualquer estado) com
-                    // valor parecido, deixando claro que é uma sugestão, não
-                    // uma correspondência confirmada.
+                    // Fração F: já paga até fevereiro de 2027. Sem nenhum
+                    // aviso para cruzar automaticamente, confirmar este
+                    // pagamento sem mais nada criava sempre um aviso novo na
+                    // data real da transferência bancária, nunca no mês real
+                    // do adiantamento — por isso, em vez de só informar,
+                    // mostra o seletor de mês (mesmo padrão já usado no
+                    // Assistente de Extração de Extratos) para escolher e
+                    // confirmar já com o mês certo.
                     const ultimoAvisoFracao = (avisos || [])
                       .filter(a => a.id_fracao === editFracaoIdMov)
                       .sort((a, b) => new Date(b.vencimento || b.data).getTime() - new Date(a.vencimento || a.data).getTime())[0];
-                    if (ultimoAvisoFracao && Math.abs(ultimoAvisoFracao.valor - editValorMov) < 0.05) {
-                      const dataSeguinte = new Date(`${ultimoAvisoFracao.vencimento || ultimoAvisoFracao.data}T00:00:00Z`);
-                      dataSeguinte.setUTCMonth(dataSeguinte.getUTCMonth() + 1);
-                      return (
-                        <p className="text-[10px] text-sky-700 font-semibold bg-sky-50 border border-sky-200 rounded px-2 py-1">
-                          ℹ Sem quotas pendentes (fração paga adiantadamente, já liquidada até {formatDatePT(ultimoAvisoFracao.vencimento || ultimoAvisoFracao.data)}) — valor igual à quota mensal, provavelmente referente a {dataSeguinte.toLocaleDateString("pt-PT", { month: "long", year: "numeric", timeZone: "UTC" })}.
+                    const sugestaoValorBate = ultimoAvisoFracao && Math.abs(ultimoAvisoFracao.valor - editValorMov) < 0.05;
+                    const baseSugestao = sugestaoValorBate
+                      ? new Date(`${ultimoAvisoFracao!.vencimento || ultimoAvisoFracao!.data}T00:00:00Z`)
+                      : new Date();
+                    if (sugestaoValorBate) baseSugestao.setUTCMonth(baseSugestao.getUTCMonth() + 1);
+                    const opcoesMesDetalhe = Array.from({ length: 4 }, (_, i) => {
+                      const d = new Date(Date.UTC(baseSugestao.getUTCFullYear(), baseSugestao.getUTCMonth() + i, 8));
+                      const valorOpcao = d.toISOString().split("T")[0];
+                      const label = d.toLocaleDateString("pt-PT", { month: "long", year: "numeric", timeZone: "UTC" });
+                      return { valor: valorOpcao, label: label.charAt(0).toUpperCase() + label.slice(1) };
+                    });
+                    const mesEscolhidoDetalhe = vencimentoAlvoDetalheMov || opcoesMesDetalhe[0].valor;
+                    return (
+                      <div className="border border-sky-200 bg-sky-50 rounded-lg p-2 space-y-1.5">
+                        <p className="text-[10px] text-sky-800">
+                          {ultimoAvisoFracao
+                            ? `Sem quotas pendentes (fração paga adiantadamente, já liquidada até ${formatDatePT(ultimoAvisoFracao.vencimento || ultimoAvisoFracao.data)}) — indica a que mês este pagamento se refere para confirmar com o mês certo:`
+                            : "Sem nenhum aviso em aberto para comparar — indica a que mês este pagamento se refere para confirmar com o mês certo:"}
                         </p>
-                      );
-                    }
-                    return null;
+                        <select
+                          value={mesEscolhidoDetalhe}
+                          onChange={(e) => setVencimentoAlvoDetalheMov(e.target.value)}
+                          className="w-full border border-sky-300 rounded-lg px-2 py-1.5 text-[10px] bg-white"
+                        >
+                          {opcoesMesDetalhe.map(o => <option key={o.valor} value={o.valor}>{o.label}</option>)}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => confirmarPagamentoEEnviarRecibo(mov, mesEscolhidoDetalhe)}
+                          disabled={confirmandoPagamentoMovId === mov.id_mov}
+                          className="w-full bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          {confirmandoPagamentoMovId === mov.id_mov ? "A confirmar..." : `Confirmar como ${opcoesMesDetalhe.find(o => o.valor === mesEscolhidoDetalhe)?.label} & Emitir Recibo`}
+                        </button>
+                      </div>
+                    );
                   })()}
                 </div>
 
