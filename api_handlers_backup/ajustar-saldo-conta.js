@@ -38,7 +38,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ ok: true, conta });
   } catch (err) {
-    console.error("Erro em api/contas:", err);
+    console.error("Erro em ajustar-saldo-conta:", err);
     return res.status(500).json({ error: err?.message || String(err) });
   }
 }

@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   // feitas por quem gere o condomínio: sem esta distinção, qualquer conta
   // autenticada conseguia confirmar como paga ou emitir cobranças de
   // qualquer fração/prédio.
-  if (acao === "confirmar" || acao === "emitir-notas-atraso" || acao === "emitir-notas-extraordinarias-atraso" || acao === "processar-agendamento-avisos" || acao === "dividir-pagamento-meses" || acao === "desfazer-confirmacao" || acao === "recalcular-meses" || acao === "reconciliar-saldo") {
+  if (acao === "confirmar" || acao === "emitir-notas-atraso" || acao === "emitir-notas-extraordinarias-atraso" || acao === "processar-agendamento-avisos" || acao === "dividir-pagamento-meses" || acao === "desfazer-confirmacao" || acao === "recalcular-meses" || acao === "reconciliar-saldo" || acao === "ajustar-saldo") {
     const chamador = await exigirSessaoComPapel(req, res, ["ADMIN", "GESTOR", "EMPRESA_GESTORA"]);
     if (!chamador) return;
   } else {
@@ -66,9 +66,14 @@ export default async function handler(req, res) {
       return mod.default(req, res);
     }
 
+    if (acao === "ajustar-saldo") {
+      const mod = await import("../api_handlers_backup/ajustar-saldo-conta.js");
+      return mod.default(req, res);
+    }
+
     return res.status(400).json({
       ok: false,
-      error: "Ação inválida. Use lancar | confirmar | emitir-notas-atraso | emitir-notas-extraordinarias-atraso | processar-agendamento-avisos | dividir-pagamento-meses | desfazer-confirmacao | recalcular-meses | reconciliar-saldo"
+      error: "Ação inválida. Use lancar | confirmar | emitir-notas-atraso | emitir-notas-extraordinarias-atraso | processar-agendamento-avisos | dividir-pagamento-meses | desfazer-confirmacao | recalcular-meses | reconciliar-saldo | ajustar-saldo"
     });
 
   } catch (err) {

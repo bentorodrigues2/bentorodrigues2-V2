@@ -406,7 +406,7 @@ export async function deleteContaFromSupabase(idConta: string): Promise<boolean>
 export async function ajustarSaldoContaReal(idConta: string, delta: number): Promise<Conta | null> {
   if (!isSupabaseConfigured() || !idConta || !delta) return null;
   try {
-    const resp = await fetch("/api/contas", {
+    const resp = await fetch("/api/pagamento?acao=ajustar-saldo", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id_conta: idConta, delta })
