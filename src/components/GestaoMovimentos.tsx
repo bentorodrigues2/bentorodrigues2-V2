@@ -163,6 +163,13 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
 
   const [aprovandoCondominoIndex, setAprovandoCondominoIndex] = useState<number | null>(null);
   const [aprovandoTodosCondominos, setAprovandoTodosCondominos] = useState(false);
+  // Bug real confirmado em produção: o botão "Lançar" de uma despesa do
+  // extrato não tinha nenhuma proteção contra duplo-clique — duas chamadas
+  // a lancarItemExtraido quase simultâneas corriam ambas até ao fim antes
+  // de o item sair de extractedItems (só acontece no fim da cadeia async),
+  // lançando o mesmo pagamento duas vezes (ex: NOWO debitado 2x na mesma
+  // conta). Desativa o botão enquanto este índice específico está a lançar.
+  const [lancandoItemIndex, setLancandoItemIndex] = useState<number | null>(null);
 
   // Caixa de Entrada IA (Gmail) States - Base limpa sem dados de simulação
   const [emails, setEmails] = useState<SimulatedEmail[]>([]);
@@ -3290,25 +3297,32 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                         <div className="flex items-center space-x-1.5">
                           <span className="text-[10px] text-slate-600 font-semibold">Lança em: <strong className="text-slate-700">{contas.find(c => c.id_conta === contaExtratoId)?.banco}</strong></span>
                           <button
-                            onClick={() => {
-                              // Pagamento de condómino (fração escolhida/sugerida): tem de
-                              // passar pelo pipeline real de confirmação — liquidar os
-                              // avisos (quotas) correspondentes, gerar o recibo oficial e
-                              // enviá-lo por email — em vez de lancarItemExtraido, que só
-                              // sabe lançar um movimento genérico (nunca cruzava com as
-                              // quotas pendentes nem atualizava o Mapa de Pagamentos,
-                              // apesar de a fração e os avisos já virem identificados
-                              // aqui em cima). Bug real confirmado em produção.
-                              if (item.tipo === "Receita" && item.fracaoSugeridaId) {
-                                aprovarPagamentoCondomino(item, index);
-                                return;
+                            onClick={async () => {
+                              if (lancandoItemIndex === index) return;
+                              setLancandoItemIndex(index);
+                              try {
+                                // Pagamento de condómino (fração escolhida/sugerida): tem de
+                                // passar pelo pipeline real de confirmação — liquidar os
+                                // avisos (quotas) correspondentes, gerar o recibo oficial e
+                                // enviá-lo por email — em vez de lancarItemExtraido, que só
+                                // sabe lançar um movimento genérico (nunca cruzava com as
+                                // quotas pendentes nem atualizava o Mapa de Pagamentos,
+                                // apesar de a fração e os avisos já virem identificados
+                                // aqui em cima). Bug real confirmado em produção.
+                                if (item.tipo === "Receita" && item.fracaoSugeridaId) {
+                                  await aprovarPagamentoCondomino(item, index);
+                                  return;
+                                }
+                                const fornSel = document.getElementById(`extract-forn-select-${index}`) as HTMLSelectElement | null;
+                                const motivoInput = document.getElementById(`extract-forn-motivo-${index}`) as HTMLInputElement | null;
+                                const faturaInput = document.getElementById(`extract-fatura-${index}`) as HTMLInputElement | null;
+                                await lancarItemExtraido(item, contaExtratoId, fornSel?.value || undefined, true, motivoInput?.value?.trim() || undefined, faturaInput?.files?.[0] || undefined);
+                              } finally {
+                                setLancandoItemIndex(null);
                               }
-                              const fornSel = document.getElementById(`extract-forn-select-${index}`) as HTMLSelectElement | null;
-                              const motivoInput = document.getElementById(`extract-forn-motivo-${index}`) as HTMLInputElement | null;
-                              const faturaInput = document.getElementById(`extract-fatura-${index}`) as HTMLInputElement | null;
-                              lancarItemExtraido(item, contaExtratoId, fornSel?.value || undefined, true, motivoInput?.value?.trim() || undefined, faturaInput?.files?.[0] || undefined);
                             }}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white p-1 rounded transition-colors cursor-pointer"
+                            disabled={lancandoItemIndex === index}
+                            className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white p-1 rounded transition-colors cursor-pointer"
                             title="Lançar Movimento Validado"
                             aria-label="Lançar Movimento Validado"
                           >
