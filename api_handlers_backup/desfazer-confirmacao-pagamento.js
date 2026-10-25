@@ -66,11 +66,21 @@ export default async function handler(req, res) {
 
     // 2.1) Reverte o crédito feito na conta bancária quando este pagamento
     // foi confirmado (ver confirmar-pagamento.js/dividir-pagamento-meses.js)
-    // — usa a mesma regra de escolha de conta (determinística, dá sempre o
-    // mesmo resultado para a mesma fração/tipo), para debitar exatamente a
-    // conta que tinha sido creditada.
+    // — debita a conta REAL já gravada no próprio movimento ligado, nunca
+    // escolherContaPorTipo. Bug real confirmado em produção: esta função
+    // assumia que "a mesma regra de escolha, aplicada da mesma forma, dá
+    // sempre a conta certa" — mas se o crédito original tiver usado a conta
+    // real do movimento (correção aplicada aos outros ficheiros), refazer
+    // aqui a adivinhação debitava a conta ERRADA, deixando a conta
+    // realmente creditada sem nunca ser revertida.
     try {
-      if (pagamento.id_fracao) {
+      const { data: movimentoLigado } = await supabase
+        .from("movimentos")
+        .select("id_conta")
+        .ilike("descricao", `%[pagamento:${id_pagamento}]%`)
+        .maybeSingle();
+      let idContaAlvo = movimentoLigado?.id_conta || null;
+      if (!idContaAlvo && pagamento.id_fracao) {
         const { data: fracaoDoPagamento } = await supabase
           .from("fracoes")
           .select("id_predio")
@@ -81,11 +91,11 @@ export default async function handler(req, res) {
             .from("contas")
             .select("id_conta, is_principal")
             .eq("id_predio", fracaoDoPagamento.id_predio);
-          const contaAlvo = escolherContaPorTipo(contasPredio, "Quota Ordinária");
-          if (contaAlvo?.id_conta) {
-            await ajustarSaldoConta(contaAlvo.id_conta, -Number(pagamento.valor || 0));
-          }
+          idContaAlvo = escolherContaPorTipo(contasPredio, "Quota Ordinária")?.id_conta || null;
         }
+      }
+      if (idContaAlvo) {
+        await ajustarSaldoConta(idContaAlvo, -Number(pagamento.valor || 0));
       }
     } catch (errSaldo) {
       console.warn("[desfazer-confirmacao-pagamento] Aviso ao debitar saldo da conta:", errSaldo?.message || errSaldo);

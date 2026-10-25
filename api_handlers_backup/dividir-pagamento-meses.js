@@ -250,11 +250,16 @@ export default async function handler(req, res) {
     // liga o movimento já existente como justificado — nunca se criam N
     // pagamentos/movimentos para uma única entrada de dinheiro.
     await supabase.from("pagamentos").update({ estado: "confirmado", confirmado_em: new Date().toISOString() }).eq("id", id_pagamento);
+    // Conta REAL onde o dinheiro entrou, gravada no próprio movimento —
+    // nunca adivinhada (ver nota no passo de creditar saldo abaixo).
+    let idContaRealMovimento = null;
     try {
-      await supabase
+      const { data: movsLigados } = await supabase
         .from("movimentos")
         .update({ estado: "Justificado", estado_conciliacao: "CONCILIADO", is_movimento_cego: false })
-        .ilike("descricao", `%[pagamento:${id_pagamento}]%`);
+        .ilike("descricao", `%[pagamento:${id_pagamento}]%`)
+        .select("id_conta");
+      idContaRealMovimento = movsLigados?.[0]?.id_conta || null;
     } catch (errMovLink) {
       console.warn("[dividir-pagamento-meses] Aviso ao atualizar movimento ligado:", errMovLink?.message || errMovLink);
     }
@@ -271,7 +276,14 @@ export default async function handler(req, res) {
     // movimento e emitir o recibo — creditar aqui duplicaria o valor.
     if (!ja_reconciliado) {
       try {
-        const contaAlvo = escolherContaPorTipo(contasPredio, "Quota Ordinária");
+        // A conta creditada é sempre a conta real do movimento ligado
+        // quando existe — nunca escolherContaPorTipo (que assume sempre a
+        // conta principal). Bug real confirmado em produção repetidas
+        // vezes: pagamentos recebidos noutra conta ficavam creditados na
+        // conta errada por adivinhação.
+        const contaAlvo = idContaRealMovimento
+          ? { id_conta: idContaRealMovimento }
+          : escolherContaPorTipo(contasPredio, "Quota Ordinária");
         if (contaAlvo?.id_conta) {
           await ajustarSaldoConta(contaAlvo.id_conta, valorTotal);
         }

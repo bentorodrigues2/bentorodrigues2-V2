@@ -84,6 +84,11 @@ export default async function handler(req, res) {
     // "Pago" automaticamente nunca ficava rastreável até ao movimento
     // bancário real que o liquidou.
     let movimentoLigadoId = null;
+    // A conta REAL onde o dinheiro entrou de facto (gravada no próprio
+    // movimento do extrato/email, nunca adivinhada) — ver nota no passo
+    // 2.2 abaixo sobre o bug de creditar sempre a conta "Quota Ordinária"
+    // por omissão, mesmo quando o movimento real pertence a outra conta.
+    let idContaRealMovimento = null;
     try {
       const { data: movsLigados } = await supabase
         .from("movimentos")
@@ -93,8 +98,9 @@ export default async function handler(req, res) {
           is_movimento_cego: false
         })
         .ilike("descricao", `%[pagamento:${id_pagamento}]%`)
-        .select("id_movimento");
+        .select("id_movimento, id_conta");
       movimentoLigadoId = movsLigados?.[0]?.id_movimento || null;
+      idContaRealMovimento = movsLigados?.[0]?.id_conta || null;
     } catch (errMovLink) {
       console.warn("[confirmar-pagamento] Aviso ao atualizar movimento ligado:", errMovLink?.message || errMovLink);
     }
@@ -309,15 +315,24 @@ export default async function handler(req, res) {
     // (aprovarPagamentoCondomino, no Assistente de Extração de Extratos) —
     // esse fluxo já credita o saldo da CONTA CERTA diretamente (a conta do
     // separador/extrato ativo) antes de chamar este endpoint; creditar aqui
-    // outra vez duplicava o valor E usava sempre a conta "Quota Ordinária"
-    // fixa, mesmo quando o pagamento era de Quota Extraordinária numa conta
-    // diferente (bug confirmado: inflacionava o saldo a dobrar na conta
-    // errada). Continua ativo para o outro fluxo (confirmarPagamentoEEnviarRecibo,
-    // comprovativos "Pagamentos por Confirmar"), que nunca credita o saldo
-    // antecipadamente.
+    // outra vez duplicava o valor. Continua ativo para o outro fluxo
+    // (confirmarPagamentoEEnviarRecibo, comprovativos "Pagamentos por
+    // Confirmar"), que nunca credita o saldo antecipadamente.
+    //
+    // A conta creditada é SEMPRE a conta real já gravada no movimento
+    // ligado (idContaRealMovimento) quando existe — nunca escolherContaPorTipo
+    // (que assume sempre "conta principal" para Quota Ordinária). Bug real
+    // confirmado em produção repetidas vezes: um pagamento recebido na
+    // conta de poupança/obras ficava creditado na conta corrente principal
+    // por adivinhação, inflacionando o saldo errado e deixando a conta real
+    // sem refletir o dinheiro que de facto recebeu. A adivinhação só serve
+    // de último recurso quando o próprio movimento nunca teve conta
+    // atribuída (ver backfill "rede de segurança" acima).
     if (!(avisosIdsFechados && avisosIdsFechados.length)) {
       try {
-        const contaAlvo = escolherContaPorTipo(contasPredio, "Quota Ordinária");
+        const contaAlvo = idContaRealMovimento
+          ? { id_conta: idContaRealMovimento }
+          : escolherContaPorTipo(contasPredio, "Quota Ordinária");
         if (contaAlvo?.id_conta) {
           await ajustarSaldoConta(contaAlvo.id_conta, Number(pagamento.valor || 0));
         }
