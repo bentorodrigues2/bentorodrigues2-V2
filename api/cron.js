@@ -1,4 +1,4 @@
-import { emitirQuotasMensais, emitirNotasEmAtrasoFracao, emitirNotasExtraordinariasEmAtraso, processarAgendamentosAvisos, enviarLembretesQuotas, enviarAvisoVencimentoHoje, enviarAvisoPrazoUltrapassado, avisarQuotasEmMora, enviarFelicitacoesAniversario, sincronizarOrcamentosVigentes, processarContratosFornecedores, arquivarConversasAntigas, enviarNotasCorrecaoNovaQuota, alertarInspecoesEquipamentosAVencer } from "../server/lib/cronService.js";
+import { emitirQuotasMensais, emitirNotasEmAtrasoFracao, emitirNotasExtraordinariasEmAtraso, processarAgendamentosAvisos, enviarLembretesQuotas, enviarAvisoVencimentoHoje, enviarAvisoPrazoUltrapassado, avisarQuotasEmMora, enviarFelicitacoesAniversario, sincronizarOrcamentosVigentes, processarContratosFornecedores, arquivarConversasAntigas, enviarNotasCorrecaoNovaQuota, alertarInspecoesEquipamentosAVencer, alertarApolicesSegurosAVencer } from "../server/lib/cronService.js";
 
 // Ação pontual (agendada para 2026-09-20 09:00 Lisboa, ver vercel.json —
 // "0 8 20 9 *", só volta a coincidir com esta data daqui a um ano) pedida
@@ -131,6 +131,13 @@ export default async function handler(req, res) {
     // vencer (elevadores, extintores, portas corta-fogo, etc.).
     if (forcar === "inspecoes-equipamentos" || (!forcar && true)) {
       resultados.push(await alertarInspecoesEquipamentosAVencer());
+    }
+
+    // Todos os dias: alerta a administração 30 dias antes de uma apólice de
+    // seguro (de fração ou de partes comuns) vencer — antes só gerava
+    // notificação se o administrador abrisse manualmente o ecrã de Seguros.
+    if (forcar === "apolices-seguros" || (!forcar && true)) {
+      resultados.push(await alertarApolicesSegurosAVencer());
     }
 
     // Todos os dias: arquiva conversas de mensagens sem atividade há mais

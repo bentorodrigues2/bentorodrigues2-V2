@@ -272,6 +272,19 @@ export default async function handler(req, res) {
     // Disparar uma notificação push para todo um prédio (ou fração) é uma
     // ação de comunicação em massa — só gestão pode acionar, não qualquer
     // conta autenticada.
+    //
+    // OBRIGATÓRIO para quem adicionar um novo envio de push: se o conteúdo
+    // for sobre dinheiro (quota, dívida, pagamento, recibo) passe
+    // categoria: "optional_finances"; se for sobre limpezas/vistorias passe
+    // "optional_cleaning"; sobre reservas, "optional_reservations" (já
+    // usado em PWASimulator.tsx). Sem isto, o checklist de preferências que
+    // o condómino vê em Perfil → Notificações ("Financeiro"/"Limpezas") não
+    // tem nenhum efeito real — confirmado em auditoria: hoje só existe UM
+    // push real com categoria definida em todo o código. Um push sem
+    // categoria (ou com uma categoria fora destas 3) é sempre enviado a
+    // todos, nunca bloqueado por preferência — correto para avisos
+    // críticos (nova ocorrência, mensagem da administração), errado para
+    // qualquer coisa que o condómino devesse poder desligar.
     const chamador = await exigirSessaoComPapel(req, res, ["ADMIN", "GESTOR", "EMPRESA_GESTORA"]);
     if (!chamador) return;
     try {

@@ -317,10 +317,11 @@ async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, ano
 
   if (!proprietario?.email) return { ok: true, emailEnviado: false };
 
-  const { count: totalNotas } = await supabase
-    .from("avisos")
-    .select("id_aviso", { count: "exact", head: true })
-    .eq("tipo", "Quota Ordinária");
+  // Numeração atómica (obter_proximo_numero_nota, tabela nota_sequencias) —
+  // antes um COUNT(*) direto, a mesma condição de corrida já confirmada em
+  // produção com os recibos (BR2 00114 duplicado) e corrigida lá com
+  // obter_proximo_numero_recibo; faltava aqui, nas notas de cobrança.
+  const { data: totalNotas } = await supabase.rpc("obter_proximo_numero_nota", { p_tipo: "Quota Ordinária" });
 
   const sequencial = String(totalNotas || 1).padStart(5, "0");
   const idNota = `${prefixoEdificio} ${sequencial}`;
@@ -435,10 +436,8 @@ async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, ano
 async function emitirNotaExtraordinariaSeparada({ predio, f, proprietario, avisoExtra, prefixoEdificio, contas }) {
   if (!proprietario?.email) return { ok: true, emailEnviado: false };
 
-  const { count: totalNotas } = await supabase
-    .from("avisos")
-    .select("id_aviso", { count: "exact", head: true })
-    .eq("tipo", "Quota Extraordinária");
+  // Numeração atómica — ver nota junto do mesmo padrão em emitirNotaCobrancaFracaoMes.
+  const { data: totalNotas } = await supabase.rpc("obter_proximo_numero_nota", { p_tipo: "Quota Extraordinária" });
 
   const sequencial = String(totalNotas || 1).padStart(5, "0");
   const idNota = `${prefixoEdificio} ${sequencial}`;
@@ -555,10 +554,8 @@ export async function reenviarNotaCobrancaCorrigida(id_predio, aviso) {
   const valorTotal = Number(aviso.valor || 0);
   const valorOrdinario = Math.round((valorTotal - valorFCR) * 100) / 100;
 
-  const { count: totalNotas } = await supabase
-    .from("avisos")
-    .select("id_aviso", { count: "exact", head: true })
-    .eq("tipo", "Quota Ordinária");
+  // Numeração atómica — ver nota junto do mesmo padrão em emitirNotaCobrancaFracaoMes.
+  const { data: totalNotas } = await supabase.rpc("obter_proximo_numero_nota", { p_tipo: "Quota Ordinária" });
   const sequencial = String(totalNotas || 1).padStart(5, "0");
   const idNota = `${prefixoEdificio} ${sequencial}`;
 
@@ -1159,6 +1156,93 @@ export async function alertarInspecoesEquipamentosAVencer() {
   }
 
   return { job: "ALERTAR_INSPECOES_EQUIPAMENTOS", ...resultado };
+}
+
+/**
+ * Deduplicação permanente (não "só hoje") por seguro+validade — sem data de
+ * referência fixa, ao contrário de jaExecutadoHoje, porque uma apólice só
+ * deve disparar UM alerta por cada período de validade. Quando a apólice é
+ * renovada (apolice_validade muda), a referência muda com ela, por isso o
+ * alerta volta a disparar naturalmente para a validade nova.
+ */
+async function jaFoiAlertadoVencimentoSeguro(idSeguro, dataValidade) {
+  const { data } = await supabase
+    .from("ai_auditoria")
+    .select("id_log")
+    .eq("origem", "seguro_vencimento_alertado")
+    .eq("referencia", `${idSeguro}:${dataValidade}`)
+    .limit(1);
+  return Boolean(data && data.length);
+}
+
+/**
+ * Diário: alerta a administração 30 dias antes de uma apólice de seguro
+ * (de fração ou de partes comuns) vencer — ao contrário dos contratos de
+ * fornecedores e das inspeções técnicas (ambos já com alerta automático
+ * diário), uma apólice só gerava notificação se o administrador abrisse
+ * manualmente o ecrã e clicasse no botão. Mesmo padrão exato de
+ * alertarInspecoesEquipamentosAVencer, adaptado às 2 tabelas de seguros.
+ */
+export async function alertarApolicesSegurosAVencer() {
+  const hojeISO = new Date().toISOString().split("T")[0];
+  const predios = await obterPredios();
+  const resultado = { alertas_enviados: 0, detalhe: [] };
+  const PRAZO_ALERTA_DIAS = 30;
+
+  for (const predio of predios) {
+    const { data: admins } = await supabase
+      .from("profiles")
+      .select("email, nome")
+      .in("role", ["ADMIN", "EMPRESA_GESTORA", "GESTOR"])
+      .or(`id_predio.eq.${predio.id_predio},id_predio.is.null`);
+    const destinatarios = (admins || []).filter((a) => a.email);
+    if (destinatarios.length === 0) continue;
+
+    const fracoes = await obterFracoesDoPredio(predio.id_predio);
+    const idsFracoes = fracoes.map((f) => f.id_fracao);
+
+    const itensAVerificar = [];
+    if (idsFracoes.length > 0) {
+      const { data: segurosFracoes } = await supabase
+        .from("seguros_fracoes")
+        .select("id, fracao_id, seguradora, apolice_numero, apolice_validade, estado_validacao")
+        .in("fracao_id", idsFracoes)
+        .not("apolice_validade", "is", null);
+      for (const s of (segurosFracoes || []).filter((s) => s.estado_validacao !== "Expirado" && s.estado_validacao !== "Recusado")) {
+        const fracaoNome = fracoes.find((f) => f.id_fracao === s.fracao_id)?.fracao_nome || s.fracao_id;
+        itensAVerificar.push({ ...s, etiqueta: `Seguro da Fração ${fracaoNome} (${s.seguradora || "seguradora não identificada"})` });
+      }
+    }
+
+    const { data: segurosComuns } = await supabase
+      .from("seguros_partes_comuns")
+      .select("id, seguradora, apolice_numero, apolice_validade, estado")
+      .eq("condominio_id", predio.id_predio)
+      .not("apolice_validade", "is", null);
+    for (const s of (segurosComuns || []).filter((s) => s.estado !== "Expirado" && s.estado !== "Cancelado")) {
+      itensAVerificar.push({ ...s, etiqueta: `Seguro de Partes Comuns (${s.seguradora || "seguradora não identificada"})` });
+    }
+
+    for (const item of itensAVerificar) {
+      const diasRestantes = Math.ceil((new Date(item.apolice_validade).getTime() - new Date(hojeISO).getTime()) / 86400000);
+      if (diasRestantes > PRAZO_ALERTA_DIAS) continue;
+      if (await jaFoiAlertadoVencimentoSeguro(item.id, item.apolice_validade)) continue;
+
+      await marcarExecutadoHoje("seguro_vencimento_alertado", `${item.id}:${item.apolice_validade}`, item.etiqueta, predio.id_predio);
+      resultado.alertas_enviados += 1;
+      resultado.detalhe.push({ id_seguro: item.id, acao: "alerta", dias_restantes: diasRestantes });
+
+      const html = gerarHtmlResposta(
+        "Administração",
+        `O ${item.etiqueta} — apólice n.º ${item.apolice_numero || "?"} (${predio.nome}) ${diasRestantes < 0 ? `<strong>está vencido há ${Math.abs(diasRestantes)} dias</strong>` : `vence a <strong>${item.apolice_validade}</strong> (dentro de ${diasRestantes} dias)`}. Contacte a seguradora ou o mediador para renovar e carregue a nova apólice em Seguros & Sinistros assim que a tiver.`
+      );
+      for (const dest of destinatarios) {
+        await enviarEmailSemAnexo({ to: dest.email, subject: `Apólice de seguro a vencer em ${diasRestantes} dias — ${item.etiqueta}`, html }).catch(() => {});
+      }
+    }
+  }
+
+  return { job: "ALERTAR_APOLICES_SEGUROS", ...resultado };
 }
 
 /**
@@ -1842,10 +1926,8 @@ export async function enviarNotasCorrecaoNovaQuota(id_predio, vencimentoISO) {
       const valorTotal = Number(aviso.valor || 0);
       const valorOrdinario = Math.round((valorTotal - valorFCR) * 100) / 100;
 
-      const { count: totalNotas } = await supabase
-        .from("avisos")
-        .select("id_aviso", { count: "exact", head: true })
-        .eq("tipo", "Quota Ordinária");
+      // Numeração atómica — ver nota junto do mesmo padrão em emitirNotaCobrancaFracaoMes.
+      const { data: totalNotas } = await supabase.rpc("obter_proximo_numero_nota", { p_tipo: "Quota Ordinária" });
       const sequencial = String(totalNotas || 1).padStart(5, "0");
 
       const nota = {

@@ -965,16 +965,31 @@ Com os meus cumprimentos,
       return;
     }
 
-    // Numeração a começar em 31 (30 atas reais anteriores a esta plataforma)
-    // — nunca reutiliza um número já usado, mesmo que essa ata tenha sido
-    // criada fora de ordem. Como não há coluna numero_ata na tabela (DDL
-    // bloqueado), o número fica gravado como a própria primeira linha do
-    // texto da ata, e é isso que se procura aqui em todas as já realizadas.
-    const BASE_NUMERACAO_ATAS = 30;
-    const numerosExistentes = reunioes
-      .map(r => parseInt(extrairNumeroAtaDoTexto(r.ata) || "0", 10))
-      .filter(n => n > 0);
-    const ataNumero = String(Math.max(BASE_NUMERACAO_ATAS, ...numerosExistentes) + 1);
+    // Numeração atómica (obter_proximo_numero_ata, tabela ata_sequencias,
+    // via /api/pdf?acao=reservar-numero-ata) — antes calculada aqui no
+    // cliente com Math.max sobre os números já vistos na lista local de
+    // reuniões, nunca atómico: 2 administradores a finalizar 2 atas ao
+    // mesmo tempo (ou um duplo-clique) podiam sair com o mesmo número,
+    // grave numa ata (valor de título executivo). Começa em 31 (30 atas
+    // reais anteriores a esta plataforma). Como não há coluna numero_ata na
+    // tabela "reunioes" (alteração de schema bloqueada), o número continua
+    // gravado como a própria primeira linha do texto da ata.
+    let ataNumero: string;
+    try {
+      const respNumero = await fetch("/api/pdf?acao=reservar-numero-ata", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_predio: predio.id_predio, base: 31 })
+      });
+      const dadosNumero = await respNumero.json();
+      if (!respNumero.ok || !dadosNumero.ok || !dadosNumero.numero) {
+        throw new Error(dadosNumero?.error || "Falha ao reservar o número da ata");
+      }
+      ataNumero = String(dadosNumero.numero);
+    } catch (errNumero: any) {
+      alert(`❌ Não foi possível atribuir o número oficial da ata: ${errNumero?.message || "erro de rede"}. Tente novamente.`);
+      return;
+    }
     const anoStr = activeMeeting.data ? (activeMeeting.data.includes("/") ? activeMeeting.data.split("/")[2] : activeMeeting.data.split("-")[0]) : new Date().getFullYear().toString();
 
     // O cabeçalho "Ata n.º X" só é gravado no texto persistido (para poder

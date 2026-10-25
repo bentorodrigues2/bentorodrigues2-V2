@@ -229,7 +229,7 @@ export async function enviarEmailPDFComConfirmacaoLeitura({
  * (ex. recibo oficial via receiptGenerator.js), monta o buffer à parte e
  * usa só guardarNoArquivo/registarDocumento/enviarEmailPDF diretamente.
  */
-export async function gerarDocumentoPDF({ conteudo, ano, tema, tipo, predio, predioNome, fracao, fluxo, emailDestino, nomeDestinatario, nomeFicheiro, categoria, visibilidade }) {
+export async function gerarDocumentoPDF({ conteudo, ano, tema, tipo, predio, predioNome, fracao, fluxo, emailDestino, nomeDestinatario, nomeFicheiro, categoria, visibilidade, descricao }) {
   // Identificador único do documento — sem isto, o email genérico "Novo
   // documento: X" não permitia ao destinatário referenciar/localizar o
   // documento específico (ex. em caso de reclamação sobre o seu conteúdo).
@@ -240,7 +240,7 @@ export async function gerarDocumentoPDF({ conteudo, ano, tema, tipo, predio, pre
 
   const caminho = await guardarNoArquivo({ pdfBuffer, ano, tema, tipo, predio, fracao, fluxo, nomeFicheiro });
 
-  await registarDocumento({ caminho, ano, tema, tipo, predio, fracao, fluxo, origem: "gemini_auto_pdf", nomeFicheiro, categoria, visibilidade: visibilidade || "Público" });
+  await registarDocumento({ caminho, ano, tema, tipo, predio, fracao, fluxo, origem: "gemini_auto_pdf", nomeFicheiro, categoria, visibilidade: visibilidade || "Público", descricao });
 
   if (emailDestino) {
     const saudacaoNome = nomeDestinatario || "Condómino(a)";

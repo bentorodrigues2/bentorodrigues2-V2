@@ -341,6 +341,27 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       }
     }
 
+    // Deteção de duplicado — sem isto, lançar manualmente uma fatura que o
+    // email já tinha processado automaticamente (ou lançá-la 2 vezes por
+    // engano) duplicava o valor em dívida no total e no KPI do Dashboard,
+    // sem nenhum aviso. Só avisa (não bloqueia) quando mesmo fornecedor +
+    // valor + mês de vencimento coincidem com uma dívida ainda aberta.
+    if (!isEditing) {
+      const mesVencimentoNovo = (dividaDataVencimento || "").slice(0, 7);
+      const duplicada = dividasPredio.find(d =>
+        (d.estado === "Pendente" || d.estado === "Paga Parcialmente") &&
+        (d.id_fornecedor === dividaFornecedorId || d.fornecedor_nome.trim().toLowerCase() === dividaFornecedorNome.trim().toLowerCase()) &&
+        Math.abs(d.valor - novoValor) < 0.01 &&
+        (d.data_vencimento || "").slice(0, 7) === mesVencimentoNovo
+      );
+      if (duplicada) {
+        const continuar = window.confirm(
+          `⚠️ Já existe uma dívida em aberto a "${duplicada.fornecedor_nome}" com o mesmo valor (${duplicada.valor.toFixed(2)} €) e o mesmo mês de vencimento — pode já ter sido lançada automaticamente (ex. fatura recebida por email).\n\nTem a certeza que quer lançar esta dívida mesmo assim?`
+        );
+        if (!continuar) return;
+      }
+    }
+
     const dividaAtualizada: DividaFornecedor = {
       id_divida: isEditing && dividaOriginal ? dividaOriginal.id_divida : "div-" + Date.now(),
       id_predio: predio.id_predio,

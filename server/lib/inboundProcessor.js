@@ -1216,12 +1216,18 @@ async function lancarMovimentosEmFaltaDoExtrato({ emFalta, contaResolvida, predi
     let dividaCorrespondente = null;
     if (fornecedor) {
       try {
+        // Ordenado por data de emissão (FIFO) — sem isto, um fornecedor com
+        // várias faturas em atraso do mesmo valor fixo (internet, seguros)
+        // podia ter o mês errado marcado como pago, deixando o realmente
+        // mais antigo pendente sem ninguém notar. Mesmo critério já usado
+        // no cliente (reconciliarDividasFornecedor, GestaoMovimentos.tsx).
         const { data: dividas } = await supabase
           .from("dividas_fornecedores")
-          .select("id_divida, valor, documento_anexo")
+          .select("id_divida, valor, documento_anexo, data_emissao")
           .eq("id_predio", contaResolvida.id_predio)
           .eq("id_fornecedor", fornecedor.id_fornecedor)
-          .eq("estado", "Pendente");
+          .eq("estado", "Pendente")
+          .order("data_emissao", { ascending: true });
         dividaCorrespondente = (dividas || []).find((d) => Math.abs(Number(d.valor) - Number(m.valor)) <= TOLERANCIA_VALOR_DIVIDA) || null;
       } catch (e) {
         console.warn("[inboundProcessor] Aviso ao procurar dívida pendente para cruzar com o extrato:", e?.message || e);

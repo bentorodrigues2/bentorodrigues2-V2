@@ -785,11 +785,19 @@ export default function PWACondominoView({
   };
 
   const [aEnviarAnexoChat, setAEnviarAnexoChat] = useState(false);
+  // Guarda geral contra duplo-envio — antes só cobria mensagens COM anexo
+  // (aEnviarAnexoChat, só ligado dentro do bloco de upload); uma mensagem de
+  // texto simples podia ser enviada 2x com duplo-toque antes do primeiro
+  // pedido terminar. Mesmo padrão de overlay de bloqueio já usado no chat
+  // da versão browser (PortalCondomino.tsx, triggerSendReaction).
+  const [aEnviarMensagemChat, setAEnviarMensagemChat] = useState(false);
 
   const handleEnviarMensagemReal = async (e: React.FormEvent) => {
     e.preventDefault();
     const temAnexoChat = chatPhotoFile || chatDocFile || chatAudioBlob;
-    if ((!newMsgText.trim() && !temAnexoChat) || !condominoFracao?.id_fracao || !predio?.id_predio || aEnviarAnexoChat) return;
+    if ((!newMsgText.trim() && !temAnexoChat) || !condominoFracao?.id_fracao || !predio?.id_predio || aEnviarAnexoChat || aEnviarMensagemChat) return;
+    setAEnviarMensagemChat(true);
+    try {
     const idMensagem = "msg_" + Date.now();
     const texto = newMsgText.trim() || (chatPhotoFile ? "📷 Fotografia" : chatDocFile ? `📎 ${chatDocFile.name}` : "🎙️ Nota de voz");
     setNewMsgText("");
@@ -851,6 +859,9 @@ export default function PWACondominoView({
     }).catch(console.error);
 
     await Promise.all([carregarMensagensReais(), carregarThreadPwa()]);
+    } finally {
+      setAEnviarMensagemChat(false);
+    }
   };
 
   // Filtro real do Mapa de Pagamentos — antes só mudava uma frase fixa

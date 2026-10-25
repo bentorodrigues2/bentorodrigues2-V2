@@ -78,7 +78,8 @@ function gerarDocEspecial(tipo, body, logoWhiteLabel) {
       nomeFicheiro: "Instrucoes_Site_e_PWA_Condomino.pdf",
       assunto: `Bem-vindo(a) ao ${body.buildingName || "Condomínio"} — Acesso à Área do Condómino`,
       mensagem: `É com muito gosto que lhe damos as boas-vindas ao <strong>${body.buildingName || "condomínio"}</strong>. Segue em anexo o guia oficial com os seus dados de acesso à área reservada do condómino e as instruções de instalação da aplicação (PWA) no telemóvel.`,
-      categoria: "Instruções PWA & Desktop"
+      categoria: "Instruções PWA & Desktop",
+      descricao: `Boas-vindas e instruções de acesso — ${body.buildingName || "Condomínio"} (${body.nome || "Condómino"})`
     };
   }
 
@@ -87,7 +88,8 @@ function gerarDocEspecial(tipo, body, logoWhiteLabel) {
       doc: gerarPdfRegistoFornecedorHomologado(body.fornecedor || {}, body.predioObj || undefined, true),
       nomeFicheiro: "Instrucoes_Acesso_Perfil_Fornecedor.pdf",
       assunto: "Registo como Fornecedor Homologado — Instruções de Acesso",
-      mensagem: `O seu registo como fornecedor homologado foi concluído com sucesso. Segue em anexo o documento com as instruções de acesso ao seu perfil.`
+      mensagem: `O seu registo como fornecedor homologado foi concluído com sucesso. Segue em anexo o documento com as instruções de acesso ao seu perfil.`,
+      descricao: `Registo de fornecedor homologado — ${body.fornecedor?.nome || "Fornecedor"}`
     };
   }
 
@@ -96,7 +98,8 @@ function gerarDocEspecial(tipo, body, logoWhiteLabel) {
       doc: gerarConvocatoriaOficialPDF(body.predioObj, body.reuniao, body.fracoes || [], body.administradorNome, true),
       nomeFicheiro: `Convocatoria_${(body.reuniao?.data || "assembleia").replace(/\//g, "-")}.pdf`,
       assunto: `Convocatória de Assembleia Geral — ${body.predioObj?.nome || "Condomínio"}`,
-      mensagem: `Segue em anexo a convocatória oficial para a Assembleia Geral de Condóminos, nos termos e para os efeitos do Artigo 1432.º do Código Civil.`
+      mensagem: `Segue em anexo a convocatória oficial para a Assembleia Geral de Condóminos, nos termos e para os efeitos do Artigo 1432.º do Código Civil.`,
+      descricao: `Convocatória de Assembleia Geral — ${body.predioObj?.nome || "Condomínio"} (${body.reuniao?.data || ""})`
     };
   }
 
@@ -116,7 +119,8 @@ function gerarDocEspecial(tipo, body, logoWhiteLabel) {
       ),
       nomeFicheiro: `Notificacao_Divida_${(body.fracaoNome || "fracao").replace(/\s+/g, "_")}.pdf`,
       assunto: `Notificação Formal de Dívida — Fração ${body.fracaoNome || ""}`,
-      mensagem: `Segue em anexo notificação formal referente à dívida em aberto da sua fração junto do condomínio.`
+      mensagem: `Segue em anexo notificação formal referente à dívida em aberto da sua fração junto do condomínio.`,
+      descricao: `Notificação formal de dívida — Fração ${body.fracaoNome || ""} (${Number(body.valorDivida) || 0}€)`
     };
   }
 
@@ -139,7 +143,8 @@ function gerarDocEspecial(tipo, body, logoWhiteLabel) {
       doc: gerarParticipacaoSinistroPDF(body.numeroSinistro, body.apoliceNumero, body.seguradoraNome, body.predioNome, body.predioNif, true, body.administradorNome, body.assinaturaAdminBase64),
       nomeFicheiro: `Participacao_Sinistro_${body.numeroSinistro || ""}.pdf`,
       assunto: `Participação Urgente de Sinistro — Apólice n.º ${body.apoliceNumero || ""} — ${body.predioNome || ""}`,
-      mensagem: `Vimos por este meio formalizar a participação de sinistro ocorrido nas partes comuns do condomínio. Segue em anexo o auto de vistoria com registo fotográfico para efeitos de marcação de peritagem técnica.`
+      mensagem: `Vimos por este meio formalizar a participação de sinistro ocorrido nas partes comuns do condomínio. Segue em anexo o auto de vistoria com registo fotográfico para efeitos de marcação de peritagem técnica.`,
+      descricao: `Participação de sinistro n.º ${body.numeroSinistro || "?"} — Apólice ${body.apoliceNumero || ""} (${body.seguradoraNome || ""})`
     };
   }
 
@@ -148,7 +153,8 @@ function gerarDocEspecial(tipo, body, logoWhiteLabel) {
       doc: gerarTermoAcordoPagamentoPDF(body.acordo || {}, true),
       nomeFicheiro: `Termo_Acordo_Pagamento_${(body.acordo?.fracaoNome || "fracao").replace(/\s+/g, "_")}.pdf`,
       assunto: `Termo de Acordo de Pagamento em Prestações — Fração ${body.acordo?.fracaoNome || ""}`,
-      mensagem: `Segue em anexo o Termo de Acordo de Pagamento em Prestações relativo à regularização da dívida da sua fração, conforme negociado com a Administração.`
+      mensagem: `Segue em anexo o Termo de Acordo de Pagamento em Prestações relativo à regularização da dívida da sua fração, conforme negociado com a Administração.`,
+      descricao: `Termo de acordo de pagamento em prestações — Fração ${body.acordo?.fracaoNome || ""}`
     };
   }
 
@@ -157,7 +163,8 @@ function gerarDocEspecial(tipo, body, logoWhiteLabel) {
       doc: gerarNotificacaoObrasIrregularesPDF(body.notificacao || {}, true),
       nomeFicheiro: `Notificacao_Obras_Irregulares_${(body.notificacao?.fracaoNome || "fracao").replace(/\s+/g, "_")}.pdf`,
       assunto: `Notificação de Cessação de Obras / Violação do Regulamento — Fração ${body.notificacao?.fracaoNome || ""}`,
-      mensagem: `Segue em anexo notificação formal relativa a obras não autorizadas / violação do regulamento interno detetada na sua fração.`
+      mensagem: `Segue em anexo notificação formal relativa a obras não autorizadas / violação do regulamento interno detetada na sua fração.`,
+      descricao: `Notificação de obras irregulares / violação do regulamento — Fração ${body.notificacao?.fracaoNome || ""}`
     };
   }
 
@@ -166,7 +173,8 @@ function gerarDocEspecial(tipo, body, logoWhiteLabel) {
       doc: gerarCartaRescisaoContratoPDF({ ...(body.rescisao || {}), assinaturaAdminBase64: body.rescisao?.assinaturaAdminBase64 || body.assinaturaAdminBase64 }, true),
       nomeFicheiro: `Carta_Rescisao_${(body.rescisao?.fornecedorNome || "fornecedor").replace(/\s+/g, "_")}.pdf`,
       assunto: `Rescisão de Contrato — ${body.rescisao?.servico || "Prestação de Serviços"}`,
-      mensagem: `Vimos por este meio comunicar formalmente a rescisão do contrato de prestação de serviços. Segue em anexo a carta com os detalhes e a data de efeito.`
+      mensagem: `Vimos por este meio comunicar formalmente a rescisão do contrato de prestação de serviços. Segue em anexo a carta com os detalhes e a data de efeito.`,
+      descricao: `Carta de rescisão de contrato — ${body.rescisao?.fornecedorNome || "Fornecedor"} (${body.rescisao?.servico || "Prestação de Serviços"})`
     };
   }
 
@@ -177,7 +185,10 @@ function gerarDocEspecial(tipo, body, logoWhiteLabel) {
     doc: gerarPdfBoasVindasGestor(gestor, body.predios || [], body.empresaNome, body.logoUrl || logoWhiteLabel, true),
     nomeFicheiro: ehAdmin ? "Instrucoes_Acesso_Perfil_Administrador.pdf" : "Instrucoes_Acesso_Perfil_Gestor.pdf",
     assunto: ehAdmin ? "Nomeação & Ativação de Acesso à Gestão — Administrador" : "Nomeação & Ativação de Acesso à Gestão — Gestor Operacional",
-    mensagem: `Foi ativado o seu perfil de acesso à gestão do condomínio. Segue em anexo o documento com as credenciais provisórias e o guia de acesso à plataforma.`
+    mensagem: `Foi ativado o seu perfil de acesso à gestão do condomínio. Segue em anexo o documento com as credenciais provisórias e o guia de acesso à plataforma.`,
+    descricao: ehAdmin
+      ? `Boas-vindas e ativação de acesso de Administrador — ${gestor.nome || ""}`
+      : `Boas-vindas e ativação de acesso de Gestor Operacional — ${gestor.nome || ""}`
   };
 }
 
@@ -380,7 +391,28 @@ async function handleAcaoDocumento(req, res, acao) {
       return res.status(200).json({ ok: true, caminho });
     }
 
-    return res.status(400).json({ error: "Ação inválida. Use acao=descarregar|enviar|anexar" });
+    if (acao === "reservar-numero-ata") {
+      // Numeração atómica da ata (obter_proximo_numero_ata, tabela
+      // ata_sequencias) — antes calculada no cliente a partir do maior
+      // número já visto na lista local de reuniões (Math.max sobre o texto
+      // de atas já feitas), nunca atómico: 2 administradores a finalizar 2
+      // atas ao mesmo tempo (ou um duplo-clique) podiam sair com o mesmo
+      // número, grave numa ata (valor de título executivo). Não há coluna
+      // numero_ata em "reunioes" (alteração de schema bloqueada) — o número
+      // continua só gravado no próprio texto da ata, como já era.
+      const { id_predio, base } = body;
+      if (!id_predio) {
+        return res.status(400).json({ error: "id_predio é obrigatório" });
+      }
+      const { data: numero, error: errNumero } = await supabase.rpc("obter_proximo_numero_ata", {
+        p_id_predio: id_predio,
+        p_base: Number(base) || 31
+      });
+      if (errNumero) return res.status(500).json({ error: errNumero.message });
+      return res.status(200).json({ ok: true, numero });
+    }
+
+    return res.status(400).json({ error: "Ação inválida. Use acao=descarregar|enviar|anexar|reservar-numero-ata" });
   } catch (err) {
     console.error("Erro em /api/pdf (acao=documento):", err);
     return res.status(500).json({ error: err?.message || String(err) });

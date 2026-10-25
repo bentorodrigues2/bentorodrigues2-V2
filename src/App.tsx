@@ -616,9 +616,19 @@ export default function App() {
       setAlertasJuridicosAtivosCount((juridicosReais || []).filter(p => p.fase_processual !== "CONCLUIDO_EXTINTO").length);
       setSondagensAtivasCount((sondagensReais || []).filter(s => s.estado === "ativa").length);
       setMensagensPendentesCount((conversasReais || []).filter(c => c.estado === "pendente").length);
-      setDividasFornecedoresPendentesValor((dividasReais || [])
+      const dividasReconhecidas = (dividasReais || [])
         .filter(d => d.estado === "Pendente" || d.estado === "Paga Parcialmente")
-        .reduce((acc, d) => acc + ((Number(d.valor) || 0) - (Number(d.valor_pago) || 0)), 0));
+        .reduce((acc, d) => acc + ((Number(d.valor) || 0) - (Number(d.valor_pago) || 0)), 0);
+      // O KPI financeiro mais visível do Dashboard só somava
+      // dividas_fornecedores — uma fatura cujo fornecedor não foi
+      // reconhecido automaticamente fica só como "Movimento Cego",
+      // invisível aqui e no separador de Dívidas, mostrando um saldo
+      // líquido otimista por não contar dívidas reais ainda não
+      // reconhecidas.
+      const movimentosCegosPendentes = movements
+        .filter(m => m.id_predio === idPredio && m.tipo === "Despesa" && m.is_movimento_cego && m.estado === "Movimento Cego / Por Justificar")
+        .reduce((acc, m) => acc + (Number(m.valor) || 0), 0);
+      setDividasFornecedoresPendentesValor(dividasReconhecidas + movimentosCegosPendentes);
     })();
     // Corrido também sempre que se volta ao Dashboard — antes só corria
     // uma vez por prédio/login, por isso o cartão "Mensagens" (e os
@@ -626,7 +636,7 @@ export default function App() {
     // ficavam com a contagem congelada no momento em que o dashboard
     // carregou pela primeira vez, mesmo depois de responder a mensagens,
     // fechar sondagens, etc. noutro ecrã.
-  }, [predioAtivo?.id_predio, browserIsLoggedOut, activeSection]);
+  }, [predioAtivo?.id_predio, browserIsLoggedOut, activeSection, movements]);
 
   const toggleSidebarSub = (menu: "administracao" | "operacoes" | "financeiro" | "condomino" | "documentacao" | "juridico" | "manutencao") => {
     setSidebarExpanded(prev => ({ ...prev, [menu]: !prev[menu] }));
