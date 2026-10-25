@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Predio, Fracao, Conta, Movimento, Aviso, LoggedUser, Documento } from "../types";
-import { parseValorMonetario } from "../utils";
+import { parseValorMonetario, calcularRatesPredio, calcularQuotaOrdinariaFracao } from "../utils";
 import { saveContaToSupabase, saveAvisosToSupabase, deleteAvisoFromSupabase, saveMovimentoToSupabase, registarLogAuditoria, fetchObrasExtraFromSupabase, uploadDocumentoToStorage, saveDocumentoToSupabase, savePredioToSupabase } from "../lib/supabaseService";
 import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { 
@@ -227,25 +227,16 @@ export function ConfiguracaoArranqueSaldos({
   // --- PASSO 2: SALDOS INICIAIS POR FRAÇÃO (DÍVIDAS ANTERIORES) ---
   const predioFracoes = useMemo(() => fracoes.filter(f => f.id_predio === predio.id_predio), [fracoes, predio.id_predio]);
 
-  // Rate de quota mensal por fração — mesma fórmula (permilagem × rate, com
-  // o coeficiente real das lojas com acesso direto pelo exterior) já usada
-  // em GestaoQuotasOrcamento.tsx para emitir as quotas mensais normais —
-  // reaproveitada aqui para pré-preencher a "Quota Mensal Total" na
-  // discriminação de dívida, que antes nascia sempre a 0€.
-  const COEF_LOJA_EXTERIOR = 0.4528;
-  const isLojaExterior = (f: Fracao) => f.tipologia === "Loja Comercial" && (f.tipo_access || "").includes("Exterior");
-  const { rateNormal, rateLoja } = useMemo(() => {
-    const orcamentoAnual = Number((predio.patrimonio as any)?.orcamento_anual || 0);
-    const orcamentoMensal = orcamentoAnual / 12;
-    let permilagemLoja = 0;
-    predioFracoes.forEach(f => { if (isLojaExterior(f)) permilagemLoja += f.permilagem; });
-    const permilagemNormal = 1000 - permilagemLoja;
-    const denominador = permilagemNormal + permilagemLoja * COEF_LOJA_EXTERIOR;
-    const rN = denominador > 0 ? orcamentoMensal / denominador : 0;
-    return { rateNormal: rN, rateLoja: rN * COEF_LOJA_EXTERIOR };
-  }, [(predio.patrimonio as any)?.orcamento_anual, predioFracoes]);
-  const calcularQuotaMensalFracao = (f: Fracao): number =>
-    Math.round(f.permilagem * (isLojaExterior(f) ? rateLoja : rateNormal) * 100) / 100;
+  // Rate de quota mensal por fração — mesma fórmula partilhada já usada em
+  // GestaoQuotasOrcamento.tsx para emitir as quotas mensais normais (ver
+  // calcularRatesPredio em utils.ts) — reaproveitada aqui para pré-preencher
+  // a "Quota Mensal Total" na discriminação de dívida, que antes nascia
+  // sempre a 0€.
+  const rates = useMemo(
+    () => calcularRatesPredio(predio, predioFracoes),
+    [(predio.patrimonio as any)?.orcamento_anual, predioFracoes]
+  );
+  const calcularQuotaMensalFracao = (f: Fracao): number => calcularQuotaOrdinariaFracao(f, rates);
 
   // Meses decorridos entre uma data e hoje (mínimo 1) — usado para
   // pré-preencher "Meses em Dívida" quando a data "Desde" é escolhida ou

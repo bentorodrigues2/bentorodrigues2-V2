@@ -19,6 +19,20 @@ export function escolherContaPorTipo(contasPredio, tipoReferencia) {
 }
 
 /**
+ * Mesma regra que escolherContaPorTipo, só que devolve o IBAN diretamente —
+ * usado para mostrar no documento (nota de cobrança, recibo) em vez de
+ * escolher a conta a creditar/debitar. Fonte única desta lógica no lado do
+ * servidor: antes existiam 4 cópias idênticas (dividir-pagamento-meses.js,
+ * confirmar-pagamento.js, cronService.js, pdfDocs.js) — sem divergência
+ * ativa entre elas, mas uma alteração futura à regra numa cópia e esquecida
+ * nas outras criaria uma divergência real (ex.: IBAN no recibo a não bater
+ * certo com a conta debitada).
+ */
+export function escolherIbanContaPorTipo(contas, tipoAviso) {
+  return escolherContaPorTipo(contas, tipoAviso)?.iban || "";
+}
+
+/**
  * Credita/debita o saldo real de uma conta bancária (delta positivo =
  * entrada, negativo = saída). "contas.saldo" é o valor de verdade mostrado
  * nos KPIs (Conta(s) à Ordem / Total Líquido no Painel de Controlo) — não é

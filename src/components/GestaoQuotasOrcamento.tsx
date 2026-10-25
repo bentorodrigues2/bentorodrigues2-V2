@@ -15,7 +15,7 @@ import {
 import { Predio, Fracao, Aviso, LoggedUser, Documento, RevisaoOrcamento, Conta, Movimento, Reuniao } from "../types";
 import type { ObraExtraordinaria } from "./GestaoManutencaoIntervencoes";
 import { jsPDF } from "jspdf";
-import { formatDatePT, formatQuotaReceiptNumber, parseValorMonetario, escolherIbanContaPorTipo, gerarReferenciaBR23E, exportarBalanceteMapaAnualXLS, exportToXLS } from "../utils";
+import { formatDatePT, formatQuotaReceiptNumber, parseValorMonetario, escolherIbanContaPorTipo, gerarReferenciaBR23E, exportarBalanceteMapaAnualXLS, exportToXLS, calcularRatesPredio, calcularQuotaOrdinariaFracao, isLojaExterior } from "../utils";
 import { downloadOfficialReceiptPDF } from "../utils/receiptGenerator";
 import { MoneyInput } from "./MoneyInput";
 import { AccordionSection } from "./AccordionSection";
@@ -290,12 +290,6 @@ export function GestaoQuotasOrcamento({
     "Julho": 6, "Agosto": 7, "Setembro": 8, "Outubro": 9, "Novembro": 10, "Dezembro": 11
   };
 
-  // Coeficiente real das lojas com acesso direto pelo exterior — ver nota
-  // histórica original em GestaoEmissao.tsx (reverse-engineered a partir do
-  // quadro de quotas real da gestora anterior, confirmado pelo administrador).
-  const COEF_LOJA_EXTERIOR = 0.4528;
-  const isLojaExterior = (f: Fracao) => f.tipologia === "Loja Comercial" && (f.tipo_access || "").includes("Exterior");
-
   const gerarOrcamentoMensal = (e: React.FormEvent) => {
     e.preventDefault();
     if (loggedUser.role !== 'ADMIN' && loggedUser.role !== 'EMPRESA_GESTORA') {
@@ -313,16 +307,14 @@ export function GestaoQuotasOrcamento({
     const dataDoc = d.toISOString().split('T')[0];
     const mesIdx = MESES_INDEX[mes] ?? 0;
     const vencimento = `${anoNum}-${String(mesIdx + 1).padStart(2, "0")}-08`;
-    const orcamentoMensal = orcamentoAnualNum / 12;
-
-    let permilagemLoja = 0;
-    predioFracoes.forEach(f => {
-      if (isLojaExterior(f)) permilagemLoja += f.permilagem;
-    });
-    const permilagemNormal = 1000 - permilagemLoja;
-    const denominador = permilagemNormal + permilagemLoja * COEF_LOJA_EXTERIOR;
-    const rateNormal = denominador > 0 ? orcamentoMensal / denominador : 0;
-    const rateLoja = rateNormal * COEF_LOJA_EXTERIOR;
+    // Fórmula de rateio partilhada (ver calcularRatesPredio em utils.ts) —
+    // orcamentoAnualNum ainda não está refletido em predio.patrimonio aqui
+    // (persistirOrcamentoNoSupabase acima é assíncrono), por isso passa-se
+    // explicitamente em vez de confiar no valor (ainda antigo) do prop.
+    const { rateNormal, rateLoja } = calcularRatesPredio(
+      { ...predio, patrimonio: { ...predio.patrimonio, orcamento_anual: orcamentoAnualNum } as any },
+      predioFracoes
+    );
 
     // Mês/ano desta emissão, para o guarda de duplicados abaixo (comparação
     // por mês de vencimento, não pela data exata — os planos "pagos
@@ -564,29 +556,24 @@ export function GestaoQuotasOrcamento({
     }
   };
 
-  const { rateNormalOrdinaria, rateLojaOrdinaria } = useMemo(() => {
-    let permilagemLoja = 0;
-    predioFracoes.forEach((f) => { if (isLojaExterior(f)) permilagemLoja += f.permilagem; });
-    const permilagemNormal = 1000 - permilagemLoja;
-    const denominador = permilagemNormal + permilagemLoja * COEF_LOJA_EXTERIOR;
-    const rN = denominador > 0 ? (Number(orcamentoRegular) || 0) / denominador : 0;
-    return { rateNormalOrdinaria: rN, rateLojaOrdinaria: rN * COEF_LOJA_EXTERIOR };
-  }, [predioFracoes, orcamentoRegular]);
+  // Fórmula de rateio partilhada (ver calcularRatesPredio em utils.ts) — o
+  // orçamento mensal já em vigor (orcamentoRegular) é um estado separado do
+  // prop predio, nunca a mesma fonte, por isso passa-se um predio sintético
+  // com orcamento_anual = orcamentoRegular × 12 em vez do valor real do prop.
+  const { rateNormal: rateNormalOrdinaria, rateLoja: rateLojaOrdinaria } = useMemo(
+    () => calcularRatesPredio({ ...predio, patrimonio: { ...predio.patrimonio, orcamento_anual: (Number(orcamentoRegular) || 0) * 12 } as any }, predioFracoes),
+    [predioFracoes, orcamentoRegular]
+  );
 
-  const calcularQuotaOrdinaria = (f: Fracao) => f.permilagem * (isLojaExterior(f) ? rateLojaOrdinaria : rateNormalOrdinaria);
+  const calcularQuotaOrdinaria = (f: Fracao) => calcularQuotaOrdinariaFracao(f, { rateNormal: rateNormalOrdinaria, rateLoja: rateLojaOrdinaria });
 
   // Mesma fórmula de calcularQuotaOrdinaria, mas parametrizada pelo NOVO
   // orçamento anual da revisão em curso (em vez do orçamento atualmente em
   // vigor) — usada só na pré-visualização/aplicação da revisão abaixo.
-  const { rateNormalRevisao, rateLojaRevisao } = useMemo(() => {
-    let permilagemLoja = 0;
-    predioFracoes.forEach((f) => { if (isLojaExterior(f)) permilagemLoja += f.permilagem; });
-    const permilagemNormal = 1000 - permilagemLoja;
-    const denominador = permilagemNormal + permilagemLoja * COEF_LOJA_EXTERIOR;
-    const orcamentoMensalRevisao = (parseValorMonetario(novaRevisaoValor) || 0) / 12;
-    const rN = denominador > 0 ? orcamentoMensalRevisao / denominador : 0;
-    return { rateNormalRevisao: rN, rateLojaRevisao: rN * COEF_LOJA_EXTERIOR };
-  }, [predioFracoes, novaRevisaoValor]);
+  const { rateNormal: rateNormalRevisao, rateLoja: rateLojaRevisao } = useMemo(
+    () => calcularRatesPredio({ ...predio, patrimonio: { ...predio.patrimonio, orcamento_anual: parseValorMonetario(novaRevisaoValor) || 0 } as any }, predioFracoes),
+    [predioFracoes, novaRevisaoValor]
+  );
 
   // "Valor Atual" — lê-se do aviso real mais recente já emitido por
   // fração (o mesmo critério do Mapa de Pagamentos), não de uma fórmula

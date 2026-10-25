@@ -1486,6 +1486,39 @@ export function escolherIbanContaPorTipo(contas: { iban: string; is_principal?: 
   return (contaPrincipal || contas[0])?.iban || "";
 }
 
+// Fórmula de rateio do orçamento anual por fração (permilagem × rate), com
+// um coeficiente real para lojas comerciais com acesso direto pelo exterior
+// — estas não têm, na prática, nenhuma isenção legal fixa (a lei, art.º
+// 1424º CC, só isenta especificamente despesas de ascensor). Este valor
+// (45,28%) foi reverse-engineered a partir do quadro de quotas real
+// historicamente praticado neste condomínio (confirmado com o
+// administrador, bate a 1 cêntimo ou exato em 17 de 17 frações). Mantém a
+// mesma lógica em server/lib/rateio.js (backend, sem poder partilhar o
+// import direto), sincronizadas para nunca divergirem. Fonte única no lado
+// do cliente — antes replicada em GestaoQuotasOrcamento.tsx (×2),
+// GestaoEmissao.tsx e ConfiguracaoArranqueSaldos.tsx.
+export const COEF_LOJA_EXTERIOR = 0.4528;
+
+export function isLojaExterior(f: Fracao): boolean {
+  return f.tipologia === "Loja Comercial" && (f.tipo_access || "").includes("Exterior");
+}
+
+export function calcularRatesPredio(predio: Predio, fracoes: Fracao[]): { orcamentoAnual: number; rateNormal: number; rateLoja: number } {
+  const orcamentoAnual = Number((predio.patrimonio as any)?.orcamento_anual || 0);
+  const orcamentoMensal = orcamentoAnual / 12;
+  let permilagemLoja = 0;
+  fracoes.forEach(f => { if (isLojaExterior(f)) permilagemLoja += f.permilagem; });
+  const permilagemNormal = 1000 - permilagemLoja;
+  const denominador = permilagemNormal + permilagemLoja * COEF_LOJA_EXTERIOR;
+  const rateNormal = denominador > 0 ? orcamentoMensal / denominador : 0;
+  const rateLoja = rateNormal * COEF_LOJA_EXTERIOR;
+  return { orcamentoAnual, rateNormal, rateLoja };
+}
+
+export function calcularQuotaOrdinariaFracao(f: Fracao, rates: { rateNormal: number; rateLoja: number }): number {
+  return Math.round(f.permilagem * (isLojaExterior(f) ? rates.rateLoja : rates.rateNormal) * 100) / 100;
+}
+
 // Procura a localidade a partir de um código postal português (formato
 // "XXXX-XXX") usando a API pública gratuita geoapi.pt — usada para
 // preenchimento automático de localidade em moradas (ex: morada alternativa

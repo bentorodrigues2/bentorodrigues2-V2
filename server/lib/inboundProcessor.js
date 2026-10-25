@@ -6,6 +6,7 @@ import { extrairDadosDocumento, arquivarAnexoOriginal, extrairMovimentosExtrato 
 import { cruzarMovimentoComFornecedor } from "./fornecedorMatching.js";
 import { escolherContaPorTipo, ajustarSaldoConta } from "./contaSaldo.js";
 import { classificarPorRegrasSNC, PLANO_CONTAS_SNC_DEFAULT, REGRAS_SNC_DEFAULT } from "./classificacaoSNC.js";
+import { calcularRatesPredio } from "./rateio.js";
 
 /**
  * Classificação SNC aplicada também no lançamento automático de movimentos
@@ -377,30 +378,22 @@ async function obterReciboMaisRecente(contexto) {
 }
 
 // Mesma fórmula (permilagem × rate, com o coeficiente real das lojas com
-// acesso direto pelo exterior) já usada em vários pontos do frontend
-// (GestaoQuotasOrcamento.tsx) e em cronService.js — replicada aqui porque
-// não está exportada de lá. Devolve null se não houver orçamento anual
-// configurado ou a fração não existir.
-const COEF_LOJA_EXTERIOR = 0.4528;
+// acesso direto pelo exterior) já usada em cronService.js — fonte única em
+// server/lib/rateio.js (antes replicada aqui porque não estava exportada de
+// lá). Devolve null se não houver orçamento anual configurado ou a fração
+// não existir.
 export async function calcularQuotaMensalFracao(idPredio, idFracao) {
   try {
     const [{ data: predioRow }, { data: fracoesPredio }] = await Promise.all([
       supabase.from("predios").select("patrimonio").eq("id_predio", idPredio).maybeSingle(),
       supabase.from("fracoes").select("id_fracao, permilagem, tipologia, tipo_access").eq("id_predio", idPredio)
     ]);
-    const orcamentoAnual = Number(predioRow?.patrimonio?.orcamento_anual || 0);
-    if (!orcamentoAnual || !fracoesPredio?.length) return null;
+    if (!fracoesPredio?.length) return null;
     const fracaoAlvo = fracoesPredio.find((f) => f.id_fracao === idFracao);
     if (!fracaoAlvo) return null;
-    const isLojaExterior = (f) => f.tipologia === "Loja Comercial" && (f.tipo_access || "").includes("Exterior");
-    const orcamentoMensal = orcamentoAnual / 12;
-    let permilagemLoja = 0;
-    fracoesPredio.forEach((f) => { if (isLojaExterior(f)) permilagemLoja += f.permilagem; });
-    const permilagemNormal = 1000 - permilagemLoja;
-    const denominador = permilagemNormal + permilagemLoja * COEF_LOJA_EXTERIOR;
-    const rateNormal = denominador > 0 ? orcamentoMensal / denominador : 0;
-    const rateLoja = rateNormal * COEF_LOJA_EXTERIOR;
-    const quota = fracaoAlvo.permilagem * (isLojaExterior(fracaoAlvo) ? rateLoja : rateNormal);
+    const rates = calcularRatesPredio({ patrimonio: predioRow?.patrimonio }, fracoesPredio);
+    if (!rates.orcamentoAnual) return null;
+    const quota = fracaoAlvo.permilagem * (rates.isLojaExterior(fracaoAlvo) ? rates.rateLoja : rates.rateNormal);
     return Math.round(quota * 100) / 100;
   } catch {
     return null;

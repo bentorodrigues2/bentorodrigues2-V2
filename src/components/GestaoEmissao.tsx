@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Predio, Fracao, Aviso, LoggedUser, Documento, RevisaoOrcamento, Conta, Movimento, Reuniao } from "../types";
-import { formatDatePT, formatQuotaReceiptNumber, parseValorMonetario, escolherIbanContaPorTipo } from "../utils";
+import { formatDatePT, formatQuotaReceiptNumber, parseValorMonetario, escolherIbanContaPorTipo, calcularRatesPredio, isLojaExterior } from "../utils";
 import { downloadOfficialReceiptPDF } from "../utils/receiptGenerator";
 import { MoneyInput } from "./MoneyInput";
 import { isSupabaseConfigured } from "@/lib/supabaseClient";
@@ -194,31 +194,14 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
     // emissão automática mensal em server/lib/cronService.js).
     const mesIdx = MESES_INDEX[mes] ?? 0;
     const vencimento = `${anoNum}-${String(mesIdx + 1).padStart(2, "0")}-08`;
-    const orcamentoMensal = orcamentoAnualNum / 12;
-
-    // Coeficiente real das lojas com acesso direto pelo exterior — NÃO é uma
-    // isenção legal fixa (a lei, art.º 1424º CC, só isenta especificamente
-    // despesas de ascensor, e o ascensor deste prédio custa 1600€/ano, o que
-    // por si só não explicava o desfasamento). Este valor (45,28%) foi
-    // reverse-engineered a partir do quadro de quotas real desta gestora
-    // anterior (confirmado com o administrador: bate a 1 cêntimo ou exato
-    // em 17 de 17 frações, incluindo o total = orçamento anual/12) e
-    // confirmado por ele para passar a ser a fórmula oficial. As lojas
-    // pagam esta fração da taxa das restantes frações, e a diferença é
-    // sempre redistribuída pelas outras para o total bater sempre certo
-    // com o orçamento anual aprovado (antes o fator 0.4 "perdia" essa
-    // diferença sem a redistribuir — por isso o total nunca batia certo).
-    const COEF_LOJA_EXTERIOR = 0.4528;
-    const isLojaExterior = (f: Fracao) => f.tipologia === "Loja Comercial" && (f.tipo_access || "").includes("Exterior");
-
-    let permilagemLoja = 0;
-    predioFracoes.forEach(f => {
-      if (isLojaExterior(f)) permilagemLoja += f.permilagem;
-    });
-    const permilagemNormal = 1000 - permilagemLoja;
-    const denominador = permilagemNormal + permilagemLoja * COEF_LOJA_EXTERIOR;
-    const rateNormal = denominador > 0 ? orcamentoMensal / denominador : 0;
-    const rateLoja = rateNormal * COEF_LOJA_EXTERIOR;
+    // Fórmula de rateio partilhada (ver calcularRatesPredio em utils.ts) —
+    // orcamentoAnualNum ainda não está refletido em predio.patrimonio aqui
+    // (persistirOrcamentoNoSupabase acima é assíncrono), por isso passa-se
+    // explicitamente em vez de confiar no valor (ainda antigo) do prop.
+    const { rateNormal, rateLoja } = calcularRatesPredio(
+      { ...predio, patrimonio: { ...predio.patrimonio, orcamento_anual: orcamentoAnualNum } as any },
+      predioFracoes
+    );
 
     // Mesmo mês/ano desta emissão, para o guarda de duplicados abaixo.
     const mesAnoEmissao = vencimento.slice(0, 7); // "YYYY-MM"

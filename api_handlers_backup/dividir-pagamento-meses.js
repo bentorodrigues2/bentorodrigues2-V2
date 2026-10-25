@@ -4,20 +4,8 @@ import { guardarNoArquivo, registarDocumento, enviarEmailPDF } from "../server/l
 import { generateOfficialReceiptPDF, nomeFicheiroRecibo } from "../server/lib/receiptGenerator.js";
 import { derivarPrefixoEdificio } from "../server/lib/reciboUtils.js";
 import { obterModeloEmail, interpolarModeloEmail } from "../server/lib/emailTemplates.js";
-import { escolherContaPorTipo, ajustarSaldoConta } from "../server/lib/contaSaldo.js";
+import { escolherContaPorTipo, escolherIbanContaPorTipo, ajustarSaldoConta } from "../server/lib/contaSaldo.js";
 import { sanitizarSegmentoStorage } from "../server/lib/storageUtils.js";
-
-// Mesma lógica de escolha de IBAN já usada em confirmar-pagamento.js e
-// server/lib/cronService.js — Quota Ordinária/FCR usa a conta corrente
-// principal, Quota Extraordinária usa a de poupança/obras.
-function escolherIbanContaPorTipo(contas, tipoAviso) {
-  if (!contas || contas.length === 0) return "";
-  const ehExtraordinaria = (tipoAviso || "").toLowerCase().includes("extra");
-  const contaPrincipal = contas.find((c) => c.is_principal);
-  const contaSecundaria = contas.find((c) => !c.is_principal);
-  if (ehExtraordinaria) return (contaSecundaria || contaPrincipal || contas[0])?.iban || "";
-  return (contaPrincipal || contas[0])?.iban || "";
-}
 
 /**
  * Divide um único comprovativo (uma transação bancária real) que cobre

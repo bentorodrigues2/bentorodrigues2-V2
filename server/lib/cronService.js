@@ -1,7 +1,9 @@
 import { jsPDF } from "jspdf";
 import { supabase } from "./supabaseServer.js";
 import { generateOfficialReceiptPDF, nomeFicheiroRecibo } from "./receiptGenerator.js";
-import { guardarNoArquivo, registarDocumento, enviarEmailPDF } from "./pdfService.js";
+import { guardarNoArquivo, registarDocumento, enviarEmailPDF, enviarEmailPDFComConfirmacaoLeitura } from "./pdfService.js";
+import { escolherIbanContaPorTipo } from "./contaSaldo.js";
+import { calcularRatesPredio } from "./rateio.js";
 import { gerarHtmlResposta, gerarHtmlAniversario } from "./htmlemail.js";
 import { derivarPrefixoEdificio } from "./reciboUtils.js";
 import { enviarEmailSemAnexo } from "./mailer.js";
@@ -116,27 +118,9 @@ async function obterProprietarioDaFracao(id_fracao) {
 }
 
 // Coeficiente real das lojas com acesso direto pelo exterior — NÃO é uma
-// isenção legal fixa (a lei, art.º 1424º CC, só isenta especificamente
-// despesas de ascensor). Este valor (45,28%) foi reverse-engineered a partir
-// do quadro de quotas real historicamente praticado neste condomínio
-// (confirmado com o administrador, bate a 1 cêntimo ou exato em 17 de 17
-// frações) — ver a mesma lógica em GestaoEmissao.tsx. Extraído para função
-// partilhada entre emitirQuotasMensais (dia 25) e emitirNotasEmAtrasoFracao
-// (emissão retroativa ao registar um proprietário) para as duas fórmulas
-// nunca poderem divergir uma da outra.
-const COEF_LOJA_EXTERIOR = 0.4528;
-function calcularRatesPredio(predio, fracoes) {
-  const orcamentoAnual = Number(predio.patrimonio?.orcamento_anual || 0);
-  const orcamentoMensal = orcamentoAnual / 12;
-  const isLojaExterior = (fr) => fr.tipologia === "Loja Comercial" && (fr.tipo_access || "").includes("Exterior");
-  let permilagemLoja = 0;
-  fracoes.forEach((fr) => { if (isLojaExterior(fr)) permilagemLoja += fr.permilagem; });
-  const permilagemNormal = 1000 - permilagemLoja;
-  const denominador = permilagemNormal + permilagemLoja * COEF_LOJA_EXTERIOR;
-  const rateNormal = denominador > 0 ? orcamentoMensal / denominador : 0;
-  const rateLoja = rateNormal * COEF_LOJA_EXTERIOR;
-  return { orcamentoAnual, isLojaExterior, rateNormal, rateLoja };
-}
+// isenção legal fixa — ver a nota completa em server/lib/rateio.js, fonte
+// única desta fórmula no lado do servidor (antes replicada também em
+// inboundProcessor.js).
 
 /**
  * Quota Ordinária mensal já estabelecida para esta fração — a fonte de
@@ -169,21 +153,6 @@ async function obterQuotaMensalEstabelecidaFracao(id_fracao) {
     .reduce((soma, a) => soma + Number(a.valor || 0), 0);
 
   return Math.round(totalMes * 100) / 100;
-}
-
-// Escolhe o IBAN certo consoante o tipo de aviso: Quota Ordinária e Fundo
-// Comum de Reserva usam a conta corrente principal (is_principal), Quota
-// Extraordinária usa a conta de poupança/obras — mesma lógica que
-// escolherIbanContaPorTipo em src/utils.ts (não pode ser importada
-// diretamente aqui, mundo TS/frontend vs. JS/backend), sincronizadas para
-// nunca divergirem.
-function escolherIbanContaPorTipo(contas, tipoAviso) {
-  if (!contas || contas.length === 0) return "";
-  const ehExtraordinaria = (tipoAviso || "").toLowerCase().includes("extra");
-  const contaPrincipal = contas.find((c) => c.is_principal);
-  const contaSecundaria = contas.find((c) => !c.is_principal);
-  if (ehExtraordinaria) return (contaSecundaria || contaPrincipal || contas[0])?.iban || "";
-  return (contaPrincipal || contas[0])?.iban || "";
 }
 
 async function obterContasDoPredio(id_predio) {
@@ -409,7 +378,11 @@ async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, ano
 
   const ehRetroativa = fluxo === "emissao_quotas_retroativa";
   const notaTextoExtra = extraordinariaMesma ? " Este valor inclui também a prestação da quota extraordinária deste mês, discriminada em separado na nota." : "";
-  const emailEnviado = await enviarEmailPDF({
+  // Confirmação de leitura real (Resend) — antes só os envios manuais a
+  // partir do ecrã de Financeiro/Jurídico/Seguros tinham isto; a imensa
+  // maioria dos documentos financeiros reais (emitidos automaticamente
+  // pelo cron todos os meses) não tinha nenhum rasto de "foi aberto?".
+  const { ok: emailEnviado } = await enviarEmailPDFComConfirmacaoLeitura({
     to: proprietario.email,
     nomeDestinatario: proprietario.nome,
     assunto: modeloCobranca
@@ -419,7 +392,11 @@ async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, ano
       ? interpolarModeloEmail(modeloCobranca.body, valoresCobranca).replace(/\n/g, "<br>")
       : `Segue em anexo a nota de cobrança referente à quota de condomínio de <strong>${mesRefLabel} de ${anoRef}</strong>, no valor de <strong>${valorTotalNota.toFixed(2)} €</strong>, com vencimento a <strong>${formatarDataPT(vencimento)}</strong>.${notaTextoExtra}${ehRetroativa ? " Esta nota refere-se a um mês anterior ao seu registo na plataforma, emitida agora retroativamente desde o início de atividade da administração." : ""}<br><br>Assim que o pagamento for confirmado pela administração, receberá o respetivo recibo de pagamento oficial. Para um rápido cruzamento de dados, envie o comprovativo do pagamento para o email <strong>bentorodrgues2@gmail.com</strong>.`,
     pdfBuffer,
-    nome: nomeFicheiro
+    nome: nomeFicheiro,
+    idPredio: predio.id_predio,
+    idFracao: f.id_fracao,
+    tipo: "nota_cobranca",
+    idRastreio: `leit_email_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
   });
 
   return { ok: true, emailEnviado };
@@ -507,7 +484,7 @@ async function emitirNotaExtraordinariaSeparada({ predio, f, proprietario, aviso
     data: formatarDataPT(avisoExtra.vencimento)
   };
 
-  const emailEnviado = await enviarEmailPDF({
+  const { ok: emailEnviado } = await enviarEmailPDFComConfirmacaoLeitura({
     to: proprietario.email,
     nomeDestinatario: proprietario.nome,
     assunto: modeloCobranca
@@ -517,7 +494,11 @@ async function emitirNotaExtraordinariaSeparada({ predio, f, proprietario, aviso
       ? interpolarModeloEmail(modeloCobranca.body, valoresCobranca).replace(/\n/g, "<br>")
       : `Segue em anexo a nota de cobrança referente à quota extraordinária (${avisoExtra.descricao}), no valor de <strong>${avisoExtra.valor.toFixed(2)} €</strong>, com vencimento a <strong>${formatarDataPT(avisoExtra.vencimento)}</strong>.<br><br>Assim que o pagamento for confirmado pela administração, receberá o respetivo recibo de pagamento oficial. Para um rápido cruzamento de dados, envie o comprovativo do pagamento para o email <strong>bentorodrgues2@gmail.com</strong>.`,
     pdfBuffer,
-    nome: nomeFicheiro
+    nome: nomeFicheiro,
+    idPredio: predio.id_predio,
+    idFracao: f.id_fracao,
+    tipo: "nota_cobranca",
+    idRastreio: `leit_email_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
   });
 
   return { ok: true, emailEnviado };
@@ -617,13 +598,17 @@ export async function reenviarNotaCobrancaCorrigida(id_predio, aviso) {
     descricao: descricaoNotaCorr
   });
 
-  const emailEnviado = await enviarEmailPDF({
+  const { ok: emailEnviado } = await enviarEmailPDFComConfirmacaoLeitura({
     to: proprietario.email,
     nomeDestinatario: proprietario.nome,
     assunto: `Correção — Nota de Cobrança — Quota de ${mesRefLabel} / ${anoRef} — Fração ${f.fracao_nome}`,
     mensagem: `Pedimos desculpa pelo incómodo: a nota de cobrança da quota de <strong>${mesRefLabel} de ${anoRef}</strong> que lhe foi enviada anteriormente continha um valor incorreto, devido a um erro técnico na permilagem da fração. Segue em anexo a nota corrigida, com o valor certo de <strong>${valorTotal.toFixed(2)} €</strong>, com vencimento a <strong>${formatarDataPT(aviso.vencimento)}</strong>.<br><br>Esta nota substitui a anteriormente enviada — desconsidere o valor antigo. Assim que o pagamento for confirmado pela administração, receberá o respetivo recibo de pagamento oficial.`,
     pdfBuffer,
-    nome: nomeFicheiro
+    nome: nomeFicheiro,
+    idPredio: predio.id_predio,
+    idFracao: f.id_fracao,
+    tipo: "nota_cobranca",
+    idRastreio: `leit_email_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
   });
 
   return { ok: true, emailEnviado };
@@ -1968,13 +1953,17 @@ export async function enviarNotasCorrecaoNovaQuota(id_predio, vencimentoISO) {
         origem: "correcao_nova_quota_mensal", nomeFicheiro, categoria: "Pasta Paga. Quotas", visibilidade: "Público"
       });
 
-      const emailEnviado = await enviarEmailPDF({
+      const { ok: emailEnviado } = await enviarEmailPDFComConfirmacaoLeitura({
         to: proprietario.email,
         nomeDestinatario: proprietario.nome,
         assunto: `Correção Nova Quota Mensal — ${mesRefLabel} / ${anoRef} — Fração ${f.fracao_nome}`,
         mensagem: `Na sequência da revisão de quotas aprovada, a quota de condomínio da fração <strong>${f.fracao_nome}</strong> foi atualizada a partir deste mês. Segue em anexo a nota de cobrança corrigida de <strong>${mesRefLabel} de ${anoRef}</strong>, no novo valor de <strong>${valorTotal.toFixed(2)} €</strong>, com vencimento a <strong>${formatarDataPT(aviso.vencimento)}</strong>.<br><br>Assim que o pagamento for confirmado pela administração, receberá o respetivo recibo oficial.`,
         pdfBuffer,
-        nome: nomeFicheiro
+        nome: nomeFicheiro,
+        idPredio: id_predio,
+        idFracao: f.id_fracao,
+        tipo: "nota_cobranca",
+        idRastreio: `leit_email_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
       });
 
       if (emailEnviado) {

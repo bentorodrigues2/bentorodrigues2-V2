@@ -1,24 +1,11 @@
 import { createHash } from "crypto";
 import { supabase } from "../server/lib/supabaseServer.js";
-import { guardarNoArquivo, registarDocumento, enviarEmailPDF } from "../server/lib/pdfService.js";
+import { guardarNoArquivo, registarDocumento, enviarEmailPDF, enviarEmailPDFComConfirmacaoLeitura } from "../server/lib/pdfService.js";
 import { generateOfficialReceiptPDF, nomeFicheiroRecibo } from "../server/lib/receiptGenerator.js";
 import { derivarPrefixoEdificio } from "../server/lib/reciboUtils.js";
 import { obterModeloEmail, interpolarModeloEmail } from "../server/lib/emailTemplates.js";
-import { escolherContaPorTipo, ajustarSaldoConta } from "../server/lib/contaSaldo.js";
+import { escolherContaPorTipo, escolherIbanContaPorTipo, ajustarSaldoConta } from "../server/lib/contaSaldo.js";
 import { sanitizarSegmentoStorage } from "../server/lib/storageUtils.js";
-
-// Escolhe o IBAN certo consoante o tipo de aviso: Quota Ordinária e Fundo
-// Comum de Reserva usam a conta corrente principal (is_principal), Quota
-// Extraordinária usa a conta de poupança/obras — mesma lógica que
-// escolherIbanContaPorTipo em src/utils.ts e server/lib/cronService.js.
-function escolherIbanContaPorTipo(contas, tipoAviso) {
-  if (!contas || contas.length === 0) return "";
-  const ehExtraordinaria = (tipoAviso || "").toLowerCase().includes("extra");
-  const contaPrincipal = contas.find((c) => c.is_principal);
-  const contaSecundaria = contas.find((c) => !c.is_principal);
-  if (ehExtraordinaria) return (contaSecundaria || contaPrincipal || contas[0])?.iban || "";
-  return (contaPrincipal || contas[0])?.iban || "";
-}
 
 export default async function handler(req, res) {
   try {
@@ -518,7 +505,11 @@ export default async function handler(req, res) {
         metodo: recibo.metodo_pagamento
       };
 
-      await enviarEmailPDF({
+      // Confirmação de leitura real (Resend) — antes só os envios manuais
+      // tinham isto; a imensa maioria dos recibos reais (emitidos
+      // automaticamente aqui, na confirmação de pagamento) não tinha
+      // nenhum rasto de "foi aberto?".
+      await enviarEmailPDFComConfirmacaoLeitura({
         to: emailDestinatario,
         nomeDestinatario,
         assunto: modeloRecibo
@@ -528,7 +519,11 @@ export default async function handler(req, res) {
           ? interpolarModeloEmail(modeloRecibo.body, valoresRecibo).replace(/\n/g, "<br>")
           : `Segue em anexo o recibo de pagamento referente à fração <strong>${fracaoNome}</strong>, no valor de <strong>${recibo.valor_total.toFixed(2)} €</strong>.`,
         pdfBuffer,
-        nome: nomeFicheiro
+        nome: nomeFicheiro,
+        idPredio: fracao?.id_predio,
+        idFracao: pagamento.id_fracao,
+        tipo: "recibo",
+        idRastreio: `leit_email_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
       });
     }
 
