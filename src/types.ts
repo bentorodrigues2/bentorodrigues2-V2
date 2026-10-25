@@ -845,49 +845,6 @@ export interface SeguroPartesComuns {
 }
 
 // ----------------------------------------------------------------------------
-// 7. PLANO PREVENTIVO DE MANUTENÇÃO & INSPEÇÕES OBRIGATÓRIAS (CALENDÁRIO & ALARMES)
-// ----------------------------------------------------------------------------
-export type TipoInspecaoObrigatoria =
-  | "ELEVADORES_DGEG"
-  | "LIMPEZA_CHAMINES_CONDUTAS"
-  | "RECARGA_EXTINTORES"
-  | "INSPECAO_REDE_GAS"
-  | "LIMPEZA_CISTERNA_BOMBAS"
-  | "SISTEMA_SOLAR_TERMICO"
-  | "PORTAO_GARAGEM_AUTOMATICO"
-  | "COLUNA_SECA_INCENDIO"
-  | "INSPECAO_TELHADO"
-  | "INSPECAO_ALGEROZES";
-
-export interface ItemPlanoManutencao {
-  id_item: string;
-  id_predio: string;
-  tipo: TipoInspecaoObrigatoria;
-  titulo: string;
-  entidade_responsavel: string;
-  id_fornecedor?: string; // liga a um fornecedor real (fornecedores.id_fornecedor) para "Pedir Proposta" poder enviar um email a sério
-  contacto_entidade?: string;
-  quantidade?: number; // nº de unidades deste equipamento (ex: 2 elevadores, 1 extintor)
-  periodicidade_meses: number; // ex: 12 (anual), 24 (2 anos), 1 (mensal)
-  base_legal_dgeg: string;
-  ultima_inspecao_data: string;
-  proxima_inspecao_data: string;
-  dias_alerta_antecedencia: number; // ex: 30 dias
-  estado_conformidade: "CONFORME" | "A_EXPIRAR" | "EXPIRADO_ALERTA";
-  num_certificado_relatorio?: string;
-  custo_estimado?: number;
-  fotos?: string[]; // até 4 imagens do equipamento/local (data URI base64)
-  historico_vistorias?: {
-    id_vistoria: string;
-    data: string;
-    tecnico: string;
-    resultado: "APROVADO_SEM_DEFICIENCIAS" | "APROVADO_COM_RESERVAS" | "REPROVADO";
-    observacoes: string;
-    documento_url?: string;
-  }[];
-}
-
-// ----------------------------------------------------------------------------
 // 8. FILA & LOG DE ENVIOS PROGRAMADOS (SCHEDULER DASHBOARD)
 // ----------------------------------------------------------------------------
 export interface EnvioProgramadoItem {

@@ -149,7 +149,6 @@ interface PWACondominoViewProps {
   movements: Movimento[];
   avisos: Aviso[];
   customMessages: any[];
-  handleEnviarMensagem: (e: React.FormEvent) => void;
   newMsgText: string;
   setNewMsgText: (t: string) => void;
   pwaNotifications: any[];
@@ -175,7 +174,6 @@ export default function PWACondominoView({
   movements,
   avisos,
   customMessages,
-  handleEnviarMensagem,
   newMsgText,
   setNewMsgText,
   pwaNotifications,

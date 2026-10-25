@@ -1743,7 +1743,6 @@ export function PWASimulator({
                   movements={movements}
                   avisos={avisos}
                   customMessages={customMessages}
-                  handleEnviarMensagem={handleEnviarMensagem}
                   newMsgText={newMsgText}
                   setNewMsgText={setNewMsgText}
                   pwaNotifications={pwaNotifications}

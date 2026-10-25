@@ -286,6 +286,23 @@ h1, h2, h3, h4 {
   overflow-wrap: anywhere !important;
 }
 
+/* Reação ao toque por omissão em todos os botões — confirmado em auditoria
+   que faltava feedback visual ao toque na imensa maioria dos botões da
+   experiência do condómino na PWA (menu, atalhos de Finanças,
+   Comunicações, etc.), não só nos poucos casos já corrigidos um a um.
+   Especificidade de classe (Tailwind "active:...") continua sempre a
+   ganhar a esta regra de elemento quando um botão já define o seu próprio
+   estado ativo explícito — isto só repõe um mínimo por omissão. */
+button:not(:disabled):active {
+  transform: scale(0.96);
+  opacity: 0.85;
+}
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):active {
+    transform: none;
+  }
+}
+
 /* Scrollbar hide helper */
 .scrollbar-none::-webkit-scrollbar {
   display: none;

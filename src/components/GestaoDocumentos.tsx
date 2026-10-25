@@ -3659,7 +3659,7 @@ export function GestaoDocumentos({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">Nota da Alteração (fica registada no histórico de versões)</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Nota da Alteração (fica registada no histórico de alterações)</label>
                 <input
                   type="text"
                   value={editNotaAlteracao}
@@ -3671,7 +3671,11 @@ export function GestaoDocumentos({
 
               {editingDoc.versoes && editingDoc.versoes.length > 0 && (
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Histórico de Versões</label>
+                  {/* Rótulo honesto: só regista QUANDO nome/descrição/autor/
+                      categoria mudaram, nunca uma cópia recuperável do
+                      ficheiro anterior — "Versões" sugeria ao administrador
+                      que havia um PDF antigo para recuperar aqui; não há. */}
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Histórico de Alterações</label>
                   <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
                     {[...editingDoc.versoes].reverse().map(v => (
                       <div key={v.id_versao} className="bg-slate-800/70 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[10px] text-slate-600 flex justify-between items-center gap-2">

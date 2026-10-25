@@ -190,6 +190,10 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
   const avisoPertenceAContaExtrato = (a: Aviso): boolean => {
     const contaAtiva = contas.find(c => c.id_conta === contaExtratoId);
     if (!contaAtiva) return true; // sem conta escolhida ainda, não filtra (evita esconder tudo por engano)
+    // Num prédio com 1 só conta, essa conta é sempre "principal" — sem isto,
+    // avisos de Quota Extraordinária nunca passavam o filtro e ficavam
+    // impossíveis de cruzar com o extrato bancário real nesses prédios.
+    if (predioContas.length <= 1) return true;
     const ehExtraordinaria = String(a.tipo || "").toLowerCase().includes("extra");
     return contaAtiva.is_principal ? !ehExtraordinaria : ehExtraordinaria;
   };

@@ -35,7 +35,6 @@ import {
   EmpresaGestoraConfig,
   GestorCarteira,
   RespostaIAPendente,
-  ItemPlanoManutencao,
   MuralAviso,
   ReservaEspacoComum,
   Correspondencia,
@@ -2770,64 +2769,6 @@ export async function saveObraExtraToSupabase(idPredio: string, item: ObraExtrao
 export async function deleteObraExtraFromSupabase(id: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
   return dbDelete("obras_extraordinarias", [["id", "eq", id]]);
-}
-
-// ============================================================================
-// PLANO DE MANUTENÇÃO OBRIGATÓRIA (AgendaManutencao.tsx)
-// ============================================================================
-export async function fetchPlanoManutencaoFromSupabase(idPredio: string): Promise<ItemPlanoManutencao[] | null> {
-  if (!isSupabaseConfigured() || !idPredio) return null;
-  const data = await dbSelect("plano_manutencao_obrigatoria", { filtros: [["id_predio", "eq", idPredio]] });
-  if (!data || data.length === 0) return null;
-  return data.map((row: any) => ({
-    id_item: row.id_item,
-    id_predio: row.id_predio,
-    tipo: row.tipo,
-    titulo: row.titulo,
-    entidade_responsavel: row.entidade_responsavel || "",
-    id_fornecedor: row.id_fornecedor || undefined,
-    contacto_entidade: row.contacto_entidade || undefined,
-    quantidade: row.quantidade != null ? Number(row.quantidade) : 1,
-    periodicidade_meses: Number(row.periodicidade_meses) || 12,
-    base_legal_dgeg: row.base_legal_dgeg || "",
-    ultima_inspecao_data: row.ultima_inspecao_data,
-    proxima_inspecao_data: row.proxima_inspecao_data,
-    dias_alerta_antecedencia: Number(row.dias_alerta_antecedencia) || 30,
-    estado_conformidade: row.estado_conformidade,
-    num_certificado_relatorio: row.num_certificado_relatorio || undefined,
-    custo_estimado: row.custo_estimado != null ? Number(row.custo_estimado) : undefined,
-    fotos: Array.isArray(row.fotos) ? row.fotos : [],
-    historico_vistorias: row.historico_vistorias || []
-  }));
-}
-
-export async function savePlanoManutencaoItemToSupabase(item: ItemPlanoManutencao): Promise<boolean> {
-  if (!isSupabaseConfigured()) return false;
-  return dbUpsert("plano_manutencao_obrigatoria", {
-    id_item: item.id_item,
-    id_predio: item.id_predio,
-    tipo: item.tipo,
-    titulo: item.titulo,
-    entidade_responsavel: item.entidade_responsavel || null,
-    id_fornecedor: item.id_fornecedor || null,
-    contacto_entidade: item.contacto_entidade || null,
-    quantidade: item.quantidade || 1,
-    periodicidade_meses: item.periodicidade_meses || 12,
-    base_legal_dgeg: item.base_legal_dgeg || null,
-    ultima_inspecao_data: item.ultima_inspecao_data || null,
-    proxima_inspecao_data: item.proxima_inspecao_data || null,
-    dias_alerta_antecedencia: item.dias_alerta_antecedencia || 30,
-    estado_conformidade: item.estado_conformidade,
-    num_certificado_relatorio: item.num_certificado_relatorio || null,
-    custo_estimado: item.custo_estimado ?? null,
-    fotos: item.fotos || [],
-    historico_vistorias: item.historico_vistorias || []
-  });
-}
-
-export async function deletePlanoManutencaoItemFromSupabase(idItem: string): Promise<boolean> {
-  if (!isSupabaseConfigured()) return false;
-  return dbDelete("plano_manutencao_obrigatoria", [["id_item", "eq", idItem]]);
 }
 
 // ============================================================================
