@@ -25,11 +25,20 @@ export function escolherContaPorTipo(contasPredio, tipoReferencia) {
  * recalculado a partir do livro de movimentos, por isso qualquer sítio que
  * confirme uma receita real ou justifique uma despesa real tem de chamar
  * isto explicitamente, ou o saldo mostrado fica parado no valor de arranque.
+ *
+ * Usa a função Postgres "ajustar_saldo_conta_atomico" (UPDATE ... SET saldo =
+ * saldo + delta num único passo) em vez de ler e depois escrever aqui em
+ * JS — bug real confirmado em produção: duas confirmações de pagamento a
+ * poucos segundos de intervalo liam o mesmo saldo de partida antes de
+ * qualquer uma das duas ter gravado a sua própria soma, e a segunda
+ * gravação apagava o crédito da primeira (clássica condição de corrida
+ * "leitura-depois-escrita"). A base de dados serializa sozinha um UPDATE
+ * relativo ao próprio valor da coluna, eliminando a janela de corrida.
  */
 export async function ajustarSaldoConta(idConta, delta) {
   if (!idConta || !delta) return;
-  const { data: conta } = await supabase.from("contas").select("saldo").eq("id_conta", idConta).maybeSingle();
-  if (!conta) return;
-  const novoSaldo = Math.round(((Number(conta.saldo) || 0) + delta) * 100) / 100;
-  await supabase.from("contas").update({ saldo: novoSaldo }).eq("id_conta", idConta);
+  const { error } = await supabase.rpc("ajustar_saldo_conta_atomico", { p_id_conta: idConta, p_delta: delta });
+  if (error) {
+    console.error("[contaSaldo] Erro ao ajustar saldo atomicamente:", error.message);
+  }
 }
