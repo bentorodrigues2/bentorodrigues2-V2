@@ -10,6 +10,7 @@ import {
   fetchProcessosJuridicosFromSupabase,
   fetchEmpresaGestoraConfig,
   saveContaToSupabase,
+  ajustarSaldoContaReal,
   saveMovimentoToSupabase,
   registarLogAuditoria
 } from "../lib/supabaseService";
@@ -327,9 +328,9 @@ export function CentralDocumentosMinutas({
 
         const contaAlvo = contas.find(c => c.id_conta === cartaCustoContaId);
         if (contaAlvo) {
-          const contaAtualizada = { ...contaAlvo, saldo: (contaAlvo.saldo || 0) - valorCusto };
-          if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
-          saveContaToSupabase(contaAtualizada).catch(console.error);
+          ajustarSaldoContaReal(contaAlvo.id_conta, -valorCusto).then(contaReal => {
+            if (contaReal && setContas) setContas(prev => prev.map(c => c.id_conta === contaReal.id_conta ? contaReal : c));
+          }).catch(console.error);
         }
         if (setMovements) setMovements(prev => [novoMov, ...prev]);
         saveMovimentoToSupabase(novoMov).catch(console.error);

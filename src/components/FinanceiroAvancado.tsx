@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef } from "react";
 import { Predio, Fracao, Aviso, Movimento, LoggedUser, Documento, Conta } from "../types";
 import { formatDatePT, formatQuotaReceiptNumber, downloadReceiptPDF, exportarBalanceteMapaAnualXLS, parseValorMonetario, exportToXLS, exportarTabelaParaPDF } from "../utils";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
-import { fetchCaucoesFromSupabase, saveCaucaoToSupabase, registarLogAuditoria, saveAvisosToSupabase, saveContaToSupabase, saveMovimentoToSupabase } from "../lib/supabaseService";
+import { fetchCaucoesFromSupabase, saveCaucaoToSupabase, registarLogAuditoria, saveAvisosToSupabase, saveContaToSupabase, ajustarSaldoContaReal, saveMovimentoToSupabase } from "../lib/supabaseService";
 
 export interface Caucao {
   id_caucao: string;
@@ -786,9 +786,8 @@ export function FinanceiroAvancado({
       // desalinhando o Painel de Controlo e o balancete por conta.
       const contaAlvo = predioContas.find(c => c.id_conta === reciboContaId);
       if (contaAlvo) {
-        const contaAtualizada: Conta = { ...contaAlvo, saldo: Math.round(((Number(contaAlvo.saldo) || 0) + valNum) * 100) / 100 };
-        await saveContaToSupabase(contaAtualizada);
-        setContas?.(prev => prev.map(c => c.id_conta === contaAlvo.id_conta ? contaAtualizada : c));
+        const contaReal = await ajustarSaldoContaReal(contaAlvo.id_conta, valNum);
+        if (contaReal) setContas?.(prev => prev.map(c => c.id_conta === contaReal.id_conta ? contaReal : c));
       }
 
       registarLogAuditoria("Financeira", "Registou um recibo manual", predio.id_predio, loggedUser, `Recibo ${reciboNum} — Fração ${selectedFracao.fracao_nome} (${valNum.toFixed(2)} €, conta ${contaAlvo?.banco || reciboContaId})`);

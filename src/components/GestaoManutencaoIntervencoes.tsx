@@ -6,7 +6,7 @@ import {
   fetchAgendaVistoriasFromSupabase, saveAgendaVistoriaToSupabase,
   fetchIntervencoesFromSupabase, saveIntervencaoToSupabase,
   fetchObrasExtraFromSupabase, saveObraExtraToSupabase, deleteObraExtraFromSupabase,
-  saveDocumentoToSupabase, saveMovimentoToSupabase, saveOcorrenciaToSupabase, saveContaToSupabase,
+  saveDocumentoToSupabase, saveMovimentoToSupabase, saveOcorrenciaToSupabase, saveContaToSupabase, ajustarSaldoContaReal,
   saveDividaFornecedorToSupabase, fetchDividasFornecedoresFromSupabase, deleteDividaFornecedorFromSupabase, registarLogAuditoria
 } from "../lib/supabaseService";
 import { 
@@ -711,8 +711,7 @@ export function GestaoManutencaoIntervencoes({
     setMovements([novoMov, ...movements]);
     saveMovimentoToSupabase(novoMov).catch(console.error);
     if (contaAlvo) {
-      contaAlvo.saldo = (contaAlvo.saldo || 0) - lancamentoCusto;
-      saveContaToSupabase(contaAlvo).catch(console.error);
+      ajustarSaldoContaReal(contaAlvo.id_conta, -lancamentoCusto).catch(console.error);
     }
 
     // Create automatic Document Archive entry
@@ -780,8 +779,7 @@ export function GestaoManutencaoIntervencoes({
       setMovements([novoMov, ...movements]);
       saveMovimentoToSupabase(novoMov).catch(console.error);
       if (contaAlvo) {
-        contaAlvo.saldo = (contaAlvo.saldo || 0) - lancamentoCusto;
-        saveContaToSupabase(contaAlvo).catch(console.error);
+        ajustarSaldoContaReal(contaAlvo.id_conta, -lancamentoCusto).catch(console.error);
       }
 
       // Archive document

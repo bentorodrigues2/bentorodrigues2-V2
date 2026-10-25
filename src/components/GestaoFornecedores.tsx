@@ -15,6 +15,7 @@ import {
   savePagamentoDividaToSupabase,
   deletePagamentoDividaFromSupabase,
   saveContaToSupabase,
+  ajustarSaldoContaReal,
   saveMovimentoToSupabase,
   deleteMovimentoFromSupabase,
   uploadDocumentoToStorage,
@@ -415,9 +416,8 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     const movOk = await saveMovimentoToSupabase(novoMovimento);
     if (!movOk) return alert("❌ Não foi possível registar o movimento de pagamento. Tente novamente.");
 
-    const contaAtualizada: Conta = { ...conta, saldo: conta.saldo - valorTranche };
-    const contaOk = await saveContaToSupabase(contaAtualizada);
-    if (!contaOk) {
+    const contaReal = await ajustarSaldoContaReal(conta.id_conta, -valorTranche);
+    if (!contaReal) {
       // O movimento já ficou gravado — reverter deixava o pagamento "a meio"
       // de forma pior (um movimento sem o débito correspondente na conta).
       // Avisa claramente em vez de fingir sucesso e deixar o saldo
@@ -425,7 +425,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       // reportado: pagamento confirmado, saldo da conta nunca mexia).
       return alert("⚠️ O pagamento foi registado nos movimentos, mas houve um erro ao atualizar o saldo da conta bancária. Corrija manualmente o saldo em Contas Bancárias ou tente novamente.");
     }
-    setContas(prev => prev.map(c => c.id_conta === conta.id_conta ? contaAtualizada : c));
+    setContas(prev => prev.map(c => c.id_conta === conta.id_conta ? contaReal : c));
     setMovements(prev => [novoMovimento, ...prev]);
 
     const novoPagamento: PagamentoDivida = {
@@ -483,9 +483,8 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
 
     const contaPag = contas.find(c => c.id_conta === pagamento.id_conta);
     if (contaPag) {
-      const contaRevertida: Conta = { ...contaPag, saldo: contaPag.saldo + pagamento.valor };
-      const okConta = await saveContaToSupabase(contaRevertida);
-      if (!okConta) return alert("❌ Não foi possível reverter o saldo da conta. Tente novamente.");
+      const contaRevertida = await ajustarSaldoContaReal(contaPag.id_conta, pagamento.valor);
+      if (!contaRevertida) return alert("❌ Não foi possível reverter o saldo da conta. Tente novamente.");
       setContas(prev => prev.map(c => c.id_conta === contaPag.id_conta ? contaRevertida : c));
     }
 

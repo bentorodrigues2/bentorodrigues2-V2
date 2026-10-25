@@ -5,6 +5,7 @@ import {
   saveDocumentoToSupabase,
   saveMovimentoToSupabase,
   saveContaToSupabase,
+  ajustarSaldoContaReal,
   registarLogAuditoria
 } from "../lib/supabaseService";
 
@@ -230,9 +231,9 @@ export function ClassificadorDocumentos({ predio, fracoes, contas, setContas, mo
     setExtraindo(true);
     try {
       const selecionados = movimentosExtraidos.filter((_, i) => movimentosSelecionados.has(i));
-      let saldoAtualizado = contaAlvo.saldo || 0;
+      let deltaTotal = 0;
       const novosMovimentos: Movimento[] = selecionados.map((m, idx) => {
-        saldoAtualizado += m.tipo === "Receita" ? m.valor : -m.valor;
+        deltaTotal += m.tipo === "Receita" ? m.valor : -m.valor;
         return {
           id_mov: "mov-clf-" + Date.now() + "-" + idx,
           id_predio: predio.id_predio,
@@ -246,9 +247,8 @@ export function ClassificadorDocumentos({ predio, fracoes, contas, setContas, mo
         };
       });
 
-      const contaFinal = { ...contaAlvo, saldo: Math.round(saldoAtualizado * 100) / 100 };
-      setContas(prev => prev.map(c => c.id_conta === contaDestinoId ? contaFinal : c));
-      await saveContaToSupabase(contaFinal);
+      const contaReal = await ajustarSaldoContaReal(contaAlvo.id_conta, Math.round(deltaTotal * 100) / 100);
+      if (contaReal) setContas(prev => prev.map(c => c.id_conta === contaReal.id_conta ? contaReal : c));
 
       setMovements(prev => [...novosMovimentos, ...prev]);
       await Promise.all(novosMovimentos.map(m => saveMovimentoToSupabase(m)));
@@ -314,9 +314,8 @@ export function ClassificadorDocumentos({ predio, fracoes, contas, setContas, mo
         estado: "Movimento Cego / Por Justificar",
         is_movimento_cego: true
       };
-      const contaFinal = { ...contaAlvo, saldo: Math.round(((contaAlvo.saldo || 0) - valor) * 100) / 100 };
-      setContas(prev => prev.map(c => c.id_conta === contaDestinoId ? contaFinal : c));
-      await saveContaToSupabase(contaFinal);
+      const contaReal = await ajustarSaldoContaReal(contaAlvo.id_conta, -valor);
+      if (contaReal) setContas(prev => prev.map(c => c.id_conta === contaReal.id_conta ? contaReal : c));
 
       setMovements(prev => [novoMovimento, ...prev]);
       await saveMovimentoToSupabase(novoMovimento);

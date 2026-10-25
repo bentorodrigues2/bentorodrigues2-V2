@@ -511,11 +511,15 @@ export function PWASimulator({
     return () => clearInterval(interval);
   }, []);
 
-  // Determine active fraction for owner role — antes só procurava pelo
-  // email do proprietário principal, o que fazia um coproprietário ou
-  // inquilino autenticado cair sempre no fallback fracoes[0] (dados de
-  // OUTRA fração, potencialmente de outro condómino).
-  const condominoFracao = encontrarFracaoDoCondomino(fracoes, loggedUser) || fracoes[0];
+  // Determine active fraction for owner role. NUNCA cair para fracoes[0]
+  // quando não se encontra a fração certa — bug crítico confirmado em
+  // auditoria: "fracoes" aqui é a lista GLOBAL carregada sem filtro de
+  // prédio (fetchFracoesFromSupabase() em App.tsx), por isso o fallback
+  // antigo podia mostrar a um condómino real os dados de outra fração de
+  // OUTRO prédio inteiro, não só de outro condómino do mesmo prédio. Sem
+  // fração encontrada, condominoFracao fica undefined e o ecrã mostra um
+  // aviso claro em vez de dados que não lhe pertencem (ver uso mais abaixo).
+  const condominoFracao = encontrarFracaoDoCondomino(fracoes, loggedUser);
 
   // Decisão confirmada pelo utilizador: um ADMIN/GESTOR vê sempre o menu
   // completo de administração no telemóvel (a "coluna central" adaptada),
@@ -1713,8 +1717,18 @@ export function PWASimulator({
 
 
 
-              {/* --- ROLE: CONDÓMINO (ou ADMIN/GESTOR que também é dono de uma fração) --- */}
-              {loggedUser.role === "USER" && (
+              {/* --- ROLE: CONDÓMINO (ou ADMIN/GESTOR que também é dono de uma fração) ---
+                  Inclui também INQUILINO/COPROPRIETARIO — antes só "USER" montava este
+                  ecrã, apesar de PWACondominoView já ter acesso restrito previsto para
+                  estes 2 papéis (role !== "USER" dentro do próprio componente); na
+                  prática ficavam sempre com um ecrã vazio no telemóvel. */}
+              {["USER", "INQUILINO", "COPROPRIETARIO"].includes(loggedUser.role) && !condominoFracao && (
+                <div className="bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/40 rounded-2xl p-5 text-center space-y-2 shadow-sm">
+                  <p className="text-sm font-bold text-red-600 dark:text-red-400">Não foi possível identificar a sua fração</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">Contacte a administração do condomínio para corrigir o seu registo — por segurança, não mostramos dados de nenhuma fração até isto ficar resolvido.</p>
+                </div>
+              )}
+              {["USER", "INQUILINO", "COPROPRIETARIO"].includes(loggedUser.role) && condominoFracao && (
                 <PWACondominoView
                   loggedUser={loggedUser}
                   predio={predio}

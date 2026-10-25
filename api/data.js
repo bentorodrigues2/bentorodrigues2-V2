@@ -267,6 +267,33 @@ export default async function handler(req, res) {
       // combinados com AND, um pedido a tentar ler outro prédio nunca
       // consegue alargar o resultado, só recebe menos (ou nada).
       if (isolamento) query = query.eq(isolamento.coluna, isolamento.valor);
+
+      // "documentos" só tem isolamento por id_predio (TABELAS_COM_ID_PREDIO)
+      // — um condómino lia por esta via TODOS os documentos do prédio,
+      // incluindo os de outras frações e os marcados "Administração". O
+      // filtro por fração/visibilidade só existia em JavaScript no browser
+      // (GestaoDocumentos.tsx), depois de os dados já terem saído do
+      // servidor — qualquer pedido direto a este endpoint (ex: consola do
+      // browser) contornava-o por completo. Bug crítico confirmado em
+      // auditoria. "documentos.fracao" guarda, consoante o fluxo que criou
+      // o registo, ou o id_fracao ou o nome da fração (ex: "J") — por isso
+      // aceitam-se os dois valores, nunca só um.
+      if (tabela === "documentos" && !ehGestao) {
+        let fracaoNomeChamador = null;
+        if (perfilChamador.fracao) {
+          const { data: fracaoRow } = await supabase
+            .from("fracoes")
+            .select("fracao_nome")
+            .eq("id_fracao", perfilChamador.fracao)
+            .maybeSingle();
+          fracaoNomeChamador = fracaoRow?.fracao_nome || null;
+        }
+        const valoresFracaoPermitidos = [perfilChamador.fracao, fracaoNomeChamador].filter(Boolean);
+        const clausulasFracao = ["fracao.is.null", ...valoresFracaoPermitidos.map((v) => `fracao.eq.${v}`)];
+        query = query.or(clausulasFracao.join(","));
+        query = query.or("visibilidade.is.null,visibilidade.neq.Administração");
+      }
+
       if (order?.coluna) query = query.order(order.coluna, { ascending: order.asc !== false });
       if (limit) query = query.limit(limit);
       const { data, error } = await query;

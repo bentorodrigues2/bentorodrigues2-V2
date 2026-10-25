@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Predio, Conta, Movimento, LoggedUser, Fracao, Aviso, Fornecedor, DividaFornecedor, PagamentoDivida, Documento } from "../types";
 import { formatDatePT, parseValorMonetario, exportToXLS, exportarTabelaParaPDF } from "../utils";
-import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria, fetchMovimentosFromSupabase, fetchPagamentosPendentesInfoFromSupabase, dbInsert, dbUpdate, fetchDividasFornecedoresFromSupabase, saveDividaFornecedorToSupabase, savePagamentoDividaToSupabase, uploadDocumentoToStorage, saveDocumentoToSupabase } from "../lib/supabaseService";
+import { saveMovimentoToSupabase, deleteMovimentoFromSupabase, saveContaToSupabase, ajustarSaldoContaReal, saveAvisosToSupabase, saveFornecedorToSupabase, registarLogAuditoria, fetchMovimentosFromSupabase, fetchPagamentosPendentesInfoFromSupabase, dbInsert, dbUpdate, fetchDividasFornecedoresFromSupabase, saveDividaFornecedorToSupabase, savePagamentoDividaToSupabase, uploadDocumentoToStorage, saveDocumentoToSupabase } from "../lib/supabaseService";
 import { cruzarMovimentoComFornecedor } from "../lib/fornecedorMatching";
 import { matchBankTransactions, selecionarAvisosCobertosPeloValor } from "../utils/bankStatementParser";
 import { Save, CheckCircle2 } from "lucide-react";
@@ -589,13 +589,12 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
           movimentoAtualizado.origem === "extrato_bancario_email_inbound" || movimentoAtualizado.origem === "email_inbound";
         const contaAlvo = origemAutomaticaJaAjustouSaldo ? null : contasRef.current.find(c => c.id_conta === movimentoAtualizado!.id_conta);
         if (contaAlvo) {
-          const contaAtualizada: Conta = {
-            ...contaAlvo,
-            saldo: (contaAlvo.saldo || 0) + (movimentoAtualizado.tipo === "Receita" ? movimentoAtualizado.valor : -movimentoAtualizado.valor)
-          };
-          contasRef.current = contasRef.current.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c);
-          if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
-          saveContaToSupabase(contaAtualizada).catch(console.error);
+          const deltaSaldo = movimentoAtualizado.tipo === "Receita" ? movimentoAtualizado.valor : -movimentoAtualizado.valor;
+          ajustarSaldoContaReal(contaAlvo.id_conta, deltaSaldo).then(contaReal => {
+            if (!contaReal) return;
+            contasRef.current = contasRef.current.map(c => c.id_conta === contaReal.id_conta ? contaReal : c);
+            if (setContas) setContas(prev => prev.map(c => c.id_conta === contaReal.id_conta ? contaReal : c));
+          }).catch(console.error);
         }
       }
       setJustifyingMovId(null);
@@ -672,11 +671,12 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
 
     const contaAlvo = contasRef.current.find(c => c.id_conta === contaId);
     if (contaAlvo) {
-      const novoSaldo = tipo === 'Receita' ? contaAlvo.saldo + valorNumerico : contaAlvo.saldo - valorNumerico;
-      const contaAtualizada: Conta = { ...contaAlvo, saldo: novoSaldo };
-      contasRef.current = contasRef.current.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c);
-      if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
-      saveContaToSupabase(contaAtualizada).catch(console.error);
+      const deltaSaldo = tipo === 'Receita' ? valorNumerico : -valorNumerico;
+      ajustarSaldoContaReal(contaAlvo.id_conta, deltaSaldo).then(contaReal => {
+        if (!contaReal) return;
+        contasRef.current = contasRef.current.map(c => c.id_conta === contaReal.id_conta ? contaReal : c);
+        if (setContas) setContas(prev => prev.map(c => c.id_conta === contaReal.id_conta ? contaReal : c));
+      }).catch(console.error);
     }
 
     setMovements([novo, ...movements]);
@@ -790,10 +790,11 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
 
     // 2. Creditar o saldo da conta selecionada
     if (contaAlvo) {
-      const contaAtualizada: Conta = { ...contaAlvo, saldo: (contaAlvo.saldo || 0) + val };
-      contasRef.current = contasRef.current.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c);
-      if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
-      saveContaToSupabase(contaAtualizada).catch(console.error);
+      ajustarSaldoContaReal(contaAlvo.id_conta, val).then(contaReal => {
+        if (!contaReal) return;
+        contasRef.current = contasRef.current.map(c => c.id_conta === contaReal.id_conta ? contaReal : c);
+        if (setContas) setContas(prev => prev.map(c => c.id_conta === contaReal.id_conta ? contaReal : c));
+      }).catch(console.error);
     }
 
     // 3. Se existirem avisos de dívida transitada, atualizar/liquidar
@@ -861,10 +862,11 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
 
     const contaAlvo = contasRef.current.find(c => c.id_conta === targetContaId);
     if (contaAlvo) {
-      const contaAtualizada: Conta = { ...contaAlvo, saldo: contaAlvo.saldo - email.extractedData.valor };
-      contasRef.current = contasRef.current.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c);
-      if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
-      saveContaToSupabase(contaAtualizada).catch(console.error);
+      ajustarSaldoContaReal(contaAlvo.id_conta, -email.extractedData.valor).then(contaReal => {
+        if (!contaReal) return;
+        contasRef.current = contasRef.current.map(c => c.id_conta === contaReal.id_conta ? contaReal : c);
+        if (setContas) setContas(prev => prev.map(c => c.id_conta === contaReal.id_conta ? contaReal : c));
+      }).catch(console.error);
     }
 
     setMovements([novo, ...movements]);
@@ -1228,14 +1230,18 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
 
     const contaAlvo = contasRef.current.find(c => c.id_conta === selectedContaId);
     if (contaAlvo) {
-      const novoSaldo = item.tipo === "Receita" ? contaAlvo.saldo + item.valor : contaAlvo.saldo - item.valor;
-      const contaAtualizada: Conta = { ...contaAlvo, saldo: novoSaldo };
-      // Síncrono, antes do await — garante que a próxima chamada desta
-      // função (ex: dentro do mesmo lote "Lançar Todos") já lê este saldo
-      // atualizado, mesmo que o React ainda não tenha re-renderizado.
-      contasRef.current = contasRef.current.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c);
-      if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
-      await saveContaToSupabase(contaAtualizada).catch(console.error);
+      // Ajuste sempre atómico e relativo no servidor (ajustarSaldoContaReal)
+      // — nunca ler+somar+gravar em memória. Dentro de um lote ("Lançar
+      // Todos"), cada chamada aguarda a sua própria resposta real do
+      // servidor antes de prosseguir (await), por isso continuam a
+      // acumular corretamente mesmo sem o cálculo síncrono local que havia
+      // antes.
+      const deltaSaldo = item.tipo === "Receita" ? item.valor : -item.valor;
+      const contaReal = await ajustarSaldoContaReal(contaAlvo.id_conta, deltaSaldo);
+      if (contaReal) {
+        contasRef.current = contasRef.current.map(c => c.id_conta === contaReal.id_conta ? contaReal : c);
+        if (setContas) setContas(prev => prev.map(c => c.id_conta === contaReal.id_conta ? contaReal : c));
+      }
     }
 
     if (candidatoCego) {
@@ -1384,10 +1390,11 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
       // mesmo fallback já construído para quando nenhum aviso pendente bate
       // certo. Creditar aqui também duplicava o valor no saldo.
       if (!semAvisoCorrespondente) {
-        const contaAtualizada: Conta = { ...contaAlvo, saldo: (contaAlvo.saldo || 0) + item.valor };
-        contasRef.current = contasRef.current.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c);
-        if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
-        saveContaToSupabase(contaAtualizada).catch(console.error);
+        ajustarSaldoContaReal(contaAlvo.id_conta, item.valor).then(contaReal => {
+          if (!contaReal) return;
+          contasRef.current = contasRef.current.map(c => c.id_conta === contaReal.id_conta ? contaReal : c);
+          if (setContas) setContas(prev => prev.map(c => c.id_conta === contaReal.id_conta ? contaReal : c));
+        }).catch(console.error);
       }
 
       // 3. Lançar o movimento
@@ -1795,10 +1802,11 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
       if (deltaValor !== 0) {
         const contaAlvo = contasRef.current.find(c => c.id_conta === mov.id_conta);
         if (contaAlvo) {
-          const contaAtualizada: Conta = { ...contaAlvo, saldo: Math.round(((contaAlvo.saldo || 0) + deltaValor) * 100) / 100 };
-          contasRef.current = contasRef.current.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c);
-          if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
-          saveContaToSupabase(contaAtualizada).catch(console.error);
+          ajustarSaldoContaReal(contaAlvo.id_conta, deltaValor).then(contaReal => {
+            if (!contaReal) return;
+            contasRef.current = contasRef.current.map(c => c.id_conta === contaReal.id_conta ? contaReal : c);
+            if (setContas) setContas(prev => prev.map(c => c.id_conta === contaReal.id_conta ? contaReal : c));
+          }).catch(console.error);
         }
       }
     }
@@ -1844,10 +1852,11 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
         const reversao = Math.abs(mov.valor) * (mov.tipo === "Receita" ? -1 : 1);
         const contaAlvo = contasRef.current.find(c => c.id_conta === mov.id_conta);
         if (contaAlvo) {
-          const contaAtualizada: Conta = { ...contaAlvo, saldo: Math.round(((contaAlvo.saldo || 0) + reversao) * 100) / 100 };
-          contasRef.current = contasRef.current.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c);
-          if (setContas) setContas(prev => prev.map(c => c.id_conta === contaAtualizada.id_conta ? contaAtualizada : c));
-          saveContaToSupabase(contaAtualizada).catch(console.error);
+          ajustarSaldoContaReal(contaAlvo.id_conta, reversao).then(contaReal => {
+            if (!contaReal) return;
+            contasRef.current = contasRef.current.map(c => c.id_conta === contaReal.id_conta ? contaReal : c);
+            if (setContas) setContas(prev => prev.map(c => c.id_conta === contaReal.id_conta ? contaReal : c));
+          }).catch(console.error);
         }
       }
     }

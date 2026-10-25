@@ -392,6 +392,50 @@ export async function deleteContaFromSupabase(idConta: string): Promise<boolean>
   return dbDelete("contas", [["id_conta", "eq", idConta]]);
 }
 
+/**
+ * Ajusta o saldo real de uma conta bancária de forma atómica, através do
+ * servidor (api/contas.js) — nunca calcular o novo saldo em memória e
+ * gravá-lo diretamente via saveContaToSupabase. Bug crítico confirmado em
+ * auditoria: o estado "contas" no browser pode estar desatualizado (só é
+ * reconciliado ao abrir a app, ao voltar a ficar visível, ou a cada 60s),
+ * e gravar um valor absoluto calculado a partir dele apaga silenciosamente
+ * créditos/débitos reais feitos por outra via entretanto. Devolve a conta
+ * já com o saldo real atualizado (para repor no estado local), ou null se
+ * o ajuste falhar — nesse caso NÃO assumir nenhum saldo novo localmente.
+ */
+export async function ajustarSaldoContaReal(idConta: string, delta: number): Promise<Conta | null> {
+  if (!isSupabaseConfigured() || !idConta || !delta) return null;
+  try {
+    const resp = await fetch("/api/contas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id_conta: idConta, delta })
+    });
+    const resultado = await resp.json();
+    if (!resp.ok || !resultado?.ok || !resultado?.conta) {
+      console.error("[ajustarSaldoContaReal] Erro ao ajustar saldo:", resultado?.error || resp.statusText);
+      return null;
+    }
+    return {
+      id_conta: resultado.conta.id_conta,
+      id_predio: resultado.conta.id_predio,
+      banco: resultado.conta.banco,
+      iban: resultado.conta.iban,
+      tipo: resultado.conta.tipo,
+      saldo: Number(resultado.conta.saldo) || 0,
+      balcao: resultado.conta.balcao || undefined,
+      morada_balcao: resultado.conta.morada_balcao || undefined,
+      contacto_banco: resultado.conta.contacto_banco || undefined,
+      gestor_contas: resultado.conta.gestor_contas || undefined,
+      email_gestor: resultado.conta.email_gestor || undefined,
+      is_principal: Boolean(resultado.conta.is_principal)
+    };
+  } catch (err) {
+    console.error("[ajustarSaldoContaReal] Erro de rede:", err);
+    return null;
+  }
+}
+
 // ============================================================================
 // MOVIMENTOS FINANCEIROS
 // ============================================================================

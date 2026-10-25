@@ -9,6 +9,7 @@ import {
   dbDelete,
   saveAvisosToSupabase,
   saveContaToSupabase,
+  ajustarSaldoContaReal,
   saveMovimentoToSupabase,
   registarLogAuditoria,
   fetchRevisoesOrcamentoFromSupabase,
@@ -431,9 +432,9 @@ export function GestaoEmissao({ predio, fracoes, avisos, setAvisos, contas, setC
       metodo_pagamento: "Transferência Bancária"
     };
 
-    const contaAtualizada: Conta = { ...contaAlvo, saldo: (contaAlvo.saldo || 0) + valorInformado };
-    setContas(prev => prev.map(c => c.id_conta === idConta ? contaAtualizada : c));
-    saveContaToSupabase(contaAtualizada).catch(console.error);
+    ajustarSaldoContaReal(contaAlvo.id_conta, valorInformado).then(contaReal => {
+      if (contaReal) setContas(prev => prev.map(c => c.id_conta === idConta ? contaReal : c));
+    }).catch(console.error);
 
     setMovements(prev => [novoMovimento, ...prev]);
     saveMovimentoToSupabase(novoMovimento).catch(console.error);
