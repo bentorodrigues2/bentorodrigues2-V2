@@ -138,6 +138,39 @@ function calcularRatesPredio(predio, fracoes) {
   return { orcamentoAnual, isLojaExterior, rateNormal, rateLoja };
 }
 
+/**
+ * Quota Ordinária mensal já estabelecida para esta fração — a fonte de
+ * verdade real a usar na emissão mensal automática, em vez de recalcular
+ * sempre do zero por permilagem (ver nota em emitirNotaCobrancaFracaoMes).
+ * Encontra o aviso "Quota Ordinária" real mais recente desta fração
+ * (excluindo dívida de "administração anterior", que não é a quota
+ * corrente) e soma-lhe qualquer "Diferença de Quota" gravada para o MESMO
+ * mês — mesmo padrão já usado em quotaMensalAtualPorFracao
+ * (FinanceiroAvancado.tsx), só que aqui do lado do servidor. Devolve null
+ * quando a fração nunca teve nenhuma quota emitida (primeira vez).
+ */
+async function obterQuotaMensalEstabelecidaFracao(id_fracao) {
+  const { data: avisos } = await supabase
+    .from("avisos")
+    .select("valor, vencimento, id_aviso")
+    .eq("id_fracao", id_fracao)
+    .eq("tipo", "Quota Ordinária")
+    .not("descricao", "ilike", "%administração anterior%")
+    .order("vencimento", { ascending: false })
+    .limit(50);
+  if (!avisos || avisos.length === 0) return null;
+
+  const maisRecente = avisos[0];
+  const mesMaisRecente = (maisRecente.vencimento || "").slice(0, 7);
+  if (!mesMaisRecente) return null;
+
+  const totalMes = avisos
+    .filter((a) => (a.vencimento || "").slice(0, 7) === mesMaisRecente)
+    .reduce((soma, a) => soma + Number(a.valor || 0), 0);
+
+  return Math.round(totalMes * 100) / 100;
+}
+
 // Escolhe o IBAN certo consoante o tipo de aviso: Quota Ordinária e Fundo
 // Comum de Reserva usam a conta corrente principal (is_principal), Quota
 // Extraordinária usa a conta de poupança/obras — mesma lógica que
@@ -209,10 +242,30 @@ async function emitirNotaCobrancaFracaoMes({ predio, f, proprietario, rates, ano
   const dataEmissao = isoDate(hojeUTC.getUTCFullYear(), hojeUTC.getUTCMonth(), hojeUTC.getUTCDate());
   const vencimento = isoDate(anoRef, mesIndex0, 8);
 
-  const orcamentoMensalProporcional = f.permilagem * (rates.isLojaExterior(f) ? rates.rateLoja : rates.rateNormal);
-  const valorOrdinario = Math.round(orcamentoMensalProporcional * 0.9 * 100) / 100;
-  const valorFCR = Math.round(orcamentoMensalProporcional * 0.1 * 100) / 100;
-  const valorTotal = Math.round((valorOrdinario + valorFCR) * 100) / 100;
+  // Bug real confirmado em produção: recalcular a quota desta fração TODOS
+  // os meses a partir do orçamento anual guardado, redistribuído por
+  // permilagem, faz a quota mudar sozinha sempre que esse orçamento
+  // divergir (mesmo que ninguém tenha pedido nenhuma alteração) — foi
+  // exatamente isto que mudou o valor de 12 frações de um mês para o
+  // outro, sem nenhuma revisão real ter sido pedida para esse mês. A quota
+  // mensal de uma fração só pode mudar quando uma revisão REAL é aplicada
+  // (GestaoQuotasOrcamento.tsx), nunca sozinha de mês para mês — por isso
+  // usa-se sempre a quota já estabelecida (o aviso mais recente desta
+  // fração, já consolidado com eventuais "Diferença de Quota" do mesmo
+  // mês), e só se recorre ao cálculo por permilagem quando a fração nunca
+  // teve nenhuma quota emitida antes (primeira emissão de sempre).
+  const quotaEstabelecida = await obterQuotaMensalEstabelecidaFracao(f.id_fracao);
+  let valorOrdinario, valorFCR, valorTotal;
+  if (quotaEstabelecida !== null) {
+    valorTotal = quotaEstabelecida;
+    valorFCR = Math.round(valorTotal * 0.1 * 100) / 100;
+    valorOrdinario = Math.round((valorTotal - valorFCR) * 100) / 100;
+  } else {
+    const orcamentoMensalProporcional = f.permilagem * (rates.isLojaExterior(f) ? rates.rateLoja : rates.rateNormal);
+    valorOrdinario = Math.round(orcamentoMensalProporcional * 0.9 * 100) / 100;
+    valorFCR = Math.round(orcamentoMensalProporcional * 0.1 * 100) / 100;
+    valorTotal = Math.round((valorOrdinario + valorFCR) * 100) / 100;
+  }
 
   // Guarda contra dívida fantasma: se esta fração já tem a Quota Ordinária
   // deste mês marcada Paga (ex: coberta por um plano de pagamento
