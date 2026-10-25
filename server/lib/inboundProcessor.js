@@ -411,7 +411,7 @@ export async function calcularQuotaMensalFracao(idPredio, idFracao) {
  * Lançar comprovativo pendente diretamente em pagamentos e movimentos
  * Mantém conformidade com o frontend (GestaoMovimentos.tsx / GestaoPagamentos.tsx)
  */
-async function registarComprovativoPendente({ categoria, dadosExtraidos, contexto, comprovativoUrl, remetenteEmail, fileHash }) {
+async function registarComprovativoPendente({ categoria, dadosExtraidos, contexto, comprovativoUrl, remetenteEmail, fileHash, fornecedorCruzado }) {
   try {
     const tipoDocumento = (dadosExtraidos?.tipo_documento || "").toLowerCase();
     // Sem dadosExtraidos (falha total da IA a ler o anexo) e sem a categoria
@@ -591,6 +591,16 @@ async function registarComprovativoPendente({ categoria, dadosExtraidos, context
         id_predio: contexto?.id_predio || null,
         id_conta: contaAlvo?.id_conta || null,
         fracao_id: contexto?.id_fracao || null,
+        // Sem isto, uma fatura de fornecedor recebida por email (ex: NOWO)
+        // nascia sem nenhum fornecedor ligado — quando o pagamento real
+        // (débito direto) chegava depois pelo extrato bancário, a deteção
+        // de duplicados (jaLancadoAntes, GestaoMovimentos.tsx) nunca
+        // reconhecia que era a MESMA despesa, porque comparava por
+        // id_fornecedor e este campo estava sempre vazio. Criava sempre um
+        // segundo movimento paralelo, com a fatura original a ficar presa
+        // em "Aguarda Pagamento" para sempre. Bug real confirmado em
+        // produção (NOWO: 2 movimentos de 7,99€ nunca se cruzaram).
+        id_fornecedor: fornecedorCruzado?.fornecedor?.id_fornecedor || null,
         descricao: descricaoFinalMov,
         valor: valorExtraido || 0,
         tipo: tipoMovimento,
@@ -2020,7 +2030,8 @@ export async function processInboundEmail(payload) {
             contexto: contextoDocumento,
             comprovativoUrl: comprovativoUrlDoc,
             remetenteEmail: cleanFrom,
-            fileHash: anexo.hash
+            fileHash: anexo.hash,
+            fornecedorCruzado
           });
           registosDesteEmail.push(registo);
         }

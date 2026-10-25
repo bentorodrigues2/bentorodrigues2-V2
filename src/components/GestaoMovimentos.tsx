@@ -1171,20 +1171,53 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
     // sem isto, o único registo do motivo era o descritivo em bruto do
     // banco, por vezes pouco claro (ex: "Ctt + Copias Ata N 30-E18128278").
     const descricaoFinal = motivoManual ? `[Extraído por IA] ${item.descricao} — ${motivoManual}` : `[Extraído por IA] ${item.descricao}`;
-    const novo: Movimento = {
-      id_mov: "mov-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
-      id_predio: predio.id_predio,
-      id_conta: selectedContaId,
-      data: item.data,
-      tipo: item.tipo,
-      valor: item.valor,
-      descricao: descricaoFinal,
-      categoria: item.categoria,
-      fotos: [],
-      estado: "Justificado",
-      is_movimento_cego: false,
-      id_fornecedor: idFornecedorFinal
-    };
+
+    // Antes de lançar um movimento NOVO, procura um "Movimento Cego / Por
+    // Justificar" já existente para a MESMA despesa — ex: a fatura da NOWO
+    // chegou por email dia 1, criou logo um movimento "Aguarda Pagamento"
+    // com a fatura anexada; o extrato bancário só traz o débito direto
+    // real dia 21. Sem isto, os dois ficavam para sempre como 2 movimentos
+    // paralelos desligados um do outro (bug real confirmado em produção) —
+    // a fatura original nunca saía de "Aguarda Pagamento" e a despesa
+    // acabava contabilizada a dobrar. Corresponde por fornecedor (mais
+    // fiável) ou, na falta de fornecedor identificado, por valor igual e
+    // data dentro de 45 dias.
+    const candidatoCego = item.tipo === "Despesa"
+      ? predioMovements.find(mv => {
+          if (mv.tipo !== "Despesa" || !mv.is_movimento_cego || mv.estado !== "Movimento Cego / Por Justificar") return false;
+          if (idFornecedorFinal && mv.id_fornecedor) return mv.id_fornecedor === idFornecedorFinal;
+          if (Math.abs(mv.valor - item.valor) > 0.05) return false;
+          const dm = new Date(mv.data).getTime();
+          const di = new Date(item.data).getTime();
+          return !isNaN(dm) && !isNaN(di) && Math.abs(dm - di) <= 45 * 24 * 60 * 60 * 1000;
+        })
+      : undefined;
+
+    const novo: Movimento = candidatoCego
+      ? {
+          ...candidatoCego,
+          id_conta: selectedContaId,
+          data: item.data,
+          valor: item.valor,
+          descricao: `${candidatoCego.descricao} — pago (${descricaoFinal})`,
+          estado: "Justificado",
+          is_movimento_cego: false,
+          id_fornecedor: idFornecedorFinal || candidatoCego.id_fornecedor
+        }
+      : {
+          id_mov: "mov-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+          id_predio: predio.id_predio,
+          id_conta: selectedContaId,
+          data: item.data,
+          tipo: item.tipo,
+          valor: item.valor,
+          descricao: descricaoFinal,
+          categoria: item.categoria,
+          fotos: [],
+          estado: "Justificado",
+          is_movimento_cego: false,
+          id_fornecedor: idFornecedorFinal
+        };
 
     const contaAlvo = contasRef.current.find(c => c.id_conta === selectedContaId);
     if (contaAlvo) {
@@ -1198,9 +1231,17 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
       await saveContaToSupabase(contaAtualizada).catch(console.error);
     }
 
-    setMovements([novo, ...movements]);
+    if (candidatoCego) {
+      setMovements(prev => prev.map(m => m.id_mov === novo.id_mov ? novo : m));
+    } else {
+      setMovements([novo, ...movements]);
+    }
     await saveMovimentoToSupabase(novo).catch(console.error);
-    registarLogAuditoria("Financeira", "Lançou um item extraído do extrato bancário", predio.id_predio, loggedUser, novo.descricao);
+    registarLogAuditoria(
+      "Financeira",
+      candidatoCego ? "Associou um pagamento do extrato a uma fatura já registada (Aguarda Pagamento)" : "Lançou um item extraído do extrato bancário",
+      predio.id_predio, loggedUser, novo.descricao
+    );
 
     // Fatura/comprovativo anexado já no momento do lançamento, em vez de
     // obrigar a voltar depois a "Ver Detalhe" — mesmo arquivo organizado
