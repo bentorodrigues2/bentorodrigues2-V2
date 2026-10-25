@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     // sem isto o saldo da conta seria creditado outra vez a mais abaixo.
     const { data: pagamentoAntes } = await supabase
       .from("pagamentos")
-      .select("estado")
+      .select("estado, valor")
       .eq("id", id_pagamento)
       .maybeSingle();
     if (!pagamentoAntes) {
@@ -60,6 +60,12 @@ export default async function handler(req, res) {
     }
     if (pagamentoAntes.estado === "confirmado") {
       return res.status(400).json({ error: "Este pagamento já foi confirmado anteriormente." });
+    }
+    // Um valor extraído erradamente pela IA (0€ ou negativo) nunca deve gerar
+    // um recibo oficial nem mexer no saldo real da conta — fica para revisão
+    // manual do administrador em vez de ser confirmado às cegas.
+    if (!(Number(pagamentoAntes.valor) > 0)) {
+      return res.status(400).json({ error: "Valor do pagamento inválido (zero, negativo ou não numérico) — requer revisão manual antes de confirmar." });
     }
 
     // 1) Confirmar pagamento

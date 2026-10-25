@@ -103,7 +103,7 @@ export function LeitorAnexosIA({ predio, fracoes, fornecedores = [], onMovimento
         throw new Error(resultado?.error || "A IA não conseguiu ler este documento.");
       }
 
-      const dados = resultado.dados || {};
+      const dados = resultado.dados?.[0] || {};
       const tipoDoc = (dados.tipo_documento || "").toLowerCase();
       const ehComprovativo = tipoDoc === "comprovativo" || tipoDoc === "recibo";
 

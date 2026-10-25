@@ -1228,31 +1228,82 @@ async function lancarMovimentosEmFaltaDoExtrato({ emFalta, contaResolvida, predi
       }
     }
 
+    // Antes de lançar um movimento NOVO, procura um "Movimento Cego / Por
+    // Justificar" já existente para a MESMA despesa — ex: a fatura chegou
+    // por email antes (ver mais acima nesta função), criou logo um
+    // movimento pendente com a fatura anexada; o extrato bancário real só
+    // confirma o débito depois. Sem isto, os dois ficavam para sempre como
+    // 2 movimentos paralelos desligados um do outro (mesmo bug confirmado em
+    // produção com a NOWO, já corrigido no caminho do cliente em
+    // GestaoMovimentos.tsx/lancarItemExtraido — faltava aqui, no caminho do
+    // extrato chegado por email). Corresponde por fornecedor (mais fiável)
+    // ou, na falta de fornecedor identificado, por valor igual e data dentro
+    // de 45 dias.
+    let candidatoCego = null;
+    if (isDespesa) {
+      try {
+        const { data: candidatos } = await supabase
+          .from("movimentos")
+          .select("*")
+          .eq("id_predio", contaResolvida.id_predio)
+          .eq("tipo", "Despesa")
+          .eq("is_movimento_cego", true)
+          .eq("estado", "Movimento Cego / Por Justificar");
+        candidatoCego = (candidatos || []).find((mv) => {
+          if (fornecedor && mv.id_fornecedor) return mv.id_fornecedor === fornecedor.id_fornecedor;
+          if (Math.abs(Number(mv.valor) - Number(m.valor)) > 0.05) return false;
+          const dm = new Date(mv.data).getTime();
+          const di = new Date(m.data).getTime();
+          return !isNaN(dm) && !isNaN(di) && Math.abs(dm - di) <= 45 * 24 * 60 * 60 * 1000;
+        }) || null;
+      } catch (e) {
+        console.warn("[inboundProcessor] Aviso ao procurar movimento cego para fundir com o extrato:", e?.message || e);
+      }
+    }
+
     const idMovimentoGerado = `MOV-EXT-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const justificadoPelaDivida = Boolean(dividaCorrespondente);
     const descricaoBase = fornecedor ? `${m.descricao} [${fornecedor.nome}]` : m.descricao;
     const codigoContaSnc = await obterCodigoSNC(contaResolvida.id_predio, descricaoBase, m.tipo);
 
-    const { data: movimentoInserido, error: errMov } = await supabase
-      .from("movimentos")
-      .insert({
-        id_movimento: idMovimentoGerado,
-        id_predio: contaResolvida.id_predio,
-        id_conta: contaResolvida.id_conta,
-        descricao: descricaoBase,
-        valor: m.valor,
-        tipo: m.tipo,
-        categoria: m.categoria || "Outro",
-        data: m.data,
-        estado: justificadoPelaDivida ? "Justificado" : "Movimento Cego / Por Justificar",
-        is_movimento_cego: !justificadoPelaDivida,
-        estado_conciliacao: justificadoPelaDivida ? "CONCILIADO" : "PENDENTE",
-        comprovativo_url: dividaCorrespondente?.documento_anexo || null,
-        origem: "extrato_bancario_email_inbound",
-        codigo_conta_snc: codigoContaSnc
-      })
-      .select()
-      .maybeSingle();
+    let movimentoInserido, errMov;
+    if (candidatoCego) {
+      ({ data: movimentoInserido, error: errMov } = await supabase
+        .from("movimentos")
+        .update({
+          id_conta: contaResolvida.id_conta,
+          data: m.data,
+          descricao: `${candidatoCego.descricao} — confirmado pelo extrato`,
+          estado: "Justificado",
+          is_movimento_cego: false,
+          estado_conciliacao: "CONCILIADO",
+          origem: "extrato_bancario_email_inbound"
+        })
+        .eq("id_movimento", candidatoCego.id_movimento)
+        .select()
+        .maybeSingle());
+    } else {
+      ({ data: movimentoInserido, error: errMov } = await supabase
+        .from("movimentos")
+        .insert({
+          id_movimento: idMovimentoGerado,
+          id_predio: contaResolvida.id_predio,
+          id_conta: contaResolvida.id_conta,
+          descricao: descricaoBase,
+          valor: m.valor,
+          tipo: m.tipo,
+          categoria: m.categoria || "Outro",
+          data: m.data,
+          estado: justificadoPelaDivida ? "Justificado" : "Movimento Cego / Por Justificar",
+          is_movimento_cego: !justificadoPelaDivida,
+          estado_conciliacao: justificadoPelaDivida ? "CONCILIADO" : "PENDENTE",
+          comprovativo_url: dividaCorrespondente?.documento_anexo || null,
+          origem: "extrato_bancario_email_inbound",
+          codigo_conta_snc: codigoContaSnc
+        })
+        .select()
+        .maybeSingle());
+    }
 
     if (errMov) {
       console.warn("[inboundProcessor] Aviso ao lançar movimento do extrato:", errMov.message);

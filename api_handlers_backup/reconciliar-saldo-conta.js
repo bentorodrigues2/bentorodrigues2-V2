@@ -32,7 +32,7 @@ export default async function handler(req, res) {
 
     const { data: pagamentosConfirmados } = await supabase
       .from("pagamentos")
-      .select("id, valor")
+      .select("id, valor, id_fracao")
       .in("id_fracao", idsFracoes)
       .eq("estado", "confirmado");
 
@@ -74,15 +74,42 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, creditado: 0, quantidade: 0, mensagem: "Todos os pagamentos confirmados já estão refletidos no saldo — nada a corrigir." });
     }
 
-    const somaTotal = Math.round(pendentes.reduce((acc, p) => acc + (Number(p.valor) || 0), 0) * 100) / 100;
-
     const { data: contasPredio } = await supabase.from("contas").select("id_conta, is_principal").eq("id_predio", id_predio);
-    const contaAlvo = escolherContaPorTipo(contasPredio, "Quota Ordinária");
-    if (!contaAlvo?.id_conta) {
-      return res.status(404).json({ error: "Nenhuma conta bancária principal encontrada para este prédio." });
+    if (!contasPredio?.length) {
+      return res.status(404).json({ error: "Nenhuma conta bancária encontrada para este prédio." });
     }
 
-    await ajustarSaldoConta(contaAlvo.id_conta, somaTotal);
+    // Em vez de somar tudo numa única conta "adivinhada" por omissão (Quota
+    // Ordinária), cada pagamento pendente é cruzado com os avisos reais da
+    // sua própria fração (por valor, mesma tolerância de 0.05€ já usada em
+    // confirmar-pagamento.js) para descobrir o seu tipo verdadeiro — Quota
+    // Ordinária e Extraordinária têm contas diferentes, por isso um prédio
+    // com 2 contas ficava com dinheiro de obras creditado na conta corrente.
+    const avisosPorFracao = new Map();
+    async function avisosDaFracao(id_fracao) {
+      if (!avisosPorFracao.has(id_fracao)) {
+        const { data } = await supabase.from("avisos").select("tipo, valor").eq("id_fracao", id_fracao);
+        avisosPorFracao.set(id_fracao, data || []);
+      }
+      return avisosPorFracao.get(id_fracao);
+    }
+
+    const deltaPorConta = new Map();
+    const detalhePorPagamento = [];
+    for (const p of pendentes) {
+      const valor = Number(p.valor) || 0;
+      const avisos = p.id_fracao ? await avisosDaFracao(p.id_fracao) : [];
+      const avisoCorrespondente = avisos.find((a) => Math.abs(Number(a.valor || 0) - valor) < 0.05);
+      const tipoReal = avisoCorrespondente?.tipo || "Quota Ordinária";
+      const contaAlvo = escolherContaPorTipo(contasPredio, tipoReal);
+      if (!contaAlvo?.id_conta) continue;
+      deltaPorConta.set(contaAlvo.id_conta, Math.round(((deltaPorConta.get(contaAlvo.id_conta) || 0) + valor) * 100) / 100);
+      detalhePorPagamento.push({ id: p.id, valor, tipo: tipoReal, id_conta: contaAlvo.id_conta });
+    }
+
+    for (const [id_conta, delta] of deltaPorConta) {
+      await ajustarSaldoConta(id_conta, delta);
+    }
 
     await supabase.from("ai_auditoria").insert(
       pendentes.map((p) => ({
@@ -93,14 +120,19 @@ export default async function handler(req, res) {
       }))
     );
 
-    const { data: contaDepois } = await supabase.from("contas").select("saldo").eq("id_conta", contaAlvo.id_conta).maybeSingle();
+    const { data: contasDepois } = await supabase
+      .from("contas")
+      .select("id_conta, saldo")
+      .in("id_conta", [...deltaPorConta.keys()]);
+
+    const somaTotal = Math.round([...deltaPorConta.values()].reduce((acc, v) => acc + v, 0) * 100) / 100;
 
     return res.status(200).json({
       ok: true,
       creditado: somaTotal,
       quantidade: pendentes.length,
-      id_conta: contaAlvo.id_conta,
-      saldo_novo: contaDepois?.saldo ?? null
+      por_conta: detalhePorPagamento,
+      saldos_novos: contasDepois || []
     });
   } catch (err) {
     console.error("Erro em reconciliar-saldo-conta:", err);

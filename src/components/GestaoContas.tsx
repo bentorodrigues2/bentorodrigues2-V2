@@ -79,13 +79,16 @@ export function GestaoContas({
         alert("✅ Nada a corrigir — todos os pagamentos confirmados já estão refletidos no saldo.");
         return;
       }
-      if (onUpdateConta && data.id_conta && data.saldo_novo !== null) {
-        const contaAtual = predioContas.find(c => c.id_conta === data.id_conta);
-        if (contaAtual) {
-          onUpdateConta({ ...contaAtual, saldo: Number(data.saldo_novo) });
+      if (onUpdateConta && Array.isArray(data.saldos_novos)) {
+        for (const contaNova of data.saldos_novos) {
+          const contaAtual = predioContas.find(c => c.id_conta === contaNova.id_conta);
+          if (contaAtual) onUpdateConta({ ...contaAtual, saldo: Number(contaNova.saldo) });
         }
       }
-      alert(`✅ Saldo corrigido: +${Number(data.creditado).toFixed(2)}€ (${data.quantidade} pagamento(s) confirmado(s) que ainda não estavam refletidos). Novo saldo: ${Number(data.saldo_novo).toFixed(2)}€.`);
+      const resumoContas = (data.saldos_novos || [])
+        .map((c: any) => `${c.id_conta}: ${Number(c.saldo).toFixed(2)}€`)
+        .join(" | ");
+      alert(`✅ Saldo corrigido: +${Number(data.creditado).toFixed(2)}€ (${data.quantidade} pagamento(s) confirmado(s) que ainda não estavam refletidos, distribuídos pela conta real de cada pagamento). Novos saldos: ${resumoContas}.`);
     } catch (err: any) {
       alert(`Não foi possível reconciliar o saldo: ${err?.message || "erro de rede"}`);
     } finally {

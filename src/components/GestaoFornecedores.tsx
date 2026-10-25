@@ -394,25 +394,52 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       return alert(`Esta tranche (${valorTranche.toFixed(2)} €) é maior do que o saldo em dívida (${saldoDevedor.toFixed(2)} €).`);
     }
 
-    const novoMovimento: Movimento = {
-      id_mov: "mov-" + Date.now(),
-      id_predio: predio.id_predio,
-      id_conta: conta.id_conta,
-      data: pagamentoData,
-      tipo: "Despesa",
-      categoria: divida.categoria || "Fornecedores",
-      descricao: `Pagamento a ${divida.fornecedor_nome} — ${divida.descricao}${saldoDevedor - valorTranche > 0.01 ? " (tranche)" : ""}`,
-      valor: valorTranche,
-      metodo_pagamento: "Transferência Bancária",
-      estado: "Justificado",
-      // Sem isto, o Assistente de Extração de Extratos nunca reconhecia este
-      // pagamento como já lançado quando o mesmo débito aparecia depois no
-      // extrato bancário real (a descrição do extrato nunca bate certo com
-      // a descrição daqui) — o único outro critério que o liga ao fornecedor
-      // certo é este campo, confirmado em falta em produção (THYSSENKRUPP
-      // pago aqui continuava a aparecer como "novo" ao importar o extrato).
-      id_fornecedor: divida.id_fornecedor
-    };
+    // Quando a fatura chegou por email, já existe um "Movimento Cego / Por
+    // Justificar" criado automaticamente (server/lib/inboundProcessor.js) com
+    // o valor total da fatura e o mesmo fornecedor — sem isto, pagar a dívida
+    // aqui criava sempre um movimento NOVO e deixava a fatura original presa
+    // em "Por Justificar" para sempre, duplicando a despesa no extrato de
+    // Movimentos & Tesouraria (mesmo bug confirmado com a NOWO, já corrigido
+    // no fluxo de lançamento manual do extrato em GestaoMovimentos.tsx). Só
+    // funde quando o valor do movimento cego bate certo com o valor TOTAL da
+    // dívida (não da tranche) — é esse o valor que entrou no extrato.
+    const candidatoCego = movements.find(mv =>
+      mv.id_predio === predio.id_predio &&
+      mv.tipo === "Despesa" &&
+      mv.is_movimento_cego &&
+      mv.estado === "Movimento Cego / Por Justificar" &&
+      mv.id_fornecedor === divida.id_fornecedor &&
+      Math.abs(mv.valor - divida.valor) < 0.05
+    );
+
+    const novoMovimento: Movimento = candidatoCego
+      ? {
+          ...candidatoCego,
+          id_conta: conta.id_conta,
+          data: pagamentoData,
+          estado: "Justificado",
+          is_movimento_cego: false,
+          descricao: `${candidatoCego.descricao} — pago (Pagamento a ${divida.fornecedor_nome} — ${divida.descricao})`
+        }
+      : {
+          id_mov: "mov-" + Date.now(),
+          id_predio: predio.id_predio,
+          id_conta: conta.id_conta,
+          data: pagamentoData,
+          tipo: "Despesa",
+          categoria: divida.categoria || "Fornecedores",
+          descricao: `Pagamento a ${divida.fornecedor_nome} — ${divida.descricao}${saldoDevedor - valorTranche > 0.01 ? " (tranche)" : ""}`,
+          valor: valorTranche,
+          metodo_pagamento: "Transferência Bancária",
+          estado: "Justificado",
+          // Sem isto, o Assistente de Extração de Extratos nunca reconhecia este
+          // pagamento como já lançado quando o mesmo débito aparecia depois no
+          // extrato bancário real (a descrição do extrato nunca bate certo com
+          // a descrição daqui) — o único outro critério que o liga ao fornecedor
+          // certo é este campo, confirmado em falta em produção (THYSSENKRUPP
+          // pago aqui continuava a aparecer como "novo" ao importar o extrato).
+          id_fornecedor: divida.id_fornecedor
+        };
     const movOk = await saveMovimentoToSupabase(novoMovimento);
     if (!movOk) return alert("❌ Não foi possível registar o movimento de pagamento. Tente novamente.");
 
@@ -426,7 +453,9 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       return alert("⚠️ O pagamento foi registado nos movimentos, mas houve um erro ao atualizar o saldo da conta bancária. Corrija manualmente o saldo em Contas Bancárias ou tente novamente.");
     }
     setContas(prev => prev.map(c => c.id_conta === conta.id_conta ? contaReal : c));
-    setMovements(prev => [novoMovimento, ...prev]);
+    setMovements(prev => candidatoCego
+      ? prev.map(m => m.id_mov === novoMovimento.id_mov ? novoMovimento : m)
+      : [novoMovimento, ...prev]);
 
     const novoPagamento: PagamentoDivida = {
       id_pagamento: "pagdiv-" + Date.now(),
@@ -459,7 +488,7 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
       ficaLiquidada ? "Liquidou uma dívida a fornecedor" : "Pagou uma tranche de uma dívida a fornecedor",
       predio.id_predio,
       loggedUser,
-      `${divida.fornecedor_nome} — ${divida.descricao} (${valorTranche.toFixed(2)} € via ${conta.banco}${ficaLiquidada ? "" : `, saldo em dívida: ${(divida.valor - novoValorPago).toFixed(2)} €`})`
+      `${divida.fornecedor_nome} — ${divida.descricao} (${valorTranche.toFixed(2)} € via ${conta.banco}${ficaLiquidada ? "" : `, saldo em dívida: ${(divida.valor - novoValorPago).toFixed(2)} €`})${candidatoCego ? " — fundido com o movimento cego já existente desta fatura" : ""}`
     );
 
     setPagamentoContaId("");
@@ -725,6 +754,28 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     // entre submissões) — o segundo apagava silenciosamente o primeiro no
     // Supabase, porque a gravação é sempre um upsert pelo id_fornecedor.
     const idFinal = isEditing && fornecedorOriginal ? fornecedorOriginal.id_fornecedor : "forn-" + Date.now();
+
+    // Deteção de NIF/IBAN duplicado — sem isto, um NIF ou IBAN repetido por
+    // engano ao registar um fornecedor novo fazia com que todo o
+    // cruzamento automático de faturas/pagamentos futuro desse valor fosse
+    // sempre atribuído ao primeiro fornecedor encontrado com esse NIF/IBAN,
+    // sem nenhum erro visível (ver cruzarMovimentoComFornecedor/fornecedorMatching.ts).
+    const nifNormalizado = nif.replace(/\s+/g, "").trim();
+    const ibanNormalizado = (iban || "").replace(/\s+/g, "").trim().toUpperCase();
+    const duplicado = predioForn.find(f => {
+      if (f.id_fornecedor === idFinal) return false;
+      const mesmoNif = nifNormalizado && f.nif?.replace(/\s+/g, "").trim() === nifNormalizado;
+      const mesmoIban = ibanNormalizado && (f.iban || "").replace(/\s+/g, "").trim().toUpperCase() === ibanNormalizado;
+      return mesmoNif || mesmoIban;
+    });
+    if (duplicado) {
+      const campo = duplicado.nif?.replace(/\s+/g, "").trim() === nifNormalizado ? "NIF" : "IBAN";
+      const continuar = window.confirm(
+        `⚠️ Já existe o fornecedor "${duplicado.nome}" registado com o mesmo ${campo}. Faturas e pagamentos futuros deste ${campo} podem ser atribuídos ao fornecedor errado.\n\nTem a certeza que quer continuar e gravar mesmo assim?`
+      );
+      if (!continuar) return;
+    }
+
     const novo: Fornecedor = {
       id_fornecedor: idFinal,
       id_predio: predio.id_predio,

@@ -532,8 +532,17 @@ export function GestaoManutencaoIntervencoes({
       estado: "Agendado"
     });
 
-    setAgenda([...agenda, ...checks]);
-    checks.forEach(item => saveAgendaVistoriaToSupabase(predio.id_predio, item).catch(console.error));
+    // Os ids destes itens são fixos ("ag-ia-1".."ag-ia-7") — sem filtrar,
+    // clicar 2 vezes neste botão duplicava-os sempre na lista (2 extintores,
+    // 2 elevadores, etc.), apesar de na base de dados o upsert por id
+    // evitar a duplicação real — o problema era só no estado local.
+    const checksNovos = checks.filter(c => !agenda.some(a => a.id === c.id));
+    if (checksNovos.length === 0) {
+      alert("A agenda preventiva para este património já foi gerada — nada novo a acrescentar.");
+      return;
+    }
+    setAgenda([...agenda, ...checksNovos]);
+    checksNovos.forEach(item => saveAgendaVistoriaToSupabase(predio.id_predio, item).catch(console.error));
     alert("IA analisou o património do prédio e gerou a agenda preventiva ideal de vistorias técnicas obrigatórias!");
   };
 

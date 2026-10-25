@@ -2711,9 +2711,10 @@ export default function PWACondominoView({
 
               <button
                 type="submit"
-                className="w-full bg-rose-600 hover:bg-rose-700 text-white font-extrabold py-2 rounded-lg text-center cursor-pointer transition-colors uppercase text-[9px] shadow-xs"
+                disabled={aReportarAvaria}
+                className="w-full bg-rose-600 hover:bg-rose-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-extrabold py-2 rounded-lg text-center cursor-pointer transition-colors uppercase text-[9px] shadow-xs"
               >
-                Submeter e Enviar Notificação Push
+                {aReportarAvaria ? "A enviar..." : "Submeter e Enviar Notificação Push"}
               </button>
             </form>
           </div>
@@ -4461,9 +4462,10 @@ export default function PWACondominoView({
                     </div>
                     <button
                       type="submit"
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-slate-950 font-black py-2.5 rounded-xl text-center uppercase tracking-wider text-[9px] cursor-pointer mt-2 transition-colors"
+                      disabled={aReportarAvaria}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-slate-950 font-black py-2.5 rounded-xl text-center uppercase tracking-wider text-[9px] cursor-pointer mt-2 transition-colors"
                     >
-                      Submeter Ocorrência
+                      {aReportarAvaria ? "A enviar..." : "Submeter Ocorrência"}
                     </button>
                   </form>
                 )}

@@ -676,7 +676,7 @@ Devolve APENAS JSON estrito, sem markdown:
       }
 
       const dados = await extrairDadosDocumento([{ base64, mimeType }]);
-      if (!dados) {
+      if (!Array.isArray(dados) || dados.length === 0) {
         return res.status(502).json({ error: "A IA não conseguiu extrair dados deste documento." });
       }
 
