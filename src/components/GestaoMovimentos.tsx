@@ -1463,6 +1463,11 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
           body: JSON.stringify({
             id_pagamento: idPagamento,
             avisos_ids: item.avisosPendentesIds || [],
+            // Diz ao backend que o saldo da conta já foi creditado aqui em
+            // cima (passo 2, exceto quando semAvisoCorrespondente, caso em
+            // que o próprio backend credita) — sem isto, o backend creditava
+            // outra vez e duplicava o valor.
+            saldo_ja_creditado: !semAvisoCorrespondente,
             ...(vencimentoAdiantamento ? { vencimento_alvo: vencimentoAdiantamento } : {})
           })
         });

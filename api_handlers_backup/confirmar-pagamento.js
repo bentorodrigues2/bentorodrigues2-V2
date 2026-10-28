@@ -14,13 +14,24 @@ export default async function handler(req, res) {
     }
 
     // avisos_ids (opcional): quando o chamador (ex: aprovarPagamentoCondomino
-    // em GestaoMovimentos.tsx) já sabe exatamente quais avisos este pagamento
-    // fecha — 1 ou vários meses/prestações de uma vez — e já os marcou "Pago"
-    // antes de chamar este endpoint. Nesse caso o recibo é montado com 1
-    // linha por aviso real (mês/tipo/valor certos) em vez de adivinhar sempre
-    // "Quota Ordinária + 10% Fundo de Reserva", e o passo 2.1 abaixo (que
-    // tentava adivinhar o aviso a marcar) fica desligado, para não criar um
-    // aviso-fantasma duplicado a repetir o que o chamador já fez.
+    // ou confirmarPagamentoComAvisos em GestaoMovimentos.tsx) já sabe
+    // exatamente quais avisos este pagamento fecha — 1 ou vários
+    // meses/prestações de uma vez, ou um conjunto disperso (ex: correções de
+    // "Diferença de Quota"). Nesse caso o recibo é montado com 1 linha por
+    // aviso real (mês/tipo/valor certos) em vez de adivinhar sempre "Quota
+    // Ordinária + 10% Fundo de Reserva", e o passo 2.1 abaixo marca
+    // diretamente esses avisos como "Pago" (idempotente — se o chamador já
+    // os tiver marcado antes, como aprovarPagamentoCondomino faz, reafirmar
+    // aqui não tem efeito) em vez de tentar adivinhar qual aviso fechar.
+    // saldo_ja_creditado (opcional, default false): só true quando o
+    // chamador já creditou o saldo da conta certa diretamente ele próprio
+    // antes de chamar este endpoint (aprovarPagamentoCondomino, no
+    // Assistente de Extração de Extratos) — nesse caso o passo 2.2 abaixo
+    // salta-se, para não duplicar o valor. NUNCA inferir isto a partir de
+    // avisos_ids estar preenchido — confirmarPagamentoComAvisos também
+    // passa avisos_ids mas nunca credita o saldo antecipadamente (bug real
+    // confirmado em produção: pagamento confirmado, recibo emitido, saldo
+    // da conta nunca atualizado).
     // vencimento_alvo (opcional): quando o chamador sabe que este pagamento é
     // um ADIANTAMENTO (ex: mês seguinte, cuja nota de cobrança ainda nem foi
     // emitida — só sai no dia 25 do mês anterior) e já perguntou ao
@@ -30,7 +41,7 @@ export default async function handler(req, res) {
     // adiantamento de Novembro ficava registado como se fosse a quota de
     // Outubro, duplicando essa coluna no Mapa de Pagamentos e deixando
     // Novembro por registar).
-    const { id_pagamento, avisos_ids: avisosIdsFechados, vencimento_alvo: vencimentoAlvo } = req.body || {};
+    const { id_pagamento, avisos_ids: avisosIdsFechados, vencimento_alvo: vencimentoAlvo, saldo_ja_creditado: saldoJaCreditado } = req.body || {};
     if (!id_pagamento) {
       return res.status(400).json({ error: "id_pagamento em falta" });
     }
@@ -179,7 +190,31 @@ export default async function handler(req, res) {
     let avisosAutoFechados = [];
     let valorAdiantamentoSemAviso = 0;
     try {
-      if (pagamento.id_fracao && !(avisosIdsFechados && avisosIdsFechados.length)) {
+      if (avisosIdsFechados && avisosIdsFechados.length) {
+        // O chamador indicou exatamente quais avisos este pagamento fecha
+        // (ex: confirmarPagamentoComAvisos em GestaoMovimentos.tsx, para
+        // ligar um comprovativo a notas de cobrança específicas/dispersas —
+        // "Diferença de Quota", meses antigos, etc.) — marcam-se aqui mesmo
+        // como "Pago". Bug real confirmado em produção: este passo inteiro
+        // ficava sempre desligado quando avisos_ids vinha preenchido, na
+        // suposição de que o chamador já os tinha marcado (verdade só para
+        // aprovarPagamentoCondomino, que marca antes de chamar este
+        // endpoint) — para confirmarPagamentoComAvisos, que nunca marca,
+        // ficava para sempre "Pendente", desaparecido do Mapa de Pagamentos,
+        // apesar do pagamento confirmado e do recibo emitido. Reafirmar aqui
+        // para quem já marcou é idempotente (sem efeito real).
+        const { data: avisosParaMarcar } = await supabase
+          .from("avisos")
+          .select("id_aviso, valor")
+          .in("id_aviso", avisosIdsFechados);
+        for (const a of avisosParaMarcar || []) {
+          await supabase.from("avisos").update({
+            estado: "Pago",
+            valor_pago: Number(a.valor || 0),
+            id_movimento: movimentoLigadoId
+          }).eq("id_aviso", a.id_aviso);
+        }
+      } else if (pagamento.id_fracao) {
         const valorPago = Number(pagamento.valor || 0);
         const { data: pendentesAvisos } = await supabase
           .from("avisos")
@@ -304,13 +339,18 @@ export default async function handler(req, res) {
     // Ordem"/"Total Líquido" do Painel de Controlo (ficavam sempre parados
     // no valor de arranque, apesar de haver pagamentos confirmados a mais).
     //
-    // Salta este passo quando o chamador já indicou avisos_ids
-    // (aprovarPagamentoCondomino, no Assistente de Extração de Extratos) —
-    // esse fluxo já credita o saldo da CONTA CERTA diretamente (a conta do
-    // separador/extrato ativo) antes de chamar este endpoint; creditar aqui
-    // outra vez duplicava o valor. Continua ativo para o outro fluxo
-    // (confirmarPagamentoEEnviarRecibo, comprovativos "Pagamentos por
-    // Confirmar"), que nunca credita o saldo antecipadamente.
+    // Salta este passo SÓ quando o chamador afirma explicitamente
+    // saldo_ja_creditado=true (aprovarPagamentoCondomino, no Assistente de
+    // Extração de Extratos, que já credita a CONTA CERTA diretamente antes
+    // de chamar este endpoint — creditar aqui outra vez duplicava o valor).
+    // Bug real confirmado em produção: este passo usava antes a mera
+    // presença de avisos_ids como sinal de "já creditado" — verdade só
+    // para aprovarPagamentoCondomino, mas avisos_ids também é usado por
+    // confirmarPagamentoComAvisos (GestaoMovimentos.tsx, para ligar um
+    // comprovativo a notas de cobrança específicas), que NUNCA credita o
+    // saldo antecipadamente. O pagamento confirmava, o recibo saía, mas o
+    // dinheiro nunca entrava no saldo real da conta. Mesmo padrão de flag
+    // explícita já usado em dividir-pagamento-meses.js (ja_reconciliado).
     //
     // A conta creditada é SEMPRE a conta real já gravada no movimento
     // ligado (idContaRealMovimento) quando existe — nunca escolherContaPorTipo
@@ -321,7 +361,7 @@ export default async function handler(req, res) {
     // sem refletir o dinheiro que de facto recebeu. A adivinhação só serve
     // de último recurso quando o próprio movimento nunca teve conta
     // atribuída (ver backfill "rede de segurança" acima).
-    if (!(avisosIdsFechados && avisosIdsFechados.length)) {
+    if (!saldoJaCreditado) {
       try {
         const contaAlvo = idContaRealMovimento
           ? { id_conta: idContaRealMovimento }
@@ -462,7 +502,23 @@ export default async function handler(req, res) {
     // relance — pedido explícito do administrador, depois de "andar 1h à
     // procura" porque os recibos nunca traziam essa informação (só um nº
     // sequencial do prédio inteiro, ex. "Recibo_de_Pagamento_ED1_00042.pdf").
-    const mesAnoPagamento = new Date(recibo.data_pagamento).toLocaleDateString("pt-PT", { month: "long", year: "numeric", timeZone: "UTC" });
+    //
+    // Quando há avisos reais associados (ver 2.3), o mês tem de ser o da
+    // QUOTA que este pagamento liquida (vencimento do aviso), nunca a data
+    // da transferência bancária — bug real confirmado em produção: um
+    // adiantamento transferido em outubro mas referente à quota de
+    // novembro saía com o recibo rotulado "outubro", confundindo o
+    // condómino sobre a que mês o pagamento se refere. Com vários avisos de
+    // meses diferentes, lista todos; sem nenhum aviso associado (fluxo
+    // antigo de comprovativo por email), mantém a data da transferência.
+    const mesesReferenciaPagos = [...new Set(
+      avisosFechadosReais.map((a) => (a.vencimento || a.data || "").slice(0, 7)).filter(Boolean)
+    )].sort();
+    const mesAnoPagamento = mesesReferenciaPagos.length
+      ? mesesReferenciaPagos
+          .map((aaaaMm) => new Date(`${aaaaMm}-01T00:00:00Z`).toLocaleDateString("pt-PT", { month: "long", year: "numeric", timeZone: "UTC" }))
+          .join(" + ")
+      : new Date(recibo.data_pagamento).toLocaleDateString("pt-PT", { month: "long", year: "numeric", timeZone: "UTC" });
     const fracaoSlug = sanitizarSegmentoStorage(fracaoNome || recibo.id_fracao || "fracao");
     const mesAnoSlug = sanitizarSegmentoStorage(mesAnoPagamento);
     const nomeFicheiro = nomeFicheiroRecibo(recibo).replace(/\.pdf$/i, `_${fracaoSlug}_${mesAnoSlug}.pdf`);
