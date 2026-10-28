@@ -1402,25 +1402,6 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
       }
 
       // 3. Lançar o movimento
-      const novoMov: Movimento = {
-        id_mov: "mov-extrato-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
-        id_predio: predio.id_predio,
-        id_conta: contaExtratoId,
-        id_fracao: item.fracaoSugeridaId,
-        data: item.data,
-        tipo: "Receita",
-        valor: item.valor,
-        descricao: `[Extraído por IA] ${item.descricao}`,
-        categoria: "Quotas",
-        estado: "Justificado",
-        is_movimento_cego: false,
-        metodo_pagamento: "Transferência Bancária"
-      };
-      setMovements(prev => [novoMov, ...prev]);
-      saveMovimentoToSupabase(novoMov).catch(console.error);
-
-      // 4. Pagamento real + recibo oficial (PDF, arquivo, email) — mesmo
-      // pipeline usado em toda a app para confirmar pagamentos.
       //
       // Bug crítico confirmado em produção: o "id" gerado aqui
       // ("pag-extrato-...") NUNCA foi um UUID válido, e a coluna
@@ -1433,9 +1414,34 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
       // tentado — daí "sem email enviado" aparecer em frações que têm mesmo
       // email registado (o motivo real nunca chegou a ser esse). Usa-se
       // agora crypto.randomUUID() (mesmo gerador já usado em
-      // confirmarPagamentoEEnviarRecibo, linha ~363), e o alerta final passa
-      // a refletir SEMPRE o resultado real.
+      // confirmarPagamentoEEnviarRecibo, linha ~363), gerado já aqui (antes
+      // de construir o movimento) para poder marcar "[pagamento:<id>]" na
+      // descrição do movimento — sem essa marca, nem o passo 2.2 do backend
+      // (confirmar-pagamento.js, caso semAvisoCorrespondente) nem o desfazer
+      // (desfazer-confirmacao-pagamento.js) conseguiam encontrar a conta
+      // REAL deste pagamento, e caíam sempre na adivinhação por tipo — bug
+      // real confirmado em produção: desfazer uma confirmação deste fluxo
+      // debitava a conta errada, deixando a conta certa por reverter.
       const idPagamento = crypto.randomUUID();
+      const novoMov: Movimento = {
+        id_mov: "mov-extrato-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+        id_predio: predio.id_predio,
+        id_conta: contaExtratoId,
+        id_fracao: item.fracaoSugeridaId,
+        data: item.data,
+        tipo: "Receita",
+        valor: item.valor,
+        descricao: `[Extraído por IA] ${item.descricao} [pagamento:${idPagamento}]`,
+        categoria: "Quotas",
+        estado: "Justificado",
+        is_movimento_cego: false,
+        metodo_pagamento: "Transferência Bancária"
+      };
+      setMovements(prev => [novoMov, ...prev]);
+      saveMovimentoToSupabase(novoMov).catch(console.error);
+
+      // 4. Pagamento real + recibo oficial (PDF, arquivo, email) — mesmo
+      // pipeline usado em toda a app para confirmar pagamentos.
       const okPagamento = await dbInsert("pagamentos", {
         id: idPagamento,
         referencia: `EXTRATO-${novoMov.id_mov}`,
