@@ -1570,13 +1570,17 @@ export function PortalCondomino({
     if (!activeUserFracao?.id_fracao || aEnviarVoto) return;
     setAEnviarVoto(idSondagem);
     try {
-      await saveVotoSondagemToSupabase({
+      const ok = await saveVotoSondagemToSupabase({
         id_voto: "voto_" + Date.now(),
         id_sondagem: idSondagem,
         id_fracao: activeUserFracao.id_fracao,
         opcao_escolhida: opcao,
         permilagem: activeUserFracao.permilagem || 0
       });
+      if (!ok) {
+        alert("❌ Não foi possível registar o seu voto. A sua sessão pode ter expirado — recarregue a página e tente novamente.");
+        return;
+      }
       await carregarFeedComunicacao();
     } finally {
       setAEnviarVoto("");
@@ -1589,12 +1593,16 @@ export function PortalCondomino({
     if (!texto?.trim()) return;
     setAEnviarResposta(idQuestionario);
     try {
-      await saveRespostaQuestionarioToSupabase({
+      const ok = await saveRespostaQuestionarioToSupabase({
         id_resposta: "resp_" + Date.now(),
         id_questionario: idQuestionario,
         id_fracao: activeUserFracao.id_fracao,
         resposta_texto: texto
       });
+      if (!ok) {
+        alert("❌ Não foi possível enviar a sua resposta. A sua sessão pode ter expirado — recarregue a página e tente novamente.");
+        return;
+      }
       setRespostaQuestTexto(prev => ({ ...prev, [idQuestionario]: "" }));
       await carregarFeedComunicacao();
     } finally {

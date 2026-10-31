@@ -149,8 +149,21 @@ export function generateClientFingerprint(): string {
   return `fp-${Math.abs(hash).toString(16)}`;
 }
 
-// 10 Minutes Inactivity Timeout in milliseconds (600,000 ms)
-export const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
+// Tempo de inatividade até logout forçado — antes 10 minutos, demasiado
+// agressivo para o uso real da app (ex: um condómino que lê uma notificação
+// de sondagem no telemóvel sem tocar no ecrã demora facilmente mais de 10
+// minutos a decidir e votar). Bug real confirmado em produção: o logout
+// forçado (handleSecureLogout, chamado a cada 5s pelo verificador periódico
+// em App.tsx) invalida também a sessão REAL do Supabase Auth
+// (supabase.auth.signOut()) — qualquer ação a meio (votar numa sondagem,
+// lançar uma sondagem) falhava silenciosamente a seguir, porque o pedido ao
+// servidor (/api/data) deixava de ter um token válido e era sempre
+// rejeitado sem nenhum aviso visível ao utilizador. Pedido explícito do
+// administrador para não haver prazos de sessão sempre que possível — 7
+// dias mantém alguma proteção de base (um dispositivo esquecido/perdido
+// acaba por fazer logout sozinho) sem nunca interromper uma sessão em uso
+// real, por mais longa que a pausa entre toques seja.
+export const IDLE_TIMEOUT_MS = 7 * 24 * 60 * 60 * 1000;
 
 // Record real-time user activity across site & PWA
 export function recordUserActivity(): void {
@@ -178,7 +191,7 @@ export function createNewSession(
     fingerprint: generateClientFingerprint(),
     createdAt: now,
     lastActivityAt: now,
-    expiresAt: now + 24 * 60 * 60 * 1000, // 24 hours
+    expiresAt: now + IDLE_TIMEOUT_MS, // ver nota em IDLE_TIMEOUT_MS acima
     passwordEpoch: now
   };
 

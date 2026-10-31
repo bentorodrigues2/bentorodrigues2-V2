@@ -656,9 +656,28 @@ export default function PWACondominoView({
     if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
     navigator.serviceWorker.ready
       .then((reg) => reg.pushManager.getSubscription())
-      .then((sub) => setPushAtivo(!!sub))
+      .then((sub) => {
+        setPushAtivo(!!sub);
+        // Auto-reparação silenciosa: sem isto, uma subscrição que o
+        // servidor tenha apagado entretanto (ex: devolveu 404/410 numa
+        // tentativa de envio anterior — ver "expirados_removidas" em
+        // api/admin.js) ficava morta para sempre do lado do condómino, que
+        // continuava a ver "✓ Ativado" (o browser ainda tem a subscrição
+        // local) mas nunca mais recebia nenhuma notificação real, sem
+        // nenhum sinal de que precisava de voltar a ativar manualmente.
+        // Reafirma a subscrição atual no servidor sempre que a app abre,
+        // em silêncio — idempotente (upsert), sem alertas, só corrige.
+        if (sub && condominoFracao?.id_fracao) {
+          savePushSubscriptionToSupabase({
+            idPredio: predio.id_predio,
+            idFracao: condominoFracao.id_fracao,
+            userId: loggedUser.email,
+            subscription: sub
+          }).catch(() => {});
+        }
+      })
       .catch(() => {});
-  }, []);
+  }, [condominoFracao?.id_fracao]);
 
   // Preferências de notificação por categoria — reais, gravadas em
   // profiles.notificacoes_preferencias (sincronizam entre dispositivos).
@@ -750,13 +769,22 @@ export default function PWACondominoView({
     if (!condominoFracao?.id_fracao || aEnviarVoto) return;
     setAEnviarVoto(idSondagem);
     try {
-      await saveVotoSondagemToSupabase({
+      // Bug real confirmado em produção: nenhum voto alguma vez foi
+      // gravado (tabela sondagens_votos sempre vazia) porque este
+      // resultado nunca era verificado — se a gravação falhasse por
+      // qualquer motivo (ex: sessão expirada a meio), o condómino não via
+      // nenhum aviso, só parecia que "clicar não fazia nada".
+      const ok = await saveVotoSondagemToSupabase({
         id_voto: "voto_" + Date.now(),
         id_sondagem: idSondagem,
         id_fracao: condominoFracao.id_fracao,
         opcao_escolhida: opcao,
         permilagem: condominoFracao.permilagem || 0
       });
+      if (!ok) {
+        alert("❌ Não foi possível registar o seu voto. A sua sessão pode ter expirado — feche e reabra a aplicação e tente novamente.");
+        return;
+      }
       await carregarFeedComunicacao();
     } finally {
       setAEnviarVoto("");
@@ -769,12 +797,16 @@ export default function PWACondominoView({
     if (!texto?.trim()) return;
     setAEnviarResposta(idQuestionario);
     try {
-      await saveRespostaQuestionarioToSupabase({
+      const ok = await saveRespostaQuestionarioToSupabase({
         id_resposta: "resp_" + Date.now(),
         id_questionario: idQuestionario,
         id_fracao: condominoFracao.id_fracao,
         resposta_texto: texto
       });
+      if (!ok) {
+        alert("❌ Não foi possível enviar a sua resposta. A sua sessão pode ter expirado — feche e reabra a aplicação e tente novamente.");
+        return;
+      }
       setRespostaQuestTexto(prev => ({ ...prev, [idQuestionario]: "" }));
       await carregarFeedComunicacao();
     } finally {
@@ -4432,7 +4464,7 @@ export default function PWACondominoView({
                       <select
                         value={newIntervEquipamento}
                         onChange={e => setNewIntervEquipamento(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 p-2 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                        className="w-full bg-white border border-slate-300 p-2 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
                       >
                         <option value="Elevador">Elevador do Edifício</option>
                         <option value="Portão da Garagem">Portão Principal de Garagem</option>
@@ -4450,7 +4482,7 @@ export default function PWACondominoView({
                         value={newIntervDesc}
                         onChange={e => setNewIntervDesc(e.target.value)}
                         placeholder="Ex: Lâmpada fundida no patamar do 3º andar..."
-                        className="w-full bg-slate-800 border border-slate-700 p-2 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                        className="w-full bg-white border border-slate-300 p-2 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
                       />
                     </div>
                     <div className="space-y-1">
@@ -4459,9 +4491,9 @@ export default function PWACondominoView({
                         <button
                           type="button"
                           onClick={() => document.getElementById("pwa-avaria-foto-input")?.click()}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 rounded-lg font-bold"
+                          className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg font-bold"
                         >
-                          <Camera className="h-3 w-3 text-emerald-400" />
+                          <Camera className="h-3 w-3 text-emerald-600" />
                           <span>Tirar Foto (.WEBP)</span>
                         </button>
                         <span className="text-[9px] text-slate-600 italic truncate max-w-[120px]">
@@ -4487,23 +4519,23 @@ export default function PWACondominoView({
                         <p className="text-slate-600 text-[10px] text-center py-6">Nenhuma avaria reportada até ao momento.</p>
                       )}
                       {ocorrenciasFracaoTodas.map((interv: any) => (
-                        <div key={interv.id_ocorr} className="bg-slate-800 border border-slate-800 p-3 rounded-xl space-y-1.5">
+                        <div key={interv.id_ocorr} className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-1.5">
                           <div className="flex justify-between items-start">
                             <div>
                               <span className="text-[8px] font-mono text-slate-600 font-extrabold">{formatDatePT(interv.data)}</span>
-                              <h4 className="font-extrabold text-white text-[11px]">{interv.categoria || "Outros"}</h4>
+                              <h4 className="font-extrabold text-slate-800 text-[11px]">{interv.categoria || "Outros"}</h4>
                             </div>
                             <span className={`px-1.5 py-0.5 rounded text-[7px] font-extrabold uppercase ${
-                              interv.estado === "Pendente" ? "bg-amber-950/40 text-amber-400 border border-amber-900/30" :
-                              interv.estado === "Em Curso" ? "bg-blue-950/40 text-blue-400 border border-blue-900/30" :
-                              "bg-emerald-950/40 text-emerald-400 border border-emerald-900/30"
+                              interv.estado === "Pendente" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                              interv.estado === "Em Curso" ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                              "bg-emerald-50 text-emerald-700 border border-emerald-200"
                             }`}>
                               {interv.estado}
                             </span>
                           </div>
                           <p className="text-slate-600 leading-normal text-[10px]">"{interv.descricao}"</p>
-                          <div className="text-[8px] text-slate-600 border-t border-slate-800/60 pt-1 flex justify-between">
-                            <span>{interv.tecnico_atribuido ? <>Técnico: <strong className="text-slate-600">{interv.tecnico_atribuido}</strong></> : "Aguarda triagem"}</span>
+                          <div className="text-[8px] text-slate-600 border-t border-slate-200 pt-1 flex justify-between">
+                            <span>{interv.tecnico_atribuido ? <>Técnico: <strong className="text-slate-700">{interv.tecnico_atribuido}</strong></> : "Aguarda triagem"}</span>
                           </div>
                         </div>
                       ))}
@@ -4515,30 +4547,30 @@ export default function PWACondominoView({
                   <div className="space-y-3 text-[10px]">
                     <p className="text-slate-700">Envie o ficheiro de pagamento das quotas ordinárias para validação automática com a nossa IA inteligente.</p>
                     
-                    <div className="border-2 border-dashed border-slate-700 bg-slate-950/20 rounded-xl p-5 text-center relative space-y-2">
+                    <div className="border-2 border-dashed border-slate-300 bg-slate-50 rounded-xl p-5 text-center relative space-y-2">
                       {comprovativoExtracting ? (
                         <div className="py-4 space-y-2 flex flex-col items-center">
-                          <RefreshCw className="h-6 w-6 text-emerald-400 animate-spin" />
-                          <span className="font-bold text-slate-200">A processar comprovativo com IA...</span>
+                          <RefreshCw className="h-6 w-6 text-emerald-600 animate-spin" />
+                          <span className="font-bold text-slate-700">A processar comprovativo com IA...</span>
                           <span className="text-[7px] font-mono text-slate-600">Extração ótica inteligente ativa</span>
                         </div>
                       ) : comprovativoExtractedData ? (
                         <div className="text-left space-y-3">
-                          <div className="p-2 bg-emerald-950/40 border border-emerald-900/30 text-[9px] text-emerald-400 rounded-lg flex items-center gap-1">
+                          <div className="p-2 bg-emerald-50 border border-emerald-200 text-[9px] text-emerald-700 rounded-lg flex items-center gap-1">
                             <Check className="h-3 w-3 shrink-0" />
                             <span>Leitura efetuada! "{comprovativoFileName}"</span>
                           </div>
-                          <div className="bg-slate-800 p-2.5 rounded-lg border border-slate-800 space-y-1">
+                          <div className="bg-white p-2.5 rounded-lg border border-slate-200 space-y-1">
                             <div className="flex justify-between font-mono">
                               <span className="text-slate-600 text-[8px]">VALOR EXTRAÍDO:</span>
-                              <strong className="text-white text-[11px]">{comprovativoExtractedData.valor.toFixed(2)} €</strong>
+                              <strong className="text-slate-800 text-[11px]">{comprovativoExtractedData.valor.toFixed(2)} €</strong>
                             </div>
                             <div className="flex justify-between font-mono">
                               <span className="text-slate-600 text-[8px]">REFERÊNCIA:</span>
-                              <strong className="text-indigo-400">{comprovativoExtractedData.referencia}</strong>
+                              <strong className="text-indigo-700">{comprovativoExtractedData.referencia}</strong>
                             </div>
-                            <div className="text-slate-600 text-[8px] mt-1 border-t border-slate-800 pt-1 leading-normal">
-                              💡 <strong className="text-slate-600">{comprovativoExtractedData.sugestaoLancamento}</strong>
+                            <div className="text-slate-600 text-[8px] mt-1 border-t border-slate-200 pt-1 leading-normal">
+                              💡 <strong className="text-slate-700">{comprovativoExtractedData.sugestaoLancamento}</strong>
                             </div>
                           </div>
                           <div className="flex gap-2">
@@ -4547,7 +4579,7 @@ export default function PWACondominoView({
                                 setComprovativoUpload(null);
                                 setComprovativoExtractedData(null);
                               }}
-                              className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-600 rounded-lg font-bold"
+                              className="flex-1 py-2 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 rounded-lg font-bold"
                             >
                               Voltar a Enviar
                             </button>
@@ -4556,7 +4588,7 @@ export default function PWACondominoView({
                                 handleConfirmComprovativo();
                                 setActivePwaModal(null);
                               }}
-                              className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-slate-950 font-black rounded-lg transition-colors"
+                              className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-lg transition-colors"
                             >
                               Confirmar e Liquidar
                             </button>
@@ -4568,7 +4600,7 @@ export default function PWACondominoView({
                           <button
                             type="button"
                             onClick={() => document.getElementById("pwa-popup-comprovativo")?.click()}
-                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold rounded-lg cursor-pointer animate-pulse"
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg cursor-pointer animate-pulse"
                           >
                             Selecionar Comprovativo
                           </button>
@@ -4591,52 +4623,52 @@ export default function PWACondominoView({
                     <p className="text-slate-700">Registo de contas e referências bancárias para pagamento de quotas:</p>
 
                     {/* IBAN do Prédio */}
-                    <div className="bg-slate-800 p-3 rounded-xl border border-slate-800 space-y-1">
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
                       <div className="flex justify-between items-center">
                         <span className="text-[8px] uppercase tracking-wider text-slate-600 font-extrabold">IBAN para Transferência</span>
                         <button
                           onClick={() => handleCopyToClipboard(ibanPredio, "IBAN")}
-                          className="text-emerald-400 hover:underline font-bold text-[8px]"
+                          className="text-emerald-700 hover:underline font-bold text-[8px]"
                         >
                           Copiar IBAN
                         </button>
                       </div>
-                      <strong className="text-white block font-mono text-[10px] break-all">{ibanPredio}</strong>
+                      <strong className="text-slate-800 block font-mono text-[10px] break-all">{ibanPredio}</strong>
                       <span className="text-[8px] text-slate-600 block">Banco de Destino: {contaPrincipal?.banco || "Conta do Condomínio"}</span>
                     </div>
 
                     {/* Referência Individual */}
-                    <div className="bg-slate-800 p-3 rounded-xl border border-slate-800 space-y-1">
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
                       <div className="flex justify-between items-center">
                         <span className="text-[8px] uppercase tracking-wider text-slate-600 font-extrabold">Referência da Fração</span>
                         <button
                           onClick={() => handleCopyToClipboard(fractionRef, "Referência")}
-                          className="text-emerald-400 hover:underline font-bold text-[8px]"
+                          className="text-emerald-700 hover:underline font-bold text-[8px]"
                         >
                           Copiar Ref
                         </button>
                       </div>
-                      <strong className="text-emerald-400 font-mono text-xs block tracking-widest">{fractionRef}</strong>
+                      <strong className="text-emerald-700 font-mono text-xs block tracking-widest">{fractionRef}</strong>
                       <span className="text-[8px] text-slate-600 block">Identificador individual da Fração {condominoFracao?.piso ? `${condominoFracao.piso} (${condominoFracao.fracao_nome || "—"})` : (condominoFracao?.fracao_nome || "—")}.</span>
                     </div>
 
                     {/* Quota Extraordinária — só aparece se existir mesmo um aviso extraordinário pendente para esta fração */}
                     {temQuotaExtra && (
-                      <div className="bg-indigo-950/20 border border-indigo-900/40 p-3 rounded-xl space-y-2">
-                        <span className="text-indigo-300 font-bold block">🔨 Quota Extraordinária em Aberto</span>
+                      <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-xl space-y-2">
+                        <span className="text-indigo-700 font-bold block">🔨 Quota Extraordinária em Aberto</span>
                         <div className="grid grid-cols-2 gap-2 text-[8px] leading-relaxed">
                           {contaExtra?.iban && (
                             <div>
                               <span className="text-slate-600 block">IBAN da Conta Extra</span>
-                              <div className="flex items-center gap-1 font-mono text-slate-600">
+                              <div className="flex items-center gap-1 font-mono text-slate-700">
                                 <span className="truncate max-w-[80px]">{contaExtra.iban}</span>
-                                <button onClick={() => handleCopyToClipboard(contaExtra.iban!, "IBAN da Conta Extra")} className="text-emerald-400 shrink-0">Copiar</button>
+                                <button onClick={() => handleCopyToClipboard(contaExtra.iban!, "IBAN da Conta Extra")} className="text-emerald-700 shrink-0">Copiar</button>
                               </div>
                             </div>
                           )}
                           <div>
                             <span className="text-slate-600 block">Referência</span>
-                            <span className="font-mono text-slate-600">{fractionRefExtra}</span>
+                            <span className="font-mono text-slate-700">{fractionRefExtra}</span>
                           </div>
                         </div>
                       </div>
@@ -4647,7 +4679,7 @@ export default function PWACondominoView({
                 {activePwaModal === "contactos_emergencia" && (
                   <div className="space-y-3.5 text-[10px]">
                     <p className="text-slate-700">Lista de piquetes e contactos urgentes de assistência ao condomínio:</p>
-                    
+
                     <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
                       {[
                         { servico: "Piquete de Elevadores (Otis)", num: "808 20 20 20", desc: "Avarias em cabines ou pessoas presas" },
@@ -4656,11 +4688,11 @@ export default function PWACondominoView({
                         { servico: "Portões Automáticos (Assistência)", num: "933 888 111", desc: "Bloqueio ou descarrilamento do portão garagem" },
                         { servico: "Administração CondoManager AI", num: "210 111 222", desc: "Assuntos gerais urgentes e dúvidas técnicas" }
                       ].map((cont, idx) => (
-                        <div key={idx} className="bg-slate-800 border border-slate-800 p-2.5 rounded-xl flex justify-between items-center gap-2">
+                        <div key={idx} className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl flex justify-between items-center gap-2">
                           <div className="space-y-1 truncate">
-                            <h4 className="font-extrabold text-white text-[10.5px] truncate">{cont.servico}</h4>
+                            <h4 className="font-extrabold text-slate-800 text-[10.5px] truncate">{cont.servico}</h4>
                             <span className="text-[8px] text-slate-600 block truncate">{cont.desc}</span>
-                            <strong className="text-emerald-400 font-mono text-[9.5px]">{cont.num}</strong>
+                            <strong className="text-emerald-700 font-mono text-[9.5px]">{cont.num}</strong>
                           </div>
                           <button
                             onClick={() => alert(`A simular chamada para piquete de emergência:\n${cont.servico}: ${cont.num}`)}
@@ -4683,7 +4715,7 @@ export default function PWACondominoView({
                         placeholder="Pesquisa inteligente de faturas, atas..."
                         value={documentSearch}
                         onChange={e => setDocumentSearch(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 pl-8 pr-3 py-2 text-xs rounded-xl focus:outline-none focus:border-emerald-500 text-white"
+                        className="w-full bg-white border border-slate-300 pl-8 pr-3 py-2 text-xs rounded-xl focus:outline-none focus:border-emerald-500 text-slate-800"
                       />
                     </div>
 
@@ -4693,7 +4725,7 @@ export default function PWACondominoView({
                           key={cat}
                           onClick={() => setDocumentCategory(cat as any)}
                           className={`px-2.5 py-1 rounded-full cursor-pointer shrink-0 transition-colors ${
-                            documentCategory === cat ? "bg-emerald-500 text-slate-950 font-black" : "bg-slate-800 hover:bg-slate-700 text-slate-600"
+                            documentCategory === cat ? "bg-emerald-500 text-white font-black" : "bg-white hover:bg-slate-100 border border-slate-200 text-slate-600"
                           }`}
                         >
                           {cat}
@@ -4703,41 +4735,41 @@ export default function PWACondominoView({
 
                     <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
                       {documentos
-                        .filter(doc => 
-                          documentCategory === "Todos" || 
-                          doc.categoria?.toLowerCase() === documentCategory.toLowerCase() || 
-                          (documentCategory === "Fração" && doc.categoria === "Privado") || 
+                        .filter(doc =>
+                          documentCategory === "Todos" ||
+                          doc.categoria?.toLowerCase() === documentCategory.toLowerCase() ||
+                          (documentCategory === "Fração" && doc.categoria === "Privado") ||
                           (documentCategory === "Prédio" && doc.categoria === "Público") ||
                           (documentCategory === "Biblioteca" && (doc.categoria === "Público" || doc.categoria?.toLowerCase() === "regulamentos"))
                         )
                         .filter(doc => doc.nome.toLowerCase().includes(documentSearch.toLowerCase()))
                         .map(doc => (
-                          <div key={doc.id_doc} className="bg-slate-800 border border-slate-800 p-2.5 rounded-xl flex items-center justify-between gap-2">
+                          <div key={doc.id_doc} className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 truncate">
                               <span className="text-base shrink-0">📄</span>
                               <div className="truncate">
-                                <span className="font-bold text-white block truncate text-[10.5px]">{doc.nome}</span>
+                                <span className="font-bold text-slate-800 block truncate text-[10.5px]">{doc.nome}</span>
                                 <span className="text-[8px] text-slate-600 font-mono uppercase">{doc.categoria || doc.tipo} • {doc.data_upload}</span>
                               </div>
                             </div>
                             <div className="flex gap-1 shrink-0 font-bold">
-                              <button 
+                              <button
                                 onClick={() => {
                                   setSelectedDocPreview(doc);
                                   alert(`A abrir visualizador de IA para: ${doc.nome}`);
                                 }}
-                                className="p-1 text-slate-600 hover:text-emerald-400 cursor-pointer"
+                                className="p-1 text-slate-600 hover:text-emerald-600 cursor-pointer"
                               >
                                 <Eye className="h-3.5 w-3.5" />
                               </button>
-                              <button 
+                              <button
                                 onClick={() => generateAndDownloadPdf(
                                   doc.nome,
                                   [{ heading: "Conteúdo do Documento", content: doc.descricao || "Ficheiro oficial do condomínio registado no arquivo digital." }],
                                   doc.nome,
                                   [{ label: "Condomínio", value: predio.nome }, { label: "Data Upload", value: doc.data_upload }]
                                 )}
-                                className="p-1 text-slate-600 hover:text-emerald-400 cursor-pointer"
+                                className="p-1 text-slate-600 hover:text-emerald-600 cursor-pointer"
                               >
                                 <Download className="h-3.5 w-3.5" />
                               </button>
@@ -4758,7 +4790,7 @@ export default function PWACondominoView({
                         <select
                           value={bookingSpace}
                           onChange={e => setBookingSpace(e.target.value)}
-                          className="w-full bg-slate-800 border border-slate-700 p-2 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-white border border-slate-300 p-2 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
                         >
                           <option value="Salão de Festas">Salão de Festas Comum (Piso 0)</option>
                           <option value="Ginásio Comum">Ginásio Comum do Prédio (Piso -1)</option>
@@ -4772,7 +4804,7 @@ export default function PWACondominoView({
                           type="date"
                           value={bookingDate}
                           onChange={e => setBookingDate(e.target.value)}
-                          className="w-full bg-slate-800 border border-slate-700 p-2 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                          className="w-full bg-white border border-slate-300 p-2 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-emerald-500 font-mono"
                         />
                       </div>
 
@@ -4781,7 +4813,7 @@ export default function PWACondominoView({
                         <select
                           value={bookingTime}
                           onChange={e => setBookingTime(e.target.value)}
-                          className="w-full bg-slate-800 border border-slate-700 p-2 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-white border border-slate-300 p-2 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
                         >
                           <option value="09:00 - 13:00">Manhã (09:00 - 13:00)</option>
                           <option value="14:00 - 18:00">Tarde (14:00 - 18:00)</option>
@@ -4797,7 +4829,7 @@ export default function PWACondominoView({
                           max={40}
                           value={bookingGuests}
                           onChange={e => setBookingGuests(parseInt(e.target.value))}
-                          className="w-full bg-slate-800 border border-slate-700 p-2 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                          className="w-full bg-white border border-slate-300 p-2 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-emerald-500 font-mono"
                         />
                       </div>
                     </div>
@@ -4805,7 +4837,7 @@ export default function PWACondominoView({
                     <button
                       onClick={handleConfirmarReservaEspaco}
                       disabled={aSubmeterReserva}
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-slate-950 font-black py-2.5 rounded-xl uppercase tracking-wider text-[9px] cursor-pointer mt-1"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-black py-2.5 rounded-xl uppercase tracking-wider text-[9px] cursor-pointer mt-1"
                     >
                       {aSubmeterReserva ? "A submeter..." : "📅 Submeter Pedido de Reserva"}
                     </button>
@@ -4815,20 +4847,20 @@ export default function PWACondominoView({
                 {activePwaModal === "ver_limpezas" && (
                   <div className="space-y-3.5 text-[10px]">
                     <p className="text-slate-700">Consulte a escala e o histórico de higiene e limpezas efetuadas no seu prédio:</p>
-                    
+
                     <div className="space-y-2.5 max-h-[50vh] overflow-y-auto pr-1">
                       {limpezasHistorico.length === 0 && (
                         <p className="text-slate-600 text-[10px] text-center py-6">Nenhuma limpeza registada até ao momento.</p>
                       )}
                       {limpezasHistorico.map(limp => (
-                        <div key={limp.id} className="bg-slate-800 border border-slate-800 p-3 rounded-xl space-y-2">
+                        <div key={limp.id} className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-2">
                           <div className="flex justify-between font-bold">
                             <span className="text-slate-600 uppercase text-[8px] font-mono">{limp.id} • {limp.data} às {limp.hora}</span>
-                            <span className="text-emerald-400 flex items-center gap-1"><Check className="h-3 w-3" /> {limp.estado}</span>
+                            <span className="text-emerald-600 flex items-center gap-1"><Check className="h-3 w-3" /> {limp.estado}</span>
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-[9px] leading-tight text-slate-600">
-                            <div>Técnico: <strong className="text-white block mt-0.5">{limp.tecnico}</strong></div>
-                            <div>Anomalias: <strong className={`block mt-0.5 ${limp.avariaDetetada !== "Nenhuma" ? "text-rose-400 font-bold" : "text-emerald-400"}`}>{limp.avariaDetetada}</strong></div>
+                            <div>Técnico: <strong className="text-slate-800 block mt-0.5">{limp.tecnico}</strong></div>
+                            <div>Anomalias: <strong className={`block mt-0.5 ${limp.avariaDetetada !== "Nenhuma" ? "text-rose-600 font-bold" : "text-emerald-600"}`}>{limp.avariaDetetada}</strong></div>
                           </div>
                         </div>
                       ))}
@@ -4839,20 +4871,20 @@ export default function PWACondominoView({
                 {activePwaModal === "avaliar_servico" && (
                   <div className="space-y-3.5 text-[10px]">
                     <p className="text-slate-700">Avalie a qualidade dos serviços de higienização das áreas comuns ou manutenções realizadas recentemente:</p>
-                    
+
                     <div className="space-y-2.5">
                       {limpezasHistorico.length === 0 && (
                         <p className="text-slate-600 text-[10px] text-center py-6">Nenhuma limpeza registada para avaliar.</p>
                       )}
                       {limpezasHistorico.slice(0, 2).map(limp => (
-                        <div key={limp.id} className="bg-slate-800 border border-slate-800 p-3 rounded-xl space-y-2">
+                        <div key={limp.id} className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-2">
                           <div className="flex justify-between text-slate-600 font-bold text-[8px]">
                             <span>{limp.id} • {limp.data}</span>
                             <span className="text-slate-700">Responsável: {limp.tecnico}</span>
                           </div>
-                          <h4 className="font-extrabold text-white text-[10.5px]">Limpeza Geral de Escadas e Elevadores</h4>
-                          
-                          <div className="flex items-center justify-between pt-1.5 border-t border-slate-800">
+                          <h4 className="font-extrabold text-slate-800 text-[10.5px]">Limpeza Geral de Escadas e Elevadores</h4>
+
+                          <div className="flex items-center justify-between pt-1.5 border-t border-slate-200">
                             <div className="flex space-x-1">
                               {[1, 2, 3, 4, 5].map(star => (
                                 <button
@@ -4864,12 +4896,12 @@ export default function PWACondominoView({
                                   className="cursor-pointer"
                                 >
                                   <Star className={`h-4 w-4 ${
-                                    (cleaningRatings[limp.id] || 0) >= star ? "text-amber-400 fill-amber-400" : "text-slate-600 hover:text-slate-600"
+                                    (cleaningRatings[limp.id] || 0) >= star ? "text-amber-500 fill-amber-500" : "text-slate-300 hover:text-slate-400"
                                   }`} />
                                 </button>
                               ))}
                             </div>
-                            <span className="font-extrabold text-emerald-400 text-[8px] uppercase">
+                            <span className="font-extrabold text-emerald-600 text-[8px] uppercase">
                               {cleaningRatings[limp.id] ? "✓ Avaliado" : "Avaliar"}
                             </span>
                           </div>
@@ -5029,22 +5061,22 @@ export default function PWACondominoView({
                         <p className="text-slate-600 text-[10px] text-center py-6">Nenhuma obra registada até ao momento.</p>
                       )}
                       {obrasReais.map(obra => (
-                        <div key={obra.id} className="bg-slate-800 border border-slate-800 p-3.5 rounded-xl space-y-2">
+                        <div key={obra.id} className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl space-y-2">
                           <div className="flex justify-between items-start">
                             <div>
                               <span className={`text-[8px] px-2 py-0.5 rounded font-extrabold uppercase border ${
-                                obra.estado === "Concluída" ? "bg-emerald-950 text-emerald-400 border-emerald-900/30" :
-                                obra.estado === "Em Curso" ? "bg-blue-950 text-blue-400 border-blue-900/30" :
-                                "bg-indigo-950 text-indigo-400 border-indigo-900/30"
+                                obra.estado === "Concluída" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                                obra.estado === "Em Curso" ? "bg-blue-50 text-blue-700 border-blue-200" :
+                                "bg-indigo-50 text-indigo-700 border-indigo-200"
                               }`}>{obra.estado}</span>
-                              <h4 className="font-extrabold text-white mt-1 text-[11px]">{obra.descricao}</h4>
+                              <h4 className="font-extrabold text-slate-800 mt-1 text-[11px]">{obra.descricao}</h4>
                             </div>
-                            <span className="font-bold text-indigo-400 font-mono">{obra.custoTotal.toLocaleString("pt-PT")} €</span>
+                            <span className="font-bold text-indigo-700 font-mono">{obra.custoTotal.toLocaleString("pt-PT")} €</span>
                           </div>
                           <p className="text-slate-600 leading-relaxed text-[9.5px]">
                             {obra.dataInicio ? `Início: ${formatDatePT(obra.dataInicio)}` : ""}{obra.dataFim ? ` • Fim: ${formatDatePT(obra.dataFim)}` : ""}
                           </p>
-                          <div className="pt-2 border-t border-slate-800 flex justify-between text-[8px] text-slate-600 font-bold">
+                          <div className="pt-2 border-t border-slate-200 flex justify-between text-[8px] text-slate-600 font-bold">
                             <span>{obra.fornecedorNome ? `Empreiteiro: ${obra.fornecedorNome}` : "Fornecedor por adjudicar"}</span>
                           </div>
                         </div>
@@ -5056,7 +5088,7 @@ export default function PWACondominoView({
                 {activePwaModal === "plano_plurianual" && (
                   <div className="space-y-3.5 text-[10px]">
                     <p className="text-slate-700">Calendário de Investimentos & Plano Plurianual (2026-2030) aprovado em assembleia geral:</p>
-                    
+
                     <div className="space-y-2.5 max-h-[50vh] overflow-y-auto pr-1">
                       {[
                         { ano: "2026", obra: "Pintura Geral de Fachadas", custo: "18,500.00 €", status: "Adjudicado", prioridade: "Alta" },
@@ -5065,15 +5097,15 @@ export default function PWACondominoView({
                         { ano: "2029", obra: "Modernização das Garagens e Postos de Carregamento", custo: "14,500.00 €", status: "Planeado", prioridade: "Baixa" },
                         { ano: "2030", obra: "Reparação e Isolamento Térmico de Varandas", custo: "9,000.00 €", status: "Estudo", prioridade: "Média" }
                       ].map((item, idx) => (
-                        <div key={idx} className="bg-slate-800 border border-slate-800 p-3 rounded-xl space-y-1.5">
+                        <div key={idx} className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-1.5">
                           <div className="flex justify-between font-mono">
-                            <span className="text-emerald-400 font-black text-[11px]">Ano {item.ano}</span>
+                            <span className="text-emerald-700 font-black text-[11px]">Ano {item.ano}</span>
                             <span className="text-slate-600">{item.custo}</span>
                           </div>
-                          <h4 className="font-extrabold text-white text-[10.5px]">{item.obra}</h4>
-                          <div className="flex justify-between items-center text-[8px] pt-1 border-t border-slate-800/60 text-slate-600">
-                            <span>Estado: <strong className="text-slate-200">{item.status}</strong></span>
-                            <span>Prioridade: <strong className={item.prioridade === "Alta" ? "text-rose-400" : item.prioridade === "Média" ? "text-amber-400" : "text-emerald-400"}>{item.prioridade}</strong></span>
+                          <h4 className="font-extrabold text-slate-800 text-[10.5px]">{item.obra}</h4>
+                          <div className="flex justify-between items-center text-[8px] pt-1 border-t border-slate-200 text-slate-600">
+                            <span>Estado: <strong className="text-slate-700">{item.status}</strong></span>
+                            <span>Prioridade: <strong className={item.prioridade === "Alta" ? "text-rose-600" : item.prioridade === "Média" ? "text-amber-600" : "text-emerald-600"}>{item.prioridade}</strong></span>
                           </div>
                         </div>
                       ))}
