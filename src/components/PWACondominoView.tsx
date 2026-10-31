@@ -4405,7 +4405,7 @@ export default function PWACondominoView({
                   {activePwaModal === "reservar_espaco" && "📅 Reservar Espaço Comum"}
                   {activePwaModal === "ver_limpezas" && "🧼 Escala de Limpezas"}
                   {activePwaModal === "avaliar_servico" && "⭐ Avaliação de Serviço"}
-                  {activePwaModal === "responder_sondagem" && "🗳️ Responder à Sondagem"}
+                  {activePwaModal === "responder_sondagem" && "🗳️ Sondagens & Questionários"}
                   {activePwaModal === "estatisticas_sondagem" && "📊 Resultados da Sondagem"}
                   {activePwaModal === "obras_curso" && "🏗️ Obras em Curso"}
                   {activePwaModal === "plano_plurianual" && "📅 Plano Plurianual (2026-2030)"}
@@ -4881,8 +4881,22 @@ export default function PWACondominoView({
 
                 {activePwaModal === "responder_sondagem" && (
                   <div className="space-y-3.5 text-[10px]">
-                    <p className="text-slate-700">Responda à sondagem ativa do seu edifício.</p>
-
+                    {/* Este modal (aberto a partir do botão "Sondagens &
+                        Questionários" do menu) sempre teve nome e texto
+                        próprios a prometer os dois, mas nunca chegou a
+                        mostrar nenhum Questionário — só sondagens. Pedido
+                        explícito do administrador, que tentou responder a um
+                        questionário pela PWA e não conseguiu. Replica aqui a
+                        mesma lógica já usada e a funcionar no separador
+                        "Comunicações" (questionariosFeed/jaRespondeuQuestionario/
+                        handleResponderQuestionarioReal).
+                        As cores dos cartões deixam também de ser escuras
+                        fixas (bg-slate-800/text-white, sem nenhuma variante
+                        dark:) — este modal tem sempre fundo branco, mesmo em
+                        modo escuro, por isso um cartão sempre escuro por
+                        dentro ficava com texto de baixo contraste (cinza
+                        sobre cinza-escuro, a tamanhos de 7-9px). */}
+                    <p className="text-slate-700 font-bold">Sondagens Ativas</p>
                     {(() => {
                       const sondagemAtiva = sondagensFeed.find(s => s.estado === "ativa" && !jaVotouSondagem(s));
                       const sondagemVotada = sondagensFeed.find(s => s.estado === "ativa" && jaVotouSondagem(s));
@@ -4891,17 +4905,17 @@ export default function PWACondominoView({
                       }
                       if (!sondagemAtiva) {
                         return (
-                          <div className="bg-slate-800 border border-slate-800 p-3.5 rounded-xl flex flex-col items-center justify-center py-4 text-center">
-                            <CheckCircle className="h-6 w-6 text-emerald-400 mb-2" />
-                            <span className="font-extrabold text-white">Voto já registado nesta sondagem!</span>
+                          <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl flex flex-col items-center justify-center py-4 text-center">
+                            <CheckCircle className="h-6 w-6 text-emerald-600 mb-2" />
+                            <span className="font-extrabold text-slate-800">Voto já registado nesta sondagem!</span>
                             <span className="text-[8.5px] text-slate-600 mt-1">Obrigado pelo seu contributo para as decisões comunitárias.</span>
                           </div>
                         );
                       }
                       return (
-                        <div className="bg-slate-800 border border-slate-800 p-3.5 rounded-xl space-y-3">
+                        <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl space-y-3">
                           <div className="space-y-1">
-                            <h4 className="font-black text-white text-xs leading-snug">{sondagemAtiva.pergunta}</h4>
+                            <h4 className="font-black text-slate-800 text-xs leading-snug">{sondagemAtiva.pergunta}</h4>
                           </div>
                           <div className="space-y-2 pt-1.5">
                             {sondagemAtiva.opcoes.map(op => (
@@ -4909,16 +4923,52 @@ export default function PWACondominoView({
                                 key={op}
                                 disabled={aEnviarVoto === sondagemAtiva.id_sondagem}
                                 onClick={() => handleVotarSondagemReal(sondagemAtiva.id_sondagem, op)}
-                                className="w-full text-left p-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 rounded-xl font-bold flex justify-between items-center transition-all cursor-pointer disabled:opacity-50"
+                                className="w-full text-left p-2.5 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-400 rounded-xl font-bold text-slate-800 flex justify-between items-center transition-all cursor-pointer disabled:opacity-50"
                               >
                                 <span>{op}</span>
-                                <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
+                                <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
                               </button>
                             ))}
                           </div>
                         </div>
                       );
                     })()}
+
+                    {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && (
+                      <>
+                        <p className="text-slate-700 font-bold pt-1">Questionários Ativos</p>
+                        {questionariosFeed.filter(q => q.estado === "ativo").length === 0 ? (
+                          <p className="text-slate-600 text-center py-4">Sem questionários ativos neste momento.</p>
+                        ) : (
+                          questionariosFeed.filter(q => q.estado === "ativo").map(q => (
+                            <div key={q.id_questionario} className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-1.5">
+                              <h5 className="font-extrabold text-slate-800">{q.titulo}</h5>
+                              {q.descricao && <p className="text-slate-600 text-[9px]">{q.descricao}</p>}
+                              {jaRespondeuQuestionario(q) ? (
+                                <span className="text-[8px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-extrabold uppercase inline-block">Já respondeu</span>
+                              ) : (
+                                <div className="flex gap-1.5 pt-1">
+                                  <input
+                                    type="text"
+                                    placeholder="A sua resposta..."
+                                    value={respostaQuestTexto[q.id_questionario] || ""}
+                                    onChange={e => setRespostaQuestTexto(prev => ({ ...prev, [q.id_questionario]: e.target.value }))}
+                                    className="flex-grow bg-white border border-slate-200 text-slate-800 px-2 py-1.5 rounded text-[10px] focus:outline-none focus:border-emerald-500"
+                                  />
+                                  <button
+                                    disabled={aEnviarResposta === q.id_questionario}
+                                    onClick={() => handleResponderQuestionarioReal(q.id_questionario)}
+                                    className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded text-[10px] font-bold cursor-pointer"
+                                  >
+                                    Enviar
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -4933,12 +4983,12 @@ export default function PWACondominoView({
                         const votos = s.votos || [];
                         const totalVotos = votos.length;
                         return (
-                          <div key={s.id_sondagem} className="bg-slate-800 border border-slate-800 p-3.5 rounded-xl space-y-3">
+                          <div key={s.id_sondagem} className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl space-y-3">
                             <div className="space-y-1">
-                              <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded border ${s.estado === "ativa" ? "bg-emerald-950 text-emerald-400 border-emerald-900/30" : "bg-slate-800 text-slate-600 border-slate-700"}`}>
+                              <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded border ${s.estado === "ativa" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
                                 {s.estado === "ativa" ? "Deliberação Ativa" : "Encerrada"}
                               </span>
-                              <h4 className="font-extrabold text-white text-[11px] mt-1">{s.pergunta}</h4>
+                              <h4 className="font-extrabold text-slate-800 text-[11px] mt-1">{s.pergunta}</h4>
                             </div>
 
                             {totalVotos === 0 ? (
@@ -4950,11 +5000,11 @@ export default function PWACondominoView({
                                   const pct = totalVotos > 0 ? (count / totalVotos) * 100 : 0;
                                   return (
                                     <div key={op} className="space-y-1">
-                                      <div className="flex justify-between font-bold text-[9px]">
+                                      <div className="flex justify-between font-bold text-[9px] text-slate-700">
                                         <span>{op}</span>
-                                        <span className="font-mono text-emerald-400">{pct.toFixed(1)}% ({count} votos)</span>
+                                        <span className="font-mono text-emerald-600">{pct.toFixed(1)}% ({count} votos)</span>
                                       </div>
-                                      <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                      <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                                         <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                                       </div>
                                     </div>
@@ -4962,7 +5012,7 @@ export default function PWACondominoView({
                                 })}
                               </div>
                             )}
-                            <span className="text-[7.5px] text-slate-600 font-mono uppercase font-bold text-center block pt-1 border-t border-slate-800">Total de Votos: {totalVotos}</span>
+                            <span className="text-[7.5px] text-slate-600 font-mono uppercase font-bold text-center block pt-1 border-t border-slate-200">Total de Votos: {totalVotos}</span>
                           </div>
                         );
                       })
