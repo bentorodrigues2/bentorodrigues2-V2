@@ -101,7 +101,19 @@ export const RoleNavigationMap: Record<UserRole, RoleNavigationConfig> = {
     // própria fração e o extrato/saldo continuam disponíveis em
     // "portal_condomino" e "financeiro_extratos" (agora bloqueado à
     // própria fração em FinanceiroAvancado.tsx).
-    allowedTabs: ["painel", "portal_condomino", "predios", "predios_cadastro", "predios_regras", "comunicacao_broadcast", "comunicacao_sondagens", "comunicacao_questionarios", "assembleias", "financeiro_extratos", "vistorias_limpezas", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
+    //
+    // "comunicacao_broadcast"/"comunicacao_sondagens"/"comunicacao_questionarios"
+    // removidos — bug real confirmado em produção: estes 3 separadores do
+    // menu "Mensagens" na barra lateral montam GestaoComunicacoes.tsx, a
+    // ferramenta de CRIAÇÃO/resultados do administrador (com o formulário
+    // "Criar Nova Sondagem"), nunca o ecrã de voto do condómino — por
+    // estarem aqui permitidos, um condómino que clicasse em "Sondagens &
+    // Votações" na barra lateral via parar exatamente nesse ecrã
+    // administrativo, sem nenhum botão para votar, e nunca saber que o
+    // sítio certo era "Portal & Mensagens Condómino" (portal_condomino,
+    // já o separador de entrada por omissão) — onde Comunicados, Sondagens
+    // e Questionários já estão implementados e a funcionar de verdade.
+    allowedTabs: ["painel", "portal_condomino", "predios", "predios_cadastro", "predios_regras", "assembleias", "financeiro_extratos", "vistorias_limpezas", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
     displayName: "Condómino (Proprietário)",
     badgeColor: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30"
   },
@@ -114,7 +126,10 @@ export const RoleNavigationMap: Record<UserRole, RoleNavigationConfig> = {
   INQUILINO: {
     role: "INQUILINO",
     defaultTab: "portal_condomino",
-    allowedTabs: ["portal_condomino", "painel", "predios", "predios_cadastro", "predios_regras", "comunicacao_broadcast", "comunicacao_sondagens", "vistorias_limpezas", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
+    // "comunicacao_broadcast"/"comunicacao_sondagens" removidos — ver nota
+    // igual junto de USER.allowedTabs acima (montavam o ecrã de criação do
+    // administrador, nunca o de voto).
+    allowedTabs: ["portal_condomino", "painel", "predios", "predios_cadastro", "predios_regras", "vistorias_limpezas", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
     displayName: "Inquilino / Arrendatário (Sem Acesso Financeiro)",
     badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/30"
   },
@@ -126,7 +141,10 @@ export const RoleNavigationMap: Record<UserRole, RoleNavigationConfig> = {
   COPROPRIETARIO: {
     role: "COPROPRIETARIO",
     defaultTab: "portal_condomino",
-    allowedTabs: ["portal_condomino", "painel", "predios", "predios_cadastro", "predios_regras", "comunicacao_broadcast", "comunicacao_sondagens", "vistorias_limpezas", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
+    // "comunicacao_broadcast"/"comunicacao_sondagens" removidos — ver nota
+    // igual junto de USER.allowedTabs acima (montavam o ecrã de criação do
+    // administrador, nunca o de voto).
+    allowedTabs: ["portal_condomino", "painel", "predios", "predios_cadastro", "predios_regras", "vistorias_limpezas", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
     displayName: "Coproprietário (Sem Acesso Financeiro)",
     badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/30"
   }
