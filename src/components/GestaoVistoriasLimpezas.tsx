@@ -112,7 +112,24 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
   // Tabs
   const [activeTab, setActiveTab] = useState<"vistorias" | "limpezas" | "incidencias" | "scie" | "placa" | "custos">("limpezas");
 
-  // Sync with activeSubSection or initialTab
+  // Sync with global loggedUser role — só define o perfil "simulado"
+  // (activeProfile), nunca o separador: antes também escolhia o separador
+  // (activeTab) aqui, e como este efeito corre sempre no primeiro
+  // carregamento do componente a seguir ao efeito abaixo, sobrepunha-se
+  // sempre à navegação real pedida (ex: uma conta LIMPEZAS a clicar
+  // diretamente em "Incidências" na barra lateral acabava sempre a ver
+  // "Limpezas & Agendamento" em vez disso, na primeira vez que este ecrã
+  // carregava na sessão). Combinado agora num único efeito abaixo, com
+  // prioridade correta: navegação explícita > separador por omissão do
+  // papel.
+  React.useEffect(() => {
+    if (loggedUser.role === "TECNICO") setActiveProfile("TECNICO");
+    else if (loggedUser.role === "LIMPEZAS") setActiveProfile("LIMPEZAS");
+    else if (loggedUser.role === "ADMIN" || loggedUser.role === "EMPRESA_GESTORA") setActiveProfile("ADMIN");
+  }, [loggedUser.role]);
+
+  // Sync com activeSubSection/initialTab (navegação explícita) ou, na sua
+  // ausência, com o separador por omissão do papel do utilizador.
   React.useEffect(() => {
     if (activeSubSection === "limpezas_incidencias") {
       setActiveTab("incidencias");
@@ -124,21 +141,12 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
       setActiveTab("scie");
     } else if (initialTab) {
       setActiveTab(initialTab);
-    }
-  }, [activeSubSection, initialTab]);
-
-  // Sync with global loggedUser role
-  React.useEffect(() => {
-    if (loggedUser.role === "TECNICO") {
-      setActiveProfile("TECNICO");
+    } else if (loggedUser.role === "TECNICO") {
       setActiveTab("vistorias");
     } else if (loggedUser.role === "LIMPEZAS") {
-      setActiveProfile("LIMPEZAS");
       setActiveTab("limpezas");
-    } else if (loggedUser.role === "ADMIN" || loggedUser.role === "EMPRESA_GESTORA") {
-      setActiveProfile("ADMIN");
     }
-  }, [loggedUser.role]);
+  }, [activeSubSection, initialTab, loggedUser.role]);
 
   // Limpeza Cost and Forecasting states
   const [limpezaCustoMensal, setLimpezaCustoMensal] = useState("160");
@@ -862,9 +870,21 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
     printWindow.document.close();
   };
 
+  // A consola abaixo serve só para a gestão pré-visualizar o que cada papel
+  // vê (testar permissões antes de dar a conta a alguém). Uma conta real de
+  // Técnico ou Empresa de Limpezas nunca deve vê-la nem poder "mudar de
+  // perfil" — confirmado em produção que a empresa de limpezas real (role
+  // LIMPEZAS) tinha sessão válida mas nunca registou uma única limpeza: a
+  // consola aparecia sempre no topo do ecrã, com linguagem claramente
+  // interna ("Simule o acesso de agentes externos... para testar as
+  // permissões"), antes de chegar ao formulário real — confuso para quem
+  // só queria preencher a folha de limpeza.
+  const podeSimularPerfis = ["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role);
+
   return (
     <div className="space-y-6">
-      {/* SIMULATED ROLE SWITCHER CARD */}
+      {/* SIMULATED ROLE SWITCHER CARD — só visível para quem gere o condomínio */}
+      {podeSimularPerfis && (
       <div className="bg-slate-900 text-white p-5 rounded-2xl border border-slate-800 shadow-xl flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 no-print">
         <div className="flex items-center space-x-3">
           <div className="h-10 w-10 rounded-full bg-emerald-500/15 flex items-center justify-center text-emerald-400 border border-emerald-500/35">
@@ -896,6 +916,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
           </button>
         </div>
       </div>
+      )}
 
       {/* CondoManager AI - Subtabs Bar for Manutenção */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-200 dark:border-slate-800 no-print">
