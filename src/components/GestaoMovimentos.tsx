@@ -2013,8 +2013,8 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
             onClick={(e) => { if (e.target === e.currentTarget) setDetalheMovId(null); }}
             className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
           >
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-              <div className="bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+              <div className="bg-slate-900 text-white px-4 py-3 flex items-center justify-between shrink-0">
                 <h3 className="text-sm font-bold flex items-center gap-2">
                   <i className="fa-solid fa-magnifying-glass-dollar text-amber-400"></i>
                   Detalhe do Movimento Reconhecido
@@ -2023,7 +2023,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                   <i className="fa-solid fa-xmark"></i>
                 </button>
               </div>
-              <div className="p-4 space-y-3 text-xs">
+              <div className="p-4 space-y-3 text-xs overflow-y-auto">
                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 space-y-1">
                   <p><strong className="text-slate-600">Data:</strong> {formatDatePT(mov.data)}</p>
                   <p><strong className="text-slate-600">Tipo:</strong> {mov.tipo}</p>
@@ -2365,7 +2365,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                   </div>
                 )}
               </div>
-              <div className="p-4 border-t border-slate-200 flex items-center justify-between gap-2">
+              <div className="p-4 border-t border-slate-200 flex items-center justify-between gap-2 shrink-0">
                 <button
                   onClick={() => handleEliminarMov(mov.id_mov)}
                   className="text-red-600 hover:text-red-700 text-xs font-bold cursor-pointer flex items-center gap-1.5"
