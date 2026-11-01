@@ -1227,6 +1227,11 @@ export default function App() {
 
             {openMenuComunicacoes && (
               <div className="pl-6 space-y-1 border-l-2 border-emerald-500/40 ml-3.5 my-1">
+                {/* Estes 4 itens só existem para a gestão — um condómino que
+                    clicasse aqui era sempre redirecionado pelo
+                    validateRoleAccess (ver sessionManager.ts), caindo num
+                    beco sem saída. Escondidos para quem não é gestão. */}
+                {["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role) && (
                 <button
                   onClick={() => {
                     setActiveSection("comunicacao_broadcast");
@@ -1234,14 +1239,16 @@ export default function App() {
                     setIaInitialTab(undefined);
                   }}
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "comunicacao_broadcast" 
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
+                    activeSection === "comunicacao_broadcast"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/73-mensagem-global.png" alt="Comunicados" className="w-4 h-4 object-contain shrink-0" />
                   <span>Comunicados & Avisos (Gerais)</span>
                 </button>
+                )}
+                {["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role) && (
                 <button
                   onClick={() => {
                     setActiveSection("comunicacao_chat");
@@ -1249,14 +1256,16 @@ export default function App() {
                     setIaInitialTab(undefined);
                   }}
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "comunicacao_chat" 
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
+                    activeSection === "comunicacao_chat"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/74-mensagem-individual.png" alt="Mensagens Diretas" className="w-4 h-4 object-contain shrink-0" />
                   <span>Mensagens & Inbox (Admin)</span>
                 </button>
+                )}
+                {["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role) && (
                 <button
                   onClick={() => {
                     setActiveSection("agenda_notificacoes");
@@ -1265,13 +1274,15 @@ export default function App() {
                   }}
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "agenda_notificacoes" || activeSection === "agendador_automatico"
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <i className="fa-solid fa-calendar-check text-emerald-400 text-xs"></i>
                   <span>Agenda de Notificações</span>
                 </button>
+                )}
+                {["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role) && (
                 <button
                   onClick={() => {
                     setActiveSection("agendador_automatico");
@@ -1287,6 +1298,7 @@ export default function App() {
                   <i className="fa-solid fa-clock-rotate-left text-emerald-400 text-xs"></i>
                   <span>Agendador Automático de Jobs</span>
                 </button>
+                )}
                 <button
                   onClick={() => {
                     setActiveSection("mural_reservas");
@@ -1344,6 +1356,7 @@ export default function App() {
                   <img src="/modulos/75-mensagem.png" alt="Portal Condómino" className="w-4 h-4 object-contain shrink-0" />
                   <span>Portal & Mensagens Condómino</span>
                 </button>
+                {["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role) && (
                 <button
                   onClick={() => {
                     setActiveSection("comunicacao_sondagens");
@@ -1351,14 +1364,16 @@ export default function App() {
                     setIaInitialTab(undefined);
                   }}
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "comunicacao_sondagens" 
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
+                    activeSection === "comunicacao_sondagens"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/76-sondagem.png" alt="Sondagens" className="w-4 h-4 object-contain shrink-0" />
                   <span>Sondagens & Votações</span>
                 </button>
+                )}
+                {["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role) && (
                 <button
                   onClick={() => {
                     setActiveSection("comunicacao_questionarios");
@@ -1366,14 +1381,15 @@ export default function App() {
                     setIaInitialTab(undefined);
                   }}
                   className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "comunicacao_questionarios" 
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
+                    activeSection === "comunicacao_questionarios"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
                   }`}
                 >
                   <img src="/modulos/77-questionario.png" alt="Questionários" className="w-4 h-4 object-contain shrink-0" />
                   <span>Questionários & Inquérito</span>
                 </button>
+                )}
                 {/* "Reuniões & Convocatórias" removido daqui — estava duplicado
                     (mesmo rótulo, mesmo ícone, mesmo destino) com o item de
                     topo "9. Reuniões & Convocatórias", que fica como único
