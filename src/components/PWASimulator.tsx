@@ -3149,6 +3149,7 @@ export function PWASimulator({
                           movimentos={movements}
                           reservas={reservas}
                           ocorrencias={ocorrencias}
+                          contas={contas}
                         />
                       )}
                       {activePwaSubMenuDetails === "correspondencia_ver" && (

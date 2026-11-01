@@ -54,6 +54,7 @@ interface DashboardKPIsProps {
   movimentos: Movimento[];
   reservas: Reserva[];
   ocorrencias: Ocorrencia[];
+  contas: Conta[];
 }
 
 // Intervalo de atualização automática — antes só era possível ver dados
@@ -69,16 +70,29 @@ export function DashboardKPIs({
   movimentos: movimentosIniciais,
   reservas: reservasIniciais,
   ocorrencias: ocorrenciasIniciais,
+  contas: contasIniciais,
 }: DashboardKPIsProps) {
   // Estado próprio, semeado pelas props (para pintar de imediato sem
-  // esperar por um pedido de rede) mas depois atualizado sozinho — ver
-  // recarregarTudo/useEffect mais abaixo.
+  // esperar por um pedido de rede) e também sincronizado sempre que a prop
+  // muda (ver useEffect abaixo) — além de atualizado sozinho via
+  // recarregarTudo/polling de 45s. Sem o useEffect de sincronização, o
+  // saldo bancário aqui mostrado só refletia um lançamento feito noutro
+  // ecrã (ex: Gestão de Movimentos, que atualiza o "contas" partilhado da
+  // App de imediato) depois dos 45s ou de um refresh manual — nunca de
+  // forma imediata, que é o comportamento esperado.
   const [fracoes, setFracoes] = useState<Fracao[]>(fracoesIniciais);
   const [avisos, setAvisos] = useState<Aviso[]>(avisosIniciais);
   const [movimentos, setMovimentos] = useState<Movimento[]>(movimentosIniciais);
   const [reservas, setReservas] = useState<Reserva[]>(reservasIniciais);
   const [ocorrencias, setOcorrencias] = useState<Ocorrencia[]>(ocorrenciasIniciais);
-  const [contas, setContas] = useState<Conta[]>([]);
+  const [contas, setContas] = useState<Conta[]>(contasIniciais);
+
+  useEffect(() => { setFracoes(fracoesIniciais); }, [fracoesIniciais]);
+  useEffect(() => { setAvisos(avisosIniciais); }, [avisosIniciais]);
+  useEffect(() => { setMovimentos(movimentosIniciais); }, [movimentosIniciais]);
+  useEffect(() => { setReservas(reservasIniciais); }, [reservasIniciais]);
+  useEffect(() => { setOcorrencias(ocorrenciasIniciais); }, [ocorrenciasIniciais]);
+  useEffect(() => { setContas(contasIniciais); }, [contasIniciais]);
   const [equipamentosScie, setEquipamentosScie] = useState<EquipamentoSCIERow[]>([]);
   const [limpezas, setLimpezas] = useState<LimpezaRow[]>([]);
   const [incidenciasLimpeza, setIncidenciasLimpeza] = useState<IncidenciaLimpezaRow[]>([]);

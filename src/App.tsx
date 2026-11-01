@@ -3233,13 +3233,14 @@ export default function App() {
           )}
 
           {activeSection === "dashboard_kpis" && (
-            <DashboardKPIs 
+            <DashboardKPIs
               predio={predioAtivo}
               fracoes={fracoes}
               avisos={avisos}
               movimentos={movements}
               reservas={reservas}
               ocorrencias={ocorrencias}
+              contas={contas}
             />
           )}
 
