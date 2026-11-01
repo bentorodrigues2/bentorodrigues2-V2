@@ -825,7 +825,22 @@ export function GestaoComunicacoes({
   const handleFecharSondagem = async (idSondagem: string) => {
     const s = sondagensList.find(sd => sd.id_sondagem === idSondagem);
     if (!s) return;
+    // Bug real confirmado em produção: este botão fechava a sondagem sem
+    // nenhuma confirmação, impedindo de imediato TODOS os condóminos de
+    // votar (não só quem ainda não tinha votado) — e não havia forma
+    // nenhuma de reabrir pela própria aplicação depois, só diretamente na
+    // base de dados. Um clique a mais/sem querer ficava irreversível para
+    // o administrador.
+    if (!confirm(`Fechar esta sondagem agora? Nenhum condómino vai conseguir votar mais, mesmo que a data de fecho (${s.data_fecho ? new Date(s.data_fecho).toLocaleDateString("pt-PT") : "—"}) ainda não tenha chegado.`)) return;
     const atualizada = { ...s, estado: "fechada" as const };
+    await saveSondagemToSupabase(atualizada);
+    setSondagensList(prev => prev.map(sd => sd.id_sondagem === idSondagem ? atualizada : sd));
+  };
+
+  const handleReabrirSondagem = async (idSondagem: string) => {
+    const s = sondagensList.find(sd => sd.id_sondagem === idSondagem);
+    if (!s) return;
+    const atualizada = { ...s, estado: "ativa" as const };
     await saveSondagemToSupabase(atualizada);
     setSondagensList(prev => prev.map(sd => sd.id_sondagem === idSondagem ? atualizada : sd));
   };
@@ -1559,9 +1574,13 @@ export function GestaoComunicacoes({
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${s.estado === "ativa" ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-slate-200 text-slate-600 border-slate-300"}`}>
                             {s.estado === "ativa" ? `Ativa (fecha ${s.data_fecho ? new Date(s.data_fecho).toLocaleDateString("pt-PT") : ""})` : "Fechada"}
                           </span>
-                          {s.estado === "ativa" && (
+                          {s.estado === "ativa" ? (
                             <button onClick={() => handleFecharSondagem(s.id_sondagem)} className="text-[10px] font-bold text-slate-600 hover:text-slate-800 cursor-pointer">
                               Fechar
+                            </button>
+                          ) : (
+                            <button onClick={() => handleReabrirSondagem(s.id_sondagem)} className="text-[10px] font-bold text-emerald-700 hover:text-emerald-800 cursor-pointer">
+                              Reabrir
                             </button>
                           )}
                         </div>
