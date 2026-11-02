@@ -21,6 +21,7 @@ import { IAAvancada } from "./IAAvancada";
 import { GestaoComunicacoes } from "./GestaoComunicacoes";
 import { GestaoDocumentos } from "./GestaoDocumentos";
 import { GestaoMovimentos } from "./GestaoMovimentos";
+import { FinanceiroAvancado } from "./FinanceiroAvancado";
 import { GestaoFracoes } from "./GestaoFracoes";
 import { GestaoAssembleias } from "./GestaoAssembleias";
 import { GestaoContas } from "./GestaoContas";
@@ -3308,9 +3309,8 @@ export function PWASimulator({
                           loggedUser={loggedUser}
                         />
                       )}
-                      {(activePwaSubMenuDetails === "contabilista_despesas" ||
-                        activePwaSubMenuDetails === "contabilista_recibos") && (
-                        <GestaoMovimentos 
+                      {activePwaSubMenuDetails === "contabilista_despesas" && (
+                        <GestaoMovimentos
                           predio={predio}
                           contas={contas}
                           movements={movements}
@@ -3318,6 +3318,28 @@ export function PWASimulator({
                           fornecedores={fornecedores}
                           setFornecedores={setFornecedores}
                           loggedUser={loggedUser}
+                        />
+                      )}
+                      {/* Antes "Emissão de Recibos ao Condomínio" abria o mesmo
+                          formulário genérico de lançamentos do cartão acima —
+                          leva agora ao fluxo real de recibo manual
+                          (FinanceiroAvancado, tab "recibos_manuais"), que só
+                          grava em "movimentos" (já permitido ao Contabilista
+                          em api/data.js) e ajusta o saldo via
+                          /api/pagamento?acao=ajustar-saldo. */}
+                      {activePwaSubMenuDetails === "contabilista_recibos" && (
+                        <FinanceiroAvancado
+                          predio={predio}
+                          fracoes={fracoes}
+                          avisos={avisos}
+                          setAvisos={setAvisos}
+                          contas={contas}
+                          setContas={setContas}
+                          movimentos={movements}
+                          setMovements={setMovements}
+                          setDocumentos={setDocumentos}
+                          loggedUser={loggedUser}
+                          activeSubSection="recibos_manuais"
                         />
                       )}
                       {activePwaSubMenuDetails === "fornecedores_fichas" && (
