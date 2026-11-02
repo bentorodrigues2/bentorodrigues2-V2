@@ -7,6 +7,11 @@ import { matchBankTransactions, selecionarAvisosCobertosPeloValor } from "../uti
 import { Save, CheckCircle2 } from "lucide-react";
 import { MoneyInput } from "./MoneyInput";
 
+// Quem pode lançar movimentos financeiros manualmente — espelha a exceção
+// equivalente em api/data.js (TABELAS_ESCRITA_SO_GESTAO), que é quem
+// realmente impõe a permissão no servidor.
+const PAPEIS_PODEM_LANCAR_MOVIMENTOS = ["ADMIN", "GESTOR", "EMPRESA_GESTORA", "CONTABILISTA"];
+
 interface GestaoMovimentosProps {
   predio: Predio;
   contas: Conta[];
@@ -643,9 +648,14 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
   };
 
   // Lançamento Manual / Cego
-  const lancarMovimento = (e: React.FormEvent) => {
+  const lancarMovimento = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loggedUser.role !== 'ADMIN') return alert("Apenas administradores podem lançar movimentos financeiros!");
+    // Antes só "ADMIN" literal passava — bloqueava também GESTOR e
+    // EMPRESA_GESTORA (que têm acesso total em todo o resto da app) e o
+    // Contabilista (perfil externo cuja função central é exatamente esta,
+    // decisão confirmada com o administrador — ver também a mesma exceção
+    // em api/data.js, que é quem realmente impõe a permissão no servidor).
+    if (!PAPEIS_PODEM_LANCAR_MOVIMENTOS.includes(loggedUser.role)) return alert("Apenas Administradores, Gestores, Empresas Gestoras ou Contabilistas podem lançar movimentos financeiros!");
     if (!contaId || !valor || !descricao || !categoria) return alert("Preencha todos os campos obrigatórios (*)");
     if (categoria === "Outros" && !justificacaoOutros.trim()) {
       return alert("Categoria \"Outros\" exige uma justificação do motivo.");
@@ -673,6 +683,16 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
       is_movimento_cego: isCego
     };
 
+    // Grava o movimento primeiro e confirma o sucesso antes de tocar no
+    // saldo — nunca creditar/debitar uma conta real com base num
+    // movimento que afinal não ficou gravado (ex: sessão expirada, ou um
+    // papel sem permissão nesta tabela). Ver também [[falhas_silenciosas_dbupsert]].
+    const okMov = await saveMovimentoToSupabase(novo);
+    if (!okMov) {
+      alert("❌ Não foi possível gravar o movimento no Supabase. A sua sessão pode ter expirado ou não tem permissão — tente novamente ou contacte a administração.");
+      return;
+    }
+
     const contaAlvo = contasRef.current.find(c => c.id_conta === contaId);
     if (contaAlvo) {
       const deltaSaldo = tipo === 'Receita' ? valorNumerico : -valorNumerico;
@@ -684,7 +704,6 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
     }
 
     setMovements([novo, ...movements]);
-    saveMovimentoToSupabase(novo).catch(console.error);
     registarLogAuditoria("Financeira", `Lançou manualmente um movimento de ${tipo.toLowerCase()}`, predio.id_predio, loggedUser, `${descricao} — ${valorNumerico.toFixed(2)}€`);
     setValor("");
     setDescricao("");
@@ -2503,7 +2522,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
             <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-800">Pronto</span>
           </div>
 
-          {loggedUser.role === 'ADMIN' ? (
+          {PAPEIS_PODEM_LANCAR_MOVIMENTOS.includes(loggedUser.role) ? (
             <form onSubmit={lancarMovimento} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col">
@@ -2655,7 +2674,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
             </form>
           ) : (
             <div className="text-center p-8 bg-slate-50 rounded-lg border text-slate-600 text-xs">
-              Apenas utilizadores com perfil de Administrador do Prédio podem lançar despesas ou receitas financeiras.
+              Apenas Administradores, Gestores, Empresas Gestoras ou Contabilistas podem lançar despesas ou receitas financeiras.
             </div>
           )}
         </div>

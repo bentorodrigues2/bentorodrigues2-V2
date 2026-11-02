@@ -1021,10 +1021,19 @@ export function GestaoManutencaoIntervencoes({
     alert("Trabalho verificado e homologado pela administração com sucesso!");
   };
 
+  // Esta consola serve só para a gestão pré-visualizar o que cada papel vê
+  // (testar permissões antes de dar a conta a alguém) — uma conta real de
+  // Técnico ou Empresa de Limpezas não deve vê-la nem poder "mudar de
+  // perfil" (mesmo bug confirmado em GestaoVistoriasLimpezas.tsx: a
+  // linguagem de teste interno confundia a conta real da empresa de
+  // limpezas, que nunca chegou a usar a app).
+  const podeSimularPerfis = ["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role);
+
   return (
     <div className="space-y-6 text-slate-800 dark:text-slate-100">
-      
-      {/* Simulation Console Card */}
+
+      {/* Simulation Console Card — só visível para quem gere o condomínio */}
+      {podeSimularPerfis && (
       <div className="bg-slate-950 text-white p-5 rounded-2xl border border-slate-800 shadow-xl flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 no-print">
         <div className="flex items-center space-x-3">
           <div className="h-10 w-10 rounded-full bg-violet-500/15 flex items-center justify-center text-violet-400 border border-violet-500/35">
@@ -1051,6 +1060,7 @@ export function GestaoManutencaoIntervencoes({
           ))}
         </div>
       </div>
+      )}
 
       {/* REMOVED SUB-MENU TABS IN FAVOR OF CENTRAL EXPANDABLE MENU */}
 

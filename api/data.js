@@ -254,7 +254,15 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: "Sem permissão para consultar registos de auditoria." });
       }
       if (TABELAS_ESCRITA_SO_GESTAO.has(tabela) && acao !== "select") {
-        return res.status(403).json({ error: "Sem permissão para esta operação nesta tabela." });
+        // Exceção mínima e explícita: o Contabilista (perfil externo de
+        // contabilidade) pode lançar despesas/receitas em "movimentos" —
+        // é a função central deste papel — mas continua isolado ao seu
+        // próprio prédio (colunaIsolamento abaixo) e sem acesso a nenhuma
+        // outra tabela nuclear (perfis, contas, fornecedores, etc).
+        const permitidoContabilista = tabela === "movimentos" && perfilChamador.role === "CONTABILISTA";
+        if (!permitidoContabilista) {
+          return res.status(403).json({ error: "Sem permissão para esta operação nesta tabela." });
+        }
       }
     }
 
