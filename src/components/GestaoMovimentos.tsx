@@ -1640,6 +1640,17 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
     setExtractedItems(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Distinto de "Remover da lista" — este mantém o item visível (com o
+  // mesmo estilo cinzento de "Já Lançado" automático), em vez de o fazer
+  // desaparecer sem explicação. Para quando a deteção automática de
+  // duplicados (jaLancadoAntes) não reconheceu um movimento que o
+  // administrador já lançou manualmente por outra via (ex: confirmado
+  // através de Fornecedores ou de uma Nota de Cobrança, com descrição
+  // demasiado diferente para o cruzamento automático apanhar).
+  const marcarItemComoJaLancado = (index: number) => {
+    setExtractedItems(prev => prev.map((x, i) => i === index ? { ...x, jaLancado: true } : x));
+  };
+
   // Lança em lote todos os movimentos que não são pagamentos de condómino
   // (despesas de fornecedor e receitas sem fração reconhecida) — antes só
   // era possível lançar um de cada vez, obrigando a repetir a ação linha a
@@ -2927,7 +2938,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                   </button>
                 )}
               </div>
-              <p className={showMovimentosDetetadosModal ? "text-xs text-slate-600 mb-3" : "text-[11px] text-slate-600 mb-3"}>Receitas tentam cruzar-se com um condómino/fração; despesas com um fornecedor já registado (IBAN, referência de contrato/ADC ou nome). Movimentos já lançados por outra via não pedem aprovação. Valide antes de lançar:</p>
+              <p className={showMovimentosDetetadosModal ? "text-xs text-slate-600 mb-3" : "text-[11px] text-slate-600 mb-3"}>Receitas tentam cruzar-se com um condómino/fração; despesas com um fornecedor já registado (IBAN, referência de contrato/ADC ou nome). Movimentos já lançados por outra via não pedem aprovação. Se um movimento não for reconhecido automaticamente mas já o tiver lançado noutro sítio, use <i className="fa-solid fa-check text-emerald-600"></i> em vez de o remover. Valide antes de lançar:</p>
 
               <div className={showMovimentosDetetadosModal ? "space-y-2.5 overflow-y-auto flex-1 pr-1 text-sm" : "space-y-2 overflow-y-auto max-h-[280px] pr-1"}>
                 {extractedItems.length === 0 ? (
@@ -2963,6 +2974,9 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                             <span className="font-mono-custom text-[10px] text-slate-600">{item.data}</span>
                             <div className="flex items-center gap-1.5">
                               <span className="text-[10px] font-bold px-1.5 rounded bg-emerald-50 text-emerald-800">Receita — Condómino</span>
+                              <button onClick={() => marcarItemComoJaLancado(index)} title="Já lancei este movimento manualmente — marcar como Já Lançado" className="text-slate-600 hover:text-emerald-600 cursor-pointer">
+                                <i className="fa-solid fa-check"></i>
+                              </button>
                               <button onClick={() => descartarItemExtraido(index)} title="Remover da lista, sem lançar" className="text-slate-600 hover:text-red-500 cursor-pointer">
                                 <i className="fa-solid fa-trash-can"></i>
                               </button>
@@ -3180,6 +3194,9 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                           <span className={`text-[10px] font-bold px-1.5 rounded ${item.tipo === "Receita" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>
                             {item.tipo === "Receita" ? "Receita" : "Despesa"}
                           </span>
+                          <button onClick={() => marcarItemComoJaLancado(index)} title="Já lancei este movimento manualmente — marcar como Já Lançado" className="text-slate-600 hover:text-emerald-600 cursor-pointer">
+                            <i className="fa-solid fa-check"></i>
+                          </button>
                           <button onClick={() => descartarItemExtraido(index)} title="Remover da lista, sem lançar" className="text-slate-600 hover:text-red-500 cursor-pointer">
                             <i className="fa-solid fa-trash-can"></i>
                           </button>
