@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, Fragment, lazy, Suspense } from "reac
 import { ActionIcon } from "./components/ActionIcon";
 import { LoggedUser, Predio, Conta, Fornecedor, Fracao, Aviso, Movimento, Reuniao, Documento, Ocorrencia, Reserva, CapacidadeLimite } from "./types";
 import { initialPredios, initialContas, initialFornecedores, initialFracoes, initialAvisos, initialMovements, initialReunioes, initialDocumentos, initialOcorrencias, defaultEmptyPredio } from "./data";
-import { isSupabaseConfigured, fetchUserProfileByEmail } from "./lib/supabaseService";
+import { isSupabaseConfigured, fetchUserProfileByEmail, type SupabaseUserProfile } from "./lib/supabaseService";
 import { supabase, authRedirectHashAtLoad } from "./lib/supabaseClient";
 import { encontrarFotoDoUtilizador } from "./lib/condominoUtils";
 import { ordenarFracoesPorNome } from "./utils";
@@ -104,6 +104,25 @@ import {
 const condoManagerLogo = "/marca/02-versao-horizontal.webp";
 const logoutIcon = "/estados-acoes/17-desligar.png";
 const terminarSessaoIcon = "/estados-acoes/16-terminar-sessao.png";
+
+// fetchUserProfileByEmail pode falhar momentaneamente logo a seguir a um
+// login bem sucedido (a sessão do Supabase Auth ainda não propagou a
+// tempo de /api/data a validar — ver dbCall em supabaseService.ts).
+// Antes, uma única falha aqui era tratada como "este email não tem
+// perfil ainda" e entrava sempre como condómino genérico (role "USER")
+// — bug real confirmado em produção: o próprio administrador (perfil
+// ADMIN real na base de dados) via o seu ecrã tratado como condómino
+// comum (badge "Condómino"/"USER Mode"), incluindo a pedir-lhe para
+// votar nas próprias sondagens. Tenta mais 2 vezes com um pequeno atraso
+// antes de aceitar que o perfil realmente não existe.
+async function buscarPerfilComTentativas(email: string, tentativas = 3): Promise<SupabaseUserProfile | null> {
+  for (let i = 0; i < tentativas; i++) {
+    const perfil = await fetchUserProfileByEmail(email);
+    if (perfil) return perfil;
+    if (i < tentativas - 1) await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  return null;
+}
 
 export default function App() {
   const [predios, setPredios] = useState<Predio[]>(initialPredios);
@@ -794,15 +813,19 @@ export default function App() {
         onDone={async () => {
           const cleanEmail = (needsPasswordSetup.email || "").trim().toLowerCase();
           setNeedsPasswordSetup(null);
-          const perfil = cleanEmail ? await fetchUserProfileByEmail(cleanEmail) : null;
+          const perfil = cleanEmail ? await buscarPerfilComTentativas(cleanEmail) : null;
           if (perfil) {
             setLoggedUser({ role: perfil.role, email: perfil.email || cleanEmail, nome: perfil.nome || cleanEmail, id_fracao: perfil.fracao, id_predio: perfil.id_predio });
-          } else if (cleanEmail) {
-            setLoggedUser({ role: "USER", email: cleanEmail, nome: cleanEmail });
+            setBrowserIsLoggedOut(false);
+            setCurrentRoute("/dashboard");
+            window.history.pushState({}, "", "/dashboard");
+          } else {
+            // Nunca entrar com um papel adivinhado (ex: "USER" por
+            // omissão) quando não se consegue confirmar o perfil real —
+            // melhor pedir para tentar o login outra vez do que arriscar
+            // mostrar a um administrador o ecrã de um condómino comum.
+            setLoginErrorMessage("Password definida com sucesso, mas não foi possível carregar o seu perfil. Faça login novamente com a password que acabou de definir.");
           }
-          setBrowserIsLoggedOut(false);
-          setCurrentRoute("/dashboard");
-          window.history.pushState({}, "", "/dashboard");
         }}
       />
     );
@@ -813,21 +836,23 @@ export default function App() {
       const cleanEmail = (emailInput || "").trim().toLowerCase();
       if (!cleanEmail) return;
 
-      const perfil = await fetchUserProfileByEmail(cleanEmail);
+      const perfil = await buscarPerfilComTentativas(cleanEmail);
       if (!perfil) {
-        // Sessão real do Supabase Auth existe, mas ainda não tem perfil
-        // (ex.: conta acabada de ativar) — entra como condómino por
-        // omissão; o administrador pode ajustar o perfil depois.
-        setLoggedUser({ role: "USER", email: cleanEmail, nome: cleanEmail });
-      } else {
-        setLoggedUser({
-          role: perfil.role,
-          email: perfil.email || cleanEmail,
-          nome: perfil.nome || cleanEmail,
-          id_fracao: perfil.fracao,
-          id_predio: perfil.id_predio
-        });
+        // Nunca entrar com um papel adivinhado (ex: "USER" por omissão)
+        // quando não se consegue confirmar o perfil real — bug real
+        // confirmado em produção: o próprio administrador via o seu ecrã
+        // tratado como condómino comum (badge "Condómino"/"USER Mode"),
+        // incluindo a pedir-lhe para votar nas próprias sondagens.
+        setLoginErrorMessage("Sessão iniciada, mas não foi possível carregar o seu perfil. Tente novamente dentro de momentos.");
+        return;
       }
+      setLoggedUser({
+        role: perfil.role,
+        email: perfil.email || cleanEmail,
+        nome: perfil.nome || cleanEmail,
+        id_fracao: perfil.fracao,
+        id_predio: perfil.id_predio
+      });
 
       setBrowserIsLoggedOut(false);
       setCurrentRoute("/dashboard");

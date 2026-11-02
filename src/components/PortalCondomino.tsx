@@ -1566,8 +1566,14 @@ export function PortalCondomino({
   const jaVotou = (s: Sondagem) => (s.votos || []).some(v => v.id_fracao === activeUserFracao?.id_fracao);
   const jaRespondeu = (q: Questionario) => (q.respostas || []).some(r => r.id_fracao === activeUserFracao?.id_fracao);
 
+  // Só os papéis de condómino votam/respondem — a administração e os
+  // perfis de serviço (técnico, limpezas, etc.) que acedam a este portal
+  // (ex: para pré-visualizar) só veem os resultados, nunca um pedido de
+  // voto/resposta.
+  const ehCondominoComVoto = ["USER", "INQUILINO", "COPROPRIETARIO"].includes(loggedUser.role);
+
   const handleVotarSondagem = async (idSondagem: string, opcao: string) => {
-    if (!activeUserFracao?.id_fracao || aEnviarVoto) return;
+    if (!ehCondominoComVoto || !activeUserFracao?.id_fracao || aEnviarVoto) return;
     setAEnviarVoto(idSondagem);
     try {
       const ok = await saveVotoSondagemToSupabase({
@@ -1588,7 +1594,7 @@ export function PortalCondomino({
   };
 
   const handleResponderQuestionario = async (idQuestionario: string) => {
-    if (!activeUserFracao?.id_fracao || aEnviarResposta) return;
+    if (loggedUser.role !== "USER" || !activeUserFracao?.id_fracao || aEnviarResposta) return;
     const texto = respostaQuestTexto[idQuestionario];
     if (!texto?.trim()) return;
     setAEnviarResposta(idQuestionario);
@@ -2399,7 +2405,17 @@ export function PortalCondomino({
                   {sondagensFeed.filter(s => s.estado === "ativa").map(s => (
                     <div key={s.id_sondagem} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
                       <span className="font-bold text-xs text-slate-900 block">{s.pergunta}</span>
-                      {jaVotou(s) ? (
+                      {!ehCondominoComVoto ? (
+                        // A administração (ADMIN/GESTOR/EMPRESA_GESTORA) e
+                        // perfis de serviço (técnico, limpezas, etc.) não
+                        // votam nas próprias sondagens — só veem o
+                        // resultado, mais abaixo. Antes isto mostrava sempre
+                        // os botões de voto a quem não tinha fração
+                        // correspondente (handleVotarSondagem já não
+                        // registava nada, mas o ecrã continuava a pedir o
+                        // voto — bug real reportado pelo administrador).
+                        <p className="text-[11px] text-slate-600 font-semibold"><i className="fa-solid fa-circle-info mr-1"></i>A administração não vota — veja o resultado em "Resultados das Sondagens".</p>
+                      ) : jaVotou(s) ? (
                         <p className="text-[11px] text-emerald-700 font-semibold"><i className="fa-solid fa-circle-check mr-1"></i>Já votou nesta sondagem.</p>
                       ) : (
                         <div className="flex gap-2 flex-wrap">
@@ -2471,9 +2487,12 @@ export function PortalCondomino({
               </div>
             )}
 
-            {/* Questionários Ativos — reserva de decisão do proprietário,
-                inquilino/coproprietário não respondem. */}
-            {loggedUser.role !== "INQUILINO" && loggedUser.role !== "COPROPRIETARIO" && questionariosFeed.filter(q => q.estado === "ativo").length > 0 && (
+            {/* Questionários Ativos — reserva de decisão do proprietário
+                (inquilino/coproprietário não respondem — só "USER"), e a
+                administração/perfis de serviço também não respondem aos
+                seus próprios questionários (mesmo bug relatado para as
+                sondagens, abaixo). */}
+            {loggedUser.role === "USER" && questionariosFeed.filter(q => q.estado === "ativo").length > 0 && (
               <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
                 <h3 className="text-sm font-bold uppercase text-slate-800 mb-4 flex items-center">
                   <i className="fa-solid fa-clipboard-question mr-2 text-emerald-600"></i> Questionários Ativos
