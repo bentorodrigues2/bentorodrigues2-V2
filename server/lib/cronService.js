@@ -160,7 +160,19 @@ async function obterContasDoPredio(id_predio) {
   return data || [];
 }
 
-/** Existe já uma nota de cobrança (aviso "Quota Ordinária") desta fração com vencimento nesse mês? */
+/** Existe já uma nota de cobrança (aviso "Quota Ordinária") desta fração com vencimento nesse mês?
+ *
+ * Exclui o aviso de "dívida inicial em bloco" (criado em
+ * ConfiguracaoArranqueSaldos.tsx para somar vários meses da administração
+ * anterior numa única linha) — esse aviso tem tipo "Quota Ordinária" e um
+ * vencimento próprio (o dia em que o arranque foi configurado), que por
+ * coincidência cai sempre dentro de ALGUM mês do calendário. Sem esta
+ * exclusão, esse mês específico ficava permanentemente "coberto" aos olhos
+ * desta verificação, e a nota de cobrança mensal real desse mês nunca mais
+ * era gerada — bug real confirmado em produção: a Fração N nunca teve nota
+ * de cobrança de agosto/2026 por o aviso de dívida inicial (691.95€, 15
+ * meses) estar datado 2026-08-01.
+ */
 async function existeNotaCobrancaMes(id_fracao, anoRef, mesIndex0) {
   const inicioMes = isoDate(anoRef, mesIndex0, 1);
   const fimMes = isoDate(anoRef, mesIndex0, ultimoDiaMesUTC(anoRef, mesIndex0));
@@ -169,6 +181,7 @@ async function existeNotaCobrancaMes(id_fracao, anoRef, mesIndex0) {
     .select("id_aviso")
     .eq("id_fracao", id_fracao)
     .eq("tipo", "Quota Ordinária")
+    .not("descricao", "ilike", "Quotas Ordinárias em dívida da administração anterior%")
     .gte("vencimento", inicioMes)
     .lte("vencimento", fimMes)
     .limit(1);
