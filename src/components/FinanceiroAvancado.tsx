@@ -3,6 +3,7 @@ import { Predio, Fracao, Aviso, Movimento, LoggedUser, Documento, Conta } from "
 import { formatDatePT, formatQuotaReceiptNumber, downloadReceiptPDF, exportarBalanceteMapaAnualXLS, parseValorMonetario, exportToXLS, exportarTabelaParaPDF } from "../utils";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
 import { fetchCaucoesFromSupabase, saveCaucaoToSupabase, registarLogAuditoria, saveAvisosToSupabase, saveContaToSupabase, ajustarSaldoContaReal, saveMovimentoToSupabase } from "../lib/supabaseService";
+import { LOGO_HORIZONTAL_BASE64 } from "../assets/logoBase64";
 
 export interface Caucao {
   id_caucao: string;
@@ -2025,6 +2026,40 @@ export function FinanceiroAvancado({
                   </div>
 
                   <div id="extrato-individual-container" className="overflow-x-auto bg-slate-50/50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+                    {/* Cabeçalho de identificação — escondido no ecrã (já
+                        mostramos o logótipo/dados no resto da app), mas
+                        visível no download/impressão do PDF: a janela de
+                        impressão (handlePrintDocument) usa só o innerHTML
+                        deste contentor com uma folha de estilo própria, sem
+                        Tailwind — por isso a classe "hidden" (display:none
+                        do Tailwind) não existe lá e este bloco aparece
+                        normalmente, sem precisar de nenhuma lógica extra.
+                        Pedido explícito do administrador: o extrato saía
+                        sem logótipo, sem identificação do prédio/fração e
+                        sem assinatura. */}
+                    <div className="hidden header-box">
+                      <div className="flex items-center justify-between gap-4">
+                        {LOGO_HORIZONTAL_BASE64 && (
+                          <img src={LOGO_HORIZONTAL_BASE64} alt="CondoManager AI" style={{ height: 40 }} />
+                        )}
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontWeight: "bold", fontSize: 13 }}>{predio.nome}</div>
+                          <div style={{ fontSize: 10, color: "#475569" }}>
+                            {predio.morada_linha1}{predio.num_porta ? `, ${predio.num_porta}` : ""} — {predio.codigo_postal} {predio.localidade}
+                          </div>
+                          {predio.nif && <div style={{ fontSize: 10, color: "#475569" }}>NIF: {predio.nif}</div>}
+                        </div>
+                      </div>
+                      <h3 style={{ marginTop: 14, marginBottom: 2, fontSize: 15 }}>
+                        Extrato de Dívida — Fração "{selectedFracao.fracao_nome}" ({selectedFracao.piso})
+                      </h3>
+                      <div style={{ fontSize: 11, color: "#475569" }}>
+                        Proprietário: {selectedFracao.proprietario.nome} — NIF: {selectedFracao.proprietario.nif} — Permilagem: {selectedFracao.permilagem}‰
+                      </div>
+                      <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>
+                        Emitido em {formatDatePT(new Date().toISOString())}
+                      </div>
+                    </div>
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
                         <tr className="border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold uppercase text-slate-600 bg-white dark:bg-slate-900">
@@ -2075,6 +2110,23 @@ export function FinanceiroAvancado({
                         )}
                       </tbody>
                     </table>
+                    {/* Assinatura digital da administração — mesmo padrão dos
+                        recibos (ver src/utils/receiptGenerator.ts), também
+                        escondida no ecrã e só visível no PDF/impressão. */}
+                    <div className="hidden" style={{ marginTop: 28, textAlign: "right" }}>
+                      <div style={{ fontWeight: "bold", fontSize: 9, color: "#0f172a" }}>A ADMINISTRAÇÃO DO CONDOMÍNIO</div>
+                      {predio.patrimonio?.assinatura_admin_base64 ? (
+                        <>
+                          <img src={predio.patrimonio.assinatura_admin_base64} alt="Assinatura" style={{ height: 36, marginTop: 4, marginLeft: "auto" }} />
+                          <div style={{ fontSize: 9, color: "#64748b" }}>Assinado Digitalmente: {loggedUser.nome}</div>
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ borderTop: "1px solid #cbd5e1", width: 180, marginTop: 24, marginLeft: "auto" }}></div>
+                          <div style={{ fontSize: 9, fontWeight: "bold", color: "#1e293b" }}>{loggedUser.nome}</div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
