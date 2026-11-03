@@ -1012,8 +1012,16 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
         const tData = new Date(dataMov).getTime();
         const restringirPorFracao = tipoMov === "Receita" && !!idFracaoMatch && (confiancaFracaoMatch ?? 0) >= 65;
         // Normaliza para comparar descrições sem distinguir maiúsculas/
-        // espaços a mais — usado só nas despesas (ver nota abaixo).
-        const normalizarDescricao = (s?: string) => (s || "").toLowerCase().trim().replace(/\s+/g, " ");
+        // espaços a mais — usado só nas despesas (ver nota abaixo). Remove
+        // também o prefixo "[Extraído por IA] " que este mesmo assistente
+        // acrescenta ao lançar (ver descricaoFinal mais abaixo) — sem isto,
+        // um movimento já lançado por aqui numa importação anterior nunca
+        // mais era reconhecido como duplicado ao reimportar o mesmo
+        // extrato, porque a descrição nova (crua, sem prefixo) nunca batia
+        // com a já gravada (com prefixo). Bug real confirmado em produção:
+        // "Empresa de Limpezas-E18825895" continuava a aparecer como
+        // pendente mesmo já lançado.
+        const normalizarDescricao = (s?: string) => (s || "").toLowerCase().trim().replace(/\s+/g, " ").replace(/^\[extraído por ia\]\s*/, "");
         const descricaoMovNormalizada = normalizarDescricao(descricaoMov);
         const movDuplicado = predioMovements.some(mv => {
           if (mv.tipo !== tipoMov || Math.abs(mv.valor - valorMov) > 0.05) return false;

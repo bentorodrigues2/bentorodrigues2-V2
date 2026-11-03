@@ -680,6 +680,48 @@ export async function emitirNotasEmAtrasoFracao(id_predio, id_fracao, mesInicioI
 }
 
 /**
+ * Rede de segurança diária: o disparo automático de emitirNotasEmAtrasoFracao
+ * (ver submeterEditarProprietario em GestaoFracoes.tsx) só corre no primeiro
+ * registo do proprietário de uma fração nova — se esse registo falhar, for
+ * feito por outra via (ex: importação), ou simplesmente nunca disparar por
+ * qualquer razão, a fração fica com um buraco permanente nas notas de
+ * cobrança, sem nenhum mecanismo a dar por isso depois.
+ *
+ * Caso real confirmado em produção: a Fração N foi registada a 2026-09-19,
+ * mas só entrou em atividade de cobrança normal a partir de outubro — julho,
+ * agosto e setembro ficaram sem nenhuma nota de cobrança, nunca detetado
+ * porque a única "apanha de atraso" que existia era uma lista fixa de 4
+ * frações específicas, para uma ação pontual de 2026-09-20 (ver
+ * FRACOES_NOTAS_ATRASO_REGISTADOS em api/cron.js) — a Fração N, registada no
+ * dia anterior, nunca lá entrou.
+ *
+ * Corre todos os dias, para TODAS as frações de TODOS os prédios, a partir
+ * da data de início de gestão de cada prédio (predios.patrimonio.
+ * data_inicio_gestao) — idempotente (emitirNotasEmAtrasoFracao salta meses
+ * já emitidos), por isso é seguro correr sempre, sem precisar de saber de
+ * antemão quais frações precisam de ser apanhadas.
+ */
+export async function emitirNotasAtrasoTodasFracoes() {
+  const predios = await obterPredios();
+  const resultados = [];
+  for (const predio of predios) {
+    const dataInicioGestao = predio.patrimonio?.data_inicio_gestao;
+    if (!dataInicioGestao) continue; // sem data de início de gestão definida, não há a partir de quando apanhar o atraso
+    const fracoes = await obterFracoesDoPredio(predio.id_predio);
+    for (const f of fracoes) {
+      if (!f.proprietario?.nome) continue; // fração sem proprietário registado ainda — nada a cobrar
+      try {
+        const resultado = await emitirNotasEmAtrasoFracao(predio.id_predio, f.id_fracao, dataInicioGestao);
+        if (resultado.ok && resultado.mesesEmitidos > 0) resultados.push(resultado);
+      } catch (err) {
+        console.error(`[cronService] Erro na rede de segurança de notas em atraso da fração ${f.fracao_nome} (${predio.nome}):`, err);
+      }
+    }
+  }
+  return { job: "emitirNotasAtrasoTodasFracoes", prediosVarridos: predios.length, fracoesComMesesEmitidos: resultados.length, resultados };
+}
+
+/**
  * Todos os dias: apanha prestações de "Quota Extraordinária" já criadas (de
  * uma vez só, em GestaoQuotasOrcamento.tsx) cujo vencimento já chegou ou
  * passou, continuam "Pendente" e NUNCA tiveram a sua nota de cobrança
@@ -1981,6 +2023,7 @@ export async function enviarNotasCorrecaoNovaQuota(id_predio, vencimentoISO) {
 export default {
   emitirQuotasMensais,
   emitirNotasEmAtrasoFracao,
+  emitirNotasAtrasoTodasFracoes,
   emitirNotasExtraordinariasEmAtraso,
   processarAgendamentosAvisos,
   reenviarNotaCobrancaCorrigida,

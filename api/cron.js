@@ -1,4 +1,4 @@
-import { emitirQuotasMensais, emitirNotasEmAtrasoFracao, emitirNotasExtraordinariasEmAtraso, processarAgendamentosAvisos, enviarLembretesQuotas, enviarAvisoVencimentoHoje, enviarAvisoPrazoUltrapassado, avisarQuotasEmMora, enviarFelicitacoesAniversario, sincronizarOrcamentosVigentes, processarContratosFornecedores, arquivarConversasAntigas, enviarNotasCorrecaoNovaQuota, alertarInspecoesEquipamentosAVencer, alertarApolicesSegurosAVencer } from "../server/lib/cronService.js";
+import { emitirQuotasMensais, emitirNotasEmAtrasoFracao, emitirNotasAtrasoTodasFracoes, emitirNotasExtraordinariasEmAtraso, processarAgendamentosAvisos, enviarLembretesQuotas, enviarAvisoVencimentoHoje, enviarAvisoPrazoUltrapassado, avisarQuotasEmMora, enviarFelicitacoesAniversario, sincronizarOrcamentosVigentes, processarContratosFornecedores, arquivarConversasAntigas, enviarNotasCorrecaoNovaQuota, alertarInspecoesEquipamentosAVencer, alertarApolicesSegurosAVencer } from "../server/lib/cronService.js";
 
 // Ação pontual (agendada para 2026-09-20 09:00 Lisboa, ver vercel.json —
 // "0 8 20 9 *", só volta a coincidir com esta data daqui a um ano) pedida
@@ -149,6 +149,17 @@ export default async function handler(req, res) {
     // Ação pontual agendada — ver comentário junto de emitirNotasAtrasoRegistados.
     if (forcar === "notas-atraso-registados") {
       resultados.push(await emitirNotasAtrasoRegistados());
+    }
+
+    // Todos os dias, para TODAS as frações de TODOS os prédios (não só uma
+    // lista fixa como a ação pontual acima) — rede de segurança que apanha
+    // qualquer fração cujo disparo automático de notas em atraso (ver
+    // submeterEditarProprietario em GestaoFracoes.tsx) não tenha corrido por
+    // qualquer razão. Caso real confirmado: a Fração N ficou sem notas de
+    // cobrança de três meses (jul/ago/set 2026) sem nenhum mecanismo a dar
+    // por isso — ver comentário junto de emitirNotasAtrasoTodasFracoes.
+    if (forcar === "notas-atraso-todas" || (!forcar && true)) {
+      resultados.push(await emitirNotasAtrasoTodasFracoes());
     }
 
     // Ação pontual agendada para 2026-09-26 08:30 Lisboa (ver vercel.json —
