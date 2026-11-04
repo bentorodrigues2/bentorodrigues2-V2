@@ -1698,9 +1698,14 @@ export default function App() {
             )}
           </div>
 
-          {/* 6. Limpezas (Accordion) */}
+          {/* 6. Limpezas (Accordion) — nenhum dos dois itens (Limpezas &
+              Agendamento, Incidências) é acessível a um condómino
+              (USER/INQUILINO/COPROPRIETARIO); a avaliação real deles vive
+              no Portal do Condómino, separador "Limpezas". Mostrar este
+              acordeão só levava a um beco sem saída. */}
+          {!["USER", "INQUILINO", "COPROPRIETARIO"].includes(loggedUser.role) && (
           <div className="space-y-1">
-            <button 
+            <button
               id="sidebar-item-limpezas"
               onClick={() => {
                 setOpenMenuLimpezas(!openMenuLimpezas);
@@ -1758,6 +1763,7 @@ export default function App() {
               </div>
             )}
           </div>
+          )}
 
           {/* 7. Manutenção (Accordion) */}
           <div className="space-y-1">

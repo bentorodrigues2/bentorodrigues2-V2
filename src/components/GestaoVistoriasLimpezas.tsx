@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Predio, LoggedUser } from "../types";
+import { supabase } from "../lib/supabaseClient";
 import { formatDatePT, exportToXLS, parseValorMonetario } from "../utils";
 import {
   fetchEquipamentosScieFromSupabase,
@@ -155,6 +156,18 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
       setActiveTab("limpezas");
     }
   }, [activeSubSection, initialTab, loggedUser.role]);
+
+  // Pedido explícito do administrador: "Vistorias & Inspeções" e
+  // "Equipamentos SCIE & Validades" são temas de Manutenção, não de
+  // Limpezas — mesmo sendo o mesmo componente partilhado pelas duas
+  // entradas da barra lateral, só devem aparecer a quem chegou por
+  // Manutenção → Vistoria Técnica. Deriva-se de activeSubSection (fixo
+  // durante toda a vida deste ecrã, mesmo que o utilizador mude de
+  // separador depois) e, na sua ausência (entrada pela PWA, que não passa
+  // este prop), do papel do utilizador.
+  const viaLimpezas = activeSubSection
+    ? ["vistorias_limpezas", "limpezas_incidencias", "limpezas"].includes(activeSubSection)
+    : loggedUser.role === "LIMPEZAS";
 
   // Limpeza Cost and Forecasting states
   const [limpezaCustoMensal, setLimpezaCustoMensal] = useState("160");
@@ -710,6 +723,25 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
     }
     setLimpezas([novaLimp, ...limpezas]);
 
+    // Pedido explícito do administrador: todos os condóminos devem ser
+    // avisados por push sempre que a empresa de limpezas regista um
+    // serviço, para poderem avaliar. Não bloqueia o fluxo se falhar
+    // (ex: chaves VAPID por configurar) — a limpeza já ficou gravada. O
+    // endpoint exige sessão real (Authorization: Bearer) — sem o token
+    // aqui, a chamada falhava sempre com 401 em silêncio (fetch() só
+    // rejeita a promise em falha de rede, nunca por um 401/403).
+    supabase.auth.getSession().then(({ data: sessionData }) => {
+      const token = sessionData?.session?.access_token;
+      fetch("/api/admin?acao=notificar-limpeza-registada", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ id_predio: predio.id_predio, areas: lAreas.join(", ") })
+      }).catch(console.error);
+    }).catch(console.error);
+
     if (faltantes.length > 0) {
       // Trigger automatic non-compliance alert
       const novaInc = {
@@ -954,6 +986,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
 
       {/* CondoManager AI - Subtabs Bar for Manutenção */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-200 dark:border-slate-800 no-print">
+        {!viaLimpezas && (
         <button
           onClick={() => setActiveTab("vistorias")}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
@@ -965,7 +998,9 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
           <Wrench className="w-3.5 h-3.5" />
           <span>Vistorias & Inspeções</span>
         </button>
+        )}
 
+        {!viaLimpezas && (
         <button
           onClick={() => setActiveTab("scie")}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
@@ -992,6 +1027,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
             );
           })()}
         </button>
+        )}
 
         <button
           onClick={() => setActiveTab("limpezas")}
@@ -1046,7 +1082,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
       </div>
 
       {/* TAB CONTENT: VISTORIAS */}
-      {activeTab === "vistorias" && (
+      {activeTab === "vistorias" && !viaLimpezas && (
         <div className="space-y-6 animate-fadeIn">
           {/* Planificação Anual de Vistorias Técnicas por IA */}
           <div className="bg-white dark:bg-[#0f172a] p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
@@ -1529,7 +1565,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
       )}
 
       {/* TAB CONTENT: SCIE (EQUIPAMENTOS DE SEGURANÇA & VALIDADES) */}
-      {activeTab === "scie" && (
+      {activeTab === "scie" && !viaLimpezas && (
         <div className="space-y-6 animate-fadeIn">
           {/* Header Card */}
           <div className="bg-white dark:bg-[#0f172a] p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">

@@ -358,6 +358,77 @@ export default async function handler(req, res) {
     }
   }
 
+  // Notifica todos os condóminos do prédio sempre que a empresa de
+  // limpezas (ou a administração) regista uma execução de limpeza, para
+  // poderem avaliar o serviço — pedido explícito do administrador.
+  // Separado de "enviar-push" (que exige ADMIN/GESTOR/EMPRESA_GESTORA)
+  // porque é o próprio papel LIMPEZAS quem mais vezes aciona isto, ao
+  // submeter o "Registo de Higienização Comum" — mas título e corpo da
+  // mensagem são sempre fixos aqui (nunca texto livre vindo do cliente),
+  // para uma conta de empresa de limpezas nunca poder usar isto para
+  // enviar spam arbitrário a todos os condóminos.
+  if (acao === "notificar-limpeza-registada") {
+    const chamador = await exigirSessaoComPapel(req, res, ["ADMIN", "GESTOR", "EMPRESA_GESTORA", "LIMPEZAS"]);
+    if (!chamador) return;
+    try {
+      if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+        return res.status(500).json({ error: "Chaves VAPID não configuradas no servidor." });
+      }
+      const { id_predio, areas } = req.body || {};
+      if (!id_predio) {
+        return res.status(400).json({ error: "id_predio é obrigatório" });
+      }
+      const title = "🧹 Nova Limpeza Registada";
+      const body = areas
+        ? `Foi registada a higienização de: ${areas}. Avalie o serviço na app!`
+        : "Foi registada uma nova execução de limpeza das áreas comuns. Avalie o serviço na app!";
+
+      let { data: subs, error: errSubs } = await supabase
+        .from("push_subscriptions")
+        .select("id, endpoint, subscription, user_id, user_email")
+        .eq("id_predio", id_predio);
+      if (errSubs) throw new Error(errSubs.message);
+
+      // "optional_cleaning" respeita quem desligou notificações de limpezas
+      // em Perfil → Notificações — mesma lógica de "enviar-push".
+      const emails = (subs || []).map((s) => s.user_email || s.user_id).filter(Boolean);
+      if (emails.length > 0) {
+        const { data: perfis } = await supabase
+          .from("profiles")
+          .select("email, notificacoes_preferencias")
+          .in("email", emails);
+        const desativados = new Set(
+          (perfis || [])
+            .filter((p) => p.notificacoes_preferencias?.optional_cleaning === false)
+            .map((p) => p.email)
+        );
+        subs = (subs || []).filter((s) => {
+          const identificador = s.user_email || s.user_id;
+          return !identificador || !desativados.has(identificador);
+        });
+      }
+
+      const payload = JSON.stringify({ title, body, url: "/" });
+      let enviados = 0;
+      for (const row of subs || []) {
+        try {
+          await webpush.sendNotification(row.subscription, payload);
+          enviados += 1;
+        } catch (err) {
+          if (err?.statusCode === 404 || err?.statusCode === 410) {
+            await supabase.from("push_subscriptions").delete().eq("id", row.id);
+          } else {
+            console.warn("[api/admin?acao=notificar-limpeza-registada] Falha ao enviar para uma subscrição:", err?.message || err);
+          }
+        }
+      }
+      return res.status(200).json({ ok: true, total_subscricoes: (subs || []).length, enviados });
+    } catch (err) {
+      console.error("Erro em /api/admin?acao=notificar-limpeza-registada:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao enviar notificações push" });
+    }
+  }
+
   // Envia só às subscrições marcadas como Administração (push_subscriptions.
   // is_admin = true) — separado de "enviar-push" porque esse filtra por
   // id_predio/id_fracao sem distinguir administrador de condómino, o que

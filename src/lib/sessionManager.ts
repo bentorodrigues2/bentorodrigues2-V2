@@ -113,7 +113,13 @@ export const RoleNavigationMap: Record<UserRole, RoleNavigationConfig> = {
     // sítio certo era "Portal & Mensagens Condómino" (portal_condomino,
     // já o separador de entrada por omissão) — onde Comunicados, Sondagens
     // e Questionários já estão implementados e a funcionar de verdade.
-    allowedTabs: ["painel", "portal_condomino", "predios", "predios_cadastro", "predios_regras", "assembleias", "financeiro_extratos", "vistorias_limpezas", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
+    // "vistorias_limpezas" removido — mesmo bug das sondagens: monta
+    // GestaoVistoriasLimpezas.tsx (o formulário "Registo de Higienização
+    // Comum" e o Caderno do ADMINISTRADOR, sem nenhuma opção de avaliar),
+    // nunca o separador "Limpezas" do Portal do Condómino, onde avaliar
+    // com estrelas + comentário + fotos já está implementado e a
+    // funcionar de verdade.
+    allowedTabs: ["painel", "portal_condomino", "predios", "predios_cadastro", "predios_regras", "assembleias", "financeiro_extratos", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
     displayName: "Condómino (Proprietário)",
     badgeColor: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30"
   },
@@ -129,7 +135,9 @@ export const RoleNavigationMap: Record<UserRole, RoleNavigationConfig> = {
     // "comunicacao_broadcast"/"comunicacao_sondagens" removidos — ver nota
     // igual junto de USER.allowedTabs acima (montavam o ecrã de criação do
     // administrador, nunca o de voto).
-    allowedTabs: ["portal_condomino", "painel", "predios", "predios_cadastro", "predios_regras", "vistorias_limpezas", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
+    // "vistorias_limpezas" removido — ver nota igual junto de
+    // USER.allowedTabs acima.
+    allowedTabs: ["portal_condomino", "painel", "predios", "predios_cadastro", "predios_regras", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
     displayName: "Inquilino / Arrendatário (Sem Acesso Financeiro)",
     badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/30"
   },
@@ -144,7 +152,9 @@ export const RoleNavigationMap: Record<UserRole, RoleNavigationConfig> = {
     // "comunicacao_broadcast"/"comunicacao_sondagens" removidos — ver nota
     // igual junto de USER.allowedTabs acima (montavam o ecrã de criação do
     // administrador, nunca o de voto).
-    allowedTabs: ["portal_condomino", "painel", "predios", "predios_cadastro", "predios_regras", "vistorias_limpezas", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
+    // "vistorias_limpezas" removido — ver nota igual junto de
+    // USER.allowedTabs acima.
+    allowedTabs: ["portal_condomino", "painel", "predios", "predios_cadastro", "predios_regras", "manutencao_ocorrencias", "ocorrencias", "manutencao_concluidas", "reservas", "mural_reservas", "arquivo", "documentos"],
     displayName: "Coproprietário (Sem Acesso Financeiro)",
     badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/30"
   }
