@@ -4763,18 +4763,18 @@ export default function PWACondominoView({
                         { servico: "Portões Automáticos (Assistência)", num: "933 888 111", desc: "Bloqueio ou descarrilamento do portão garagem" },
                         { servico: "Administração CondoManager AI", num: "210 111 222", desc: "Assuntos gerais urgentes e dúvidas técnicas" }
                       ].map((cont, idx) => (
-                        <div key={idx} className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl flex justify-between items-center gap-2">
-                          <div className="space-y-1 truncate">
-                            <h4 className="font-extrabold text-slate-800 text-[10.5px] truncate">{cont.servico}</h4>
-                            <span className="text-[8px] text-slate-600 block truncate">{cont.desc}</span>
-                            <strong className="text-emerald-700 font-mono text-[9.5px]">{cont.num}</strong>
+                        <div key={idx} className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex justify-between items-center gap-2">
+                          <div className="space-y-0.5 min-w-0">
+                            <h4 className="font-extrabold text-slate-800 text-xs truncate">{cont.servico}</h4>
+                            <span className="text-[10px] text-slate-600 block truncate">{cont.desc}</span>
+                            <strong className="text-emerald-700 font-mono text-[11px] block">{cont.num}</strong>
                           </div>
-                          <button
-                            onClick={() => alert(`A simular chamada para piquete de emergência:\n${cont.servico}: ${cont.num}`)}
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-slate-950 rounded-lg font-black text-[9px] uppercase cursor-pointer shrink-0"
+                          <a
+                            href={`tel:${cont.num.replace(/\s+/g, "")}`}
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-slate-950 rounded-lg font-black text-[10px] uppercase cursor-pointer shrink-0"
                           >
                             Ligar
-                          </button>
+                          </a>
                         </div>
                       ))}
                     </div>

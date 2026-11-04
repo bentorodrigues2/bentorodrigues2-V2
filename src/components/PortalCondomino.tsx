@@ -4020,19 +4020,27 @@ export function PortalCondomino({
               {/* --- CONTACTOS DE EMERGÊNCIA --- */}
               {servicosTab === "emergencia" && (
                 <div className="space-y-2">
+                  {/* Cor em style inline (não só classes Tailwind) — havia
+                      texto a ficar invisível aqui mesmo com text-white/
+                      text-slate-400 nas classes; style inline tem sempre
+                      prioridade sobre qualquer regra global em conflito.
+                      Letra também aumentada (estava a 8-10.5px, ilegível) e
+                      "Ligar" passa a hiperligação tel: real, em vez de um
+                      alert() a simular — são contactos de emergência a
+                      sério. */}
                   {contactosEmergenciaPortal.map((cont, idx) => (
-                    <div key={idx} className="bg-slate-900 border border-slate-800 p-2.5 rounded-xl flex justify-between items-center gap-2">
-                      <div className="space-y-1 truncate">
-                        <h4 className="font-extrabold text-white text-[10.5px] truncate">{cont.servico}</h4>
-                        <span className="text-[8px] text-slate-400 block truncate">{cont.desc}</span>
-                        <strong className="text-emerald-400 font-mono text-[9.5px]">{cont.num}</strong>
+                    <div key={idx} className="bg-slate-900 border border-slate-800 p-3 rounded-xl flex justify-between items-center gap-2">
+                      <div className="space-y-0.5 min-w-0">
+                        <h4 style={{ color: "#ffffff" }} className="font-extrabold text-xs truncate">{cont.servico}</h4>
+                        <span style={{ color: "#cbd5e1" }} className="text-[10px] block truncate">{cont.desc}</span>
+                        <strong style={{ color: "#34d399" }} className="font-mono text-[11px] block">{cont.num}</strong>
                       </div>
-                      <button
-                        onClick={() => alert(`A simular chamada para piquete de emergência:\n${cont.servico}: ${cont.num}`)}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-slate-950 rounded-lg font-black text-[9px] uppercase cursor-pointer shrink-0"
+                      <a
+                        href={`tel:${cont.num.replace(/\s+/g, "")}`}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-slate-950 rounded-lg font-black text-[10px] uppercase cursor-pointer shrink-0"
                       >
                         Ligar
-                      </button>
+                      </a>
                     </div>
                   ))}
                 </div>
