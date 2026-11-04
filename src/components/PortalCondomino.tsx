@@ -2171,7 +2171,46 @@ export function PortalCondomino({
 
           {/* Col 2: Active Quotas & Payments with IA */}
           <div className="lg:col-span-2 space-y-6">
-            
+
+            {/* Limpezas — pedido explícito do administrador: acesso direto
+                e visível na coluna central (não só escondido dentro do
+                botão "Serviços do Condomínio"), já que a barra lateral
+                deixou de ter "Limpezas" para condóminos (levava ao ecrã
+                errado — o do administrador). Mostra a última execução e
+                abre já no separador certo do modal de Serviços, onde a
+                avaliação (estrelas + comentário + foto) está implementada. */}
+              <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold uppercase text-slate-800 flex items-center">
+                    <i className="fa-solid fa-broom mr-2 text-emerald-600"></i> Limpezas das Áreas Comuns
+                  </h3>
+                  <button
+                    onClick={() => { setServicosTab("limpezas"); setShowServicos(true); }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer shrink-0"
+                  >
+                    Ver & Avaliar
+                  </button>
+                </div>
+                {limpezasHistoricoPortal.length === 0 ? (
+                  <p className="text-xs text-slate-600">Ainda não há execuções de limpeza registadas.</p>
+                ) : (() => {
+                  const ultima = limpezasHistoricoPortal[0];
+                  return (
+                    <div className="flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-bold text-slate-800">{ultima.areas.length > 0 ? ultima.areas.join(", ") : "Higienização de áreas comuns"}</span>
+                        <p className="text-slate-600 mt-0.5">{ultima.data} às {ultima.hora}</p>
+                      </div>
+                      {ultima.avaliacaoEstrelas != null ? (
+                        <span className="text-emerald-700 font-bold text-[11px] bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg">✓ Já avaliou</span>
+                      ) : (
+                        <span className="text-amber-700 font-bold text-[11px] bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg animate-pulse">Por avaliar</span>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
             {/* Password recovery block inside portal */}
             <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
               <h3 className="text-sm font-bold uppercase text-slate-800 mb-3 flex items-center">

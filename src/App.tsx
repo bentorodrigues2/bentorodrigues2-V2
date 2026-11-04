@@ -2860,6 +2860,7 @@ export default function App() {
                   dividasPendentesValor={dividasFornecedoresPendentesValor}
                   onSelectSection={selectSection}
                   isAdmin={["ADMIN", "EMPRESA_GESTORA", "GESTOR"].includes(loggedUser.role)}
+                  ehCondomino={["USER", "INQUILINO", "COPROPRIETARIO"].includes(loggedUser.role)}
                 />
               )}
 

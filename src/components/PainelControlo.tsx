@@ -28,6 +28,13 @@ interface PainelControloProps {
   dividasPendentesValor?: number;
   onSelectSection?: (section: string) => void;
   isAdmin?: boolean;
+  // Um condómino (USER/INQUILINO/COPROPRIETARIO) não tem "vistorias_limpezas"
+  // (a ferramenta do administrador) nos seus allowedTabs — só o Portal do
+  // Condómino, onde a avaliação real de limpezas vive. Sem isto, o cartão
+  // "Escala Limpeza" levava sempre a um ecrã do qual o condómino era
+  // redirecionado de imediato para o Painel/Portal, parecendo "não fazer
+  // nada" / "ir para o perfil".
+  ehCondomino?: boolean;
 }
 
 export function PainelControlo({
@@ -49,7 +56,8 @@ export function PainelControlo({
   notificacoesCount = 0,
   dividasPendentesValor = 0,
   onSelectSection,
-  isAdmin = true
+  isAdmin = true,
+  ehCondomino = false
 }: PainelControloProps) {
 
   // Global list references derived from props
@@ -252,7 +260,7 @@ export function PainelControlo({
             name: "Escala Limpeza",
             val: limpezasCount === 1 ? "1 Área" : `${limpezasCount} Áreas`,
             icon: "/modulos/50-limpeza.png",
-            section: "vistorias_limpezas",
+            section: ehCondomino ? "portal_condomino" : "vistorias_limpezas",
             fixo: false,
             contagem: limpezasCount
           },
