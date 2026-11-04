@@ -2537,6 +2537,15 @@ export interface LimpezaRow {
   areas: string[];
   observacoes?: string;
   fotos?: string[];
+  // Avaliação do condómino sobre este serviço — pedido explícito do
+  // administrador: possibilidade de avaliar (estrelas) + campo de
+  // observações para comentários e fotografias, visível também à
+  // administração (ver GestaoVistoriasLimpezas.tsx).
+  avaliacao_estrelas?: number;
+  avaliacao_comentario?: string;
+  avaliacao_fotos?: string[];
+  avaliado_por?: string;
+  avaliado_em?: string;
 }
 
 export async function fetchLimpezasFromSupabase(idPredio: string): Promise<LimpezaRow[]> {
@@ -2547,6 +2556,15 @@ export async function fetchLimpezasFromSupabase(idPredio: string): Promise<Limpe
 
 export async function saveLimpezaToSupabase(l: LimpezaRow): Promise<boolean> {
   return dbInsert("limpezas", l);
+}
+
+export async function avaliarLimpezaToSupabase(idLimpeza: string, avaliacao: {
+  avaliacao_estrelas: number;
+  avaliacao_comentario?: string;
+  avaliacao_fotos?: string[];
+  avaliado_por?: string;
+}): Promise<boolean> {
+  return dbUpdate("limpezas", { ...avaliacao, avaliado_em: new Date().toISOString() }, [["id_limpeza", "eq", idLimpeza]]);
 }
 
 export interface IncidenciaLimpezaRow {

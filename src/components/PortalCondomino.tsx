@@ -61,6 +61,7 @@ import {
   saveOcorrenciaToSupabase,
   fetchObrasExtraFromSupabase,
   fetchLimpezasFromSupabase,
+  avaliarLimpezaToSupabase,
   LimpezaRow,
   fetchReservasEspacosMuralFromSupabase,
   saveReservaEspacoMuralToSupabase,
@@ -1201,20 +1202,48 @@ export function PortalCondomino({
     fetchObrasExtraFromSupabase(predio.id_predio).then((dados) => { if (dados) setObrasReaisPortal(dados); });
   }, [predio?.id_predio]);
 
+  // Avaliação real (gravada no Supabase, visível também à administração em
+  // GestaoVistoriasLimpezas.tsx) — antes só mudava em memória e nunca
+  // gravava. Mesmo padrão aplicado em PWACondominoView.tsx.
   const [cleaningRatingsPortal, setCleaningRatingsPortal] = useState<Record<string, number>>({});
+  const [cleaningCommentsPortal, setCleaningCommentsPortal] = useState<Record<string, string>>({});
+  const [aAvaliarLimpezaIdPortal, setAAvaliarLimpezaIdPortal] = useState<string | null>(null);
   const [limpezasReaisPortal, setLimpezasReaisPortal] = useState<LimpezaRow[]>([]);
-  useEffect(() => {
+  const recarregarLimpezasPortal = () => {
     if (!predio?.id_predio) return;
     fetchLimpezasFromSupabase(predio.id_predio).then((dados) => setLimpezasReaisPortal(dados || []));
-  }, [predio?.id_predio]);
+  };
+  useEffect(() => { recarregarLimpezasPortal(); }, [predio?.id_predio]);
   const limpezasHistoricoPortal = limpezasReaisPortal.map((l) => ({
     id: l.id_limpeza,
     data: formatDatePT(l.data),
     hora: l.hora,
     tecnico: l.executor,
+    areas: l.areas || [],
     avariaDetetada: l.observacoes || "Nenhuma",
-    estado: "Concluído" as const
+    estado: "Concluído" as const,
+    avaliacaoEstrelas: l.avaliacao_estrelas,
+    avaliacaoComentario: l.avaliacao_comentario
   }));
+
+  const handleAvaliarLimpezaPortal = async (idLimpeza: string, estrelas: number) => {
+    setAAvaliarLimpezaIdPortal(idLimpeza);
+    try {
+      const ok = await avaliarLimpezaToSupabase(idLimpeza, {
+        avaliacao_estrelas: estrelas,
+        avaliacao_comentario: cleaningCommentsPortal[idLimpeza]?.trim() || undefined,
+        avaliado_por: activeUserFracao?.fracao_nome
+      });
+      if (!ok) {
+        alert("❌ Não foi possível registar a sua avaliação. A sua sessão pode ter expirado — recarregue a página e tente novamente.");
+        return;
+      }
+      setCleaningRatingsPortal(prev => ({ ...prev, [idLimpeza]: estrelas }));
+      recarregarLimpezasPortal();
+    } finally {
+      setAAvaliarLimpezaIdPortal(null);
+    }
+  };
 
   const contactosEmergenciaPortal = [
     { servico: "Piquete de Elevadores (Otis)", num: "808 20 20 20", desc: "Avarias em cabines ou pessoas presas" },
@@ -3776,27 +3805,54 @@ export function PortalCondomino({
                       </div>
                       <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 space-y-1.5">
                         <span className="text-[8px] font-bold text-slate-600 dark:text-slate-400 uppercase block">Avalie a qualidade do serviço</span>
-                        <div className="flex items-center justify-between">
-                          <div className="flex space-x-1">
-                            {[1, 2, 3, 4, 5].map(star => (
-                              <button
-                                key={star}
-                                onClick={() => {
-                                  setCleaningRatingsPortal(prev => ({ ...prev, [limp.id]: star }));
-                                  alert(`Avaliou este serviço com ${star} estrelas! Obrigado.`);
-                                }}
-                                className="cursor-pointer"
-                              >
-                                <Star className={`h-4 w-4 ${
-                                  (cleaningRatingsPortal[limp.id] || 0) >= star ? "text-amber-500 fill-amber-500" : "text-slate-300 dark:text-slate-700"
-                                }`} />
-                              </button>
-                            ))}
+                        {limp.avaliacaoEstrelas != null ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map(star => (
+                                <Star key={star} className={`h-4 w-4 ${(limp.avaliacaoEstrelas || 0) >= star ? "text-amber-500 fill-amber-500" : "text-slate-300 dark:text-slate-700"}`} />
+                              ))}
+                              <span className="text-[8px] text-emerald-600 font-bold ml-1">Obrigado!</span>
+                            </div>
+                            {limp.avaliacaoComentario && <p className="text-[9px] text-slate-600 dark:text-slate-400 italic">"{limp.avaliacaoComentario}"</p>}
                           </div>
-                          <span className="text-[8px] text-slate-600 dark:text-slate-400 font-bold">
-                            {cleaningRatingsPortal[limp.id] ? "Obrigado!" : "Por avaliar"}
-                          </span>
-                        </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex space-x-1">
+                                {[1, 2, 3, 4, 5].map(star => (
+                                  <button
+                                    key={star}
+                                    disabled={aAvaliarLimpezaIdPortal === limp.id}
+                                    onClick={() => setCleaningRatingsPortal(prev => ({ ...prev, [limp.id]: star }))}
+                                    className="cursor-pointer disabled:opacity-50"
+                                  >
+                                    <Star className={`h-4 w-4 ${
+                                      (cleaningRatingsPortal[limp.id] || 0) >= star ? "text-amber-500 fill-amber-500" : "text-slate-300 dark:text-slate-700"
+                                    }`} />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            {!!cleaningRatingsPortal[limp.id] && (
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="text"
+                                  value={cleaningCommentsPortal[limp.id] || ""}
+                                  onChange={(e) => setCleaningCommentsPortal(prev => ({ ...prev, [limp.id]: e.target.value }))}
+                                  placeholder="Observações (opcional)..."
+                                  className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-[10px] text-slate-800 dark:text-white"
+                                />
+                                <button
+                                  disabled={aAvaliarLimpezaIdPortal === limp.id}
+                                  onClick={() => handleAvaliarLimpezaPortal(limp.id, cleaningRatingsPortal[limp.id])}
+                                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold px-2.5 py-1 rounded-lg text-[9px] cursor-pointer shrink-0"
+                                >
+                                  {aAvaliarLimpezaIdPortal === limp.id ? "..." : "Enviar"}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

@@ -48,6 +48,7 @@ import {
   saveOcorrenciaToSupabase,
   fetchObrasExtraFromSupabase,
   fetchLimpezasFromSupabase,
+  avaliarLimpezaToSupabase,
   LimpezaRow,
   fetchSegurosFracoesFromSupabase,
   saveSeguroFracaoToSupabase,
@@ -997,24 +998,86 @@ export default function PWACondominoView({
   }, [predio?.id_predio]);
 
   // Módulo 5 - Limpezas Rating State
+  // Antes a avaliação (estrelas) só existia em memória — nunca gravava no
+  // Supabase, por isso desaparecia ao recarregar a página e a
+  // administração nunca a via. "cleaningComments" já estava declarado mas
+  // nunca chegou a ser usado em lado nenhum (nem sequer tinha campo de
+  // texto no formulário) — pedido explícito do administrador: avaliação +
+  // comentário + fotografias, visíveis também à administração (ver
+  // GestaoVistoriasLimpezas.tsx, "Caderno de Higienizações Digital").
   const [cleaningRatings, setCleaningRatings] = useState<Record<string, number>>({});
   const [cleaningComments, setCleaningComments] = useState<Record<string, string>>({});
+  const [cleaningFotos, setCleaningFotos] = useState<Record<string, string[]>>({});
+  const [aAvaliarLimpezaId, setAAvaliarLimpezaId] = useState<string | null>(null);
   // Histórico real de limpezas (Supabase) — antes eram sempre as mesmas 3
   // limpezas fictícias ("Maria Santos", "Carla Pires"), independentemente
   // do que existisse de facto registado para este prédio.
   const [limpezasReaisPwa, setLimpezasReaisPwa] = useState<LimpezaRow[]>([]);
-  useEffect(() => {
+  const recarregarLimpezasPwa = () => {
     if (!predio?.id_predio) return;
     fetchLimpezasFromSupabase(predio.id_predio).then(dados => setLimpezasReaisPwa(dados || []));
-  }, [predio?.id_predio]);
+  };
+  useEffect(() => { recarregarLimpezasPwa(); }, [predio?.id_predio]);
   const limpezasHistorico = limpezasReaisPwa.map(l => ({
     id: l.id_limpeza,
     data: formatDatePT(l.data),
     hora: l.hora,
     tecnico: l.executor,
+    areas: l.areas || [],
     avariaDetetada: l.observacoes || "Nenhuma",
-    estado: "Concluído" as const
+    estado: "Concluído" as const,
+    avaliacaoEstrelas: l.avaliacao_estrelas,
+    avaliacaoComentario: l.avaliacao_comentario,
+    avaliacaoFotos: l.avaliacao_fotos
   }));
+
+  const processarFotoAvaliacaoLimpeza = (idLimpeza: string, file: File) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_WIDTH = 1280;
+        let width = img.width;
+        let height = img.height;
+        if (width > MAX_WIDTH) {
+          height = Math.round((height * MAX_WIDTH) / width);
+          width = MAX_WIDTH;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const webpDataUrl = canvas.toDataURL("image/webp", 0.8);
+          setCleaningFotos(prev => ({ ...prev, [idLimpeza]: [...(prev[idLimpeza] || []), webpDataUrl] }));
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAvaliarLimpeza = async (idLimpeza: string, estrelas: number) => {
+    setAAvaliarLimpezaId(idLimpeza);
+    try {
+      const ok = await avaliarLimpezaToSupabase(idLimpeza, {
+        avaliacao_estrelas: estrelas,
+        avaliacao_comentario: cleaningComments[idLimpeza]?.trim() || undefined,
+        avaliacao_fotos: cleaningFotos[idLimpeza]?.length ? cleaningFotos[idLimpeza] : undefined,
+        avaliado_por: condominoFracao?.fracao_nome
+      });
+      if (!ok) {
+        alert("❌ Não foi possível registar a sua avaliação. A sua sessão pode ter expirado — recarregue a página e tente novamente.");
+        return;
+      }
+      setCleaningRatings(prev => ({ ...prev, [idLimpeza]: estrelas }));
+      recarregarLimpezasPwa();
+      alert(`Avaliou este serviço com ${estrelas} estrela${estrelas === 1 ? "" : "s"}! Obrigado.`);
+    } finally {
+      setAAvaliarLimpezaId(null);
+    }
+  };
 
   // Módulo 6 - Financeiro States
   const [comprovativoUpload, setComprovativoUpload] = useState<string | null>(null);
@@ -2842,30 +2905,42 @@ export default function PWACondominoView({
                       </div>
                     </div>
 
-                    {/* Interactive ratings inside simulator */}
+                    {/* Avaliação real (gravada no Supabase, visível também à
+                        administração) — ver handleAvaliarLimpeza. Antes
+                        só mudava em memória e nunca gravava. */}
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 space-y-1.5">
                       <span className="text-[8px] font-bold text-slate-600 uppercase block">Avalie a qualidade do serviço</span>
-                      <div className="flex items-center justify-between">
-                        <div className="flex space-x-1">
-                          {[1, 2, 3, 4, 5].map(star => (
-                            <button
-                              key={star}
-                              onClick={() => {
-                                setCleaningRatings(prev => ({ ...prev, [limp.id]: star }));
-                                alert(`Avaliou este serviço com ${star} estrelas! Obrigado.`);
-                              }}
-                              className="cursor-pointer"
-                            >
-                              <Star className={`h-4 w-4 ${
-                                (cleaningRatings[limp.id] || 0) >= star ? "text-amber-500 fill-amber-500" : "text-slate-600 dark:text-slate-700"
-                              }`} />
-                            </button>
-                          ))}
+                      {limp.avaliacaoEstrelas != null ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map(star => (
+                              <Star key={star} className={`h-4 w-4 ${(limp.avaliacaoEstrelas || 0) >= star ? "text-amber-500 fill-amber-500" : "text-slate-600 dark:text-slate-700"}`} />
+                            ))}
+                            <span className="text-[8px] text-emerald-600 font-bold ml-1">Obrigado!</span>
+                          </div>
+                          {limp.avaliacaoComentario && <p className="text-[9px] text-slate-600 italic">"{limp.avaliacaoComentario}"</p>}
                         </div>
-                        <span className="text-[8px] text-slate-600 font-bold">
-                          {cleaningRatings[limp.id] ? "Obrigado!" : "Por avaliar"}
-                        </span>
-                      </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div className="flex space-x-1">
+                            {[1, 2, 3, 4, 5].map(star => (
+                              <button
+                                key={star}
+                                disabled={aAvaliarLimpezaId === limp.id}
+                                onClick={() => handleAvaliarLimpeza(limp.id, star)}
+                                className="cursor-pointer disabled:opacity-50"
+                              >
+                                <Star className={`h-4 w-4 ${
+                                  (cleaningRatings[limp.id] || 0) >= star ? "text-amber-500 fill-amber-500" : "text-slate-600 dark:text-slate-700"
+                                }`} />
+                              </button>
+                            ))}
+                          </div>
+                          <span className="text-[8px] text-slate-600 font-bold">
+                            {aAvaliarLimpezaId === limp.id ? "A enviar..." : "Por avaliar"}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -4870,43 +4945,95 @@ export default function PWACondominoView({
 
                 {activePwaModal === "avaliar_servico" && (
                   <div className="space-y-3.5 text-[10px]">
-                    <p className="text-slate-700">Avalie a qualidade dos serviços de higienização das áreas comuns ou manutenções realizadas recentemente:</p>
+                    <p className="text-slate-700">Avalie a qualidade dos serviços de higienização das áreas comuns realizados recentemente — a sua avaliação, comentário e fotografias ficam visíveis à administração:</p>
 
                     <div className="space-y-2.5">
                       {limpezasHistorico.length === 0 && (
                         <p className="text-slate-600 text-[10px] text-center py-6">Nenhuma limpeza registada para avaliar.</p>
                       )}
-                      {limpezasHistorico.slice(0, 2).map(limp => (
+                      {limpezasHistorico.slice(0, 2).map(limp => {
+                        const jaAvaliado = limp.avaliacaoEstrelas != null;
+                        const estrelaAtual = cleaningRatings[limp.id] ?? limp.avaliacaoEstrelas ?? 0;
+                        return (
                         <div key={limp.id} className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-2">
                           <div className="flex justify-between text-slate-600 font-bold text-[8px]">
                             <span>{limp.id} • {limp.data}</span>
                             <span className="text-slate-700">Responsável: {limp.tecnico}</span>
                           </div>
-                          <h4 className="font-extrabold text-slate-800 text-[10.5px]">Limpeza Geral de Escadas e Elevadores</h4>
+                          <h4 className="font-extrabold text-slate-800 text-[10.5px]">
+                            {limp.areas.length > 0 ? limp.areas.join(", ") : "Higienização de Áreas Comuns"}
+                          </h4>
 
-                          <div className="flex items-center justify-between pt-1.5 border-t border-slate-200">
-                            <div className="flex space-x-1">
-                              {[1, 2, 3, 4, 5].map(star => (
-                                <button
-                                  key={star}
-                                  onClick={() => {
-                                    setCleaningRatings(prev => ({ ...prev, [limp.id]: star }));
-                                    alert(`Avaliou este serviço com ${star} estrelas! Obrigado.`);
-                                  }}
-                                  className="cursor-pointer"
-                                >
-                                  <Star className={`h-4 w-4 ${
-                                    (cleaningRatings[limp.id] || 0) >= star ? "text-amber-500 fill-amber-500" : "text-slate-300 hover:text-slate-400"
-                                  }`} />
-                                </button>
-                              ))}
+                          {jaAvaliado ? (
+                            <div className="pt-1.5 border-t border-slate-200 space-y-1.5">
+                              <div className="flex items-center gap-1">
+                                {[1, 2, 3, 4, 5].map(star => (
+                                  <Star key={star} className={`h-4 w-4 ${estrelaAtual >= star ? "text-amber-500 fill-amber-500" : "text-slate-300"}`} />
+                                ))}
+                                <span className="font-extrabold text-emerald-600 text-[8px] uppercase ml-1">✓ Avaliado</span>
+                              </div>
+                              {limp.avaliacaoComentario && (
+                                <p className="text-slate-600 italic">"{limp.avaliacaoComentario}"</p>
+                              )}
+                              {!!limp.avaliacaoFotos?.length && (
+                                <div className="flex gap-1.5 flex-wrap pt-0.5">
+                                  {limp.avaliacaoFotos.map((f, i) => (
+                                    <img key={i} src={f} alt="Evidência" className="h-12 w-12 object-cover rounded-lg border border-slate-200" />
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                            <span className="font-extrabold text-emerald-600 text-[8px] uppercase">
-                              {cleaningRatings[limp.id] ? "✓ Avaliado" : "Avaliar"}
-                            </span>
-                          </div>
+                          ) : (
+                            <div className="pt-1.5 border-t border-slate-200 space-y-2">
+                              <div className="flex items-center gap-1">
+                                {[1, 2, 3, 4, 5].map(star => (
+                                  <button
+                                    key={star}
+                                    disabled={aAvaliarLimpezaId === limp.id}
+                                    onClick={() => setCleaningRatings(prev => ({ ...prev, [limp.id]: star }))}
+                                    className="cursor-pointer disabled:opacity-50"
+                                  >
+                                    <Star className={`h-4 w-4 ${estrelaAtual >= star ? "text-amber-500 fill-amber-500" : "text-slate-300 hover:text-slate-400"}`} />
+                                  </button>
+                                ))}
+                              </div>
+                              <textarea
+                                value={cleaningComments[limp.id] || ""}
+                                onChange={(e) => setCleaningComments(prev => ({ ...prev, [limp.id]: e.target.value }))}
+                                placeholder="Observações / comentários (opcional)..."
+                                rows={2}
+                                className="w-full bg-white border border-slate-200 rounded-lg p-2 text-[10px] text-slate-800"
+                              />
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {(cleaningFotos[limp.id] || []).map((f, i) => (
+                                  <img key={i} src={f} alt="Foto" className="h-10 w-10 object-cover rounded-lg border border-slate-200" />
+                                ))}
+                                <label className="text-[9px] font-bold text-slate-600 bg-white border border-slate-300 rounded-lg px-2 py-1.5 cursor-pointer hover:bg-slate-100">
+                                  <i className="fa-solid fa-camera mr-1"></i>Foto
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    className="hidden"
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                      Array.from(e.target.files || []).forEach((file) => processarFotoAvaliacaoLimpeza(limp.id, file as File));
+                                      e.target.value = "";
+                                    }}
+                                  />
+                                </label>
+                              </div>
+                              <button
+                                disabled={!estrelaAtual || aAvaliarLimpezaId === limp.id}
+                                onClick={() => handleAvaliarLimpeza(limp.id, estrelaAtual)}
+                                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-1.5 rounded-lg text-[10px] cursor-pointer"
+                              >
+                                {aAvaliarLimpezaId === limp.id ? "A enviar..." : "Enviar Avaliação"}
+                              </button>
+                            </div>
+                          )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}

@@ -105,6 +105,12 @@ export interface Limpeza {
   areas: string[];
   observacoes: string;
   fotos?: string[];
+  // Avaliação submetida pelo condómino (Portal/PWA) — ver
+  // avaliarLimpezaToSupabase em supabaseService.ts.
+  avaliacao_estrelas?: number;
+  avaliacao_comentario?: string;
+  avaliacao_fotos?: string[];
+  avaliado_por?: string;
 }
 
 export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, initialTab }: GestaoVistoriasLimpezasProps) {
@@ -2170,6 +2176,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                     <th className="p-3">Empresa / Executor</th>
                     <th className="p-3">Áreas Higienizadas</th>
                     <th className="p-3">Observações / Recados</th>
+                    <th className="p-3">Avaliação do Condómino</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2190,6 +2197,32 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                         </div>
                       </td>
                       <td className="p-3 text-slate-600 text-[11px] leading-relaxed italic">{l.observacoes || "Serviço padrão realizado com sucesso."}</td>
+                      <td className="p-3">
+                        {l.avaliacao_estrelas != null ? (
+                          <div className="space-y-1 min-w-[140px]">
+                            <div className="flex items-center gap-0.5">
+                              {[1, 2, 3, 4, 5].map(star => (
+                                <i key={star} className={`fa-solid fa-star text-[11px] ${l.avaliacao_estrelas! >= star ? "text-amber-500" : "text-slate-200"}`}></i>
+                              ))}
+                              {l.avaliado_por && (
+                                <span className="text-[9px] text-slate-600 font-bold ml-1">— Fração {l.avaliado_por}</span>
+                              )}
+                            </div>
+                            {l.avaliacao_comentario && (
+                              <p className="text-[10px] text-slate-600 italic leading-snug">"{l.avaliacao_comentario}"</p>
+                            )}
+                            {!!l.avaliacao_fotos?.length && (
+                              <div className="flex gap-1 flex-wrap pt-0.5">
+                                {l.avaliacao_fotos.map((f, i) => (
+                                  <img key={i} src={f} alt="Evidência do condómino" className="h-9 w-9 object-cover rounded-lg border border-slate-200" />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-slate-600 italic">Ainda não avaliado</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
