@@ -1000,34 +1000,13 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
         </button>
         )}
 
-        {!viaLimpezas && (
-        <button
-          onClick={() => setActiveTab("scie")}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-            activeTab === "scie"
-              ? "bg-emerald-600 text-white shadow-sm"
-              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-          }`}
-        >
-          <Flame className="w-3.5 h-3.5 text-red-500" />
-          <span>Equipamentos SCIE & Validades</span>
-          {(() => {
-            const expCount = equipamentosSCIE.filter(e => calcularDiasValidadeSCIE(e.dataValidade).status !== "VALIDO").length;
-            if (expCount > 0) {
-              return (
-                <span className="ml-1 px-1.5 py-0.2 bg-red-500 text-white text-[10px] font-black rounded-full animate-pulse">
-                  {expCount}
-                </span>
-              );
-            }
-            return (
-              <span className="ml-1 px-1.5 py-0.2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-bold rounded-full">
-                {equipamentosSCIE.length}
-              </span>
-            );
-          })()}
-        </button>
-        )}
+        {/* Separador "Equipamentos SCIE & Validades" retirado a pedido do
+            administrador — o Inventário Técnico (Manutenção) já cobre o
+            mesmo tema (validades, inspeções, base legal NP 4413/DL
+            320/2002) de forma mais completa, e este separador nunca
+            chegou a ter nenhum equipamento registado. O tab "scie"
+            continua definido no estado (activeTab) para não partir
+            referências antigas, mas deixa de ter botão de entrada. */}
 
         <button
           onClick={() => setActiveTab("limpezas")}
