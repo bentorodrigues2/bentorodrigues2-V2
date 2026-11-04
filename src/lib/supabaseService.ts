@@ -2572,6 +2572,14 @@ export async function saveIncidenciaLimpezaToSupabase(inc: IncidenciaLimpezaRow)
   return dbInsert("incidencias_limpeza", inc);
 }
 
+export async function updateIncidenciaLimpezaToSupabase(id: string, alteracoes: Partial<IncidenciaLimpezaRow>): Promise<boolean> {
+  return dbUpdate("incidencias_limpeza", alteracoes, [["id", "eq", id]]);
+}
+
+export async function deleteIncidenciaLimpezaFromSupabase(id: string): Promise<boolean> {
+  return dbDelete("incidencias_limpeza", [["id", "eq", id]]);
+}
+
 // ============================================================================
 // NOTIFICAÇÕES PUSH (subscrições reais — ver src/utils/subscribeUser.ts)
 // ============================================================================

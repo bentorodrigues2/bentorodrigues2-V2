@@ -10,7 +10,9 @@ import {
   fetchLimpezasFromSupabase,
   saveLimpezaToSupabase,
   fetchIncidenciasLimpezaFromSupabase,
-  saveIncidenciaLimpezaToSupabase
+  saveIncidenciaLimpezaToSupabase,
+  updateIncidenciaLimpezaToSupabase,
+  deleteIncidenciaLimpezaFromSupabase
 } from "../lib/supabaseService";
 import { 
   ShieldAlert, 
@@ -378,6 +380,32 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
         alert("❌ Não foi possível eliminar no Supabase. Tente novamente.");
       }
     }
+  };
+
+  // O estado (Pendente/Em Análise/Resolvida) só mudava em memória — nunca
+  // chegava a gravar no Supabase, por isso revertia sozinho ao recarregar a
+  // página. Corrigido para persistir a alteração.
+  const handleAlterarEstadoIncidencia = async (id: string, novoEstado: string) => {
+    const anterior = incidenciasLimpeza.find(i => i.id === id)?.estado;
+    setIncidenciasLimpeza(prev => prev.map(item => item.id === id ? { ...item, estado: novoEstado } : item));
+    const ok = await updateIncidenciaLimpezaToSupabase(id, { estado: novoEstado });
+    if (!ok) {
+      alert("❌ Não foi possível gravar o novo estado no Supabase. Tente novamente.");
+      setIncidenciasLimpeza(prev => prev.map(item => item.id === id ? { ...item, estado: anterior } : item));
+    }
+  };
+
+  // Pedido explícito do administrador: possibilidade de eliminar uma
+  // incidência (ex: registos de teste) — só a gestão, nunca a própria
+  // empresa de limpezas que a reportou.
+  const handleEliminarIncidencia = async (id: string) => {
+    if (!window.confirm("Eliminar definitivamente esta incidência? Esta ação não pode ser desfeita.")) return;
+    const ok = await deleteIncidenciaLimpezaFromSupabase(id);
+    if (!ok) {
+      alert("❌ Não foi possível eliminar a incidência no Supabase. Tente novamente.");
+      return;
+    }
+    setIncidenciasLimpeza(prev => prev.filter(item => item.id !== id));
   };
 
   const handleGravarScie = async (e: React.FormEvent) => {
@@ -2342,10 +2370,7 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                         <div className="flex items-center gap-2">
                           <select
                             value={inc.estado}
-                            onChange={(e) => {
-                              const nov = e.target.value;
-                              setIncidenciasLimpeza(prev => prev.map(item => item.id === inc.id ? { ...item, estado: nov as any } : item));
-                            }}
+                            onChange={(e) => handleAlterarEstadoIncidencia(inc.id, e.target.value)}
                             className={`text-xs font-bold px-2.5 py-1 rounded-lg border cursor-pointer ${
                               inc.estado === "Resolvida" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
                               inc.estado === "Em Análise" ? "bg-blue-50 text-blue-700 border-blue-200" :
@@ -2356,6 +2381,17 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                             <option value="Em Análise">Em Análise</option>
                             <option value="Resolvida">✓ Resolvida</option>
                           </select>
+                          {podeSimularPerfis && (
+                            <button
+                              type="button"
+                              onClick={() => handleEliminarIncidencia(inc.id)}
+                              title="Eliminar incidência"
+                              aria-label="Eliminar incidência"
+                              className="text-slate-600 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
 
