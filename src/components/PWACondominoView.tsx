@@ -4756,13 +4756,10 @@ export default function PWACondominoView({
                     <p className="text-slate-700">Lista de piquetes e contactos urgentes de assistência ao condomínio:</p>
 
                     <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
-                      {[
-                        { servico: "Piquete de Elevadores (Otis)", num: "808 20 20 20", desc: "Avarias em cabines ou pessoas presas" },
-                        { servico: "Canalizador Técnico do Prédio", num: "912 345 678", desc: "Ruturas de água, inundações ou torneiras de corte" },
-                        { servico: "Piquete Geral de Eletricidade", num: "800 234 567", desc: "Falta de luz no hall, patamares ou garagem" },
-                        { servico: "Portões Automáticos (Assistência)", num: "933 888 111", desc: "Bloqueio ou descarrilamento do portão garagem" },
-                        { servico: "Administração CondoManager AI", num: "210 111 222", desc: "Assuntos gerais urgentes e dúvidas técnicas" }
-                      ].map((cont, idx) => (
+                      {(predio?.contactos_emergencia && predio.contactos_emergencia.length > 0 ? predio.contactos_emergencia : []).length === 0 && (
+                        <p className="text-slate-600 italic">A administração ainda não definiu contactos de emergência.</p>
+                      )}
+                      {(predio?.contactos_emergencia && predio.contactos_emergencia.length > 0 ? predio.contactos_emergencia : []).map((cont, idx) => (
                         <div key={idx} className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex justify-between items-center gap-2">
                           <div className="space-y-0.5 min-w-0">
                             <h4 className="font-extrabold text-slate-800 text-xs truncate">{cont.servico}</h4>

@@ -3,7 +3,7 @@ import { jsPDF } from "jspdf";
 import { Predio, LoggedUser, Documento, Movimento, Fracao, RespostaIAPendente } from "../types";
 import { downloadBlob, exportToXLS, addPdfHeaderWithLogo } from "../utils";
 import { triggerSendReaction } from "./SendingReactionModal";
-import { dbUpdate, fetchRespostasIAPendentes, fetchRegistoAuditoria, registarAuditoria, fetchEmailTemplateOverrides, saveEmailTemplateOverride, savePredioToSupabase, deletePredioFromSupabase } from "../lib/supabaseService";
+import { dbUpdate, fetchRespostasIAPendentes, fetchRegistoAuditoria, registarAuditoria, fetchEmailTemplateOverrides, saveEmailTemplateOverride, savePredioToSupabase, deletePredioFromSupabase, saveContactosEmergenciaToSupabase } from "../lib/supabaseService";
 import { 
   Settings, Mail, Shield, Bell, ListTodo, FileDown, CheckCircle, 
   AlertTriangle, Play, RefreshCw, FileText, Check, Database, Sparkles, Trash2, ArrowRight,
@@ -589,6 +589,42 @@ export function ConfiguracoesAdministracao({
     }
     addLog("Configuração", "Atualizou as preferências de Canais de Notificação");
     alert("Canais de Notificação gravados com sucesso!");
+  };
+
+  // Contactos de Emergência — editáveis pelo administrador, mostrados ao
+  // condómino em Portal/PWA → Serviços do Condomínio → Emergência.
+  const [contactosEmergencia, setContactosEmergencia] = useState<{ servico: string; num: string; desc: string }[]>([]);
+  const [gravandoContactosEmergencia, setGravandoContactosEmergencia] = useState(false);
+
+  useEffect(() => {
+    setContactosEmergencia(predio?.contactos_emergencia && predio.contactos_emergencia.length > 0
+      ? predio.contactos_emergencia
+      : []);
+  }, [predio?.id_predio, predio?.contactos_emergencia]);
+
+  const handleAlterarContactoEmergencia = (idx: number, campo: "servico" | "num" | "desc", valor: string) => {
+    setContactosEmergencia(prev => prev.map((c, i) => i === idx ? { ...c, [campo]: valor } : c));
+  };
+
+  const handleAdicionarContactoEmergencia = () => {
+    setContactosEmergencia(prev => [...prev, { servico: "", num: "", desc: "" }]);
+  };
+
+  const handleRemoverContactoEmergencia = (idx: number) => {
+    setContactosEmergencia(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleGravarContactosEmergencia = async () => {
+    if (!predio?.id_predio) return;
+    setGravandoContactosEmergencia(true);
+    const ok = await saveContactosEmergenciaToSupabase(predio.id_predio, contactosEmergencia);
+    setGravandoContactosEmergencia(false);
+    if (!ok) {
+      alert("❌ Erro ao gravar os Contactos de Emergência no Supabase.");
+      return;
+    }
+    addLog("Configuração", "Atualizou os Contactos de Emergência do prédio");
+    alert("Contactos de Emergência gravados com sucesso!");
   };
 
   // Registo de auditoria — real, partilhado entre dispositivos e inalterável
@@ -3048,6 +3084,7 @@ export function ConfiguracoesAdministracao({
 
       {/* ---------------- 4. NOTIFICAÇÕES (LAYOUT CONDOMANAGER OFICIAL) ---------------- */}
       {activeSubSection === "notificacoes" && (
+        <>
         <div className="space-y-6">
           {/* Header Banner Oficial CondoManager */}
           <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-slate-950 border border-blue-500/30 p-5 rounded-2xl shadow-lg text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -3162,6 +3199,71 @@ export function ConfiguracoesAdministracao({
           </div>
         </div>
       </div>
+
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+        <div>
+          <h3 className="text-sm font-black uppercase tracking-wider text-slate-600">Contactos de Emergência</h3>
+          <p className="text-xs text-slate-600">Números de piquete e assistência mostrados ao condómino no Portal e na PWA, em "Serviços do Condomínio → Emergência". Mantenha-os reais e atualizados.</p>
+        </div>
+
+        <div className="space-y-3 max-w-3xl">
+          {contactosEmergencia.length === 0 && (
+            <p className="text-xs text-slate-600 italic">Ainda não definiu nenhum contacto de emergência.</p>
+          )}
+          {contactosEmergencia.map((cont, idx) => (
+            <div key={idx} className="p-3 rounded-xl border bg-slate-50 dark:bg-slate-950 space-y-2">
+              <div className="flex gap-2 flex-wrap">
+                <input
+                  type="text"
+                  placeholder="Serviço (ex.: Piquete de Elevadores)"
+                  value={cont.servico}
+                  onChange={e => handleAlterarContactoEmergencia(idx, "servico", e.target.value)}
+                  className="flex-1 min-w-[180px] text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                />
+                <input
+                  type="text"
+                  placeholder="Número de telefone"
+                  value={cont.num}
+                  onChange={e => handleAlterarContactoEmergencia(idx, "num", e.target.value)}
+                  className="w-44 text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                />
+                <button
+                  onClick={() => handleRemoverContactoEmergencia(idx)}
+                  className="text-rose-600 hover:text-rose-700 text-xs font-bold px-2 cursor-pointer"
+                  title="Remover contacto"
+                >
+                  Remover
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="Descrição (quando contactar este serviço)"
+                value={cont.desc}
+                onChange={e => handleAlterarContactoEmergencia(idx, "desc", e.target.value)}
+                className="w-full text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+              />
+            </div>
+          ))}
+
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              onClick={handleAdicionarContactoEmergencia}
+              className="border-2 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 text-slate-700 dark:text-slate-200 font-bold py-2 px-4 rounded-xl text-xs cursor-pointer transition-all select-none"
+            >
+              + Adicionar Contacto
+            </button>
+            <button
+              onClick={handleGravarContactosEmergencia}
+              disabled={gravandoContactosEmergencia}
+              className="border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 active:scale-95 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-xl text-xs cursor-pointer shadow transition-all flex items-center gap-1.5 active:ring-2 active:ring-emerald-400 select-none"
+            >
+              <img src="/estados-acoes/12-adicionar.png" alt="Gravar" className="h-4 w-4 object-contain" />
+              <span>{gravandoContactosEmergencia ? "A gravar..." : "Gravar"}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+        </>
       )}
 
       {/* ---------------- 5. LOG DE SISTEMA (REGISTO DE ATIVIDADE) ---------------- */}

@@ -169,12 +169,17 @@ export async function fetchPrediosFromSupabase(): Promise<Predio[] | null> {
       email_condominio: row.email_condominio || row.email || null,
       autoresponder_ativo: row.autoresponder_ativo ?? true,
       autoresponder_modo: row.autoresponder_modo || "confirmacao_previa",
-      data_inicio_gestao: row.patrimonio?.data_inicio_gestao || null
+      data_inicio_gestao: row.patrimonio?.data_inicio_gestao || null,
+      contactos_emergencia: row.contactos_emergencia || null
     }));
   } catch (err) {
     console.warn("[Supabase] Exception fetching predios:", err);
     return null;
   }
+}
+
+export async function saveContactosEmergenciaToSupabase(idPredio: string, contactos: { servico: string; num: string; desc: string }[]): Promise<boolean> {
+  return dbUpdate("predios", { contactos_emergencia: contactos }, [["id_predio", "eq", idPredio]]);
 }
 
 export async function savePredioToSupabase(predio: Predio): Promise<boolean> {

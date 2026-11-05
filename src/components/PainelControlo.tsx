@@ -264,6 +264,22 @@ export function PainelControlo({
             fixo: false,
             contagem: limpezasCount
           },
+          // Pedido explícito do administrador: acesso a "Serviços do
+          // Condomínio" (Avarias, Obras, Limpezas, Reservas, Regras,
+          // Emergência) visível logo na página inicial (Painel), não só
+          // dentro do Portal do Condómino. O botão é um modal dentro de
+          // PortalCondomino.tsx, não uma secção própria — por isso este
+          // cartão leva ao Portal (onde o botão "Serviços do Condomínio"
+          // já está bem visível no topo), em vez de abrir o modal
+          // diretamente (o Painel só sabe navegar para secções).
+          ...(ehCondomino ? [{
+            name: "Serviços do Condomínio",
+            val: "Avarias, Limpezas, Reservas...",
+            icon: "/modulos/29-avaria.png",
+            section: "portal_condomino",
+            fixo: true,
+            contagem: 1
+          }] : []),
           {
             // Sempre visível (fixo) — o número de mensagens por ler mostra-se
             // como emblema vermelho no canto superior direito do ícone, estilo

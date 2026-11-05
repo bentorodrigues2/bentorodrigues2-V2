@@ -73,6 +73,12 @@ export interface Predio {
   // configurado. Não é uma coluna dedicada na BD, vai dentro de "patrimonio"
   // (jsonb), tal como já acontece com orcamento_anual.
   data_inicio_gestao?: string | null;
+  // Contactos de piquete/emergência editáveis pelo administrador — mostrados
+  // ao condómino em Portal/PWA → Serviços do Condomínio → Emergência.
+  // Coluna própria (jsonb), não dentro de "patrimonio". Antes de existir
+  // esta coluna, estes contactos eram sempre uma lista fixa no código
+  // (números de exemplo, nunca reais).
+  contactos_emergencia?: { servico: string; num: string; desc: string }[] | null;
 }
 
 export interface Conta {

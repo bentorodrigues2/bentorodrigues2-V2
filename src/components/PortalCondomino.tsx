@@ -1245,13 +1245,9 @@ export function PortalCondomino({
     }
   };
 
-  const contactosEmergenciaPortal = [
-    { servico: "Piquete de Elevadores (Otis)", num: "808 20 20 20", desc: "Avarias em cabines ou pessoas presas" },
-    { servico: "Canalizador Técnico do Prédio", num: "912 345 678", desc: "Ruturas de água, inundações ou torneiras de corte" },
-    { servico: "Piquete Geral de Eletricidade", num: "800 234 567", desc: "Falta de luz no hall, patamares ou garagem" },
-    { servico: "Portões Automáticos (Assistência)", num: "933 888 111", desc: "Bloqueio ou descarrilamento do portão garagem" },
-    { servico: "Administração CondoManager AI", num: "210 111 222", desc: "Assuntos gerais urgentes e dúvidas técnicas" }
-  ];
+  const contactosEmergenciaPortal = predio?.contactos_emergencia && predio.contactos_emergencia.length > 0
+    ? predio.contactos_emergencia
+    : [];
 
   // --- SEGURO DE INCÊNDIO DA FRAÇÃO — mesma lógica de consulta/envio já
   // usada na PWA (PWACondominoView), para o condómino ver exatamente o
@@ -4028,6 +4024,9 @@ export function PortalCondomino({
                       "Ligar" passa a hiperligação tel: real, em vez de um
                       alert() a simular — são contactos de emergência a
                       sério. */}
+                  {contactosEmergenciaPortal.length === 0 && (
+                    <p style={{ color: "#cbd5e1" }} className="text-[11px] italic">A administração ainda não definiu contactos de emergência.</p>
+                  )}
                   {contactosEmergenciaPortal.map((cont, idx) => (
                     <div key={idx} className="bg-slate-900 border border-slate-800 p-3 rounded-xl flex justify-between items-center gap-2">
                       <div className="space-y-0.5 min-w-0">
