@@ -43,6 +43,7 @@ import {
   deleteSinistroFromSupabase,
   dbUpdate,
   dbInsert,
+  dbInsertComDetalhe,
   uploadDocumentoToStorage
 } from "../lib/supabaseService";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
@@ -790,7 +791,7 @@ export function GestaoSinistrosSeguros({
       return;
     }
     try {
-      const ok = await dbInsert("agendamentos_avisos", {
+      const { ok, error } = await dbInsertComDetalhe("agendamentos_avisos", {
         id_agendamento: "ag-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
         id_predio: predio.id_predio,
         tipo: "Notificação Seguro de Incêndio",
@@ -799,7 +800,7 @@ export function GestaoSinistrosSeguros({
         data_hora_agendada: new Date(dataHoraApolice).toISOString(),
         estado: "Pendente"
       });
-      if (!ok) throw new Error("Não foi possível agendar o envio");
+      if (!ok) throw new Error(error || "Não foi possível agendar o envio");
       showToast(`🕐 Notificação agendada para ${new Date(dataHoraApolice).toLocaleString("pt-PT")} (Fração ${fracao.fracao_nome}).`);
       setNotifModalFracao(null);
       setModoEnvioApolice("imediato");

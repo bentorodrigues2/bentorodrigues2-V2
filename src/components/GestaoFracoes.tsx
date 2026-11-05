@@ -6,7 +6,7 @@ import { ModalFichaCondominoEditavel } from "./ModalFichaCondominoEditavel";
 import { MoneyInput } from "./MoneyInput";
 import { FiltroRelatoriosPDFModal } from "./FiltroRelatoriosPDFModal";
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
-import { saveFracaoToSupabase, deleteFracaoFromSupabase, saveProprietarioToSupabase, deleteProprietarioFromSupabase, dbSelect, dbUpdate, dbInsert, dbDelete, dbUpsert, saveAvisosToSupabase, registarLogAuditoria, fetchResidentesInquilinosFromSupabase, saveResidenteInquilinoToSupabase, uploadDocumentoToStorage, saveDocumentoToSupabase, converterNotificacaoParaEnumProprietarios, converterAdminInternoParaBoolean, fetchInstalacoesPwa, InstalacaoPwa } from "../lib/supabaseService";
+import { saveFracaoToSupabase, deleteFracaoFromSupabase, saveProprietarioToSupabase, deleteProprietarioFromSupabase, dbSelect, dbUpdate, dbInsert, dbInsertComDetalhe, dbDelete, dbUpsert, saveAvisosToSupabase, registarLogAuditoria, fetchResidentesInquilinosFromSupabase, saveResidenteInquilinoToSupabase, uploadDocumentoToStorage, saveDocumentoToSupabase, converterNotificacaoParaEnumProprietarios, converterAdminInternoParaBoolean, fetchInstalacoesPwa, InstalacaoPwa } from "../lib/supabaseService";
 
 interface GestaoFracoesProps {
   predio: Predio;
@@ -146,7 +146,7 @@ export function GestaoFracoes({
     }
     setAAgendarNotasAtrasoId(idFracao);
     try {
-      const ok = await dbInsert("agendamentos_avisos", {
+      const { ok, error } = await dbInsertComDetalhe("agendamentos_avisos", {
         id_agendamento: "ag-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
         id_predio: predio.id_predio,
         tipo: "Notas em Atraso — Quota Ordinária",
@@ -155,7 +155,7 @@ export function GestaoFracoes({
         data_hora_agendada: new Date(dataHoraAgendarNotasAtraso).toISOString(),
         estado: "Pendente"
       });
-      if (!ok) throw new Error("Não foi possível agendar o envio");
+      if (!ok) throw new Error(error || "Não foi possível agendar o envio");
       alert(`✅ Envio das notas de cobrança em atraso da Fração ${nomeFracao} agendado para ${new Date(dataHoraAgendarNotasAtraso).toLocaleString("pt-PT")}.`);
       setAgendarNotasAtrasoFracaoId(null);
       setDataHoraAgendarNotasAtraso("");

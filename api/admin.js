@@ -439,40 +439,83 @@ export default async function handler(req, res) {
     const chamador = await exigirSessaoValida(req, res);
     if (!chamador) return;
     try {
-      if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
-        return res.status(500).json({ error: "Chaves VAPID não configuradas no servidor." });
-      }
       const { id_predio, title, body, url } = req.body || {};
       if (!id_predio || !title || !body) {
         return res.status(400).json({ error: "id_predio, title e body são obrigatórios" });
       }
 
-      const { data: subs, error: errSubs } = await supabase
-        .from("push_subscriptions")
-        .select("id, endpoint, subscription")
-        .eq("id_predio", id_predio)
-        .eq("is_admin", true);
-      if (errSubs) throw new Error(errSubs.message);
-
-      const payload = JSON.stringify({ title, body, url: url || "/" });
       let enviados = 0;
       let expirados = 0;
+      let subs = [];
 
-      for (const row of subs || []) {
-        try {
-          await webpush.sendNotification(row.subscription, payload);
-          enviados += 1;
-        } catch (err) {
-          if (err?.statusCode === 404 || err?.statusCode === 410) {
-            await supabase.from("push_subscriptions").delete().eq("id", row.id);
-            expirados += 1;
-          } else {
-            console.warn("[api/admin?acao=enviar-push-admin] Falha ao enviar para uma subscrição:", err?.message || err);
+      if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+        const { data, error: errSubs } = await supabase
+          .from("push_subscriptions")
+          .select("id, endpoint, subscription")
+          .eq("id_predio", id_predio)
+          .eq("is_admin", true);
+        if (errSubs) throw new Error(errSubs.message);
+        subs = data || [];
+
+        const payload = JSON.stringify({ title, body, url: url || "/" });
+        for (const row of subs) {
+          try {
+            await webpush.sendNotification(row.subscription, payload);
+            enviados += 1;
+          } catch (err) {
+            if (err?.statusCode === 404 || err?.statusCode === 410) {
+              await supabase.from("push_subscriptions").delete().eq("id", row.id);
+              expirados += 1;
+            } else {
+              console.warn("[api/admin?acao=enviar-push-admin] Falha ao enviar para uma subscrição:", err?.message || err);
+            }
           }
+        }
+      } else {
+        console.warn("[api/admin?acao=enviar-push-admin] Chaves VAPID não configuradas — só o email de reserva será enviado.");
+      }
+
+      // Reserva por email — nenhum administrador deste prédio tinha, à data
+      // desta correção, ativado notificações push em nenhum dispositivo
+      // (push_subscriptions sem nenhuma linha is_admin=true), o que fazia
+      // avisos importantes (ex: condómino submeteu documento de seguro)
+      // desaparecerem em silêncio: o push falhava a enviar (0 destinatários),
+      // sem erro nenhum visível a quem o disparou. Sempre que o push não
+      // chegou a ninguém, repete-se o mesmo aviso por email a quem gere este
+      // prédio — os ADMIN/GESTOR/EMPRESA_GESTORA do próprio id_predio, mais
+      // os administradores globais (profiles.id_predio IS NULL).
+      let emailsEnviados = 0;
+      if (enviados === 0) {
+        try {
+          const { data: perfisGestao, error: errPerfis } = await supabase
+            .from("profiles")
+            .select("email, role, id_predio")
+            .in("role", ["ADMIN", "GESTOR", "EMPRESA_GESTORA"]);
+          if (errPerfis) throw new Error(errPerfis.message);
+          const emails = Array.from(new Set(
+            (perfisGestao || [])
+              .filter((p) => !p.id_predio || p.id_predio === id_predio)
+              .map((p) => p.email)
+              .filter(Boolean)
+          ));
+          for (const email of emails) {
+            try {
+              await enviarEmailSemAnexo({
+                to: email,
+                subject: title,
+                html: `<p>${body}</p><p style="color:#64748b;font-size:12px;margin-top:16px;">Este email foi enviado porque não havia nenhuma notificação push ativa neste prédio — ative as notificações push no seu perfil (Segurança) para também as receber em tempo real no telemóvel.</p>`
+              });
+              emailsEnviados += 1;
+            } catch (err) {
+              console.warn("[api/admin?acao=enviar-push-admin] Falha ao enviar email de reserva:", err?.message || err);
+            }
+          }
+        } catch (err) {
+          console.warn("[api/admin?acao=enviar-push-admin] Falha ao apurar destinatários do email de reserva:", err?.message || err);
         }
       }
 
-      return res.status(200).json({ ok: true, total_subscricoes: (subs || []).length, enviados, expirados_removidas: expirados });
+      return res.status(200).json({ ok: true, total_subscricoes: subs.length, enviados, expirados_removidas: expirados, emails_reserva_enviados: emailsEnviados });
     } catch (err) {
       console.error("Erro em /api/admin?acao=enviar-push-admin:", err);
       return res.status(500).json({ error: err?.message || "Erro ao enviar notificações push ao administrador" });

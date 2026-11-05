@@ -25,6 +25,7 @@ import {
   dbUpdate,
   dbDelete,
   dbInsert,
+  dbInsertComDetalhe,
   saveAvisosToSupabase,
   saveContaToSupabase,
   ajustarSaldoContaReal,
@@ -528,7 +529,7 @@ export function GestaoQuotasOrcamento({
     setAEmitirNotasExtraAtraso(true);
     try {
       if (modoEnvioNotasExtraAtraso === "agendado") {
-        const ok = await dbInsert("agendamentos_avisos", {
+        const { ok, error } = await dbInsertComDetalhe("agendamentos_avisos", {
           id_agendamento: "ag-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
           id_predio: predio.id_predio,
           tipo: "Notas em Atraso — Quota Extraordinária",
@@ -536,7 +537,7 @@ export function GestaoQuotasOrcamento({
           data_hora_agendada: new Date(dataHoraNotasExtraAtraso).toISOString(),
           estado: "Pendente"
         });
-        if (!ok) throw new Error("Não foi possível agendar o envio");
+        if (!ok) throw new Error(error || "Não foi possível agendar o envio");
         alert(`Envio das notas de cobrança em atraso agendado para ${new Date(dataHoraNotasExtraAtraso).toLocaleString("pt-PT")}.`);
         return;
       }
@@ -937,7 +938,7 @@ export function GestaoQuotasOrcamento({
     let mensagemEnvio = "";
     if (extVal > 0 && novosAvisos.length > 0) {
       const idAgendamento = "ag-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
-      const agendamentoOk = await dbInsert("agendamentos_avisos", {
+      const { ok: agendamentoOk, error: erroAgendamento } = await dbInsertComDetalhe("agendamentos_avisos", {
         id_agendamento: idAgendamento,
         id_predio: predio.id_predio,
         tipo: "Quota Extraordinária",
@@ -947,7 +948,7 @@ export function GestaoQuotasOrcamento({
       });
 
       if (!agendamentoOk) {
-        mensagemEnvio = " Atenção: não foi possível agendar o envio das notas de cobrança — tenta novamente ou usa o botão \"Emitir Notas em Atraso\".";
+        mensagemEnvio = ` Atenção: não foi possível agendar o envio das notas de cobrança (${erroAgendamento || "erro desconhecido"}) — tenta novamente ou usa o botão "Emitir Notas em Atraso".`;
       } else if (envioExtraModo === "agendado") {
         mensagemEnvio = ` Envio das notas de cobrança agendado para ${new Date(dataHoraAgendadaExtra).toLocaleString("pt-PT")}.`;
       } else {

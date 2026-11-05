@@ -112,6 +112,17 @@ export async function dbInsert(tabela: string, dados: unknown): Promise<boolean>
   return resultado.ok;
 }
 
+// Mesmo que dbInsert, mas devolve também a mensagem de erro real do servidor
+// — usado onde o erro genérico "não foi possível gravar" não chega para o
+// utilizador perceber a causa (ex: agendamentos_avisos, onde um "Erro ao
+// agendar: Não foi possível agendar o envio" fixo escondia sempre a razão
+// verdadeira, só visível antes no console do browser).
+export async function dbInsertComDetalhe(tabela: string, dados: unknown): Promise<{ ok: boolean; error?: string }> {
+  const resultado = await dbCall({ tabela, acao: "insert", dados });
+  if (!resultado.ok) console.warn(`[Supabase/data] Insert ${tabela} error:`, resultado.error);
+  return { ok: resultado.ok, error: resultado.error };
+}
+
 export async function dbUpsert(tabela: string, dados: unknown, opcoesUpsert?: { onConflict?: string }): Promise<boolean> {
   const resultado = await dbCall({ tabela, acao: "upsert", dados, opcoesUpsert });
   if (!resultado.ok) console.warn(`[Supabase/data] Upsert ${tabela} error:`, resultado.error);
