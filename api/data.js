@@ -84,7 +84,8 @@ const TABELAS_PERMITIDAS = new Set([
   "correspondencia",
   "instalacoes_pwa",
   "leituras_conteudo",
-  "confirmacoes_leitura_email"
+  "confirmacoes_leitura_email",
+  "agendamentos_avisos"
 ]);
 
 // Registos de auditoria: só select e insert, mesmo por este proxy — para
