@@ -325,11 +325,17 @@ export function GestaoSinistrosSeguros({
         seguradora: dados.seguradora || "",
         apolice_numero: dados.apolice_numero || "",
         apolice_validade: dados.apolice_validade || "",
+        // Faturas/recibos de uma só prestação raramente têm uma "data de
+        // validade" explícita, só um período de cobertura — guarda-se à
+        // parte, para informar o administrador sem o fazer passar por data
+        // de renovação real da apólice.
+        periodo_cobertura_fim: dados.periodo_cobertura_fim || "",
         tipo_cobertura: dados.tipo_cobertura || "",
         capital_seguro: Number(dados.capital_seguro) || 0,
         franquia: Number(dados.franquia) || 0,
         resumo: dados.resumo || ""
       };
+      const nadaReconhecido = !resultadoIA.seguradora && !resultadoIA.apolice_numero && !resultadoIA.apolice_validade;
 
       // O base64 só é preciso para a chamada à IA acima — guardar o anexo
       // em si com essa mesma string gigante é o que fazia a gravação
@@ -352,11 +358,22 @@ export function GestaoSinistrosSeguros({
         if (resultadoIA.apolice_validade) setFormValidade(resultadoIA.apolice_validade);
         if (resultadoIA.tipo_cobertura) setFormTipoCobertura(resultadoIA.tipo_cobertura);
         if (resultadoIA.capital_seguro > 0) setFormCapitalSeguro(String(resultadoIA.capital_seguro));
-        setFormEstadoValidacao("Valido");
+        // Só marca como "Válido" quando a IA encontrou mesmo alguma coisa —
+        // antes marcava sempre "Valido", mesmo quando a leitura falhava por
+        // completo (seguradora/apólice/validade todos N/D), escondendo uma
+        // leitura falhada atrás de um estado de validação positivo.
+        if (!nadaReconhecido) setFormEstadoValidacao("Valido");
         setFormDocumentoNome(file.name);
         setFormDocumentoUrl(documentoUrl);
         setFormDocumentosAnexos(prev => [...prev, novoAnexo]);
-        setIaExtractSuccess(`✓ IA extraiu com sucesso: ${resultadoIA.seguradora || "(seguradora não identificada)"} • Apólice ${resultadoIA.apolice_numero || "N/D"} (Validade: ${resultadoIA.apolice_validade || "N/D"}). Confirme os dados antes de gravar.`);
+        if (nadaReconhecido) {
+          setIaExtractSuccess(`⚠️ A IA não conseguiu identificar a seguradora, o número de apólice nem a validade neste documento — preencha os dados manualmente antes de gravar. O documento foi anexado na mesma.`);
+        } else {
+          const dicaValidade = !resultadoIA.apolice_validade && resultadoIA.periodo_cobertura_fim
+            ? ` (sem validade explícita — este documento cobre até ${resultadoIA.periodo_cobertura_fim}, que pode não ser a data de renovação real da apólice; confirme-a na apólice ou peça novo comprovativo)`
+            : "";
+          setIaExtractSuccess(`✓ IA extraiu: ${resultadoIA.seguradora || "(seguradora não identificada)"} • Apólice ${resultadoIA.apolice_numero || "N/D"} (Validade: ${resultadoIA.apolice_validade || "N/D"}${dicaValidade}). Confirme os dados antes de gravar.`);
+        }
       } else {
         if (resultadoIA.seguradora) setFormPCCompanhia(resultadoIA.seguradora);
         if (resultadoIA.apolice_numero) setFormPCApoliceNum(resultadoIA.apolice_numero);
@@ -365,7 +382,11 @@ export function GestaoSinistrosSeguros({
         if (resultadoIA.franquia > 0) setFormPCFranquia(String(resultadoIA.franquia));
         setFormPCDocumentoNome(file.name);
         setFormPCDocumentosAnexos(prev => [...prev, novoAnexo]);
-        setIaExtractSuccess(`✓ IA extraiu dados da fatura do edifício: ${resultadoIA.seguradora || "(seguradora não identificada)"} • Apólice ${resultadoIA.apolice_numero || "N/D"}. Confirme os dados antes de gravar.`);
+        if (nadaReconhecido) {
+          setIaExtractSuccess(`⚠️ A IA não conseguiu identificar dados neste documento — preencha manualmente. O documento foi anexado na mesma.`);
+        } else {
+          setIaExtractSuccess(`✓ IA extraiu dados da fatura do edifício: ${resultadoIA.seguradora || "(seguradora não identificada)"} • Apólice ${resultadoIA.apolice_numero || "N/D"}. Confirme os dados antes de gravar.`);
+        }
       }
     } catch (err: any) {
       console.error("Erro no processamento OCR com IA:", err);

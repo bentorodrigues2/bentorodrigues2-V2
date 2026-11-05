@@ -738,19 +738,23 @@ Devolve APENAS JSON estrito, sem markdown:
         return res.status(400).json({ error: "base64 e mimeType são obrigatórios" });
       }
 
-      const prompt = `És um sistema de OCR e extração documental de apólices de seguro obrigatório de condomínio em Portugal.
-Analisa o documento em anexo (a imagem/PDF real da apólice) e extrai os dados reais nele contidos.
+      const prompt = `És um sistema de OCR e extração documental de apólices e faturas/recibos de seguro obrigatório de condomínio em Portugal.
+Analisa o documento em anexo (a imagem/PDF real) e extrai os dados reais nele contidos. O documento pode ser:
+(a) uma apólice completa, com as condições e a data de validade/renovação explícita;
+(b) uma fatura/recibo de prémio (mensal, trimestral ou anual) — não tem necessariamente uma "data de validade" escrita por extenso, mas tem quase sempre, numa tabela ou cabeçalho, a seguradora (pode aparecer como o nome da marca/logótipo, ex: "Generali Seguros, S.A.", "Fidelidade", "Tranquilidade", "Ageas", "Allianz"), o número de apólice (rotulado "N.º Apólice", "Apólice" ou abreviado "Ap:") e um período de cobertura ("Período: AAAA-MM-DD a AAAA-MM-DD").
+Procura estes dados em TODO o documento — cabeçalho, rodapé, tabelas "Dados do Contrato"/"Dados do Documento", e junto ao logótipo — nunca só no corpo de texto corrido. A seguradora e o número de apólice estão quase sempre presentes mesmo numa simples fatura/recibo de pagamento; só devolvas null para estes dois campos se tiveres a certeza de que não constam em lado nenhum do documento.
 Devolve APENAS JSON estrito com as chaves:
 {
   "seguradora": "Nome real da companhia de seguros indicado no documento",
   "apolice_numero": "Número de apólice real indicado no documento",
-  "apolice_validade": "Data de validade/renovação no formato YYYY-MM-DD",
+  "apolice_validade": "Data de validade/renovação da apólice, se estiver explicitamente indicada, no formato YYYY-MM-DD",
+  "periodo_cobertura_fim": "Se não houver 'data de validade' explícita mas o documento indicar um período de cobertura/prémio pago (ex: fatura mensal), a data de FIM desse período, no formato YYYY-MM-DD — null se não existir nenhum período indicado",
   "tipo_cobertura": "Tipo de cobertura indicado (ex: Incêndio e Multirriscos)",
   "capital_seguro": 0,
   "franquia": 0,
-  "resumo": "Breve resumo real do que consta no documento"
+  "resumo": "Breve resumo real do que consta no documento, mencionando explicitamente se é uma apólice completa ou só uma fatura/recibo de uma prestação"
 }
-Se algum campo não constar no documento, usa null nesse campo. Nunca inventes valores que não constem no documento.`;
+Se algum campo não constar mesmo no documento, usa null nesse campo. Nunca inventes valores que não constem no documento.`;
 
       const rawResponse = await generateWithFallback({
         contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType, data: base64 } }] }],
