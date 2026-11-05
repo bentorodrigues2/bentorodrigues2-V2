@@ -559,6 +559,57 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
     }
   };
 
+  // Alternativa manual ao cruzamento automático (candidatoCego, acima) —
+  // pedido explícito do administrador depois de confirmar um caso real em
+  // que o cruzamento automático falhou (fatura THYSSENKRUPP/TKElevators
+  // recebida de um remetente não reconhecido): quando a fatura pendente
+  // ("Movimento Cego / Por Justificar") não se associa sozinha ao pagamento
+  // real entretanto já lançado (datas/valores fora da janela automática,
+  // fornecedor não identificado nos dois lados, etc.), o administrador
+  // escolhe aqui manualmente a qual pagamento já lançado ela corresponde.
+  // A fatura anexa move-se para o movimento escolhido (só se este ainda não
+  // tiver nenhuma) e o movimento cego fica fundido (0€, "Justificado", já
+  // não conta a despesa a dobro) — mesmo resultado que o cruzamento
+  // automático produziria.
+  const [fundindoCegoId, setFundindoCegoId] = useState<string | null>(null);
+  const [alvoFusaoId, setAlvoFusaoId] = useState<string>("");
+  const [aFundirCego, setAFundirCego] = useState<string | null>(null);
+  const fundirMovimentoCegoComPagamento = async (movCego: Movimento, idAlvo: string) => {
+    const alvo = predioMovements.find(m => m.id_mov === idAlvo);
+    if (!alvo) return;
+    if (!confirm(`Associar a fatura pendente "${movCego.descricao}" ao movimento já pago "${alvo.descricao}" (${formatDatePT(alvo.data)}, ${alvo.valor.toFixed(2)}€)?\n\nA fatura anexa (se existir) move-se para esse movimento; o registo pendente fica fundido e deixa de aparecer como "Aguarda Pagamento".`)) return;
+    setAFundirCego(movCego.id_mov);
+    try {
+      const alvoAtualizado: Movimento = {
+        ...alvo,
+        comprovativo_url: alvo.comprovativo_url || movCego.comprovativo_url
+      };
+      const cegoAtualizado: Movimento = {
+        ...movCego,
+        estado: "Justificado",
+        is_movimento_cego: false,
+        valor: 0,
+        comprovativo_url: undefined,
+        descricao: `${movCego.descricao} — fundido manualmente com o movimento "${alvo.descricao}" (${formatDatePT(alvo.data)}); fatura anexa movida para esse registo, valor zerado aqui para não duplicar a despesa`
+      };
+      const [ok1, ok2] = await Promise.all([
+        saveMovimentoToSupabase(alvoAtualizado),
+        saveMovimentoToSupabase(cegoAtualizado)
+      ]);
+      if (!ok1 || !ok2) {
+        alert("❌ Não foi possível gravar a associação. Tente novamente.");
+        return;
+      }
+      setMovements(prev => prev.map(m => m.id_mov === alvo.id_mov ? alvoAtualizado : m.id_mov === movCego.id_mov ? cegoAtualizado : m));
+      registarLogAuditoria("Financeira", "Associou manualmente uma fatura pendente a um pagamento já lançado", predio.id_predio, loggedUser, `${movCego.descricao} → ${alvo.descricao}`);
+      setFundindoCegoId(null);
+      setAlvoFusaoId("");
+      alert("✅ Fatura associada ao pagamento com sucesso!");
+    } finally {
+      setAFundirCego(null);
+    }
+  };
+
   const handleJustificationFileChange = (e: React.ChangeEvent<HTMLInputElement>, movId: string) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -3755,6 +3806,17 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                               <i className={`fa-solid ${aDesfazerConfirmacaoMovId === m.id_mov ? "fa-spinner fa-spin" : "fa-rotate-left"}`}></i> Desfazer Confirmação
                             </button>
                           )}
+                          {isCego && m.tipo === "Despesa" && (
+                            <button
+                              type="button"
+                              onClick={() => { setFundindoCegoId(fundindoCegoId === m.id_mov ? null : m.id_mov); setAlvoFusaoId(""); }}
+                              title="Esta fatura já foi paga por outro movimento lançado à parte? Associe aqui manualmente, em vez de ficar duplicada."
+                              aria-label="Associar esta fatura pendente a um pagamento já lançado"
+                              className="flex items-center gap-1.5 text-violet-700 hover:text-violet-900 font-bold text-[10px] cursor-pointer"
+                            >
+                              <i className="fa-solid fa-link"></i> Associar a Pagamento Já Lançado
+                            </button>
+                          )}
                         </div>
                         <button
                           type="button"
@@ -3768,6 +3830,54 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                           <i className="fa-solid fa-trash-can"></i> Eliminar Movimento
                         </button>
                       </div>
+                      {isCego && m.tipo === "Despesa" && fundindoCegoId === m.id_mov && (() => {
+                        const candidatos = predioMovements
+                          .filter(mv => mv.id_mov !== m.id_mov && mv.tipo === "Despesa" && !mv.is_movimento_cego && mv.estado !== "Movimento Cego / Por Justificar")
+                          .sort((a, b) => {
+                            const diffA = Math.abs(a.valor - m.valor);
+                            const diffB = Math.abs(b.valor - m.valor);
+                            if (diffA !== diffB) return diffA - diffB;
+                            return Math.abs(new Date(a.data).getTime() - new Date(m.data).getTime()) - Math.abs(new Date(b.data).getTime() - new Date(m.data).getTime());
+                          });
+                        return (
+                          <div className="col-span-2 sm:col-span-4 bg-violet-50 border border-violet-200 rounded-xl p-3 space-y-2">
+                            <p className="text-[10px] text-violet-800 font-bold">Escolha o movimento de despesa já lançado que corresponde ao pagamento real desta fatura:</p>
+                            {candidatos.length === 0 ? (
+                              <p className="text-[10px] text-slate-600 italic">Não há nenhum outro movimento de despesa já justificado para associar.</p>
+                            ) : (
+                              <select
+                                value={alvoFusaoId}
+                                onChange={e => setAlvoFusaoId(e.target.value)}
+                                className="w-full border border-violet-300 rounded-lg px-2 py-1.5 text-[11px] bg-white text-slate-900"
+                              >
+                                <option value="">— Escolha o movimento —</option>
+                                {candidatos.map(c => (
+                                  <option key={c.id_mov} value={c.id_mov}>
+                                    {formatDatePT(c.data)} — {c.valor.toFixed(2)}€ — {c.descricao.slice(0, 60)}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => { setFundindoCegoId(null); setAlvoFusaoId(""); }}
+                                className="flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 cursor-pointer"
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!alvoFusaoId || aFundirCego === m.id_mov}
+                                onClick={() => fundirMovimentoCegoComPagamento(m, alvoFusaoId)}
+                                className="flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 cursor-pointer"
+                              >
+                                {aFundirCego === m.id_mov ? "A associar..." : "Associar"}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
