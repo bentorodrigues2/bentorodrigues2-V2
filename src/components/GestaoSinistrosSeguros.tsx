@@ -44,6 +44,7 @@ import {
   dbUpdate,
   dbInsert,
   dbInsertComDetalhe,
+  dbSelect,
   uploadDocumentoToStorage
 } from "../lib/supabaseService";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
@@ -85,6 +86,26 @@ export function GestaoSinistrosSeguros({
   // Dados carregados do Supabase
   const [segurosFracoesMap, setSegurosFracoesMap] = useState<Record<string, SeguroFracao>>({});
   const [apoliceEdificio, setApoliceEdificio] = useState<SeguroPartesComuns | null>(null);
+  // Agendamentos de "Solicitação de Comprovativo de Seguro" ainda por
+  // disparar (agendamentos_avisos, estado "Pendente") — por id_fracao, para
+  // mostrar a sinalética de "Notificação Agendada" no cartão da fração.
+  const [notificacoesAgendadasMap, setNotificacoesAgendadasMap] = useState<Record<string, string>>({});
+
+  const recarregarNotificacoesAgendadas = async () => {
+    const linhas = await dbSelect("agendamentos_avisos", {
+      filtros: [
+        ["id_predio", "eq", predio.id_predio],
+        ["tipo", "eq", "Notificação Seguro de Incêndio"],
+        ["estado", "eq", "Pendente"]
+      ]
+    });
+    const map: Record<string, string> = {};
+    (linhas || []).forEach((l: any) => {
+      const idFracao = l.payload?.id_fracao;
+      if (idFracao) map[idFracao] = l.data_hora_agendada;
+    });
+    setNotificacoesAgendadasMap(map);
+  };
   const [sinistros, setSinistros] = useState<SinistroSeguro[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(false);
 
@@ -192,6 +213,9 @@ export function GestaoSinistrosSeguros({
         } else {
           setSinistros([]);
         }
+
+        // 4. Notificações de seguro já agendadas (ainda por disparar)
+        await recarregarNotificacoesAgendadas();
       } catch (err) {
         console.warn("[Seguros] Erro ao carregar dados do Supabase:", err);
       } finally {
@@ -823,6 +847,7 @@ export function GestaoSinistrosSeguros({
       });
       if (!ok) throw new Error(error || "Não foi possível agendar o envio");
       showToast(`🕐 Notificação agendada para ${new Date(dataHoraApolice).toLocaleString("pt-PT")} (Fração ${fracao.fracao_nome}).`);
+      await recarregarNotificacoesAgendadas();
       setNotifModalFracao(null);
       setModoEnvioApolice("imediato");
       setDataHoraApolice("");
@@ -1100,6 +1125,14 @@ export function GestaoSinistrosSeguros({
                             {segurosFracoesMap[fracao.id_fracao]?.submetido_por === "condomino" && segurosFracoesMap[fracao.id_fracao]?.estado_validacao === "Pendente" && (
                               <span className="bg-violet-100 text-violet-700 border border-violet-200 font-black text-[9px] px-1.5 py-0.5 rounded-full uppercase flex items-center gap-1">
                                 <i className="fa-solid fa-user"></i> Submetido pelo Condómino — por rever
+                              </span>
+                            )}
+                            {notificacoesAgendadasMap[fracao.id_fracao] && (
+                              <span
+                                className="bg-indigo-100 text-indigo-700 border border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800 font-black text-[9px] px-1.5 py-0.5 rounded-full uppercase flex items-center gap-1"
+                                title={`Notificação de pedido de comprovativo agendada para ${new Date(notificacoesAgendadasMap[fracao.id_fracao]).toLocaleString("pt-PT")}`}
+                              >
+                                <Clock className="h-2.5 w-2.5" /> Notificação Agendada — {new Date(notificacoesAgendadasMap[fracao.id_fracao]).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                               </span>
                             )}
                           </div>
