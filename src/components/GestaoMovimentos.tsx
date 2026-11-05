@@ -927,6 +927,31 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
     }).join("\n\n");
   };
 
+  // .docx é um ficheiro ZIP com XML lá dentro (word/document.xml) — a IA
+  // multimodal não lê bem este formato como "documento" (não é PDF nem
+  // imagem), por isso extrai-se o texto real aqui, tal como já acontece com
+  // Excel/CSV/TXT acima. O .doc antigo (binário, pré-2007) não é um ZIP —
+  // o JSZip falha a abri-lo, e sem uma dependência pesada só para esse
+  // formato raro, avisa-se o utilizador em vez de tentar adivinhar o texto.
+  const lerFicheiroWordComoTextoMovimentos = async (file: File): Promise<string> => {
+    try {
+      const JSZip = (await import("jszip")).default;
+      const zip = await JSZip.loadAsync(file);
+      const xml = await zip.file("word/document.xml")?.async("string");
+      if (!xml) throw new Error("sem word/document.xml");
+      return xml
+        .replace(/<\/w:p>/g, "\n")
+        .replace(/<[^>]+>/g, "")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'");
+    } catch {
+      throw new Error(`Não foi possível ler "${file.name}" — só é suportado o formato .docx (Word 2007 ou mais recente). Se for um .doc antigo, grave-o primeiro como .docx ou PDF.`);
+    }
+  };
+
   // Extrai transações reais com IA (PDF/foto/Excel/CSV/TXT) — antes disto
   // era uma simulação por palavras-chave com dados inventados (Ana Silva,
   // EDP, OTIS...), sem ligação nenhuma a IA real nem aos fornecedores
@@ -935,7 +960,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
   // nome), para não teres de transcrever nem associar tudo à mão.
   const extrairExtratoIA = async () => {
     if (extratoFicheiros.length === 0) {
-      setErroExtrato("Anexe pelo menos um ficheiro (PDF, foto, Excel, CSV ou TXT).");
+      setErroExtrato("Anexe pelo menos um ficheiro (PDF, foto, Excel, CSV, TXT ou Word).");
       return;
     }
     setIsExtracting(true);
@@ -950,6 +975,8 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
           textosExtrato.push(await lerFicheiroExcelComoTextoMovimentos(file));
         } else if (nomeExt.endsWith(".csv") || nomeExt.endsWith(".txt") || file.type === "text/csv" || file.type === "text/plain") {
           textosExtrato.push(await lerFicheiroComoTextoMovimentos(file));
+        } else if (nomeExt.endsWith(".docx") || nomeExt.endsWith(".doc")) {
+          textosExtrato.push(await lerFicheiroWordComoTextoMovimentos(file));
         } else {
           anexos.push({ base64: await lerFicheiroComoBase64Movimentos(file), mimeType: file.type || "application/pdf" });
         }
@@ -2847,7 +2874,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-600 block">Ficheiro(s) do Extrato / Aviso a Analisar</label>
-              <span className="text-[10px] text-slate-600 font-mono">PDF, foto, Excel, CSV ou TXT</span>
+              <span className="text-[10px] text-slate-600 font-mono">PDF, foto, Excel, CSV, TXT ou Word</span>
             </div>
 
             <input
@@ -2855,7 +2882,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
               type="file"
               multiple
               disabled={!contaExtratoId}
-              accept=".pdf,.jpg,.jpeg,.png,.webp,.csv,.txt,.xlsx,.xls"
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.csv,.txt,.xlsx,.xls,.doc,.docx"
               onChange={e => setExtratoFicheiros(Array.from(e.target.files || []))}
               title={!contaExtratoId ? "Escolha primeiro a conta bancária deste extrato" : undefined}
               className="w-full text-xs file:mr-2 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-violet-600 file:text-white file:font-bold file:cursor-pointer file:text-xs cursor-pointer text-slate-700 border border-slate-200 rounded-lg p-2 disabled:opacity-50 disabled:cursor-not-allowed"

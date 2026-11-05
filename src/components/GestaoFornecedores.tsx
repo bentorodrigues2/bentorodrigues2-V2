@@ -424,14 +424,26 @@ export function GestaoFornecedores({ predio, fornecedores, onAddFornecedor, onRe
     // no fluxo de lançamento manual do extrato em GestaoMovimentos.tsx). Só
     // funde quando o valor do movimento cego bate certo com o valor TOTAL da
     // dívida (não da tranche) — é esse o valor que entrou no extrato.
-    const candidatoCego = movements.find(mv =>
-      mv.id_predio === predio.id_predio &&
-      mv.tipo === "Despesa" &&
-      mv.is_movimento_cego &&
-      mv.estado === "Movimento Cego / Por Justificar" &&
-      mv.id_fornecedor === divida.id_fornecedor &&
-      Math.abs(mv.valor - divida.valor) < 0.05
-    );
+    //
+    // Bug real confirmado (THYSSENKRUPP/TKElevators, outubro 2026): quando o
+    // email da fatura chega de um remetente não reconhecido automaticamente
+    // (ex: reencaminhado pelo próprio administrador), o "Movimento Cego"
+    // fica com id_fornecedor a null — a comparação estrita abaixo nunca
+    // batia certo (null === "forn-...") e o pagamento aqui criava sempre um
+    // 2º movimento novo, deixando o original preso em "Por Justificar" para
+    // sempre (duplicação real confirmada). Quando o movimento cego ainda não
+    // tem fornecedor identificado, mas estamos mesmo a pagar esta dívida
+    // específica agora, o valor exato + a data dentro de 90 dias já chega
+    // para o associar com segurança — mesmo critério de fallback já usado em
+    // GestaoMovimentos.tsx e em server/lib/inboundProcessor.js.
+    const candidatoCego = movements.find(mv => {
+      if (mv.id_predio !== predio.id_predio || mv.tipo !== "Despesa" || !mv.is_movimento_cego || mv.estado !== "Movimento Cego / Por Justificar") return false;
+      if (Math.abs(mv.valor - divida.valor) >= 0.05) return false;
+      if (mv.id_fornecedor) return mv.id_fornecedor === divida.id_fornecedor;
+      const dm = new Date(mv.data).getTime();
+      const dp = new Date(pagamentoData).getTime();
+      return !isNaN(dm) && !isNaN(dp) && Math.abs(dm - dp) <= 90 * 24 * 60 * 60 * 1000;
+    });
 
     const novoMovimento: Movimento = candidatoCego
       ? {
