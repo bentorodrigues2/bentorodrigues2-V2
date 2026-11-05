@@ -26,6 +26,7 @@ import {
   dbDelete,
   dbInsert,
   dbInsertComDetalhe,
+  dbSelect,
   saveAvisosToSupabase,
   saveContaToSupabase,
   ajustarSaldoContaReal,
@@ -521,6 +522,36 @@ export function GestaoQuotasOrcamento({
   // manual de "Notas em Atraso".
   const [modoEnvioNotasExtraAtraso, setModoEnvioNotasExtraAtraso] = useState<"imediato" | "agendado">("imediato");
   const [dataHoraNotasExtraAtraso, setDataHoraNotasExtraAtraso] = useState<string>("");
+
+  // Envios de Quota Extraordinária / Notas em Atraso ainda por disparar
+  // (agendamentos_avisos, estado "Pendente" e data futura) — sinalética de
+  // "Notificação Agendada" pedida pelo administrador, mesmo padrão já usado
+  // em Seguros e em Frações. "imediato" cria um agendamento também, mas
+  // resolve-se quase de imediato (processado na mesma chamada) — só os de
+  // data futura interessam mostrar aqui.
+  const [notasExtraAtrasoAgendada, setNotasExtraAtrasoAgendada] = useState<string | null>(null);
+  const [quotaExtraAgendada, setQuotaExtraAgendada] = useState<string | null>(null);
+  const recarregarAgendamentosQuotaExtra = React.useCallback(async () => {
+    if (!predio?.id_predio) return;
+    const linhas = await dbSelect("agendamentos_avisos", {
+      filtros: [
+        ["id_predio", "eq", predio.id_predio],
+        ["estado", "eq", "Pendente"]
+      ]
+    });
+    const agora = Date.now();
+    let notasExtra: string | null = null;
+    let quotaExtra: string | null = null;
+    (linhas || []).forEach((l: any) => {
+      if (new Date(l.data_hora_agendada).getTime() <= agora) return;
+      if (l.tipo === "Notas em Atraso — Quota Extraordinária" && (!notasExtra || l.data_hora_agendada < notasExtra)) notasExtra = l.data_hora_agendada;
+      if (l.tipo === "Quota Extraordinária" && (!quotaExtra || l.data_hora_agendada < quotaExtra)) quotaExtra = l.data_hora_agendada;
+    });
+    setNotasExtraAtrasoAgendada(notasExtra);
+    setQuotaExtraAgendada(quotaExtra);
+  }, [predio?.id_predio]);
+  useEffect(() => { recarregarAgendamentosQuotaExtra(); }, [recarregarAgendamentosQuotaExtra]);
+
   const handleEmitirNotasExtraordinariasEmAtraso = async () => {
     if (modoEnvioNotasExtraAtraso === "agendado" && !dataHoraNotasExtraAtraso) {
       alert("Escolha a data/hora de envio, ou muda para \"Enviar Imediatamente\".");
@@ -539,6 +570,7 @@ export function GestaoQuotasOrcamento({
         });
         if (!ok) throw new Error(error || "Não foi possível agendar o envio");
         alert(`Envio das notas de cobrança em atraso agendado para ${new Date(dataHoraNotasExtraAtraso).toLocaleString("pt-PT")}.`);
+        await recarregarAgendamentosQuotaExtra();
         return;
       }
 
@@ -951,6 +983,7 @@ export function GestaoQuotasOrcamento({
         mensagemEnvio = ` Atenção: não foi possível agendar o envio das notas de cobrança (${erroAgendamento || "erro desconhecido"}) — tenta novamente ou usa o botão "Emitir Notas em Atraso".`;
       } else if (envioExtraModo === "agendado") {
         mensagemEnvio = ` Envio das notas de cobrança agendado para ${new Date(dataHoraAgendadaExtra).toLocaleString("pt-PT")}.`;
+        await recarregarAgendamentosQuotaExtra();
       } else {
         try {
           const resp = await fetch("/api/pagamento?acao=processar-agendamento-avisos", {
@@ -2092,6 +2125,12 @@ export function GestaoQuotasOrcamento({
                   {aEmitirExtra ? <i className="fa-solid fa-spinner animate-spin w-3.5 h-3.5"></i> : <Save className="w-3.5 h-3.5" />}
                   <span>{aEmitirExtra ? "A emitir..." : "Emitir Quota Extraordinária"}</span>
                 </button>
+                {quotaExtraAgendada && (
+                  <div className="bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl px-3 py-2 text-[11px] font-bold flex items-center gap-1.5">
+                    <i className="fa-solid fa-clock"></i>
+                    <span>Notificação Agendada — envio de notas de cobrança previsto para {new Date(quotaExtraAgendada).toLocaleString("pt-PT")}</span>
+                  </div>
+                )}
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-2">
                   <div className="flex gap-1.5 text-[10px] font-bold">
                     <button
@@ -2131,6 +2170,12 @@ export function GestaoQuotasOrcamento({
                   <i className={`fa-solid ${aEmitirNotasExtraAtraso ? "fa-spinner animate-spin" : "fa-clock-rotate-left"}`}></i>
                   <span>{aEmitirNotasExtraAtraso ? "A processar..." : modoEnvioNotasExtraAtraso === "agendado" ? "Agendar Notas em Atraso (meses já vencidos)" : "Emitir Notas em Atraso (meses já vencidos)"}</span>
                 </button>
+                {notasExtraAtrasoAgendada && (
+                  <div className="bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl px-3 py-2 text-[11px] font-bold flex items-center gap-1.5">
+                    <i className="fa-solid fa-clock"></i>
+                    <span>Notificação Agendada — envio das notas em atraso previsto para {new Date(notasExtraAtrasoAgendada).toLocaleString("pt-PT")}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>

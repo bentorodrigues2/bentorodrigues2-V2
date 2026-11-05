@@ -139,6 +139,27 @@ export function GestaoFracoes({
   const [agendarNotasAtrasoFracaoId, setAgendarNotasAtrasoFracaoId] = useState<string | null>(null);
   const [dataHoraAgendarNotasAtraso, setDataHoraAgendarNotasAtraso] = useState<string>("");
   const [aAgendarNotasAtrasoId, setAAgendarNotasAtrasoId] = useState<string | null>(null);
+  // Notas em Atraso ainda por disparar (agendamentos_avisos, estado
+  // "Pendente"), por id_fracao — mostra a sinalética de "Notificação
+  // Agendada" no cartão da fração, mesmo padrão já usado em Seguros.
+  const [notasAtrasoAgendadasMap, setNotasAtrasoAgendadasMap] = useState<Record<string, string>>({});
+  const recarregarNotasAtrasoAgendadas = React.useCallback(async () => {
+    if (!predio?.id_predio) return;
+    const linhas = await dbSelect("agendamentos_avisos", {
+      filtros: [
+        ["id_predio", "eq", predio.id_predio],
+        ["tipo", "eq", "Notas em Atraso — Quota Ordinária"],
+        ["estado", "eq", "Pendente"]
+      ]
+    });
+    const map: Record<string, string> = {};
+    (linhas || []).forEach((l: any) => {
+      const idFracao = l.payload?.id_fracao;
+      if (idFracao) map[idFracao] = l.data_hora_agendada;
+    });
+    setNotasAtrasoAgendadasMap(map);
+  }, [predio?.id_predio]);
+  useEffect(() => { recarregarNotasAtrasoAgendadas(); }, [recarregarNotasAtrasoAgendadas]);
   const confirmarAgendamentoNotasAtraso = async (idFracao: string, nomeFracao: string) => {
     if (!dataHoraAgendarNotasAtraso) {
       alert("Escolhe a data/hora de envio.");
@@ -157,6 +178,7 @@ export function GestaoFracoes({
       });
       if (!ok) throw new Error(error || "Não foi possível agendar o envio");
       alert(`✅ Envio das notas de cobrança em atraso da Fração ${nomeFracao} agendado para ${new Date(dataHoraAgendarNotasAtraso).toLocaleString("pt-PT")}.`);
+      await recarregarNotasAtrasoAgendadas();
       setAgendarNotasAtrasoFracaoId(null);
       setDataHoraAgendarNotasAtraso("");
     } catch (err: any) {
@@ -3304,11 +3326,20 @@ export function GestaoFracoes({
                                 <button
                                   type="button"
                                   onClick={() => setAgendarNotasAtrasoFracaoId(agendarNotasAtrasoFracaoId === prop.id_fracao ? null : prop.id_fracao!)}
-                                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 p-1.5 rounded-lg text-xs transition-colors cursor-pointer border border-indigo-200 shadow-xs"
-                                  title="Agendar o envio das notas de cobrança em atraso para mais tarde"
+                                  className={`relative p-1.5 rounded-lg text-xs transition-colors cursor-pointer border shadow-xs ${
+                                    prop.id_fracao && notasAtrasoAgendadasMap[prop.id_fracao]
+                                      ? "bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600"
+                                      : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200"
+                                  }`}
+                                  title={prop.id_fracao && notasAtrasoAgendadasMap[prop.id_fracao]
+                                    ? `Notificação já agendada para ${new Date(notasAtrasoAgendadasMap[prop.id_fracao]).toLocaleString("pt-PT")}`
+                                    : "Agendar o envio das notas de cobrança em atraso para mais tarde"}
                                   aria-label="Agendar o envio das notas de cobrança em atraso para mais tarde"
                                 >
-                                  <i className="fa-solid fa-clock text-indigo-600 shrink-0"></i>
+                                  <i className={`fa-solid fa-clock shrink-0 ${prop.id_fracao && notasAtrasoAgendadasMap[prop.id_fracao] ? "text-white" : "text-indigo-600"}`}></i>
+                                  {prop.id_fracao && notasAtrasoAgendadasMap[prop.id_fracao] && (
+                                    <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-amber-400 border border-white"></span>
+                                  )}
                                 </button>
                                 {agendarNotasAtrasoFracaoId === prop.id_fracao && (
                                   <div className="absolute z-20 top-full right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg p-2.5 space-y-2 w-56">
