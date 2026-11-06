@@ -978,6 +978,33 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
     }).join("\n\n");
   };
 
+  // Mesma verificação de "soma de 2 movimentos já lançados" usada em
+  // jaLancadoAntes (dentro de extrairExtratoIA), mas reutilizável a partir
+  // do próprio ecrã — para quando o cruzamento automático por nome falhou
+  // (ex: nome de fatura/banco completamente diferente do registado, como
+  // "Casimiro Marques" vs "António Fernandes Marques") e o administrador
+  // tem de escolher a fração à mão: assim que escolhe, verifica-se logo se
+  // o valor já está coberto por dois movimentos existentes dessa fração,
+  // em vez de deixar criar sempre um pagamento novo potencialmente
+  // duplicado. JANELA_DUPLICADO_MS replicado aqui (10 dias), mesmo valor
+  // usado em jaLancadoAntes.
+  const pagamentoJaCobertoPelaFracao = (idFracao: string, valor: number, data: string): boolean => {
+    const tData = new Date(data).getTime();
+    const janela = 10 * 24 * 60 * 60 * 1000;
+    const movsFracaoNaJanela = predioMovements.filter(mv => {
+      if (mv.tipo !== "Receita" || mv.id_fracao !== idFracao) return false;
+      const dm = new Date(mv.data).getTime();
+      return !isNaN(dm) && !isNaN(tData) && Math.abs(dm - tData) <= janela;
+    });
+    if (movsFracaoNaJanela.some(mv => Math.abs(mv.valor - valor) < 0.05)) return true;
+    for (let i = 0; i < movsFracaoNaJanela.length; i++) {
+      for (let j = i + 1; j < movsFracaoNaJanela.length; j++) {
+        if (Math.abs(movsFracaoNaJanela[i].valor + movsFracaoNaJanela[j].valor - valor) < 0.05) return true;
+      }
+    }
+    return false;
+  };
+
   // .docx é um ficheiro ZIP com XML lá dentro (word/document.xml) — a IA
   // multimodal não lê bem este formato como "documento" (não é PDF nem
   // imagem), por isso extrai-se o texto real aqui, tal como já acontece com
@@ -1143,6 +1170,30 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
           return !isNaN(dm) && !isNaN(tData) && Math.abs(dm - tData) <= JANELA_DUPLICADO_MS;
         });
         if (movDuplicado) return true;
+        // Terceiro teste: o próprio administrador por vezes lança um único
+        // pagamento real do condómino como DOIS movimentos separados (ex:
+        // quota do mês + recuperação de dívida de meses anteriores, ambos
+        // com a mesma data, resultado de uma só transferência) — nenhum
+        // movimento isolado bate certo com o valor total do extrato, por
+        // isso nunca era apanhado como duplicado pelo teste acima. Bug real
+        // confirmado em produção: Fração C 186,14€ = 12,76€ + 173,38€;
+        // Fração I 934,81€ = 247,13€ + 687,68€ — ambos já lançados, mas
+        // continuavam a aparecer "por lançar" ao reimportar o extrato. Só
+        // testa quando há mesmo uma fração candidata (mesmo que a
+        // confiança seja baixa) — sem nenhuma fração identificada, somar
+        // valores à toa dava demasiados falsos positivos.
+        if (tipoMov === "Receita" && idFracaoMatch) {
+          const movsFracaoNaJanela = predioMovements.filter(mv => {
+            if (mv.tipo !== tipoMov || mv.id_fracao !== idFracaoMatch) return false;
+            const dm = new Date(mv.data).getTime();
+            return !isNaN(dm) && Math.abs(dm - tData) <= JANELA_DUPLICADO_MS;
+          });
+          for (let i = 0; i < movsFracaoNaJanela.length; i++) {
+            for (let j = i + 1; j < movsFracaoNaJanela.length; j++) {
+              if (Math.abs(movsFracaoNaJanela[i].valor + movsFracaoNaJanela[j].valor - valorMov) < 0.05) return true;
+            }
+          }
+        }
         // Este segundo teste existe para apanhar pagamentos já lançados por
         // OUTRA via (ex: aviso marcado "Pago" manualmente, sem passar por
         // aqui) — mas tinha de ficar restrito à MESMA fração e a um
@@ -3024,7 +3075,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                   </button>
                 )}
               </div>
-              <p className={showMovimentosDetetadosModal ? "text-xs text-slate-600 mb-3" : "text-[11px] text-slate-600 mb-3"}>Receitas tentam cruzar-se com um condómino/fração; despesas com um fornecedor já registado (IBAN, referência de contrato/ADC ou nome). Movimentos já lançados por outra via não pedem aprovação. Se um movimento não for reconhecido automaticamente mas já o tiver lançado noutro sítio, use <i className="fa-solid fa-check text-emerald-600"></i> em vez de o remover. Valide antes de lançar:</p>
+              <p className={showMovimentosDetetadosModal ? "text-xs text-slate-600 mb-3" : "text-[11px] text-slate-600 mb-3"}>Receitas tentam cruzar-se com um condómino/fração; despesas com um fornecedor já registado (IBAN, referência de contrato/ADC ou nome). Movimentos já lançados por outra via não pedem aprovação. Se um movimento não for reconhecido automaticamente mas já o tiver lançado noutro sítio, use <i className="fa-solid fa-check text-emerald-600"></i> em vez de o remover. Se um movimento aparecer como "Já Lançado" por engano, use <i className="fa-solid fa-rotate-left text-amber-600"></i> para desmarcar e seguir o fluxo normal. Valide antes de lançar:</p>
 
               <div className={showMovimentosDetetadosModal ? "space-y-2.5 overflow-y-auto flex-1 pr-1 text-sm" : "space-y-2 overflow-y-auto max-h-[280px] pr-1"}>
                 {extractedItems.length === 0 ? (
@@ -3042,6 +3093,14 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                               <span className="text-[10px] font-bold px-1.5 rounded bg-slate-200 text-slate-600 flex items-center gap-1">
                                 <i className="fa-solid fa-check"></i> Já Lançado
                               </span>
+                              <button
+                                onClick={() => setExtractedItems(prev => prev.map((x, i) => i === index ? { ...x, jaLancado: false } : x))}
+                                title="Isto NÃO está lançado — desmarcar e seguir o fluxo normal (escolher fração/fornecedor e lançar)"
+                                aria-label="Desmarcar como já lançado"
+                                className="text-slate-600 hover:text-amber-600 cursor-pointer"
+                              >
+                                <i className="fa-solid fa-rotate-left"></i>
+                              </button>
                               <button onClick={() => descartarItemExtraido(index)} title="Remover da lista" className="text-slate-600 hover:text-red-500 cursor-pointer">
                                 <i className="fa-solid fa-xmark"></i>
                               </button>
@@ -3105,14 +3164,26 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                                   ? avisos.filter(a => a.id_fracao === novaFracao.id_fracao && a.estado === "Pendente" && avisoPertenceAContaExtrato(a)).sort((a, b) => (a.vencimento || a.data).localeCompare(b.vencimento || b.data))
                                   : [];
                                 const avisosPendentesNovos = selecionarAvisosCobertosPeloValor(avisosDaFracaoNova, item.valor).map(a => a.id_aviso);
-                                setExtractedItems(prev => prev.map((x, i) => i === index ? {
+                                // Depois de escolher a fração à mão (o cruzamento
+                                // automático por nome falhou), verifica logo se este valor já
+                                // está coberto por movimentos já lançados dessa fração — em
+                                // vez de deixar sempre avançar para "Aprovar" como se fosse
+                                // um pagamento novo. Bug real confirmado: pagamento já
+                                // lançado em 2 movimentos (quota + recuperação de dívida)
+                                // continuava a aparecer "por lançar" ao reimportar o extrato.
+                                const jaCoberto = novaFracao && pagamentoJaCobertoPelaFracao(novaFracao.id_fracao, item.valor, item.data);
+                                setExtractedItems(prev => prev.map((x, i) => i === index ? (jaCoberto ? {
+                                  ...x,
+                                  jaLancado: true,
+                                  descricao: `${x.descricao} — já coberto por movimento(s) existente(s) da Fração ${novaFracao!.fracao_nome}`
+                                } : {
                                   ...x,
                                   fracaoSugeridaId: novaFracao?.id_fracao || "",
                                   fracaoSugeridaNome: novaFracao?.fracao_nome || "?",
                                   confiancaFracao: 100,
                                   motivoCorrespondenciaFracao: "corrigido manualmente",
                                   avisosPendentesIds: avisosPendentesNovos
-                                } : x));
+                                }) : x));
                               }}
                               className="flex-1 border border-slate-300 rounded-lg px-1.5 py-1 text-[10px] focus:outline-emerald-500"
                             >
@@ -3357,7 +3428,14 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                                   ? avisos.filter(a => a.id_fracao === novaFracao.id_fracao && a.estado === "Pendente" && avisoPertenceAContaExtrato(a)).sort((a, b) => (a.vencimento || a.data).localeCompare(b.vencimento || b.data))
                                   : [];
                                 const avisosPendentesNovos = selecionarAvisosCobertosPeloValor(avisosDaFracaoNova, item.valor).map(a => a.id_aviso);
-                                setExtractedItems(prev => prev.map((x, i) => i === index ? {
+                                // Mesma verificação da "Fração errada? Corrige" acima — ver
+                                // comentário aí (pagamentoJaCobertoPelaFracao).
+                                const jaCoberto = novaFracao && pagamentoJaCobertoPelaFracao(novaFracao.id_fracao, item.valor, item.data);
+                                setExtractedItems(prev => prev.map((x, i) => i === index ? (jaCoberto ? {
+                                  ...x,
+                                  jaLancado: true,
+                                  descricao: `${x.descricao} — já coberto por movimento(s) existente(s) da Fração ${novaFracao!.fracao_nome}`
+                                } : {
                                   ...x,
                                   ehPagamentoCondomino: !!novaFracao,
                                   fracaoSugeridaId: novaFracao?.id_fracao || "",
@@ -3365,7 +3443,7 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                                   confiancaFracao: 100,
                                   motivoCorrespondenciaFracao: "corrigido manualmente",
                                   avisosPendentesIds: avisosPendentesNovos
-                                } : x));
+                                }) : x));
                               }}
                             >
                               <option value="">— Escolher fração —</option>

@@ -212,6 +212,52 @@ function contemPalavraInteira(texto: string, palavra: string): boolean {
   return new RegExp(`(^|\\s)${escapada}(\\s|$)`).test(texto);
 }
 
+// Conectores que os bancos quase sempre OMITEM das transferências ("de",
+// "da", "do"...) — nunca contam a favor nem contra a cobertura do nome.
+const CONECTORES_NOME = new Set(["de", "da", "do", "dos", "das", "e"]);
+
+/**
+ * Cobertura (0 a 1) do nome completo encontrada no descritivo bancário,
+ * palavra a palavra, SEM exigir que sejam contíguas desde o início (ao
+ * contrário de prefixoContiguoMaisLongo acima). Cobre dois padrões reais e
+ * muito comuns em nomes portugueses que o prefixo contíguo nunca apanha:
+ * 1) Conectores entre nomes omitidos pelo banco — "Nuno Filipe DA Veiga
+ *    Fernandes" chega como "NUNO FILIPE VEIGA FERNANDES" (sem "da"); o
+ *    prefixo contíguo para logo em "nuno filipe " e nunca mais avança.
+ * 2) Um nome do meio cortado/omitido pelo banco — "Pedro Miguel SOARES da
+ *    Cunha Almeida" chega como "PEDRO MIGUEL DA CUNHA ALME" (sem
+ *    "Soares", apelido truncado); o mesmo problema.
+ * Bug real confirmado em produção: ambos os casos acima deram confiança
+ * demasiado baixa (45, "valor idêntico, pode ser coincidência") para a
+ * fração certa, o que por sua vez deixava o cruzamento de duplicados
+ * (GestaoMovimentos.tsx, jaLancadoAntes) ignorar a fração ao procurar
+ * duplicados e confundir-se com um valor igual de OUTRA fração — um
+ * pagamento real passou a aparecer como "já lançado" sem nunca ter sido.
+ * Cada palavra do nome (exceto conectores) conta a favor se aparecer
+ * inteira no descritivo, OU se uma das duas for um prefixo da outra com
+ * pelo menos 4 carateres (apelido cortado pelo banco por limite de
+ * caracteres). Nunca compara substrings soltas a meio de outra palavra.
+ */
+function coberturaNomeNoDescritivo(normDesc: string, nomeCompleto: string): number {
+  const palavrasNome = nomeCompleto.split(" ").filter(Boolean);
+  const palavrasDesc = new Set(normDesc.split(" ").filter(Boolean));
+  let totalRelevante = 0;
+  let cobertos = 0;
+  for (const p of palavrasNome) {
+    if (CONECTORES_NOME.has(p)) continue;
+    totalRelevante += p.length;
+    let encontrada = false;
+    for (const pd of palavrasDesc) {
+      if (pd === p || (p.length >= 4 && pd.length >= 4 && (p.startsWith(pd) || pd.startsWith(p)))) {
+        encontrada = true;
+        break;
+      }
+    }
+    if (encontrada) cobertos += p.length;
+  }
+  return totalRelevante > 0 ? cobertos / totalRelevante : 0;
+}
+
 /**
  * Intelligent Matching Engine:
  * Cross-references raw bank transactions against pending condo notices (Avisos) and Fractions.
@@ -305,8 +351,14 @@ export function matchBankTransactions(
         // — o suficiente para cobrir nomes cortados pelo banco, mas nunca
         // um único nome próprio ou apelido comum partilhado por acaso com
         // outro proprietário.
-        const hasOwnerName = prefixosPorTitular.some(({ nome, prefixo }) => nome.length >= 6 && prefixo >= nome.length - 1);
-        const hasOwnerPartial = prefixosPorTitular.some(({ prefixo }) => prefixo >= 15);
+        // "Tokens" (coberturaNomeNoDescritivo, ver acima) é um segundo sinal
+        // independente do prefixo contíguo — cobre conectores e nomes do
+        // meio omitidos pelo banco, que o prefixo contíguo nunca apanha
+        // (ver comentário da função). Qualquer um dos dois critérios chega.
+        const hasOwnerName = prefixosPorTitular.some(({ nome, prefixo }) => nome.length >= 6 && prefixo >= nome.length - 1)
+          || titularesCandidatos.some(nome => nome.length >= 6 && coberturaNomeNoDescritivo(normDesc, nome) >= 0.72);
+        const hasOwnerPartial = prefixosPorTitular.some(({ prefixo }) => prefixo >= 15)
+          || titularesCandidatos.some(nome => coberturaNomeNoDescritivo(normDesc, nome) >= 0.5);
 
         // Referência individual da fração (ex: "BR23E-FR-K") — quando o
         // condómino a inclui no descritivo da transferência, é o sinal mais
