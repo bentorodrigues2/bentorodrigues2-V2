@@ -1063,6 +1063,20 @@ export interface Proposal {
   destino_obra?: "obra_extraordinaria" | "intervencao";
   usa_fundo_reserva?: boolean;
   id_obra_criada?: string;
+  // Contrato de adjudicação (documento assinado) anexado depois de
+  // aprovada — lido por IA (/api/ai?acao=reconhecer-contrato-adjudicacao)
+  // para confirmar se os termos assinados (valor, prazo, garantia) batem
+  // certo com os da proposta aprovada, ou alertar se houver divergência.
+  contrato_adjudicacao?: {
+    nome: string;
+    caminho: string;
+    data_upload: string;
+    empresa_extraida?: string;
+    valor_extraido?: number;
+    prazo_dias_extraido?: number;
+    garantia_anos_extraido?: number;
+    resumo_ia?: string;
+  };
 }
 
 // Voto de uma fração numa proposta publicada para votação — 1 linha por

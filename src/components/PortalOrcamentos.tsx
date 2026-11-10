@@ -9,6 +9,7 @@ import {
   savePropostaToSupabase,
   deletePropostaFromSupabase,
   uploadPropostaFicheiros,
+  uploadDocumentoToStorage,
   saveFornecedorToSupabase,
   saveObraExtraToSupabase,
   saveIntervencaoToSupabase,
@@ -586,6 +587,66 @@ export function PortalOrcamentos({
       registarLogAuditoria("Fornecedores", "Eliminou uma proposta do Portal de Orçamentos", predio.id_predio, loggedUser, `${p.nome_empresa} — ${p.valor.toFixed(2)}€`);
     } finally {
       setEliminandoPropostaId(null);
+    }
+  };
+
+  // Anexar o contrato de adjudicação (documento assinado) a uma proposta já
+  // aprovada — pedido explícito do administrador, com leitura por IA para
+  // confirmar se os termos assinados (valor, prazo, garantia) batem certo
+  // com os da proposta aprovada, em vez de assumir cegamente que são iguais.
+  const [aAnexarContratoId, setAAnexarContratoId] = useState<string | null>(null);
+  const handleAnexarContratoAdjudicacao = async (prop: Proposal, file: File) => {
+    setAAnexarContratoId(prop.id_proposal);
+    try {
+      const extensao = file.name.includes(".") ? file.name.split(".").pop() : "pdf";
+      const caminho = `propostas/${prop.id_rfp}/${prop.id_proposal}-contrato-adjudicacao-${Date.now()}.${extensao}`;
+      const url = await uploadDocumentoToStorage(file, caminho);
+      if (!url) {
+        alert("❌ Não foi possível carregar o contrato para o Storage. Tente novamente.");
+        return;
+      }
+
+      let dadosIA: { empresa_nome?: string; valor?: number; prazo_dias?: number; garantia_anos?: number; resumo?: string } = {};
+      try {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const resp = await fetch("/api/ai?acao=reconhecer-contrato-adjudicacao", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ base64, mimeType: file.type || "application/pdf" })
+        });
+        const resultado = await resp.json();
+        if (resp.ok && resultado.ok) dadosIA = resultado.dados || {};
+      } catch (errIA) {
+        console.warn("[PortalOrcamentos] Aviso: IA não conseguiu ler o contrato, fica anexado sem confirmação automática:", errIA);
+      }
+
+      const propostaAtualizada: Proposal = {
+        ...prop,
+        contrato_adjudicacao: {
+          nome: file.name,
+          caminho: url,
+          data_upload: new Date().toISOString().slice(0, 10),
+          empresa_extraida: dadosIA.empresa_nome || undefined,
+          valor_extraido: dadosIA.valor || undefined,
+          prazo_dias_extraido: dadosIA.prazo_dias || undefined,
+          garantia_anos_extraido: dadosIA.garantia_anos || undefined,
+          resumo_ia: dadosIA.resumo || undefined
+        }
+      };
+      const ok = await savePropostaToSupabase(propostaAtualizada);
+      if (!ok) {
+        alert("❌ Não foi possível gravar o contrato no Supabase. Tente novamente.");
+        return;
+      }
+      setProposals(prev => prev.map(x => x.id_proposal === prop.id_proposal ? propostaAtualizada : x));
+      registarLogAuditoria("Fornecedores", "Anexou o contrato de adjudicação a uma proposta aprovada", predio.id_predio, loggedUser, `${prop.nome_empresa} — ${file.name}`);
+    } finally {
+      setAAnexarContratoId(null);
     }
   };
 
@@ -1561,6 +1622,77 @@ export function PortalOrcamentos({
                               Adjudicada para {prop.destino_obra === "intervencao" ? "Intervenção (Reparação)" : "Obra Extraordinária"}
                               {prop.usa_fundo_reserva ? " — paga pelo Fundo de Reserva" : ""}
                             </span>
+                          </div>
+                        )}
+
+                        {estadoProp === "Aprovada" && loggedUser.role === "ADMIN" && (
+                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
+                            <p className="text-[9px] font-bold text-slate-600 uppercase tracking-wider">Contrato de Adjudicação</p>
+                            {prop.contrato_adjudicacao ? (
+                              <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 space-y-1 text-[10px]">
+                                <p>
+                                  <span
+                                    className="text-emerald-600 hover:underline cursor-pointer"
+                                    onClick={async () => {
+                                      const resp = await fetch("/api/pdf?acao=descarregar", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ caminho: prop.contrato_adjudicacao!.caminho })
+                                      });
+                                      const resultado = await resp.json();
+                                      if (resultado?.url) window.open(resultado.url, "_blank");
+                                      else alert("❌ Não foi possível abrir o documento.");
+                                    }}
+                                  >
+                                    <Paperclip size={10} className="inline mr-0.5" />{prop.contrato_adjudicacao.nome}
+                                  </span>
+                                  <span className="text-slate-600"> — anexado em {prop.contrato_adjudicacao.data_upload}</span>
+                                </p>
+                                {(() => {
+                                  const c = prop.contrato_adjudicacao!;
+                                  const leuAlgo = c.valor_extraido || c.prazo_dias_extraido || c.garantia_anos_extraido;
+                                  if (!leuAlgo) {
+                                    return <p className="text-amber-700 dark:text-amber-400">⚠️ A IA não conseguiu confirmar os termos deste contrato — confirme manualmente.</p>;
+                                  }
+                                  const divergeValor = c.valor_extraido && Math.abs(c.valor_extraido - prop.valor) > 0.5;
+                                  const divergePrazo = c.prazo_dias_extraido && c.prazo_dias_extraido !== prop.prazo_dias;
+                                  const divergeGarantia = c.garantia_anos_extraido && c.garantia_anos_extraido !== prop.garantia_anos;
+                                  const diverge = divergeValor || divergePrazo || divergeGarantia;
+                                  return (
+                                    <div className={`rounded px-1.5 py-1 ${diverge ? "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300" : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300"}`}>
+                                      <p className="font-bold flex items-center gap-1">
+                                        {diverge ? <BadgeAlert size={11} /> : <CheckCircle2 size={11} />}
+                                        {diverge ? "IA detetou divergência(s) com a proposta aprovada:" : "✓ Confirmado pela IA — os termos do contrato coincidem com a proposta aprovada."}
+                                      </p>
+                                      {diverge && (
+                                        <ul className="list-disc list-inside mt-0.5 space-y-0.5">
+                                          {divergeValor && <li>Valor no contrato: <strong>{c.valor_extraido!.toLocaleString("pt-PT")} €</strong> (proposta: {prop.valor.toLocaleString("pt-PT")} €)</li>}
+                                          {divergePrazo && <li>Prazo no contrato: <strong>{c.prazo_dias_extraido} dias</strong> (proposta: {prop.prazo_dias} dias)</li>}
+                                          {divergeGarantia && <li>Garantia no contrato: <strong>{c.garantia_anos_extraido} anos</strong> (proposta: {prop.garantia_anos} anos)</li>}
+                                        </ul>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            ) : (
+                              <p className="text-[10px] text-slate-600">Ainda sem contrato anexado.</p>
+                            )}
+                            <label className={`text-[10px] font-bold text-violet-700 hover:text-violet-900 cursor-pointer inline-flex items-center gap-1 ${aAnexarContratoId === prop.id_proposal ? "opacity-50 pointer-events-none" : ""}`}>
+                              {aAnexarContratoId === prop.id_proposal ? <Loader2 size={11} className="animate-spin" /> : <Paperclip size={11} />}
+                              <span>{aAnexarContratoId === prop.id_proposal ? "A ler contrato com IA..." : prop.contrato_adjudicacao ? "Substituir contrato anexado" : "Anexar Contrato de Adjudicação (com confirmação de IA)"}</span>
+                              <input
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                className="hidden"
+                                disabled={aAnexarContratoId === prop.id_proposal}
+                                onChange={e => {
+                                  const file = e.target.files?.[0];
+                                  e.target.value = "";
+                                  if (file) handleAnexarContratoAdjudicacao(prop, file);
+                                }}
+                              />
+                            </label>
                           </div>
                         )}
 

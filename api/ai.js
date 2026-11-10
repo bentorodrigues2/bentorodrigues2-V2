@@ -779,6 +779,63 @@ Se algum campo não constar mesmo no documento, usa null nesse campo. Nunca inve
     }
   }
 
+  // 9.6a. RECONHECER CONTRATO DE ADJUDICAÇÃO POR IA MULTIMODAL
+  // (?acao=reconhecer-contrato-adjudicacao)
+  // Usado por PortalOrcamentos.tsx ao anexar o contrato assinado a uma
+  // proposta já aprovada/adjudicada — lê o documento real e devolve os
+  // termos assinados, para o cliente poder confirmar se batem certo com os
+  // da proposta aprovada (valor, prazo, garantia) ou alertar divergências,
+  // em vez de confiar cegamente que o contrato assinado é igual à proposta.
+  if (acao === "reconhecer-contrato-adjudicacao") {
+    if (req.method === "GET") {
+      return res.status(200).json({ status: "online", endpoint: "/api/ai?acao=reconhecer-contrato-adjudicacao" });
+    }
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
+
+    try {
+      const { base64, mimeType } = req.body || {};
+      if (!base64 || !mimeType) {
+        return res.status(400).json({ error: "base64 e mimeType são obrigatórios" });
+      }
+
+      const prompt = `És um sistema de OCR e extração documental de contratos de adjudicação de obras/serviços de condomínio em Portugal.
+Analisa o documento em anexo (o contrato real assinado) e extrai os dados reais nele contidos.
+Devolve APENAS JSON estrito com as chaves:
+{
+  "empresa_nome": "Nome real da empresa/empreiteiro adjudicado indicado no contrato",
+  "valor": 0,
+  "prazo_dias": 0,
+  "garantia_anos": 0,
+  "resumo": "Breve resumo real do que consta no contrato (objeto, partes, data de assinatura)"
+}
+"valor" é o valor total contratado em euros (só o número, sem símbolo). "prazo_dias" é o prazo de execução em dias (converte semanas/meses para dias se for esse o formato usado no contrato). "garantia_anos" é o período de garantia da obra em anos (converte meses para anos, ex: 36 meses = 3).
+Se algum campo não constar no documento, usa null nesse campo. Nunca inventes valores que não constem no documento.`;
+
+      const rawResponse = await generateWithFallback({
+        contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType, data: base64 } }] }],
+        responseMimeType: "application/json"
+      });
+
+      let dados = null;
+      try {
+        dados = JSON.parse(rawResponse);
+      } catch {
+        const match = rawResponse.match(/\{[\s\S]*\}/);
+        if (match) dados = JSON.parse(match[0]);
+      }
+
+      if (!dados) {
+        return res.status(502).json({ error: "A IA não conseguiu extrair dados deste contrato." });
+      }
+      return res.status(200).json({ ok: true, dados });
+    } catch (err) {
+      console.error("[api/ai?acao=reconhecer-contrato-adjudicacao] Erro:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao reconhecer o contrato." });
+    }
+  }
+
   // 9.6b. TRANSCREVER NOTA DE VOZ (?acao=transcrever-audio)
   // Pedido explícito do administrador — plataforma inclusiva: uma nota de
   // voz enviada no chat (admin<->condómino, GestaoComunicacoes.tsx,
@@ -1207,6 +1264,7 @@ Devolve apenas o texto do corpo da carta (saudação + parágrafos + despedida),
         "reconhecer-apolice",
         "reconhecer-proposta",
         "reconhecer-contrato",
+        "reconhecer-contrato-adjudicacao",
         "humanize-convocatoria",
         "validar-regulamento",
         "redigir-carta"
@@ -1215,6 +1273,6 @@ Devolve apenas o texto do corpo da carta (saudação + parágrafos + despedida),
   }
 
   return res.status(400).json({
-    error: "Ação não especificada ou inválida. Use ?acao=chat|generate-legal-notice|ai-query|predict-budget|predict-reserve-fund|compare-proposals|generate-minutes|parse-import|reconhecer-recibo|classificar-documento|reconhecer-anexo|extrair-movimentos-historicos|reconhecer-apolice|transcrever-audio|reconhecer-proposta|humanize-convocatoria|validar-regulamento|redigir-carta"
+    error: "Ação não especificada ou inválida. Use ?acao=chat|generate-legal-notice|ai-query|predict-budget|predict-reserve-fund|compare-proposals|generate-minutes|parse-import|reconhecer-recibo|classificar-documento|reconhecer-anexo|extrair-movimentos-historicos|reconhecer-apolice|transcrever-audio|reconhecer-proposta|reconhecer-contrato|reconhecer-contrato-adjudicacao|humanize-convocatoria|validar-regulamento|redigir-carta"
   });
 }

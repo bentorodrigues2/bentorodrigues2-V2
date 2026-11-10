@@ -3192,7 +3192,8 @@ export async function fetchPropostasFromSupabase(idRfp: string): Promise<any[] |
     motivo_rejeicao: row.motivo_rejeicao || undefined,
     destino_obra: row.destino_obra || undefined,
     usa_fundo_reserva: row.usa_fundo_reserva ?? undefined,
-    id_obra_criada: row.id_obra_criada || undefined
+    id_obra_criada: row.id_obra_criada || undefined,
+    contrato_adjudicacao: row.contrato_adjudicacao || undefined
   }));
 }
 
@@ -3202,6 +3203,10 @@ export async function savePropostaToSupabase(proposta: {
   ficheiro_nome: string; ficheiro_caminho?: string; data_submissao: string;
   anexos?: { nome: string; caminho: string }[];
   estado?: string; motivo_rejeicao?: string; destino_obra?: string; usa_fundo_reserva?: boolean; id_obra_criada?: string;
+  contrato_adjudicacao?: {
+    nome: string; caminho: string; data_upload: string;
+    empresa_extraida?: string; valor_extraido?: number; prazo_dias_extraido?: number; garantia_anos_extraido?: number; resumo_ia?: string;
+  };
 }): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
   return dbUpsert("propostas", {
@@ -3223,7 +3228,8 @@ export async function savePropostaToSupabase(proposta: {
     motivo_rejeicao: proposta.motivo_rejeicao || null,
     destino_obra: proposta.destino_obra || null,
     usa_fundo_reserva: proposta.usa_fundo_reserva ?? null,
-    id_obra_criada: proposta.id_obra_criada || null
+    id_obra_criada: proposta.id_obra_criada || null,
+    contrato_adjudicacao: proposta.contrato_adjudicacao || null
   });
 }
 
