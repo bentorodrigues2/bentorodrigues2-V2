@@ -698,6 +698,50 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
     reader.readAsDataURL(file);
   };
 
+  // Anexar SÓ o documento a um Movimento Cego sem fatura, sem o marcar como
+  // pago — distinto de "Regularizar"/handleJustificationFileChange, que
+  // confirma logo o pagamento (marca "Justificado" e ajusta o saldo real da
+  // conta). Nem todo o documento é prova de pagamento: uma fatura/contrato
+  // de um fornecedor (ex. proposta de obra adjudicada) só prova que a
+  // dívida é real, não que já foi paga — continua "Movimento Cego / Por
+  // Justificar" (mostrado como "Aguarda Pagamento", tal como a NOWO ou a
+  // Iberdrola, cujo anexo chega assim mesmo por email) até o pagamento real
+  // acontecer de facto em Fornecedores. Bug real confirmado em produção:
+  // uma obra adjudicada pelo Portal de Orçamentos, sem via nenhuma para
+  // anexar o documento sem confirmar logo o pagamento, só tinha
+  // "Regularizar" disponível — ia marcar como paga uma dívida que ainda
+  // estava só a aguardar pagamento.
+  const [aAnexarApenasId, setAAnexarApenasId] = useState<string | null>(null);
+  const handleAnexarApenasComprovativo = async (e: React.ChangeEvent<HTMLInputElement>, movId: string) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const mov = predioMovements.find(m => m.id_mov === movId);
+    if (!mov) return;
+    setAAnexarApenasId(movId);
+    try {
+      const ano = (mov.data || new Date().toISOString()).slice(0, 4);
+      const caminhoStorage = `${ano}/Fornecedores/${predio.id_predio}/${Date.now()}-${file.name}`;
+      const urlReal = await uploadDocumentoToStorage(file, caminhoStorage);
+      if (!urlReal) {
+        alert("❌ Não foi possível carregar o ficheiro para o Storage. Tente novamente.");
+        return;
+      }
+      const movimentoAtualizado: Movimento = { ...mov, comprovativo_url: urlReal };
+      const ok = await saveMovimentoToSupabase(movimentoAtualizado);
+      if (!ok) {
+        alert("❌ Não foi possível gravar o documento no Supabase. Tente novamente.");
+        return;
+      }
+      setMovements(prev => prev.map(m => m.id_mov === movId ? movimentoAtualizado : m));
+      registarLogAuditoria("Financeira", "Anexou o documento/fatura a um Movimento Cego, sem confirmar o pagamento", predio.id_predio, loggedUser, mov.descricao);
+      setJustifyingMovId(null);
+      alert("✅ Documento anexado — continua \"Aguarda Pagamento\" até o pagamento real acontecer.");
+    } finally {
+      setAAnexarApenasId(null);
+    }
+  };
+
   // Lançamento Manual / Cego
   const lancarMovimento = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2124,8 +2168,25 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
                         <label
                           htmlFor={`input-justificar-${m.id_mov}`}
                           className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded text-[10px] font-bold cursor-pointer transition-colors"
+                          title="Confirma que o dinheiro já saiu de facto da conta — ajusta o saldo real"
                         >
-                          <i className="fa-solid fa-cloud-arrow-up mr-1"></i> Carregar
+                          <i className="fa-solid fa-cloud-arrow-up mr-1"></i> Já Foi Pago — Carregar
+                        </label>
+                        <input
+                          type="file"
+                          accept="image/*,.pdf,application/pdf"
+                          onChange={(e) => handleAnexarApenasComprovativo(e, m.id_mov)}
+                          className="hidden"
+                          id={`input-anexar-apenas-${m.id_mov}`}
+                          disabled={aAnexarApenasId === m.id_mov}
+                        />
+                        <label
+                          htmlFor={`input-anexar-apenas-${m.id_mov}`}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded text-[10px] font-bold cursor-pointer transition-colors"
+                          title="Anexa só o documento (fatura/contrato) — mantém-se 'Aguarda Pagamento', como a NOWO/Iberdrola, até o pagamento real acontecer"
+                        >
+                          {aAnexarApenasId === m.id_mov ? <i className="fa-solid fa-spinner animate-spin mr-1"></i> : <i className="fa-solid fa-paperclip mr-1"></i>}
+                          Só Anexar (Aguarda Pagamento)
                         </label>
                         <button
                           onClick={() => setJustifyingMovId(null)}
