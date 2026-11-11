@@ -245,8 +245,9 @@ export function SecurityAuditModal({
             </div>
 
             {docLogs.length === 0 ? (
-              <div className="text-center py-8 text-slate-600 text-xs">
-                Sem registos de acesso a documentos gravados.
+              <div className="text-center py-8 text-slate-600 text-xs space-y-1">
+                <p>Ainda não iniciou sessão nesta aplicação — por isso não há nenhum acesso a documentos para mostrar aqui.</p>
+                <p className="text-[10px] text-slate-700">Depois de autenticado, cada download, envio ou leitura por OCR de um documento fica registado de forma permanente e inalterável na base de dados (tabela auditoria_plataforma, só leitura/inserção).</p>
               </div>
             ) : (
               docLogs.map((log) => (

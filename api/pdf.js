@@ -2,6 +2,7 @@ import { gerarDocumentoPDF, guardarNoArquivo, registarDocumento, enviarEmailPDF,
 import { supabase } from "../server/lib/supabaseServer.js";
 import { exigirSessaoValida } from "../server/lib/verificarSessao.js";
 import { arquivarAnexoOriginal } from "../server/lib/multimodalService.js";
+import { registarAcessoDocumento } from "../server/lib/documentAccessLog.js";
 import {
   generateCondominoPwaManualPDF,
   gerarPdfRegistoFornecedorHomologado,
@@ -330,7 +331,7 @@ async function handleAcaoDocumento(req, res, acao) {
     const body = req.body || {};
 
     if (acao === "descarregar") {
-      const { caminho } = body;
+      const { caminho, idPredio } = body;
       if (!caminho) {
         return res.status(400).json({ error: "caminho é obrigatório" });
       }
@@ -340,6 +341,7 @@ async function handleAcaoDocumento(req, res, acao) {
         return res.status(404).json({ error: error?.message || "Documento não encontrado no arquivo" });
       }
 
+      registarAcessoDocumento(supabase, { email: utilizador.email, acao: "DESCARREGAR", caminho, idPredio }).catch(() => {});
       return res.status(200).json({ ok: true, url: data.signedUrl });
     }
 
@@ -362,6 +364,7 @@ async function handleAcaoDocumento(req, res, acao) {
           : null
       });
 
+      registarAcessoDocumento(supabase, { email: utilizador.email, acao: "ENVIAR_EMAIL", caminho, idPredio, detalhes: `Para: ${email}` }).catch(() => {});
       return res.status(200).json({ ok: true, email_enviado: true });
     }
 

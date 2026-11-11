@@ -4,6 +4,8 @@ import {
 } from "../server/geminiService.js";
 import { extrairDadosDocumento, extrairMovimentosExtrato } from "../server/lib/multimodalService.js";
 import { exigirSessaoValida } from "../server/lib/verificarSessao.js";
+import { supabase } from "../server/lib/supabaseServer.js";
+import { registarAcessoDocumento } from "../server/lib/documentAccessLog.js";
 
 export default async function handler(req, res) {
   const acao = req.query?.acao || req.body?.acao;
@@ -11,9 +13,23 @@ export default async function handler(req, res) {
   // Todas as ações reais deste endpoint (chamadas ao Gemini, com custo real)
   // exigem sessão válida — os GETs de "status: online" de cada ação
   // continuam públicos (não fazem nenhum trabalho real).
+  let utilizadorAutenticado = null;
   if (req.method === "POST") {
-    const utilizador = await exigirSessaoValida(req, res);
-    if (!utilizador) return;
+    utilizadorAutenticado = await exigirSessaoValida(req, res);
+    if (!utilizadorAutenticado) return;
+  }
+
+  // Registo RGPD de leitura por OCR (ver server/lib/documentAccessLog.js) —
+  // só para as ações que leem mesmo um documento real do utilizador
+  // (reconhecer-*), nunca para chat/geração de texto, que não leem nenhum
+  // documento anexado.
+  const AÇÕES_OCR_A_REGISTAR = new Set([
+    "reconhecer-recibo", "reconhecer-anexo", "reconhecer-apolice",
+    "reconhecer-proposta", "reconhecer-contrato", "reconhecer-contrato-adjudicacao",
+    "classificar-documento"
+  ]);
+  if (utilizadorAutenticado && AÇÕES_OCR_A_REGISTAR.has(acao)) {
+    registarAcessoDocumento(supabase, { email: utilizadorAutenticado.email, acao: `OCR:${acao}`, caminho: "(documento anexado pelo utilizador)" }).catch(() => {});
   }
 
   // 1. CHAT COM IA (/api/ai-assistant/chat -> ?acao=chat)
