@@ -766,8 +766,24 @@ export function PortalOrcamentos({
     }
     setRfps(prev => prev.map(r => r.id_rfp === proposal.id_rfp ? rfpAtualizado : r));
 
-    // 2. Auto-register supplier as active Fornecedor in the system
-    const fornecedorExistente = fornecedores.find(f => f.nif === proposal.nif && f.id_predio === predio.id_predio);
+    // 2. Auto-register supplier as active Fornecedor in the system.
+    // Bug real confirmado em produção: fornecedores sem NIF conhecido
+    // ficam todos gravados com o mesmo valor-placeholder "NA" (ex.: a
+    // proposta da ISQ, submetida sem NIF, tinha nif: "NA" — igual ao de
+    // "SU Eletricidade", um fornecedor completamente diferente já
+    // registado). Comparar só por NIF fazia esta adjudicação "encontrar"
+    // esse fornecedor errado como se já existisse, nunca criava o
+    // fornecedor novo (a ISQ nunca aparecia em Parceiros Registados) e
+    // ligava a dívida/obra ao fornecedor errado. Só confia no NIF quando é
+    // mesmo um NIF português válido (9 dígitos); caso contrário, cai para
+    // corresponder pelo nome exato da empresa.
+    const nifPareceValido = (nif?: string) => /^\d{9}$/.test((nif || "").replace(/\s/g, ""));
+    const fornecedorExistente = fornecedores.find(f =>
+      f.id_predio === predio.id_predio && (
+        (nifPareceValido(proposal.nif) && f.nif === proposal.nif) ||
+        f.nome.trim().toLowerCase() === proposal.nome_empresa.trim().toLowerCase()
+      )
+    );
     let idFornecedor = fornecedorExistente?.id_fornecedor;
     if (!fornecedorExistente) {
       idFornecedor = "forn-auto-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
