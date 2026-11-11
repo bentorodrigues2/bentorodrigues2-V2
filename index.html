@@ -49,6 +49,35 @@
     <meta property="og:description" content="Plataforma de gestão de condomínios com automatização de AI. Powered by CondoManager AI." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      // Google Search Console reportou "Página duplicada sem versão
+      // canónica" — este projeto Vercel serve o MESMO ecrã de login para
+      // vários domínios (www.condomanagerai.com e cada subdomínio de
+      // cliente, ex. bentorodrigues2.condomanagerai.com), todos com HTML
+      // idêntico, sem nenhuma tag canonical nem robots a indicar qual é a
+      // página "oficial" a indexar. Como é tudo um único ficheiro estático
+      // (sem servidor a variar por domínio), resolve-se aqui em runtime:
+      // só o domínio principal (a futura página pública de marketing) deve
+      // ser indexado; cada subdomínio de cliente é uma aplicação privada de
+      // login de um condomínio específico, sem valor nenhum para SEO —
+      // fica sempre "noindex", nunca a competir com o domínio principal.
+      (function () {
+        var host = window.location.hostname;
+        var ehDominioPrincipal = host === "www.condomanagerai.com" || host === "condomanagerai.com";
+        var head = document.head;
+        if (ehDominioPrincipal) {
+          var canonical = document.createElement("link");
+          canonical.rel = "canonical";
+          canonical.href = "https://www.condomanagerai.com/";
+          head.appendChild(canonical);
+        } else {
+          var robots = document.createElement("meta");
+          robots.name = "robots";
+          robots.content = "noindex, nofollow";
+          head.appendChild(robots);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
