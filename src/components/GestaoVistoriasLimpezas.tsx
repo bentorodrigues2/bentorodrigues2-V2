@@ -2540,42 +2540,6 @@ export function GestaoVistoriasLimpezas({ predio, loggedUser, activeSubSection, 
                 </div>
               </div>
 
-              {/* Tablet Footer: QR Code and instructions */}
-              <div className="border-t border-slate-800 pt-4 flex justify-between items-center bg-slate-950">
-                <div className="flex items-center space-x-3">
-                  {/* Digital QR Code Placeholder styled with extreme polish */}
-                  <div className="h-14 w-14 bg-white p-1 rounded-lg shrink-0 flex items-center justify-center">
-                    <svg viewBox="0 0 100 100" className="w-full h-full text-slate-900 fill-current">
-                      <rect x="0" y="0" width="25" height="25" />
-                      <rect x="5" y="5" width="15" height="15" fill="white" />
-                      <rect x="75" y="0" width="25" height="25" />
-                      <rect x="80" y="5" width="15" height="15" fill="white" />
-                      <rect x="0" y="75" width="25" height="25" />
-                      <rect x="5" y="80" width="15" height="15" fill="white" />
-                      {/* Random QR noise */}
-                      <rect x="35" y="10" width="10" height="10" />
-                      <rect x="50" y="20" width="10" height="15" />
-                      <rect x="30" y="45" width="15" height="10" />
-                      <rect x="55" y="45" width="10" height="20" />
-                      <rect x="40" y="75" width="15" height="15" />
-                      <rect x="65" y="75" width="5" height="10" />
-                      <rect x="85" y="40" width="10" height="10" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h5 className="text-[11px] font-black text-white">Quadro de Avisos Sem Papel</h5>
-                    <p className="text-[9px] text-slate-600 leading-relaxed max-w-xs">
-                      Este painel digital de condomínio substitui os antigos papéis afixados na entrada do prédio. Aponte a câmara do telemóvel para auditar todo o histórico e reportar falhas.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <span className="text-[8px] uppercase font-bold text-slate-600 block">Certificado por</span>
-                  <span className="text-[10px] font-black text-emerald-400">CondoManager AI PWA</span>
-                </div>
-              </div>
-
             </div>
           </div>
           

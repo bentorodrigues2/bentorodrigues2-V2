@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Predio, Fracao, Fornecedor, LoggedUser, Conta, DividaFornecedor, RequestForProposal, Proposal, VotoProposta } from "../types";
+import { Predio, Fracao, Fornecedor, LoggedUser, Conta, DividaFornecedor, Movimento, RequestForProposal, Proposal, VotoProposta } from "../types";
 import { Loader2, ShieldCheck, BadgeAlert, Sparkles, Building, Coins, Calendar, Plus, ExternalLink, ThumbsUp, Table, FileText, CheckCircle2, XCircle, Paperclip, HardHat, Wrench, PiggyBank, Pencil, Trash2, X, Archive, FlagTriangleRight } from "lucide-react";
 import {
   fetchRfpsFromSupabase,
@@ -14,6 +14,7 @@ import {
   saveObraExtraToSupabase,
   saveIntervencaoToSupabase,
   saveDividaFornecedorToSupabase,
+  saveMovimentoToSupabase,
   registarLogAuditoria,
   fetchVotosPropostaFromSupabase,
   saveVotoPropostaToSupabase
@@ -871,13 +872,37 @@ export function PortalOrcamentos({
         id_conta_pagamento: contaObrasDefault?.id_conta
       };
 
-      const [okObra, okDivida] = await Promise.all([
+      // Movimento Cego / Por Justificar para a conta — mesmo padrão já
+      // usado para faturas recebidas por email (server/lib/
+      // inboundProcessor.js): sem isto, uma obra adjudicada pelo Portal de
+      // Orçamentos só aparecia em Dívidas a Fornecedores, nunca em
+      // Movimentos & Tesouraria "Aguarda Pagamento" como os restantes
+      // fornecedores — pedido explícito do administrador para ficar
+      // consistente. Nunca ajusta o saldo da conta sozinho (só quando a
+      // dívida for paga de facto em Fornecedores), tal como as faturas de
+      // email.
+      const novoMovimentoCego: Movimento = {
+        id_mov: "mov-cego-" + idDivida,
+        id_predio: predio.id_predio,
+        id_conta: contaObrasDefault?.id_conta || "",
+        data: hoje,
+        tipo: "Despesa",
+        valor: proposal.valor,
+        descricao: `${proposal.nome_empresa} — Obra Extraordinária: ${rfpAlvo.titulo} (via Portal de Orçamentos)`,
+        categoria: "Obras",
+        id_fornecedor: idFornecedor !== "forn-custom" ? idFornecedor : undefined,
+        estado: "Movimento Cego / Por Justificar",
+        is_movimento_cego: true
+      };
+
+      const [okObra, okDivida, okMovimento] = await Promise.all([
         saveObraExtraToSupabase(predio.id_predio, novaObra),
-        saveDividaFornecedorToSupabase(novaDivida)
+        saveDividaFornecedorToSupabase(novaDivida),
+        saveMovimentoToSupabase(novoMovimentoCego)
       ]);
-      if (!okObra || !okDivida) {
+      if (!okObra || !okDivida || !okMovimento) {
         setAdjudicando(false);
-        alert("⚠️ Fornecedor registado e concurso adjudicado, mas houve um erro a criar a Obra Extraordinária e/ou a dívida ao fornecedor. Tente novamente — se persistir, avisa a administração.");
+        alert("⚠️ Fornecedor registado e concurso adjudicado, mas houve um erro a criar a Obra Extraordinária, a dívida ao fornecedor e/ou o movimento pendente. Tente novamente — se persistir, avisa a administração.");
         return;
       }
     } else {
