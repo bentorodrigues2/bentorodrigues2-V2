@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { jsPDF } from "jspdf";
-import { Predio, Documento, LoggedUser, DocumentoVersao } from "../types";
+import { Predio, Documento, LoggedUser, DocumentoVersao, Fracao } from "../types";
 import { formatDatePT, downloadBlob, addPdfHeaderWithLogo, downloadReceiptPDF, downloadNotaCobrancaPDF } from "../utils";
 import { getIllustratedManualHtml } from "../utils/manualIllustratedTemplates";
 import { triggerSendReaction } from "./SendingReactionModal";
@@ -63,6 +63,7 @@ interface GestaoDocumentosProps {
   // (fracao_nome) — por isso compara-se contra ambos.
   fracaoDoCondomino?: string;
   fracaoNomeDoCondomino?: string;
+  fracoes?: Fracao[];
 }
 
 export function GestaoDocumentos({
@@ -72,8 +73,25 @@ export function GestaoDocumentos({
   loggedUser,
   setDocumentos,
   fracaoDoCondomino,
-  fracaoNomeDoCondomino
+  fracaoNomeDoCondomino,
+  fracoes = []
 }: GestaoDocumentosProps) {
+  // Nome da pasta de fração de um Recibo/Nota de Cobrança para agrupar no
+  // Arquivo: "sub_pasta" é o campo correto, mas 303 documentos antigos
+  // (anteriores à correção de 23-10-2026 nos fluxos que os emitem) nunca o
+  // tiveram preenchido, apesar de já terem sempre "Documento.fracao" (o
+  // id_fracao, às vezes já a própria letra) certo — ficavam presos em "Sem
+  // Fração Identificada" apesar de a fração estar sempre lá, só no campo
+  // errado. Resolve sempre por "fracao" como reserva, para nunca mais
+  // acontecer isto mesmo que um fluxo futuro volte a esquecer "sub_pasta".
+  const resolverPastaFracaoDoc = (d: Documento): string => {
+    if (d.sub_pasta) return d.sub_pasta;
+    if (d.fracao) {
+      const porId = fracoes.find(f => f.id_fracao === d.fracao);
+      return porId ? porId.fracao_nome : d.fracao;
+    }
+    return "Sem Fração Identificada";
+  };
   // Main view mode tab: "documentos" or "fotografias" or "enciclopedia"
   const [activeTab, setActiveTab] = useState<"documentos" | "fotografias" | "enciclopedia">("documentos");
 
@@ -1928,11 +1946,11 @@ export function GestaoDocumentos({
       // ver guardarNoArquivo/registarDocumento em confirmar-pagamento.js,
       // dividir-pagamento-meses.js e cronService.js).
       const matchesFracaoPasta = !selectedFracaoPasta || selectedFolder !== "Recibos e Quotas" ||
-        (d.sub_pasta || "Sem Fração Identificada") === selectedFracaoPasta;
+        resolverPastaFracaoDoc(d) === selectedFracaoPasta;
 
       return matchesSearch && matchesAno && matchesTema && matchesVis && matchesFornecedor && matchesFolder && matchesSubFolder && matchesFracaoPasta;
     });
-  }, [docsDoTipo, busca, filtroAno, filtroTema, filtroFornecedor, filtroVisibilidade, selectedFolder, selectedSubPasta, selectedFracaoPasta]);
+  }, [docsDoTipo, busca, filtroAno, filtroTema, filtroFornecedor, filtroVisibilidade, selectedFolder, selectedSubPasta, selectedFracaoPasta, fracoes]);
 
   // Check if any filters are active
   const hasActiveFilters = busca !== "" || filtroAno !== "Todos" || filtroTema !== "Todos" || filtroFornecedor !== "Todos" || filtroVisibilidade !== "Todos" || selectedFolder !== null || selectedSubPasta !== null || selectedFracaoPasta !== null;
@@ -2636,7 +2654,7 @@ export function GestaoDocumentos({
                       d.tipo === selectedSubPasta &&
                       (filtroAno === "Todos" || d.ano === filtroAno)
                     )
-                    .map(d => d.sub_pasta || "Sem Fração Identificada")
+                    .map(d => resolverPastaFracaoDoc(d))
                 )).sort((a, b) => a.localeCompare(b, "pt-PT"));
 
                 return (
@@ -2656,7 +2674,7 @@ export function GestaoDocumentos({
                           (d.categoria === "Pasta Paga. Quotas" || d.tema === "Pasta Paga. Quotas" || d.sub_pasta === "Recibos e Quotas" || ["Recibo", "Nota de Cobrança"].includes(d.tipo || "")) &&
                           d.tipo === selectedSubPasta &&
                           (filtroAno === "Todos" || d.ano === filtroAno) &&
-                          (d.sub_pasta || "Sem Fração Identificada") === fracaoNome
+                          resolverPastaFracaoDoc(d) === fracaoNome
                         ).length;
 
                         return (

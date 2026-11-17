@@ -3073,12 +3073,13 @@ export default function App() {
           )}
 
           {(activeSection === "documentos" || activeSection === "arquivo" || activeSection === "manutencao_arquivo") && (
-            <GestaoDocumentos 
-              predio={predioAtivo} 
-              documentos={documentos} 
+            <GestaoDocumentos
+              predio={predioAtivo}
+              documentos={documentos}
               onAddDocumento={handleAddDocumento}
               setDocumentos={setDocumentos}
               loggedUser={loggedUser}
+              fracoes={fracoes}
             />
           )}
 

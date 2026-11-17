@@ -2005,7 +2005,13 @@ export async function enviarNotasCorrecaoNovaQuota(id_predio, vencimentoISO) {
       await registarDocumento({
         caminho, ano: anoRef, tema: "Financeiro", tipo: "Nota de Cobrança",
         predio: predio.id_predio, fracao: f.id_fracao, fluxo: "correcao_nova_quota",
-        origem: "correcao_nova_quota_mensal", nomeFicheiro, categoria: "Pasta Paga. Quotas", visibilidade: "Público"
+        origem: "correcao_nova_quota_mensal", nomeFicheiro, categoria: "Pasta Paga. Quotas",
+        // Faltava aqui (único dos emissores de Nota de Cobrança a esquecê-lo)
+        // — sem isto, estes documentos ficavam presos em "Sem Fração
+        // Identificada" no Arquivo Digital, tal como os 303 documentos
+        // históricos corrigidos em 2026-11-17.
+        subPasta: f.fracao_nome || undefined,
+        visibilidade: "Público"
       });
 
       const { ok: emailEnviado } = await enviarEmailPDFComConfirmacaoLeitura({
