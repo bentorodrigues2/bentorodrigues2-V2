@@ -3454,7 +3454,7 @@ export function gerarPdfBoasVindasGestor(
 // ============================================================================
 // EXPORTAÇÃO GLOBAL DO BALANCETE / MAPA ANUAL DE 12 QUOTAS MENSAIS (EXCEL / CSV)
 // ============================================================================
-export function exportarBalanceteMapaAnualXLS(
+export async function exportarBalanceteMapaAnualXLS(
   predio: Predio,
   fracoes: Fracao[],
   ano: number | string = 2026,
@@ -3587,20 +3587,7 @@ export function exportarBalanceteMapaAnualXLS(
 
     rows.push(totalsRow);
 
-    // Build CSV with UTF-8 BOM
-    let csvContent = "\uFEFF";
-    csvContent += `CONDOMÍNIO: ${predio.nome.toUpperCase() || "EDIFÍCIO"};;;;;;;;;;;;;;;;;;\n`;
-    csvContent += `MORADA: ${predio.morada_linha1 || ""}, ${predio.localidade || ""};;;;;;;;;;;;;;;;;;\n`;
-    csvContent += `NIPC / NIF: ${predio.nif || "999 999 999"};;;;;;;;;;;;;;;;;;\n`;
-    csvContent += `MAPA ANUAL DE QUOTAS (12 MESES) & BALANCETE DE CONTAS - EXERCÍCIO ${ano};;;;;;;;;;;;;;;;;;\n`;
-    csvContent += `DATA DE EMISSÃO: ${new Date().toLocaleDateString("pt-PT")};;;;;;;;;;;;;;;;;;\n\n`;
-
-    csvContent += headers.join(";") + "\n";
-    rows.forEach(r => {
-      csvContent += r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(";") + "\n";
-    });
-
-    // Balancete sintético — só a partir de movimentos reais do ano; sem
+        // Balancete sintético — só a partir de movimentos reais do ano; sem
     // isso não há despesas reais a mostrar (nunca se inventa uma rubrica).
     const movimentosAno = movimentos.filter(m => {
       if (!m?.data) return false;
@@ -3608,7 +3595,137 @@ export function exportarBalanceteMapaAnualXLS(
       return !isNaN(d.getTime()) && d.getFullYear() === anoNum;
     });
 
-    csvContent += `\n\n=== BALANCETE FINANCEIRO SINTÉTICO (dados reais de movimentos - ANO ${ano}) ===;;;\n`;
+    // Workbook real com 2 folhas devidamente formatadas (cabeçalhos a negrito
+    // com fundo, linhas alternadas, linha de totais destacada, larguras de
+    // coluna automáticas, valores monetários como números com formato de
+    // moeda) — antes gerava sempre um ".csv" em texto simples sem nenhuma
+    // formatação, apesar do botão/nome do ficheiro dizerem "Excel". Pedido
+    // explícito do administrador: todas as tabelas em Excel têm de sair
+    // devidamente formatadas, com tabelas bem definidas.
+    let ExcelJS: any;
+    try {
+      ExcelJS = (await import("exceljs")).default;
+    } catch (errImport: any) {
+      const ehFalhaDeChunk = /dynamically imported module|loading chunk|failed to fetch/i.test(errImport?.message || "");
+      alert(ehFalhaDeChunk
+        ? "Foi publicada uma nova versão da aplicação depois desta página ter aberto. Atualiza a página (F5) e tenta exportar outra vez."
+        : "Ocorreu um erro ao preparar o ficheiro Excel.");
+      return false;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = "CondoManager AI";
+    workbook.created = new Date();
+
+    const inserirLogo = (sheet: any) => {
+      try {
+        const base64Logo = (LOGO_HORIZONTAL_BASE64 || "").split(",")[1];
+        if (base64Logo) {
+          const imageId = workbook.addImage({ base64: base64Logo, extension: "png" });
+          sheet.addImage(imageId, { tl: { col: 0, row: 0.1 }, ext: { width: 190, height: 46 } });
+        }
+      } catch (errLogo) {
+        console.warn("[exportarBalanceteMapaAnualXLS] Não foi possível incluir o logótipo:", errLogo);
+      }
+      sheet.getRow(1).height = 20;
+      sheet.getRow(2).height = 10;
+    };
+
+    // --- Folha 1: Mapa Anual de Quotas ---
+    const sheet1 = workbook.addWorksheet("Mapa Anual de Quotas", { views: [{ showGridLines: false }] });
+    const numCols1 = headers.length;
+    inserirLogo(sheet1);
+
+    sheet1.mergeCells(3, 1, 3, numCols1);
+    const tituloCell1 = sheet1.getCell(3, 1);
+    tituloCell1.value = `${predio.nome.toUpperCase() || "EDIFÍCIO"} — Mapa Anual de Quotas (12 Meses) — Exercício ${ano}`;
+    tituloCell1.font = { bold: true, size: 13, color: { argb: "FF0F172A" } };
+
+    sheet1.mergeCells(4, 1, 4, numCols1);
+    const subtituloCell1 = sheet1.getCell(4, 1);
+    subtituloCell1.value = `${predio.morada_linha1 || ""}, ${predio.localidade || ""}  |  NIF: ${predio.nif || "—"}  |  Emitido em ${new Date().toLocaleDateString("pt-PT")}`;
+    subtituloCell1.font = { italic: true, size: 9, color: { argb: "FF64748B" } };
+
+    const HEADER_ROW1 = 6;
+    const headerRow1 = sheet1.getRow(HEADER_ROW1);
+    headers.forEach((h, i) => {
+      const cell = headerRow1.getCell(i + 1);
+      cell.value = h;
+      cell.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF059669" } };
+      cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+      cell.border = { bottom: { style: "medium", color: { argb: "FF047857" } } };
+    });
+    headerRow1.height = 30;
+
+    // Colunas com valor monetário puro (sem sufixo "(Pago)"/"(Pendente)")
+    // convertidas para número real com formato de moeda — as restantes
+    // (meses, permilagem, situação) continuam texto, por combinarem valor
+    // e estado na mesma célula.
+    const idxTotalEmitido = headers.indexOf("Total Emitido (€)");
+    const idxTotalLiquidado = headers.indexOf("Total Liquidado (€)");
+    const idxDividaAnterior = headers.indexOf("Dívida de Anos Anteriores (€)");
+    const idxSaldoPendente = headers.indexOf("Saldo Pendente / Dívida (€)");
+    const colunasMonetarias = new Set([idxTotalEmitido, idxTotalLiquidado, idxDividaAnterior, idxSaldoPendente]);
+
+    rows.forEach((row, rIdx) => {
+      const isTotals = rIdx === rows.length - 1;
+      const excelRow = sheet1.getRow(HEADER_ROW1 + 1 + rIdx);
+      for (let cIdx = 0; cIdx < numCols1; cIdx++) {
+        const val = row[cIdx] ?? "";
+        const cell = excelRow.getCell(cIdx + 1);
+        if (colunasMonetarias.has(cIdx)) {
+          const num = Number(String(val).replace(/[€\s]/g, ""));
+          cell.value = isNaN(num) ? val : num;
+          cell.numFmt = '#,##0.00 "€"';
+        } else {
+          cell.value = val;
+        }
+        cell.font = { size: 8.5, bold: isTotals, color: { argb: isTotals ? "FF047857" : "FF1E293B" } };
+        cell.alignment = { vertical: "middle", horizontal: colunasMonetarias.has(cIdx) ? "right" : (cIdx === 0 ? "left" : "center"), wrapText: false };
+        cell.border = {
+          top: { style: "hair", color: { argb: "FFE2E8F0" } },
+          bottom: { style: isTotals ? "medium" : "hair", color: { argb: isTotals ? "FF047857" : "FFE2E8F0" } }
+        };
+        if (isTotals) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFECFDF5" } };
+        } else if (rIdx % 2 === 1) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+        }
+      }
+    });
+
+    headers.forEach((h, i) => {
+      const maiorConteudo = rows.reduce((max, r) => Math.max(max, String(r[i] ?? "").length), h.length);
+      sheet1.getColumn(i + 1).width = Math.min(Math.max(maiorConteudo + 2, 9), i === 0 ? 16 : 14);
+    });
+    sheet1.getColumn(3).width = 28;
+    sheet1.getColumn(5).width = 26;
+    sheet1.views = [{ state: "frozen", xSplit: 1, ySplit: HEADER_ROW1, showGridLines: false }];
+
+    // --- Folha 2: Balancete Financeiro Sintético ---
+    const sheet2 = workbook.addWorksheet("Balancete Sintético", { views: [{ showGridLines: false }] });
+    inserirLogo(sheet2);
+
+    sheet2.mergeCells(3, 1, 3, 3);
+    const tituloCell2 = sheet2.getCell(3, 1);
+    tituloCell2.value = `Balancete Financeiro Sintético — Dados Reais de Movimentos — Exercício ${ano}`;
+    tituloCell2.font = { bold: true, size: 12, color: { argb: "FF0F172A" } };
+
+    const HEADER_ROW2 = 5;
+    const headers2 = ["Rubrica", "Tipo", "Valor (€)"];
+    const headerRow2 = sheet2.getRow(HEADER_ROW2);
+    headers2.forEach((h, i) => {
+      const cell = headerRow2.getCell(i + 1);
+      cell.value = h;
+      cell.font = { bold: true, size: 10, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF059669" } };
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+      cell.border = { bottom: { style: "medium", color: { argb: "FF047857" } } };
+    });
+    headerRow2.height = 22;
+
+    const rows2: [string, string, number][] = [];
     if (movimentosAno.length > 0) {
       const totalReceitas = movimentosAno.filter(m => m.tipo === "Receita").reduce((s, m) => s + (Number(m.valor) || 0), 0);
       const despesasPorCategoria: Record<string, number> = {};
@@ -3618,20 +3735,49 @@ export function exportarBalanceteMapaAnualXLS(
       });
       const totalDespesas = Object.values(despesasPorCategoria).reduce((s, v) => s + v, 0);
 
-      csvContent += `RUBRICA;TIPO;VALOR (€)\n`;
-      csvContent += `Total de Quotas Liquidadas (avisos pagos);Receita;${sumTotalLiquidado.toFixed(2)}\n`;
-      Object.entries(despesasPorCategoria).forEach(([cat, val]) => {
-        csvContent += `${cat};Despesa;${val.toFixed(2)}\n`;
-      });
-      csvContent += `TOTAL RECEITAS (Movimentos Reais);RECEITA;${totalReceitas.toFixed(2)}\n`;
-      csvContent += `TOTAL DESPESAS (Movimentos Reais);DESPESA;${totalDespesas.toFixed(2)}\n`;
-      csvContent += `SALDO LÍQUIDO DO EXERCÍCIO;SALDO;${(totalReceitas - totalDespesas).toFixed(2)}\n`;
-    } else {
-      csvContent += `Sem movimentos lançados em ${ano} para calcular o balancete sintético de despesas.;;\n`;
+      rows2.push(["Total de Quotas Liquidadas (avisos pagos)", "Receita", sumTotalLiquidado]);
+      Object.entries(despesasPorCategoria).forEach(([cat, val]) => rows2.push([cat, "Despesa", val]));
+      rows2.push(["TOTAL RECEITAS (Movimentos Reais)", "RECEITA", totalReceitas]);
+      rows2.push(["TOTAL DESPESAS (Movimentos Reais)", "DESPESA", totalDespesas]);
+      rows2.push(["SALDO LÍQUIDO DO EXERCÍCIO", "SALDO", totalReceitas - totalDespesas]);
     }
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const fileName = `Balancete_Mapa_Anual_Quotas_${predio.nome.replace(/\s+/g, "_")}_${ano}.csv`;
+    if (rows2.length === 0) {
+      sheet2.mergeCells(HEADER_ROW2 + 1, 1, HEADER_ROW2 + 1, 3);
+      const semDadosCell = sheet2.getCell(HEADER_ROW2 + 1, 1);
+      semDadosCell.value = `Sem movimentos lançados em ${ano} para calcular o balancete sintético de despesas.`;
+      semDadosCell.font = { italic: true, size: 9.5, color: { argb: "FF64748B" } };
+    } else {
+      rows2.forEach((row, rIdx) => {
+        const isTotalRow = /^TOTAL|^SALDO/.test(row[0]);
+        const excelRow = sheet2.getRow(HEADER_ROW2 + 1 + rIdx);
+        row.forEach((val, cIdx) => {
+          const cell = excelRow.getCell(cIdx + 1);
+          cell.value = val;
+          if (cIdx === 2) cell.numFmt = '#,##0.00 "€"';
+          cell.font = { size: 9.5, bold: isTotalRow, color: { argb: isTotalRow ? "FF047857" : "FF1E293B" } };
+          cell.alignment = { vertical: "middle", horizontal: cIdx === 2 ? "right" : "left" };
+          cell.border = {
+            top: { style: "hair", color: { argb: "FFE2E8F0" } },
+            bottom: { style: isTotalRow ? "medium" : "hair", color: { argb: isTotalRow ? "FF047857" : "FFE2E8F0" } }
+          };
+          if (isTotalRow) {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFECFDF5" } };
+          } else if (rIdx % 2 === 1) {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+          }
+        });
+      });
+    }
+
+    sheet2.getColumn(1).width = 44;
+    sheet2.getColumn(2).width = 14;
+    sheet2.getColumn(3).width = 18;
+    sheet2.views = [{ state: "frozen", ySplit: HEADER_ROW2, showGridLines: false }];
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const fileName = `Balancete_Mapa_Anual_Quotas_${predio.nome.replace(/\s+/g, "_")}_${ano}.xlsx`;
     downloadBlob(blob, fileName);
     return true;
   } catch (err) {
