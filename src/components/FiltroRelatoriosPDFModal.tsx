@@ -86,7 +86,12 @@ export function FiltroRelatoriosPDFModal({
       });
     } else if (tipoRelatorio === "balancete") {
       headers = ["Data", "Tipo", "Categoria", "Descrição", "Valor (€)", "Fração Associada"];
-      rows = movimentos.map(m => [
+      // "movimentos" chega sem filtro de prédio (App.tsx passa a lista
+      // completa) — sem este filtro misturava movimentos de outros prédios.
+      const movimentosScope = movimentos
+        .filter(m => m.id_predio === predio.id_predio)
+        .filter(m => ambito === "FRACAO" && fracaoSelecionada ? m.id_fracao === fracaoSelecionada.id_fracao : true);
+      rows = movimentosScope.map(m => [
         m.data,
         m.tipo,
         m.categoria,
@@ -94,6 +99,32 @@ export function FiltroRelatoriosPDFModal({
         m.valor.toFixed(2),
         m.id_fracao ? (predioFracoes.find(f => f.id_fracao === m.id_fracao)?.fracao_nome || "Geral") : "Geral Prédio"
       ]);
+    } else if (tipoRelatorio === "debitos_incumprimento") {
+      headers = ["Fração", "Proprietário", "Vencimento", "Tipo", "Quota Mensal (€)", "FCR (€)", "Total (€)", "Dias em Atraso", "Estado"];
+      const scopeFracoes = ambito === "FRACAO" && fracaoSelecionada ? [fracaoSelecionada] : predioFracoes;
+      const hoje = new Date();
+      rows = scopeFracoes.flatMap(f => {
+        const avisosFracao = avisos
+          .filter(a => a.id_fracao === f.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"))
+          .sort((a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime());
+        return avisosFracao.map(a => {
+          const fcr = Number(a.valor_fundo_reserva) || 0;
+          const mensal = Number(a.valor) - fcr;
+          const venc = new Date(a.vencimento);
+          const diasAtraso = !isNaN(venc.getTime()) ? Math.max(0, Math.floor((hoje.getTime() - venc.getTime()) / 86400000)) : 0;
+          return [
+            f.fracao_nome,
+            f.proprietario.nome,
+            a.vencimento,
+            a.tipo?.includes("Extraordinária") ? "Extraordinária" : "Ordinária",
+            mensal.toFixed(2),
+            fcr.toFixed(2),
+            Number(a.valor).toFixed(2),
+            String(diasAtraso),
+            a.estado
+          ];
+        });
+      });
     } else if (tipoRelatorio === "recibos_emitidos") {
       headers = ["Fração", "Proprietário", "Nº Recibo", "Tipo", "Parcela", "Data Emissão", "Data Limite Pagamento", "Valor (€)", "Estado"];
       const scopeFracoes = ambito === "FRACAO" && fracaoSelecionada ? [fracaoSelecionada] : predioFracoes;
@@ -166,6 +197,7 @@ export function FiltroRelatoriosPDFModal({
           <style>
             body { font-family: Arial, sans-serif; margin: 25px; font-size: 11px; color: #0f172a; }
             .header { text-align: center; border-bottom: 2px solid #047857; padding-bottom: 10px; margin-bottom: 15px; }
+            .header img.logo { display: block; margin: 0 auto 10px auto; height: 42px; object-fit: contain; }
             .header h1 { font-size: 16px; margin: 0; color: #047857; text-transform: uppercase; }
             .header p { margin: 4px 0 0 0; font-size: 10px; color: #64748b; }
             .filter-banner { background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px; border-radius: 6px; font-size: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; }
@@ -175,11 +207,18 @@ export function FiltroRelatoriosPDFModal({
             tr:nth-child(even) { background: #f8fafc; }
             .total-row { background: #ecfdf5 !important; font-weight: bold; }
             .footer { margin-top: 30px; border-top: 1px solid #cbd5e1; pt: 10px; font-size: 9px; color: #64748b; text-align: center; }
-            @media print { body { margin: 0; } }
+            .print-bar { position: sticky; top: 0; z-index: 10; display: flex; justify-content: flex-end; gap: 8px; margin: -25px -25px 15px -25px; padding: 10px 25px; background: #f1f5f9; border-bottom: 1px solid #cbd5e1; }
+            .print-bar button { cursor: pointer; font-weight: bold; font-size: 11px; padding: 8px 16px; border-radius: 8px; border: 1px solid #047857; background: #047857; color: #fff; }
+            .print-bar button:hover { background: #065f46; }
+            @media print { body { margin: 0; } .print-bar { display: none; } }
           </style>
         </head>
         <body>
+          <div class="print-bar">
+            <button onclick="window.print()">🖨️ Imprimir Documento</button>
+          </div>
           <div class="header">
+            <img class="logo" src="${window.location.origin}/marca/02-versao-horizontal.webp" alt="CondoManager AI" />
             <h1>${targetTitle}</h1>
             <p><strong>Edifício:</strong> ${predio?.nome || "Condomínio"} &nbsp;|&nbsp; <strong>Morada:</strong> ${predio?.morada_linha1 || ""}</p>
           </div>
@@ -190,74 +229,172 @@ export function FiltroRelatoriosPDFModal({
             <div><strong>Data de Emissão:</strong> ${new Date().toLocaleDateString("pt-PT")}</div>
           </div>
 
-          ${tipoRelatorio === "recibos_emitidos" ? `
-          <table>
-            <thead>
-              <tr>
-                <th>Fração</th>
-                <th>Proprietário</th>
-                <th>Nº Recibo</th>
-                <th>Tipo</th>
-                <th>Parcela</th>
-                <th>Data Emissão</th>
-                <th>Data Limite Pagamento</th>
-                <th>Valor</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${(() => {
-                const scopeFracoes = ambito === "FRACAO" && fracaoSelecionada ? [fracaoSelecionada] : predioFracoes;
-                const idsFracoesScope = new Set(scopeFracoes.map(f => f.id_fracao));
-                const linhas = construirLinhasRecibosEmitidos(scopeFracoes, avisos.filter(a => idsFracoesScope.has(a.id_fracao)));
-                return linhas.map(l => `
+          ${(() => {
+            const scopeFracoes = ambito === "FRACAO" && fracaoSelecionada ? [fracaoSelecionada] : predioFracoes;
+
+            if (tipoRelatorio === "recibos_emitidos") {
+              const idsFracoesScope = new Set(scopeFracoes.map(f => f.id_fracao));
+              const linhas = construirLinhasRecibosEmitidos(scopeFracoes, avisos.filter(a => idsFracoesScope.has(a.id_fracao)));
+              return `
+              <table>
+                <thead>
                   <tr>
-                    <td><strong>Fração ${l.fracao_nome}</strong></td>
-                    <td>${l.proprietario_nome}</td>
-                    <td>${l.numero_recibo}</td>
-                    <td>${l.tipo}</td>
-                    <td>${l.parcela}</td>
-                    <td>${new Date(l.data_emissao).toLocaleDateString("pt-PT")}</td>
-                    <td>${new Date(l.data_limite_pagamento).toLocaleDateString("pt-PT")}</td>
-                    <td>${l.valor.toFixed(2)}€</td>
-                    <td>${l.estado}</td>
+                    <th>Fração</th>
+                    <th>Proprietário</th>
+                    <th>Nº Recibo</th>
+                    <th>Tipo</th>
+                    <th>Parcela</th>
+                    <th>Data Emissão</th>
+                    <th>Data Limite Pagamento</th>
+                    <th>Valor</th>
+                    <th>Estado</th>
                   </tr>
-                `).join("");
-              })()}
-            </tbody>
-          </table>
-          ` : `
-          <table>
-            <thead>
-              <tr>
-                <th>Fração / Unidade</th>
-                <th>Piso</th>
-                <th>Permilagem</th>
-                <th>Proprietário / Titular</th>
-                <th>NIF Fiscal</th>
-                <th>Contacto</th>
-                <th>Situação / Valor</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${(ambito === "FRACAO" && fracaoSelecionada ? [fracaoSelecionada] : predioFracoes).map(f => {
-                const quotaM = (((predio as any).orcamento_anual || 12000) * (f.permilagem / 1000) / 12).toFixed(2);
-                const debt = avisos.filter(a => a.id_fracao === f.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")).reduce((acc, c) => acc + (c.valor - (c.valor_pago || 0)), 0);
-                return `
+                </thead>
+                <tbody>
+                  ${linhas.map(l => `
+                    <tr>
+                      <td><strong>Fração ${l.fracao_nome}</strong></td>
+                      <td>${l.proprietario_nome}</td>
+                      <td>${l.numero_recibo}</td>
+                      <td>${l.tipo}</td>
+                      <td>${l.parcela}</td>
+                      <td>${new Date(l.data_emissao).toLocaleDateString("pt-PT")}</td>
+                      <td>${new Date(l.data_limite_pagamento).toLocaleDateString("pt-PT")}</td>
+                      <td>${l.valor.toFixed(2)}€</td>
+                      <td>${l.estado}</td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+              `;
+            }
+
+            if (tipoRelatorio === "debitos_incumprimento") {
+              // Discriminação de cada quota ordinária/extraordinária em atraso,
+              // uma linha por parcela — antes mostrava só o total por fração.
+              const hoje = new Date();
+              const linhas: string[] = [];
+              scopeFracoes.forEach(f => {
+                const avisosFracao = avisos
+                  .filter(a => a.id_fracao === f.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"))
+                  .sort((a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime());
+                avisosFracao.forEach(a => {
+                  const fcr = Number(a.valor_fundo_reserva) || 0;
+                  const mensal = Number(a.valor) - fcr;
+                  const venc = new Date(a.vencimento);
+                  const diasAtraso = !isNaN(venc.getTime()) ? Math.max(0, Math.floor((hoje.getTime() - venc.getTime()) / 86400000)) : 0;
+                  linhas.push(`
+                    <tr>
+                      <td><strong>Fração ${f.fracao_nome}</strong> — ${f.proprietario.nome}</td>
+                      <td>${!isNaN(venc.getTime()) ? venc.toLocaleDateString("pt-PT") : "—"}</td>
+                      <td>${a.tipo?.includes("Extraordinária") ? "Extraordinária" : "Ordinária"}</td>
+                      <td>${mensal.toFixed(2)}€</td>
+                      <td>${fcr.toFixed(2)}€</td>
+                      <td>${diasAtraso > 0 ? `<span style="color:#dc2626;font-weight:bold;">${diasAtraso} dias</span>` : "—"}</td>
+                      <td style="color:#dc2626;font-weight:bold;">${Number(a.valor).toFixed(2)}€ (${a.estado})</td>
+                    </tr>
+                  `);
+                });
+              });
+              if (linhas.length === 0) {
+                return `<p style="color:#059669;font-weight:bold;">Sem quotas em incumprimento no âmbito selecionado — situação regularizada.</p>`;
+              }
+              return `
+              <table>
+                <thead>
                   <tr>
-                    <td><strong>Fração ${f.fracao_nome}</strong></td>
-                    <td>Piso ${f.piso}</td>
-                    <td>${f.permilagem}‰</td>
-                    <td>${f.proprietario.nome}</td>
-                    <td>${f.proprietario.nif}</td>
-                    <td>${f.proprietario.tlm || f.proprietario.email}</td>
-                    <td>${debt > 0 ? `<span style="color: #dc2626; font-weight: bold;">Em atraso (${debt.toFixed(2)}€)</span>` : `<span style="color: #059669; font-weight: bold;">Regularizado (${quotaM}€/mês)</span>`}</td>
+                    <th>Fração / Proprietário</th>
+                    <th>Vencimento</th>
+                    <th>Tipo</th>
+                    <th>Quota Mensal</th>
+                    <th>FCR</th>
+                    <th>Mora</th>
+                    <th>Total / Estado</th>
                   </tr>
-                `;
-              }).join("")}
-            </tbody>
-          </table>
-          `}
+                </thead>
+                <tbody>
+                  ${linhas.join("")}
+                </tbody>
+              </table>
+              `;
+            }
+
+            if (tipoRelatorio === "balancete") {
+              // Discriminação de cada movimento real, não só a quota teórica
+              // por fração; filtra sempre por id_predio (movimentos chega
+              // sem filtro de prédio a partir do App.tsx).
+              const movimentosScope = movimentos
+                .filter(m => m.id_predio === predio.id_predio)
+                .filter(m => ambito === "FRACAO" && fracaoSelecionada ? m.id_fracao === fracaoSelecionada.id_fracao : true)
+                .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
+              if (movimentosScope.length === 0) {
+                return `<p style="color:#64748b;font-style:italic;">Sem movimentos registados no âmbito/exercício selecionado.</p>`;
+              }
+              return `
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Tipo</th>
+                    <th>Categoria</th>
+                    <th>Descrição</th>
+                    <th>Fração</th>
+                    <th>Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${movimentosScope.map(m => {
+                    const isReceita = m.tipo === "Receita";
+                    const fracaoAssoc = m.id_fracao ? (predioFracoes.find(f => f.id_fracao === m.id_fracao)?.fracao_nome || "Geral") : "Geral Prédio";
+                    return `
+                    <tr>
+                      <td>${new Date(m.data).toLocaleDateString("pt-PT")}</td>
+                      <td style="color:${isReceita ? "#059669" : "#dc2626"};font-weight:bold;">${m.tipo}</td>
+                      <td>${m.categoria}</td>
+                      <td>${m.descricao}</td>
+                      <td>${fracaoAssoc}</td>
+                      <td style="color:${isReceita ? "#059669" : "#dc2626"};font-weight:bold;">${isReceita ? "+" : "-"}${m.valor.toFixed(2)}€</td>
+                    </tr>
+                    `;
+                  }).join("")}
+                </tbody>
+              </table>
+              `;
+            }
+
+            return `
+            <table>
+              <thead>
+                <tr>
+                  <th>Fração / Unidade</th>
+                  <th>Piso</th>
+                  <th>Permilagem</th>
+                  <th>Proprietário / Titular</th>
+                  <th>NIF Fiscal</th>
+                  <th>Contacto</th>
+                  <th>Situação / Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${scopeFracoes.map(f => {
+                  const quotaM = (((predio as any).orcamento_anual || 12000) * (f.permilagem / 1000) / 12).toFixed(2);
+                  const debt = avisos.filter(a => a.id_fracao === f.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")).reduce((acc, c) => acc + (c.valor - (c.valor_pago || 0)), 0);
+                  return `
+                    <tr>
+                      <td><strong>Fração ${f.fracao_nome}</strong></td>
+                      <td>Piso ${f.piso}</td>
+                      <td>${f.permilagem}‰</td>
+                      <td>${f.proprietario.nome}</td>
+                      <td>${f.proprietario.nif}</td>
+                      <td>${f.proprietario.tlm || f.proprietario.email}</td>
+                      <td>${debt > 0 ? `<span style="color: #dc2626; font-weight: bold;">Em atraso (${debt.toFixed(2)}€)</span>` : `<span style="color: #059669; font-weight: bold;">Regularizado (${quotaM}€/mês)</span>`}</td>
+                    </tr>
+                  `;
+                }).join("")}
+              </tbody>
+            </table>
+            `;
+          })()}
 
           <div class="footer">
             Documento gerado oficialmente pela plataforma CondoManager AI para o edifício ${predio.nome} em ${new Date().toLocaleString("pt-PT")}.
@@ -268,7 +405,6 @@ export function FiltroRelatoriosPDFModal({
 
     printWin.document.close();
     printWin.focus();
-    setTimeout(() => printWin.print(), 300);
   };
 
   return (
@@ -558,8 +694,8 @@ export function FiltroRelatoriosPDFModal({
               onClick={handlePrintHTML}
               className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <i className="fa-solid fa-print text-slate-600"></i>
-              <span>Imprimir / Ver</span>
+              <i className="fa-solid fa-eye text-slate-600"></i>
+              <span>Ver</span>
             </button>
 
             <button

@@ -1098,6 +1098,233 @@ export async function generateDynamicReportPDF(opts: DynamicReportOptions) {
       doc.text(`FCR: ${totalGeralFcr.toFixed(2)}€`, 145, y + 5.8);
       doc.text(`Total: ${(totalGeralMensal + totalGeralFcr).toFixed(2)}€`, 170, y + 5.8);
       y += 16;
+    } else if (opts.tipoRelatorio === "debitos_incumprimento") {
+      // Discriminação de cada quota ordinária e/ou extraordinária em atraso
+      // por fração, com mora em dias — antes este relatório caía no branch
+      // genérico e só mostrava um total agregado por fração (debt), sem
+      // indicar quais parcelas, de que tipo, nem há quanto tempo estavam
+      // vencidas.
+      const hoje = new Date();
+      let totalGeralMensal = 0;
+      let totalGeralFcr = 0;
+      let fracoesComDivida = 0;
+
+      scopeFracoes.forEach((f) => {
+        const avisosFracao = (opts.avisosList || [])
+          .filter((a: any) => a.id_fracao === f.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"))
+          .sort((a: any, b: any) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime());
+
+        if (avisosFracao.length === 0) return;
+        fracoesComDivida++;
+
+        if (y > 250) {
+          doc.addPage();
+          y = addPdfHeaderWithLogo(doc);
+        }
+
+        doc.setFillColor(127, 29, 29);
+        doc.rect(14, y, 182, 7, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(`FRAÇÃO ${f.fracao_nome} — ${f.proprietario?.nome || "Proprietário"} (${avisosFracao.length} parcela/s em incumprimento)`, 17, y + 4.8);
+        y += 7;
+
+        doc.setFillColor(226, 232, 240);
+        doc.rect(14, y, 182, 6, "F");
+        doc.setDrawColor(203, 213, 225);
+        doc.rect(14, y, 182, 6, "S");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(6.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text("VENCIMENTO", 17, y + 4);
+        doc.text("TIPO", 55, y + 4);
+        doc.text("QUOTA MENSAL", 90, y + 4);
+        doc.text("FCR", 122, y + 4);
+        doc.text("MORA", 142, y + 4);
+        doc.text("TOTAL / ESTADO", 165, y + 4);
+        y += 6;
+
+        let subtotalMensal = 0;
+        let subtotalFcr = 0;
+
+        avisosFracao.forEach((a: any, idx: number) => {
+          if (y > 270) {
+            doc.addPage();
+            y = addPdfHeaderWithLogo(doc);
+          }
+          const fcr = Number(a.valor_fundo_reserva) || 0;
+          const mensal = Number(a.valor) - fcr;
+          subtotalMensal += mensal;
+          subtotalFcr += fcr;
+          totalGeralMensal += mensal;
+          totalGeralFcr += fcr;
+
+          const venc = new Date(a.vencimento);
+          const diasAtraso = !isNaN(venc.getTime()) ? Math.max(0, Math.floor((hoje.getTime() - venc.getTime()) / 86400000)) : 0;
+
+          const rowBg = idx % 2 === 0 ? 255 : 248;
+          doc.setFillColor(rowBg, rowBg, rowBg);
+          doc.rect(14, y, 182, 6.5, "F");
+          doc.setDrawColor(226, 232, 240);
+          doc.rect(14, y, 182, 6.5, "S");
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7);
+          doc.setTextColor(15, 23, 42);
+          doc.text(!isNaN(venc.getTime()) ? venc.toLocaleDateString("pt-PT") : "—", 17, y + 4.3);
+          doc.setFontSize(6.5);
+          doc.setTextColor(71, 85, 105);
+          doc.text(a.tipo?.includes("Extraordinária") ? "Extraordinária" : "Ordinária", 55, y + 4.3);
+          doc.setTextColor(15, 23, 42);
+          doc.text(`${mensal.toFixed(2)}€`, 90, y + 4.3);
+          doc.text(`${fcr.toFixed(2)}€`, 122, y + 4.3);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(diasAtraso > 0 ? 220 : 100, diasAtraso > 0 ? 38 : 116, diasAtraso > 0 ? 38 : 139);
+          doc.text(diasAtraso > 0 ? `${diasAtraso}d` : "—", 142, y + 4.3);
+          doc.setTextColor(220, 38, 38);
+          doc.text(`${Number(a.valor).toFixed(2)}€ (${a.estado})`, 165, y + 4.3);
+
+          y += 6.5;
+        });
+
+        doc.setFillColor(254, 242, 242);
+        doc.rect(14, y, 182, 6.5, "F");
+        doc.setDrawColor(248, 113, 113);
+        doc.rect(14, y, 182, 6.5, "S");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7);
+        doc.setTextColor(185, 28, 28);
+        doc.text(`Subtotal Fração ${f.fracao_nome}`, 17, y + 4.3);
+        doc.text(`Mensal: ${subtotalMensal.toFixed(2)}€`, 90, y + 4.3);
+        doc.text(`FCR: ${subtotalFcr.toFixed(2)}€`, 122, y + 4.3);
+        doc.text(`Total: ${(subtotalMensal + subtotalFcr).toFixed(2)}€`, 165, y + 4.3);
+        y += 9;
+      });
+
+      totalQuotas = totalGeralMensal + totalGeralFcr;
+      totalDividas = totalGeralMensal + totalGeralFcr;
+
+      if (y > 260) {
+        doc.addPage();
+        y = addPdfHeaderWithLogo(doc);
+      }
+
+      if (fracoesComDivida === 0) {
+        doc.setFillColor(240, 253, 244);
+        doc.rect(14, y, 182, 9, "F");
+        doc.setDrawColor(52, 211, 153);
+        doc.rect(14, y, 182, 9, "S");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(5, 150, 105);
+        doc.text("Sem quotas em incumprimento no âmbito selecionado — situação regularizada.", 17, y + 5.8);
+        y += 16;
+      } else {
+        doc.setFillColor(127, 29, 29);
+        doc.rect(14, y, 182, 9, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(255, 255, 255);
+        doc.text(`TOTAL GERAL EM INCUMPRIMENTO (${fracoesComDivida} FRAÇÃO/ÕES)`, 17, y + 5.8);
+        doc.text(`Mensal: ${totalGeralMensal.toFixed(2)}€`, 95, y + 5.8);
+        doc.text(`FCR: ${totalGeralFcr.toFixed(2)}€`, 145, y + 5.8);
+        doc.text(`Total: ${(totalGeralMensal + totalGeralFcr).toFixed(2)}€`, 170, y + 5.8);
+        y += 16;
+      }
+    } else if (opts.tipoRelatorio === "balancete") {
+      // Discriminação de cada movimento real (Receita/Despesa) — antes este
+      // relatório caía no branch genérico de frações e nem sequer mostrava
+      // movimentos, só a quota mensal teórica por fração. "movimentosList"
+      // chega sem filtro de prédio (App.tsx passa a lista completa), por
+      // isso filtra-se sempre por id_predio aqui.
+      const movimentosScope = (opts.movimentosList || [])
+        .filter((m: any) => m.id_predio === opts.predio.id_predio)
+        .filter((m: any) => opts.ambito === "FRACAO" && targetFracao ? m.id_fracao === targetFracao.id_fracao : true)
+        .sort((a: any, b: any) => new Date(a.data).getTime() - new Date(b.data).getTime());
+
+      doc.setFillColor(226, 232, 240);
+      doc.rect(14, y, 182, 7, "F");
+      doc.setDrawColor(203, 213, 225);
+      doc.rect(14, y, 182, 7, "S");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text("DATA", 17, y + 4.5);
+      doc.text("TIPO", 38, y + 4.5);
+      doc.text("CATEGORIA", 55, y + 4.5);
+      doc.text("DESCRIÇÃO", 85, y + 4.5);
+      doc.text("FRAÇÃO", 150, y + 4.5);
+      doc.text("VALOR", 172, y + 4.5);
+      y += 7;
+
+      let totalReceitas = 0;
+      let totalDespesas = 0;
+
+      movimentosScope.forEach((m: any, idx: number) => {
+        if (y > 265) {
+          doc.addPage();
+          y = addPdfHeaderWithLogo(doc);
+        }
+        const isReceita = m.tipo === "Receita";
+        if (isReceita) totalReceitas += Number(m.valor); else totalDespesas += Number(m.valor);
+
+        const rowBg = idx % 2 === 0 ? 255 : 248;
+        doc.setFillColor(rowBg, rowBg, rowBg);
+        doc.rect(14, y, 182, 7, "F");
+        doc.setDrawColor(226, 232, 240);
+        doc.rect(14, y, 182, 7, "S");
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(new Date(m.data).toLocaleDateString("pt-PT"), 17, y + 4.6);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(isReceita ? 5 : 220, isReceita ? 150 : 38, isReceita ? 105 : 38);
+        doc.text(m.tipo, 38, y + 4.6);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(71, 85, 105);
+        doc.text(String(m.categoria || "—").slice(0, 22), 55, y + 4.6);
+        doc.setTextColor(15, 23, 42);
+        doc.text(String(m.descricao || "—").slice(0, 44), 85, y + 4.6);
+        const fracaoAssoc = m.id_fracao ? (scopeFracoes.find((f: any) => f.id_fracao === m.id_fracao)?.fracao_nome || "—") : "Geral";
+        doc.text(fracaoAssoc, 150, y + 4.6);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(isReceita ? 5 : 220, isReceita ? 150 : 38, isReceita ? 105 : 38);
+        doc.text(`${isReceita ? "+" : "-"}${Number(m.valor).toFixed(2)}€`, 172, y + 4.6);
+
+        y += 7;
+      });
+
+      if (movimentosScope.length === 0) {
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(7);
+        doc.setTextColor(100, 116, 139);
+        doc.text("Sem movimentos registados no âmbito/exercício selecionado.", 17, y + 5);
+        y += 9;
+      }
+
+      totalQuotas = totalReceitas;
+      totalDividas = totalDespesas;
+
+      if (y > 260) {
+        doc.addPage();
+        y = addPdfHeaderWithLogo(doc);
+      }
+      doc.setFillColor(236, 253, 245);
+      doc.rect(14, y, 182, 9, "F");
+      doc.setDrawColor(52, 211, 153);
+      doc.rect(14, y, 182, 9, "S");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(4, 120, 87);
+      doc.text(`RECEITAS: ${totalReceitas.toFixed(2)}€`, 17, y + 5.5);
+      doc.setTextColor(220, 38, 38);
+      doc.text(`DESPESAS: ${totalDespesas.toFixed(2)}€`, 85, y + 5.5);
+      const saldoBalancete = totalReceitas - totalDespesas;
+      doc.setTextColor(saldoBalancete >= 0 ? 5 : 220, saldoBalancete >= 0 ? 150 : 38, saldoBalancete >= 0 ? 105 : 38);
+      doc.text(`SALDO: ${saldoBalancete.toFixed(2)}€ (${movimentosScope.length} mov.)`, 150, y + 5.5);
+      y += 16;
     } else {
 
     // Build Table Header
