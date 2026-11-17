@@ -64,6 +64,87 @@ export function addPdfHeaderWithLogo(doc: jsPDF, buildingName?: string): number 
   return 28; // Return Y start position for document content
 }
 
+// Mês de referência real de uma quota (vencimento, não a data de emissão)
+// — avisos retroativos (emissão em atraso de vários meses) são todos
+// emitidos no mesmo dia, por isso "data" nunca serve para os separar por
+// mês; o mês real está sempre em "vencimento" (dia 8 do mês de referência).
+export const mesReferenciaAviso = (a: Aviso): Date => new Date(a.vencimento || a.data);
+
+// Dívidas avulsas de "administração anterior" (sem 1 mês certo) não devem
+// ser contadas como se fossem a quota de um mês específico.
+export const ehDividaAvulsaAnterior = (a: Aviso): boolean =>
+  /administra[cç][aã]o anterior/i.test(a.descricao || "") && a.estado !== "Pago";
+
+export function contarMesesReais(avisosList: Aviso[]): number {
+  return avisosList.reduce((total, a) => {
+    const match = String(a.descricao || "").match(/(\d+)\s*mes(?:es)?\s*[x×]/i);
+    return total + (match ? parseInt(match[1], 10) : 1);
+  }, 0);
+}
+
+/**
+ * Avisos pendentes "reais" de uma fração — fonte única partilhada entre o
+ * Mapa de Pagamentos e os relatórios de dívida/incumprimento, para nunca
+ * mais mostrarem valores diferentes para a mesma fração. Deduplica o caso
+ * em que um mês já pago por antecipação (estado "Pago") coexiste com a
+ * emissão mensal regular do mesmo mês ainda "Pendente": sem isto, o mesmo
+ * mês era contado duas vezes como dívida mesmo já estando pago.
+ */
+export function getPendentesReaisDaFracao(avisosList: Aviso[], id_fracao: string): Aviso[] {
+  const avisosFracao = avisosList.filter(a => a.id_fracao === id_fracao);
+  const porMes: Record<string, Aviso[]> = {};
+  const avulsos: Aviso[] = [];
+  avisosFracao.forEach(a => {
+    if (a.estado !== "Pendente" && a.estado !== "Paga Parcialmente" && a.estado !== "Pago") return;
+    const d = mesReferenciaAviso(a);
+    if (ehDividaAvulsaAnterior(a) || isNaN(d.getTime())) { avulsos.push(a); return; }
+    const key = `${d.getFullYear()}-${d.getMonth()}-${String(a.tipo || "").includes("Extraordinária") ? "extra" : "ord"}`;
+    (porMes[key] = porMes[key] || []).push(a);
+  });
+
+  const reais: Aviso[] = avulsos.filter(a => a.estado === "Pendente" || a.estado === "Paga Parcialmente");
+  Object.values(porMes).forEach(lista => {
+    const temPago = lista.some(a => a.estado === "Pago");
+    const pendentesDoMes = lista.filter(a => a.estado === "Pendente" || a.estado === "Paga Parcialmente");
+    if (temPago) {
+      // Só a "Diferença de Quota" ou o saldo remanescente de um pagamento
+      // parcial real representam dívida real — a emissão regular completa
+      // do mesmo mês é que está duplicada. Confirmado por auditoria: um
+      // pagamento parcial (GestaoMovimentos.tsx → handleRegistarPagamentoParcial)
+      // divide o aviso original num "Pago" (valor recebido) + um "Pendente"
+      // com a descrição a terminar em "saldo em dívida após pagamento
+      // parcial de X€ em DD-MM-AAAA" — sem esta exceção, esse saldo
+      // remanescente era descartado como se fosse o duplicado do mês já
+      // pago, fazendo desaparecer dívida real (caso real: Fração G perdia
+      // 91.48€ de uma quota extraordinária genuinamente em dívida).
+      reais.push(...pendentesDoMes.filter(a =>
+        String(a.descricao || "").startsWith("Diferença de Quota") ||
+        /saldo em d[ií]vida ap[óo]s pagamento parcial/i.test(a.descricao || "")
+      ));
+    } else {
+      reais.push(...pendentesDoMes);
+    }
+  });
+  return reais;
+}
+
+export function getFracaoDividaPorTipo(avisosList: Aviso[], id_fracao: string): { ordinaria: number; extraordinaria: number; total: number } {
+  const pendentes = getPendentesReaisDaFracao(avisosList, id_fracao);
+  let ordinaria = 0;
+  let extraordinaria = 0;
+  pendentes.forEach(a => {
+    const valorPend = Number(a.valor) - (Number(a.valor_pago) || 0);
+    if (String(a.tipo || "").includes("Extraordinária")) extraordinaria += valorPend;
+    else ordinaria += valorPend;
+  });
+  return { ordinaria, extraordinaria, total: ordinaria + extraordinaria };
+}
+
+export function getFracaoBalance(avisosList: Aviso[], id_fracao: string): number {
+  const totalPend = getPendentesReaisDaFracao(avisosList, id_fracao).reduce((acc, a) => acc + (Number(a.valor) - (Number(a.valor_pago) || 0)), 0);
+  return totalPend === 0 ? 0 : -totalPend;
+}
+
 /**
  * Interpreta um valor monetário escrito à mão, aceitando tanto a
  * convenção PT-PT (milhares com ".", decimais com ",") como a EN-US
@@ -982,8 +1063,12 @@ export async function generateDynamicReportPDF(opts: DynamicReportOptions) {
       let totalGeralFcr = 0;
 
       scopeFracoes.forEach((f) => {
-        const avisosFracao = (opts.avisosList || [])
-          .filter((a: any) => a.id_fracao === f.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"))
+        // getPendentesReaisDaFracao (não um filtro simples de estado) — a
+        // mesma fonte usada no Mapa de Pagamentos/Relatórios de Dívidas, para
+        // este relatório nunca mais mostrar um total diferente do resto da
+        // app: deduplica o caso de um mês já pago por antecipação que
+        // coexiste com a emissão mensal regular do mesmo mês ainda Pendente.
+        const avisosFracao = getPendentesReaisDaFracao(opts.avisosList || [], f.id_fracao)
           .sort((a: any, b: any) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime());
 
         if (y > 255) {
@@ -1110,8 +1195,12 @@ export async function generateDynamicReportPDF(opts: DynamicReportOptions) {
       let fracoesComDivida = 0;
 
       scopeFracoes.forEach((f) => {
-        const avisosFracao = (opts.avisosList || [])
-          .filter((a: any) => a.id_fracao === f.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"))
+        // getPendentesReaisDaFracao (não um filtro simples de estado) — a
+        // mesma fonte usada no Mapa de Pagamentos/Relatórios de Dívidas, para
+        // este relatório nunca mais mostrar um total diferente do resto da
+        // app: deduplica o caso de um mês já pago por antecipação que
+        // coexiste com a emissão mensal regular do mesmo mês ainda Pendente.
+        const avisosFracao = getPendentesReaisDaFracao(opts.avisosList || [], f.id_fracao)
           .sort((a: any, b: any) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime());
 
         if (avisosFracao.length === 0) return;
@@ -1359,7 +1448,7 @@ export async function generateDynamicReportPDF(opts: DynamicReportOptions) {
       const quotaVal = ((opts.predio.orcamento_anual || 12000) * (f.permilagem / 1000) / 12);
       totalQuotas += quotaVal;
 
-      const debt = (opts.avisosList || []).filter(a => a.id_fracao === f.id_fracao && a.estado === "Pendente").reduce((acc, c) => acc + c.valor, 0);
+      const debt = getPendentesReaisDaFracao(opts.avisosList || [], f.id_fracao).reduce((acc, c) => acc + (Number(c.valor) - (Number(c.valor_pago) || 0)), 0);
       totalDividas += debt;
 
       doc.setFont("helvetica", "bold");
@@ -1434,8 +1523,28 @@ export async function generateDynamicReportPDF(opts: DynamicReportOptions) {
 
       doc.setFont("helvetica", "bold");
       doc.text("ASSINATURA DA ADMINISTRAÇÃO", 130, y + 4.5);
-      doc.setFont("helvetica", "italic");
-      doc.text("__________________________________", 130, y + 15.5);
+
+      // Assinatura digital real quando guardada em predio.patrimonio.assinatura_admin_base64
+      // (mesmo padrão já usado em recibos, notas de cobrança e correspondência
+      // de sinistros) — antes este relatório ignorava-a sempre e só desenhava
+      // um traço em branco, mesmo quando a administração já a tinha carregado.
+      const assinaturaAdminRelatorio = (opts.predio?.patrimonio as any)?.assinatura_admin_base64;
+      let assinaturaRelatorioDesenhada = false;
+      if (assinaturaAdminRelatorio && String(assinaturaAdminRelatorio).startsWith("data:image")) {
+        try {
+          doc.addImage(assinaturaAdminRelatorio, "PNG", 130, y + 6, 45, 11);
+          assinaturaRelatorioDesenhada = true;
+        } catch (e) {
+          console.warn("Não foi possível incluir a assinatura digital no relatório:", e);
+        }
+      }
+      if (!assinaturaRelatorioDesenhada) {
+        doc.setFont("helvetica", "italic");
+        doc.text("__________________________________", 130, y + 15.5);
+      } else {
+        doc.setDrawColor(203, 213, 225);
+        doc.line(130, y + 18, 175, y + 18);
+      }
     }
 
     const blob = doc.output("blob");

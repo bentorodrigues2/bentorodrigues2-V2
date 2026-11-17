@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Predio, Fracao, Movimento, Aviso } from "../types";
-import { generateDynamicReportPDF, exportToXLS, construirLinhasRecibosEmitidos } from "../utils";
+import { generateDynamicReportPDF, exportToXLS, construirLinhasRecibosEmitidos, getPendentesReaisDaFracao } from "../utils";
 
 export interface FiltroRelatoriosPDFModalProps {
   isOpen: boolean;
@@ -72,7 +72,7 @@ export function FiltroRelatoriosPDFModal({
       headers = ["Fração", "Piso", "Proprietário", "NIF", "Contacto", "Quota Mensal", "Estado Pagamento", "Saldo Dívida"];
       const scopeFracoes = ambito === "FRACAO" && fracaoSelecionada ? [fracaoSelecionada] : predioFracoes;
       rows = scopeFracoes.map(f => {
-        const debt = avisos.filter(a => a.id_fracao === f.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")).reduce((acc, c) => acc + (c.valor - (c.valor_pago || 0)), 0);
+        const debt = getPendentesReaisDaFracao(avisos, f.id_fracao).reduce((acc, c) => acc + (c.valor - (c.valor_pago || 0)), 0);
         return [
           f.fracao_nome,
           f.piso,
@@ -104,8 +104,7 @@ export function FiltroRelatoriosPDFModal({
       const scopeFracoes = ambito === "FRACAO" && fracaoSelecionada ? [fracaoSelecionada] : predioFracoes;
       const hoje = new Date();
       rows = scopeFracoes.flatMap(f => {
-        const avisosFracao = avisos
-          .filter(a => a.id_fracao === f.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"))
+        const avisosFracao = getPendentesReaisDaFracao(avisos, f.id_fracao)
           .sort((a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime());
         return avisosFracao.map(a => {
           const fcr = Number(a.valor_fundo_reserva) || 0;
@@ -218,7 +217,7 @@ export function FiltroRelatoriosPDFModal({
             <button onclick="window.print()">🖨️ Imprimir Documento</button>
           </div>
           <div class="header">
-            <img class="logo" src="${window.location.origin}/marca/02-versao-horizontal.webp" alt="CondoManager AI" />
+            <img class="logo" src="${window.location.origin}/marca/20-Logotipo Horizontal com fundo.png" alt="CondoManager AI" />
             <h1>${targetTitle}</h1>
             <p><strong>Edifício:</strong> ${predio?.nome || "Condomínio"} &nbsp;|&nbsp; <strong>Morada:</strong> ${predio?.morada_linha1 || ""}</p>
           </div>
@@ -275,8 +274,7 @@ export function FiltroRelatoriosPDFModal({
               const hoje = new Date();
               const linhas: string[] = [];
               scopeFracoes.forEach(f => {
-                const avisosFracao = avisos
-                  .filter(a => a.id_fracao === f.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente"))
+                const avisosFracao = getPendentesReaisDaFracao(avisos, f.id_fracao)
                   .sort((a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime());
                 avisosFracao.forEach(a => {
                   const fcr = Number(a.valor_fundo_reserva) || 0;
@@ -378,7 +376,7 @@ export function FiltroRelatoriosPDFModal({
               <tbody>
                 ${scopeFracoes.map(f => {
                   const quotaM = (((predio as any).orcamento_anual || 12000) * (f.permilagem / 1000) / 12).toFixed(2);
-                  const debt = avisos.filter(a => a.id_fracao === f.id_fracao && (a.estado === "Pendente" || a.estado === "Paga Parcialmente")).reduce((acc, c) => acc + (c.valor - (c.valor_pago || 0)), 0);
+                  const debt = getPendentesReaisDaFracao(avisos, f.id_fracao).reduce((acc, c) => acc + (c.valor - (c.valor_pago || 0)), 0);
                   return `
                     <tr>
                       <td><strong>Fração ${f.fracao_nome}</strong></td>

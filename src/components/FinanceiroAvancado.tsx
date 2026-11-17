@@ -652,9 +652,19 @@ export function FinanceiroAvancado({
       const temPago = lista.some(a => a.estado === "Pago");
       const pendentesDoMes = lista.filter(a => a.estado === "Pendente" || a.estado === "Paga Parcialmente");
       if (temPago) {
-        // Só a "Diferença de Quota" (se existir) representa dívida real —
-        // a emissão regular completa do mesmo mês está duplicada.
-        reais.push(...pendentesDoMes.filter(a => String(a.descricao || "").startsWith("Diferença de Quota")));
+        // Só a "Diferença de Quota" ou o saldo remanescente de um pagamento
+        // parcial real representam dívida real — a emissão regular completa
+        // do mesmo mês é que está duplicada. Um pagamento parcial
+        // (GestaoMovimentos.tsx) divide o aviso original num "Pago" (valor
+        // recebido) + um "Pendente" terminado em "saldo em dívida após
+        // pagamento parcial de X€ em DD-MM-AAAA" — sem esta exceção esse
+        // saldo remanescente era descartado como se fosse o duplicado do
+        // mês já pago, fazendo desaparecer dívida real (caso real: Fração G
+        // perdia 91.48€ de uma quota extraordinária genuinamente em dívida).
+        reais.push(...pendentesDoMes.filter(a =>
+          String(a.descricao || "").startsWith("Diferença de Quota") ||
+          /saldo em d[ií]vida ap[óo]s pagamento parcial/i.test(a.descricao || "")
+        ));
       } else {
         reais.push(...pendentesDoMes);
       }
