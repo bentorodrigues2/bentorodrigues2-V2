@@ -781,7 +781,21 @@ export function GestaoManutencaoIntervencoes({
     setLancandoCustoAgendaId(item.id);
     try {
       const entidade = item.fornecedorInspecaoNome || item.fornecedorManutencaoNome || "Entidade de Inspeção";
-      const ehElevador = /elevador/i.test(item.equipamento);
+      // Categoria SNC sugerida a partir do texto do equipamento — aplica-se
+      // a QUALQUER vistoria/inspeção da Agenda (predefinida pela IA ou
+      // criada manualmente), não só a elevadores; cai sempre em "Manutenção"
+      // genérico quando não reconhece nenhuma palavra-chave.
+      const categoriaSugerida = (equipamento: string): string => {
+        const t = equipamento.toLowerCase();
+        if (/elevador/.test(t)) return "Manutenção de Elevadores";
+        if (/extintor|corta-fogo|inc[êe]ndio|sinaliza[çc][ãa]o de emerg[êe]ncia/.test(t)) return "Segurança Contra Incêndio";
+        if (/g[áa]s|conduta/.test(t)) return "Inspeção de Gás";
+        if (/bomba|drenagem|[áa]guas pluviais/.test(t)) return "Manutenção de Bombas";
+        if (/jardim|rega|eletrobomba/.test(t)) return "Manutenção de Jardins";
+        if (/quadro el[ée]tric|coluna el[ée]trica|caixa t[ée]cnica/.test(t)) return "Manutenção Elétrica";
+        if (/telhado|cobertura/.test(t)) return "Manutenção de Cobertura";
+        return "Manutenção";
+      };
       const novoMov: Movimento = {
         id_mov: "mov-vist-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
         id_predio: predio.id_predio,
@@ -790,7 +804,7 @@ export function GestaoManutencaoIntervencoes({
         tipo: "Despesa",
         valor: item.custo,
         descricao: `${item.equipamento} — ${entidade}${item.fornecedorManutencaoNome && item.fornecedorManutencaoNome !== entidade ? ` (acompanhado por ${item.fornecedorManutencaoNome})` : ""}`,
-        categoria: ehElevador ? "Manutenção de Elevadores" : "Manutenção",
+        categoria: categoriaSugerida(item.equipamento),
         estado: "Pago",
         is_movimento_cego: false,
         id_fornecedor: item.id_fornecedor_inspecao,
