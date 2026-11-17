@@ -1570,18 +1570,49 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
 
     setAprovandoCondominoIndex(index);
     try {
+      // Gerado já aqui (antes do passo 1, não só no passo 3 como antes) para
+      // poder ligar desde já "id_movimento" aos avisos liquidados no passo
+      // 1 — sem isto, os avisos marcados "Pago" por cobrirem um mês inteiro
+      // (ao contrário do mês parcialmente coberto, que já tinha o seu
+      // próprio id_movimento) ficavam sem nenhuma ligação ao movimento/
+      // pagamento real que os liquidou, impossibilitando auditar depois
+      // "que pagamento pagou este mês" (foi assim que se tornou tão difícil
+      // de investigar o caso real da Fração D em que 42,01€ de um pagamento
+      // de 59€ ficaram por aplicar a nenhum mês em dívida).
+      const idPagamento = crypto.randomUUID();
+      const idMovNovo = "mov-extrato-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+
       // 1. Liquidar os avisos correspondentes
+      //
+      // Bug crítico confirmado em produção (Fração D, 17-11-2026): esta
+      // gravação nunca verificava o valor devolvido por
+      // saveAvisosToSupabase — se a escrita na BD falhasse silenciosamente
+      // (padrão "falhas silenciosas dbUpsert" já conhecido nesta app), o
+      // estado local em React continuava a mostrar os avisos como "Pago"
+      // (dando a aparência de sucesso, recibo emitido e tudo), mas a BD
+      // mantinha-os "Pendente" — na aprovação seguinte, esses mesmos meses
+      // voltavam a aparecer como pendentes e o algoritmo de pagamento
+      // parcial consumia-os de novo, deixando o dinheiro do pagamento
+      // ANTERIOR sem nenhum mês a que ficar associado. Agora aborta e avisa
+      // claramente em vez de continuar como se tivesse corrido bem — e
+      // regista valor_pago + id_movimento em cada aviso fechado por inteiro,
+      // tal como já acontecia no mês parcialmente coberto.
       if (item.avisosPendentesIds?.length) {
         const avisosPagos: Aviso[] = [];
+        item.avisosPendentesIds.forEach((idAvisoAlvo: string) => {
+          const original = avisos.find(a => a.id_aviso === idAvisoAlvo);
+          if (!original) return;
+          avisosPagos.push({ ...original, estado: "Pago", valor_pago: original.valor, id_movimento: idMovNovo });
+        });
+        const okAvisosFechados = await saveAvisosToSupabase(avisosPagos);
+        if (!okAvisosFechados) {
+          alert("❌ Não foi possível gravar a liquidação destes avisos na base de dados. O pagamento NÃO foi confirmado — tenta novamente antes de prosseguir, para não perderes a ligação entre este dinheiro e os meses que cobre.");
+          return;
+        }
         setAvisos(prev => prev.map(a => {
-          if (item.avisosPendentesIds.includes(a.id_aviso)) {
-            const atualizado = { ...a, estado: "Pago" };
-            avisosPagos.push(atualizado);
-            return atualizado;
-          }
-          return a;
+          const atualizado = avisosPagos.find(ap => ap.id_aviso === a.id_aviso);
+          return atualizado || a;
         }));
-        await saveAvisosToSupabase(avisosPagos);
       }
 
       // 2. Atualizar saldo da conta — síncrono via contasRef (ver nota em
@@ -1622,9 +1653,10 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
       // REAL deste pagamento, e caíam sempre na adivinhação por tipo — bug
       // real confirmado em produção: desfazer uma confirmação deste fluxo
       // debitava a conta errada, deixando a conta certa por reverter.
-      const idPagamento = crypto.randomUUID();
+      // (idPagamento e id_mov já gerados no topo desta função, para o passo
+      // 1 poder ligar os avisos fechados por inteiro a este mesmo movimento)
       const novoMov: Movimento = {
-        id_mov: "mov-extrato-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+        id_mov: idMovNovo,
         id_predio: predio.id_predio,
         id_conta: contaExtratoId,
         id_fracao: item.fracaoSugeridaId,
@@ -1747,6 +1779,21 @@ export function GestaoMovimentos({ predio, contas, setContas, movements, setMove
     }
 
     const valorParcial = restante;
+
+    // Verificação de segurança: a soma dos meses inteiros + o parcial tem de
+    // bater exatamente certo com o valor realmente recebido — antes não
+    // havia nenhuma confirmação disto, e um dos dois lados podia ficar
+    // silenciosamente mal gravado sem ninguém reparar (ver nota em
+    // aprovarPagamentoCondomino sobre o caso real da Fração D onde 42,01€
+    // de um pagamento de 59€ nunca ficaram ligados a nenhum mês em dívida).
+    const somaTotalmenteCobertos = avisosFracaoPendentes
+      .filter(a => idsTotalmenteCobertos.includes(a.id_aviso))
+      .reduce((s, a) => s + a.valor, 0);
+    const somaPlaneada = Math.round((somaTotalmenteCobertos + valorParcial) * 100) / 100;
+    if (Math.abs(somaPlaneada - item.valor) > 0.02) {
+      alert(`❌ A divisão calculada (${somaPlaneada.toFixed(2)}€) não bate certo com o valor realmente recebido (${item.valor.toFixed(2)}€) — por segurança este pagamento NÃO foi aplicado a nenhum mês. Recarrega a página e tenta novamente.`);
+      return;
+    }
     const proporcao = valorParcial / avisoAlvo.valor;
     const fcrParcial = avisoAlvo.valor_fundo_reserva ? Math.round(avisoAlvo.valor_fundo_reserva * proporcao * 100) / 100 : undefined;
     const idAvisoParcial = `aviso-parcial-${avisoAlvo.id_aviso}-${Date.now()}`;
