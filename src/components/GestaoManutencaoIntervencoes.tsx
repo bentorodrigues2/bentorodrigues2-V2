@@ -3,11 +3,12 @@ import { Predio, Fracao, Ocorrencia, Movimento, Conta, Documento, LoggedUser, Fo
 import { formatDatePT, exportToXLS, parseValorMonetario } from "../utils";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  fetchAgendaVistoriasFromSupabase, saveAgendaVistoriaToSupabase,
+  fetchAgendaVistoriasFromSupabase, saveAgendaVistoriaToSupabase, deleteAgendaVistoriaFromSupabase,
   fetchIntervencoesFromSupabase, saveIntervencaoToSupabase,
   fetchObrasExtraFromSupabase, saveObraExtraToSupabase, deleteObraExtraFromSupabase,
   saveDocumentoToSupabase, saveMovimentoToSupabase, saveOcorrenciaToSupabase, saveContaToSupabase, ajustarSaldoContaReal,
-  saveDividaFornecedorToSupabase, fetchDividasFornecedoresFromSupabase, deleteDividaFornecedorFromSupabase, registarLogAuditoria
+  saveDividaFornecedorToSupabase, fetchDividasFornecedoresFromSupabase, deleteDividaFornecedorFromSupabase, registarLogAuditoria,
+  uploadDocumentoToStorage
 } from "../lib/supabaseService";
 import { 
   Wrench, Calendar, TriangleAlert, Hammer, CheckSquare, FolderArchive,
@@ -45,6 +46,30 @@ export interface AgendaItem {
   avariasEncontradas?: string;
   fotos?: string[];
   assinatura?: string;
+  // Reformulação pedida pelo administrador: inspeções obrigatórias por lei
+  // (elevadores, condutas de gás, extintores, etc.) envolvem 2 entidades
+  // distintas — a entidade oficial de inspeção (quem emite o certificado) e,
+  // por vezes, a empresa de manutenção do próprio equipamento, que acompanha
+  // a inspeção mas não é quem a realiza.
+  id_fornecedor_inspecao?: string;
+  fornecedorInspecaoNome?: string;
+  id_fornecedor_manutencao?: string;
+  fornecedorManutencaoNome?: string;
+  // Validade do certificado / data limite até à próxima inspeção
+  // obrigatória — distinto de "periodicidade" (texto livre, ex: "2 Anos"),
+  // que só descreve a cadência, não a data concreta do próximo vencimento.
+  dataValidade?: string;
+  // Custo desta vistoria/inspeção — quando há mais do que 1 equipamento do
+  // mesmo tipo (ex: 2 elevadores), cada um é o seu próprio AgendaItem com o
+  // seu próprio custo, lançado como movimento contabilístico próprio, nunca
+  // repartido pelas frações: sai sempre da conta do prédio.
+  custo?: number;
+  id_conta_pagamento?: string;
+  // Preenchido só depois de "Lançar Custo" criar o movimento real — impede
+  // lançar o mesmo custo 2 vezes e mostra a ligação direta ao movimento.
+  id_movimento?: string;
+  certificado_url?: string;
+  comprovativo_url?: string;
 }
 
 export interface Intervencao {
@@ -167,6 +192,29 @@ export function GestaoManutencaoIntervencoes({
   const [checkReport, setCheckReport] = useState("");
   const [checkAvarias, setCheckAvarias] = useState("");
   const [checkSign, setCheckSign] = useState("");
+
+  // Nova Vistoria/Inspeção + edição — reformulação pedida pelo
+  // administrador: a Agenda (antes só gerada automaticamente, com datas
+  // fixas e sem nenhum custo/fornecedor) tem de ser editável, permitir
+  // anexar documentos oficiais e faturas/recibos, e ligar o custo real a um
+  // movimento lançado na conta bancária do prédio — nunca às frações.
+  const [showAgendaForm, setShowAgendaForm] = useState(false);
+  const [editingAgendaId, setEditingAgendaId] = useState<string | null>(null);
+  const [agEquipamento, setAgEquipamento] = useState("");
+  const [agTipo, setAgTipo] = useState<"preventiva" | "inspeção_obrigatoria">("inspeção_obrigatoria");
+  const [agDataPlaneada, setAgDataPlaneada] = useState("");
+  const [agPeriodicidade, setAgPeriodicidade] = useState("");
+  const [agDataValidade, setAgDataValidade] = useState("");
+  const [agFornInspecaoId, setAgFornInspecaoId] = useState("");
+  const [agFornInspecaoNome, setAgFornInspecaoNome] = useState("");
+  const [agFornManutencaoId, setAgFornManutencaoId] = useState("");
+  const [agFornManutencaoNome, setAgFornManutencaoNome] = useState("");
+  const [agCustoPorUnidade, setAgCustoPorUnidade] = useState("");
+  const [agNumUnidades, setAgNumUnidades] = useState("1");
+  const [agContaPagamento, setAgContaPagamento] = useState("");
+  const [aGuardandoAgenda, setAGuardandoAgenda] = useState(false);
+  const [anexandoAgendaId, setAnexandoAgendaId] = useState<string | null>(null);
+  const [lancandoCustoAgendaId, setLancandoCustoAgendaId] = useState<string | null>(null);
 
   // Creating Small Repair (Intervencao) State
   const [showNewIntForm, setShowNewIntForm] = useState(false);
@@ -544,6 +592,230 @@ export function GestaoManutencaoIntervencoes({
     setAgenda([...agenda, ...checksNovos]);
     checksNovos.forEach(item => saveAgendaVistoriaToSupabase(predio.id_predio, item).catch(console.error));
     alert("IA analisou o património do prédio e gerou a agenda preventiva ideal de vistorias técnicas obrigatórias!");
+  };
+
+  const resetAgendaForm = () => {
+    setEditingAgendaId(null);
+    setAgEquipamento("");
+    setAgTipo("inspeção_obrigatoria");
+    setAgDataPlaneada("");
+    setAgPeriodicidade("");
+    setAgDataValidade("");
+    setAgFornInspecaoId("");
+    setAgFornInspecaoNome("");
+    setAgFornManutencaoId("");
+    setAgFornManutencaoNome("");
+    setAgCustoPorUnidade("");
+    setAgNumUnidades("1");
+    setAgContaPagamento("");
+  };
+
+  const abrirNovaAgenda = () => {
+    resetAgendaForm();
+    setShowAgendaForm(true);
+  };
+
+  // Edição de uma vistoria/inspeção já agendada — antes a Agenda só podia
+  // ser gerada automaticamente pela IA (datas e equipamentos fixos), sem
+  // nenhuma forma de corrigir uma data errada ou acrescentar o fornecedor/
+  // custo depois de criada.
+  const abrirEditarAgenda = (item: AgendaItem) => {
+    setEditingAgendaId(item.id);
+    setAgEquipamento(item.equipamento);
+    setAgTipo(item.tipo);
+    setAgDataPlaneada(item.dataPlaneada || "");
+    setAgPeriodicidade(item.periodicidade || "");
+    setAgDataValidade(item.dataValidade || "");
+    setAgFornInspecaoId(item.id_fornecedor_inspecao || "");
+    setAgFornInspecaoNome(item.fornecedorInspecaoNome || "");
+    setAgFornManutencaoId(item.id_fornecedor_manutencao || "");
+    setAgFornManutencaoNome(item.fornecedorManutencaoNome || "");
+    setAgCustoPorUnidade(item.custo != null ? String(item.custo) : "");
+    setAgNumUnidades("1");
+    setAgContaPagamento(item.id_conta_pagamento || "");
+    setShowAgendaForm(true);
+  };
+
+  // Cria (ou atualiza) 1 ou mais itens na Agenda. Quando há mais do que 1
+  // unidade do mesmo equipamento (ex: 2 elevadores no mesmo prédio), cada
+  // unidade fica com o seu próprio item/custo — nunca 1 só item com o custo
+  // agregado — para depois cada "Lançar Custo" gerar o seu próprio
+  // movimento, por elevador, tal como pedido ("custo lançado por unidade
+  // nos movimentos... nada tem a ver com as frações").
+  const handleGuardarAgenda = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!agEquipamento.trim() || !agDataPlaneada) {
+      alert("Indique pelo menos o equipamento/vistoria e a data planeada.");
+      return;
+    }
+    setAGuardandoAgenda(true);
+    try {
+      const custoNum = agCustoPorUnidade ? parseValorMonetario(agCustoPorUnidade) : undefined;
+      const fornecedorInspecaoReal = fornecedores.find(f => f.id_fornecedor === agFornInspecaoId);
+      const fornecedorManutencaoReal = fornecedores.find(f => f.id_fornecedor === agFornManutencaoId);
+
+      if (editingAgendaId) {
+        const atual = agenda.find(a => a.id === editingAgendaId);
+        if (!atual) { setAGuardandoAgenda(false); return; }
+        const atualizado: AgendaItem = {
+          ...atual,
+          equipamento: agEquipamento.trim(),
+          tipo: agTipo,
+          dataPlaneada: agDataPlaneada,
+          periodicidade: agPeriodicidade.trim(),
+          dataValidade: agDataValidade || undefined,
+          id_fornecedor_inspecao: fornecedorInspecaoReal?.id_fornecedor,
+          fornecedorInspecaoNome: fornecedorInspecaoReal?.nome || agFornInspecaoNome.trim() || undefined,
+          id_fornecedor_manutencao: fornecedorManutencaoReal?.id_fornecedor,
+          fornecedorManutencaoNome: fornecedorManutencaoReal?.nome || agFornManutencaoNome.trim() || undefined,
+          custo: custoNum,
+          id_conta_pagamento: agContaPagamento || undefined
+        };
+        const ok = await saveAgendaVistoriaToSupabase(predio.id_predio, atualizado);
+        if (!ok) { alert("❌ Não foi possível gravar as alterações no Supabase."); setAGuardandoAgenda(false); return; }
+        setAgenda(prev => prev.map(a => a.id === editingAgendaId ? atualizado : a));
+        registarLogAuditoria("Manutenção", `Editou a vistoria/inspeção "${atualizado.equipamento}"`, predio.id_predio, loggedUser);
+      } else {
+        const numUnidades = Math.max(1, parseInt(agNumUnidades, 10) || 1);
+        const novosItens: AgendaItem[] = Array.from({ length: numUnidades }).map((_, idx) => ({
+          id: "ag-" + Date.now() + "-" + idx,
+          equipamento: numUnidades > 1 ? `${agEquipamento.trim()} — Unidade ${idx + 1}/${numUnidades}` : agEquipamento.trim(),
+          tipo: agTipo,
+          dataPlaneada: agDataPlaneada,
+          periodicidade: agPeriodicidade.trim(),
+          estado: "Agendado",
+          dataValidade: agDataValidade || undefined,
+          id_fornecedor_inspecao: fornecedorInspecaoReal?.id_fornecedor,
+          fornecedorInspecaoNome: fornecedorInspecaoReal?.nome || agFornInspecaoNome.trim() || undefined,
+          id_fornecedor_manutencao: fornecedorManutencaoReal?.id_fornecedor,
+          fornecedorManutencaoNome: fornecedorManutencaoReal?.nome || agFornManutencaoNome.trim() || undefined,
+          custo: custoNum,
+          id_conta_pagamento: agContaPagamento || undefined
+        }));
+        const resultados = await Promise.all(novosItens.map(item => saveAgendaVistoriaToSupabase(predio.id_predio, item)));
+        if (resultados.some(r => !r)) { alert("❌ Não foi possível gravar a nova vistoria/inspeção no Supabase."); setAGuardandoAgenda(false); return; }
+        setAgenda(prev => [...novosItens, ...prev]);
+        registarLogAuditoria("Manutenção", `Agendou "${agEquipamento.trim()}"${numUnidades > 1 ? ` (${numUnidades} unidades)` : ""}`, predio.id_predio, loggedUser);
+      }
+
+      setShowAgendaForm(false);
+      resetAgendaForm();
+    } finally {
+      setAGuardandoAgenda(false);
+    }
+  };
+
+  // Elimina um item da Agenda — bloqueia se já tiver um custo lançado
+  // (id_movimento), tal como já acontece com Obras Extraordinárias com
+  // tranches pagas, para nunca apagar silenciosamente um movimento real já
+  // debitado da conta.
+  const handleEliminarAgendaItem = async (item: AgendaItem) => {
+    if (item.id_movimento) {
+      alert("Esta vistoria já tem um custo lançado como movimento na conta bancária — não pode ser eliminada. Se foi um erro, corrija/elimine primeiro o movimento em Movimentos de Conta.");
+      return;
+    }
+    if (!window.confirm(`Eliminar "${item.equipamento}" da Agenda? Esta ação não pode ser desfeita.`)) return;
+    const ok = await deleteAgendaVistoriaFromSupabase(item.id);
+    if (!ok) { alert("❌ Não foi possível eliminar no Supabase. Tente novamente."); return; }
+    setAgenda(prev => prev.filter(a => a.id !== item.id));
+    registarLogAuditoria("Manutenção", `Eliminou a vistoria/inspeção "${item.equipamento}" da Agenda`, predio.id_predio, loggedUser);
+  };
+
+  // Anexa o certificado oficial de inspeção ou a fatura/comprovativo de
+  // pagamento — upload real para o Storage (nunca base64 na BD) e arquivo
+  // automático em Documentos, tal como os restantes fluxos da app.
+  const handleAnexarDocumentoAgenda = async (e: React.ChangeEvent<HTMLInputElement>, item: AgendaItem, campo: "certificado" | "comprovativo") => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setAnexandoAgendaId(item.id + campo);
+    try {
+      const ano = (item.dataPlaneada || new Date().toISOString()).slice(0, 4);
+      const caminho = `${ano}/Manutencao/${predio.id_predio}/${campo}-${Date.now()}-${file.name}`;
+      const urlReal = await uploadDocumentoToStorage(file, caminho);
+      if (!urlReal) { alert("❌ Não foi possível carregar o ficheiro para o Storage. Tente novamente."); return; }
+      const atualizado: AgendaItem = campo === "certificado"
+        ? { ...item, certificado_url: urlReal }
+        : { ...item, comprovativo_url: urlReal };
+      const ok = await saveAgendaVistoriaToSupabase(predio.id_predio, atualizado);
+      if (!ok) { alert("❌ Não foi possível gravar o documento no Supabase. Tente novamente."); return; }
+      setAgenda(prev => prev.map(a => a.id === item.id ? atualizado : a));
+
+      const novoDoc: Documento = {
+        id_doc: "doc-vist-" + Date.now(),
+        id_predio: predio.id_predio,
+        nome: file.name,
+        tipo: "PDF",
+        data_upload: new Date().toISOString().split("T")[0],
+        tamanho: `${(file.size / 1024).toFixed(0)} KB`,
+        categoria: "Manutenção",
+        tema: "Manutenção",
+        sub_pasta: item.equipamento,
+        descricao: `${campo === "certificado" ? "Certificado de Inspeção" : "Fatura/Comprovativo de Pagamento"} — ${item.equipamento}`,
+        visibilidade: "Público",
+        autor: loggedUser.nome,
+        ano,
+        caminho: urlReal
+      };
+      setDocumentos(prev => [novoDoc, ...prev]);
+      saveDocumentoToSupabase(novoDoc).catch(console.error);
+      registarLogAuditoria("Manutenção", `Anexou ${campo === "certificado" ? "o certificado de inspeção" : "o comprovativo de pagamento"} de "${item.equipamento}"`, predio.id_predio, loggedUser);
+    } finally {
+      setAnexandoAgendaId(null);
+    }
+  };
+
+  // Lança o custo real desta vistoria/inspeção como movimento de Despesa na
+  // conta bancária do prédio — nunca repartido pelas frações (pedido
+  // explícito: "os custos unitários de cada elevador saem da conta bancária
+  // do prédio, nada tem a ver com as frações"). Quando há várias unidades
+  // (ex: 2 elevadores), cada uma é o seu próprio AgendaItem, por isso gera o
+  // seu próprio movimento — 1 por unidade.
+  const handleLancarCustoAgenda = async (item: AgendaItem) => {
+    if (!item.custo || item.custo <= 0) { alert("Indique primeiro o custo desta vistoria/inspeção (editar)."); return; }
+    if (!item.id_conta_pagamento) { alert("Escolha primeiro a conta bancária de pagamento (editar)."); return; }
+    if (item.id_movimento) { alert("O custo desta vistoria já foi lançado como movimento."); return; }
+    const contaAlvo = contas.find(c => c.id_conta === item.id_conta_pagamento);
+    if (!contaAlvo) { alert("Conta de pagamento não encontrada."); return; }
+
+    setLancandoCustoAgendaId(item.id);
+    try {
+      const entidade = item.fornecedorInspecaoNome || item.fornecedorManutencaoNome || "Entidade de Inspeção";
+      const ehElevador = /elevador/i.test(item.equipamento);
+      const novoMov: Movimento = {
+        id_mov: "mov-vist-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+        id_predio: predio.id_predio,
+        id_conta: contaAlvo.id_conta,
+        data: new Date().toISOString().split("T")[0],
+        tipo: "Despesa",
+        valor: item.custo,
+        descricao: `${item.equipamento} — ${entidade}${item.fornecedorManutencaoNome && item.fornecedorManutencaoNome !== entidade ? ` (acompanhado por ${item.fornecedorManutencaoNome})` : ""}`,
+        categoria: ehElevador ? "Manutenção de Elevadores" : "Manutenção",
+        estado: "Pago",
+        is_movimento_cego: false,
+        id_fornecedor: item.id_fornecedor_inspecao,
+        comprovativo_url: item.comprovativo_url
+      };
+      const okMov = await saveMovimentoToSupabase(novoMov);
+      if (!okMov) { alert("❌ Não foi possível gravar o movimento no Supabase. Tente novamente."); return; }
+      setMovements(prev => [novoMov, ...prev]);
+
+      const contaReal = await ajustarSaldoContaReal(contaAlvo.id_conta, -item.custo);
+      if (contaReal) {
+        // contasRef não existe neste componente (contas vem só como prop
+        // de leitura) — a lista local atualiza-se no próximo fetch/reload;
+        // o saldo real na BD já ficou correto, que é o que importa.
+      }
+
+      const atualizado: AgendaItem = { ...item, id_movimento: novoMov.id_mov };
+      const okAgenda = await saveAgendaVistoriaToSupabase(predio.id_predio, atualizado);
+      if (okAgenda) setAgenda(prev => prev.map(a => a.id === item.id ? atualizado : a));
+
+      registarLogAuditoria("Manutenção", `Lançou o custo de "${item.equipamento}" (${item.custo.toFixed(2)}€) na conta ${contaAlvo.banco}`, predio.id_predio, loggedUser);
+      alert(`✅ Custo de ${item.custo.toFixed(2)}€ lançado como movimento e descontado da conta ${contaAlvo.banco}.`);
+    } finally {
+      setLancandoCustoAgendaId(null);
+    }
   };
 
   // Technician signs off an Agenda item
@@ -1406,14 +1678,109 @@ export function GestaoManutencaoIntervencoes({
               <p className="text-xs text-slate-600">Agenda anual de vistorias técnicas regulamentares e verificações de equipamentos do edifício.</p>
             </div>
 
-            <button
-              onClick={handleGerarAgendaIA}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md cursor-pointer flex items-center gap-1.5"
-            >
-              <Sparkles className="h-4 w-4" />
-              <span>Gerar Agenda Preventiva IA</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={abrirNovaAgenda}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md cursor-pointer flex items-center gap-1.5"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Nova Vistoria / Inspeção</span>
+              </button>
+              <button
+                onClick={handleGerarAgendaIA}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md cursor-pointer flex items-center gap-1.5"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span>Gerar Agenda Preventiva IA</span>
+              </button>
+            </div>
           </div>
+
+          {showAgendaForm && (
+            <form onSubmit={handleGuardarAgenda} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-emerald-300 dark:border-emerald-800 text-xs space-y-3">
+              <h4 className="font-bold uppercase text-slate-600">{editingAgendaId ? "Editar Vistoria / Inspeção" : "Nova Vistoria / Inspeção"}</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Equipamento / Vistoria *</label>
+                  <input type="text" value={agEquipamento} onChange={e => setAgEquipamento(e.target.value)} placeholder="Ex: Inspeção Periódica de Elevadores" className="w-full border p-2 rounded bg-white dark:bg-slate-950" required />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Tipo</label>
+                  <select value={agTipo} onChange={e => setAgTipo(e.target.value as any)} className="w-full border p-2 rounded bg-white dark:bg-slate-950">
+                    <option value="inspeção_obrigatoria">Inspeção Obrigatória (Lei)</option>
+                    <option value="preventiva">Manutenção Preventiva</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Data Planeada *</label>
+                  <input type="date" value={agDataPlaneada} onChange={e => setAgDataPlaneada(e.target.value)} className="w-full border p-2 rounded bg-white dark:bg-slate-950" required />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Periodicidade</label>
+                  <input type="text" value={agPeriodicidade} onChange={e => setAgPeriodicidade(e.target.value)} placeholder="Ex: 2 Anos, Anual, Mensal..." className="w-full border p-2 rounded bg-white dark:bg-slate-950" />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Validade / Próxima Inspeção Obrigatória</label>
+                  <input type="date" value={agDataValidade} onChange={e => setAgDataValidade(e.target.value)} className="w-full border p-2 rounded bg-white dark:bg-slate-950" />
+                </div>
+                {!editingAgendaId && (
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Unidades (ex: 2 elevadores = 2 itens, 2 movimentos)</label>
+                    <input type="number" min={1} value={agNumUnidades} onChange={e => setAgNumUnidades(e.target.value)} className="w-full border p-2 rounded bg-white dark:bg-slate-950" />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Entidade Oficial de Inspeção</label>
+                  <select value={agFornInspecaoId} onChange={e => { setAgFornInspecaoId(e.target.value); setAgFornInspecaoNome(""); }} className="w-full border p-2 rounded bg-white dark:bg-slate-950">
+                    <option value="">— Escolher fornecedor registado —</option>
+                    {fornecedores.filter(f => f.id_predio === predio.id_predio).map(f => (
+                      <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}</option>
+                    ))}
+                  </select>
+                  {!agFornInspecaoId && (
+                    <input type="text" value={agFornInspecaoNome} onChange={e => setAgFornInspecaoNome(e.target.value)} placeholder="Ou nome (ainda sem ficha de fornecedor)..." className="w-full border p-2 rounded bg-white dark:bg-slate-950 mt-1.5" />
+                  )}
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Empresa de Manutenção (acompanha a inspeção)</label>
+                  <select value={agFornManutencaoId} onChange={e => { setAgFornManutencaoId(e.target.value); setAgFornManutencaoNome(""); }} className="w-full border p-2 rounded bg-white dark:bg-slate-950">
+                    <option value="">— Escolher fornecedor registado —</option>
+                    {fornecedores.filter(f => f.id_predio === predio.id_predio).map(f => (
+                      <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}</option>
+                    ))}
+                  </select>
+                  {!agFornManutencaoId && (
+                    <input type="text" value={agFornManutencaoNome} onChange={e => setAgFornManutencaoNome(e.target.value)} placeholder="Ou nome (ainda sem ficha de fornecedor)..." className="w-full border p-2 rounded bg-white dark:bg-slate-950 mt-1.5" />
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Custo {editingAgendaId ? "" : "por Unidade"} (€)</label>
+                  <input type="text" value={agCustoPorUnidade} onChange={e => setAgCustoPorUnidade(e.target.value)} placeholder="Ex: 85,00" className="w-full border p-2 rounded bg-white dark:bg-slate-950" />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Conta Bancária de Pagamento</label>
+                  <select value={agContaPagamento} onChange={e => setAgContaPagamento(e.target.value)} className="w-full border p-2 rounded bg-white dark:bg-slate-950">
+                    <option value="">— Escolher conta do prédio —</option>
+                    {contas.filter(c => c.id_predio === predio.id_predio).map(c => (
+                      <option key={c.id_conta} value={c.id_conta}>{c.banco} ({c.tipo})</option>
+                    ))}
+                  </select>
+                  <p className="text-[9px] text-slate-600 mt-1">Este custo sai sempre da conta do prédio — nunca é repartido pelas frações.</p>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button type="submit" disabled={aGuardandoAgenda} className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-1.5 px-4 rounded text-xs cursor-pointer">
+                  {aGuardandoAgenda ? "A guardar..." : (editingAgendaId ? "Guardar Alterações" : "Agendar")}
+                </button>
+                <button type="button" onClick={() => { setShowAgendaForm(false); resetAgendaForm(); }} className="bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-1.5 px-4 rounded text-xs cursor-pointer">
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-3">
@@ -1424,8 +1791,8 @@ export function GestaoManutencaoIntervencoes({
                       <div className="flex items-center gap-2">
                         <span className="text-[9px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-mono font-bold">ID: {item.id}</span>
                         <span className={`text-[9px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full ${
-                          item.tipo === "inspeção_obrigatoria" 
-                            ? "bg-red-50 text-red-700 dark:bg-red-950/20" 
+                          item.tipo === "inspeção_obrigatoria"
+                            ? "bg-red-50 text-red-700 dark:bg-red-950/20"
                             : "bg-blue-50 text-blue-700 dark:bg-blue-950/20"
                         }`}>
                           {item.tipo === "inspeção_obrigatoria" ? "Inspeção Obrigatória (Lei)" : "Manutenção Preventiva"}
@@ -1434,15 +1801,23 @@ export function GestaoManutencaoIntervencoes({
                       <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">{item.equipamento}</h4>
                     </div>
 
-                    <span className={`text-xs px-2.5 py-1 rounded-full border font-bold ${
-                      item.estado === "Verificado"
-                        ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                        : item.estado === "Não Verificado"
-                        ? "bg-rose-50 text-rose-800 border-rose-200"
-                        : "bg-amber-50 text-amber-800 border-amber-200 animate-pulse"
-                    }`}>
-                      {item.estado}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-xs px-2.5 py-1 rounded-full border font-bold ${
+                        item.estado === "Verificado"
+                          ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                          : item.estado === "Não Verificado"
+                          ? "bg-rose-50 text-rose-800 border-rose-200"
+                          : "bg-amber-50 text-amber-800 border-amber-200 animate-pulse"
+                      }`}>
+                        {item.estado}
+                      </span>
+                      <button onClick={() => abrirEditarAgenda(item)} title="Editar" className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center cursor-pointer">
+                        <FileText className="h-3.5 w-3.5" />
+                      </button>
+                      <button onClick={() => handleEliminarAgendaItem(item)} title="Eliminar" className="w-7 h-7 rounded-lg bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 flex items-center justify-center cursor-pointer">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-400">
@@ -1452,12 +1827,79 @@ export function GestaoManutencaoIntervencoes({
                     </div>
                     <div>
                       <span className="text-[9px] block text-slate-600 uppercase font-bold">Periodicidade</span>
-                      <span>{item.periodicidade}</span>
+                      <span>{item.periodicidade || "—"}</span>
                     </div>
                     <div>
                       <span className="text-[9px] block text-slate-600 uppercase font-bold">Última Verificação</span>
                       <span>{item.dataVerificacao ? formatDatePT(item.dataVerificacao) : "Pendente"}</span>
                     </div>
+                    <div>
+                      <span className="text-[9px] block text-slate-600 uppercase font-bold">Validade / Próxima</span>
+                      <span>{item.dataValidade ? formatDatePT(item.dataValidade) : "—"}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] block text-slate-600 uppercase font-bold">Entidade de Inspeção</span>
+                      <span>{item.fornecedorInspecaoNome || "—"}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] block text-slate-600 uppercase font-bold">Empresa de Manutenção</span>
+                      <span>{item.fornecedorManutencaoNome || "—"}</span>
+                    </div>
+                  </div>
+
+                  {/* Custo e lançamento do movimento na conta bancária do prédio — nunca
+                      repartido pelas frações; quando há várias unidades (ex: 2 elevadores)
+                      cada uma tem o seu próprio custo e o seu próprio movimento. */}
+                  {(item.custo || item.id_conta_pagamento) && (
+                    <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-semibold text-slate-600 dark:text-slate-400">
+                        <span className="text-[9px] block uppercase font-bold">Custo desta Vistoria</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{item.custo != null ? `${item.custo.toFixed(2)}€` : "—"}</span>
+                        {item.id_conta_pagamento && (
+                          <span className="ml-2 text-[10px] text-slate-600">conta: {contas.find(c => c.id_conta === item.id_conta_pagamento)?.banco || "?"}</span>
+                        )}
+                      </div>
+                      {item.id_movimento ? (
+                        <span className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1">
+                          <Check className="h-3 w-3" /> Custo lançado na conta
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleLancarCustoAgenda(item)}
+                          disabled={lancandoCustoAgendaId === item.id}
+                          className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-1.5 px-3 rounded-lg text-[10px] cursor-pointer flex items-center gap-1"
+                        >
+                          <Landmark className="h-3 w-3" />
+                          <span>{lancandoCustoAgendaId === item.id ? "A lançar..." : "Lançar Custo na Conta"}</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Anexos: certificado oficial de inspeção + fatura/comprovativo de pagamento */}
+                  <div className="flex flex-wrap items-center gap-2 text-[10px]">
+                    {item.certificado_url ? (
+                      <a href={item.certificado_url} target="_blank" rel="noreferrer" className="bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer">
+                        <FileText className="h-3 w-3" /> Ver Certificado de Inspeção
+                      </a>
+                    ) : (
+                      <label className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer">
+                        <Upload className="h-3 w-3" />
+                        <span>{anexandoAgendaId === item.id + "certificado" ? "A carregar..." : "Anexar Certificado"}</span>
+                        <input type="file" accept=".pdf,image/*" className="hidden" disabled={anexandoAgendaId === item.id + "certificado"} onChange={e => handleAnexarDocumentoAgenda(e, item, "certificado")} />
+                      </label>
+                    )}
+                    {item.comprovativo_url ? (
+                      <a href={item.comprovativo_url} target="_blank" rel="noreferrer" className="bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer">
+                        <FileText className="h-3 w-3" /> Ver Fatura/Comprovativo
+                      </a>
+                    ) : (
+                      <label className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer">
+                        <Upload className="h-3 w-3" />
+                        <span>{anexandoAgendaId === item.id + "comprovativo" ? "A carregar..." : "Anexar Fatura/Recibo"}</span>
+                        <input type="file" accept=".pdf,image/*" className="hidden" disabled={anexandoAgendaId === item.id + "comprovativo"} onChange={e => handleAnexarDocumentoAgenda(e, item, "comprovativo")} />
+                      </label>
+                    )}
                   </div>
 
                   {item.estado === "Agendado" && (activeProfile === "TECNICO" || activeProfile === "ADMIN" || activeProfile === "EMPRESA_GESTORA") && (
@@ -1554,27 +1996,46 @@ export function GestaoManutencaoIntervencoes({
               ))}
             </div>
 
-            {/* Smart info column */}
+            {/* Smart info column — alertas calculados a partir de
+                item.dataValidade (validade real do certificado/próxima
+                inspeção obrigatória), não texto fixo como antes. */}
             <div className="space-y-4">
               <div className="bg-blue-50 dark:bg-blue-950/20 p-5 rounded-2xl border border-blue-100 dark:border-blue-900/40 text-xs text-blue-800 dark:text-blue-300 space-y-3">
                 <h4 className="font-bold flex items-center gap-1.5">
                   <ShieldAlert className="h-4 w-4" />
                   Alertas Automáticos de Validades
                 </h4>
-                <ul className="space-y-2 font-medium">
-                  <li className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 bg-red-600 rounded-full animate-ping"></span>
-                    <span>Validade Extintores: <strong className="text-red-600 dark:text-red-400 font-black">Expira em 30 dias</strong></span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 bg-amber-500 rounded-full"></span>
-                    <span>Inspecção Elevadores: Programada para breve</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 bg-slate-300 rounded-full"></span>
-                    <span>Inspeção Bombas: Conforme</span>
-                  </li>
-                </ul>
+                {(() => {
+                  const hoje = new Date();
+                  const comValidade = agenda.filter(a => a.dataValidade).map(a => {
+                    const dv = new Date(a.dataValidade!);
+                    const dias = Math.round((dv.getTime() - hoje.getTime()) / 86400000);
+                    return { item: a, dias };
+                  }).sort((a, b) => a.dias - b.dias);
+
+                  if (comValidade.length === 0) {
+                    return <p className="text-[11px] text-blue-700/80 dark:text-blue-400/80">Sem validades registadas — edite uma vistoria/inspeção para indicar a data de validade/próxima inspeção.</p>;
+                  }
+
+                  return (
+                    <ul className="space-y-2 font-medium">
+                      {comValidade.map(({ item, dias }) => {
+                        const cor = dias < 0 ? "bg-red-600 animate-ping" : dias <= 60 ? "bg-amber-500" : "bg-slate-300";
+                        const texto = dias < 0
+                          ? <strong className="text-red-600 dark:text-red-400 font-black">Expirou há {Math.abs(dias)} dia{Math.abs(dias) === 1 ? "" : "s"}</strong>
+                          : dias <= 60
+                          ? <strong className="text-amber-600 dark:text-amber-400 font-black">Expira em {dias} dia{dias === 1 ? "" : "s"}</strong>
+                          : <span>Válido até {formatDatePT(item.dataValidade!)}</span>;
+                        return (
+                          <li key={item.id} className="flex items-center gap-2">
+                            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${cor}`}></span>
+                            <span>{item.equipamento}: {texto}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  );
+                })()}
               </div>
             </div>
           </div>

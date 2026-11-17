@@ -2677,7 +2677,17 @@ export async function fetchAgendaVistoriasFromSupabase(idPredio: string): Promis
     relatorio: row.relatorio || undefined,
     avariasEncontradas: row.avarias_encontradas || undefined,
     fotos: row.fotos || [],
-    assinatura: row.assinatura || undefined
+    assinatura: row.assinatura || undefined,
+    id_fornecedor_inspecao: row.id_fornecedor_inspecao || undefined,
+    fornecedorInspecaoNome: row.fornecedor_inspecao_nome || undefined,
+    id_fornecedor_manutencao: row.id_fornecedor_manutencao || undefined,
+    fornecedorManutencaoNome: row.fornecedor_manutencao_nome || undefined,
+    dataValidade: row.data_validade || undefined,
+    custo: row.custo != null ? Number(row.custo) : undefined,
+    id_conta_pagamento: row.id_conta_pagamento || undefined,
+    id_movimento: row.id_movimento || undefined,
+    certificado_url: row.certificado_url || undefined,
+    comprovativo_url: row.comprovativo_url || undefined
   }));
 }
 
@@ -2696,8 +2706,23 @@ export async function saveAgendaVistoriaToSupabase(idPredio: string, item: Agend
     relatorio: item.relatorio || null,
     avarias_encontradas: item.avariasEncontradas || null,
     fotos: item.fotos || [],
-    assinatura: item.assinatura || null
+    assinatura: item.assinatura || null,
+    id_fornecedor_inspecao: item.id_fornecedor_inspecao || null,
+    fornecedor_inspecao_nome: item.fornecedorInspecaoNome || null,
+    id_fornecedor_manutencao: item.id_fornecedor_manutencao || null,
+    fornecedor_manutencao_nome: item.fornecedorManutencaoNome || null,
+    data_validade: item.dataValidade || null,
+    custo: item.custo ?? null,
+    id_conta_pagamento: item.id_conta_pagamento || null,
+    id_movimento: item.id_movimento || null,
+    certificado_url: item.certificado_url || null,
+    comprovativo_url: item.comprovativo_url || null
   });
+}
+
+export async function deleteAgendaVistoriaFromSupabase(id: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  return dbDelete("agenda_vistorias_tecnicas", [["id", "eq", id]]);
 }
 
 // ============================================================================
