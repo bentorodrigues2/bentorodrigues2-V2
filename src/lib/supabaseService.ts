@@ -2936,7 +2936,16 @@ export async function fetchInventarioTecnicoFromSupabase(idPredio: string): Prom
     proximaInspecaoData: row.proxima_inspecao_data || undefined,
     diasAlertaAntecedencia: row.dias_alerta_antecedencia != null ? Number(row.dias_alerta_antecedencia) : 30,
     alertaEnviadoEm: row.alerta_enviado_em || undefined,
-    historicoVistorias: Array.isArray(row.historico_vistorias) ? row.historico_vistorias : []
+    historicoVistorias: Array.isArray(row.historico_vistorias) ? row.historico_vistorias : [],
+    id_fornecedor_inspecao: row.id_fornecedor_inspecao || undefined,
+    fornecedorInspecaoNome: row.fornecedor_inspecao_nome || undefined,
+    id_fornecedor_manutencao: row.id_fornecedor_manutencao || undefined,
+    fornecedorManutencaoNome: row.fornecedor_manutencao_nome || undefined,
+    custoPorUnidade: row.custo_por_unidade != null ? Number(row.custo_por_unidade) : undefined,
+    numUnidades: row.num_unidades != null ? Number(row.num_unidades) : undefined,
+    id_conta_pagamento: row.id_conta_pagamento || undefined,
+    idsMovimento: Array.isArray(row.ids_movimento) ? row.ids_movimento : undefined,
+    comprovativoPagamentoUrl: row.comprovativo_pagamento_url || undefined
   }));
 }
 
@@ -2960,7 +2969,16 @@ export async function saveEquipamentoTecnicoToSupabase(idPredio: string, eq: Equ
     proxima_inspecao_data: eq.proximaInspecaoData || null,
     dias_alerta_antecedencia: eq.diasAlertaAntecedencia ?? 30,
     alerta_enviado_em: eq.alertaEnviadoEm || null,
-    historico_vistorias: eq.historicoVistorias || []
+    historico_vistorias: eq.historicoVistorias || [],
+    id_fornecedor_inspecao: eq.id_fornecedor_inspecao || null,
+    fornecedor_inspecao_nome: eq.fornecedorInspecaoNome || null,
+    id_fornecedor_manutencao: eq.id_fornecedor_manutencao || null,
+    fornecedor_manutencao_nome: eq.fornecedorManutencaoNome || null,
+    custo_por_unidade: eq.custoPorUnidade ?? null,
+    num_unidades: eq.numUnidades ?? null,
+    id_conta_pagamento: eq.id_conta_pagamento || null,
+    ids_movimento: eq.idsMovimento || null,
+    comprovativo_pagamento_url: eq.comprovativoPagamentoUrl || null
   });
 }
 

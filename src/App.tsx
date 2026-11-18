@@ -1771,14 +1771,14 @@ export default function App() {
               id="sidebar-item-manutencao"
               onClick={() => {
                 setOpenMenuVistoriasIntervencoes(!openMenuVistoriasIntervencoes);
-                if (!["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "manutencao_agenda", "inventario_tecnico"].includes(activeSection)) {
+                if (!["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "inventario_tecnico"].includes(activeSection)) {
                   setActiveSection("manutencao_ocorrencias");
                 }
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                ["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "manutencao_agenda", "inventario_tecnico"].includes(activeSection)
+                ["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "inventario_tecnico"].includes(activeSection)
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                   : "text-slate-600 hover:text-white hover:bg-slate-800/30"
               }`}
@@ -1856,21 +1856,14 @@ export default function App() {
                   <span>Intervenções Concluídas</span>
                 </button>
 
-                <button
-                  onClick={() => {
-                    setActiveSection("manutencao_agenda");
-                    setViewMode("BROWSER");
-                    setIaInitialTab(undefined);
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "manutencao_agenda" 
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
-                  }`}
-                >
-                  <img src="/modulos/30-equipamento.png" alt="Agenda" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Agenda de Manutenção</span>
-                </button>
+                {/* "Agenda de Manutenção" saiu daqui — unificada com
+                    "Inventário Técnico" (2026-11-18, pedido explícito do
+                    administrador): as 2 sobrepunham-se (as duas permitiam
+                    agendar/registar vistorias do mesmo equipamento, com
+                    IDs partilhados por uma tentativa de unificação anterior
+                    nunca terminada). O Inventário Técnico ficou com tudo:
+                    registo do equipamento, histórico de vistorias E agora
+                    também fornecedores/custo/conta/movimento real. */}
 
                 {/* "Intervenções Extraordinárias (Obras)" saiu daqui — vivia
                     separada do Portal de Orçamentos apesar de serem passos
@@ -2732,7 +2725,6 @@ export default function App() {
                 {activeSection === "configuracoes_exportacao" && "Exportação Global de Dados & Backups"}
                 {activeSection === "inventario_tecnico" && "Inventário Técnico e Arquitetura do Prédio"}
                 {activeSection === "manutencao_ocorrencias" && "Ocorrências & Avarias Reportadas"}
-                {activeSection === "manutencao_agenda" && "Agenda de Manutenção & Vistorias"}
                 {activeSection === "manutencao_intervencoes" && "Intervenções (Pequenas Reparações)"}
                 {activeSection === "manutencao_extraordinarias" && "Planeamento de Quotas (Obras Extraordinárias)"}
                 {activeSection === "manutencao_concluidas" && "Histórico de Manutenções Concluídas"}
@@ -3095,7 +3087,7 @@ export default function App() {
             />
           )}
 
-          {["manutencao_ocorrencias", "manutencao_agenda", "manutencao_intervencoes", "manutencao_extraordinarias", "manutencao_concluidas"].includes(activeSection) && (
+          {["manutencao_ocorrencias", "manutencao_intervencoes", "manutencao_extraordinarias", "manutencao_concluidas"].includes(activeSection) && (
             <GestaoManutencaoIntervencoes 
               predio={predioAtivo} 
               fracoes={fracoes}
@@ -3212,6 +3204,10 @@ export default function App() {
               predio={predioAtivo}
               loggedUser={loggedUser}
               fracoes={fracoes}
+              movements={movements}
+              setMovements={setMovements}
+              contas={contas}
+              fornecedores={fornecedores}
             />
           )}
 

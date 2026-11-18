@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Predio, LoggedUser, Fracao } from "../types";
-import { Wrench, Plus, Check, MapPin, Sparkles, Building, Landmark, Trash2, ShieldAlert, Camera, X, Pencil, CalendarCheck, FileText, Paperclip, Bell } from "lucide-react";
-import { fetchInventarioTecnicoFromSupabase, saveEquipamentoTecnicoToSupabase, deleteEquipamentoTecnicoFromSupabase, registarLogAuditoria, uploadDocumentoToStorage } from "../lib/supabaseService";
-import { formatDatePT } from "../utils";
+import { Predio, LoggedUser, Fracao, Movimento, Conta, Fornecedor } from "../types";
+import { Wrench, Plus, Check, MapPin, Sparkles, Building, Landmark, Trash2, ShieldAlert, Camera, X, Pencil, CalendarCheck, FileText, Paperclip, Bell, Upload } from "lucide-react";
+import { fetchInventarioTecnicoFromSupabase, saveEquipamentoTecnicoToSupabase, deleteEquipamentoTecnicoFromSupabase, registarLogAuditoria, uploadDocumentoToStorage, saveMovimentoToSupabase, ajustarSaldoContaReal } from "../lib/supabaseService";
+import { formatDatePT, parseValorMonetario } from "../utils";
 
 export interface HistoricoVistoriaEquipamento {
   id: string;
@@ -37,15 +37,42 @@ export interface EquipamentoTecnico {
   diasAlertaAntecedencia?: number;
   alertaEnviadoEm?: string;
   historicoVistorias?: HistoricoVistoriaEquipamento[];
+  // Unificação com a antiga "Agenda de Manutenção" (GestaoManutencaoIntervencoes.tsx,
+  // 2026-11-18, pedido explícito do administrador: um só ecrã para
+  // equipamentos/inspeções, sem duplicação) — entidade oficial de inspeção e
+  // empresa de manutenção que acompanha são 2 papéis distintos; o custo
+  // sai sempre da conta do prédio, nunca repartido pelas frações. Fica
+  // ligado ao equipamento (não a uma vistoria específica do histórico) para
+  // suportar vários equipamentos do mesmo tipo (ex: 2 elevadores) via
+  // numUnidades, gerando 1 movimento por unidade — reposto a undefined
+  // sempre que uma nova vistoria é registada, para o ciclo seguinte poder
+  // voltar a lançar um custo novo.
+  id_fornecedor_inspecao?: string;
+  fornecedorInspecaoNome?: string;
+  id_fornecedor_manutencao?: string;
+  fornecedorManutencaoNome?: string;
+  custoPorUnidade?: number;
+  numUnidades?: number;
+  id_conta_pagamento?: string;
+  idsMovimento?: string[];
+  comprovativoPagamentoUrl?: string;
 }
 
 interface InventarioTecnicoProps {
   predio: Predio;
   loggedUser: LoggedUser;
   fracoes?: Fracao[];
+  // Unificação com a antiga Agenda de Manutenção — precisos para ligar
+  // fornecedores reais, lançar o custo como movimento real e debitar a
+  // conta bancária do prédio. Em falta (ex: vista PWA do técnico), as
+  // secções financeiras ficam simplesmente sem opções para escolher.
+  movements?: Movimento[];
+  setMovements?: React.Dispatch<React.SetStateAction<Movimento[]>>;
+  contas?: Conta[];
+  fornecedores?: Fornecedor[];
 }
 
-export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: InventarioTecnicoProps) {
+export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements = [], setMovements, contas = [], fornecedores = [] }: InventarioTecnicoProps) {
   // Carregado do Supabase (tabela real inventario_tecnico)
   const [equipamentos, setEquipamentos] = useState<EquipamentoTecnico[]>([]);
 
@@ -70,6 +97,19 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
   const [entidadeResponsavel, setEntidadeResponsavel] = useState("");
   const [baseLegalDgeg, setBaseLegalDgeg] = useState("");
   const [diasAlertaAntecedencia, setDiasAlertaAntecedencia] = useState(30);
+  // Unificação com a antiga Agenda de Manutenção (2026-11-18) — entidade
+  // oficial de inspeção e empresa de manutenção que acompanha são 2 papéis
+  // distintos; o custo sai sempre da conta do prédio, nunca repartido
+  // pelas frações.
+  const [fornInspecaoId, setFornInspecaoId] = useState("");
+  const [fornInspecaoNome, setFornInspecaoNome] = useState("");
+  const [fornManutencaoId, setFornManutencaoId] = useState("");
+  const [fornManutencaoNome, setFornManutencaoNome] = useState("");
+  const [custoPorUnidade, setCustoPorUnidade] = useState("");
+  const [numUnidades, setNumUnidades] = useState("1");
+  const [contaPagamento, setContaPagamento] = useState("");
+  const [lancandoCustoId, setLancandoCustoId] = useState<string | null>(null);
+  const [anexandoComprovativoId, setAnexandoComprovativoId] = useState<string | null>(null);
 
   // Converte o rótulo de periodicidade (igual ao já usado em toda a app,
   // ex: contratos de fornecedores) no número de meses correspondente, para
@@ -101,6 +141,13 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
     setEntidadeResponsavel("");
     setBaseLegalDgeg("");
     setDiasAlertaAntecedencia(30);
+    setFornInspecaoId("");
+    setFornInspecaoNome("");
+    setFornManutencaoId("");
+    setFornManutencaoNome("");
+    setCustoPorUnidade("");
+    setNumUnidades("1");
+    setContaPagamento("");
   };
 
   const iniciarEdicao = (eq: EquipamentoTecnico) => {
@@ -116,6 +163,13 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
     setEntidadeResponsavel(eq.entidadeResponsavel || "");
     setBaseLegalDgeg(eq.baseLegalDgeg || "");
     setDiasAlertaAntecedencia(eq.diasAlertaAntecedencia ?? 30);
+    setFornInspecaoId(eq.id_fornecedor_inspecao || "");
+    setFornInspecaoNome(eq.fornecedorInspecaoNome || "");
+    setFornManutencaoId(eq.id_fornecedor_manutencao || "");
+    setFornManutencaoNome(eq.fornecedorManutencaoNome || "");
+    setCustoPorUnidade(eq.custoPorUnidade != null ? String(eq.custoPorUnidade) : "");
+    setNumUnidades(String(eq.numUnidades || 1));
+    setContaPagamento(eq.id_conta_pagamento || "");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -224,7 +278,13 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
         // Reposto a undefined sempre que a próxima inspeção muda, para o
         // cron poder voltar a alertar no novo ciclo.
         alertaEnviadoEm: undefined,
-        historicoVistorias: historicoAtualizado
+        historicoVistorias: historicoAtualizado,
+        // Uma vistoria NOVA (não uma correção de uma já registada) abre um
+        // novo ciclo de custo — permite voltar a "Lançar Custo" para a
+        // próxima inspeção, sem apagar o movimento já lançado no ciclo
+        // anterior (esse continua real em Movimentos de Conta).
+        idsMovimento: vistoriaEditId ? eqAlvo.idsMovimento : undefined,
+        comprovativoPagamentoUrl: vistoriaEditId ? eqAlvo.comprovativoPagamentoUrl : undefined
       };
 
       const ok = await saveEquipamentoTecnicoToSupabase(predio.id_predio, equipamentoAtualizado);
@@ -302,6 +362,9 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
     if (!nome.trim()) return;
 
     const existente = editingId ? equipamentos.find(eq => eq.id === editingId) : null;
+    const fornecedorInspecaoReal = fornecedores.find(f => f.id_fornecedor === fornInspecaoId);
+    const fornecedorManutencaoReal = fornecedores.find(f => f.id_fornecedor === fornManutencaoId);
+    const custoNum = custoPorUnidade ? parseValorMonetario(custoPorUnidade) : undefined;
     const equipment: EquipamentoTecnico = {
       id: editingId || "eq-custom-" + Date.now(),
       nome,
@@ -318,7 +381,18 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
       diasAlertaAntecedencia,
       proximaInspecaoData: existente?.proximaInspecaoData,
       alertaEnviadoEm: existente?.alertaEnviadoEm,
-      historicoVistorias: existente?.historicoVistorias || []
+      historicoVistorias: existente?.historicoVistorias || [],
+      id_fornecedor_inspecao: fornecedorInspecaoReal?.id_fornecedor,
+      fornecedorInspecaoNome: fornecedorInspecaoReal?.nome || fornInspecaoNome.trim() || undefined,
+      id_fornecedor_manutencao: fornecedorManutencaoReal?.id_fornecedor,
+      fornecedorManutencaoNome: fornecedorManutencaoReal?.nome || fornManutencaoNome.trim() || undefined,
+      custoPorUnidade: custoNum,
+      numUnidades: Math.max(1, parseInt(numUnidades, 10) || 1),
+      id_conta_pagamento: contaPagamento || undefined,
+      // Preserva o(s) movimento(s) e o comprovativo já lançados — este
+      // formulário não os mostra/edita, só a ficha do custo previsto.
+      idsMovimento: existente?.idsMovimento,
+      comprovativoPagamentoUrl: existente?.comprovativoPagamentoUrl
     };
 
     if (editingId) {
@@ -338,6 +412,100 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
     if (confirmRemove) {
       setEquipamentos(equipamentos.filter(e => e.id !== id));
       deleteEquipamentoTecnicoFromSupabase(id).catch(console.error);
+    }
+  };
+
+  // Categoria SNC sugerida a partir do nome/categoria do equipamento —
+  // mesma lógica já usada na antiga Agenda de Manutenção, agora unificada
+  // aqui. Cai sempre em "Manutenção" genérico quando não reconhece nada.
+  const categoriaSugeridaSNC = (eq: EquipamentoTecnico): string => {
+    const t = `${eq.nome} ${eq.categoria}`.toLowerCase();
+    if (/elevador/.test(t)) return "Manutenção de Elevadores";
+    if (/extintor|corta-fogo|inc[êe]ndio|sinaliza[çc][ãa]o de emerg[êe]ncia/.test(t)) return "Segurança Contra Incêndio";
+    if (/g[áa]s|conduta/.test(t)) return "Inspeção de Gás";
+    if (/bomba|drenagem|[áa]guas pluviais/.test(t)) return "Manutenção de Bombas";
+    if (/jardim|rega|eletrobomba/.test(t)) return "Manutenção de Jardins";
+    if (/quadro el[ée]tric|coluna el[ée]trica|caixa t[ée]cnica/.test(t)) return "Manutenção Elétrica";
+    if (/telhado|cobertura/.test(t)) return "Manutenção de Cobertura";
+    return "Manutenção";
+  };
+
+  // Lança o custo real deste equipamento como movimento(s) de Despesa na
+  // conta bancária do prédio — nunca repartido pelas frações. Com mais do
+  // que 1 unidade (ex: 2 elevadores), cria 1 movimento por unidade, tal
+  // como pedido explicitamente ("custo tem de ser lançado por unidade nos
+  // movimentos... nada tem a ver com as frações").
+  const handleLancarCustoEquipamento = async (eq: EquipamentoTecnico) => {
+    if (!eq.custoPorUnidade || eq.custoPorUnidade <= 0) { alert("Indique primeiro o custo por unidade deste equipamento (editar)."); return; }
+    if (!eq.id_conta_pagamento) { alert("Escolha primeiro a conta bancária de pagamento (editar)."); return; }
+    if (eq.idsMovimento?.length) { alert("O custo deste equipamento já foi lançado. Registe uma nova vistoria para abrir um novo ciclo de custo."); return; }
+    const contaAlvo = contas.find(c => c.id_conta === eq.id_conta_pagamento);
+    if (!contaAlvo) { alert("Conta de pagamento não encontrada."); return; }
+    if (!setMovements) { alert("Sistema de movimentos não disponível de momento."); return; }
+
+    setLancandoCustoId(eq.id);
+    try {
+      const entidade = eq.fornecedorInspecaoNome || eq.fornecedorManutencaoNome || "Entidade de Inspeção";
+      const unidades = Math.max(1, eq.numUnidades || 1);
+      const categoriaMov = categoriaSugeridaSNC(eq);
+      const novosMovimentos: Movimento[] = Array.from({ length: unidades }).map((_, idx) => ({
+        id_mov: "mov-inv-" + Date.now() + "-" + idx + "-" + Math.floor(Math.random() * 1000),
+        id_predio: predio.id_predio,
+        id_conta: contaAlvo.id_conta,
+        data: new Date().toISOString().split("T")[0],
+        tipo: "Despesa",
+        valor: eq.custoPorUnidade!,
+        descricao: `${eq.nome}${unidades > 1 ? ` — Unidade ${idx + 1}/${unidades}` : ""} — ${entidade}${eq.fornecedorManutencaoNome && eq.fornecedorManutencaoNome !== entidade ? ` (acompanhado por ${eq.fornecedorManutencaoNome})` : ""}`,
+        categoria: categoriaMov,
+        estado: "Pago",
+        is_movimento_cego: false,
+        id_fornecedor: eq.id_fornecedor_inspecao,
+        comprovativo_url: eq.comprovativoPagamentoUrl
+      }));
+
+      for (const mov of novosMovimentos) {
+        const ok = await saveMovimentoToSupabase(mov);
+        if (!ok) {
+          alert(`❌ Não foi possível gravar o movimento ${mov.descricao}. Os anteriores já gravados ficam na conta — verifique em Movimentos antes de tentar novamente.`);
+          return;
+        }
+      }
+      setMovements(prev => [...novosMovimentos, ...prev]);
+      for (const mov of novosMovimentos) {
+        await ajustarSaldoContaReal(contaAlvo.id_conta, -mov.valor);
+      }
+
+      const atualizado: EquipamentoTecnico = { ...eq, idsMovimento: novosMovimentos.map(m => m.id_mov) };
+      const okEq = await saveEquipamentoTecnicoToSupabase(predio.id_predio, atualizado);
+      if (okEq) setEquipamentos(prev => prev.map(e => e.id === eq.id ? atualizado : e));
+
+      const totalLancado = unidades * eq.custoPorUnidade!;
+      registarLogAuditoria("Manutenção", `Lançou o custo de "${eq.nome}" (${totalLancado.toFixed(2)}€, ${unidades} movimento${unidades === 1 ? "" : "s"}) na conta ${contaAlvo.banco}`, predio.id_predio, loggedUser);
+      alert(`✅ Custo lançado: ${unidades} movimento${unidades === 1 ? "" : "s"} de ${eq.custoPorUnidade!.toFixed(2)}€ (total ${totalLancado.toFixed(2)}€), descontado${unidades === 1 ? "" : "s"} da conta ${contaAlvo.banco}.`);
+    } finally {
+      setLancandoCustoId(null);
+    }
+  };
+
+  // Anexa a fatura/comprovativo de pagamento deste equipamento — upload
+  // real para o Storage (nunca base64 na BD).
+  const handleAnexarComprovativoEquipamento = async (e: React.ChangeEvent<HTMLInputElement>, eq: EquipamentoTecnico) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setAnexandoComprovativoId(eq.id);
+    try {
+      const ano = new Date().toISOString().slice(0, 4);
+      const caminho = `${ano}/InventarioTecnico/${predio.id_predio}/${eq.id}/comprovativo-${Date.now()}-${file.name}`;
+      const urlReal = await uploadDocumentoToStorage(file, caminho);
+      if (!urlReal) { alert("❌ Não foi possível carregar o ficheiro para o Storage. Tente novamente."); return; }
+      const atualizado: EquipamentoTecnico = { ...eq, comprovativoPagamentoUrl: urlReal };
+      const ok = await saveEquipamentoTecnicoToSupabase(predio.id_predio, atualizado);
+      if (!ok) { alert("❌ Não foi possível gravar o documento no Supabase. Tente novamente."); return; }
+      setEquipamentos(prev => prev.map(e2 => e2.id === eq.id ? atualizado : e2));
+      registarLogAuditoria("Manutenção", `Anexou o comprovativo de pagamento de "${eq.nome}"`, predio.id_predio, loggedUser);
+    } finally {
+      setAnexandoComprovativoId(null);
     }
   };
 
@@ -517,6 +685,55 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
               />
             </div>
 
+            {/* Entidade oficial de inspeção vs. empresa de manutenção que
+                acompanha (papéis distintos para inspeções obrigatórias por
+                lei: elevadores, condutas de gás, extintores, etc.) +
+                custo/conta — unificação com a antiga Agenda de Manutenção. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Entidade Oficial de Inspeção</label>
+                <select value={fornInspecaoId} onChange={e => { setFornInspecaoId(e.target.value); setFornInspecaoNome(""); }} className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs cursor-pointer">
+                  <option value="">— Escolher fornecedor registado —</option>
+                  {fornecedores.filter(f => f.id_predio === predio.id_predio).map(f => (
+                    <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}</option>
+                  ))}
+                </select>
+                {!fornInspecaoId && (
+                  <input type="text" value={fornInspecaoNome} onChange={e => setFornInspecaoNome(e.target.value)} placeholder="Ou nome (ainda sem ficha)..." className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs mt-1.5" />
+                )}
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Empresa de Manutenção (acompanha)</label>
+                <select value={fornManutencaoId} onChange={e => { setFornManutencaoId(e.target.value); setFornManutencaoNome(""); }} className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs cursor-pointer">
+                  <option value="">— Escolher fornecedor registado —</option>
+                  {fornecedores.filter(f => f.id_predio === predio.id_predio).map(f => (
+                    <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}</option>
+                  ))}
+                </select>
+                {!fornManutencaoId && (
+                  <input type="text" value={fornManutencaoNome} onChange={e => setFornManutencaoNome(e.target.value)} placeholder="Ou nome (ainda sem ficha)..." className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs mt-1.5" />
+                )}
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Custo por Unidade (€)</label>
+                <input type="text" value={custoPorUnidade} onChange={e => setCustoPorUnidade(e.target.value)} placeholder="Ex: 85,00" className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs" />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Unidades</label>
+                <input type="number" min={1} value={numUnidades} onChange={e => setNumUnidades(e.target.value)} className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Conta Bancária de Pagamento</label>
+                <select value={contaPagamento} onChange={e => setContaPagamento(e.target.value)} className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs cursor-pointer">
+                  <option value="">— Escolher conta do prédio —</option>
+                  {contas.filter(c => c.id_predio === predio.id_predio).map(c => (
+                    <option key={c.id_conta} value={c.id_conta}>{c.banco} ({c.tipo})</option>
+                  ))}
+                </select>
+                <p className="text-[9px] text-slate-600 mt-1">Este custo sai sempre da conta do prédio — nunca é repartido pelas frações. Com mais de 1 unidade, "Lançar Custo" cria 1 movimento por unidade.</p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Base Legal / DGEG (Opcional)</label>
@@ -693,6 +910,59 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [] }: Inventar
                         </div>
                       );
                     })()}
+
+                    {(e.fornecedorInspecaoNome || e.fornecedorManutencaoNome) && (
+                      <div className="flex gap-3 text-[10px] text-slate-600 pt-0.5 font-semibold flex-wrap">
+                        {e.fornecedorInspecaoNome && <span>Inspeção: <strong className="text-slate-600 dark:text-slate-300">{e.fornecedorInspecaoNome}</strong></span>}
+                        {e.fornecedorManutencaoNome && <span>Manutenção: <strong className="text-slate-600 dark:text-slate-300">{e.fornecedorManutencaoNome}</strong></span>}
+                      </div>
+                    )}
+
+                    {/* Custo e lançamento do movimento na conta bancária do
+                        prédio — nunca repartido pelas frações; com mais de
+                        1 unidade, cria 1 movimento por unidade. */}
+                    {(e.custoPorUnidade != null || e.id_conta_pagamento) && (
+                      <div className="bg-slate-100 dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 text-[10px] flex flex-wrap items-center justify-between gap-2 mt-1.5">
+                        <div className="font-semibold text-slate-600 dark:text-slate-400">
+                          <span className="text-[9px] block uppercase font-bold">Custo{(e.numUnidades || 1) > 1 ? ` (${e.numUnidades} unidades)` : ""}</span>
+                          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                            {e.custoPorUnidade != null ? `${e.custoPorUnidade.toFixed(2)}€${(e.numUnidades || 1) > 1 ? ` × ${e.numUnidades} = ${(e.custoPorUnidade * (e.numUnidades || 1)).toFixed(2)}€` : ""}` : "—"}
+                          </span>
+                          {e.id_conta_pagamento && (
+                            <span className="ml-2 text-[9px] text-slate-600">conta: {contas.find(c => c.id_conta === e.id_conta_pagamento)?.banco || "?"}</span>
+                          )}
+                        </div>
+                        {e.idsMovimento?.length ? (
+                          <span className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 px-2 py-1 rounded-lg text-[9px] font-bold flex items-center gap-1">
+                            <Check className="h-3 w-3" /> Custo lançado ({e.idsMovimento.length} mov.)
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleLancarCustoEquipamento(e)}
+                            disabled={lancandoCustoId === e.id}
+                            className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-1 px-2.5 rounded-lg text-[9px] cursor-pointer flex items-center gap-1"
+                          >
+                            <Landmark className="h-3 w-3" />
+                            <span>{lancandoCustoId === e.id ? "A lançar..." : "Lançar Custo na Conta"}</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap items-center gap-2 text-[9px] pt-1">
+                      {e.comprovativoPagamentoUrl ? (
+                        <a href={e.comprovativoPagamentoUrl} target="_blank" rel="noreferrer" className="bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-lg font-bold flex items-center gap-1">
+                          <FileText className="h-3 w-3" /> Ver Fatura/Comprovativo
+                        </a>
+                      ) : (
+                        <label className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer">
+                          <Upload className="h-3 w-3" />
+                          <span>{anexandoComprovativoId === e.id ? "A carregar..." : "Anexar Fatura/Recibo"}</span>
+                          <input type="file" accept=".pdf,image/*" className="hidden" disabled={anexandoComprovativoId === e.id} onChange={ev => handleAnexarComprovativoEquipamento(ev, e)} />
+                        </label>
+                      )}
+                    </div>
 
                     {e.fotos && e.fotos.length > 0 && (
                       <div className="flex gap-1.5 pt-1">

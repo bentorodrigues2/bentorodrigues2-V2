@@ -2991,21 +2991,15 @@ export function PWASimulator({
                           setActiveSubSection={() => {}}
                         />
                       )}
+                      {/* "Agenda de Manutenção" unificada com Inventário
+                          Técnico (2026-11-18) — este ecrã já tem agenda,
+                          histórico de vistorias e agora também fornecedores/
+                          custo. */}
                       {activePwaSubMenuDetails === "ocorrencias_agenda" && (
-                        <GestaoManutencaoIntervencoes 
+                        <InventarioTecnico
                           predio={predio}
-                          fracoes={fracoes}
-                          ocorrencias={ocorrencias}
-                          setOcorrencias={setOcorrencias}
-                          movements={movements}
-                          setMovements={setMovements}
-                          contas={contas}
-                          documentos={documentos}
-                          setDocumentos={setDocumentos}
-                          fornecedores={fornecedores}
                           loggedUser={loggedUser}
-                          activeSubSection="manutencao_agenda"
-                          setActiveSubSection={() => {}}
+                          fracoes={fracoes}
                         />
                       )}
                       {activePwaSubMenuDetails === "ocorrencias_concluidas" && (
