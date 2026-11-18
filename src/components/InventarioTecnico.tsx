@@ -12,6 +12,21 @@ export interface HistoricoVistoriaEquipamento {
   observacoes?: string;
   documentoUrl?: string;
   documentoNome?: string;
+  // Reformulação 2026-11-18 (pedido explícito do administrador: "falta a
+  // data da inspeção" junto do custo/fatura) — o custo de uma inspeção
+  // obrigatória por lei está sempre ligado a UM evento com UMA data real,
+  // nunca solto ao nível do equipamento. Entidade oficial de inspeção e
+  // empresa de manutenção que acompanha são 2 papéis distintos; o custo
+  // sai sempre da conta do prédio, nunca repartido pelas frações.
+  numCertificado?: string;
+  id_fornecedor_inspecao?: string;
+  fornecedorInspecaoNome?: string;
+  id_fornecedor_manutencao?: string;
+  fornecedorManutencaoNome?: string;
+  custo?: number;
+  id_conta_pagamento?: string;
+  id_movimento?: string;
+  comprovativoPagamentoUrl?: string;
 }
 
 export interface EquipamentoTecnico {
@@ -32,30 +47,15 @@ export interface EquipamentoTecnico {
   // vencimento (ver alertarInspecoesEquipamentosAVencer em cronService.js).
   entidadeResponsavel?: string;
   baseLegalDgeg?: string;
-  numCertificadoRelatorio?: string;
+  // Nº de licença/registo/autorização PERMANENTE deste equipamento (ex: nº
+  // DGEG de um elevador concreto) — distinto do nº de certificado de UMA
+  // inspeção (esse vive em HistoricoVistoriaEquipamento.numCertificado,
+  // porque muda a cada inspeção).
+  numLicencaAutorizacao?: string;
   proximaInspecaoData?: string;
   diasAlertaAntecedencia?: number;
   alertaEnviadoEm?: string;
   historicoVistorias?: HistoricoVistoriaEquipamento[];
-  // Unificação com a antiga "Agenda de Manutenção" (GestaoManutencaoIntervencoes.tsx,
-  // 2026-11-18, pedido explícito do administrador: um só ecrã para
-  // equipamentos/inspeções, sem duplicação) — entidade oficial de inspeção e
-  // empresa de manutenção que acompanha são 2 papéis distintos; o custo
-  // sai sempre da conta do prédio, nunca repartido pelas frações. Fica
-  // ligado ao equipamento (não a uma vistoria específica do histórico) para
-  // suportar vários equipamentos do mesmo tipo (ex: 2 elevadores) via
-  // numUnidades, gerando 1 movimento por unidade — reposto a undefined
-  // sempre que uma nova vistoria é registada, para o ciclo seguinte poder
-  // voltar a lançar um custo novo.
-  id_fornecedor_inspecao?: string;
-  fornecedorInspecaoNome?: string;
-  id_fornecedor_manutencao?: string;
-  fornecedorManutencaoNome?: string;
-  custoPorUnidade?: number;
-  numUnidades?: number;
-  id_conta_pagamento?: string;
-  idsMovimento?: string[];
-  comprovativoPagamentoUrl?: string;
 }
 
 interface InventarioTecnicoProps {
@@ -96,20 +96,15 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
   const [frequenciaInspecao, setFrequenciaInspecao] = useState("Anual");
   const [entidadeResponsavel, setEntidadeResponsavel] = useState("");
   const [baseLegalDgeg, setBaseLegalDgeg] = useState("");
+  const [numLicencaAutorizacao, setNumLicencaAutorizacao] = useState("");
   const [diasAlertaAntecedencia, setDiasAlertaAntecedencia] = useState(30);
-  // Unificação com a antiga Agenda de Manutenção (2026-11-18) — entidade
-  // oficial de inspeção e empresa de manutenção que acompanha são 2 papéis
-  // distintos; o custo sai sempre da conta do prédio, nunca repartido
-  // pelas frações.
-  const [fornInspecaoId, setFornInspecaoId] = useState("");
-  const [fornInspecaoNome, setFornInspecaoNome] = useState("");
-  const [fornManutencaoId, setFornManutencaoId] = useState("");
-  const [fornManutencaoNome, setFornManutencaoNome] = useState("");
-  const [custoPorUnidade, setCustoPorUnidade] = useState("");
-  const [numUnidades, setNumUnidades] = useState("1");
-  const [contaPagamento, setContaPagamento] = useState("");
-  const [lancandoCustoId, setLancandoCustoId] = useState<string | null>(null);
-  const [anexandoComprovativoId, setAnexandoComprovativoId] = useState<string | null>(null);
+  // Só usado ao CRIAR (nunca ao editar): nº de equipamentos iguais a criar
+  // de uma vez, ex: "2" para um prédio com 2 elevadores — pedido explícito
+  // do administrador ("a localização é um equipamento do prédio", cada
+  // elevador com a sua própria ficha, histórico e custos, em vez de 1 só
+  // registo com um multiplicador artificial). Gera "{nome} 1", "{nome} 2",
+  // cada um totalmente independente dali em diante.
+  const [numUnidadesCriar, setNumUnidadesCriar] = useState("1");
 
   // Converte o rótulo de periodicidade (igual ao já usado em toda a app,
   // ex: contratos de fornecedores) no número de meses correspondente, para
@@ -140,14 +135,9 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
     setFrequenciaInspecao("Anual");
     setEntidadeResponsavel("");
     setBaseLegalDgeg("");
+    setNumLicencaAutorizacao("");
     setDiasAlertaAntecedencia(30);
-    setFornInspecaoId("");
-    setFornInspecaoNome("");
-    setFornManutencaoId("");
-    setFornManutencaoNome("");
-    setCustoPorUnidade("");
-    setNumUnidades("1");
-    setContaPagamento("");
+    setNumUnidadesCriar("1");
   };
 
   const iniciarEdicao = (eq: EquipamentoTecnico) => {
@@ -162,14 +152,8 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
     setFrequenciaInspecao(eq.frequenciaInspecao || "Anual");
     setEntidadeResponsavel(eq.entidadeResponsavel || "");
     setBaseLegalDgeg(eq.baseLegalDgeg || "");
+    setNumLicencaAutorizacao(eq.numLicencaAutorizacao || "");
     setDiasAlertaAntecedencia(eq.diasAlertaAntecedencia ?? 30);
-    setFornInspecaoId(eq.id_fornecedor_inspecao || "");
-    setFornInspecaoNome(eq.fornecedorInspecaoNome || "");
-    setFornManutencaoId(eq.id_fornecedor_manutencao || "");
-    setFornManutencaoNome(eq.fornecedorManutencaoNome || "");
-    setCustoPorUnidade(eq.custoPorUnidade != null ? String(eq.custoPorUnidade) : "");
-    setNumUnidades(String(eq.numUnidades || 1));
-    setContaPagamento(eq.id_conta_pagamento || "");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -196,6 +180,20 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
   const [vistoriaDocRemovido, setVistoriaDocRemovido] = useState(false);
   const [aGravarVistoria, setAGravarVistoria] = useState(false);
   const vistoriaDocInputRef = useRef<HTMLInputElement>(null);
+  // Custo desta inspeção concreta — ligado à mesma data da vistoria
+  // (pedido explícito: "falta a data da inspeção" junto do custo/fatura).
+  const [vistoriaNumCertificado, setVistoriaNumCertificado] = useState("");
+  const [vistoriaFornInspecaoId, setVistoriaFornInspecaoId] = useState("");
+  const [vistoriaFornInspecaoNome, setVistoriaFornInspecaoNome] = useState("");
+  const [vistoriaFornManutencaoId, setVistoriaFornManutencaoId] = useState("");
+  const [vistoriaFornManutencaoNome, setVistoriaFornManutencaoNome] = useState("");
+  const [vistoriaCusto, setVistoriaCusto] = useState("");
+  const [vistoriaContaPagamento, setVistoriaContaPagamento] = useState("");
+  const [vistoriaIdMovimentoExistente, setVistoriaIdMovimentoExistente] = useState<string | undefined>(undefined);
+  const [vistoriaFaturaFile, setVistoriaFaturaFile] = useState<File | null>(null);
+  const [vistoriaFaturaExistente, setVistoriaFaturaExistente] = useState<string | null>(null);
+  const [vistoriaFaturaRemovida, setVistoriaFaturaRemovida] = useState(false);
+  const vistoriaFaturaInputRef = useRef<HTMLInputElement>(null);
 
   const abrirRegistarVistoria = (eq: EquipamentoTecnico) => {
     setVistoriaTargetId(eq.id);
@@ -207,6 +205,21 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
     setVistoriaDocFile(null);
     setVistoriaDocExistente(null);
     setVistoriaDocRemovido(false);
+    setVistoriaNumCertificado("");
+    // Pré-preenche com os últimos fornecedores/conta usados neste
+    // equipamento (costumam repetir-se de inspeção para inspeção), mas o
+    // custo fica sempre em branco — nunca presumir que custou o mesmo.
+    const ultimaVistoria = (eq.historicoVistorias || [])[0];
+    setVistoriaFornInspecaoId(ultimaVistoria?.id_fornecedor_inspecao || "");
+    setVistoriaFornInspecaoNome(ultimaVistoria?.id_fornecedor_inspecao ? "" : (ultimaVistoria?.fornecedorInspecaoNome || ""));
+    setVistoriaFornManutencaoId(ultimaVistoria?.id_fornecedor_manutencao || "");
+    setVistoriaFornManutencaoNome(ultimaVistoria?.id_fornecedor_manutencao ? "" : (ultimaVistoria?.fornecedorManutencaoNome || ""));
+    setVistoriaCusto("");
+    setVistoriaContaPagamento(ultimaVistoria?.id_conta_pagamento || "");
+    setVistoriaIdMovimentoExistente(undefined);
+    setVistoriaFaturaFile(null);
+    setVistoriaFaturaExistente(null);
+    setVistoriaFaturaRemovida(false);
   };
 
   const iniciarEdicaoVistoria = (eq: EquipamentoTecnico, v: HistoricoVistoriaEquipamento) => {
@@ -219,6 +232,32 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
     setVistoriaDocFile(null);
     setVistoriaDocExistente(v.documentoUrl ? { url: v.documentoUrl, nome: v.documentoNome } : null);
     setVistoriaDocRemovido(false);
+    setVistoriaNumCertificado(v.numCertificado || "");
+    setVistoriaFornInspecaoId(v.id_fornecedor_inspecao || "");
+    setVistoriaFornInspecaoNome(v.id_fornecedor_inspecao ? "" : (v.fornecedorInspecaoNome || ""));
+    setVistoriaFornManutencaoId(v.id_fornecedor_manutencao || "");
+    setVistoriaFornManutencaoNome(v.id_fornecedor_manutencao ? "" : (v.fornecedorManutencaoNome || ""));
+    setVistoriaCusto(v.custo != null ? String(v.custo) : "");
+    setVistoriaContaPagamento(v.id_conta_pagamento || "");
+    setVistoriaIdMovimentoExistente(v.id_movimento);
+    setVistoriaFaturaFile(null);
+    setVistoriaFaturaExistente(v.comprovativoPagamentoUrl || null);
+    setVistoriaFaturaRemovida(false);
+  };
+
+  // Categoria SNC sugerida a partir do nome/categoria do equipamento —
+  // mesma lógica já usada na antiga Agenda de Manutenção, agora unificada
+  // aqui. Cai sempre em "Manutenção" genérico quando não reconhece nada.
+  const categoriaSugeridaSNC = (eq: EquipamentoTecnico): string => {
+    const t = `${eq.nome} ${eq.categoria}`.toLowerCase();
+    if (/elevador/.test(t)) return "Manutenção de Elevadores";
+    if (/extintor|corta-fogo|inc[êe]ndio|sinaliza[çc][ãa]o de emerg[êe]ncia/.test(t)) return "Segurança Contra Incêndio";
+    if (/g[áa]s|conduta/.test(t)) return "Inspeção de Gás";
+    if (/bomba|drenagem|[áa]guas pluviais/.test(t)) return "Manutenção de Bombas";
+    if (/jardim|rega|eletrobomba/.test(t)) return "Manutenção de Jardins";
+    if (/quadro el[ée]tric|coluna el[ée]trica|caixa t[ée]cnica/.test(t)) return "Manutenção Elétrica";
+    if (/telhado|cobertura/.test(t)) return "Manutenção de Cobertura";
+    return "Manutenção";
   };
 
   const handleGravarVistoria = async (e: React.FormEvent) => {
@@ -230,7 +269,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
       let documentoUrl: string | undefined;
       let documentoNome: string | undefined;
       if (vistoriaDocFile) {
-        const caminho = `inventario_tecnico/${predio.id_predio}/${eqAlvo.id}/${Date.now()}-${vistoriaDocFile.name}`;
+        const caminho = `inventario_tecnico/${predio.id_predio}/${eqAlvo.id}/certificado-${Date.now()}-${vistoriaDocFile.name}`;
         documentoUrl = (await uploadDocumentoToStorage(vistoriaDocFile, caminho)) || undefined;
         if (!documentoUrl) {
           alert("❌ Não foi possível carregar o documento comprovativo. Tente novamente.");
@@ -245,6 +284,66 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
         documentoNome = vistoriaDocExistente.nome;
       }
 
+      // Fatura/comprovativo de pagamento — distinto do certificado de
+      // inspeção acima (podem ser o mesmo PDF ou 2 ficheiros diferentes).
+      let comprovativoPagamentoUrl: string | undefined;
+      if (vistoriaFaturaFile) {
+        const caminho = `inventario_tecnico/${predio.id_predio}/${eqAlvo.id}/fatura-${Date.now()}-${vistoriaFaturaFile.name}`;
+        comprovativoPagamentoUrl = (await uploadDocumentoToStorage(vistoriaFaturaFile, caminho)) || undefined;
+        if (!comprovativoPagamentoUrl) {
+          alert("❌ Não foi possível carregar a fatura/comprovativo. Tente novamente.");
+          setAGravarVistoria(false);
+          return;
+        }
+      } else if (vistoriaEditId && !vistoriaFaturaRemovida && vistoriaFaturaExistente) {
+        comprovativoPagamentoUrl = vistoriaFaturaExistente;
+      }
+
+      const fornecedorInspecaoReal = fornecedores.find(f => f.id_fornecedor === vistoriaFornInspecaoId);
+      const fornecedorManutencaoReal = fornecedores.find(f => f.id_fornecedor === vistoriaFornManutencaoId);
+      const custoNum = vistoriaCusto ? parseValorMonetario(vistoriaCusto) : undefined;
+
+      // Lança o custo real desta inspeção como movimento de Despesa na
+      // conta bancária do prédio — nunca repartido pelas frações. Só uma
+      // vez por vistoria (idempotente): se já tinha um movimento lançado,
+      // não volta a lançar, só atualiza os restantes dados.
+      let idMovimentoFinal = vistoriaIdMovimentoExistente;
+      if (!idMovimentoFinal && custoNum && custoNum > 0 && vistoriaContaPagamento) {
+        if (!setMovements) {
+          alert("Sistema de movimentos não disponível de momento — a vistoria foi gravada sem lançar o custo.");
+        } else {
+          const contaAlvo = contas.find(c => c.id_conta === vistoriaContaPagamento);
+          if (!contaAlvo) {
+            alert("Conta de pagamento não encontrada — a vistoria foi gravada sem lançar o custo.");
+          } else {
+            const entidade = fornecedorInspecaoReal?.nome || vistoriaFornInspecaoNome.trim() || fornecedorManutencaoReal?.nome || vistoriaFornManutencaoNome.trim() || "Entidade de Inspeção";
+            const nomeManutencao = fornecedorManutencaoReal?.nome || vistoriaFornManutencaoNome.trim();
+            const novoMov: Movimento = {
+              id_mov: "mov-inv-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+              id_predio: predio.id_predio,
+              id_conta: contaAlvo.id_conta,
+              data: vistoriaData,
+              tipo: "Despesa",
+              valor: custoNum,
+              descricao: `${eqAlvo.nome} — ${entidade}${nomeManutencao && nomeManutencao !== entidade ? ` (acompanhado por ${nomeManutencao})` : ""} — inspeção de ${formatDatePT(vistoriaData)}`,
+              categoria: categoriaSugeridaSNC(eqAlvo),
+              estado: "Pago",
+              is_movimento_cego: false,
+              id_fornecedor: fornecedorInspecaoReal?.id_fornecedor,
+              comprovativo_url: comprovativoPagamentoUrl
+            };
+            const okMov = await saveMovimentoToSupabase(novoMov);
+            if (!okMov) {
+              alert("❌ Não foi possível gravar o movimento do custo. A vistoria foi gravada, mas o custo NÃO ficou lançado — tente lançá-lo outra vez ao editar esta vistoria.");
+            } else {
+              setMovements(prev => [novoMov, ...prev]);
+              await ajustarSaldoContaReal(contaAlvo.id_conta, -novoMov.valor);
+              idMovimentoFinal = novoMov.id_mov;
+            }
+          }
+        }
+      }
+
       const entradaVistoria: HistoricoVistoriaEquipamento = {
         id: vistoriaEditId || `vist-${Date.now()}`,
         data: vistoriaData,
@@ -252,7 +351,16 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
         resultado: vistoriaResultado,
         observacoes: vistoriaObservacoes || undefined,
         documentoUrl,
-        documentoNome
+        documentoNome,
+        numCertificado: vistoriaNumCertificado || undefined,
+        id_fornecedor_inspecao: fornecedorInspecaoReal?.id_fornecedor,
+        fornecedorInspecaoNome: fornecedorInspecaoReal?.nome || vistoriaFornInspecaoNome.trim() || undefined,
+        id_fornecedor_manutencao: fornecedorManutencaoReal?.id_fornecedor,
+        fornecedorManutencaoNome: fornecedorManutencaoReal?.nome || vistoriaFornManutencaoNome.trim() || undefined,
+        custo: custoNum,
+        id_conta_pagamento: vistoriaContaPagamento || undefined,
+        id_movimento: idMovimentoFinal,
+        comprovativoPagamentoUrl
       };
 
       const historicoAtualizado = vistoriaEditId
@@ -278,13 +386,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
         // Reposto a undefined sempre que a próxima inspeção muda, para o
         // cron poder voltar a alertar no novo ciclo.
         alertaEnviadoEm: undefined,
-        historicoVistorias: historicoAtualizado,
-        // Uma vistoria NOVA (não uma correção de uma já registada) abre um
-        // novo ciclo de custo — permite voltar a "Lançar Custo" para a
-        // próxima inspeção, sem apagar o movimento já lançado no ciclo
-        // anterior (esse continua real em Movimentos de Conta).
-        idsMovimento: vistoriaEditId ? eqAlvo.idsMovimento : undefined,
-        comprovativoPagamentoUrl: vistoriaEditId ? eqAlvo.comprovativoPagamentoUrl : undefined
+        historicoVistorias: historicoAtualizado
       };
 
       const ok = await saveEquipamentoTecnicoToSupabase(predio.id_predio, equipamentoAtualizado);
@@ -293,12 +395,12 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
         return;
       }
       setEquipamentos(prev => prev.map(eq => eq.id === eqAlvo.id ? equipamentoAtualizado : eq));
-      registarLogAuditoria("Manutenção", `${vistoriaEditId ? "Editou" : "Registou"} vistoria de "${eqAlvo.nome}" (${vistoriaResultado}) — próxima inspeção agendada para ${formatDatePT(proximaInspecao)}`, predio.id_predio, loggedUser, vistoriaObservacoes || undefined);
+      registarLogAuditoria("Manutenção", `${vistoriaEditId ? "Editou" : "Registou"} vistoria de "${eqAlvo.nome}" (${vistoriaResultado})${custoNum ? ` — custo ${custoNum.toFixed(2)}€` : ""} — próxima inspeção agendada para ${formatDatePT(proximaInspecao)}`, predio.id_predio, loggedUser, vistoriaObservacoes || undefined);
       setVistoriaTargetId(null);
       setVistoriaEditId(null);
       alert(vistoriaEditId
         ? `✅ Vistoria atualizada! Validade e próxima inspeção recalculadas para ${formatDatePT(proximaInspecao)}.`
-        : `✅ Vistoria registada! Validade atualizada e próxima inspeção agendada para ${formatDatePT(proximaInspecao)}.`);
+        : `✅ Vistoria registada!${idMovimentoFinal ? ` Custo de ${custoNum!.toFixed(2)}€ lançado na conta.` : ""} Validade atualizada e próxima inspeção agendada para ${formatDatePT(proximaInspecao)}.`);
     } finally {
       setAGravarVistoria(false);
     }
@@ -357,17 +459,12 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
     });
   };
 
-  const handleAddCustom = (e: React.FormEvent) => {
+  const handleAddCustom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nome.trim()) return;
 
     const existente = editingId ? equipamentos.find(eq => eq.id === editingId) : null;
-    const fornecedorInspecaoReal = fornecedores.find(f => f.id_fornecedor === fornInspecaoId);
-    const fornecedorManutencaoReal = fornecedores.find(f => f.id_fornecedor === fornManutencaoId);
-    const custoNum = custoPorUnidade ? parseValorMonetario(custoPorUnidade) : undefined;
-    const equipment: EquipamentoTecnico = {
-      id: editingId || "eq-custom-" + Date.now(),
-      nome,
+    const base: Omit<EquipamentoTecnico, "id" | "nome"> = {
       categoria,
       andar,
       estado,
@@ -378,33 +475,48 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
       fotos,
       entidadeResponsavel: entidadeResponsavel || undefined,
       baseLegalDgeg: baseLegalDgeg || undefined,
+      numLicencaAutorizacao: numLicencaAutorizacao || undefined,
       diasAlertaAntecedencia,
       proximaInspecaoData: existente?.proximaInspecaoData,
       alertaEnviadoEm: existente?.alertaEnviadoEm,
-      historicoVistorias: existente?.historicoVistorias || [],
-      id_fornecedor_inspecao: fornecedorInspecaoReal?.id_fornecedor,
-      fornecedorInspecaoNome: fornecedorInspecaoReal?.nome || fornInspecaoNome.trim() || undefined,
-      id_fornecedor_manutencao: fornecedorManutencaoReal?.id_fornecedor,
-      fornecedorManutencaoNome: fornecedorManutencaoReal?.nome || fornManutencaoNome.trim() || undefined,
-      custoPorUnidade: custoNum,
-      numUnidades: Math.max(1, parseInt(numUnidades, 10) || 1),
-      id_conta_pagamento: contaPagamento || undefined,
-      // Preserva o(s) movimento(s) e o comprovativo já lançados — este
-      // formulário não os mostra/edita, só a ficha do custo previsto.
-      idsMovimento: existente?.idsMovimento,
-      comprovativoPagamentoUrl: existente?.comprovativoPagamentoUrl
+      historicoVistorias: existente?.historicoVistorias || []
     };
 
     if (editingId) {
+      const equipment: EquipamentoTecnico = { id: editingId, nome, ...base };
       setEquipamentos(prev => prev.map(eq => eq.id === editingId ? equipment : eq));
-    } else {
-      setEquipamentos(prev => [...prev, equipment]);
+      const ok = await saveEquipamentoTecnicoToSupabase(predio.id_predio, equipment);
+      if (!ok) { alert("❌ Não foi possível gravar as alterações no Supabase."); return; }
+      registarLogAuditoria("Manutenção", `Editou "${nome}" no inventário técnico`, predio.id_predio, loggedUser);
+      limparFormulario();
+      alert(`Equipamento "${nome}" atualizado com sucesso!`);
+      return;
     }
-    saveEquipamentoTecnicoToSupabase(predio.id_predio, equipment).catch(console.error);
-    registarLogAuditoria("Manutenção", `${editingId ? "Editou" : "Adicionou"} "${nome}" no inventário técnico`, predio.id_predio, loggedUser);
-    const eraEdicao = !!editingId;
+
+    // Nº de Unidades só ao criar — gera N equipamentos NUMERADOS e
+    // totalmente independentes (ex: "Elevador 1", "Elevador 2"), cada um
+    // com a sua própria localização, histórico de vistorias e custos, em
+    // vez de 1 só registo com um multiplicador artificial (pedido
+    // explícito do administrador: "a localização é um equipamento do
+    // prédio").
+    const unidades = Math.max(1, parseInt(numUnidadesCriar, 10) || 1);
+    const novosEquipamentos: EquipamentoTecnico[] = Array.from({ length: unidades }).map((_, idx) => ({
+      id: "eq-custom-" + Date.now() + "-" + idx,
+      nome: unidades > 1 ? `${nome.trim()} ${idx + 1}` : nome.trim(),
+      ...base
+    }));
+
+    const resultados = await Promise.all(novosEquipamentos.map(eq => saveEquipamentoTecnicoToSupabase(predio.id_predio, eq)));
+    if (resultados.some(r => !r)) {
+      alert("❌ Não foi possível gravar o(s) equipamento(s) no Supabase. Tente novamente.");
+      return;
+    }
+    setEquipamentos(prev => [...prev, ...novosEquipamentos]);
+    registarLogAuditoria("Manutenção", `Adicionou "${nome}"${unidades > 1 ? ` (${unidades} unidades)` : ""} no inventário técnico`, predio.id_predio, loggedUser);
     limparFormulario();
-    alert(eraEdicao ? `Equipamento "${nome}" atualizado com sucesso!` : `Equipamento "${nome}" adicionado com sucesso! Aparece automaticamente mapeado na planta técnica do edifício.`);
+    alert(unidades > 1
+      ? `${unidades} equipamentos adicionados: ${novosEquipamentos.map(eq => eq.nome).join(", ")} — cada um já independente, com o seu próprio histórico de vistorias e custos.`
+      : `Equipamento "${nome}" adicionado com sucesso! Aparece automaticamente mapeado na planta técnica do edifício.`);
   };
 
   const handleRemove = (id: string) => {
@@ -412,100 +524,6 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
     if (confirmRemove) {
       setEquipamentos(equipamentos.filter(e => e.id !== id));
       deleteEquipamentoTecnicoFromSupabase(id).catch(console.error);
-    }
-  };
-
-  // Categoria SNC sugerida a partir do nome/categoria do equipamento —
-  // mesma lógica já usada na antiga Agenda de Manutenção, agora unificada
-  // aqui. Cai sempre em "Manutenção" genérico quando não reconhece nada.
-  const categoriaSugeridaSNC = (eq: EquipamentoTecnico): string => {
-    const t = `${eq.nome} ${eq.categoria}`.toLowerCase();
-    if (/elevador/.test(t)) return "Manutenção de Elevadores";
-    if (/extintor|corta-fogo|inc[êe]ndio|sinaliza[çc][ãa]o de emerg[êe]ncia/.test(t)) return "Segurança Contra Incêndio";
-    if (/g[áa]s|conduta/.test(t)) return "Inspeção de Gás";
-    if (/bomba|drenagem|[áa]guas pluviais/.test(t)) return "Manutenção de Bombas";
-    if (/jardim|rega|eletrobomba/.test(t)) return "Manutenção de Jardins";
-    if (/quadro el[ée]tric|coluna el[ée]trica|caixa t[ée]cnica/.test(t)) return "Manutenção Elétrica";
-    if (/telhado|cobertura/.test(t)) return "Manutenção de Cobertura";
-    return "Manutenção";
-  };
-
-  // Lança o custo real deste equipamento como movimento(s) de Despesa na
-  // conta bancária do prédio — nunca repartido pelas frações. Com mais do
-  // que 1 unidade (ex: 2 elevadores), cria 1 movimento por unidade, tal
-  // como pedido explicitamente ("custo tem de ser lançado por unidade nos
-  // movimentos... nada tem a ver com as frações").
-  const handleLancarCustoEquipamento = async (eq: EquipamentoTecnico) => {
-    if (!eq.custoPorUnidade || eq.custoPorUnidade <= 0) { alert("Indique primeiro o custo por unidade deste equipamento (editar)."); return; }
-    if (!eq.id_conta_pagamento) { alert("Escolha primeiro a conta bancária de pagamento (editar)."); return; }
-    if (eq.idsMovimento?.length) { alert("O custo deste equipamento já foi lançado. Registe uma nova vistoria para abrir um novo ciclo de custo."); return; }
-    const contaAlvo = contas.find(c => c.id_conta === eq.id_conta_pagamento);
-    if (!contaAlvo) { alert("Conta de pagamento não encontrada."); return; }
-    if (!setMovements) { alert("Sistema de movimentos não disponível de momento."); return; }
-
-    setLancandoCustoId(eq.id);
-    try {
-      const entidade = eq.fornecedorInspecaoNome || eq.fornecedorManutencaoNome || "Entidade de Inspeção";
-      const unidades = Math.max(1, eq.numUnidades || 1);
-      const categoriaMov = categoriaSugeridaSNC(eq);
-      const novosMovimentos: Movimento[] = Array.from({ length: unidades }).map((_, idx) => ({
-        id_mov: "mov-inv-" + Date.now() + "-" + idx + "-" + Math.floor(Math.random() * 1000),
-        id_predio: predio.id_predio,
-        id_conta: contaAlvo.id_conta,
-        data: new Date().toISOString().split("T")[0],
-        tipo: "Despesa",
-        valor: eq.custoPorUnidade!,
-        descricao: `${eq.nome}${unidades > 1 ? ` — Unidade ${idx + 1}/${unidades}` : ""} — ${entidade}${eq.fornecedorManutencaoNome && eq.fornecedorManutencaoNome !== entidade ? ` (acompanhado por ${eq.fornecedorManutencaoNome})` : ""}`,
-        categoria: categoriaMov,
-        estado: "Pago",
-        is_movimento_cego: false,
-        id_fornecedor: eq.id_fornecedor_inspecao,
-        comprovativo_url: eq.comprovativoPagamentoUrl
-      }));
-
-      for (const mov of novosMovimentos) {
-        const ok = await saveMovimentoToSupabase(mov);
-        if (!ok) {
-          alert(`❌ Não foi possível gravar o movimento ${mov.descricao}. Os anteriores já gravados ficam na conta — verifique em Movimentos antes de tentar novamente.`);
-          return;
-        }
-      }
-      setMovements(prev => [...novosMovimentos, ...prev]);
-      for (const mov of novosMovimentos) {
-        await ajustarSaldoContaReal(contaAlvo.id_conta, -mov.valor);
-      }
-
-      const atualizado: EquipamentoTecnico = { ...eq, idsMovimento: novosMovimentos.map(m => m.id_mov) };
-      const okEq = await saveEquipamentoTecnicoToSupabase(predio.id_predio, atualizado);
-      if (okEq) setEquipamentos(prev => prev.map(e => e.id === eq.id ? atualizado : e));
-
-      const totalLancado = unidades * eq.custoPorUnidade!;
-      registarLogAuditoria("Manutenção", `Lançou o custo de "${eq.nome}" (${totalLancado.toFixed(2)}€, ${unidades} movimento${unidades === 1 ? "" : "s"}) na conta ${contaAlvo.banco}`, predio.id_predio, loggedUser);
-      alert(`✅ Custo lançado: ${unidades} movimento${unidades === 1 ? "" : "s"} de ${eq.custoPorUnidade!.toFixed(2)}€ (total ${totalLancado.toFixed(2)}€), descontado${unidades === 1 ? "" : "s"} da conta ${contaAlvo.banco}.`);
-    } finally {
-      setLancandoCustoId(null);
-    }
-  };
-
-  // Anexa a fatura/comprovativo de pagamento deste equipamento — upload
-  // real para o Storage (nunca base64 na BD).
-  const handleAnexarComprovativoEquipamento = async (e: React.ChangeEvent<HTMLInputElement>, eq: EquipamentoTecnico) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setAnexandoComprovativoId(eq.id);
-    try {
-      const ano = new Date().toISOString().slice(0, 4);
-      const caminho = `${ano}/InventarioTecnico/${predio.id_predio}/${eq.id}/comprovativo-${Date.now()}-${file.name}`;
-      const urlReal = await uploadDocumentoToStorage(file, caminho);
-      if (!urlReal) { alert("❌ Não foi possível carregar o ficheiro para o Storage. Tente novamente."); return; }
-      const atualizado: EquipamentoTecnico = { ...eq, comprovativoPagamentoUrl: urlReal };
-      const ok = await saveEquipamentoTecnicoToSupabase(predio.id_predio, atualizado);
-      if (!ok) { alert("❌ Não foi possível gravar o documento no Supabase. Tente novamente."); return; }
-      setEquipamentos(prev => prev.map(e2 => e2.id === eq.id ? atualizado : e2));
-      registarLogAuditoria("Manutenção", `Anexou o comprovativo de pagamento de "${eq.nome}"`, predio.id_predio, loggedUser);
-    } finally {
-      setAnexandoComprovativoId(null);
     }
   };
 
@@ -685,55 +703,6 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
               />
             </div>
 
-            {/* Entidade oficial de inspeção vs. empresa de manutenção que
-                acompanha (papéis distintos para inspeções obrigatórias por
-                lei: elevadores, condutas de gás, extintores, etc.) +
-                custo/conta — unificação com a antiga Agenda de Manutenção. */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Entidade Oficial de Inspeção</label>
-                <select value={fornInspecaoId} onChange={e => { setFornInspecaoId(e.target.value); setFornInspecaoNome(""); }} className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs cursor-pointer">
-                  <option value="">— Escolher fornecedor registado —</option>
-                  {fornecedores.filter(f => f.id_predio === predio.id_predio).map(f => (
-                    <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}</option>
-                  ))}
-                </select>
-                {!fornInspecaoId && (
-                  <input type="text" value={fornInspecaoNome} onChange={e => setFornInspecaoNome(e.target.value)} placeholder="Ou nome (ainda sem ficha)..." className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs mt-1.5" />
-                )}
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Empresa de Manutenção (acompanha)</label>
-                <select value={fornManutencaoId} onChange={e => { setFornManutencaoId(e.target.value); setFornManutencaoNome(""); }} className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs cursor-pointer">
-                  <option value="">— Escolher fornecedor registado —</option>
-                  {fornecedores.filter(f => f.id_predio === predio.id_predio).map(f => (
-                    <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}</option>
-                  ))}
-                </select>
-                {!fornManutencaoId && (
-                  <input type="text" value={fornManutencaoNome} onChange={e => setFornManutencaoNome(e.target.value)} placeholder="Ou nome (ainda sem ficha)..." className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs mt-1.5" />
-                )}
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Custo por Unidade (€)</label>
-                <input type="text" value={custoPorUnidade} onChange={e => setCustoPorUnidade(e.target.value)} placeholder="Ex: 85,00" className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs" />
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Unidades</label>
-                <input type="number" min={1} value={numUnidades} onChange={e => setNumUnidades(e.target.value)} className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs" />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Conta Bancária de Pagamento</label>
-                <select value={contaPagamento} onChange={e => setContaPagamento(e.target.value)} className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs cursor-pointer">
-                  <option value="">— Escolher conta do prédio —</option>
-                  {contas.filter(c => c.id_predio === predio.id_predio).map(c => (
-                    <option key={c.id_conta} value={c.id_conta}>{c.banco} ({c.tipo})</option>
-                  ))}
-                </select>
-                <p className="text-[9px] text-slate-600 mt-1">Este custo sai sempre da conta do prédio — nunca é repartido pelas frações. Com mais de 1 unidade, "Lançar Custo" cria 1 movimento por unidade.</p>
-              </div>
-            </div>
-
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Base Legal / DGEG (Opcional)</label>
@@ -746,16 +715,35 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
                 />
               </div>
               <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Alertar (dias antes)</label>
+                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Licença / Autorização</label>
                 <input
-                  type="number"
-                  min={1}
-                  max={180}
-                  value={diasAlertaAntecedencia}
-                  onChange={e => setDiasAlertaAntecedencia(parseInt(e.target.value) || 30)}
-                  className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-mono focus:outline-none focus:border-emerald-500"
+                  type="text"
+                  value={numLicencaAutorizacao}
+                  onChange={e => setNumLicencaAutorizacao(e.target.value)}
+                  placeholder="Ex: registo DGEG do equipamento"
+                  className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs focus:outline-none focus:border-emerald-500"
                 />
               </div>
+            </div>
+
+            {!editingId && (
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Unidades a Criar</label>
+                <input type="number" min={1} value={numUnidadesCriar} onChange={e => setNumUnidadesCriar(e.target.value)} className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs" />
+                <p className="text-[9px] text-slate-600 mt-1">Ex: "2" num prédio com 2 elevadores cria "{nome.trim() || "Elevador"} 1" e "{nome.trim() || "Elevador"} 2" como equipamentos separados e independentes — cada um com a sua própria localização, histórico de vistorias e custos.</p>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Alertar (dias antes)</label>
+              <input
+                type="number"
+                min={1}
+                max={180}
+                value={diasAlertaAntecedencia}
+                onChange={e => setDiasAlertaAntecedencia(parseInt(e.target.value) || 30)}
+                className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-mono focus:outline-none focus:border-emerald-500"
+              />
             </div>
 
             <div>
@@ -891,6 +879,12 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
                           <span>Entidade: <strong className="text-slate-600 dark:text-slate-300">{e.entidadeResponsavel}</strong></span>
                         </>
                       )}
+                      {e.numLicencaAutorizacao && (
+                        <>
+                          <span>•</span>
+                          <span>Licença: <strong className="text-slate-600 dark:text-slate-300">{e.numLicencaAutorizacao}</strong></span>
+                        </>
+                      )}
                     </div>
 
                     {e.proximaInspecaoData && (() => {
@@ -911,59 +905,6 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
                       );
                     })()}
 
-                    {(e.fornecedorInspecaoNome || e.fornecedorManutencaoNome) && (
-                      <div className="flex gap-3 text-[10px] text-slate-600 pt-0.5 font-semibold flex-wrap">
-                        {e.fornecedorInspecaoNome && <span>Inspeção: <strong className="text-slate-600 dark:text-slate-300">{e.fornecedorInspecaoNome}</strong></span>}
-                        {e.fornecedorManutencaoNome && <span>Manutenção: <strong className="text-slate-600 dark:text-slate-300">{e.fornecedorManutencaoNome}</strong></span>}
-                      </div>
-                    )}
-
-                    {/* Custo e lançamento do movimento na conta bancária do
-                        prédio — nunca repartido pelas frações; com mais de
-                        1 unidade, cria 1 movimento por unidade. */}
-                    {(e.custoPorUnidade != null || e.id_conta_pagamento) && (
-                      <div className="bg-slate-100 dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 text-[10px] flex flex-wrap items-center justify-between gap-2 mt-1.5">
-                        <div className="font-semibold text-slate-600 dark:text-slate-400">
-                          <span className="text-[9px] block uppercase font-bold">Custo{(e.numUnidades || 1) > 1 ? ` (${e.numUnidades} unidades)` : ""}</span>
-                          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
-                            {e.custoPorUnidade != null ? `${e.custoPorUnidade.toFixed(2)}€${(e.numUnidades || 1) > 1 ? ` × ${e.numUnidades} = ${(e.custoPorUnidade * (e.numUnidades || 1)).toFixed(2)}€` : ""}` : "—"}
-                          </span>
-                          {e.id_conta_pagamento && (
-                            <span className="ml-2 text-[9px] text-slate-600">conta: {contas.find(c => c.id_conta === e.id_conta_pagamento)?.banco || "?"}</span>
-                          )}
-                        </div>
-                        {e.idsMovimento?.length ? (
-                          <span className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 px-2 py-1 rounded-lg text-[9px] font-bold flex items-center gap-1">
-                            <Check className="h-3 w-3" /> Custo lançado ({e.idsMovimento.length} mov.)
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleLancarCustoEquipamento(e)}
-                            disabled={lancandoCustoId === e.id}
-                            className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-1 px-2.5 rounded-lg text-[9px] cursor-pointer flex items-center gap-1"
-                          >
-                            <Landmark className="h-3 w-3" />
-                            <span>{lancandoCustoId === e.id ? "A lançar..." : "Lançar Custo na Conta"}</span>
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap items-center gap-2 text-[9px] pt-1">
-                      {e.comprovativoPagamentoUrl ? (
-                        <a href={e.comprovativoPagamentoUrl} target="_blank" rel="noreferrer" className="bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-lg font-bold flex items-center gap-1">
-                          <FileText className="h-3 w-3" /> Ver Fatura/Comprovativo
-                        </a>
-                      ) : (
-                        <label className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer">
-                          <Upload className="h-3 w-3" />
-                          <span>{anexandoComprovativoId === e.id ? "A carregar..." : "Anexar Fatura/Recibo"}</span>
-                          <input type="file" accept=".pdf,image/*" className="hidden" disabled={anexandoComprovativoId === e.id} onChange={ev => handleAnexarComprovativoEquipamento(ev, e)} />
-                        </label>
-                      )}
-                    </div>
-
                     {e.fotos && e.fotos.length > 0 && (
                       <div className="flex gap-1.5 pt-1">
                         {e.fotos.map((f, i) => (
@@ -978,28 +919,55 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
                       <div className="pt-1.5 space-y-1 border-t border-slate-200 dark:border-slate-800 mt-1.5">
                         <span className="text-[9px] font-bold text-slate-600 uppercase block">Histórico de Vistorias ({e.historicoVistorias.length})</span>
                         {e.historicoVistorias.slice(0, 3).map(v => (
-                          <div key={v.id} className="flex items-center gap-1.5 text-[10px] flex-wrap">
-                            <span className="text-slate-600 dark:text-slate-400">{formatDatePT(v.data)}</span>
-                            <span className={`px-1.5 py-0.5 rounded font-bold text-[9px] ${
-                              v.resultado === "Aprovado" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400" :
-                              v.resultado === "Aprovado com Reservas" ? "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400" :
-                              "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400"
-                            }`}>{v.resultado}</span>
-                            <span className="text-slate-600 dark:text-slate-400">— {v.tecnico}</span>
-                            {v.documentoUrl && (
-                              <a href={v.documentoUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline font-bold flex items-center gap-0.5">
-                                <Paperclip className="h-2.5 w-2.5" /> comprovativo
-                              </a>
+                          <div key={v.id} className="space-y-0.5">
+                            <div className="flex items-center gap-1.5 text-[10px] flex-wrap">
+                              <span className="text-slate-600 dark:text-slate-400">{formatDatePT(v.data)}</span>
+                              <span className={`px-1.5 py-0.5 rounded font-bold text-[9px] ${
+                                v.resultado === "Aprovado" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400" :
+                                v.resultado === "Aprovado com Reservas" ? "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400" :
+                                "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400"
+                              }`}>{v.resultado}</span>
+                              <span className="text-slate-600 dark:text-slate-400">— {v.tecnico}</span>
+                              {v.documentoUrl && (
+                                <a href={v.documentoUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline font-bold flex items-center gap-0.5">
+                                  <Paperclip className="h-2.5 w-2.5" /> certificado
+                                </a>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => iniciarEdicaoVistoria(e, v)}
+                                title="Editar esta vistoria"
+                                aria-label="Editar esta vistoria"
+                                className="text-slate-600 hover:text-indigo-600 active:text-indigo-700 active:scale-90 transition-all cursor-pointer"
+                              >
+                                <Pencil className="h-2.5 w-2.5" />
+                              </button>
+                            </div>
+                            {/* Custo desta inspeção concreta — ligado à sua
+                                própria data, nunca repartido pelas frações. */}
+                            {(v.custo != null || v.fornecedorInspecaoNome || v.fornecedorManutencaoNome) && (
+                              <div className="flex items-center gap-1.5 text-[9px] text-slate-600 dark:text-slate-500 flex-wrap pl-0.5">
+                                {v.fornecedorInspecaoNome && <span>Inspeção: <strong>{v.fornecedorInspecaoNome}</strong></span>}
+                                {v.fornecedorManutencaoNome && <span>Manutenção: <strong>{v.fornecedorManutencaoNome}</strong></span>}
+                                {v.custo != null && (
+                                  <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{v.custo.toFixed(2)}€</span>
+                                )}
+                                {v.custo != null && (
+                                  v.id_movimento ? (
+                                    <span className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5">
+                                      <Check className="h-2.5 w-2.5" /> lançado
+                                    </span>
+                                  ) : (
+                                    <span className="bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded font-bold">não lançado</span>
+                                  )
+                                )}
+                                {v.comprovativoPagamentoUrl && (
+                                  <a href={v.comprovativoPagamentoUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline font-bold flex items-center gap-0.5">
+                                    <FileText className="h-2.5 w-2.5" /> fatura
+                                  </a>
+                                )}
+                              </div>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => iniciarEdicaoVistoria(e, v)}
-                              title="Editar esta vistoria"
-                              aria-label="Editar esta vistoria"
-                              className="text-slate-600 hover:text-indigo-600 active:text-indigo-700 active:scale-90 transition-all cursor-pointer"
-                            >
-                              <Pencil className="h-2.5 w-2.5" />
-                            </button>
                           </div>
                         ))}
                       </div>
@@ -1114,7 +1082,18 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Documento Comprovativo (Opcional)</label>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Certificado desta Inspeção (Opcional)</label>
+                  <input
+                    type="text"
+                    value={vistoriaNumCertificado}
+                    onChange={e => setVistoriaNumCertificado(e.target.value)}
+                    placeholder="Ex: 2026/CERT/4821"
+                    className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Certificado de Inspeção (Opcional)</label>
                   {/* Documento já anexado (só em edição) — antes não havia
                       nenhuma forma de o remover, só de o substituir por um
                       novo. Pedido explícito: documento errado/formato não
@@ -1157,6 +1136,94 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
                     <Paperclip className="h-4 w-4" />
                     <span>{vistoriaDocFile ? vistoriaDocFile.name : vistoriaDocExistente && !vistoriaDocRemovido ? "Substituir Comprovativo (PDF/Foto)" : "Anexar Comprovativo (PDF/Foto)"}</span>
                   </button>
+                </div>
+
+                {/* Custo desta inspeção — entidade oficial de inspeção e
+                    empresa de manutenção que acompanha são 2 papéis
+                    distintos; o custo sai sempre da conta do prédio, nunca
+                    repartido pelas frações. Ligado à data desta vistoria
+                    (pedido explícito: "falta a data da inspeção"). */}
+                <div className="border-t border-slate-100 dark:border-slate-800 pt-3 space-y-3">
+                  <h5 className="text-[10px] font-black uppercase text-slate-600 flex items-center gap-1.5">
+                    <Landmark className="h-3.5 w-3.5 text-indigo-500" /> Custo desta Inspeção (Opcional)
+                  </h5>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Entidade Oficial de Inspeção</label>
+                      <select value={vistoriaFornInspecaoId} onChange={ev => { setVistoriaFornInspecaoId(ev.target.value); setVistoriaFornInspecaoNome(""); }} className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs cursor-pointer">
+                        <option value="">— Escolher fornecedor registado —</option>
+                        {fornecedores.filter(f => f.id_predio === predio.id_predio).map(f => (
+                          <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}</option>
+                        ))}
+                      </select>
+                      {!vistoriaFornInspecaoId && (
+                        <input type="text" value={vistoriaFornInspecaoNome} onChange={ev => setVistoriaFornInspecaoNome(ev.target.value)} placeholder="Ou nome (ainda sem ficha)..." className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs mt-1.5" />
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Empresa de Manutenção (acompanha)</label>
+                      <select value={vistoriaFornManutencaoId} onChange={ev => { setVistoriaFornManutencaoId(ev.target.value); setVistoriaFornManutencaoNome(""); }} className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs cursor-pointer">
+                        <option value="">— Escolher fornecedor registado —</option>
+                        {fornecedores.filter(f => f.id_predio === predio.id_predio).map(f => (
+                          <option key={f.id_fornecedor} value={f.id_fornecedor}>{f.nome}</option>
+                        ))}
+                      </select>
+                      {!vistoriaFornManutencaoId && (
+                        <input type="text" value={vistoriaFornManutencaoNome} onChange={ev => setVistoriaFornManutencaoNome(ev.target.value)} placeholder="Ou nome (ainda sem ficha)..." className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs mt-1.5" />
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Custo (€)</label>
+                      <input type="text" value={vistoriaCusto} onChange={ev => setVistoriaCusto(ev.target.value)} placeholder="Ex: 85,00" className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Conta Bancária de Pagamento</label>
+                      <select value={vistoriaContaPagamento} onChange={ev => setVistoriaContaPagamento(ev.target.value)} className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs cursor-pointer">
+                        <option value="">— Escolher conta do prédio —</option>
+                        {contas.filter(c => c.id_predio === predio.id_predio).map(c => (
+                          <option key={c.id_conta} value={c.id_conta}>{c.banco} ({c.tipo})</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {vistoriaIdMovimentoExistente ? (
+                    <p className="text-[10px] bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5">
+                      <Check className="h-3 w-3" /> Custo já lançado como movimento nesta conta — a corrigir só os outros dados, sem lançar de novo.
+                    </p>
+                  ) : (
+                    <p className="text-[9px] text-slate-600">Ao gravar, se indicar custo e conta, cria logo o movimento de despesa (com a data desta vistoria) e desconta da conta do prédio — nunca repartido pelas frações.</p>
+                  )}
+
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Fatura / Comprovativo de Pagamento (Opcional)</label>
+                    {vistoriaEditId && vistoriaFaturaExistente && !vistoriaFaturaRemovida && !vistoriaFaturaFile && (
+                      <div className="flex items-center justify-between gap-2 mb-1.5 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40 rounded-lg px-2.5 py-1.5">
+                        <a href={vistoriaFaturaExistente} target="_blank" rel="noopener noreferrer" className="text-indigo-700 dark:text-indigo-300 text-xs font-semibold flex items-center gap-1.5 truncate">
+                          <FileText className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">Fatura atual</span>
+                        </a>
+                        <button type="button" onClick={() => setVistoriaFaturaRemovida(true)} title="Remover esta fatura" aria-label="Remover esta fatura" className="text-red-600 hover:text-red-700 active:scale-90 transition-all cursor-pointer shrink-0">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                    {vistoriaEditId && vistoriaFaturaRemovida && (
+                      <div className="flex items-center justify-between gap-2 mb-1.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-lg px-2.5 py-1.5">
+                        <span className="text-red-700 dark:text-red-400 text-[11px] font-semibold">Fatura marcada para remoção ao gravar.</span>
+                        <button type="button" onClick={() => setVistoriaFaturaRemovida(false)} className="text-[10px] text-slate-600 hover:underline cursor-pointer shrink-0">Desfazer</button>
+                      </div>
+                    )}
+                    <input ref={vistoriaFaturaInputRef} type="file" accept=".pdf,image/*" onChange={ev => setVistoriaFaturaFile(ev.target.files?.[0] || null)} className="hidden" />
+                    <button
+                      type="button"
+                      onClick={() => vistoriaFaturaInputRef.current?.click()}
+                      className="w-full border border-dashed p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300 text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:border-emerald-400 hover:text-emerald-600"
+                    >
+                      <Upload className="h-4 w-4" />
+                      <span>{vistoriaFaturaFile ? vistoriaFaturaFile.name : vistoriaFaturaExistente && !vistoriaFaturaRemovida ? "Substituir Fatura (PDF/Foto)" : "Anexar Fatura/Recibo (PDF/Foto)"}</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40 rounded-xl p-2.5 text-[10px] text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
