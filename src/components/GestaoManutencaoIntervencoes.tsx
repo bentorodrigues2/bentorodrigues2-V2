@@ -2,13 +2,14 @@ import React, { useState, useRef, useEffect } from "react";
 import { Predio, Fracao, Ocorrencia, Movimento, Conta, Documento, LoggedUser, Fornecedor, OcorrenciaFoto, DividaFornecedor } from "../types";
 import { formatDatePT, exportToXLS, parseValorMonetario } from "../utils";
 import { motion, AnimatePresence } from "motion/react";
+import { EquipamentoTecnico } from "./InventarioTecnico";
 import {
   fetchAgendaVistoriasFromSupabase, saveAgendaVistoriaToSupabase, deleteAgendaVistoriaFromSupabase,
   fetchIntervencoesFromSupabase, saveIntervencaoToSupabase,
   fetchObrasExtraFromSupabase, saveObraExtraToSupabase, deleteObraExtraFromSupabase,
   saveDocumentoToSupabase, saveMovimentoToSupabase, saveOcorrenciaToSupabase, saveContaToSupabase, ajustarSaldoContaReal,
   saveDividaFornecedorToSupabase, fetchDividasFornecedoresFromSupabase, deleteDividaFornecedorFromSupabase, registarLogAuditoria,
-  uploadDocumentoToStorage
+  uploadDocumentoToStorage, fetchInventarioTecnicoFromSupabase
 } from "../lib/supabaseService";
 import { 
   Wrench, Calendar, TriangleAlert, Hammer, CheckSquare, FolderArchive,
@@ -147,12 +148,20 @@ export function GestaoManutencaoIntervencoes({
   const [agenda, setAgenda] = useState<AgendaItem[]>([]);
   const [intervencoes, setIntervencoes] = useState<Intervencao[]>([]);
   const [obrasExtra, setObrasExtra] = useState<ObraExtraordinaria[]>([]);
+  // Lista real de equipamentos já registados em Inventário Técnico — o
+  // formulário "Nova Vistoria/Inspeção" tem de oferecer estes equipamentos
+  // já definidos no prédio, em vez de obrigar a escrever o nome à mão de
+  // cada vez (pedido explícito do administrador). "[DUPLICADO - remover]"
+  // são registos já assinalados para limpeza numa sessão anterior — ficam
+  // escondidos aqui, nunca aparecem como opção.
+  const [equipamentosInventario, setEquipamentosInventario] = useState<EquipamentoTecnico[]>([]);
 
   useEffect(() => {
     if (!predio.id_predio) return;
     fetchAgendaVistoriasFromSupabase(predio.id_predio).then(dados => { if (dados) setAgenda(dados); });
     fetchIntervencoesFromSupabase(predio.id_predio).then(dados => { if (dados) setIntervencoes(dados); });
     fetchObrasExtraFromSupabase(predio.id_predio).then(dados => { if (dados) setObrasExtra(dados); });
+    fetchInventarioTecnicoFromSupabase(predio.id_predio).then(dados => { if (dados) setEquipamentosInventario(dados.filter(eq => !eq.nome.startsWith("[DUPLICADO"))); });
   }, [predio.id_predio]);
 
   // Selected Profile for Testing maintenance flow
@@ -200,6 +209,9 @@ export function GestaoManutencaoIntervencoes({
   // movimento lançado na conta bancária do prédio — nunca às frações.
   const [showAgendaForm, setShowAgendaForm] = useState(false);
   const [editingAgendaId, setEditingAgendaId] = useState<string | null>(null);
+  // "__outro__" = escrever o nome à mão; qualquer outro valor é o id de um
+  // equipamento já registado em Inventário Técnico.
+  const [agEquipamentoSelecionado, setAgEquipamentoSelecionado] = useState("__outro__");
   const [agEquipamento, setAgEquipamento] = useState("");
   const [agTipo, setAgTipo] = useState<"preventiva" | "inspeção_obrigatoria">("inspeção_obrigatoria");
   const [agDataPlaneada, setAgDataPlaneada] = useState("");
@@ -596,6 +608,7 @@ export function GestaoManutencaoIntervencoes({
 
   const resetAgendaForm = () => {
     setEditingAgendaId(null);
+    setAgEquipamentoSelecionado("__outro__");
     setAgEquipamento("");
     setAgTipo("inspeção_obrigatoria");
     setAgDataPlaneada("");
@@ -615,12 +628,31 @@ export function GestaoManutencaoIntervencoes({
     setShowAgendaForm(true);
   };
 
+  // Ao escolher um equipamento já definido no prédio (Inventário Técnico),
+  // preenche logo o nome e, para elevadores, sugere o Nº de Unidades a
+  // partir de predio.patrimonio.num_elevadores — continua editável, só
+  // poupa ter de escrever/confirmar o número à mão sempre que se sabe.
+  const handleSelecionarEquipamentoAgenda = (idSelecionado: string) => {
+    setAgEquipamentoSelecionado(idSelecionado);
+    if (idSelecionado === "__outro__") {
+      setAgEquipamento("");
+      return;
+    }
+    const eq = equipamentosInventario.find(e => e.id === idSelecionado);
+    if (!eq) return;
+    setAgEquipamento(eq.nome);
+    if (/elevador/i.test(eq.nome) || /elevador/i.test(eq.categoria)) {
+      setAgNumUnidades(String(predio.patrimonio?.num_elevadores || 1));
+    }
+  };
+
   // Edição de uma vistoria/inspeção já agendada — antes a Agenda só podia
   // ser gerada automaticamente pela IA (datas e equipamentos fixos), sem
   // nenhuma forma de corrigir uma data errada ou acrescentar o fornecedor/
   // custo depois de criada.
   const abrirEditarAgenda = (item: AgendaItem) => {
     setEditingAgendaId(item.id);
+    setAgEquipamentoSelecionado("__outro__");
     setAgEquipamento(item.equipamento);
     setAgTipo(item.tipo);
     setAgDataPlaneada(item.dataPlaneada || "");
@@ -1714,9 +1746,24 @@ export function GestaoManutencaoIntervencoes({
             <form onSubmit={handleGuardarAgenda} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-emerald-300 dark:border-emerald-800 text-xs space-y-3">
               <h4 className="font-bold uppercase text-slate-600">{editingAgendaId ? "Editar Vistoria / Inspeção" : "Nova Vistoria / Inspeção"}</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Equipamento / Vistoria *</label>
-                  <input type="text" value={agEquipamento} onChange={e => setAgEquipamento(e.target.value)} placeholder="Ex: Inspeção Periódica de Elevadores" className="w-full border p-2 rounded bg-white dark:bg-slate-950" required />
+                  <select
+                    value={agEquipamentoSelecionado}
+                    onChange={e => handleSelecionarEquipamentoAgenda(e.target.value)}
+                    className="w-full border p-2 rounded bg-white dark:bg-slate-950"
+                  >
+                    <option value="__outro__">+ Outro (escrever nome livremente)...</option>
+                    {equipamentosInventario.length === 0 && (
+                      <option value="__vazio__" disabled>— Sem equipamentos ainda registados em Inventário Técnico —</option>
+                    )}
+                    {equipamentosInventario.map(eq => (
+                      <option key={eq.id} value={eq.id}>{eq.nome}{eq.andar ? ` — ${eq.andar}` : ""}</option>
+                    ))}
+                  </select>
+                  {agEquipamentoSelecionado === "__outro__" && (
+                    <input type="text" value={agEquipamento} onChange={e => setAgEquipamento(e.target.value)} placeholder="Ex: Inspeção Periódica de Elevadores" className="w-full border p-2 rounded bg-white dark:bg-slate-950 mt-1.5" required />
+                  )}
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Tipo</label>
@@ -1737,13 +1784,6 @@ export function GestaoManutencaoIntervencoes({
                   <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Validade / Próxima Inspeção Obrigatória</label>
                   <input type="date" value={agDataValidade} onChange={e => setAgDataValidade(e.target.value)} className="w-full border p-2 rounded bg-white dark:bg-slate-950" />
                 </div>
-                {!editingAgendaId && (
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Unidades (ex: 2 elevadores = 2 itens, 2 movimentos)</label>
-                    <input type="number" min={1} value={agNumUnidades} onChange={e => setAgNumUnidades(e.target.value)} className="w-full border p-2 rounded bg-white dark:bg-slate-950" />
-                  </div>
-                )}
-
                 <div>
                   <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Entidade Oficial de Inspeção</label>
                   <select value={agFornInspecaoId} onChange={e => { setAgFornInspecaoId(e.target.value); setAgFornInspecaoNome(""); }} className="w-full border p-2 rounded bg-white dark:bg-slate-950">
@@ -1769,9 +1809,17 @@ export function GestaoManutencaoIntervencoes({
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Custo {editingAgendaId ? "" : "por Unidade"} (€)</label>
-                  <input type="text" value={agCustoPorUnidade} onChange={e => setAgCustoPorUnidade(e.target.value)} placeholder="Ex: 85,00" className="w-full border p-2 rounded bg-white dark:bg-slate-950" />
+                <div className={editingAgendaId ? "" : "grid grid-cols-2 gap-2"}>
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Custo {editingAgendaId ? "" : "por Unidade"} (€)</label>
+                    <input type="text" value={agCustoPorUnidade} onChange={e => setAgCustoPorUnidade(e.target.value)} placeholder="Ex: 85,00" className="w-full border p-2 rounded bg-white dark:bg-slate-950" />
+                  </div>
+                  {!editingAgendaId && (
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Unidades</label>
+                      <input type="number" min={1} value={agNumUnidades} onChange={e => setAgNumUnidades(e.target.value)} className="w-full border p-2 rounded bg-white dark:bg-slate-950" />
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Conta Bancária de Pagamento</label>
@@ -1784,6 +1832,18 @@ export function GestaoManutencaoIntervencoes({
                   <p className="text-[9px] text-slate-600 mt-1">Este custo sai sempre da conta do prédio — nunca é repartido pelas frações.</p>
                 </div>
               </div>
+
+              {!editingAgendaId && (() => {
+                const unidades = Math.max(1, parseInt(agNumUnidades, 10) || 1);
+                const custoUnit = agCustoPorUnidade ? parseValorMonetario(agCustoPorUnidade) : 0;
+                if (!custoUnit) return null;
+                return (
+                  <div className="bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-lg p-2.5 text-[11px] text-indigo-800 dark:text-indigo-300 font-semibold">
+                    {unidades} unidade{unidades === 1 ? "" : "s"} × {custoUnit.toFixed(2)}€ = <strong>{(unidades * custoUnit).toFixed(2)}€ no total</strong>
+                    {unidades > 1 && <span className="font-normal"> — cria {unidades} itens separados na Agenda, cada um com o seu próprio movimento de {custoUnit.toFixed(2)}€.</span>}
+                  </div>
+                );
+              })()}
 
               <div className="flex gap-2 pt-1">
                 <button type="submit" disabled={aGuardandoAgenda} className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-1.5 px-4 rounded text-xs cursor-pointer">
