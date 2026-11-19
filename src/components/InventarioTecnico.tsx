@@ -642,19 +642,29 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
     alert(`Mapa preventivo gerado: ${checksNovos.length} equipamento(s) adicionado(s) a partir do património real do prédio.`);
   };
 
-  // Pre-defined categories required in Document D
-  const categoriesList = [
-    "Elevadores",
-    "Bombas de água",
-    "Motores",
-    "Portas corta-fogo",
-    "Sistema de incêndio",
-    "Sistema de gás",
-    "Sistema elétrico",
-    "Piscina (bombas, filtros, motores)",
-    "Spa (motores, filtros, aquecimento)",
-    "Ginásio (equipamentos de ginástica)"
-  ];
+  // Categorias técnicas ajustadas ao património REAL deste prédio — antes
+  // era uma lista fixa igual para todos os prédios (incluía "Piscina"/
+  // "Spa"/"Ginásio" mesmo sem o prédio ter, e excluía "Elevadores" num
+  // prédio que tenha, por exemplo) e não deixava escrever nenhuma
+  // categoria fora da lista. Pedido explícito do administrador: "tem de
+  // ser ajustável conforme o património do prédio" + poder escrever
+  // categorias que não existam na lista.
+  const categoriasPatrimonio = useMemo(() => {
+    const p = predio.patrimonio;
+    // Estruturais — aplicam-se a qualquer edifício multifamiliar,
+    // independentemente do património assinalado.
+    const base = new Set<string>(["Sistema de incêndio", "Sistema de gás", "Sistema elétrico", "Portas corta-fogo", "Motores"]);
+    if (p?.tem_elevador) base.add("Elevadores");
+    if (p?.tem_garagem || p?.tem_jardins || p?.tem_piscina) base.add("Bombas de água");
+    if (p?.tem_piscina) base.add("Piscina (bombas, filtros, motores)");
+    if (p?.tem_spa) base.add("Spa (motores, filtros, aquecimento)");
+    if (p?.tem_ginasio) base.add("Ginásio (equipamentos de ginástica)");
+    // Categorias já usadas em equipamentos existentes (ex: escritas à mão
+    // via "+ Outra" antes) continuam sempre disponíveis, mesmo que não
+    // correspondam a nenhum património assinalado.
+    equipamentos.forEach(eq => { if (eq.categoria) base.add(eq.categoria); });
+    return Array.from(base).sort((a, b) => a.localeCompare(b, "pt-PT"));
+  }, [predio.patrimonio, equipamentos]);
 
   return (
     <div className="space-y-6 text-slate-800 dark:text-slate-100 animate-fadeIn">
@@ -755,14 +765,24 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
             <div>
               <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Categoria Técnica</label>
               <select
-                value={categoria}
-                onChange={e => setCategoria(e.target.value)}
+                value={categoriasPatrimonio.includes(categoria) ? categoria : "__outra__"}
+                onChange={e => setCategoria(e.target.value === "__outra__" ? "" : e.target.value)}
                 className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-semibold cursor-pointer"
               >
-                {categoriesList.map(cat => (
+                {categoriasPatrimonio.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
+                <option value="__outra__">+ Outra categoria (escrever)...</option>
               </select>
+              {!categoriasPatrimonio.includes(categoria) && (
+                <input
+                  type="text"
+                  value={categoria}
+                  onChange={e => setCategoria(e.target.value)}
+                  placeholder="Nome da categoria técnica..."
+                  className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs mt-1.5"
+                />
+              )}
             </div>
 
             <div>
