@@ -139,17 +139,17 @@ export default function AuthForm({
   };
 
   return (
-    <div className="max-w-[380px] w-full bg-[#0d1424] border border-slate-800 p-5 rounded-2xl shadow-2xl backdrop-blur-xl text-center space-y-3 relative overflow-hidden text-slate-100">
+    <div className="max-w-[440px] w-full bg-[#0d1424] border border-slate-800 p-7 sm:p-8 rounded-2xl shadow-2xl backdrop-blur-xl text-center space-y-4 relative overflow-hidden text-slate-100">
 
       {/* Top Logo */}
       <div className="flex flex-col items-center justify-center pt-1">
-        <div className="h-16 sm:h-20 w-full flex items-center justify-center overflow-visible my-1">
+        <div className="h-20 sm:h-24 w-full flex items-center justify-center overflow-visible my-1">
           <img
             src="/marca/02-versao-horizontal.webp"
             alt="CondoManager AI"
             width={840}
             height={335}
-            className="h-14 sm:h-18 w-auto max-w-[280px] object-contain select-none drop-shadow-2xl"
+            className="h-16 sm:h-20 w-auto max-w-[320px] object-contain select-none drop-shadow-2xl"
             referrerPolicy="no-referrer"
             onError={(e) => {
               // Fallback logo if image loading fails
@@ -158,7 +158,7 @@ export default function AuthForm({
           />
         </div>
         <div className="mt-2">
-          <h2 className="text-sm font-extrabold tracking-wider text-white uppercase font-sans">
+          <h2 className="text-base font-extrabold tracking-wider text-white uppercase font-sans">
             {resetMode ? "Recuperação de Acesso" : "PORTAL DE AUTENTICAÇÃO"}
           </h2>
         </div>
@@ -166,7 +166,7 @@ export default function AuthForm({
 
       {/* ERROR / INFO MESSAGE ALERT BANNER */}
       {errorMessage && (
-        <div role="alert" className="bg-red-950/80 border border-red-500/60 p-2.5 rounded-xl text-red-200 text-[11px] font-medium text-left flex items-start justify-between gap-2">
+        <div role="alert" className="bg-red-950/80 border border-red-500/60 p-3 rounded-xl text-red-200 text-xs font-medium text-left flex items-start justify-between gap-2">
           <div className="flex items-start space-x-1.5">
             <span className="text-red-400 font-bold shrink-0">ℹ️</span>
             <span>{errorMessage}</span>
@@ -185,22 +185,22 @@ export default function AuthForm({
 
       {resetMode ? (
         /* PASSWORD RESET MODE */
-        <div className="space-y-2.5 text-left pt-0.5">
+        <div className="space-y-3 text-left pt-0.5">
           {resetSent ? (
-            <div className="bg-emerald-950/70 border border-emerald-500/50 p-3 rounded-xl space-y-2 text-center">
-              <div className="h-8 w-8 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-sm font-bold">
+            <div className="bg-emerald-950/70 border border-emerald-500/50 p-4 rounded-xl space-y-2 text-center">
+              <div className="h-9 w-9 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-base font-bold">
                 ✓
               </div>
-              <h4 className="text-xs font-bold text-emerald-300">E-mail de Recuperação Enviado!</h4>
-              <p className="text-[10px] text-slate-400 leading-normal">
+              <h4 className="text-sm font-bold text-emerald-300">E-mail de Recuperação Enviado!</h4>
+              <p className="text-xs text-slate-400 leading-normal">
                 Enviámos um link seguro de redefinição de password para: <strong className="text-white font-mono">{email}</strong>.
                 Abra o email e siga o link para definir uma nova palavra-passe.
               </p>
             </div>
           ) : (
-            <div className="space-y-2.5">
-              <div className="space-y-1">
-                <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">
                   E-mail da Conta
                 </label>
                 <div className="relative">
@@ -209,9 +209,9 @@ export default function AuthForm({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="utilizador@condomanager.pt"
-                    className="w-full bg-slate-950 border border-slate-800 text-xs rounded-lg p-2 pl-8 font-medium text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-950 border border-slate-800 text-sm rounded-lg p-3 pl-9 font-medium text-white focus:outline-none focus:border-emerald-500"
                   />
-                  <span className="absolute left-2.5 top-2.5 text-slate-400 text-xs">✉</span>
+                  <span className="absolute left-3 top-3 text-slate-400 text-sm">✉</span>
                 </div>
               </div>
 
@@ -219,7 +219,7 @@ export default function AuthForm({
                 type="button"
                 disabled={sendingReset}
                 onClick={handleEnviarEmailRecuperacao}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-slate-950 font-black py-2 rounded-lg text-xs tracking-wider uppercase cursor-pointer transition-all shadow-md flex items-center justify-center space-x-1.5"
+                className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-slate-950 font-black py-2.5 rounded-lg text-sm tracking-wider uppercase cursor-pointer transition-all shadow-md flex items-center justify-center space-x-1.5"
               >
                 <span>{sendingReset ? "A enviar..." : "Enviar E-mail de Recuperação"}</span>
               </button>
@@ -232,17 +232,17 @@ export default function AuthForm({
               setResetMode(false);
               setResetSent(false);
             }}
-            className="w-full text-center text-[11px] text-slate-400 hover:text-white pt-1 block cursor-pointer transition-colors"
+            className="w-full text-center text-xs text-slate-400 hover:text-white pt-1 block cursor-pointer transition-colors"
           >
             ← Voltar ao Login
           </button>
         </div>
       ) : (
         /* NORMAL LOGIN FORM */
-        <form onSubmit={handleStandardLogin} className="space-y-3 text-left pt-0.5">
+        <form onSubmit={handleStandardLogin} className="space-y-4 text-left pt-0.5">
           {/* Email Field */}
-          <div className="space-y-1">
-            <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">
               E-MAIL DE UTILIZADOR
             </label>
             <div className="relative">
@@ -254,16 +254,16 @@ export default function AuthForm({
                   setErrorMessage("");
                 }}
                 placeholder="o.seu.email@exemplo.com"
-                className="w-full bg-[#070b14] border border-slate-800 text-xs rounded-xl p-2.5 pl-8 font-medium text-white focus:outline-none focus:border-emerald-500 transition-all"
+                className="w-full bg-[#070b14] border border-slate-800 text-sm rounded-xl p-3 pl-9 font-medium text-white focus:outline-none focus:border-emerald-500 transition-all"
               />
-              <span className="absolute left-2.5 top-2.5 text-slate-400 text-xs">✉</span>
+              <span className="absolute left-3 top-3 text-slate-400 text-sm">✉</span>
             </div>
           </div>
 
           {/* Password Field */}
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">
+              <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">
                 PALAVRA-PASSE
               </label>
               <button
@@ -272,7 +272,7 @@ export default function AuthForm({
                   setResetMode(true);
                   setResetSent(false);
                 }}
-                className="text-[9px] text-emerald-400 hover:text-emerald-300 font-semibold cursor-pointer transition-colors"
+                className="text-[10px] text-emerald-400 hover:text-emerald-300 font-semibold cursor-pointer transition-colors"
               >
                 Esqueceu-se da password?
               </button>
@@ -286,18 +286,18 @@ export default function AuthForm({
                   setErrorMessage("");
                 }}
                 placeholder="••••••••"
-                className="w-full bg-[#070b14] border border-slate-800 text-xs rounded-xl p-2.5 pl-8 font-mono text-white focus:outline-none focus:border-emerald-500 transition-all"
+                className="w-full bg-[#070b14] border border-slate-800 text-sm rounded-xl p-3 pl-9 font-mono text-white focus:outline-none focus:border-emerald-500 transition-all"
               />
-              <span className="absolute left-2.5 top-2.5 text-slate-400 text-xs">🔒</span>
+              <span className="absolute left-3 top-3 text-slate-400 text-sm">🔒</span>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="pt-1 space-y-2">
+          <div className="pt-1 space-y-2.5">
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#00ff88] hover:bg-[#00cc66] active:scale-98 text-black font-black py-2.5 rounded-xl text-center text-xs tracking-wider uppercase cursor-pointer transition-all shadow-md flex items-center justify-center space-x-2 disabled:opacity-50"
+              className="w-full bg-[#00ff88] hover:bg-[#00cc66] active:scale-98 text-black font-black py-3 rounded-xl text-center text-sm tracking-wider uppercase cursor-pointer transition-all shadow-md flex items-center justify-center space-x-2 disabled:opacity-50"
             >
               <span>{loading ? "A verificar..." : "➔] ENTRAR"}</span>
             </button>
@@ -307,7 +307,7 @@ export default function AuthForm({
                 type="button"
                 disabled={autenticandoComBiometria}
                 onClick={handleLoginBiometria}
-                className="w-full bg-slate-900 hover:bg-slate-800 border border-emerald-500/40 disabled:opacity-50 text-emerald-300 font-bold py-2.5 rounded-xl text-center text-xs tracking-wider uppercase cursor-pointer transition-all shadow-md flex items-center justify-center space-x-2"
+                className="w-full bg-slate-900 hover:bg-slate-800 border border-emerald-500/40 disabled:opacity-50 text-emerald-300 font-bold py-3 rounded-xl text-center text-sm tracking-wider uppercase cursor-pointer transition-all shadow-md flex items-center justify-center space-x-2"
               >
                 <span>👆</span>
                 <span>{autenticandoComBiometria ? "A confirmar biometria..." : "Entrar com Biometria"}</span>
@@ -315,7 +315,7 @@ export default function AuthForm({
             )}
 
             {onOpenSecurityLogs && (
-              <div className="flex justify-end items-center pt-2 border-t border-slate-800/80 text-[9px]">
+              <div className="flex justify-end items-center pt-2 border-t border-slate-800/80 text-[10px]">
                 <button
                   type="button"
                   onClick={onOpenSecurityLogs}
@@ -329,7 +329,7 @@ export default function AuthForm({
         </form>
       )}
 
-      <div className="pt-3 border-t border-slate-800/80 flex justify-between items-center text-[9px] text-slate-400 font-mono">
+      <div className="pt-3 border-t border-slate-800/80 flex justify-between items-center text-[10px] text-slate-400 font-mono">
         <span>SECURE SUPABASE AUTH</span>
         <span>CondoManager AI © 2026</span>
       </div>
