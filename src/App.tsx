@@ -1003,7 +1003,7 @@ export default function App() {
           <button 
             id="sidebar-item-dashboard"
             onClick={() => selectSection("painel")}
-            className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2.5 ${
+            className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2.5 ${
               activeSection === "painel" 
                 ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
                 : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1021,7 +1021,7 @@ export default function App() {
               setViewMode("BROWSER");
               setIaInitialTab(undefined);
             }}
-            className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2.5 ${
+            className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2.5 ${
               activeSection === "dashboard_kpis"
                 ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                 : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1040,7 +1040,7 @@ export default function App() {
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
-              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2.5 ${
+              className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2.5 ${
                 activeSection === "multi_condominio"
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                   : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1063,7 +1063,7 @@ export default function App() {
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
-              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+              className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 ["predios", "predios_cadastro", "predios_chaves", "predios_regras"].includes(activeSection) 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
                   : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1085,7 +1085,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "predios_cadastro" || activeSection === "predios"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1103,7 +1103,7 @@ export default function App() {
                       setViewMode("BROWSER");
                       setIaInitialTab(undefined);
                     }}
-                    className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                       activeSection === "predios_chaves" 
                         ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                         : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1121,7 +1121,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "predios_regras" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1146,7 +1146,7 @@ export default function App() {
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
-              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+              className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 ["fracoes", "fracoes_nova", "fracoes_proprietario", "fracoes_perfis"].includes(activeSection) 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
                   : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1167,7 +1167,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "fracoes_nova" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1182,7 +1182,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "fracoes_proprietario" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1197,7 +1197,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "fracoes_perfis" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1212,7 +1212,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "gestao_sinistros" || activeSection === "fracoes_sinistros"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1237,7 +1237,7 @@ export default function App() {
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
-              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+              className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 ["comunicacao_broadcast", "comunicacao_chat", "comunicacao_sondagens", "comunicacao_questionarios", "portal_condomino", "assembleias", "agendador_automatico", "agenda_notificacoes", "mural_reservas", "reservas"].includes(activeSection)
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                   : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1263,7 +1263,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "comunicacao_broadcast"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1280,7 +1280,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "comunicacao_chat"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1297,7 +1297,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "agenda_notificacoes" || activeSection === "agendador_automatico"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1314,7 +1314,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "agendador_automatico"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1330,7 +1330,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "mural_reservas"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1356,7 +1356,7 @@ export default function App() {
                       setViewMode("BROWSER");
                       setIaInitialTab(undefined);
                     }}
-                    className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                       activeSection === "reservas"
                         ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                         : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1372,7 +1372,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "portal_condomino" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1388,7 +1388,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "comunicacao_sondagens"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1405,7 +1405,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "comunicacao_questionarios"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1435,7 +1435,7 @@ export default function App() {
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
-              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+              className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 ["quotas_orcamento", "movimentos", "financeiro_recibos", "financeiro_relatorios", "relatorios_automaticos", "contabilidade_interna", "financeiro_extratos", "financeiro_mapa_pagamentos", "conciliacao", "ocr_faturas", "configuracao_arranque", "arranque_saldos", "contas", "fundo_reserva"].includes(activeSection) 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
                   : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1460,7 +1460,7 @@ export default function App() {
                       setViewMode("BROWSER");
                       setIaInitialTab(undefined);
                     }}
-                    className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                    className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                       activeSection === "configuracao_arranque" || activeSection === "predios_arranque" || activeSection === "arranque_saldos" || activeSection === "saldos_iniciais"
                         ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                         : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1482,7 +1482,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "quotas_orcamento"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1500,7 +1500,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contas"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1516,7 +1516,7 @@ export default function App() {
                     setIaInitialTab("orcamento_anual_ia");
                     setViewMode("BROWSER");
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                     activeSection === "ia_avancada" && iaInitialTab === "orcamento_anual_ia"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1536,7 +1536,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "financeiro_recibos"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1551,7 +1551,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "financeiro_relatorios"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1566,7 +1566,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "relatorios_automaticos"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1584,7 +1584,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "movimentos"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1599,7 +1599,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "ocr_faturas"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1615,7 +1615,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "fornecedores" && fornecedoresTab === "dividas"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1630,7 +1630,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contabilidade_interna"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1652,7 +1652,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "fundo_reserva"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1670,7 +1670,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "financeiro_extratos"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1685,7 +1685,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "financeiro_mapa_pagamentos"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1715,7 +1715,7 @@ export default function App() {
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
-              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+              className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 ["vistorias_limpezas", "limpezas_incidencias"].includes(activeSection) 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
                   : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1736,7 +1736,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "vistorias_limpezas" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1751,7 +1751,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "limpezas_incidencias" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1777,7 +1777,7 @@ export default function App() {
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
-              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+              className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 ["manutencao_ocorrencias", "ocorrencias", "manutencao_intervencoes", "manutencao_concluidas", "inventario_tecnico"].includes(activeSection)
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                   : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1798,7 +1798,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "manutencao_ocorrencias" || activeSection === "ocorrencias" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1824,7 +1824,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "manutencao_intervencoes" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1840,7 +1840,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "manutencao_concluidas" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1869,7 +1869,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "inventario_tecnico"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1894,7 +1894,7 @@ export default function App() {
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
-              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+              className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 activeSection === "fornecedores" 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
                   : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1916,7 +1916,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "fornecedores" && fornecedoresTab === "fornecedores" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1932,7 +1932,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "fornecedores" && fornecedoresTab === "contratos" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1969,7 +1969,7 @@ export default function App() {
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
-              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+              className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 activeSection === "portal_orcamentos"
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                   : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -1990,7 +1990,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "portal_orcamentos"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2005,7 +2005,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "quotas_orcamento"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2026,7 +2026,7 @@ export default function App() {
               setViewMode("BROWSER");
               setIaInitialTab(undefined);
             }}
-            className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+            className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
               activeSection === "assembleias"
                 ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                 : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2053,7 +2053,7 @@ export default function App() {
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
-              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+              className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 ["contencioso_juridico", "contencioso_juridico_processos", "contencioso_juridico_nd", "contencioso_juridico_doc_obrig", "contencioso_juridico_cartas", "contencioso_juridico_bni", "contencioso_juridico_regulamento", "contencioso_juridico_estatutos", "contencioso_juridico_ia"].includes(activeSection)
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                   : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2074,7 +2074,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contencioso_juridico" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2089,7 +2089,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contencioso_juridico_processos" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2104,7 +2104,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contencioso_juridico_nd" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2119,7 +2119,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contencioso_juridico_doc_obrig" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2134,7 +2134,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contencioso_juridico_cartas" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2149,7 +2149,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contencioso_juridico_bni" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2164,7 +2164,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contencioso_juridico_regulamento" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2179,7 +2179,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contencioso_juridico_estatutos" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2194,7 +2194,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "contencioso_juridico_ia" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2219,7 +2219,7 @@ export default function App() {
                 }
                 setViewMode("BROWSER");
               }}
-              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+              className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                 activeSection === "ia_avancada"
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                   : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2247,7 +2247,7 @@ export default function App() {
                     setIaInitialTab("juridico");
                     setViewMode("BROWSER");
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "ia_avancada" && iaInitialTab === "juridico" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2275,7 +2275,7 @@ export default function App() {
                     setIaInitialTab("cerebro_ia");
                     setViewMode("BROWSER");
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "ia_avancada" && iaInitialTab === "cerebro_ia" 
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2290,7 +2290,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "ia_importacao"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2305,7 +2305,7 @@ export default function App() {
                     setViewMode("BROWSER");
                     setIaInitialTab(undefined);
                   }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
                     activeSection === "ia_classificador"
                       ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
                       : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2326,7 +2326,7 @@ export default function App() {
               setViewMode("BROWSER");
               setIaInitialTab(undefined);
             }}
-            className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+            className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
               activeSection === "minutas_oficiais" || activeSection === "simulador_emails" || activeSection === "gestao_correspondencia"
                 ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                 : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2346,7 +2346,7 @@ export default function App() {
               setViewMode("BROWSER");
               setIaInitialTab(undefined);
             }}
-            className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+            className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
               activeSection === "arquivo" || activeSection === "documentos"
                 ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                 : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2367,7 +2367,7 @@ export default function App() {
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
-              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2.5 ${
+              className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2.5 ${
                 activeSection === "ficha_gestora" 
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
                   : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2392,7 +2392,7 @@ export default function App() {
                   setViewMode("BROWSER");
                   setIaInitialTab(undefined);
                 }}
-                className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                   ["configuracoes_gerais", "configuracoes_templates", "configuracoes_ia", "configuracoes_notificacoes", "configuracoes_logs", "configuracoes_exportacao"].includes(activeSection)
                     ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500" 
                     : "text-emerald-300 hover:text-white hover:bg-slate-800/30"
@@ -2421,7 +2421,7 @@ export default function App() {
                       setViewMode("BROWSER");
                       setIaInitialTab(undefined);
                     }}
-                    className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                    className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                       activeSection === "configuracoes_ia"
                         ? "bg-emerald-500/25 text-emerald-200 font-bold border-l-2 border-emerald-400 pl-2.5" 
                         : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2444,7 +2444,7 @@ export default function App() {
                       setViewMode("BROWSER");
                       setIaInitialTab(undefined);
                     }}
-                    className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                    className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                       activeSection === "configuracoes_templates"
                         ? "bg-emerald-500/25 text-emerald-200 font-bold border-l-2 border-emerald-400 pl-2.5" 
                         : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2467,7 +2467,7 @@ export default function App() {
                       setViewMode("BROWSER");
                       setIaInitialTab(undefined);
                     }}
-                    className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                    className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                       activeSection === "configuracoes_notificacoes"
                         ? "bg-emerald-500/25 text-emerald-200 font-bold border-l-2 border-emerald-400 pl-2.5" 
                         : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2490,7 +2490,7 @@ export default function App() {
                       setViewMode("BROWSER");
                       setIaInitialTab(undefined);
                     }}
-                    className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                    className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                       activeSection === "configuracoes_logs"
                         ? "bg-emerald-500/25 text-emerald-200 font-bold border-l-2 border-emerald-400 pl-2.5" 
                         : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2513,7 +2513,7 @@ export default function App() {
                       setViewMode("BROWSER");
                       setIaInitialTab(undefined);
                     }}
-                    className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                    className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center justify-between gap-2 ${
                       activeSection === "configuracoes_exportacao"
                         ? "bg-emerald-500/25 text-emerald-200 font-bold border-l-2 border-emerald-400 pl-2.5" 
                         : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2544,7 +2544,7 @@ export default function App() {
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
-              className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2.5 ${
+              className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2.5 ${
                 activeSection === "auditoria_interna"
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                   : "text-slate-600 hover:text-white hover:bg-slate-800/30"
@@ -2559,7 +2559,7 @@ export default function App() {
           <button 
             id="sidebar-item-seguranca"
             onClick={() => setUserProfileModalOpen(true)}
-            className="w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 text-emerald-400 hover:text-white hover:bg-slate-800/40 border border-slate-800/80 hover:border-emerald-500/40 bg-slate-900/60 shadow-xs group"
+            className="w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 text-emerald-400 hover:text-white hover:bg-slate-800/40 border border-slate-800/80 hover:border-emerald-500/40 bg-slate-900/60 shadow-xs group"
           >
             <div className="flex items-center gap-2.5">
               <img src="/estados-acoes/18-seguranca.png" alt="Segurança" className="w-5 h-5 object-contain shrink-0 group-hover:scale-110 transition-transform" />
