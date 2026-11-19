@@ -33,6 +33,12 @@ export interface EquipamentoTecnico {
   id: string;
   nome: string;
   categoria: string;
+  // Distinção perdida na unificação com a antiga Agenda de Manutenção
+  // (2026-11-18) e reposta a pedido explícito do administrador — nem toda
+  // a vistoria é exigida por lei (ex: extintores, elevadores, gás são
+  // "inspeção_obrigatoria"; uma vistoria de rotina a um portão automático
+  // pode ser só "preventiva", facultativa).
+  tipo: "inspeção_obrigatoria" | "preventiva";
   andar: string;
   estado: "Excelente" | "Operacional" | "Necessita Manutenção" | "Crítico";
   ultimaInspecao: string;
@@ -87,6 +93,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nome, setNome] = useState("");
   const [categoria, setCategoria] = useState("Elevadores");
+  const [tipo, setTipo] = useState<EquipamentoTecnico["tipo"]>("inspeção_obrigatoria");
   const [andar, setAndar] = useState("");
   const [estado, setEstado] = useState<EquipamentoTecnico["estado"]>("Operacional");
   const [fabricante, setFabricante] = useState("");
@@ -128,6 +135,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
     setEditingId(null);
     setNome("");
     setCategoria("Elevadores");
+    setTipo("inspeção_obrigatoria");
     setEstado("Operacional");
     setFabricante("");
     setDetalhes("");
@@ -144,6 +152,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
     setEditingId(eq.id);
     setNome(eq.nome);
     setCategoria(eq.categoria);
+    setTipo(eq.tipo || "inspeção_obrigatoria");
     setAndar(eq.andar);
     setEstado(eq.estado);
     setFabricante(eq.fabricante || "");
@@ -466,6 +475,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
     const existente = editingId ? equipamentos.find(eq => eq.id === editingId) : null;
     const base: Omit<EquipamentoTecnico, "id" | "nome"> = {
       categoria,
+      tipo,
       andar,
       estado,
       ultimaInspecao: existente?.ultimaInspecao || new Date().toISOString().substring(0, 10),
@@ -527,6 +537,111 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
     }
   };
 
+  // Gera um mapa preventivo inicial a partir do património real do prédio
+  // (elevadores, garagem, jardins) — existia na antiga Agenda de
+  // Manutenção ("Gerar Agenda Preventiva IA") e foi perdido na unificação
+  // (2026-11-18); reposto a pedido do administrador, agora a criar
+  // EquipamentoTecnico diretamente aqui. IDs fixos ("ag-ia-N") para nunca
+  // duplicar ao clicar 2 vezes.
+  const handleGerarMapaPreventivoIA = async () => {
+    const checks: EquipamentoTecnico[] = [
+      {
+        id: "ag-ia-1",
+        nome: "Extintores de Incêndio (Certificação Legal)",
+        categoria: "Sistema de incêndio",
+        tipo: "inspeção_obrigatoria",
+        andar: "Geral do Edifício",
+        estado: "Operacional",
+        ultimaInspecao: new Date().toISOString().substring(0, 10),
+        frequenciaInspecao: "Anual"
+      },
+      {
+        id: "ag-ia-2",
+        nome: "Inspeção e Limpeza do Telhado / Cobertura",
+        categoria: "Portas corta-fogo",
+        tipo: "preventiva",
+        andar: "Cobertura",
+        estado: "Operacional",
+        ultimaInspecao: new Date().toISOString().substring(0, 10),
+        frequenciaInspecao: "Anual"
+      }
+    ];
+
+    if (predio.patrimonio?.tem_elevador) {
+      const numElevadores = Math.max(1, predio.patrimonio.num_elevadores || 1);
+      for (let i = 1; i <= numElevadores; i++) {
+        checks.push({
+          id: numElevadores > 1 ? `ag-ia-elevador-${i}` : "ag-ia-3",
+          nome: numElevadores > 1 ? `Elevador ${i}` : "Elevadores de Passageiros",
+          categoria: "Elevadores",
+          tipo: "inspeção_obrigatoria",
+          andar: "Geral do Edifício",
+          estado: "Operacional",
+          ultimaInspecao: new Date().toISOString().substring(0, 10),
+          frequenciaInspecao: "Bianual"
+        });
+      }
+    }
+    if (predio.patrimonio?.tem_garagem) {
+      checks.push({
+        id: "ag-ia-4",
+        nome: "Bombas de Drenagem de Águas Pluviais da Garagem",
+        categoria: "Bombas de água",
+        tipo: "preventiva",
+        andar: "Cave / Garagem",
+        estado: "Operacional",
+        ultimaInspecao: new Date().toISOString().substring(0, 10),
+        frequenciaInspecao: "Semestral"
+      });
+    }
+    if (predio.patrimonio?.tem_jardins) {
+      checks.push({
+        id: "ag-ia-5",
+        nome: "Eletrobombas e Sistema de Rega dos Jardins",
+        categoria: "Bombas de água",
+        tipo: "preventiva",
+        andar: "Exterior",
+        estado: "Operacional",
+        ultimaInspecao: new Date().toISOString().substring(0, 10),
+        frequenciaInspecao: "Trimestral"
+      });
+    }
+    checks.push({
+      id: "ag-ia-6",
+      nome: "Portas Corta-Fogo e Sinalização de Emergência",
+      categoria: "Portas corta-fogo",
+      tipo: "inspeção_obrigatoria",
+      andar: "Geral do Edifício",
+      estado: "Operacional",
+      ultimaInspecao: new Date().toISOString().substring(0, 10),
+      frequenciaInspecao: "Semestral"
+    });
+    checks.push({
+      id: "ag-ia-7",
+      nome: "Quadros de Colunas Elétricas e Caixas Técnicas",
+      categoria: "Sistema elétrico",
+      tipo: "inspeção_obrigatoria",
+      andar: "Geral do Edifício",
+      estado: "Operacional",
+      ultimaInspecao: new Date().toISOString().substring(0, 10),
+      frequenciaInspecao: "Anual"
+    });
+
+    const checksNovos = checks.filter(c => !equipamentos.some(eq => eq.id === c.id));
+    if (checksNovos.length === 0) {
+      alert("O mapa preventivo para este património já foi gerado — nada novo a acrescentar.");
+      return;
+    }
+    const resultados = await Promise.all(checksNovos.map(c => saveEquipamentoTecnicoToSupabase(predio.id_predio, c)));
+    if (resultados.some(r => !r)) {
+      alert("❌ Não foi possível gravar o mapa preventivo no Supabase. Tente novamente.");
+      return;
+    }
+    setEquipamentos(prev => [...prev, ...checksNovos]);
+    registarLogAuditoria("Manutenção", "Gerou o mapa preventivo inicial a partir do património do prédio", predio.id_predio, loggedUser);
+    alert(`Mapa preventivo gerado: ${checksNovos.length} equipamento(s) adicionado(s) a partir do património real do prédio.`);
+  };
+
   // Pre-defined categories required in Document D
   const categoriesList = [
     "Elevadores",
@@ -543,7 +658,21 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
 
   return (
     <div className="space-y-6 text-slate-800 dark:text-slate-100 animate-fadeIn">
-      
+
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div>
+          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-600">Inventário Técnico & Vistorias</h3>
+          <p className="text-[11px] text-slate-600">Equipamentos, inspeções obrigatórias por lei e manutenção preventiva do edifício.</p>
+        </div>
+        <button
+          onClick={handleGerarMapaPreventivoIA}
+          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md cursor-pointer flex items-center gap-1.5 shrink-0"
+        >
+          <Sparkles className="h-4 w-4" />
+          <span>Gerar Mapa Preventivo IA</span>
+        </button>
+      </div>
+
       {/* Overview stats */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
@@ -633,6 +762,18 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
                 {categoriesList.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Tipo de Vistoria</label>
+              <select
+                value={tipo}
+                onChange={e => setTipo(e.target.value as any)}
+                className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-semibold cursor-pointer"
+              >
+                <option value="inspeção_obrigatoria">Inspeção Obrigatória (Lei)</option>
+                <option value="preventiva">Manutenção Preventiva (Facultativa)</option>
               </select>
             </div>
 
@@ -854,6 +995,13 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
                     <div className="flex items-center gap-2">
                       <span className="text-[9px] bg-slate-200 dark:bg-slate-800 px-2 rounded font-mono font-bold">ID: {e.id}</span>
                       <span className="text-[10px] bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 px-2 rounded font-bold font-mono">{e.categoria}</span>
+                      <span className={`text-[9px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full ${
+                        e.tipo === "inspeção_obrigatoria"
+                          ? "bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400"
+                          : "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/20 dark:text-indigo-400"
+                      }`}>
+                        {e.tipo === "inspeção_obrigatoria" ? "Obrigatória (Lei)" : "Facultativa"}
+                      </span>
                       <span className={`text-[9px] px-2 rounded font-bold uppercase ${
                         e.estado === "Excelente" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-400" :
                         e.estado === "Operacional" ? "bg-blue-100 text-blue-800 dark:bg-blue-950/20 dark:text-blue-400" :
