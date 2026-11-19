@@ -1771,14 +1771,14 @@ export default function App() {
               id="sidebar-item-manutencao"
               onClick={() => {
                 setOpenMenuVistoriasIntervencoes(!openMenuVistoriasIntervencoes);
-                if (!["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "inventario_tecnico"].includes(activeSection)) {
+                if (!["manutencao_ocorrencias", "ocorrencias", "manutencao_intervencoes", "manutencao_concluidas", "inventario_tecnico"].includes(activeSection)) {
                   setActiveSection("manutencao_ocorrencias");
                 }
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
               className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                ["manutencao_ocorrencias", "ocorrencias", "limpezas_vistorias", "manutencao_intervencoes", "manutencao_concluidas", "inventario_tecnico"].includes(activeSection)
+                ["manutencao_ocorrencias", "ocorrencias", "manutencao_intervencoes", "manutencao_concluidas", "inventario_tecnico"].includes(activeSection)
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                   : "text-slate-600 hover:text-white hover:bg-slate-800/30"
               }`}
@@ -1808,21 +1808,15 @@ export default function App() {
                   <span>Ocorrências</span>
                 </button>
 
-                <button
-                  onClick={() => {
-                    setActiveSection("limpezas_vistorias");
-                    setViewMode("BROWSER");
-                    setIaInitialTab(undefined);
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs rounded-md transition-all cursor-pointer flex items-center gap-2 ${
-                    activeSection === "limpezas_vistorias" 
-                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5" 
-                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
-                  }`}
-                >
-                  <img src="/modulos/02-equipamentos-tecnicos.png" alt="Vistoria Técnica" className="w-4 h-4 object-contain shrink-0" />
-                  <span>Vistoria Técnica</span>
-                </button>
+                {/* "Vistoria Técnica" saiu daqui (2026-11-19, pedido
+                    explícito: "tenho lá os separadores das limpezas
+                    repetidos que já estão no menu de limpezas") — abria o
+                    MESMO componente partilhado com o menu "Limpezas", só
+                    que com outro activeSubSection, mostrando "Vistorias &
+                    Inspeções" e "Equipamentos SCIE & Validades" (0 dados
+                    reais, confirmado) ao lado de separadores de limpeza já
+                    duplicados noutro menu. Esse conteúdo de equipamento
+                    (extintores, etc.) já vive no Inventário Técnico. */}
 
                 <button
                   onClick={() => {
@@ -2698,7 +2692,7 @@ export default function App() {
                 {activeSection === "reservas" && "Agenda & Reservas de Espaços Comuns"}
                 {(activeSection === "documentos" || activeSection === "arquivo") && "Arquivo Digital (Anos & Temas)"}
                 {activeSection === "ocorrencias" && "Gestão de Ocorrências e Avarias"}
-                {(activeSection === "vistorias_limpezas" || activeSection === "limpezas_vistorias") && "Manutenção • Vistorias & Higienização"}
+                {activeSection === "vistorias_limpezas" && "Limpezas • Vistorias & Higienização"}
                 {activeSection === "ia_avancada" && "Central de Inteligência Artificial Avançada"}
                 {activeSection === "ia_importacao" && "Assistente de Importação Global por IA (PDF/XLS)"}
                 {activeSection === "ia_classificador" && "Classificador Geral de Documentos por IA"}
@@ -3105,7 +3099,7 @@ export default function App() {
             />
           )}
 
-          {["vistorias_limpezas", "limpezas_incidencias", "limpezas_vistorias"].includes(activeSection) && (
+          {["vistorias_limpezas", "limpezas_incidencias"].includes(activeSection) && (
             <GestaoVistoriasLimpezas 
               predio={predioAtivo}
               loggedUser={loggedUser}
