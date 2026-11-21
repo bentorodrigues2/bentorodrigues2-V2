@@ -134,6 +134,11 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
   const [fotos, setFotos] = useState<string[]>([]);
   const fotoInputRef = useRef<HTMLInputElement>(null);
   const [frequenciaInspecao, setFrequenciaInspecao] = useState("Anual");
+  // Data da última inspeção — pedido explícito do administrador ("falta a
+  // data da inspeção"): antes ficava sempre fixa na data de hoje, sem
+  // forma de indicar que o equipamento já tinha sido inspecionado antes
+  // (ex: um elevador que já tem certificado válido de há alguns meses).
+  const [ultimaInspecaoInput, setUltimaInspecaoInput] = useState(() => new Date().toISOString().substring(0, 10));
   const [entidadeResponsavel, setEntidadeResponsavel] = useState("");
   const [baseLegalDgeg, setBaseLegalDgeg] = useState("");
   const [numLicencaAutorizacao, setNumLicencaAutorizacao] = useState("");
@@ -176,6 +181,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
     setDetalhes("");
     setFotos([]);
     setFrequenciaInspecao("Anual");
+    setUltimaInspecaoInput(new Date().toISOString().substring(0, 10));
     setEntidadeResponsavel("");
     setBaseLegalDgeg("");
     setNumLicencaAutorizacao("");
@@ -196,6 +202,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
     setDetalhes(eq.detalhes || "");
     setFotos(eq.fotos || []);
     setFrequenciaInspecao(eq.frequenciaInspecao || "Anual");
+    setUltimaInspecaoInput(eq.ultimaInspecao || new Date().toISOString().substring(0, 10));
     setEntidadeResponsavel(eq.entidadeResponsavel || "");
     setBaseLegalDgeg(eq.baseLegalDgeg || "");
     setNumLicencaAutorizacao(eq.numLicencaAutorizacao || "");
@@ -625,7 +632,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
       tipo,
       andar,
       estado,
-      ultimaInspecao: existente?.ultimaInspecao || new Date().toISOString().substring(0, 10),
+      ultimaInspecao: ultimaInspecaoInput,
       frequenciaInspecao,
       fabricante: fabricante || "Personalizado",
       detalhes: detalhes || "Adicionado via painel técnico.",
@@ -882,10 +889,12 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left column: Add customized equipment */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 h-fit">
+      <div className="space-y-6">
+
+        {/* Ficha de equipamento — a aparecer no TOPO da página (pedido
+            explícito do administrador), em largura total, para os campos
+            de preenchimento ficarem maiores e mais fáceis de ler. */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
           <div className="flex items-center justify-between gap-2">
             <div>
               <h3 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1">
@@ -905,25 +914,25 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
             )}
           </div>
 
-          <form onSubmit={handleAddCustom} className="space-y-3.5">
-            <div>
+          <form onSubmit={handleAddCustom} className="grid grid-cols-1 lg:grid-cols-2 gap-x-5 gap-y-3.5">
+            <div className="lg:col-span-2">
               <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nome do Equipamento / Modelo</label>
               <input
                 type="text"
                 value={nome}
                 onChange={e => setNome(e.target.value)}
                 placeholder="Ex: Motor do Portão de Garagem Ditec"
-                className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm font-semibold focus:outline-none focus:border-emerald-500"
                 required
               />
             </div>
 
-            <div>
+            <div className="lg:col-span-2">
               <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Categoria Técnica</label>
               <select
                 value={categoriasPatrimonio.includes(categoria) ? categoria : "__outra__"}
                 onChange={e => setCategoria(e.target.value === "__outra__" ? "" : e.target.value)}
-                className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-semibold cursor-pointer"
+                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm font-semibold cursor-pointer"
               >
                 {categoriasPatrimonio.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
@@ -936,7 +945,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
                   value={categoria}
                   onChange={e => setCategoria(e.target.value)}
                   placeholder="Nome da categoria técnica..."
-                  className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs mt-1.5"
+                  className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm mt-1.5"
                 />
               )}
             </div>
@@ -946,130 +955,134 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
               <select
                 value={tipo}
                 onChange={e => setTipo(e.target.value as any)}
-                className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-semibold cursor-pointer"
+                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm font-semibold cursor-pointer"
               >
                 <option value="inspeção_obrigatoria">Inspeção Obrigatória (Lei)</option>
                 <option value="preventiva">Manutenção Preventiva (Facultativa)</option>
               </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Localização (Andar)</label>
-                <select
-                  value={andar}
-                  onChange={e => setAndar(e.target.value)}
-                  className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-semibold cursor-pointer"
-                >
-                  {pisosReais.map(p => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Estado de Conservação</label>
-                <select
-                  value={estado}
-                  onChange={e => setEstado(e.target.value as any)}
-                  className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-semibold cursor-pointer"
-                >
-                  <option value="Excelente">Excelente</option>
-                  <option value="Operacional">Operacional</option>
-                  <option value="Necessita Manutenção">Manutenção</option>
-                  <option value="Crítico">Crítico</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Fabricante / Fornecedor</label>
-                <input
-                  type="text"
-                  value={fabricante}
-                  onChange={e => setFabricante(e.target.value)}
-                  placeholder="Ex: Schindler Lda."
-                  className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Periodicidade de Inspeção</label>
-                <select
-                  value={frequenciaInspecao}
-                  onChange={e => setFrequenciaInspecao(e.target.value)}
-                  className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-semibold cursor-pointer"
-                >
-                  <option value="Mensal">Mensal</option>
-                  <option value="Trimestral">Trimestral</option>
-                  <option value="Semestral">Semestral</option>
-                  <option value="Anual">Anual</option>
-                  <option value="Bianual">Bianual (2 anos)</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Data da Última Inspeção</label>
+              <input
+                type="date"
+                value={ultimaInspecaoInput}
+                onChange={e => setUltimaInspecaoInput(e.target.value)}
+                required
+                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm font-mono focus:outline-none focus:border-emerald-500"
+              />
             </div>
 
             <div>
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Localização (Andar)</label>
+              <select
+                value={andar}
+                onChange={e => setAndar(e.target.value)}
+                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm font-semibold cursor-pointer"
+              >
+                {pisosReais.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Estado de Conservação</label>
+              <select
+                value={estado}
+                onChange={e => setEstado(e.target.value as any)}
+                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm font-semibold cursor-pointer"
+              >
+                <option value="Excelente">Excelente</option>
+                <option value="Operacional">Operacional</option>
+                <option value="Necessita Manutenção">Manutenção</option>
+                <option value="Crítico">Crítico</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Fabricante / Fornecedor</label>
+              <input
+                type="text"
+                value={fabricante}
+                onChange={e => setFabricante(e.target.value)}
+                placeholder="Ex: Schindler Lda."
+                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Periodicidade de Inspeção</label>
+              <select
+                value={frequenciaInspecao}
+                onChange={e => setFrequenciaInspecao(e.target.value)}
+                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm font-semibold cursor-pointer"
+              >
+                <option value="Mensal">Mensal</option>
+                <option value="Trimestral">Trimestral</option>
+                <option value="Semestral">Semestral</option>
+                <option value="Anual">Anual</option>
+                <option value="Bianual">Bianual (2 anos)</option>
+              </select>
+            </div>
+
+            <div className="lg:col-span-2">
               <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Entidade Responsável / Prestador de Serviço</label>
               <input
                 type="text"
                 value={entidadeResponsavel}
                 onChange={e => setEntidadeResponsavel(e.target.value)}
                 placeholder="Ex: TKE, Fidelidade, A definir..."
-                className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs focus:outline-none focus:border-emerald-500"
+                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Base Legal / DGEG (Opcional)</label>
-                <input
-                  type="text"
-                  value={baseLegalDgeg}
-                  onChange={e => setBaseLegalDgeg(e.target.value)}
-                  placeholder="Ex: DL 320/2002"
-                  className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Licença / Autorização</label>
-                <input
-                  type="text"
-                  value={numLicencaAutorizacao}
-                  onChange={e => setNumLicencaAutorizacao(e.target.value)}
-                  placeholder="Ex: registo DGEG do equipamento"
-                  className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+            <div>
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Base Legal / DGEG (Opcional)</label>
+              <input
+                type="text"
+                value={baseLegalDgeg}
+                onChange={e => setBaseLegalDgeg(e.target.value)}
+                placeholder="Ex: DL 320/2002"
+                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Licença / Autorização</label>
+              <input
+                type="text"
+                value={numLicencaAutorizacao}
+                onChange={e => setNumLicencaAutorizacao(e.target.value)}
+                placeholder="Ex: registo DGEG do equipamento"
+                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+              />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Série (Opcional)</label>
-                <input
-                  type="text"
-                  value={numeroSerie}
-                  onChange={e => setNumeroSerie(e.target.value)}
-                  placeholder={!editingId ? "Ex: 50101007 (vírgula se criar várias unidades)" : "Ex: 50101007"}
-                  className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-mono focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Processo (Câmara/DGEG, Opcional)</label>
-                <input
-                  type="text"
-                  value={numProcessoCamara}
-                  onChange={e => setNumProcessoCamara(e.target.value)}
-                  placeholder="Ex: L/2009/52/0"
-                  className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-mono focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+            <div>
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Série (Opcional)</label>
+              <input
+                type="text"
+                value={numeroSerie}
+                onChange={e => setNumeroSerie(e.target.value)}
+                placeholder={!editingId ? "Ex: 50101007 (vírgula se criar várias unidades)" : "Ex: 50101007"}
+                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm font-mono focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Processo (Câmara/DGEG, Opcional)</label>
+              <input
+                type="text"
+                value={numProcessoCamara}
+                onChange={e => setNumProcessoCamara(e.target.value)}
+                placeholder="Ex: L/2009/52/0"
+                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm font-mono focus:outline-none focus:border-emerald-500"
+              />
             </div>
 
             {!editingId && (
-              <div>
+              <div className="lg:col-span-2">
                 <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Unidades a Criar</label>
-                <input type="number" min={1} value={numUnidadesCriar} onChange={e => setNumUnidadesCriar(e.target.value)} className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs" />
+                <input type="number" min={1} value={numUnidadesCriar} onChange={e => setNumUnidadesCriar(e.target.value)} className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm" />
                 <p className="text-[9px] text-slate-600 mt-1">Ex: "2" num prédio com 2 elevadores cria "{nome.trim() || "Elevador"} 1" e "{nome.trim() || "Elevador"} 2" como equipamentos separados e independentes — cada um com a sua própria localização, histórico de vistorias e custos.</p>
               </div>
             )}
@@ -1082,22 +1095,22 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
                 max={180}
                 value={diasAlertaAntecedencia}
                 onChange={e => setDiasAlertaAntecedencia(parseInt(e.target.value) || 30)}
-                className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-mono focus:outline-none focus:border-emerald-500"
+                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm font-mono focus:outline-none focus:border-emerald-500"
               />
             </div>
 
-            <div>
+            <div className="lg:col-span-2">
               <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Notas Técnicas / Observações</label>
               <textarea
                 value={detalhes}
                 onChange={e => setDetalhes(e.target.value)}
                 placeholder="Ex: Rolamento substituído recentemente. Monitorizar ruído térmico."
                 rows={3}
-                className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs focus:outline-none focus:border-emerald-500"
+                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
               />
             </div>
 
-            <div>
+            <div className="lg:col-span-2">
               <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Fotografias</label>
               {/* Sem "capture" — isso forçava o telemóvel a abrir SEMPRE a
                   câmara diretamente, sem dar a escolher a galeria/ficheiros
@@ -1108,7 +1121,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
               <button
                 type="button"
                 onClick={() => fotoInputRef.current?.click()}
-                className="w-full border border-dashed p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300 text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:border-emerald-400 hover:text-emerald-600"
+                className="w-full border border-dashed p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300 text-sm font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:border-emerald-400 hover:text-emerald-600"
               >
                 <Camera className="h-4 w-4" />
                 <span>{fotos.length > 0 ? `${fotos.length} fotografia(s) anexada(s) — adicionar mais` : "Adicionar Fotografias"}</span>
@@ -1135,7 +1148,7 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
 
             <button
               type="submit"
-              className={`w-full text-white font-bold py-2 rounded-lg text-xs cursor-pointer shadow flex items-center justify-center gap-1 ${editingId ? "bg-indigo-600 hover:bg-indigo-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
+              className={`lg:col-span-2 w-full text-white font-bold py-2.5 rounded-lg text-sm cursor-pointer shadow flex items-center justify-center gap-1 ${editingId ? "bg-indigo-600 hover:bg-indigo-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
             >
               {editingId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
               <span>{editingId ? "Guardar Alterações" : "Inserir no Mapa Técnico"}</span>
@@ -1143,9 +1156,10 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], movements 
           </form>
         </div>
 
-        {/* Right columns: List and interactive building schema */}
-        <div className="lg:col-span-2 space-y-6">
-          
+        {/* Mapa visual + listagem de equipamentos — abaixo da ficha, também
+            em largura total. */}
+        <div className="space-y-6">
+
           {/* Planta / Schema visual do Edifício */}
           <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
             <div>
