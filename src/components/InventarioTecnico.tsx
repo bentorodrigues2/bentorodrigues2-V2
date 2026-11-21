@@ -25,6 +25,22 @@ export interface DocumentoVistoria {
 
 export interface HistoricoVistoriaEquipamento {
   id: string;
+  // Ciclo de vida real de uma inspeção, do pedido à realização — pedido
+  // explícito do administrador: "campo para solicitação de inspeção e
+  // depois o agendamento da mesma quando formos informados pela entidade
+  // que vem efetuar a inspeção". Sem valor (registos antigos) = sempre
+  // tratada como "Realizada", para não quebrar o histórico já gravado.
+  // - "Solicitada": só se pediu a inspeção à entidade (ex: requerimento à
+  //   Câmara), ainda sem data de visita confirmada.
+  // - "Agendada": a entidade já informou a data da visita.
+  // - "Realizada": a inspeção já aconteceu — resultado, custo e
+  //   certificado ficam preenchidos.
+  // Só entradas "Realizada" (ou sem este campo, legado) atualizam a
+  // validade/estado do equipamento.
+  estadoRegisto?: "Solicitada" | "Agendada" | "Realizada";
+  // Data da visita informada pela entidade — só relevante quando
+  // estadoRegisto é "Agendada" (ou já foi e passou a "Realizada").
+  dataAgendada?: string;
   // Liga esta entrada às entradas irmãs de OUTROS equipamentos, quando a
   // mesma visita cobriu vários de uma vez (ex: a TKE inspeciona os 2
   // elevadores do prédio na mesma visita, com 1 só fatura e 1 só
@@ -66,6 +82,16 @@ export interface EquipamentoTecnico {
   // automático pode ser só "preventiva", facultativa).
   tipo: "inspeção_obrigatoria" | "preventiva";
   andar: string;
+  // Localização detalhada, quando "andar" sozinho não chega — pedido
+  // explícito: "falta localizações" (ex: 30 extintores espalhados por
+  // vários patamares, garagem e cobertura, não só "Geral do Edifício").
+  localizacaoDetalhada?: string;
+  // Quantidade de unidades IDÊNTICAS tratadas como 1 SÓ registo — pedido
+  // explícito: "se tiver 30 extintores não vou abrir uma ficha para cada
+  // um". Distinto de "criar N unidades" (que gera N registos SEPARADOS,
+  // usado quando cada unidade precisa de identidade própria, ex:
+  // elevadores com nº de série/certificado diferentes). Por omissão 1.
+  quantidade?: number;
   estado: "Excelente" | "Operacional" | "Necessita Manutenção" | "Crítico";
   ultimaInspecao: string;
   frequenciaInspecao: string;
@@ -129,6 +155,8 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], onVerInspe
   const [categoria, setCategoria] = useState("Elevadores");
   const [tipo, setTipo] = useState<EquipamentoTecnico["tipo"]>("inspeção_obrigatoria");
   const [andar, setAndar] = useState("");
+  const [localizacaoDetalhada, setLocalizacaoDetalhada] = useState("");
+  const [quantidade, setQuantidade] = useState("1");
   const [estado, setEstado] = useState<EquipamentoTecnico["estado"]>("Operacional");
   const [fabricante, setFabricante] = useState("");
   const [detalhes, setDetalhes] = useState("");
@@ -158,6 +186,8 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], onVerInspe
     setNome("");
     setCategoria("Elevadores");
     setTipo("inspeção_obrigatoria");
+    setLocalizacaoDetalhada("");
+    setQuantidade("1");
     setEstado("Operacional");
     setFabricante("");
     setDetalhes("");
@@ -179,6 +209,8 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], onVerInspe
     setCategoria(eq.categoria);
     setTipo(eq.tipo || "inspeção_obrigatoria");
     setAndar(eq.andar);
+    setLocalizacaoDetalhada(eq.localizacaoDetalhada || "");
+    setQuantidade(String(eq.quantidade ?? 1));
     setEstado(eq.estado);
     setFabricante(eq.fabricante || "");
     setDetalhes(eq.detalhes || "");
@@ -274,6 +306,8 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], onVerInspe
       categoria,
       tipo,
       andar,
+      localizacaoDetalhada: localizacaoDetalhada || undefined,
+      quantidade: Math.max(1, parseInt(quantidade, 10) || 1),
       estado,
       ultimaInspecao: ultimaInspecaoInput,
       frequenciaInspecao,
@@ -657,6 +691,29 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], onVerInspe
             </div>
 
             <div>
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Quantidade de Unidades (neste registo)</label>
+              <input
+                type="number"
+                min={1}
+                value={quantidade}
+                onChange={e => setQuantidade(e.target.value)}
+                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm font-mono focus:outline-none focus:border-emerald-500"
+              />
+              <p className="text-[9px] text-slate-600 mt-1">Use quando são várias unidades IDÊNTICAS tratadas como 1 só registo (ex: "30" para 30 extintores) — não confundir com "Nº de Unidades a Criar" abaixo, que gera registos SEPARADOS (usado quando cada unidade precisa de identidade própria, ex: elevadores com nº de série diferente).</p>
+            </div>
+
+            <div className="lg:col-span-2">
+              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Localização Detalhada (Opcional)</label>
+              <input
+                type="text"
+                value={localizacaoDetalhada}
+                onChange={e => setLocalizacaoDetalhada(e.target.value)}
+                placeholder="Ex: 1 por patamar (pisos 0 ao 5), 2 na garagem, 1 na cobertura..."
+                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
               <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Fabricante / Fornecedor</label>
               <input
                 type="text"
@@ -886,6 +943,18 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], onVerInspe
 
                     <div className="flex gap-3 text-[10px] text-slate-600 pt-1 font-semibold flex-wrap">
                       <span>Piso: <strong className="text-slate-600 dark:text-slate-300">{e.andar}</strong></span>
+                      {e.quantidade != null && e.quantidade > 1 && (
+                        <>
+                          <span>•</span>
+                          <span>Quantidade: <strong className="text-slate-600 dark:text-slate-300">{e.quantidade} unidades</strong></span>
+                        </>
+                      )}
+                      {e.localizacaoDetalhada && (
+                        <>
+                          <span>•</span>
+                          <span>Localização: <strong className="text-slate-600 dark:text-slate-300">{e.localizacaoDetalhada}</strong></span>
+                        </>
+                      )}
                       <span>•</span>
                       <span>Fabricante: <strong className="text-slate-600 dark:text-slate-300">{e.fabricante || "N/A"}</strong></span>
                       <span>•</span>

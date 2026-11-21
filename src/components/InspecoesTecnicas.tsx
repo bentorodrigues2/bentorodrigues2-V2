@@ -59,6 +59,12 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
   // HistoricoVistoriaEquipamento.idGrupo) — null quando a vistoria é
   // isolada ou nova.
   const [vistoriaIdGrupo, setVistoriaIdGrupo] = useState<string | null>(null);
+  // Ciclo de vida real da inspeção — pedido explícito: "campo para
+  // solicitação de inspeção e depois o agendamento da mesma quando formos
+  // informados pela entidade que vem efetuar a inspeção". Por omissão
+  // "Realizada" (o caso mais comum: a vistoria já aconteceu).
+  const [vistoriaEstadoRegisto, setVistoriaEstadoRegisto] = useState<NonNullable<HistoricoVistoriaEquipamento["estadoRegisto"]>>("Realizada");
+  const [vistoriaDataAgendada, setVistoriaDataAgendada] = useState("");
   const [vistoriaData, setVistoriaData] = useState(() => new Date().toISOString().split("T")[0]);
   const [vistoriaTecnico, setVistoriaTecnico] = useState("");
   const [vistoriaResultado, setVistoriaResultado] = useState<HistoricoVistoriaEquipamento["resultado"]>("Aprovado");
@@ -131,6 +137,8 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
     setVistoriaTargetId(eq.id);
     setVistoriaEditId(null);
     setVistoriaIdGrupo(null);
+    setVistoriaEstadoRegisto("Realizada");
+    setVistoriaDataAgendada("");
     setVistoriaData(new Date().toISOString().split("T")[0]);
     setVistoriaTecnico("");
     setVistoriaResultado("Aprovado");
@@ -172,6 +180,8 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
     setVistoriaTargetId(eq.id);
     setVistoriaEditId(v.id);
     setVistoriaIdGrupo(v.idGrupo || null);
+    setVistoriaEstadoRegisto(v.estadoRegisto || "Realizada");
+    setVistoriaDataAgendada(v.dataAgendada || "");
     setVistoriaData(v.data);
     setVistoriaTecnico(v.tecnico === "Não identificado" ? "" : v.tecnico);
     setVistoriaResultado(v.resultado);
@@ -292,8 +302,10 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
       // (pedido explícito: "o total dos equipamentos a ser lançado nos
       // movimentos e saldo da conta após pagamento"). Idempotente: se já
       // havia um movimento lançado para esta vistoria, não volta a lançar.
+      // Só lança quando a inspeção já foi "Realizada" — uma "Solicitada" ou
+      // "Agendada" ainda não teve o serviço prestado, não há nada a pagar.
       let idMovimentoFinal = vistoriaIdMovimentoExistente;
-      if (!idMovimentoFinal && custoTotal > 0 && vistoriaContaPagamento) {
+      if (!idMovimentoFinal && vistoriaEstadoRegisto === "Realizada" && custoTotal > 0 && vistoriaContaPagamento) {
         if (!setMovements) {
           alert("Sistema de movimentos não disponível de momento — a vistoria foi gravada sem lançar o custo.");
         } else {
@@ -335,6 +347,8 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
         const entradaVistoria: HistoricoVistoriaEquipamento = {
           id: row.entryId || `vist-${Date.now()}-${row.idEquipamento}`,
           idGrupo: idGrupoFinal,
+          estadoRegisto: vistoriaEstadoRegisto,
+          dataAgendada: vistoriaDataAgendada || undefined,
           data: vistoriaData,
           tecnico: vistoriaTecnico || "Não identificado",
           resultado: vistoriaResultado,
@@ -355,12 +369,22 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
           ? (eqAlvo.historicoVistorias || []).map(v => v.id === row.entryId ? entradaVistoria : v)
           : [entradaVistoria, ...(eqAlvo.historicoVistorias || [])];
 
-        // A validade/estado do equipamento refletem sempre a vistoria mais
-        // RECENTE por data (não a última gravada) — importante em edição,
-        // onde corrigir a data de uma entrada antiga não pode mudar a
-        // validade atual se já houver uma vistoria mais recente no
-        // histórico.
-        const maisRecente = [...historicoAtualizado].sort((a, b) => b.data.localeCompare(a.data))[0];
+        // A validade/estado do equipamento só reflete vistorias REALIZADAS
+        // (ou sem este campo, histórico antigo) — uma inspeção só
+        // "Solicitada" ou "Agendada" ainda não aconteceu, por isso não pode
+        // mudar a validade real do equipamento (pedido explícito: "campo
+        // para solicitação de inspeção e depois o agendamento da mesma").
+        // Entre essas, conta sempre a mais RECENTE por data (não a última
+        // gravada) — importante em edição, onde corrigir a data de uma
+        // entrada antiga não pode mudar a validade atual se já houver uma
+        // vistoria mais recente no histórico.
+        const realizadas = historicoAtualizado.filter(v => !v.estadoRegisto || v.estadoRegisto === "Realizada");
+        const maisRecente = [...realizadas].sort((a, b) => b.data.localeCompare(a.data))[0];
+        if (!maisRecente) {
+          // Só há vistorias pendentes (Solicitada/Agendada) — mantém a
+          // validade atual do equipamento tal como estava.
+          return { ...eqAlvo, historicoVistorias: historicoAtualizado };
+        }
         const novoEstado: EquipamentoTecnico["estado"] =
           maisRecente.resultado === "Reprovado" ? "Crítico" :
           maisRecente.resultado === "Aprovado com Reservas" ? "Necessita Manutenção" :
@@ -390,9 +414,14 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
       setVistoriaTargetId(null);
       setVistoriaEditId(null);
       setVistoriaRows([]);
+      const sufixoValidade = vistoriaEstadoRegisto === "Realizada"
+        ? " Validade atualizada e próxima inspeção agendada."
+        : vistoriaEstadoRegisto === "Agendada"
+          ? ` Fica agendada para ${formatDatePT(vistoriaDataAgendada)} — a validade do equipamento só muda quando marcar como "Realizada".`
+          : ` Pedido registado — a validade do equipamento só muda quando marcar como "Realizada".`;
       alert(vistoriaEditId
-        ? "✅ Vistoria atualizada! Validade e próxima inspeção recalculadas."
-        : `✅ Vistoria registada${ehGrupo ? ` para ${equipamentosAlvo.length} equipamentos (${nomesEquipamentos})` : ""}!${idMovimentoFinal ? ` Custo total de ${custoTotal.toFixed(2)}€ lançado na conta.` : ""} Validade atualizada e próxima inspeção agendada.`);
+        ? `✅ Vistoria atualizada!${sufixoValidade}`
+        : `✅ ${vistoriaEstadoRegisto === "Realizada" ? "Vistoria registada" : vistoriaEstadoRegisto === "Agendada" ? "Agendamento registado" : "Solicitação registada"}${ehGrupo ? ` para ${equipamentosAlvo.length} equipamentos (${nomesEquipamentos})` : ""}!${idMovimentoFinal ? ` Custo total de ${custoTotal.toFixed(2)}€ lançado na conta.` : ""}${sufixoValidade}`);
     } catch (err: any) {
       alert(`❌ ${err?.message || "Não foi possível gravar a vistoria. Tente novamente."}`);
     } finally {
@@ -510,7 +539,12 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                   <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
                     {e.nome}{e.numeroSerie ? ` — Nº Série ${e.numeroSerie}` : ""}
                   </h4>
-                  <p className="text-[10px] text-slate-600">Piso: <strong>{e.andar}</strong>{e.entidadeResponsavel ? <> • Entidade: <strong>{e.entidadeResponsavel}</strong></> : ""}</p>
+                  <p className="text-[10px] text-slate-600">
+                    Piso: <strong>{e.andar}</strong>
+                    {e.quantidade != null && e.quantidade > 1 ? <> • Quantidade: <strong>{e.quantidade} unidades</strong></> : ""}
+                    {e.localizacaoDetalhada ? <> • Localização: <strong>{e.localizacaoDetalhada}</strong></> : ""}
+                    {e.entidadeResponsavel ? <> • Entidade: <strong>{e.entidadeResponsavel}</strong></> : ""}
+                  </p>
 
                   {e.proximaInspecaoData && (() => {
                     const diasRestantes = Math.ceil((new Date(e.proximaInspecaoData).getTime() - Date.now()) / 86400000);
@@ -526,6 +560,24 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                         {diasRestantes < 0
                           ? `Vencida há ${Math.abs(diasRestantes)} dias (${formatDatePT(e.proximaInspecaoData)})`
                           : `Próxima: ${formatDatePT(e.proximaInspecaoData)} (${diasRestantes} dias)`}
+                      </div>
+                    );
+                  })()}
+
+                  {(() => {
+                    // Pedido/agendamento ainda pendente (não é a validade do
+                    // equipamento — é o que já se tratou para a próxima
+                    // inspeção, antes de ela acontecer de facto).
+                    const pendente = [...(e.historicoVistorias || [])]
+                      .filter(v => v.estadoRegisto === "Solicitada" || v.estadoRegisto === "Agendada")
+                      .sort((a, b) => b.data.localeCompare(a.data))[0];
+                    if (!pendente) return null;
+                    return (
+                      <div className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-lg border bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 ml-1.5">
+                        <Bell className="h-3 w-3" />
+                        {pendente.estadoRegisto === "Agendada" && pendente.dataAgendada
+                          ? `Inspeção agendada para ${formatDatePT(pendente.dataAgendada)}`
+                          : `Inspeção solicitada em ${formatDatePT(pendente.data)}, aguarda data`}
                       </div>
                     );
                   })()}
@@ -578,11 +630,17 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                       <div key={v.id} className="space-y-0.5">
                         <div className="flex items-center gap-1.5 text-[10px] flex-wrap">
                           <span className="text-slate-600 dark:text-slate-400">{formatDatePT(v.data)}</span>
-                          <span className={`px-1.5 py-0.5 rounded font-bold text-[9px] ${
-                            v.resultado === "Aprovado" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400" :
-                            v.resultado === "Aprovado com Reservas" ? "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400" :
-                            "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400"
-                          }`}>{v.resultado}</span>
+                          {v.estadoRegisto && v.estadoRegisto !== "Realizada" ? (
+                            <span className="px-1.5 py-0.5 rounded font-bold text-[9px] bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400">
+                              {v.estadoRegisto === "Agendada" && v.dataAgendada ? `Agendada: ${formatDatePT(v.dataAgendada)}` : v.estadoRegisto}
+                            </span>
+                          ) : (
+                            <span className={`px-1.5 py-0.5 rounded font-bold text-[9px] ${
+                              v.resultado === "Aprovado" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400" :
+                              v.resultado === "Aprovado com Reservas" ? "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400" :
+                              "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400"
+                            }`}>{v.resultado}</span>
+                          )}
                           <span className="text-slate-600 dark:text-slate-400">— {v.tecnico}</span>
                           {certificado && (
                             <a href={certificado.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline font-bold flex items-center gap-0.5">
@@ -674,9 +732,28 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
               </div>
 
               <form onSubmit={handleGravarVistoria} className="space-y-3">
+                {/* Ciclo de vida real — pedido explícito: "campo para
+                    solicitação de inspeção e depois o agendamento da mesma
+                    quando formos informados pela entidade que vem efetuar a
+                    inspeção". Muda que campos fazem sentido pedir abaixo. */}
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Estado Desta Inspeção</label>
+                  <select
+                    value={vistoriaEstadoRegisto}
+                    onChange={e => setVistoriaEstadoRegisto(e.target.value as any)}
+                    className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-semibold cursor-pointer"
+                  >
+                    <option value="Solicitada">Solicitada (pedido enviado, sem data de visita ainda)</option>
+                    <option value="Agendada">Agendada (a entidade já informou a data da visita)</option>
+                    <option value="Realizada">Realizada (a inspeção já aconteceu)</option>
+                  </select>
+                </div>
+
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Data da Vistoria</label>
+                    <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">
+                      {vistoriaEstadoRegisto === "Realizada" ? "Data da Vistoria" : "Data do Pedido"}
+                    </label>
                     <input
                       type="date"
                       value={vistoriaData}
@@ -685,19 +762,38 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                       className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-mono focus:outline-none focus:border-emerald-500"
                     />
                   </div>
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Resultado</label>
-                    <select
-                      value={vistoriaResultado}
-                      onChange={e => setVistoriaResultado(e.target.value as any)}
-                      className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-semibold cursor-pointer"
-                    >
-                      <option value="Aprovado">Aprovado</option>
-                      <option value="Aprovado com Reservas">Aprovado com Reservas</option>
-                      <option value="Reprovado">Reprovado</option>
-                    </select>
-                  </div>
+                  {vistoriaEstadoRegisto === "Realizada" ? (
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Resultado</label>
+                      <select
+                        value={vistoriaResultado}
+                        onChange={e => setVistoriaResultado(e.target.value as any)}
+                        className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-semibold cursor-pointer"
+                      >
+                        <option value="Aprovado">Aprovado</option>
+                        <option value="Aprovado com Reservas">Aprovado com Reservas</option>
+                        <option value="Reprovado">Reprovado</option>
+                      </select>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Data Agendada (Informada pela Entidade)</label>
+                      <input
+                        type="date"
+                        value={vistoriaDataAgendada}
+                        onChange={e => setVistoriaDataAgendada(e.target.value)}
+                        required={vistoriaEstadoRegisto === "Agendada"}
+                        className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs font-mono focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  )}
                 </div>
+
+                {vistoriaEstadoRegisto !== "Realizada" && (
+                  <p className="text-[9px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40 rounded-lg px-2.5 py-1.5">
+                    Esta inspeção ainda não aconteceu — resultado, custo e certificado ficam por preencher. Quando a visita se realizar, volte a abrir este registo, mude o estado para "Realizada" e complete os dados.
+                  </p>
+                )}
 
                 <div>
                   <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Técnico / Entidade que Realizou</label>
@@ -967,14 +1063,16 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                   </div>
                 </div>
 
-                <div className="bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40 rounded-xl p-2.5 text-[10px] text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
-                  <Bell className="h-3.5 w-3.5 shrink-0" />
-                  <span>
-                    {vistoriaRows.length > 1
-                      ? "A gravar, a validade de cada equipamento é atualizada e a próxima inspeção fica agendada automaticamente, consoante a periodicidade própria de cada um."
-                      : <>A gravar, a validade é atualizada e a próxima inspeção fica agendada automaticamente para <strong>{formatDatePT(calcularProximaInspecao(vistoriaData, eqAlvo.frequenciaInspecao || "Anual"))}</strong> ({eqAlvo.frequenciaInspecao || "Anual"}), com alerta {eqAlvo.diasAlertaAntecedencia ?? 30} dias antes.</>}
-                  </span>
-                </div>
+                {vistoriaEstadoRegisto === "Realizada" && (
+                  <div className="bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40 rounded-xl p-2.5 text-[10px] text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
+                    <Bell className="h-3.5 w-3.5 shrink-0" />
+                    <span>
+                      {vistoriaRows.length > 1
+                        ? "A gravar, a validade de cada equipamento é atualizada e a próxima inspeção fica agendada automaticamente, consoante a periodicidade própria de cada um."
+                        : <>A gravar, a validade é atualizada e a próxima inspeção fica agendada automaticamente para <strong>{formatDatePT(calcularProximaInspecao(vistoriaData, eqAlvo.frequenciaInspecao || "Anual"))}</strong> ({eqAlvo.frequenciaInspecao || "Anual"}), com alerta {eqAlvo.diasAlertaAntecedencia ?? 30} dias antes.</>}
+                    </span>
+                  </div>
+                )}
 
                 <button
                   type="submit"
@@ -982,7 +1080,12 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                   className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold py-2 rounded-lg text-xs cursor-pointer shadow flex items-center justify-center gap-1.5"
                 >
                   <Check className="h-4 w-4" />
-                  <span>{aGravarVistoria ? "A gravar..." : vistoriaEditId ? "Guardar Alterações" : "Concluir Vistoria"}</span>
+                  <span>
+                    {aGravarVistoria ? "A gravar..." : vistoriaEditId ? "Guardar Alterações" :
+                      vistoriaEstadoRegisto === "Solicitada" ? "Registar Pedido" :
+                      vistoriaEstadoRegisto === "Agendada" ? "Registar Agendamento" :
+                      "Concluir Vistoria"}
+                  </span>
                 </button>
               </form>
             </div>
