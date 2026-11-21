@@ -81,6 +81,7 @@ const AuditoriaInterna = lazy(() => import("./components/AuditoriaInterna").then
 const GestaoManutencaoIntervencoes = lazy(() => import("./components/GestaoManutencaoIntervencoes").then(m => ({ default: m.GestaoManutencaoIntervencoes })));
 const ConfiguracoesAdministracao = lazy(() => import("./components/ConfiguracoesAdministracao").then(m => ({ default: m.ConfiguracoesAdministracao })));
 const InventarioTecnico = lazy(() => import("./components/InventarioTecnico").then(m => ({ default: m.InventarioTecnico })));
+const InspecoesTecnicas = lazy(() => import("./components/InspecoesTecnicas").then(m => ({ default: m.InspecoesTecnicas })));
 const EnviosProgramados = lazy(() => import("./components/EnviosProgramados").then(m => ({ default: m.EnviosProgramados })));
 const CentralDocumentosMinutas = lazy(() => import("./components/CentralDocumentosMinutas").then(m => ({ default: m.CentralDocumentosMinutas })));
 const ConfiguracaoArranqueSaldos = lazy(() => import("./components/ConfiguracaoArranqueSaldos").then(m => ({ default: m.ConfiguracaoArranqueSaldos })));
@@ -1771,14 +1772,14 @@ export default function App() {
               id="sidebar-item-manutencao"
               onClick={() => {
                 setOpenMenuVistoriasIntervencoes(!openMenuVistoriasIntervencoes);
-                if (!["manutencao_ocorrencias", "ocorrencias", "manutencao_intervencoes", "manutencao_concluidas", "inventario_tecnico"].includes(activeSection)) {
+                if (!["manutencao_ocorrencias", "ocorrencias", "manutencao_intervencoes", "manutencao_concluidas", "inventario_tecnico", "inspecoes_tecnicas"].includes(activeSection)) {
                   setActiveSection("manutencao_ocorrencias");
                 }
                 setViewMode("BROWSER");
                 setIaInitialTab(undefined);
               }}
               className={`w-full text-left px-3.5 py-3 text-sm font-bold rounded-lg transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                ["manutencao_ocorrencias", "ocorrencias", "manutencao_intervencoes", "manutencao_concluidas", "inventario_tecnico"].includes(activeSection)
+                ["manutencao_ocorrencias", "ocorrencias", "manutencao_intervencoes", "manutencao_concluidas", "inventario_tecnico", "inspecoes_tecnicas"].includes(activeSection)
                   ? "bg-emerald-600 text-white font-extrabold shadow-sm border border-emerald-500"
                   : "text-slate-600 hover:text-white hover:bg-slate-800/30"
               }`}
@@ -1855,9 +1856,7 @@ export default function App() {
                     administrador): as 2 sobrepunham-se (as duas permitiam
                     agendar/registar vistorias do mesmo equipamento, com
                     IDs partilhados por uma tentativa de unificação anterior
-                    nunca terminada). O Inventário Técnico ficou com tudo:
-                    registo do equipamento, histórico de vistorias E agora
-                    também fornecedores/custo/conta/movimento real. */}
+                    nunca terminada). */}
 
                 {/* "Intervenções Extraordinárias (Obras)" saiu daqui — vivia
                     separada do Portal de Orçamentos apesar de serem passos
@@ -1876,7 +1875,32 @@ export default function App() {
                   }`}
                 >
                   <i className="fa-solid fa-boxes-stacked text-emerald-400 text-xs"></i>
-                  <span>Inventário Técnico e Inspeções</span>
+                  <span>Inventário Técnico</span>
+                </button>
+
+                {/* Separado do Inventário Técnico (2026-11-21, pedido
+                    explícito do administrador: "não dá para adicionar
+                    documentos... não tem campos para custos... temos de ter
+                    fichas independentes" — equipamento e inspeção são 2
+                    conceitos distintos e misturados num só ecrã geravam
+                    confusão real sobre onde preencher o quê). Este menu
+                    regista as vistorias em concreto: data, fornecedores,
+                    custos e documentos (certificado, fatura, comprovativo,
+                    requerimento). */}
+                <button
+                  onClick={() => {
+                    setActiveSection("inspecoes_tecnicas");
+                    setViewMode("BROWSER");
+                    setIaInitialTab(undefined);
+                  }}
+                  className={`w-full text-left px-3 py-2 text-[13px] rounded-md transition-all cursor-pointer flex items-center gap-2 ${
+                    activeSection === "inspecoes_tecnicas"
+                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                      : "text-slate-600 hover:text-white hover:bg-slate-800/30"
+                  }`}
+                >
+                  <i className="fa-solid fa-clipboard-check text-emerald-400 text-xs"></i>
+                  <span>Inspeções Técnicas</span>
                 </button>
               </div>
             )}
@@ -2717,7 +2741,8 @@ export default function App() {
                 {activeSection === "configuracoes_notificacoes" && "Configurações de Notificações & Canais"}
                 {activeSection === "configuracoes_logs" && "Registo de Atividade & Log de Sistema"}
                 {activeSection === "configuracoes_exportacao" && "Exportação Global de Dados & Backups"}
-                {activeSection === "inventario_tecnico" && "Inventário Técnico e Inspeções"}
+                {activeSection === "inventario_tecnico" && "Inventário Técnico"}
+                {activeSection === "inspecoes_tecnicas" && "Inspeções Técnicas"}
                 {activeSection === "manutencao_ocorrencias" && "Ocorrências & Avarias Reportadas"}
                 {activeSection === "manutencao_intervencoes" && "Intervenções (Pequenas Reparações)"}
                 {activeSection === "manutencao_extraordinarias" && "Planeamento de Quotas (Obras Extraordinárias)"}
@@ -3198,6 +3223,14 @@ export default function App() {
               predio={predioAtivo}
               loggedUser={loggedUser}
               fracoes={fracoes}
+              onVerInspecoes={() => { setActiveSection("inspecoes_tecnicas"); setViewMode("BROWSER"); }}
+            />
+          )}
+
+          {activeSection === "inspecoes_tecnicas" && (
+            <InspecoesTecnicas
+              predio={predioAtivo}
+              loggedUser={loggedUser}
               movements={movements}
               setMovements={setMovements}
               contas={contas}
