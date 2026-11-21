@@ -1876,7 +1876,7 @@ export default function App() {
                   }`}
                 >
                   <i className="fa-solid fa-boxes-stacked text-emerald-400 text-xs"></i>
-                  <span>Inventário Técnico & Arquitetura</span>
+                  <span>Inventário Técnico e Inspeções</span>
                 </button>
               </div>
             )}
@@ -2717,7 +2717,7 @@ export default function App() {
                 {activeSection === "configuracoes_notificacoes" && "Configurações de Notificações & Canais"}
                 {activeSection === "configuracoes_logs" && "Registo de Atividade & Log de Sistema"}
                 {activeSection === "configuracoes_exportacao" && "Exportação Global de Dados & Backups"}
-                {activeSection === "inventario_tecnico" && "Inventário Técnico e Arquitetura do Prédio"}
+                {activeSection === "inventario_tecnico" && "Inventário Técnico e Inspeções"}
                 {activeSection === "manutencao_ocorrencias" && "Ocorrências & Avarias Reportadas"}
                 {activeSection === "manutencao_intervencoes" && "Intervenções (Pequenas Reparações)"}
                 {activeSection === "manutencao_extraordinarias" && "Planeamento de Quotas (Obras Extraordinárias)"}

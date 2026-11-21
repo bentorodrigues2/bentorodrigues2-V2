@@ -196,6 +196,12 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
   const [ginasio, setGinasio] = useState(false);
   const [spa, setSpa] = useState(false);
   const [wcPiscina, setWcPiscina] = useState(false);
+  // Estruturas livres além da lista fixa acima — pedido explícito do
+  // administrador: "a estrutura do prédio tem de ser editável... poder
+  // adicionar outras estruturas" (ex: este prédio não tem garagem, mas pode
+  // ter uma central de gás, um pátio interior, etc. que não está na lista).
+  const [outrasEstruturas, setOutrasEstruturas] = useState<string[]>([]);
+  const [novaEstrutura, setNovaEstrutura] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -276,6 +282,7 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
         setGinasio(!!p.patrimonio?.tem_ginasio);
         setSpa(!!p.patrimonio?.tem_spa);
         setWcPiscina(!!p.patrimonio?.tem_wc_piscina);
+        setOutrasEstruturas(p.patrimonio?.outras_estruturas || []);
       }
     } else {
       // Clear form for new building
@@ -307,6 +314,8 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
     setGinasio(false);
     setSpa(false);
     setWcPiscina(false);
+    setOutrasEstruturas([]);
+    setNovaEstrutura("");
   };
 
   useEffect(() => {
@@ -370,7 +379,8 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
       tem_terraco: terraco,
       tem_ginasio: ginasio,
       tem_spa: spa,
-      tem_wc_piscina: wcPiscina
+      tem_wc_piscina: wcPiscina,
+      outras_estruturas: outrasEstruturas
     };
 
     if (selectedPredioId) {
@@ -1747,6 +1757,53 @@ export function GestaoPredios({ predios, onAddPredio, onUpdatePredio, onDeletePr
               <input type="checkbox" checked={wcPiscina} onChange={e => setWcPiscina(e.target.checked)} className="h-4 w-4 text-blue-600 rounded border-slate-300" />
               <span>WC Piscina</span>
             </label>
+          </div>
+
+          {/* Estruturas livres fora da lista fixa acima — pedido explícito
+              do administrador: poder adicionar as que faltam (ex: central
+              de gás, pátio interior) sem depender de uma lista fechada. */}
+          <div className="mt-3 bg-slate-50 p-4 rounded-lg border border-slate-200">
+            <label className="text-xs font-bold text-slate-600 block mb-2 uppercase tracking-wider">Outras Estruturas (fora da lista acima)</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={novaEstrutura}
+                onChange={e => setNovaEstrutura(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const v = novaEstrutura.trim();
+                    if (v && !outrasEstruturas.includes(v)) setOutrasEstruturas(prev => [...prev, v]);
+                    setNovaEstrutura("");
+                  }
+                }}
+                placeholder="Ex: Central de Gás, Pátio Interior..."
+                className="flex-grow border border-slate-200 px-3 py-2 text-xs rounded-lg focus:outline-blue-500"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const v = novaEstrutura.trim();
+                  if (v && !outrasEstruturas.includes(v)) setOutrasEstruturas(prev => [...prev, v]);
+                  setNovaEstrutura("");
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-lg text-xs cursor-pointer shrink-0"
+              >
+                Adicionar
+              </button>
+            </div>
+            {outrasEstruturas.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                {outrasEstruturas.map(est => (
+                  <span key={est} className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-full text-[11px] font-semibold">
+                    {est}
+                    <button type="button" onClick={() => setOutrasEstruturas(prev => prev.filter(e => e !== est))} className="text-blue-500 hover:text-blue-800 cursor-pointer" title="Remover" aria-label={`Remover ${est}`}>
+                      <i className="fa-solid fa-xmark"></i>
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

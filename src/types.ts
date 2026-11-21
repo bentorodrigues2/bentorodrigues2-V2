@@ -11,6 +11,10 @@ export interface Patrimonio {
   tem_ginasio: boolean;
   tem_spa: boolean;
   tem_wc_piscina?: boolean;
+  // Estruturas fora da lista fixa acima (ex: "Central de gás", "Pátio
+  // interior") — pedido explícito do administrador: "a estrutura do prédio
+  // tem de ser editável... poder adicionar outras estruturas".
+  outras_estruturas?: string[];
   regulamento?: {
     silencio: string;
     animais: string;
