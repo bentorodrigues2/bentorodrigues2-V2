@@ -103,9 +103,16 @@ interface InventarioTecnicoProps {
   // Ponte para o novo menu "Inspeções Técnicas" — onde se regista de facto
   // a vistoria (data, custos, fornecedores, documentos).
   onVerInspecoes?: () => void;
+  // Ponte NO SENTIDO INVERSO: o botão "Editar" de um equipamento visto a
+  // partir de "Inspeções Técnicas" navega para aqui e pede para abrir
+  // logo a edição desse equipamento — pedido explícito do administrador
+  // ("estes campos têm de ser editáveis, eliminar etc" a partir do ecrã de
+  // Inspeções, sem ter de procurar o equipamento outra vez aqui).
+  editEquipamentoId?: string | null;
+  onEditEquipamentoHandled?: () => void;
 }
 
-export function InventarioTecnico({ predio, loggedUser, fracoes = [], onVerInspecoes }: InventarioTecnicoProps) {
+export function InventarioTecnico({ predio, loggedUser, fracoes = [], onVerInspecoes, editEquipamentoId, onEditEquipamentoHandled }: InventarioTecnicoProps) {
   // Carregado do Supabase (tabela real inventario_tecnico)
   const [equipamentos, setEquipamentos] = useState<EquipamentoTecnico[]>([]);
 
@@ -186,6 +193,18 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], onVerInspe
     setDiasAlertaAntecedencia(eq.diasAlertaAntecedencia ?? 30);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  // Chegada a partir de "Inspeções Técnicas" (botão "Editar Equipamento"
+  // nesse ecrã) — abre logo a edição deste equipamento concreto assim que
+  // a lista estiver carregada, em vez de obrigar a procurá-lo outra vez.
+  useEffect(() => {
+    if (!editEquipamentoId) return;
+    const eq = equipamentos.find(e => e.id === editEquipamentoId);
+    if (eq) {
+      iniciarEdicao(eq);
+      onEditEquipamentoHandled?.();
+    }
+  }, [editEquipamentoId, equipamentos]);
 
   // Pisos reais deste prédio (a partir das frações reais) — antes era uma
   // lista fixa "Piso -2" a "Piso 3", que não correspondia a este edifício

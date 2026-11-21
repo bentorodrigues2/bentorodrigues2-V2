@@ -352,6 +352,10 @@ export default function App() {
   }, [theme]);
 
   const [activeSection, setActiveSection] = useState("painel");
+  // Ponte "Inspeções Técnicas" → "Inventário Técnico": pedido explícito do
+  // administrador para poder editar/eliminar um equipamento a partir do
+  // ecrã de inspeções, sem ter de o procurar outra vez lá.
+  const [editarEquipamentoId, setEditarEquipamentoId] = useState<string | null>(null);
   // Grupo do menu principal (prefixo antes do primeiro "_") — usado como key
   // do painel de conteúdo para forçar o React a desmontar/remontar tudo o
   // que estiver aberto (seleções, painéis expandidos, modais locais) sempre
@@ -3224,6 +3228,8 @@ export default function App() {
               loggedUser={loggedUser}
               fracoes={fracoes}
               onVerInspecoes={() => { setActiveSection("inspecoes_tecnicas"); setViewMode("BROWSER"); }}
+              editEquipamentoId={editarEquipamentoId}
+              onEditEquipamentoHandled={() => setEditarEquipamentoId(null)}
             />
           )}
 
@@ -3235,6 +3241,7 @@ export default function App() {
               setMovements={setMovements}
               contas={contas}
               fornecedores={fornecedores}
+              onEditarEquipamento={(id) => { setEditarEquipamentoId(id); setActiveSection("inventario_tecnico"); setViewMode("BROWSER"); }}
             />
           )}
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Predio, LoggedUser, Movimento, Conta, Fornecedor } from "../types";
 import { Wrench, Check, X, Pencil, CalendarCheck, FileText, Paperclip, Bell, Upload, Landmark, ShieldAlert, ClipboardList, Trash2 } from "lucide-react";
 import { EquipamentoTecnico, HistoricoVistoriaEquipamento, DocumentoVistoria } from "./InventarioTecnico";
-import { fetchInventarioTecnicoFromSupabase, saveEquipamentoTecnicoToSupabase, registarLogAuditoria, uploadDocumentoToStorage, saveMovimentoToSupabase, ajustarSaldoContaReal } from "../lib/supabaseService";
+import { fetchInventarioTecnicoFromSupabase, saveEquipamentoTecnicoToSupabase, deleteEquipamentoTecnicoFromSupabase, registarLogAuditoria, uploadDocumentoToStorage, saveMovimentoToSupabase, ajustarSaldoContaReal } from "../lib/supabaseService";
 import { formatDatePT, parseValorMonetario } from "../utils";
 
 // Separação explícita a pedido do administrador (2026-11-21): "Inventário
@@ -22,9 +22,14 @@ interface InspecoesTecnicasProps {
   setMovements?: React.Dispatch<React.SetStateAction<Movimento[]>>;
   contas?: Conta[];
   fornecedores?: Fornecedor[];
+  // Ponte para "Inventário Técnico" — pedido explícito do administrador:
+  // "estes campos têm de ser editáveis, eliminar etc" a partir daqui
+  // também, sem ter de ir procurar o equipamento noutro ecrã para corrigir
+  // um dado de identidade (nome, categoria, localização...).
+  onEditarEquipamento?: (id: string) => void;
 }
 
-export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovements, contas = [], fornecedores = [] }: InspecoesTecnicasProps) {
+export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovements, contas = [], fornecedores = [], onEditarEquipamento }: InspecoesTecnicasProps) {
   const [equipamentos, setEquipamentos] = useState<EquipamentoTecnico[]>([]);
 
   useEffect(() => {
@@ -395,6 +400,14 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
     }
   };
 
+  const handleRemoverEquipamento = (eq: EquipamentoTecnico) => {
+    const confirmRemove = confirm(`Tem a certeza que deseja remover "${eq.nome}" do inventário do prédio? O histórico de inspeções associado também é eliminado.`);
+    if (!confirmRemove) return;
+    setEquipamentos(prev => prev.filter(e => e.id !== eq.id));
+    deleteEquipamentoTecnicoFromSupabase(eq.id).catch(console.error);
+    registarLogAuditoria("Manutenção", `Removeu "${eq.nome}" do inventário técnico (a partir de Inspeções Técnicas)`, predio.id_predio, loggedUser);
+  };
+
   // Estatísticas focadas na validade das inspeções (não no estado físico do
   // equipamento, que é assunto do Inventário Técnico).
   const comData = equipamentos.filter(e => e.proximaInspecaoData);
@@ -518,13 +531,33 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                   })()}
                 </div>
 
-                <button
-                  onClick={() => abrirRegistarVistoria(e)}
-                  className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg text-[11px] cursor-pointer shadow-sm flex items-center gap-1.5"
-                >
-                  <CalendarCheck className="h-3.5 w-3.5" />
-                  <span>Registar Vistoria</span>
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => abrirRegistarVistoria(e)}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg text-[11px] cursor-pointer shadow-sm flex items-center gap-1.5"
+                  >
+                    <CalendarCheck className="h-3.5 w-3.5" />
+                    <span>Registar Vistoria</span>
+                  </button>
+                  {onEditarEquipamento && (
+                    <button
+                      onClick={() => onEditarEquipamento(e.id)}
+                      className="p-2 rounded-lg border bg-white dark:bg-slate-900 text-slate-600 hover:text-indigo-600 hover:border-indigo-200 active:border-indigo-400 active:bg-indigo-50 active:scale-95 transition-all cursor-pointer shadow-sm"
+                      title="Editar Equipamento (Inventário Técnico)"
+                      aria-label="Editar Equipamento"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleRemoverEquipamento(e)}
+                    className="p-2 rounded-lg border bg-white dark:bg-slate-900 text-slate-600 hover:text-red-500 hover:border-red-200 active:border-red-400 active:bg-red-50 active:scale-95 transition-all cursor-pointer shadow-sm"
+                    title="Remover Equipamento"
+                    aria-label="Remover Equipamento"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
               {e.historicoVistorias && e.historicoVistorias.length > 0 && (
