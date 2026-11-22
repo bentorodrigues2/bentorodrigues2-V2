@@ -184,11 +184,11 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
     certRemovido: false
   });
 
-  const abrirRegistarVistoria = (eq: EquipamentoTecnico) => {
+  const abrirRegistarVistoria = (eq: EquipamentoTecnico, estadoInicial: NonNullable<HistoricoVistoriaEquipamento["estadoRegisto"]> = "Realizada") => {
     setVistoriaTargetId(eq.id);
     setVistoriaEditId(null);
     setVistoriaIdGrupo(null);
-    setVistoriaEstadoRegisto("Realizada");
+    setVistoriaEstadoRegisto(estadoInicial);
     setVistoriaDataAgendada("");
     setVistoriaData(new Date().toISOString().split("T")[0]);
     setVistoriaTecnico("");
@@ -518,11 +518,17 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
           maisRecente.resultado === "Reprovado" ? "Crítico" :
           maisRecente.resultado === "Aprovado com Reservas" ? "Necessita Manutenção" :
           "Operacional";
-        // Pré-aviso de 30 dias por omissão do termino da validade — pedido
-        // explícito: "agendamento com pre aviso de 30 dias do termino da
-        // validade" (o campo "Alertar (dias antes)" desta linha já cobre
-        // isto; 30 é só o valor inicial quando o equipamento é novo).
-        const proximaInspecao = calcularProximaInspecao(maisRecente.data, eqAlvo.frequenciaInspecao || "Anual");
+        // Pedido explícito: "considerar a hipótese de reprovar a inspeção e
+        // termos de agendar nova inspeção após alguma reparação" — uma
+        // inspeção REPROVADA não pode agendar a próxima pelo ciclo normal
+        // (ex: +2 anos para um elevador bianual), isso passaria a sensação
+        // de que está tudo bem até lá. Fica sem data de validade (o cartão
+        // mostra antes um aviso fixo "Reprovado — necessita reinspeção") até
+        // se registar uma nova vistoria (mesmo que só "Solicitada") depois
+        // da reparação.
+        const proximaInspecao = maisRecente.resultado === "Reprovado"
+          ? undefined
+          : calcularProximaInspecao(maisRecente.data, eqAlvo.frequenciaInspecao || "Anual");
 
         return {
           ...eqAlvo,
@@ -751,6 +757,18 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                     {e.entidadeResponsavel ? <> • Entidade: <strong>{e.entidadeResponsavel}</strong></> : ""}
                   </p>
 
+                  {/* Reprovada — pedido explícito: não mostrar uma data de
+                      validade normal (seria enganador, como se estivesse
+                      tudo bem até lá); mostra antes um aviso fixo e um
+                      atalho direto para agendar a reinspeção depois da
+                      reparação. */}
+                  {!e.proximaInspecaoData && e.estado === "Crítico" && (
+                    <div className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-lg border bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 animate-pulse">
+                      <ShieldAlert className="h-3 w-3" />
+                      Reprovada — necessita reparação e reinspeção
+                    </div>
+                  )}
+
                   {e.proximaInspecaoData && (() => {
                     const diasRestantes = Math.ceil((new Date(e.proximaInspecaoData).getTime() - Date.now()) / 86400000);
                     const prazo = e.diasAlertaAntecedencia ?? 30;
@@ -789,6 +807,16 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
+                  {e.estado === "Crítico" && (
+                    <button
+                      onClick={() => abrirRegistarVistoria(e, "Solicitada")}
+                      title="Pedido explícito: depois de reprovada, agendar a reinspeção após a reparação, em vez de esperar pelo ciclo normal"
+                      className="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-2 rounded-lg text-[11px] cursor-pointer shadow-sm flex items-center gap-1.5"
+                    >
+                      <Bell className="h-3.5 w-3.5" />
+                      <span>Agendar Reinspeção</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => abrirRegistarVistoria(e)}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg text-[11px] cursor-pointer shadow-sm flex items-center gap-1.5"
