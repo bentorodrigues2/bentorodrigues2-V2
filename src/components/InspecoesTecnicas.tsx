@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Predio, LoggedUser, Movimento, Conta, Fornecedor, Documento, DividaFornecedor, PagamentoDivida } from "../types";
+import { Predio, LoggedUser, Movimento, Conta, Fornecedor, Documento, DividaFornecedor } from "../types";
 import { Wrench, Check, X, Pencil, CalendarCheck, FileText, Paperclip, Bell, Upload, Landmark, ShieldAlert, ClipboardList, Trash2, Sparkles, Camera, Mail, Phone } from "lucide-react";
 import { EquipamentoTecnico, HistoricoVistoriaEquipamento, DocumentoVistoria } from "./InventarioTecnico";
-import { fetchInventarioTecnicoFromSupabase, saveEquipamentoTecnicoToSupabase, deleteEquipamentoTecnicoFromSupabase, registarLogAuditoria, uploadDocumentoToStorage, saveMovimentoToSupabase, deleteMovimentoFromSupabase, ajustarSaldoContaReal, saveDocumentoToSupabase, saveDividaFornecedorToSupabase, deleteDividaFornecedorFromSupabase, savePagamentoDividaToSupabase } from "../lib/supabaseService";
+import { fetchInventarioTecnicoFromSupabase, saveEquipamentoTecnicoToSupabase, deleteEquipamentoTecnicoFromSupabase, registarLogAuditoria, uploadDocumentoToStorage, saveMovimentoToSupabase, deleteMovimentoFromSupabase, ajustarSaldoContaReal, saveDocumentoToSupabase, saveDividaFornecedorToSupabase, deleteDividaFornecedorFromSupabase, fetchDividasFornecedoresFromSupabase } from "../lib/supabaseService";
 import { formatDatePT, parseValorMonetario } from "../utils";
 
 // Separação explícita a pedido do administrador (2026-11-21): "Inventário
@@ -43,6 +43,26 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
     if (!predio.id_predio) return;
     fetchInventarioTecnicoFromSupabase(predio.id_predio).then(dados => { if (dados) setEquipamentos(dados); });
   }, [predio.id_predio]);
+
+  // Estado REAL de cada dívida ligada a uma vistoria — o pagamento de uma
+  // dívida pendente é totalmente independente de a inspeção estar
+  // "Realizada" ou não (pedido explícito: "a dívida pode ser paga
+  // antecipadamente... passa a paga quando consta o pagamento no extrato
+  // ou comprovativo de pagamento"). Paga-se sempre pelos sítios normais —
+  // "Registar Pagamento" em Fornecedores, ou reconhecimento automático no
+  // extrato bancário — nunca por este ecrã; aqui só se reflete o estado
+  // real, lido da mesma tabela partilhada.
+  const [dividasPorId, setDividasPorId] = useState<Record<string, DividaFornecedor>>({});
+  const recarregarDividas = () => {
+    if (!predio.id_predio) return;
+    fetchDividasFornecedoresFromSupabase(predio.id_predio).then(dados => {
+      if (!dados) return;
+      const mapa: Record<string, DividaFornecedor> = {};
+      dados.forEach(d => { mapa[d.id_divida] = d; });
+      setDividasPorId(mapa);
+    });
+  };
+  useEffect(recarregarDividas, [predio.id_predio]);
 
   const periodicidadeParaMeses = (freq: string): number => {
     const f = freq.toLowerCase();
@@ -410,52 +430,51 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
       const ehGrupo = equipamentosAlvo.length > 1;
       const idGrupoFinal = ehGrupo ? (vistoriaIdGrupo || `grp-${Date.now()}`) : (vistoriaIdGrupo || undefined);
 
-      // Custo desta inspeção: nunca repartido pelas frações, sempre pago
-      // pela conta do prédio escolhida. Pedido explícito do administrador
-      // a dividir o tratamento em 2 casos, tal como uma fatura normal de
-      // qualquer outro fornecedor (ex: NOWO, SU Eletricidade):
-      // - Ainda não "Realizada" (Solicitada/Agendada) → fica registada
-      //   como DÍVIDA PENDENTE a um fornecedor (Fornecedores → Dívidas),
-      //   "a aguardar pagamento" — não debita a conta ainda.
-      // - "Realizada" → paga a dívida pendente se já existir uma (gera o
-      //   Movimento real + debita a conta + fecha a dívida como "Paga"),
-      //   ou lança o Movimento diretamente se nunca passou por "pendente".
-      // Idempotente em ambos os casos: nunca duplica o movimento nem a
-      // dívida já criados por uma gravação anterior desta mesma vistoria.
+      // Custo desta inspeção: nunca repartido pelas frações. Pedido
+      // explícito do administrador: "a dívida pode ser paga
+      // antecipadamente... passa a paga quando consta o pagamento no
+      // extrato ou comprovativo de pagamento" — ou seja, PAGAR a fatura é
+      // totalmente independente de a inspeção estar "Realizada". Este
+      // ecrã nunca paga nada diretamente por essa via: regista (e mantém
+      // atualizada) uma dívida pendente a fornecedor, tal como uma fatura
+      // normal de outro fornecedor (ex: NOWO, SU Eletricidade) — paga-se
+      // depois pelos sítios normais da app (Fornecedores → "Registar
+      // Pagamento", ou reconhecimento automático no extrato bancário). A
+      // única exceção é o caminho direto (sem nunca ter passado por
+      // "pendente"): aí lança-se logo o movimento, como já acontecia.
       let idMovimentoFinal = vistoriaIdMovimentoExistente;
       let idDividaFinal = vistoriaIdDividaExistente;
       const nomesEquipamentos = equipamentosAlvo.map(({ eq }) => eq.nome).join(", ");
       const fornecedorFaturaReal = fornecedorManutencaoReal || fornecedorInspecaoReal;
       const nomeFornecedorFatura = fornecedorManutencaoReal?.nome || vistoriaFornManutencaoNome.trim() || fornecedorInspecaoReal?.nome || vistoriaFornInspecaoNome.trim() || "Entidade de Inspeção";
       const faturaUrl = documentosPartilhados.find(d => d.tipo === "fatura")?.url || documentosPartilhados.find(d => d.tipo === "comprovativo_pagamento")?.url;
+      const dividaLigadaAtual = idDividaFinal ? dividasPorId[idDividaFinal] : undefined;
+      const dividaJaPaga = !!dividaLigadaAtual && dividaLigadaAtual.estado !== "Pendente";
 
       if (custoTotal > 0 && vistoriaContaPagamento) {
-        if (vistoriaEstadoRegisto !== "Realizada") {
-          // Ainda não se realizou — regista/atualiza só a dívida pendente,
-          // nunca debita a conta.
-          const divida: DividaFornecedor = {
-            id_divida: idDividaFinal || "div-insp-" + Date.now(),
+        if (dividaJaPaga) {
+          // Já foi paga fora deste ecrã (Fornecedores ou reconhecimento no
+          // extrato bancário) — só reflete isso, nunca lança 2ª vez.
+          if (dividaLigadaAtual!.id_movimento_pagamento) idMovimentoFinal = dividaLigadaAtual!.id_movimento_pagamento;
+        } else if (idDividaFinal) {
+          // Dívida pendente já criada antes — mantém os dados (valor,
+          // data de vencimento, fatura) atualizados enquanto não for paga.
+          await saveDividaFornecedorToSupabase({
+            id_divida: idDividaFinal,
             id_predio: predio.id_predio,
             id_fornecedor: fornecedorFaturaReal?.id_fornecedor,
             fornecedor_nome: nomeFornecedorFatura,
-            descricao: `${nomesEquipamentos} — inspeção técnica (${vistoriaEstadoRegisto === "Agendada" ? "agendada" : "solicitada"})`,
+            descricao: `${nomesEquipamentos} — inspeção técnica`,
             categoria: categoriaSugeridaSNC(equipamentosAlvo[0].eq),
             valor: custoTotal,
-            data_emissao: vistoriaData,
             data_vencimento: vistoriaDataAgendada || undefined,
             estado: "Pendente",
             documento_anexo: faturaUrl
-          };
-          const okDivida = await saveDividaFornecedorToSupabase(divida);
-          if (!okDivida) {
-            alert("❌ Não foi possível registar a dívida pendente deste custo. A vistoria foi gravada na mesma — tente outra vez ao editar.");
-          } else {
-            idDividaFinal = divida.id_divida;
-          }
-        } else if (!idMovimentoFinal) {
-          // "Realizada" — paga a dívida pendente (se existir) ou lança o
-          // movimento diretamente (caminho direto, sem passar por
-          // "pendente").
+          });
+        } else if (vistoriaEstadoRegisto === "Realizada" && !idMovimentoFinal) {
+          // Caminho direto — nunca passou por "pendente" (ex: pago na
+          // hora, serviço e pagamento no mesmo momento). Lança o
+          // movimento logo, tal como antes.
           if (!setMovements) {
             alert("Sistema de movimentos não disponível de momento — a vistoria foi gravada sem lançar o custo.");
           } else {
@@ -484,38 +503,30 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                 setMovements(prev => [novoMov, ...prev]);
                 await ajustarSaldoContaReal(contaAlvo.id_conta, -novoMov.valor);
                 idMovimentoFinal = novoMov.id_mov;
-
-                if (idDividaFinal) {
-                  // Fecha a dívida pendente que já existia — mesmo
-                  // mecanismo usado para pagar a dívida de qualquer outro
-                  // fornecedor (ver GestaoFornecedores.tsx).
-                  const novoPagamento: PagamentoDivida = {
-                    id_pagamento: "pagdiv-" + Date.now(),
-                    id_divida: idDividaFinal,
-                    id_predio: predio.id_predio,
-                    id_fornecedor: fornecedorFaturaReal?.id_fornecedor,
-                    valor: custoTotal,
-                    data: vistoriaData,
-                    id_conta: contaAlvo.id_conta,
-                    id_movimento: novoMov.id_mov
-                  };
-                  await savePagamentoDividaToSupabase(novoPagamento);
-                  await saveDividaFornecedorToSupabase({
-                    id_divida: idDividaFinal,
-                    id_predio: predio.id_predio,
-                    id_fornecedor: fornecedorFaturaReal?.id_fornecedor,
-                    fornecedor_nome: nomeFornecedorFatura,
-                    descricao: `${nomesEquipamentos} — inspeção técnica`,
-                    valor: custoTotal,
-                    estado: "Paga",
-                    valor_pago: custoTotal,
-                    data_pagamento: vistoriaData,
-                    id_conta_pagamento: contaAlvo.id_conta,
-                    id_movimento_pagamento: novoMov.id_mov
-                  });
-                }
               }
             }
+          }
+        } else if (vistoriaEstadoRegisto !== "Realizada") {
+          // 1ª vez com custo conhecido, ainda sem a inspeção ter
+          // acontecido — cria a dívida pendente.
+          const novaDivida: DividaFornecedor = {
+            id_divida: "div-insp-" + Date.now(),
+            id_predio: predio.id_predio,
+            id_fornecedor: fornecedorFaturaReal?.id_fornecedor,
+            fornecedor_nome: nomeFornecedorFatura,
+            descricao: `${nomesEquipamentos} — inspeção técnica (${vistoriaEstadoRegisto === "Agendada" ? "agendada" : "solicitada"})`,
+            categoria: categoriaSugeridaSNC(equipamentosAlvo[0].eq),
+            valor: custoTotal,
+            data_emissao: vistoriaData,
+            data_vencimento: vistoriaDataAgendada || undefined,
+            estado: "Pendente",
+            documento_anexo: faturaUrl
+          };
+          const okDivida = await saveDividaFornecedorToSupabase(novaDivida);
+          if (!okDivida) {
+            alert("❌ Não foi possível registar a dívida pendente deste custo. A vistoria foi gravada na mesma — tente outra vez ao editar.");
+          } else {
+            idDividaFinal = novaDivida.id_divida;
           }
         }
       }
@@ -618,6 +629,7 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
         return;
       }
       setEquipamentos(prev => prev.map(eq => equipamentosAtualizados.find(a => a.id === eq.id) || eq));
+      recarregarDividas();
       registarLogAuditoria("Manutenção", `${vistoriaEditId ? "Editou" : "Registou"} vistoria de "${nomesEquipamentos}" (${vistoriaResultado})${custoTotal ? ` — custo total ${custoTotal.toFixed(2)}€` : ""}`, predio.id_predio, loggedUser, vistoriaObservacoes || undefined);
       setVistoriaTargetId(null);
       setVistoriaEditId(null);
@@ -1040,19 +1052,28 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                                 {v.custo.toFixed(2)}€{v.custoTotalGrupo != null ? ` (de ${v.custoTotalGrupo.toFixed(2)}€ totais)` : ""}
                               </span>
                             )}
-                            {v.custo != null && (
-                              v.id_movimento ? (
+                            {v.custo != null && (() => {
+                              // Estado REAL do pagamento — se há dívida
+                              // ligada, manda sempre o que estiver
+                              // gravado em Fornecedores (pode ter sido
+                              // paga lá ou pelo extrato bancário, sem
+                              // passar por aqui).
+                              const dividaLigada = v.id_divida ? dividasPorId[v.id_divida] : undefined;
+                              const pago = !!v.id_movimento || (dividaLigada && dividaLigada.estado !== "Pendente");
+                              if (pago) return (
                                 <span className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5">
                                   <Check className="h-2.5 w-2.5" /> pago
                                 </span>
-                              ) : v.id_divida ? (
+                              );
+                              if (v.id_divida) return (
                                 <span className="bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5">
                                   <Landmark className="h-2.5 w-2.5" /> dívida pendente
                                 </span>
-                              ) : (
+                              );
+                              return (
                                 <span className="bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded font-bold">não lançado</span>
-                              )
-                            )}
+                              );
+                            })()}
                             {fatura && (
                               <a href={fatura.url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline font-bold flex items-center gap-0.5">
                                 <FileText className="h-2.5 w-2.5" /> fatura
@@ -1427,19 +1448,27 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                     </div>
                   </div>
 
-                  {vistoriaIdMovimentoExistente ? (
-                    <p className="text-[10px] bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5">
-                      <Check className="h-3 w-3" /> Custo já lançado e pago como movimento nesta conta — a corrigir só os outros dados, sem lançar de novo.
-                    </p>
-                  ) : vistoriaIdDividaExistente ? (
-                    <p className="text-[10px] bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5">
-                      <Landmark className="h-3 w-3" /> Custo registado como dívida pendente a pagar (Fornecedores) — só debita a conta quando marcar esta vistoria como "Realizada".
-                    </p>
-                  ) : vistoriaEstadoRegisto === "Realizada" ? (
-                    <p className="text-[9px] text-slate-600">Ao gravar, se indicar o custo (acima, por equipamento) e a conta, cria logo UM movimento de despesa com o TOTAL (com a data desta vistoria) e desconta da conta do prédio de uma só vez — nunca repartido pelas frações, tal como acontece com qualquer outro fornecedor.</p>
-                  ) : (
-                    <p className="text-[9px] text-slate-600">Ao gravar, se indicar o custo e a conta, fica registado como uma dívida pendente a pagar (tal como uma fatura normal da NOWO ou da eletricidade) — só desconta da conta quando esta vistoria passar a "Realizada".</p>
-                  )}
+                  {(() => {
+                    const dividaLigada = vistoriaIdDividaExistente ? dividasPorId[vistoriaIdDividaExistente] : undefined;
+                    const jaPaga = !!vistoriaIdMovimentoExistente || (dividaLigada && dividaLigada.estado !== "Pendente");
+                    if (jaPaga) return (
+                      <p className="text-[10px] bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5">
+                        <Check className="h-3 w-3" /> Custo já pago{dividaLigada ? ` (em Fornecedores, ${formatDatePT(dividaLigada.data_pagamento || vistoriaData)})` : " nesta conta"} — a corrigir só os outros dados, sem lançar de novo.
+                      </p>
+                    );
+                    if (vistoriaIdDividaExistente) return (
+                      <p className="text-[10px] bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5">
+                        <Landmark className="h-3 w-3" /> Custo registado como dívida pendente a pagar (Fornecedores → Dívidas) — paga-se quando quiser por lá (ou automaticamente, se reconhecida no extrato bancário), independentemente do estado desta vistoria.
+                      </p>
+                    );
+                    return (
+                      <p className="text-[9px] text-slate-600">
+                        {vistoriaEstadoRegisto === "Realizada"
+                          ? "Ao gravar, se indicar o custo (acima, por equipamento) e a conta, cria logo UM movimento de despesa com o TOTAL (com a data desta vistoria) e desconta da conta do prédio de uma só vez — nunca repartido pelas frações, tal como acontece com qualquer outro fornecedor."
+                          : "Ao gravar, se indicar o custo e a conta, fica registado como uma dívida pendente a pagar (tal como uma fatura normal da NOWO ou da eletricidade), independente do estado desta vistoria — paga-se sempre em Fornecedores ou pelo extrato bancário."}
+                      </p>
+                    );
+                  })()}
 
                   {/* Anexar um documento qualquer e deixar a IA identificar
                       o tipo — pedido explícito: "permitir identificar
