@@ -81,6 +81,14 @@ export interface HistoricoVistoriaEquipamento {
   custoTotalGrupo?: number;
   id_conta_pagamento?: string;
   id_movimento?: string;
+  // Enquanto a inspeção ainda não está "Realizada" (ou já foi paga antes
+  // de se realizar, ex: orçamento adiantado), o custo fica registado como
+  // dívida pendente a um fornecedor — pedido explícito: "o movimento de
+  // custo tem de ser lançado nos movimentos do prédio a aguardar
+  // pagamento como uma fatura normal de outro fornecedor". Ao marcar como
+  // "Realizada", esta dívida é paga (gera o Movimento real) em vez de se
+  // lançar um movimento solto à parte.
+  id_divida?: string;
 }
 
 export interface EquipamentoTecnico {

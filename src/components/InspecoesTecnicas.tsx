@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Predio, LoggedUser, Movimento, Conta, Fornecedor, Documento } from "../types";
+import { Predio, LoggedUser, Movimento, Conta, Fornecedor, Documento, DividaFornecedor, PagamentoDivida } from "../types";
 import { Wrench, Check, X, Pencil, CalendarCheck, FileText, Paperclip, Bell, Upload, Landmark, ShieldAlert, ClipboardList, Trash2, Sparkles, Camera, Mail, Phone } from "lucide-react";
 import { EquipamentoTecnico, HistoricoVistoriaEquipamento, DocumentoVistoria } from "./InventarioTecnico";
-import { fetchInventarioTecnicoFromSupabase, saveEquipamentoTecnicoToSupabase, deleteEquipamentoTecnicoFromSupabase, registarLogAuditoria, uploadDocumentoToStorage, saveMovimentoToSupabase, ajustarSaldoContaReal, saveDocumentoToSupabase } from "../lib/supabaseService";
+import { fetchInventarioTecnicoFromSupabase, saveEquipamentoTecnicoToSupabase, deleteEquipamentoTecnicoFromSupabase, registarLogAuditoria, uploadDocumentoToStorage, saveMovimentoToSupabase, deleteMovimentoFromSupabase, ajustarSaldoContaReal, saveDocumentoToSupabase, saveDividaFornecedorToSupabase, deleteDividaFornecedorFromSupabase, savePagamentoDividaToSupabase } from "../lib/supabaseService";
 import { formatDatePT, parseValorMonetario } from "../utils";
 
 // Separação explícita a pedido do administrador (2026-11-21): "Inventário
@@ -88,6 +88,9 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
   const [vistoriaFornManutencaoNome, setVistoriaFornManutencaoNome] = useState("");
   const [vistoriaContaPagamento, setVistoriaContaPagamento] = useState("");
   const [vistoriaIdMovimentoExistente, setVistoriaIdMovimentoExistente] = useState<string | undefined>(undefined);
+  // Dívida pendente a fornecedor já criada para esta vistoria (ex: fatura
+  // recebida antes da inspeção se realizar) — ver handleGravarVistoria.
+  const [vistoriaIdDividaExistente, setVistoriaIdDividaExistente] = useState<string | undefined>(undefined);
 
   // Documentos PARTILHADOS por toda a inspeção, mesmo quando cobre vários
   // equipamentos (1 só fatura/comprovativo/requerimento da visita inteira)
@@ -204,6 +207,7 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
     setVistoriaFornManutencaoNome(ultimaVistoria?.id_fornecedor_manutencao ? "" : (ultimaVistoria?.fornecedorManutencaoNome || ""));
     setVistoriaContaPagamento(ultimaVistoria?.id_conta_pagamento || "");
     setVistoriaIdMovimentoExistente(undefined);
+    setVistoriaIdDividaExistente(undefined);
     setVistoriaFaturaFile(null); setVistoriaFaturaExistente(null); setVistoriaFaturaRemovida(false);
     setVistoriaComprovativoFile(null); setVistoriaComprovativoExistente(null); setVistoriaComprovativoRemovido(false);
     setVistoriaRequerimentoFile(null); setVistoriaRequerimentoExistente(null); setVistoriaRequerimentoRemovido(false);
@@ -244,6 +248,7 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
     setVistoriaFornManutencaoNome(v.id_fornecedor_manutencao ? "" : (v.fornecedorManutencaoNome || ""));
     setVistoriaContaPagamento(v.id_conta_pagamento || "");
     setVistoriaIdMovimentoExistente(v.id_movimento);
+    setVistoriaIdDividaExistente(v.id_divida);
     setVistoriaFotos(v.fotos || []);
 
     const docsPartilhados = v.documentos || [];
@@ -405,47 +410,111 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
       const ehGrupo = equipamentosAlvo.length > 1;
       const idGrupoFinal = ehGrupo ? (vistoriaIdGrupo || `grp-${Date.now()}`) : (vistoriaIdGrupo || undefined);
 
-      // Lança o custo TOTAL desta inspeção (todos os equipamentos somados)
-      // como UM só movimento de Despesa na conta do prédio — nunca
-      // repartido pelas frações, e nunca um movimento por equipamento
-      // (pedido explícito: "o total dos equipamentos a ser lançado nos
-      // movimentos e saldo da conta após pagamento"). Idempotente: se já
-      // havia um movimento lançado para esta vistoria, não volta a lançar.
-      // Só lança quando a inspeção já foi "Realizada" — uma "Solicitada" ou
-      // "Agendada" ainda não teve o serviço prestado, não há nada a pagar.
+      // Custo desta inspeção: nunca repartido pelas frações, sempre pago
+      // pela conta do prédio escolhida. Pedido explícito do administrador
+      // a dividir o tratamento em 2 casos, tal como uma fatura normal de
+      // qualquer outro fornecedor (ex: NOWO, SU Eletricidade):
+      // - Ainda não "Realizada" (Solicitada/Agendada) → fica registada
+      //   como DÍVIDA PENDENTE a um fornecedor (Fornecedores → Dívidas),
+      //   "a aguardar pagamento" — não debita a conta ainda.
+      // - "Realizada" → paga a dívida pendente se já existir uma (gera o
+      //   Movimento real + debita a conta + fecha a dívida como "Paga"),
+      //   ou lança o Movimento diretamente se nunca passou por "pendente".
+      // Idempotente em ambos os casos: nunca duplica o movimento nem a
+      // dívida já criados por uma gravação anterior desta mesma vistoria.
       let idMovimentoFinal = vistoriaIdMovimentoExistente;
-      if (!idMovimentoFinal && vistoriaEstadoRegisto === "Realizada" && custoTotal > 0 && vistoriaContaPagamento) {
-        if (!setMovements) {
-          alert("Sistema de movimentos não disponível de momento — a vistoria foi gravada sem lançar o custo.");
-        } else {
-          const contaAlvo = contas.find(c => c.id_conta === vistoriaContaPagamento);
-          if (!contaAlvo) {
-            alert("Conta de pagamento não encontrada — a vistoria foi gravada sem lançar o custo.");
+      let idDividaFinal = vistoriaIdDividaExistente;
+      const nomesEquipamentos = equipamentosAlvo.map(({ eq }) => eq.nome).join(", ");
+      const fornecedorFaturaReal = fornecedorManutencaoReal || fornecedorInspecaoReal;
+      const nomeFornecedorFatura = fornecedorManutencaoReal?.nome || vistoriaFornManutencaoNome.trim() || fornecedorInspecaoReal?.nome || vistoriaFornInspecaoNome.trim() || "Entidade de Inspeção";
+      const faturaUrl = documentosPartilhados.find(d => d.tipo === "fatura")?.url || documentosPartilhados.find(d => d.tipo === "comprovativo_pagamento")?.url;
+
+      if (custoTotal > 0 && vistoriaContaPagamento) {
+        if (vistoriaEstadoRegisto !== "Realizada") {
+          // Ainda não se realizou — regista/atualiza só a dívida pendente,
+          // nunca debita a conta.
+          const divida: DividaFornecedor = {
+            id_divida: idDividaFinal || "div-insp-" + Date.now(),
+            id_predio: predio.id_predio,
+            id_fornecedor: fornecedorFaturaReal?.id_fornecedor,
+            fornecedor_nome: nomeFornecedorFatura,
+            descricao: `${nomesEquipamentos} — inspeção técnica (${vistoriaEstadoRegisto === "Agendada" ? "agendada" : "solicitada"})`,
+            categoria: categoriaSugeridaSNC(equipamentosAlvo[0].eq),
+            valor: custoTotal,
+            data_emissao: vistoriaData,
+            data_vencimento: vistoriaDataAgendada || undefined,
+            estado: "Pendente",
+            documento_anexo: faturaUrl
+          };
+          const okDivida = await saveDividaFornecedorToSupabase(divida);
+          if (!okDivida) {
+            alert("❌ Não foi possível registar a dívida pendente deste custo. A vistoria foi gravada na mesma — tente outra vez ao editar.");
           } else {
-            const entidade = fornecedorInspecaoReal?.nome || vistoriaFornInspecaoNome.trim() || fornecedorManutencaoReal?.nome || vistoriaFornManutencaoNome.trim() || "Entidade de Inspeção";
-            const nomeManutencao = fornecedorManutencaoReal?.nome || vistoriaFornManutencaoNome.trim();
-            const nomesEquipamentos = equipamentosAlvo.map(({ eq }) => eq.nome).join(", ");
-            const novoMov: Movimento = {
-              id_mov: "mov-inv-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
-              id_predio: predio.id_predio,
-              id_conta: contaAlvo.id_conta,
-              data: vistoriaData,
-              tipo: "Despesa",
-              valor: custoTotal,
-              descricao: `${nomesEquipamentos} — ${entidade}${nomeManutencao && nomeManutencao !== entidade ? ` (acompanhado por ${nomeManutencao})` : ""} — inspeção de ${formatDatePT(vistoriaData)}`,
-              categoria: categoriaSugeridaSNC(equipamentosAlvo[0].eq),
-              estado: "Pago",
-              is_movimento_cego: false,
-              id_fornecedor: fornecedorInspecaoReal?.id_fornecedor,
-              comprovativo_url: documentosPartilhados.find(d => d.tipo === "fatura")?.url || documentosPartilhados.find(d => d.tipo === "comprovativo_pagamento")?.url
-            };
-            const okMov = await saveMovimentoToSupabase(novoMov);
-            if (!okMov) {
-              alert("❌ Não foi possível gravar o movimento do custo. A vistoria foi gravada, mas o custo NÃO ficou lançado — tente lançá-lo outra vez ao editar esta vistoria.");
+            idDividaFinal = divida.id_divida;
+          }
+        } else if (!idMovimentoFinal) {
+          // "Realizada" — paga a dívida pendente (se existir) ou lança o
+          // movimento diretamente (caminho direto, sem passar por
+          // "pendente").
+          if (!setMovements) {
+            alert("Sistema de movimentos não disponível de momento — a vistoria foi gravada sem lançar o custo.");
+          } else {
+            const contaAlvo = contas.find(c => c.id_conta === vistoriaContaPagamento);
+            if (!contaAlvo) {
+              alert("Conta de pagamento não encontrada — a vistoria foi gravada sem lançar o custo.");
             } else {
-              setMovements(prev => [novoMov, ...prev]);
-              await ajustarSaldoContaReal(contaAlvo.id_conta, -novoMov.valor);
-              idMovimentoFinal = novoMov.id_mov;
+              const novoMov: Movimento = {
+                id_mov: "mov-inv-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+                id_predio: predio.id_predio,
+                id_conta: contaAlvo.id_conta,
+                data: vistoriaData,
+                tipo: "Despesa",
+                valor: custoTotal,
+                descricao: `${nomesEquipamentos} — ${nomeFornecedorFatura} — inspeção de ${formatDatePT(vistoriaData)}`,
+                categoria: categoriaSugeridaSNC(equipamentosAlvo[0].eq),
+                estado: "Pago",
+                is_movimento_cego: false,
+                id_fornecedor: fornecedorFaturaReal?.id_fornecedor,
+                comprovativo_url: faturaUrl
+              };
+              const okMov = await saveMovimentoToSupabase(novoMov);
+              if (!okMov) {
+                alert("❌ Não foi possível gravar o movimento do custo. A vistoria foi gravada, mas o custo NÃO ficou lançado — tente lançá-lo outra vez ao editar esta vistoria.");
+              } else {
+                setMovements(prev => [novoMov, ...prev]);
+                await ajustarSaldoContaReal(contaAlvo.id_conta, -novoMov.valor);
+                idMovimentoFinal = novoMov.id_mov;
+
+                if (idDividaFinal) {
+                  // Fecha a dívida pendente que já existia — mesmo
+                  // mecanismo usado para pagar a dívida de qualquer outro
+                  // fornecedor (ver GestaoFornecedores.tsx).
+                  const novoPagamento: PagamentoDivida = {
+                    id_pagamento: "pagdiv-" + Date.now(),
+                    id_divida: idDividaFinal,
+                    id_predio: predio.id_predio,
+                    id_fornecedor: fornecedorFaturaReal?.id_fornecedor,
+                    valor: custoTotal,
+                    data: vistoriaData,
+                    id_conta: contaAlvo.id_conta,
+                    id_movimento: novoMov.id_mov
+                  };
+                  await savePagamentoDividaToSupabase(novoPagamento);
+                  await saveDividaFornecedorToSupabase({
+                    id_divida: idDividaFinal,
+                    id_predio: predio.id_predio,
+                    id_fornecedor: fornecedorFaturaReal?.id_fornecedor,
+                    fornecedor_nome: nomeFornecedorFatura,
+                    descricao: `${nomesEquipamentos} — inspeção técnica`,
+                    valor: custoTotal,
+                    estado: "Paga",
+                    valor_pago: custoTotal,
+                    data_pagamento: vistoriaData,
+                    id_conta_pagamento: contaAlvo.id_conta,
+                    id_movimento_pagamento: novoMov.id_mov
+                  });
+                }
+              }
             }
           }
         }
@@ -474,7 +543,8 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
           quantidadeInspecionada: custosLinha?.quantidade,
           custoTotalGrupo: ehGrupo ? custoTotal : undefined,
           id_conta_pagamento: vistoriaContaPagamento || undefined,
-          id_movimento: idMovimentoFinal
+          id_movimento: idMovimentoFinal,
+          id_divida: idDividaFinal
         };
 
         // Identidade/conformidade do equipamento (tipo, fabricante, nº de
@@ -548,7 +618,6 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
         return;
       }
       setEquipamentos(prev => prev.map(eq => equipamentosAtualizados.find(a => a.id === eq.id) || eq));
-      const nomesEquipamentos = equipamentosAlvo.map(({ eq }) => eq.nome).join(", ");
       registarLogAuditoria("Manutenção", `${vistoriaEditId ? "Editou" : "Registou"} vistoria de "${nomesEquipamentos}" (${vistoriaResultado})${custoTotal ? ` — custo total ${custoTotal.toFixed(2)}€` : ""}`, predio.id_predio, loggedUser, vistoriaObservacoes || undefined);
       setVistoriaTargetId(null);
       setVistoriaEditId(null);
@@ -638,6 +707,61 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
     } finally {
       setClassificandoDocIA(false);
     }
+  };
+
+  // Elimina um registo de vistoria isolado — pedido explícito: "colocar a
+  // possibilidade de eliminar o registo". Reverte com segurança tudo o que
+  // esse registo tenha criado (movimento real já pago e/ou dívida pendente
+  // ainda por pagar) antes de o remover, e recalcula a validade do
+  // equipamento a partir do que sobrar no histórico.
+  const handleEliminarVistoria = async (eq: EquipamentoTecnico, v: HistoricoVistoriaEquipamento) => {
+    const avisos: string[] = [];
+    if (v.id_movimento) avisos.push("o movimento de despesa já pago será revertido e o saldo da conta corrigido");
+    if (v.id_divida) avisos.push("a dívida pendente associada será removida");
+    if (!window.confirm(`Eliminar este registo de vistoria de ${formatDatePT(v.data)}?${avisos.length ? ` (${avisos.join("; ")}).` : ""} Esta ação não pode ser desfeita.`)) return;
+
+    if (v.id_movimento) {
+      const ok = await deleteMovimentoFromSupabase(v.id_movimento);
+      if (ok) {
+        if (setMovements) setMovements(prev => prev.filter(m => m.id_mov !== v.id_movimento));
+        if (v.id_conta_pagamento && v.custo) {
+          const contaAlvo = contas.find(c => c.id_conta === v.id_conta_pagamento);
+          if (contaAlvo) await ajustarSaldoContaReal(contaAlvo.id_conta, v.custo);
+        }
+      } else {
+        alert("⚠️ Não foi possível reverter o movimento já lançado — confirme manualmente em Área Financeira antes de continuar.");
+      }
+    }
+    if (v.id_divida) {
+      await deleteDividaFornecedorFromSupabase(v.id_divida).catch(() => {});
+    }
+
+    const historicoAtualizado = (eq.historicoVistorias || []).filter(h => h.id !== v.id);
+    const realizadas = historicoAtualizado.filter(h => !h.estadoRegisto || h.estadoRegisto === "Realizada");
+    const maisRecente = [...realizadas].sort((a, b) => b.data.localeCompare(a.data))[0];
+    const equipamentoAtualizado: EquipamentoTecnico = maisRecente
+      ? {
+          ...eq,
+          estado: maisRecente.resultado === "Reprovado" ? "Crítico" : maisRecente.resultado === "Aprovado com Reservas" ? "Necessita Manutenção" : "Operacional",
+          ultimaInspecao: maisRecente.data,
+          proximaInspecaoData: maisRecente.resultado === "Reprovado" ? undefined : calcularProximaInspecao(maisRecente.data, eq.frequenciaInspecao || "Anual"),
+          alertaEnviadoEm: undefined,
+          historicoVistorias: historicoAtualizado
+        }
+      : {
+          ...eq,
+          estado: "Operacional",
+          ultimaInspecao: "",
+          proximaInspecaoData: undefined,
+          alertaEnviadoEm: undefined,
+          historicoVistorias: historicoAtualizado
+        };
+
+    const ok = await saveEquipamentoTecnicoToSupabase(predio.id_predio, equipamentoAtualizado);
+    if (!ok) { alert("❌ Não foi possível eliminar este registo de vistoria. Tente novamente."); return; }
+    setEquipamentos(prev => prev.map(e => e.id === eq.id ? equipamentoAtualizado : e));
+    registarLogAuditoria("Manutenção", `Eliminou um registo de vistoria de "${eq.nome}" (${formatDatePT(v.data)})`, predio.id_predio, loggedUser);
+    alert("✅ Registo de vistoria eliminado.");
   };
 
   const handleRemoverEquipamento = (eq: EquipamentoTecnico) => {
@@ -894,6 +1018,15 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                           >
                             <Pencil className="h-2.5 w-2.5" />
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => handleEliminarVistoria(e, v)}
+                            title="Eliminar este registo de vistoria"
+                            aria-label="Eliminar este registo de vistoria"
+                            className="text-slate-600 hover:text-red-600 active:text-red-700 active:scale-90 transition-all cursor-pointer"
+                          >
+                            <Trash2 className="h-2.5 w-2.5" />
+                          </button>
                         </div>
                         {outrosDoGrupo.length > 0 && (
                           <p className="text-[9px] text-indigo-600 dark:text-indigo-400 font-semibold pl-0.5">Inspeção conjunta com: {outrosDoGrupo.join(", ")}</p>
@@ -910,7 +1043,11 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                             {v.custo != null && (
                               v.id_movimento ? (
                                 <span className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5">
-                                  <Check className="h-2.5 w-2.5" /> lançado
+                                  <Check className="h-2.5 w-2.5" /> pago
+                                </span>
+                              ) : v.id_divida ? (
+                                <span className="bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5">
+                                  <Landmark className="h-2.5 w-2.5" /> dívida pendente
                                 </span>
                               ) : (
                                 <span className="bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded font-bold">não lançado</span>
@@ -1292,10 +1429,16 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
 
                   {vistoriaIdMovimentoExistente ? (
                     <p className="text-[10px] bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5">
-                      <Check className="h-3 w-3" /> Custo já lançado como movimento nesta conta — a corrigir só os outros dados, sem lançar de novo.
+                      <Check className="h-3 w-3" /> Custo já lançado e pago como movimento nesta conta — a corrigir só os outros dados, sem lançar de novo.
                     </p>
-                  ) : (
+                  ) : vistoriaIdDividaExistente ? (
+                    <p className="text-[10px] bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5">
+                      <Landmark className="h-3 w-3" /> Custo registado como dívida pendente a pagar (Fornecedores) — só debita a conta quando marcar esta vistoria como "Realizada".
+                    </p>
+                  ) : vistoriaEstadoRegisto === "Realizada" ? (
                     <p className="text-[9px] text-slate-600">Ao gravar, se indicar o custo (acima, por equipamento) e a conta, cria logo UM movimento de despesa com o TOTAL (com a data desta vistoria) e desconta da conta do prédio de uma só vez — nunca repartido pelas frações, tal como acontece com qualquer outro fornecedor.</p>
+                  ) : (
+                    <p className="text-[9px] text-slate-600">Ao gravar, se indicar o custo e a conta, fica registado como uma dívida pendente a pagar (tal como uma fatura normal da NOWO ou da eletricidade) — só desconta da conta quando esta vistoria passar a "Realizada".</p>
                   )}
 
                   {/* Anexar um documento qualquer e deixar a IA identificar
