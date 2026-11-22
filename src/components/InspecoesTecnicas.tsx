@@ -451,7 +451,11 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
       // inspeção... a TKE só acompanha").
       const fornecedorFaturaReal = fornecedorInspecaoReal || fornecedorManutencaoReal;
       const nomeFornecedorFatura = fornecedorInspecaoReal?.nome || vistoriaFornInspecaoNome.trim() || fornecedorManutencaoReal?.nome || vistoriaFornManutencaoNome.trim() || "Entidade de Inspeção";
-      const nomeManutencaoAcompanha = fornecedorManutencaoReal?.nome || vistoriaFornManutencaoNome.trim();
+      // Descrição do movimento/dívida — pedido explícito: "nas descrições
+      // de movimentos apenas ser colocada a informação útil" (sem data —
+      // já é um campo próprio do movimento — nem "acompanhado por", nem
+      // listar equipamento a equipamento).
+      const descricaoFatura = `${nomeFornecedorFatura} - Inspeção de ${nomesEquipamentos}`;
       const faturaUrl = documentosPartilhados.find(d => d.tipo === "fatura")?.url;
       const comprovativoUrl = documentosPartilhados.find(d => d.tipo === "comprovativo_pagamento")?.url;
       const temProvaPagamento = !!comprovativoUrl;
@@ -481,7 +485,7 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                 data: vistoriaData,
                 tipo: "Despesa",
                 valor: custoTotal,
-                descricao: `${nomesEquipamentos} — ${nomeFornecedorFatura}${nomeManutencaoAcompanha && nomeManutencaoAcompanha !== nomeFornecedorFatura ? ` (acompanhado por ${nomeManutencaoAcompanha})` : ""} — inspeção de ${formatDatePT(vistoriaData)}`,
+                descricao: descricaoFatura,
                 categoria: categoriaSugeridaSNC(equipamentosAlvo[0].eq),
                 estado: "Pago",
                 is_movimento_cego: false,
@@ -503,7 +507,7 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                     id_predio: predio.id_predio,
                     id_fornecedor: fornecedorFaturaReal?.id_fornecedor,
                     fornecedor_nome: nomeFornecedorFatura,
-                    descricao: `${nomesEquipamentos} — ${nomeFornecedorFatura}${nomeManutencaoAcompanha && nomeManutencaoAcompanha !== nomeFornecedorFatura ? ` (acompanhado por ${nomeManutencaoAcompanha})` : ""} — inspeção técnica`,
+                    descricao: descricaoFatura,
                     valor: custoTotal,
                     estado: "Paga",
                     valor_pago: custoTotal,
@@ -524,7 +528,7 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
             id_predio: predio.id_predio,
             id_fornecedor: fornecedorFaturaReal?.id_fornecedor,
             fornecedor_nome: nomeFornecedorFatura,
-            descricao: `${nomesEquipamentos} — ${nomeFornecedorFatura}${nomeManutencaoAcompanha && nomeManutencaoAcompanha !== nomeFornecedorFatura ? ` (acompanhado por ${nomeManutencaoAcompanha})` : ""} — inspeção técnica${vistoriaEstadoRegisto !== "Realizada" ? ` (${vistoriaEstadoRegisto === "Agendada" ? "agendada" : "solicitada"})` : ""}`,
+            descricao: descricaoFatura,
             categoria: categoriaSugeridaSNC(equipamentosAlvo[0].eq),
             valor: custoTotal,
             data_emissao: vistoriaData,
