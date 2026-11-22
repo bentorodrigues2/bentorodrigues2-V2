@@ -3242,6 +3242,8 @@ export default function App() {
               contas={contas}
               fornecedores={fornecedores}
               onEditarEquipamento={(id) => { setEditarEquipamentoId(id); setActiveSection("inventario_tecnico"); setViewMode("BROWSER"); }}
+              documentos={documentos}
+              setDocumentos={setDocumentos}
             />
           )}
 

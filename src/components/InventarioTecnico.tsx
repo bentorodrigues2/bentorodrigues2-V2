@@ -58,13 +58,23 @@ export interface HistoricoVistoriaEquipamento {
   // 2026-11-21) — pedido explícito: "adicionar vários documentos (faturas,
   // comprovativos de pagamento, requerimento, certificados)".
   documentos?: DocumentoVistoria[];
+  // Fotografias tiradas durante a própria visita (ex: estado do
+  // equipamento, placa de série, anomalia encontrada) — distintas das
+  // fotografias gerais do equipamento no Inventário Técnico.
+  fotos?: string[];
   id_fornecedor_inspecao?: string;
   fornecedorInspecaoNome?: string;
   id_fornecedor_manutencao?: string;
   fornecedorManutencaoNome?: string;
   // Custo da QUOTA-PARTE deste equipamento nesta inspeção (= custo total
-  // quando a vistoria é isolada, ou seja, sem idGrupo).
+  // quando a vistoria é isolada, ou seja, sem idGrupo). Igual a
+  // custoUnitario × quantidadeInspecionada — guardados à parte para poder
+  // reabrir a edição sem perder a conta exata (pedido explícito: "Custo da
+  // inspeção por equipamento e total de todos os equipamentos (nº de
+  // equipamentos X Custo p/ equipamento)").
   custo?: number;
+  custoUnitario?: number;
+  quantidadeInspecionada?: number;
   // Só presente quando idGrupo existe — custo somado de TODOS os
   // equipamentos desta mesma inspeção conjunta, para mostrar "X€ (de Y€
   // totais desta inspeção)".
@@ -150,29 +160,22 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], onVerInspe
   // Form states to add custom equipment — reutilizado também para Editar
   // (ver editingId/iniciarEdicao): quando definido, handleAddCustom
   // atualiza em vez de criar.
+  // Ficha MÍNIMA — pedido explícito do administrador (2026-11-21): "no
+  // inventário só se criam os equipamentos... retira da ficha de
+  // adicionar equipamento todos os campos desnecessários para o registo
+  // do equipamento". Tipo de vistoria, fabricante, periodicidade, nº de
+  // série/licença/processo, base legal e entidade responsável deixam de
+  // se preencher aqui — passam a viver (e a ser editados) em "Inspeções
+  // Técnicas", que os grava nos MESMOS registos desta tabela.
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nome, setNome] = useState("");
   const [categoria, setCategoria] = useState("Elevadores");
-  const [tipo, setTipo] = useState<EquipamentoTecnico["tipo"]>("inspeção_obrigatoria");
   const [andar, setAndar] = useState("");
   const [localizacaoDetalhada, setLocalizacaoDetalhada] = useState("");
   const [quantidade, setQuantidade] = useState("1");
-  const [estado, setEstado] = useState<EquipamentoTecnico["estado"]>("Operacional");
-  const [fabricante, setFabricante] = useState("");
   const [detalhes, setDetalhes] = useState("");
   const [fotos, setFotos] = useState<string[]>([]);
   const fotoInputRef = useRef<HTMLInputElement>(null);
-  const [frequenciaInspecao, setFrequenciaInspecao] = useState("Anual");
-  // Data da última inspeção — baseline da agenda de lembretes; a partir da
-  // primeira vistoria registada em "Inspeções Técnicas", este valor passa a
-  // ser atualizado automaticamente por lá (a vistoria mais recente manda).
-  const [ultimaInspecaoInput, setUltimaInspecaoInput] = useState(() => new Date().toISOString().substring(0, 10));
-  const [entidadeResponsavel, setEntidadeResponsavel] = useState("");
-  const [baseLegalDgeg, setBaseLegalDgeg] = useState("");
-  const [numLicencaAutorizacao, setNumLicencaAutorizacao] = useState("");
-  const [numeroSerie, setNumeroSerie] = useState("");
-  const [numProcessoCamara, setNumProcessoCamara] = useState("");
-  const [diasAlertaAntecedencia, setDiasAlertaAntecedencia] = useState(30);
   // Só usado ao CRIAR (nunca ao editar): nº de equipamentos iguais a criar
   // de uma vez, ex: "2" para um prédio com 2 elevadores — pedido explícito
   // do administrador ("a localização é um equipamento do prédio", cada
@@ -185,21 +188,10 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], onVerInspe
     setEditingId(null);
     setNome("");
     setCategoria("Elevadores");
-    setTipo("inspeção_obrigatoria");
     setLocalizacaoDetalhada("");
     setQuantidade("1");
-    setEstado("Operacional");
-    setFabricante("");
     setDetalhes("");
     setFotos([]);
-    setFrequenciaInspecao("Anual");
-    setUltimaInspecaoInput(new Date().toISOString().substring(0, 10));
-    setEntidadeResponsavel("");
-    setBaseLegalDgeg("");
-    setNumLicencaAutorizacao("");
-    setNumeroSerie("");
-    setNumProcessoCamara("");
-    setDiasAlertaAntecedencia(30);
     setNumUnidadesCriar("1");
   };
 
@@ -207,22 +199,11 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], onVerInspe
     setEditingId(eq.id);
     setNome(eq.nome);
     setCategoria(eq.categoria);
-    setTipo(eq.tipo || "inspeção_obrigatoria");
     setAndar(eq.andar);
     setLocalizacaoDetalhada(eq.localizacaoDetalhada || "");
     setQuantidade(String(eq.quantidade ?? 1));
-    setEstado(eq.estado);
-    setFabricante(eq.fabricante || "");
     setDetalhes(eq.detalhes || "");
     setFotos(eq.fotos || []);
-    setFrequenciaInspecao(eq.frequenciaInspecao || "Anual");
-    setUltimaInspecaoInput(eq.ultimaInspecao || new Date().toISOString().substring(0, 10));
-    setEntidadeResponsavel(eq.entidadeResponsavel || "");
-    setBaseLegalDgeg(eq.baseLegalDgeg || "");
-    setNumLicencaAutorizacao(eq.numLicencaAutorizacao || "");
-    setNumeroSerie(eq.numeroSerie || "");
-    setNumProcessoCamara(eq.numProcessoCamara || "");
-    setDiasAlertaAntecedencia(eq.diasAlertaAntecedencia ?? 30);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -304,22 +285,28 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], onVerInspe
     const existente = editingId ? equipamentos.find(eq => eq.id === editingId) : null;
     const base: Omit<EquipamentoTecnico, "id" | "nome"> = {
       categoria,
-      tipo,
       andar,
       localizacaoDetalhada: localizacaoDetalhada || undefined,
       quantidade: Math.max(1, parseInt(quantidade, 10) || 1),
-      estado,
-      ultimaInspecao: ultimaInspecaoInput,
-      frequenciaInspecao,
-      fabricante: fabricante || "Personalizado",
       detalhes: detalhes || "Adicionado via painel técnico.",
       fotos,
-      entidadeResponsavel: entidadeResponsavel || undefined,
-      baseLegalDgeg: baseLegalDgeg || undefined,
-      numLicencaAutorizacao: numLicencaAutorizacao || undefined,
-      numeroSerie: numeroSerie || undefined,
-      numProcessoCamara: numProcessoCamara || undefined,
-      diasAlertaAntecedencia,
+      // Tudo o resto (tipo de vistoria, fabricante, periodicidade, nº de
+      // série/licença/processo, base legal, entidade responsável,
+      // validades) deixou de se preencher aqui — passa a ser editado a
+      // partir de "Inspeções Técnicas", que escreve nestes MESMOS campos.
+      // Ao criar, ficam com valores por omissão sensatos; ao editar,
+      // preservam sempre o que já lá estava.
+      tipo: existente?.tipo || "inspeção_obrigatoria",
+      estado: existente?.estado || "Operacional",
+      ultimaInspecao: existente?.ultimaInspecao || "",
+      frequenciaInspecao: existente?.frequenciaInspecao || "Anual",
+      fabricante: existente?.fabricante,
+      entidadeResponsavel: existente?.entidadeResponsavel,
+      baseLegalDgeg: existente?.baseLegalDgeg,
+      numLicencaAutorizacao: existente?.numLicencaAutorizacao,
+      numeroSerie: existente?.numeroSerie,
+      numProcessoCamara: existente?.numProcessoCamara,
+      diasAlertaAntecedencia: existente?.diasAlertaAntecedencia ?? 30,
       // Nunca apagar o que já foi calculado/registado pelas Inspeções
       // Técnicas só porque se editou um dado de identidade do equipamento.
       proximaInspecaoData: existente?.proximaInspecaoData,
@@ -345,17 +332,14 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], onVerInspe
     // explícito do administrador: "a localização é um equipamento do
     // prédio").
     const unidades = Math.max(1, parseInt(numUnidadesCriar, 10) || 1);
-    // Cada unidade física tem o seu próprio nº de série (ex: elevador 1 e
-    // elevador 2 do mesmo prédio nunca partilham nº de série DGEG) — ao
-    // criar várias de uma vez, aceita-os separados por vírgula na mesma
-    // ordem; se só houver 1 valor para várias unidades, fica por preencher
-    // nas restantes (corrige-se depois em "Editar Equipamento").
-    const seriesLista = numeroSerie.split(",").map(s => s.trim());
+    // Cada unidade fica sem nº de série por agora — pedido explícito do
+    // administrador: a identificação completa (nº de série, fabricante,
+    // base legal, etc.) passa a preencher-se em "Inspeções Técnicas" a
+    // partir da primeira vistoria de cada equipamento.
     const novosEquipamentos: EquipamentoTecnico[] = Array.from({ length: unidades }).map((_, idx) => ({
       id: "eq-custom-" + Date.now() + "-" + idx,
       nome: unidades > 1 ? `${nome.trim()} ${idx + 1}` : nome.trim(),
-      ...base,
-      numeroSerie: unidades > 1 ? (seriesLista[idx] || undefined) : (numeroSerie || undefined)
+      ...base
     }));
 
     const resultados = await Promise.all(novosEquipamentos.map(eq => saveEquipamentoTecnicoToSupabase(predio.id_predio, eq)));
@@ -641,29 +625,6 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], onVerInspe
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Tipo de Vistoria</label>
-              <select
-                value={tipo}
-                onChange={e => setTipo(e.target.value as any)}
-                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm font-semibold cursor-pointer"
-              >
-                <option value="inspeção_obrigatoria">Inspeção Obrigatória (Lei)</option>
-                <option value="preventiva">Manutenção Preventiva (Facultativa)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Data da Última Inspeção</label>
-              <input
-                type="date"
-                value={ultimaInspecaoInput}
-                onChange={e => setUltimaInspecaoInput(e.target.value)}
-                required
-                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm font-mono focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
               <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Localização (Andar)</label>
               <select
                 value={andar}
@@ -673,20 +634,6 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], onVerInspe
                 {pisosReais.map(p => (
                   <option key={p} value={p}>{p}</option>
                 ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Estado de Conservação</label>
-              <select
-                value={estado}
-                onChange={e => setEstado(e.target.value as any)}
-                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm font-semibold cursor-pointer"
-              >
-                <option value="Excelente">Excelente</option>
-                <option value="Operacional">Operacional</option>
-                <option value="Necessita Manutenção">Manutenção</option>
-                <option value="Crítico">Crítico</option>
               </select>
             </div>
 
@@ -713,85 +660,6 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], onVerInspe
               />
             </div>
 
-            <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Fabricante / Fornecedor</label>
-              <input
-                type="text"
-                value={fabricante}
-                onChange={e => setFabricante(e.target.value)}
-                placeholder="Ex: Schindler Lda."
-                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Periodicidade de Inspeção</label>
-              <select
-                value={frequenciaInspecao}
-                onChange={e => setFrequenciaInspecao(e.target.value)}
-                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm font-semibold cursor-pointer"
-              >
-                <option value="Mensal">Mensal</option>
-                <option value="Trimestral">Trimestral</option>
-                <option value="Semestral">Semestral</option>
-                <option value="Anual">Anual</option>
-                <option value="Bianual">Bianual (2 anos)</option>
-              </select>
-            </div>
-
-            <div className="lg:col-span-2">
-              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Entidade Responsável / Prestador de Serviço</label>
-              <input
-                type="text"
-                value={entidadeResponsavel}
-                onChange={e => setEntidadeResponsavel(e.target.value)}
-                placeholder="Ex: TKE, Fidelidade, A definir..."
-                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Base Legal / DGEG (Opcional)</label>
-              <input
-                type="text"
-                value={baseLegalDgeg}
-                onChange={e => setBaseLegalDgeg(e.target.value)}
-                placeholder="Ex: DL 320/2002"
-                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Licença / Autorização</label>
-              <input
-                type="text"
-                value={numLicencaAutorizacao}
-                onChange={e => setNumLicencaAutorizacao(e.target.value)}
-                placeholder="Ex: registo DGEG do equipamento"
-                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Série (Opcional)</label>
-              <input
-                type="text"
-                value={numeroSerie}
-                onChange={e => setNumeroSerie(e.target.value)}
-                placeholder={!editingId ? "Ex: 50101007 (vírgula se criar várias unidades)" : "Ex: 50101007"}
-                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm font-mono focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Processo (Câmara/DGEG, Opcional)</label>
-              <input
-                type="text"
-                value={numProcessoCamara}
-                onChange={e => setNumProcessoCamara(e.target.value)}
-                placeholder="Ex: L/2009/52/0"
-                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm font-mono focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
             {!editingId && (
               <div className="lg:col-span-2">
                 <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Nº de Unidades a Criar</label>
@@ -799,18 +667,6 @@ export function InventarioTecnico({ predio, loggedUser, fracoes = [], onVerInspe
                 <p className="text-[9px] text-slate-600 mt-1">Ex: "2" num prédio com 2 elevadores cria "{nome.trim() || "Elevador"} 1" e "{nome.trim() || "Elevador"} 2" como equipamentos separados e independentes — cada um com a sua própria localização, histórico de vistorias e custos.</p>
               </div>
             )}
-
-            <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Alertar (dias antes)</label>
-              <input
-                type="number"
-                min={1}
-                max={180}
-                value={diasAlertaAntecedencia}
-                onChange={e => setDiasAlertaAntecedencia(parseInt(e.target.value) || 30)}
-                className="w-full border p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-sm font-mono focus:outline-none focus:border-emerald-500"
-              />
-            </div>
 
             <div className="lg:col-span-2">
               <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Notas Técnicas / Observações</label>

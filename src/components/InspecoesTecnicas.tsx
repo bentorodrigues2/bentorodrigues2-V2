@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Predio, LoggedUser, Movimento, Conta, Fornecedor } from "../types";
-import { Wrench, Check, X, Pencil, CalendarCheck, FileText, Paperclip, Bell, Upload, Landmark, ShieldAlert, ClipboardList, Trash2 } from "lucide-react";
+import { Predio, LoggedUser, Movimento, Conta, Fornecedor, Documento } from "../types";
+import { Wrench, Check, X, Pencil, CalendarCheck, FileText, Paperclip, Bell, Upload, Landmark, ShieldAlert, ClipboardList, Trash2, Sparkles, Camera, Mail, Phone } from "lucide-react";
 import { EquipamentoTecnico, HistoricoVistoriaEquipamento, DocumentoVistoria } from "./InventarioTecnico";
-import { fetchInventarioTecnicoFromSupabase, saveEquipamentoTecnicoToSupabase, deleteEquipamentoTecnicoFromSupabase, registarLogAuditoria, uploadDocumentoToStorage, saveMovimentoToSupabase, ajustarSaldoContaReal } from "../lib/supabaseService";
+import { fetchInventarioTecnicoFromSupabase, saveEquipamentoTecnicoToSupabase, deleteEquipamentoTecnicoFromSupabase, registarLogAuditoria, uploadDocumentoToStorage, saveMovimentoToSupabase, ajustarSaldoContaReal, saveDocumentoToSupabase } from "../lib/supabaseService";
 import { formatDatePT, parseValorMonetario } from "../utils";
 
 // Separação explícita a pedido do administrador (2026-11-21): "Inventário
@@ -27,9 +27,16 @@ interface InspecoesTecnicasProps {
   // também, sem ter de ir procurar o equipamento noutro ecrã para corrigir
   // um dado de identidade (nome, categoria, localização...).
   onEditarEquipamento?: (id: string) => void;
+  // Arquivo documental central da aplicação — pedido explícito: "Todos os
+  // documentos anexados guardados em arquivo próprio". Cada documento
+  // anexado a uma inspeção (certificado, fatura, comprovativo,
+  // requerimento) fica também listado em "Arquivo Documental", além de
+  // ficar ligado ao equipamento.
+  documentos?: Documento[];
+  setDocumentos?: React.Dispatch<React.SetStateAction<Documento[]>>;
 }
 
-export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovements, contas = [], fornecedores = [], onEditarEquipamento }: InspecoesTecnicasProps) {
+export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovements, contas = [], fornecedores = [], onEditarEquipamento, documentos = [], setDocumentos }: InspecoesTecnicasProps) {
   const [equipamentos, setEquipamentos] = useState<EquipamentoTecnico[]>([]);
 
   useEffect(() => {
@@ -101,11 +108,34 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
   const [vistoriaRequerimentoRemovido, setVistoriaRequerimentoRemovido] = useState(false);
   const vistoriaRequerimentoInputRef = useRef<HTMLInputElement>(null);
 
+  // Fotografias tiradas durante a própria visita (ex: estado do
+  // equipamento, placa de série, anomalia encontrada) — pedido explícito:
+  // "adicionar fotografias web". Mesmo padrão (base64 comprimido) já usado
+  // nas fotografias do equipamento em Inventário Técnico.
+  const [vistoriaFotos, setVistoriaFotos] = useState<string[]>([]);
+  const vistoriaFotoInputRef = useRef<HTMLInputElement>(null);
+
+  // Anexar um documento qualquer e deixar a IA identificar de que tipo se
+  // trata (certificado/fatura/comprovativo/requerimento) — pedido
+  // explícito: "anexar documentos (permitir identificar documentos com
+  // IA...)". Evita ter de escolher manualmente em que botão anexar cada
+  // ficheiro.
+  const [classificandoDocIA, setClassificandoDocIA] = useState(false);
+  const docIAInputRef = useRef<HTMLInputElement>(null);
+
   // Uma linha por equipamento incluído nesta inspeção — normalmente só 1,
   // mas pode ter várias (ex: os 2 elevadores do prédio na mesma visita da
   // TKE, cada um com o seu nº de certificado e a sua quota-parte do custo)
   // — pedido explícito do administrador a partir de um requerimento real à
   // Câmara que cobre 2 ascensores de uma só vez.
+  //
+  // Campos de identidade/conformidade (tipo, fabricante, nº de série, nº
+  // de licença, nº de processo, base legal, periodicidade, antecedência do
+  // alerta) deixaram de se preencher no Inventário Técnico — pedido
+  // explícito: "retira da ficha de adicionar equipamento todos os campos
+  // desnecessários". Ficam editáveis aqui, pré-preenchidos com o que já
+  // estava gravado no equipamento, e ao gravar são escritos de volta nesse
+  // MESMO registo (não há tabela nova nem duplicação de dados).
   interface VistoriaRow {
     idEquipamento: string;
     nome: string;
@@ -113,8 +143,20 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
     // só presente em edição — permite substituir a entrada certa em vez de
     // duplicar.
     entryId?: string;
+    tipo: EquipamentoTecnico["tipo"];
+    fabricante: string;
+    numeroSerie: string;
+    numLicencaAutorizacao: string;
+    numProcessoCamara: string;
+    baseLegalDgeg: string;
+    frequenciaInspecao: string;
+    diasAlertaAntecedencia: string;
     numCertificado: string;
-    custo: string;
+    // Custo = quantidadeInspecionada × custoUnitario — pedido explícito:
+    // "Custo da inspeção por equipamento e total de todos os equipamentos
+    // (nº de equipamentos X Custo p/ equipamento)".
+    quantidadeInspecionada: string;
+    custoUnitario: string;
     certFile: File | null;
     certExistente: { url: string; nome: string } | null;
     certRemovido: boolean;
@@ -126,8 +168,17 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
     idEquipamento: eq.id,
     nome: eq.nome,
     entryId: undefined,
+    tipo: eq.tipo || "inspeção_obrigatoria",
+    fabricante: eq.fabricante || "",
+    numeroSerie: eq.numeroSerie || "",
+    numLicencaAutorizacao: eq.numLicencaAutorizacao || "",
+    numProcessoCamara: eq.numProcessoCamara || "",
+    baseLegalDgeg: eq.baseLegalDgeg || "",
+    frequenciaInspecao: eq.frequenciaInspecao || "Anual",
+    diasAlertaAntecedencia: String(eq.diasAlertaAntecedencia ?? 30),
     numCertificado: "",
-    custo: "",
+    quantidadeInspecionada: String(eq.quantidade ?? 1),
+    custoUnitario: "",
     certFile: null,
     certExistente: null,
     certRemovido: false
@@ -156,6 +207,7 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
     setVistoriaFaturaFile(null); setVistoriaFaturaExistente(null); setVistoriaFaturaRemovida(false);
     setVistoriaComprovativoFile(null); setVistoriaComprovativoExistente(null); setVistoriaComprovativoRemovido(false);
     setVistoriaRequerimentoFile(null); setVistoriaRequerimentoExistente(null); setVistoriaRequerimentoRemovido(false);
+    setVistoriaFotos([]);
     setVistoriaRows([novaLinhaVistoria(eq)]);
     setVistoriaAdicionarId("");
   };
@@ -192,6 +244,7 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
     setVistoriaFornManutencaoNome(v.id_fornecedor_manutencao ? "" : (v.fornecedorManutencaoNome || ""));
     setVistoriaContaPagamento(v.id_conta_pagamento || "");
     setVistoriaIdMovimentoExistente(v.id_movimento);
+    setVistoriaFotos(v.fotos || []);
 
     const docsPartilhados = v.documentos || [];
     const fatura = docsPartilhados.find(d => d.tipo === "fatura");
@@ -203,14 +256,25 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
 
     // Reconstrói as linhas: o equipamento clicado + todos os outros
     // equipamentos com uma entrada do mesmo idGrupo (inspeção conjunta).
+    // Os campos de identidade/conformidade vêm sempre do registo ATUAL do
+    // equipamento (é lá que ficam gravados), não da entrada histórica.
     const construirLinha = (equipamento: EquipamentoTecnico, entrada: HistoricoVistoriaEquipamento): VistoriaRow => {
       const certDoc = (entrada.documentos || []).find(d => d.tipo === "certificado");
       return {
         idEquipamento: equipamento.id,
         nome: equipamento.nome,
         entryId: entrada.id,
+        tipo: equipamento.tipo || "inspeção_obrigatoria",
+        fabricante: equipamento.fabricante || "",
+        numeroSerie: equipamento.numeroSerie || "",
+        numLicencaAutorizacao: equipamento.numLicencaAutorizacao || "",
+        numProcessoCamara: equipamento.numProcessoCamara || "",
+        baseLegalDgeg: equipamento.baseLegalDgeg || "",
+        frequenciaInspecao: equipamento.frequenciaInspecao || "Anual",
+        diasAlertaAntecedencia: String(equipamento.diasAlertaAntecedencia ?? 30),
         numCertificado: entrada.numCertificado || "",
-        custo: entrada.custo != null ? String(entrada.custo) : "",
+        quantidadeInspecionada: String(entrada.quantidadeInspecionada ?? equipamento.quantidade ?? 1),
+        custoUnitario: entrada.custoUnitario != null ? String(entrada.custoUnitario) : "",
         certFile: null,
         certExistente: certDoc ? { url: certDoc.url, nome: certDoc.nome } : null,
         certRemovido: false
@@ -243,6 +307,41 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
     return "Manutenção";
   };
 
+  // Regista também no Arquivo Documental central da aplicação — pedido
+  // explícito: "Todos os documentos anexados guardados em arquivo
+  // próprio". Falhas aqui nunca travam a gravação da vistoria em si (o
+  // documento já está ligado ao equipamento de qualquer forma).
+  const arquivarDocumentoCentral = async (tipo: DocumentoVistoria["tipo"], url: string, nomeFicheiro: string, rotuloEquipamentos: string) => {
+    if (!setDocumentos) return;
+    const rotulos: Record<DocumentoVistoria["tipo"], string> = {
+      certificado: "Certificado de Inspeção",
+      fatura: "Fatura de Inspeção/Manutenção",
+      comprovativo_pagamento: "Comprovativo de Pagamento",
+      requerimento: "Requerimento de Inspeção",
+      outro: "Documento de Inspeção"
+    };
+    try {
+      const novoDoc: Documento = {
+        id_doc: "doc-insp-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+        id_predio: predio.id_predio,
+        nome: nomeFicheiro,
+        tipo: "inspecao_tecnica",
+        data_upload: new Date().toISOString().split("T")[0],
+        tamanho: "",
+        categoria: rotulos[tipo],
+        descricao: `${rotulos[tipo]} — ${rotuloEquipamentos}`,
+        visibilidade: "Administração",
+        autor: loggedUser.nome || "Administração",
+        caminho: url,
+        arquivado: true,
+        data_arquivamento: new Date().toISOString().split("T")[0],
+        tipo_arquivo: "documento"
+      };
+      const ok = await saveDocumentoToSupabase(novoDoc);
+      if (ok) setDocumentos(prev => [novoDoc, ...prev]);
+    } catch { /* arquivo central é um extra — nunca trava a vistoria */ }
+  };
+
   const handleGravarVistoria = async (e: React.FormEvent) => {
     e.preventDefault();
     const equipamentosAlvo = vistoriaRows
@@ -252,6 +351,7 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
     setAGravarVistoria(true);
     try {
       const idBase = vistoriaEditId || `vist-${Date.now()}`;
+      const rotuloEquipamentos = equipamentosAlvo.map(({ eq }) => eq.nome).join(", ");
 
       // Documentos partilhados por TODA a inspeção — 1 só upload mesmo que
       // cubra vários equipamentos (pedido explícito: "adicionar vários
@@ -264,6 +364,7 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
           const url = await uploadDocumentoToStorage(file, caminho);
           if (!url) throw new Error(`Não foi possível carregar o ficheiro de ${rotulo}. Tente novamente.`);
           documentosPartilhados.push({ id: `${idBase}-${tipo}`, tipo, url, nome: file.name });
+          await arquivarDocumentoCentral(tipo, url, file.name, rotuloEquipamentos);
         } else if (!removido && existente) {
           documentosPartilhados.push({ id: `${idBase}-${tipo}`, tipo, url: existente.url, nome: existente.nome });
         }
@@ -282,6 +383,7 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
           const url = await uploadDocumentoToStorage(row.certFile, caminho);
           if (!url) throw new Error(`Não foi possível carregar o certificado de "${row.nome}". Tente novamente.`);
           docs.unshift({ id: `${row.entryId || idBase}-certificado`, tipo: "certificado", url, nome: row.certFile.name });
+          await arquivarDocumentoCentral("certificado", url, row.certFile.name, row.nome);
         } else if (!row.certRemovido && row.certExistente) {
           docs.unshift({ id: `${row.entryId || idBase}-certificado`, tipo: "certificado", url: row.certExistente.url, nome: row.certExistente.nome });
         }
@@ -291,7 +393,14 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
       const fornecedorInspecaoReal = fornecedores.find(f => f.id_fornecedor === vistoriaFornInspecaoId);
       const fornecedorManutencaoReal = fornecedores.find(f => f.id_fornecedor === vistoriaFornManutencaoId);
 
-      const custosPorEquipamento = equipamentosAlvo.map(({ row }) => ({ id: row.idEquipamento, custo: row.custo ? (parseValorMonetario(row.custo) || 0) : 0 }));
+      // Custo por equipamento = quantidade inspecionada × custo unitário —
+      // pedido explícito: "Custo da inspeção por equipamento e total de
+      // todos os equipamentos (nº de equipamentos X Custo p/ equipamento)".
+      const custosPorEquipamento = equipamentosAlvo.map(({ row }) => {
+        const qtd = Math.max(1, parseInt(row.quantidadeInspecionada, 10) || 1);
+        const unitario = row.custoUnitario ? (parseValorMonetario(row.custoUnitario) || 0) : 0;
+        return { id: row.idEquipamento, quantidade: qtd, custoUnitario: unitario, custo: qtd * unitario };
+      });
       const custoTotal = custosPorEquipamento.reduce((soma, c) => soma + c.custo, 0);
       const ehGrupo = equipamentosAlvo.length > 1;
       const idGrupoFinal = ehGrupo ? (vistoriaIdGrupo || `grp-${Date.now()}`) : (vistoriaIdGrupo || undefined);
@@ -342,8 +451,8 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
         }
       }
 
-      const equipamentosAtualizados: EquipamentoTecnico[] = equipamentosAlvo.map(({ row, eq: eqAlvo }) => {
-        const custoLinha = custosPorEquipamento.find(c => c.id === row.idEquipamento)?.custo || 0;
+      const equipamentosAtualizados: EquipamentoTecnico[] = equipamentosAlvo.map(({ row, eq: eqAlvoOriginal }) => {
+        const custosLinha = custosPorEquipamento.find(c => c.id === row.idEquipamento);
         const entradaVistoria: HistoricoVistoriaEquipamento = {
           id: row.entryId || `vist-${Date.now()}-${row.idEquipamento}`,
           idGrupo: idGrupoFinal,
@@ -355,14 +464,34 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
           observacoes: vistoriaObservacoes || undefined,
           numCertificado: row.numCertificado || undefined,
           documentos: documentosPorEquipamento[row.idEquipamento],
+          fotos: vistoriaFotos.length > 0 ? vistoriaFotos : undefined,
           id_fornecedor_inspecao: fornecedorInspecaoReal?.id_fornecedor,
           fornecedorInspecaoNome: fornecedorInspecaoReal?.nome || vistoriaFornInspecaoNome.trim() || undefined,
           id_fornecedor_manutencao: fornecedorManutencaoReal?.id_fornecedor,
           fornecedorManutencaoNome: fornecedorManutencaoReal?.nome || vistoriaFornManutencaoNome.trim() || undefined,
-          custo: custoLinha || undefined,
+          custo: custosLinha?.custo || undefined,
+          custoUnitario: custosLinha?.custoUnitario || undefined,
+          quantidadeInspecionada: custosLinha?.quantidade,
           custoTotalGrupo: ehGrupo ? custoTotal : undefined,
           id_conta_pagamento: vistoriaContaPagamento || undefined,
           id_movimento: idMovimentoFinal
+        };
+
+        // Identidade/conformidade do equipamento (tipo, fabricante, nº de
+        // série/licença/processo, base legal, periodicidade, antecedência
+        // do alerta) escritas de volta a partir desta linha — pedido
+        // explícito: deixaram de se editar no Inventário Técnico, passam a
+        // editar-se aqui.
+        const eqAlvo: EquipamentoTecnico = {
+          ...eqAlvoOriginal,
+          tipo: row.tipo,
+          fabricante: row.fabricante || undefined,
+          numeroSerie: row.numeroSerie || undefined,
+          numLicencaAutorizacao: row.numLicencaAutorizacao || undefined,
+          numProcessoCamara: row.numProcessoCamara || undefined,
+          baseLegalDgeg: row.baseLegalDgeg || undefined,
+          frequenciaInspecao: row.frequenciaInspecao || "Anual",
+          diasAlertaAntecedencia: Math.max(1, parseInt(row.diasAlertaAntecedencia, 10) || 30)
         };
 
         const historicoAtualizado = row.entryId
@@ -389,6 +518,10 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
           maisRecente.resultado === "Reprovado" ? "Crítico" :
           maisRecente.resultado === "Aprovado com Reservas" ? "Necessita Manutenção" :
           "Operacional";
+        // Pré-aviso de 30 dias por omissão do termino da validade — pedido
+        // explícito: "agendamento com pre aviso de 30 dias do termino da
+        // validade" (o campo "Alertar (dias antes)" desta linha já cobre
+        // isto; 30 é só o valor inicial quando o equipamento é novo).
         const proximaInspecao = calcularProximaInspecao(maisRecente.data, eqAlvo.frequenciaInspecao || "Anual");
 
         return {
@@ -414,6 +547,7 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
       setVistoriaTargetId(null);
       setVistoriaEditId(null);
       setVistoriaRows([]);
+      setVistoriaFotos([]);
       const sufixoValidade = vistoriaEstadoRegisto === "Realizada"
         ? " Validade atualizada e próxima inspeção agendada."
         : vistoriaEstadoRegisto === "Agendada"
@@ -426,6 +560,77 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
       alert(`❌ ${err?.message || "Não foi possível gravar a vistoria. Tente novamente."}`);
     } finally {
       setAGravarVistoria(false);
+    }
+  };
+
+  // Fotografias da visita — mesmo padrão (base64 comprimido, inline, sem
+  // upload para Storage) já usado nas fotografias do equipamento em
+  // Inventário Técnico. Pedido explícito: "adicionar fotografias web".
+  const handleVistoriaFotosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files: File[] = Array.from(e.target.files || []);
+    e.target.value = "";
+    files.forEach((file: File) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 700;
+          let width = img.width;
+          let height = img.height;
+          if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+          canvas.width = width;
+          canvas.height = height;
+          canvas.getContext("2d")?.drawImage(img, 0, 0, width, height);
+          setVistoriaFotos(prev => [...prev, canvas.toDataURL("image/webp", 0.8)]);
+        };
+        img.src = ev.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Anexar um documento qualquer e deixar a IA identificar o tipo — pedido
+  // explícito: "anexar documentos (permitir identificar documentos com
+  // IA...)". A IA só decide ONDE o documento fica; quem o anexa continua a
+  // ser o administrador.
+  const handleAnexarDocumentoIA = async (file: File) => {
+    setClassificandoDocIA(true);
+    try {
+      const base64: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(",")[1] || "");
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const resp = await fetch("/api/ai?acao=classificar-documento-inspecao", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base64, mimeType: file.type || "application/octet-stream" })
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data?.tipo) throw new Error(data?.error || "A IA não conseguiu identificar este documento.");
+
+      if (data.tipo === "fatura") {
+        setVistoriaFaturaFile(file);
+        alert(`✅ Identificado pela IA como Fatura: "${data.resumo || file.name}". Já foi anexado.`);
+      } else if (data.tipo === "comprovativo_pagamento") {
+        setVistoriaComprovativoFile(file);
+        alert(`✅ Identificado pela IA como Comprovativo de Pagamento: "${data.resumo || file.name}". Já foi anexado.`);
+      } else if (data.tipo === "requerimento") {
+        setVistoriaRequerimentoFile(file);
+        alert(`✅ Identificado pela IA como Requerimento: "${data.resumo || file.name}". Já foi anexado.`);
+      } else if (data.tipo === "certificado") {
+        const primeiraLinha = vistoriaRows[0];
+        if (primeiraLinha) atualizarLinhaVistoria(primeiraLinha.idEquipamento, { certFile: file });
+        alert(`✅ Identificado pela IA como Certificado: "${data.resumo || file.name}". Anexado a "${primeiraLinha?.nome || "equipamento"}"${vistoriaRows.length > 1 ? " — se for de outro equipamento desta inspeção conjunta, substitua no campo certo abaixo." : ""}.`);
+      } else {
+        alert(`A IA não identificou com confiança o tipo deste documento (resumo: "${data.resumo || "sem resumo"}"). Anexe-o manualmente no campo certo abaixo.`);
+      }
+    } catch (err: any) {
+      alert(`❌ ${err?.message || "Não foi possível identificar este documento."}`);
+    } finally {
+      setClassificandoDocIA(false);
     }
   };
 
@@ -833,10 +1038,18 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                     )}
                   </div>
 
-                  {vistoriaRows.map(row => (
-                    <div key={row.idEquipamento} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 space-y-2">
+                  {vistoriaRows.map(row => {
+                    const eqOriginal = equipamentos.find(eq => eq.id === row.idEquipamento);
+                    const subtotal = Math.max(1, parseInt(row.quantidadeInspecionada, 10) || 1) * (parseValorMonetario(row.custoUnitario) || 0);
+                    return (
+                    <div key={row.idEquipamento} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 space-y-2.5">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{row.nome}</span>
+                        <div>
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{row.nome}</span>
+                          {eqOriginal && (
+                            <p className="text-[9px] text-slate-600">{eqOriginal.categoria} • {eqOriginal.andar}{eqOriginal.localizacaoDetalhada ? ` — ${eqOriginal.localizacaoDetalhada}` : ""}</p>
+                          )}
+                        </div>
                         {vistoriaRows.length > 1 && (
                           <button
                             type="button"
@@ -849,7 +1062,59 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                           </button>
                         )}
                       </div>
+
+                      {/* Identidade/conformidade — deixou de se preencher no
+                          Inventário Técnico; edita-se aqui e é escrita de
+                          volta no registo do equipamento ao gravar. */}
                       <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-slate-600 mb-1">Tipo de Vistoria</label>
+                          <select value={row.tipo} onChange={ev => atualizarLinhaVistoria(row.idEquipamento, { tipo: ev.target.value as any })} className="w-full border p-1.5 rounded bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-[11px] cursor-pointer">
+                            <option value="inspeção_obrigatoria">Obrigatória (Lei)</option>
+                            <option value="preventiva">Facultativa</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-slate-600 mb-1">Fabricante</label>
+                          <input type="text" value={row.fabricante} onChange={ev => atualizarLinhaVistoria(row.idEquipamento, { fabricante: ev.target.value })} placeholder="Ex: Schindler Lda." className="w-full border p-1.5 rounded bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-[11px]" />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-slate-600 mb-1">Nº de Série(s)</label>
+                          <input type="text" value={row.numeroSerie} onChange={ev => atualizarLinhaVistoria(row.idEquipamento, { numeroSerie: ev.target.value })} placeholder="Ex: 50101007, 50101008..." className="w-full border p-1.5 rounded bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-[11px] font-mono" />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-slate-600 mb-1">Nº de Processo (Câmara/DGEG)</label>
+                          <input type="text" value={row.numProcessoCamara} onChange={ev => atualizarLinhaVistoria(row.idEquipamento, { numProcessoCamara: ev.target.value })} placeholder="Ex: L/2009/52/0" className="w-full border p-1.5 rounded bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-[11px] font-mono" />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-slate-600 mb-1">Base Legal / DGEG</label>
+                          <input type="text" value={row.baseLegalDgeg} onChange={ev => atualizarLinhaVistoria(row.idEquipamento, { baseLegalDgeg: ev.target.value })} placeholder="Ex: DL 320/2002" className="w-full border p-1.5 rounded bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-[11px]" />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-slate-600 mb-1">Nº de Licença / Autorização</label>
+                          <input type="text" value={row.numLicencaAutorizacao} onChange={ev => atualizarLinhaVistoria(row.idEquipamento, { numLicencaAutorizacao: ev.target.value })} placeholder="Ex: registo DGEG" className="w-full border p-1.5 rounded bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-[11px]" />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-slate-600 mb-1">Periodicidade</label>
+                          <select value={row.frequenciaInspecao} onChange={ev => atualizarLinhaVistoria(row.idEquipamento, { frequenciaInspecao: ev.target.value })} className="w-full border p-1.5 rounded bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-[11px] cursor-pointer">
+                            <option value="Mensal">Mensal</option>
+                            <option value="Trimestral">Trimestral</option>
+                            <option value="Semestral">Semestral</option>
+                            <option value="Anual">Anual</option>
+                            <option value="Bianual">Bianual (2 anos)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-slate-600 mb-1">Pré-aviso (dias antes)</label>
+                          <input type="number" min={1} max={180} value={row.diasAlertaAntecedencia} onChange={ev => atualizarLinhaVistoria(row.idEquipamento, { diasAlertaAntecedencia: ev.target.value })} className="w-full border p-1.5 rounded bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-[11px] font-mono" />
+                        </div>
+                      </div>
+
+                      {/* Custo = quantidade inspecionada × custo unitário —
+                          pedido explícito: "Custo da inspeção por
+                          equipamento e total de todos os equipamentos (nº
+                          de equipamentos X Custo p/ equipamento)". */}
+                      <div className="grid grid-cols-3 gap-2">
                         <div>
                           <label className="block text-[9px] uppercase font-bold text-slate-600 mb-1">Nº de Certificado</label>
                           <input
@@ -861,16 +1126,30 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                           />
                         </div>
                         <div>
-                          <label className="block text-[9px] uppercase font-bold text-slate-600 mb-1">Custo (€)</label>
+                          <label className="block text-[9px] uppercase font-bold text-slate-600 mb-1">Qtd. Inspecionada</label>
+                          <input
+                            type="number"
+                            min={1}
+                            value={row.quantidadeInspecionada}
+                            onChange={ev => atualizarLinhaVistoria(row.idEquipamento, { quantidadeInspecionada: ev.target.value })}
+                            className="w-full border p-1.5 rounded bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-[11px] font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-slate-600 mb-1">Custo p/ Equipamento (€)</label>
                           <input
                             type="text"
-                            value={row.custo}
-                            onChange={ev => atualizarLinhaVistoria(row.idEquipamento, { custo: ev.target.value })}
-                            placeholder="Ex: 85,00"
+                            value={row.custoUnitario}
+                            onChange={ev => atualizarLinhaVistoria(row.idEquipamento, { custoUnitario: ev.target.value })}
+                            placeholder="Ex: 3,50"
                             className="w-full border p-1.5 rounded bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-[11px]"
                           />
                         </div>
                       </div>
+                      {subtotal > 0 && (
+                        <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300 text-right">Subtotal: {row.quantidadeInspecionada} × {(parseValorMonetario(row.custoUnitario) || 0).toFixed(2)}€ = {subtotal.toFixed(2)}€</p>
+                      )}
+
                       <div>
                         {row.certExistente && !row.certRemovido && !row.certFile && (
                           <div className="flex items-center justify-between gap-2 mb-1 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40 rounded-lg px-2 py-1">
@@ -896,7 +1175,8 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                         <input id={`cert-file-${row.idEquipamento}`} type="file" accept=".pdf,image/*" className="hidden" onChange={ev => atualizarLinhaVistoria(row.idEquipamento, { certFile: ev.target.files?.[0] || null })} />
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
 
                   <select
                     value={vistoriaAdicionarId}
@@ -905,13 +1185,13 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                   >
                     <option value="">+ Incluir outro equipamento nesta mesma inspeção...</option>
                     {equipamentos.filter(eq => !vistoriaRows.some(r => r.idEquipamento === eq.id)).map(eq => (
-                      <option key={eq.id} value={eq.id}>{eq.nome}</option>
+                      <option key={eq.id} value={eq.id}>{eq.nome} ({eq.categoria}, {eq.andar}) — {eq.quantidade ?? 1} unid. disponíveis</option>
                     ))}
                   </select>
 
                   {vistoriaRows.length > 1 && (
                     <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300 text-right">
-                      Total desta inspeção: {vistoriaRows.reduce((s, r) => s + (parseValorMonetario(r.custo) || 0), 0).toFixed(2)}€
+                      Total desta inspeção: {vistoriaRows.reduce((s, r) => s + Math.max(1, parseInt(r.quantidadeInspecionada, 10) || 1) * (parseValorMonetario(r.custoUnitario) || 0), 0).toFixed(2)}€
                     </p>
                   )}
                 </div>
@@ -938,6 +1218,16 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                       {!vistoriaFornInspecaoId && (
                         <input type="text" value={vistoriaFornInspecaoNome} onChange={ev => setVistoriaFornInspecaoNome(ev.target.value)} placeholder="Ex: Câmara Municipal, DGEG..." className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs mt-1.5" />
                       )}
+                      {(() => {
+                        const f = fornecedores.find(x => x.id_fornecedor === vistoriaFornInspecaoId);
+                        if (!f || (!f.email_contacto && !f.contacto && !f.telemovel_direto)) return null;
+                        return (
+                          <div className="flex flex-wrap gap-2 mt-1 text-[9px] text-slate-600">
+                            {f.email_contacto && <span className="flex items-center gap-1"><Mail className="h-2.5 w-2.5" /> {f.email_contacto}</span>}
+                            {(f.telemovel_direto || f.contacto) && <span className="flex items-center gap-1"><Phone className="h-2.5 w-2.5" /> {f.telemovel_direto || f.contacto}</span>}
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div>
                       <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Fornecedor Responsável pela Assistência (Manutenção)</label>
@@ -950,6 +1240,16 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                       {!vistoriaFornManutencaoId && (
                         <input type="text" value={vistoriaFornManutencaoNome} onChange={ev => setVistoriaFornManutencaoNome(ev.target.value)} placeholder="Ex: TKE, Schindler..." className="w-full border p-2 rounded bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 text-xs mt-1.5" />
                       )}
+                      {(() => {
+                        const f = fornecedores.find(x => x.id_fornecedor === vistoriaFornManutencaoId);
+                        if (!f || (!f.email_contacto && !f.contacto && !f.telemovel_direto)) return null;
+                        return (
+                          <div className="flex flex-wrap gap-2 mt-1 text-[9px] text-slate-600">
+                            {f.email_contacto && <span className="flex items-center gap-1"><Mail className="h-2.5 w-2.5" /> {f.email_contacto}</span>}
+                            {(f.telemovel_direto || f.contacto) && <span className="flex items-center gap-1"><Phone className="h-2.5 w-2.5" /> {f.telemovel_direto || f.contacto}</span>}
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div className="sm:col-span-2">
                       <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Conta Bancária de Pagamento</label>
@@ -969,6 +1269,23 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                   ) : (
                     <p className="text-[9px] text-slate-600">Ao gravar, se indicar o custo (acima, por equipamento) e a conta, cria logo UM movimento de despesa com o TOTAL (com a data desta vistoria) e desconta da conta do prédio de uma só vez — nunca repartido pelas frações, tal como acontece com qualquer outro fornecedor.</p>
                   )}
+
+                  {/* Anexar um documento qualquer e deixar a IA identificar
+                      o tipo — pedido explícito: "permitir identificar
+                      documentos com IA, fatura, comprovativo de pagamento,
+                      certificado etc". */}
+                  <div>
+                    <input ref={docIAInputRef} type="file" accept=".pdf,image/*" className="hidden" onChange={ev => { const f = ev.target.files?.[0]; ev.target.value = ""; if (f) handleAnexarDocumentoIA(f); }} />
+                    <button
+                      type="button"
+                      disabled={classificandoDocIA}
+                      onClick={() => docIAInputRef.current?.click()}
+                      className="w-full border border-dashed border-indigo-300 dark:border-indigo-800 p-2.5 rounded bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300 text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 hover:border-indigo-400 disabled:opacity-60"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      <span>{classificandoDocIA ? "A identificar com IA..." : "Anexar Documento (a IA identifica o tipo)"}</span>
+                    </button>
+                  </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
@@ -1060,6 +1377,39 @@ export function InspecoesTecnicas({ predio, loggedUser, movements = [], setMovem
                       <Upload className="h-4 w-4" />
                       <span>{vistoriaRequerimentoFile ? vistoriaRequerimentoFile.name : vistoriaRequerimentoExistente && !vistoriaRequerimentoRemovido ? "Substituir Requerimento (PDF/Foto)" : "Anexar Requerimento (PDF/Foto)"}</span>
                     </button>
+                  </div>
+
+                  {/* Fotografias da própria visita — pedido explícito:
+                      "adicionar fotografias web". */}
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-slate-600 mb-1">Fotografias da Vistoria (Opcional)</label>
+                    <input ref={vistoriaFotoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleVistoriaFotosChange} />
+                    <button
+                      type="button"
+                      onClick={() => vistoriaFotoInputRef.current?.click()}
+                      className="w-full border border-dashed p-2.5 rounded bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300 text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:border-emerald-400 hover:text-emerald-600"
+                    >
+                      <Camera className="h-4 w-4" />
+                      <span>{vistoriaFotos.length > 0 ? `${vistoriaFotos.length} fotografia(s) anexada(s) — adicionar mais` : "Adicionar Fotografias"}</span>
+                    </button>
+                    {vistoriaFotos.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {vistoriaFotos.map((f, i) => (
+                          <div key={i} className="relative h-14 w-14 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 group">
+                            <img src={f} className="h-full w-full object-cover" alt="" />
+                            <button
+                              type="button"
+                              onClick={() => setVistoriaFotos(prev => prev.filter((_, idx) => idx !== i))}
+                              className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white cursor-pointer transition-opacity"
+                              title="Remover fotografia"
+                              aria-label="Remover fotografia"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 

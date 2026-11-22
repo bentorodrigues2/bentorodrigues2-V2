@@ -26,7 +26,7 @@ export default async function handler(req, res) {
   const AÇÕES_OCR_A_REGISTAR = new Set([
     "reconhecer-recibo", "reconhecer-anexo", "reconhecer-apolice",
     "reconhecer-proposta", "reconhecer-contrato", "reconhecer-contrato-adjudicacao",
-    "classificar-documento"
+    "classificar-documento", "classificar-documento-inspecao"
   ]);
   if (utilizadorAutenticado && AÇÕES_OCR_A_REGISTAR.has(acao)) {
     registarAcessoDocumento(supabase, { email: utilizadorAutenticado.email, acao: `OCR:${acao}`, caminho: "(documento anexado pelo utilizador)" }).catch(() => {});
@@ -577,6 +577,70 @@ Devolve APENAS JSON estrito:
     } catch (err) {
       console.error("[api/ai?acao=classificar-documento] Erro:", err);
       return res.status(500).json({ error: err?.message || "Erro ao classificar o documento." });
+    }
+  }
+
+  // 9.4.1 CLASSIFICADOR DE DOCUMENTOS DE INSPEÇÕES TÉCNICAS
+  // (?acao=classificar-documento-inspecao)
+  // Usado por InspecoesTecnicas.tsx — pedido explícito do administrador:
+  // "anexar documentos (permitir identificar documentos com IA, fatura,
+  // comprovativo de pagamento, certificado etc)". Em vez de o próprio
+  // escolher em que botão (Certificado/Fatura/Comprovativo/Requerimento)
+  // anexar cada ficheiro, a IA lê o documento real e devolve logo a que
+  // categoria pertence; o frontend atribui-o automaticamente ao sítio
+  // certo.
+  if (acao === "classificar-documento-inspecao") {
+    if (req.method === "GET") {
+      return res.status(200).json({ status: "online", endpoint: "/api/ai?acao=classificar-documento-inspecao" });
+    }
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
+
+    try {
+      const { base64, mimeType } = req.body || {};
+      if (!base64 || !mimeType) {
+        return res.status(400).json({ error: "base64 e mimeType são obrigatórios" });
+      }
+
+      const prompt = `És o assistente de triagem documental de inspeções técnicas de equipamentos de um condomínio em Portugal (ex: elevadores, extintores, gás, sistemas elétricos).
+Analisa o documento em anexo (a imagem/PDF real) e classifica-o numa destas categorias:
+- "certificado": certificado de inspeção/conformidade, relatório técnico de vistoria, ou boletim de inspeção periódica emitido pela entidade inspetora
+- "fatura": fatura ou nota de débito emitida pela empresa de manutenção/inspeção pelo serviço prestado
+- "comprovativo_pagamento": comprovativo de transferência bancária, recibo de pagamento, ou talão de pagamento dessa fatura
+- "requerimento": requerimento/pedido formal submetido a uma entidade (ex: Câmara Municipal, DGEG) a solicitar uma inspeção ou certificação — normalmente tem campos de identificação do requerente, do prédio e do processo
+- "outro": qualquer outro documento que não se enquadre nos anteriores
+
+Devolve APENAS JSON estrito:
+{
+  "tipo": "certificado" | "fatura" | "comprovativo_pagamento" | "requerimento" | "outro",
+  "confianca": 0.0 a 1.0,
+  "resumo": "Uma frase curta e concreta a dizer o que este documento é (ex: 'Certificado de inspeção periódica a 2 ascensores, TKE, nº 2026/CERT/4821' ou 'Fatura da TKE de 170,00€')"
+}`;
+
+      const responseText = await generateWithFallback({
+        contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType, data: base64 } }] }],
+        responseMimeType: "application/json"
+      });
+
+      let dados = null;
+      try {
+        dados = JSON.parse(responseText);
+      } catch {
+        const match = responseText.match(/\{[\s\S]*\}/);
+        if (match) {
+          try { dados = JSON.parse(match[0]); } catch { /* mantém null */ }
+        }
+      }
+
+      if (!dados || !dados.tipo) {
+        return res.status(502).json({ error: "A IA não conseguiu identificar este documento." });
+      }
+
+      return res.status(200).json({ ok: true, ...dados });
+    } catch (err) {
+      console.error("[api/ai?acao=classificar-documento-inspecao] Erro:", err);
+      return res.status(500).json({ error: err?.message || "Erro ao identificar o documento." });
     }
   }
 
@@ -1275,6 +1339,7 @@ Devolve apenas o texto do corpo da carta (saudação + parágrafos + despedida),
         "parse-import",
         "reconhecer-recibo",
         "classificar-documento",
+        "classificar-documento-inspecao",
         "reconhecer-anexo",
         "extrair-movimentos-historicos",
         "reconhecer-apolice",
