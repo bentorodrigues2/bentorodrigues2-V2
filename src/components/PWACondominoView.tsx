@@ -955,6 +955,7 @@ export default function PWACondominoView({
     // direta) — ver getPillTextForCard abaixo.
     if (cardId === "mensagens") return naoLidasThreadPwa;
     if (cardId === "sondagens") return sondagensPorVotar.length > 0 ? 1 : 0;
+    if (cardId === "limpezas") return limpezasPorAvaliarCount;
     return 0;
   };
 
@@ -966,6 +967,7 @@ export default function PWACondominoView({
       case "documentos": return `${documentosFracaoReais.length} Ficheiro(s)`;
       case "reservas_limpezas": return reservasFracaoReais.length > 0 ? `${reservasFracaoReais.length} Ativa(s)` : "Ativo";
       case "sondagens": return sondagensPorVotar.length > 0 ? `${sondagensPorVotar.length} Ativa(s)` : "Votado";
+      case "limpezas": return limpezasPorAvaliarCount > 0 ? `${limpezasPorAvaliarCount} Por Avaliar` : "Avaliado";
       default: return "Ativo";
     }
   };
@@ -1030,6 +1032,7 @@ export default function PWACondominoView({
     avaliacaoComentario: l.avaliacao_comentario,
     avaliacaoFotos: l.avaliacao_fotos
   }));
+  const limpezasPorAvaliarCount = limpezasHistorico.filter(l => l.avaliacaoEstrelas == null).length;
 
   const processarFotoAvaliacaoLimpeza = (idLimpeza: string, file: File) => {
     const reader = new FileReader();
@@ -2116,22 +2119,23 @@ export default function PWACondominoView({
                   { id: "financas", label: "Finanças", desc: "Quotas & Comprovativos", image: "/modulos/59-recibo.png" },
                   { id: "mensagens", label: "Mensagens", desc: "Fale com a Administração", image: "/modulos/74-mensagem-individual.png" },
                   { id: "comunicacoes", label: "Comunicados", desc: "Canal Interno & Avisos", image: "/modulos/21-notificacoes-inquilino.png" },
-                  { id: "documentos", label: "Arquivo Digital", desc: "Ficheiros & Fotos", image: "/modulos/27-arquivo-automatico.png" },
-                  { id: "reservas_limpezas", label: "Reservas", desc: "Áreas Comuns", image: "/modulos/82-automacao.png" },
+                  { id: "limpezas", label: "Limpezas", desc: "Avaliar Execuções", image: "/modulos/82-automacao.png" },
+                  { id: "reservas_limpezas", label: "Reservas", desc: "Áreas Comuns", image: "/modulos/27-arquivo-automatico.png" },
                   { id: "sondagens", label: "Sondagens", desc: "Decisões e Votos", image: "/modulos/70-pessoa-de-contacto.png" }
-                  // "Limpezas", "Fornecedores" e "Obras" ficaram de fora — não
-                  // há nenhum dado real de fração ligado a estes cartões
-                  // aqui (ao contrário de Ocorrências/Finanças/Documentos/
-                  // Reservas/Sondagens), por isso mostravam sempre o mesmo
-                  // texto fixo independentemente de haver ou não algo real.
+                  // "Arquivo Digital" saiu deste painel (passou a ser menos
+                  // prioritário que incentivar a avaliação das limpezas) —
+                  // continua acessível pelo separador "Arquivo" do menu
+                  // principal. "Fornecedores" e "Obras" continuam de fora —
+                  // não há dado real de fração ligado a esses cartões aqui.
                 ].filter(card => {
                   // Coproprietário e inquilino têm acesso básico: mensagens,
                   // alertas, incidências (podem reportar e seguir a
                   // resolução), sondagens (só para saberem que vão acontecer
                   // e se preparem — nunca orçamentos/pagamentos). Sem acesso
-                  // a finanças, documentos financeiros ou reservas.
+                  // a finanças ou reservas. Limpezas fica acessível a todos
+                  // (inquilinos também usam as áreas comuns e podem avaliar).
                   const acessoRestrito = loggedUser.role === "INQUILINO" || loggedUser.role === "COPROPRIETARIO";
-                  if (acessoRestrito && ["financas", "documentos", "reservas_limpezas"].includes(card.id)) return false;
+                  if (acessoRestrito && ["financas", "reservas_limpezas"].includes(card.id)) return false;
                   // Reservas só aparece se a funcionalidade for mesmo usada
                   // neste prédio (existir pelo menos 1 reserva alguma vez).
                   if (card.id === "reservas_limpezas" && (reservas || []).length === 0) return false;
@@ -2141,7 +2145,11 @@ export default function PWACondominoView({
                   return (
                     <button
                       key={card.id}
-                      onClick={() => card.id === "mensagens" ? setShowChatModal(true) : setSelectedSubmenu(selectedSubmenu === card.id ? null : card.id)}
+                      onClick={() => {
+                        if (card.id === "mensagens") { setShowChatModal(true); return; }
+                        if (card.id === "limpezas") { setActivePwaModal("avaliar_servico"); return; }
+                        setSelectedSubmenu(selectedSubmenu === card.id ? null : card.id);
+                      }}
                       className={`w-full h-[115px] bg-emerald-50 hover:bg-emerald-100/90 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-950 dark:text-emerald-100 border-2 border-emerald-500 dark:border-emerald-400/80 rounded-2xl flex flex-col items-center justify-between text-center p-2.5 relative select-none hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-sm ${
                         selectedSubmenu === card.id ? "ring-2 ring-emerald-600 border-emerald-600 shadow-md" : ""
                       }`}
@@ -3306,37 +3314,46 @@ export default function PWACondominoView({
                 Sem sondagens ativas neste momento.
               </div>
             ) : (
-              sondagensFeed.filter(s => s.estado === "ativa").map(s => (
+              sondagensFeed.filter(s => s.estado === "ativa").map(s => {
+                // Pedido explícito: "as votações das limpezas e todas as
+                // outras devem ser editáveis" — já ter votado deixa de
+                // esconder as opções; passa a destacar a escolha atual e a
+                // deixar escolher outra (saveVotoSondagemToSupabase faz
+                // upsert por fração/sondagem, nunca duplica o voto).
+                const votoAtualSondagem = (s.votos || []).find(v => v.id_fracao === condominoFracao?.id_fracao);
+                return (
                 <div key={s.id_sondagem} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3.5 rounded-xl shadow-sm space-y-3 text-[10px]">
                   <span className="text-[9px] font-extrabold text-indigo-600 uppercase tracking-widest block">Sondagem Ativa do Edifício</span>
 
-                  {jaVotouSondagem(s) ? (
-                    <div className="flex flex-col items-center justify-center py-5 text-slate-600 text-center">
-                      <Check className="h-5 w-5 text-emerald-500 mb-1.5" />
-                      <span className="text-[9px] font-extrabold text-slate-800 dark:text-slate-100">O seu voto foi registado com sucesso!</span>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="space-y-1">
-                        <h4 className="font-extrabold text-slate-800 dark:text-white text-xs">{s.pergunta}</h4>
-                      </div>
-                      <div className="space-y-1.5 pt-1">
-                        {s.opcoes.map(op => (
-                          <button
-                            key={op}
-                            disabled={aEnviarVoto === s.id_sondagem}
-                            onClick={() => handleVotarSondagemReal(s.id_sondagem, op)}
-                            className="w-full text-left p-2 bg-slate-50 hover:bg-indigo-50 dark:bg-slate-950 dark:hover:bg-indigo-950/20 border border-slate-100 dark:border-slate-800 rounded-lg font-bold flex justify-between items-center cursor-pointer transition-all disabled:opacity-50"
-                          >
-                            <span>{op}</span>
-                            <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
-                          </button>
-                        ))}
-                      </div>
-                    </>
+                  <div className="space-y-1">
+                    <h4 className="font-extrabold text-slate-800 dark:text-white text-xs">{s.pergunta}</h4>
+                  </div>
+                  <div className="space-y-1.5 pt-1">
+                    {s.opcoes.map(op => {
+                      const ehOpcaoAtual = votoAtualSondagem?.opcao_escolhida === op;
+                      return (
+                        <button
+                          key={op}
+                          disabled={aEnviarVoto === s.id_sondagem || ehOpcaoAtual}
+                          onClick={() => handleVotarSondagemReal(s.id_sondagem, op)}
+                          className={`w-full text-left p-2 rounded-lg font-bold flex justify-between items-center cursor-pointer transition-all disabled:cursor-default border ${
+                            ehOpcaoAtual
+                              ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                              : "bg-slate-50 hover:bg-indigo-50 dark:bg-slate-950 dark:hover:bg-indigo-950/20 border-slate-100 dark:border-slate-800 disabled:opacity-50"
+                          }`}
+                        >
+                          <span>{ehOpcaoAtual ? <><Check className="inline h-3 w-3 mr-1" />{op}</> : op}</span>
+                          {!ehOpcaoAtual && <ChevronRight className="h-3.5 w-3.5 text-slate-600" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {votoAtualSondagem && (
+                    <p className="text-[9px] text-slate-600">Pode mudar o seu voto a qualquer momento enquanto a sondagem estiver ativa.</p>
                   )}
                 </div>
-              ))
+                );
+              })
             )}
 
             {/* Arquivo de Sondagens — as já fechadas ou já votadas por si, com resultados reais */}
@@ -5054,38 +5071,43 @@ export default function PWACondominoView({
                         sobre cinza-escuro, a tamanhos de 7-9px). */}
                     <p className="text-slate-700 font-bold">Sondagens Ativas</p>
                     {(() => {
-                      const sondagemAtiva = sondagensFeed.find(s => s.estado === "ativa" && !jaVotouSondagem(s));
-                      const sondagemVotada = sondagensFeed.find(s => s.estado === "ativa" && jaVotouSondagem(s));
-                      if (!sondagemAtiva && !sondagemVotada) {
+                      // Pedido explícito: votações editáveis — mostra
+                      // sempre a 1ª sondagem ativa (votada ou não) e deixa
+                      // mudar o voto, em vez de a esconder assim que há
+                      // resposta.
+                      const sondagemAtiva = sondagensFeed.find(s => s.estado === "ativa");
+                      if (!sondagemAtiva) {
                         return <p className="text-slate-600 text-center py-4">Sem sondagens ativas neste momento.</p>;
                       }
-                      if (!sondagemAtiva) {
-                        return (
-                          <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl flex flex-col items-center justify-center py-4 text-center">
-                            <CheckCircle className="h-6 w-6 text-emerald-600 mb-2" />
-                            <span className="font-extrabold text-slate-800">Voto já registado nesta sondagem!</span>
-                            <span className="text-[8.5px] text-slate-600 mt-1">Obrigado pelo seu contributo para as decisões comunitárias.</span>
-                          </div>
-                        );
-                      }
+                      const votoAtualSondagem = (sondagemAtiva.votos || []).find(v => v.id_fracao === condominoFracao?.id_fracao);
                       return (
                         <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl space-y-3">
                           <div className="space-y-1">
                             <h4 className="font-black text-slate-800 text-xs leading-snug">{sondagemAtiva.pergunta}</h4>
                           </div>
                           <div className="space-y-2 pt-1.5">
-                            {sondagemAtiva.opcoes.map(op => (
-                              <button
-                                key={op}
-                                disabled={aEnviarVoto === sondagemAtiva.id_sondagem}
-                                onClick={() => handleVotarSondagemReal(sondagemAtiva.id_sondagem, op)}
-                                className="w-full text-left p-2.5 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-400 rounded-xl font-bold text-slate-800 flex justify-between items-center transition-all cursor-pointer disabled:opacity-50"
-                              >
-                                <span>{op}</span>
-                                <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-                              </button>
-                            ))}
+                            {sondagemAtiva.opcoes.map(op => {
+                              const ehOpcaoAtual = votoAtualSondagem?.opcao_escolhida === op;
+                              return (
+                                <button
+                                  key={op}
+                                  disabled={aEnviarVoto === sondagemAtiva.id_sondagem || ehOpcaoAtual}
+                                  onClick={() => handleVotarSondagemReal(sondagemAtiva.id_sondagem, op)}
+                                  className={`w-full text-left p-2.5 rounded-xl font-bold flex justify-between items-center transition-all cursor-pointer disabled:cursor-default border ${
+                                    ehOpcaoAtual
+                                      ? "bg-emerald-50 border-emerald-400 text-emerald-800"
+                                      : "bg-white hover:bg-emerald-50 border-slate-200 hover:border-emerald-400 text-slate-800 disabled:opacity-50"
+                                  }`}
+                                >
+                                  <span>{ehOpcaoAtual ? <><CheckCircle className="inline h-3.5 w-3.5 mr-1" />{op}</> : op}</span>
+                                  {!ehOpcaoAtual && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+                                </button>
+                              );
+                            })}
                           </div>
+                          {votoAtualSondagem && (
+                            <p className="text-[8.5px] text-slate-600">Pode mudar o seu voto a qualquer momento enquanto a sondagem estiver ativa.</p>
+                          )}
                         </div>
                       );
                     })()}

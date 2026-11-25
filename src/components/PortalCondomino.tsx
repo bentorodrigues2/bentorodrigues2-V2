@@ -1225,6 +1225,10 @@ export function PortalCondomino({
     avaliacaoEstrelas: l.avaliacao_estrelas,
     avaliacaoComentario: l.avaliacao_comentario
   }));
+  // Nº de execuções de limpeza ainda por avaliar — pedido explícito do
+  // administrador: mostrar isto como notificação no botão "Limpezas" dos
+  // cartões iniciais, para incentivar os condóminos a participar.
+  const limpezasPorAvaliarCount = limpezasHistoricoPortal.filter(l => l.avaliacaoEstrelas == null).length;
 
   const handleAvaliarLimpezaPortal = async (idLimpeza: string, estrelas: number) => {
     setAAvaliarLimpezaIdPortal(idLimpeza);
@@ -1688,11 +1692,22 @@ export function PortalCondomino({
         <div className="flex space-x-2">
           {activeTab === "portal" && (
             <>
+              {/* "Arquivo Digital" saiu daqui — substituído por "Limpezas",
+                  com o nº de execuções por avaliar bem visível, para
+                  incentivar os condóminos a participar (pedido explícito
+                  do administrador). O modal do Arquivo Digital continua no
+                  código (ver showArquivoDigital mais abaixo), só deixou de
+                  ter um botão a abri-lo aqui. */}
               <button
-                onClick={() => setShowArquivoDigital(true)}
-                className="bg-indigo-50 border border-indigo-200 text-indigo-700 font-semibold px-3 py-1.5 rounded-lg text-xs hover:bg-indigo-100 transition-all cursor-pointer"
+                onClick={() => { setServicosTab("limpezas"); setShowServicos(true); }}
+                className="relative bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold px-3 py-1.5 rounded-lg text-xs hover:bg-emerald-100 transition-all cursor-pointer"
               >
-                <i className="fa-solid fa-box-archive mr-1.5"></i> Arquivo Digital
+                <i className="fa-solid fa-broom mr-1.5"></i> Limpezas
+                {limpezasPorAvaliarCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-amber-500 text-white text-[10px] font-extrabold h-5 min-w-5 px-1 rounded-full flex items-center justify-center shadow-sm animate-pulse">
+                    {limpezasPorAvaliarCount}
+                  </span>
+                )}
               </button>
               <button
                 onClick={() => { setServicosTab("avarias"); setShowServicos(true); }}
@@ -2466,7 +2481,16 @@ export function PortalCondomino({
                   <i className="fa-solid fa-square-poll-horizontal mr-2 text-emerald-600"></i> Sondagens Ativas
                 </h3>
                 <div className="space-y-4">
-                  {sondagensFeed.filter(s => s.estado === "ativa").map(s => (
+                  {sondagensFeed.filter(s => s.estado === "ativa").map(s => {
+                    // Pedido explícito do administrador: "as votações das
+                    // limpezas e todas as outras devem ser editáveis" — o
+                    // voto já gravado (saveVotoSondagemToSupabase faz
+                    // upsert por fração/sondagem, nunca duplica) deixa de
+                    // esconder as opções; passa a destacar a escolha atual
+                    // e a deixar escolher outra, tal como já acontecia nas
+                    // Votações de Propostas de Orçamento acima.
+                    const votoAtualSondagem = (s.votos || []).find(v => v.id_fracao === activeUserFracao?.id_fracao);
+                    return (
                     <div key={s.id_sondagem} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
                       <span className="font-bold text-xs text-slate-900 block">{s.pergunta}</span>
                       {!ehCondominoComVoto ? (
@@ -2479,24 +2503,35 @@ export function PortalCondomino({
                         // registava nada, mas o ecrã continuava a pedir o
                         // voto — bug real reportado pelo administrador).
                         <p className="text-[11px] text-slate-600 font-semibold"><i className="fa-solid fa-circle-info mr-1"></i>A administração não vota — veja o resultado em "Resultados das Sondagens".</p>
-                      ) : jaVotou(s) ? (
-                        <p className="text-[11px] text-emerald-700 font-semibold"><i className="fa-solid fa-circle-check mr-1"></i>Já votou nesta sondagem.</p>
                       ) : (
-                        <div className="flex gap-2 flex-wrap">
-                          {s.opcoes.map(op => (
-                            <button
-                              key={op}
-                              disabled={aEnviarVoto === s.id_sondagem}
-                              onClick={() => handleVotarSondagem(s.id_sondagem, op)}
-                              className="text-xs font-bold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-3 py-1.5 rounded-lg cursor-pointer"
-                            >
-                              {op}
-                            </button>
-                          ))}
-                        </div>
+                        <>
+                          <div className="flex gap-2 flex-wrap">
+                            {s.opcoes.map(op => {
+                              const ehOpcaoAtual = votoAtualSondagem?.opcao_escolhida === op;
+                              return (
+                                <button
+                                  key={op}
+                                  disabled={aEnviarVoto === s.id_sondagem || ehOpcaoAtual}
+                                  onClick={() => handleVotarSondagem(s.id_sondagem, op)}
+                                  className={`text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer disabled:cursor-default transition-all ${
+                                    ehOpcaoAtual
+                                      ? "bg-emerald-100 text-emerald-800 border border-emerald-400 ring-1 ring-emerald-300"
+                                      : "bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white"
+                                  }`}
+                                >
+                                  {ehOpcaoAtual ? <><i className="fa-solid fa-circle-check mr-1"></i>{op}</> : op}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {votoAtualSondagem && (
+                            <p className="text-[10px] text-slate-600">Pode mudar o seu voto a qualquer momento enquanto a sondagem estiver ativa.</p>
+                          )}
+                        </>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
