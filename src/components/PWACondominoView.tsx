@@ -1011,6 +1011,7 @@ export default function PWACondominoView({
   const [cleaningComments, setCleaningComments] = useState<Record<string, string>>({});
   const [cleaningFotos, setCleaningFotos] = useState<Record<string, string[]>>({});
   const [aAvaliarLimpezaId, setAAvaliarLimpezaId] = useState<string | null>(null);
+  const [limpezasEmEdicao, setLimpezasEmEdicao] = useState<Record<string, boolean>>({});
   // Histórico real de limpezas (Supabase) — antes eram sempre as mesmas 3
   // limpezas fictícias ("Maria Santos", "Carla Pires"), independentemente
   // do que existisse de facto registado para este prédio.
@@ -4515,8 +4516,16 @@ export default function PWACondominoView({
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-white text-slate-800 rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden text-[11px]" style={{ backgroundColor: "#ffffff" }}
+              className="custom-pwa-backoffice-content bg-white text-slate-800 rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden text-[11px]" style={{ backgroundColor: "#ffffff" }}
             >
+              {/* custom-pwa-backoffice-content acima: este modal é sempre de
+                  fundo claro, mesmo em modo escuro (ver comentário junto a
+                  "responder_sondagem"), mas a regra global ".dark .pwa-screen
+                  .text-slate-800..." (src/index.css) força texto branco em
+                  qualquer elemento com essas classes dentro da PWA, exceto
+                  dentro desta "ilha clara" — sem esta classe, em modo escuro
+                  o texto deste modal (incl. a avaliação de limpezas) ficava
+                  branco sobre fundo branco, ilegível. */}
               {/* Header */}
               <div className="bg-slate-100 p-3.5 border-b border-slate-200 flex justify-between items-center shrink-0">
                 <span className="font-black uppercase tracking-wider text-emerald-600 text-[10px] flex items-center gap-1.5 truncate max-w-[210px]">
@@ -4967,7 +4976,10 @@ export default function PWACondominoView({
                       )}
                       {limpezasHistorico.slice(0, 2).map(limp => {
                         const jaAvaliado = limp.avaliacaoEstrelas != null;
+                        const aEditar = !!limpezasEmEdicao[limp.id];
+                        const emModoEdicao = !jaAvaliado || aEditar;
                         const estrelaAtual = cleaningRatings[limp.id] ?? limp.avaliacaoEstrelas ?? 0;
+                        const comentarioAtual = cleaningComments[limp.id] ?? limp.avaliacaoComentario ?? "";
                         return (
                         <div key={limp.id} className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-2">
                           <div className="flex justify-between text-slate-600 font-bold text-[8px]">
@@ -4978,13 +4990,26 @@ export default function PWACondominoView({
                             {limp.areas.length > 0 ? limp.areas.join(", ") : "Higienização de Áreas Comuns"}
                           </h4>
 
-                          {jaAvaliado ? (
+                          {!emModoEdicao ? (
                             <div className="pt-1.5 border-t border-slate-200 space-y-1.5">
-                              <div className="flex items-center gap-1">
-                                {[1, 2, 3, 4, 5].map(star => (
-                                  <Star key={star} className={`h-4 w-4 ${estrelaAtual >= star ? "text-amber-500 fill-amber-500" : "text-slate-300"}`} />
-                                ))}
-                                <span className="font-extrabold text-emerald-600 text-[8px] uppercase ml-1">✓ Avaliado</span>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1">
+                                  {[1, 2, 3, 4, 5].map(star => (
+                                    <Star key={star} className={`h-4 w-4 ${estrelaAtual >= star ? "text-amber-500 fill-amber-500" : "text-slate-300"}`} />
+                                  ))}
+                                  <span className="font-extrabold text-emerald-600 text-[8px] uppercase ml-1">✓ Avaliado</span>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    setCleaningRatings(prev => ({ ...prev, [limp.id]: limp.avaliacaoEstrelas || 0 }));
+                                    setCleaningComments(prev => ({ ...prev, [limp.id]: limp.avaliacaoComentario || "" }));
+                                    setCleaningFotos(prev => ({ ...prev, [limp.id]: limp.avaliacaoFotos || [] }));
+                                    setLimpezasEmEdicao(prev => ({ ...prev, [limp.id]: true }));
+                                  }}
+                                  className="text-[9px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 rounded-lg px-2 py-1 cursor-pointer hover:bg-emerald-200"
+                                >
+                                  <i className="fa-solid fa-pen mr-1"></i>Editar
+                                </button>
                               </div>
                               {limp.avaliacaoComentario && (
                                 <p className="text-slate-600 italic">"{limp.avaliacaoComentario}"</p>
@@ -5012,7 +5037,7 @@ export default function PWACondominoView({
                                 ))}
                               </div>
                               <textarea
-                                value={cleaningComments[limp.id] || ""}
+                                value={comentarioAtual}
                                 onChange={(e) => setCleaningComments(prev => ({ ...prev, [limp.id]: e.target.value }))}
                                 placeholder="Observações / comentários (opcional)..."
                                 rows={2}
@@ -5036,13 +5061,27 @@ export default function PWACondominoView({
                                   />
                                 </label>
                               </div>
-                              <button
-                                disabled={!estrelaAtual || aAvaliarLimpezaId === limp.id}
-                                onClick={() => handleAvaliarLimpeza(limp.id, estrelaAtual)}
-                                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-1.5 rounded-lg text-[10px] cursor-pointer"
-                              >
-                                {aAvaliarLimpezaId === limp.id ? "A enviar..." : "Enviar Avaliação"}
-                              </button>
+                              <div className="flex items-center gap-2">
+                                {aEditar && (
+                                  <button
+                                    disabled={aAvaliarLimpezaId === limp.id}
+                                    onClick={() => setLimpezasEmEdicao(prev => ({ ...prev, [limp.id]: false }))}
+                                    className="shrink-0 bg-slate-200 hover:bg-slate-300 disabled:opacity-50 text-slate-700 font-bold py-1.5 px-3 rounded-lg text-[10px] cursor-pointer"
+                                  >
+                                    Cancelar
+                                  </button>
+                                )}
+                                <button
+                                  disabled={!estrelaAtual || aAvaliarLimpezaId === limp.id}
+                                  onClick={async () => {
+                                    await handleAvaliarLimpeza(limp.id, estrelaAtual);
+                                    setLimpezasEmEdicao(prev => ({ ...prev, [limp.id]: false }));
+                                  }}
+                                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-1.5 rounded-lg text-[10px] cursor-pointer"
+                                >
+                                  {aAvaliarLimpezaId === limp.id ? "A enviar..." : aEditar ? "Guardar Alterações" : "Enviar Avaliação"}
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>
