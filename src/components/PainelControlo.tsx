@@ -405,7 +405,7 @@ export function PainelControlo({
                     type="button"
                     onClick={() => onSelectSection?.(ind.section)}
                     title={ind.corSinal ? "Total = Saldos Bancários (Ordem + Fundo de Reserva) − Dívidas Pendentes a Fornecedores" : undefined}
-                    className={`w-full min-h-[115px] rounded-2xl flex flex-col items-center justify-between text-center p-2.5 relative select-none hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-xs overflow-hidden ${
+                    className={`w-full min-h-[125px] rounded-2xl flex flex-col items-center justify-between text-center p-2.5 relative select-none hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-xs overflow-hidden ${
                       corVermelha
                         ? "bg-red-100 hover:bg-red-200 text-red-950 border border-red-400"
                         : corVerde
@@ -422,9 +422,9 @@ export function PainelControlo({
                       )}
                     </div>
                     <div className="flex flex-col items-center leading-none w-full px-0.5">
-                      <span className={`text-[9.5px] font-black leading-[1.15] line-clamp-2 break-words text-center uppercase tracking-tight ${corVermelha ? "text-red-950" : corVerde ? "text-[#022c22]" : "text-[#064E3B]"}`}>{ind.name}</span>
+                      <span className={`text-[11.5px] font-black leading-[1.15] line-clamp-2 break-words text-center uppercase tracking-tight ${corVermelha ? "text-red-950" : corVerde ? "text-[#022c22]" : "text-[#064E3B]"}`}>{ind.name}</span>
                     </div>
-                    <span className={`bg-white/95 border text-[8px] font-black px-2 py-0.5 rounded-full shadow-xs uppercase tracking-wide leading-tight max-w-full text-center break-words line-clamp-1 ${
+                    <span className={`bg-white/95 border text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs uppercase tracking-wide leading-tight max-w-full text-center break-words line-clamp-1 ${
                       corVermelha ? "text-red-700 border-red-400" : corVerde ? "text-[#022c22] border-[#34D399]" : "text-[#064E3B] border-[#6EE7B7]"
                     }`}>
                       {ind.val}
